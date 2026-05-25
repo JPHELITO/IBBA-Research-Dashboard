@@ -918,7 +918,16 @@ function renderPrediction(){
   const pp=predProduct;
   const koreaRaw=PRED?.[pp]?.Korea||[];
   const chinaRaw=PRED?.[pp]?.China||[];
-  const secexFlat=SEIMP['flat']||[];
+
+  // SECEX baseline: sum ALL countries for this product from import_prediction.
+  // Same data source and unit (volume_kg) as the export series → fair comparison.
+  const _periodTotals={};
+  Object.values(PRED?.[pp]||{}).forEach(arr=>{
+    arr.forEach(r=>{_periodTotals[r.period]=(_periodTotals[r.period]||0)+(r.volume_kg||0);});
+  });
+  const secexTotalArr=Object.entries(_periodTotals)
+    .sort(([a],[b])=>a.localeCompare(b))
+    .map(([period,volume_kg])=>({period,volume_kg}));
 
   // Update dynamic section headers + info-box delay text
   document.getElementById('pd-korea-header').textContent   =`Coreia — ${pp}`;
@@ -927,10 +936,11 @@ function renderPrediction(){
   document.getElementById('pd-delay-text').textContent     =`+${predDelay}M`;
 
   // ── Build chart data for a single-country chart ──────────────────────────
-  // exportRaw: [{period,volume_kg}]  secexArr: [{period,volume_ktons}]  n: 3 or 12
-  function buildOne(exportRaw,secexArr,n){
-    const expR=rollingN(exportRaw,'volume_kg',n);       // kg → converted below
-    const sxR =rollingN(secexArr ,'volume_ktons',n);    // already ktons
+  // exportRaw: Korea or China rows [{period,volume_kg}]
+  // SECEX baseline = secexTotalArr (all countries, same volume_kg field)
+  function buildOne(exportRaw,n){
+    const expR=rollingN(exportRaw,  'volume_kg',n);
+    const sxR =rollingN(secexTotalArr,'volume_kg',n);
 
     // Shifted export map: export period T → placed at T+predDelay on x-axis
     const expMap={};
@@ -939,10 +949,10 @@ function renderPrediction(){
         expMap[shiftPeriod(r.period,predDelay)]=kg2kt(expR[i]);
     });
 
-    // SECEX map: plotted at its own unshifted period (÷1000 to match kt scale)
+    // SECEX map: plotted at its own unshifted period
     const sxMap={};
-    secexArr.forEach((r,i)=>{
-      if(sxR[i]!=null) sxMap[r.period]=sxR[i]/1000;
+    secexTotalArr.forEach((r,i)=>{
+      if(sxR[i]!=null) sxMap[r.period]=kg2kt(sxR[i]);
     });
 
     // Unified sorted periods (export-shifted ∪ secex)
@@ -954,11 +964,11 @@ function renderPrediction(){
     };
   }
 
-  // ── Build combined Korea+China chart data ─────────────────────────────────
-  function buildCombined(secexArr,n){
-    const kR =rollingN(koreaRaw,'volume_kg',n);
-    const cR =rollingN(chinaRaw,'volume_kg',n);
-    const sxR=rollingN(secexArr ,'volume_ktons',n);
+  // ── Build combined Korea+China chart data (same SECEX baseline) ───────────
+  function buildCombined(n){
+    const kR =rollingN(koreaRaw,    'volume_kg',n);
+    const cR =rollingN(chinaRaw,    'volume_kg',n);
+    const sxR=rollingN(secexTotalArr,'volume_kg',n);
 
     const expMap={};
     koreaRaw.forEach((r,i)=>{
@@ -969,8 +979,8 @@ function renderPrediction(){
     });
 
     const sxMap={};
-    secexArr.forEach((r,i)=>{
-      if(sxR[i]!=null) sxMap[r.period]=sxR[i]/1000;
+    secexTotalArr.forEach((r,i)=>{
+      if(sxR[i]!=null) sxMap[r.period]=kg2kt(sxR[i]);
     });
 
     const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
@@ -994,37 +1004,37 @@ function renderPrediction(){
   }
 
   // ── 1. Coreia 3M ─────────────────────────────────────────────────────────
-  const k3=buildOne(koreaRaw,secexFlat,3);
+  const k3=buildOne(koreaRaw,3);
   mkChart('pd-3m-korea','line',k3.labels,[
-    ds(k3.secexSeries,C_OR,`SECEX Planos (3M, kt)`,2.5),
+    ds(k3.secexSeries,C_OR,`SECEX Total ${pp} (3M, kt)`,2.5),
     ds(k3.expSeries,  C_BK,`Coreia +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 2. Coreia 12M ────────────────────────────────────────────────────────
-  const k12=buildOne(koreaRaw,secexFlat,12);
+  const k12=buildOne(koreaRaw,12);
   mkChart('pd-12m-korea','line',k12.labels,[
-    ds(k12.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(k12.secexSeries,C_OR,`SECEX Total ${pp} (12M, kt)`,2.5),
     ds(k12.expSeries,  C_BK,`Coreia +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 
   // ── 3. China 3M ──────────────────────────────────────────────────────────
-  const c3=buildOne(chinaRaw,secexFlat,3);
+  const c3=buildOne(chinaRaw,3);
   mkChart('pd-3m-china','line',c3.labels,[
-    ds(c3.secexSeries,C_OR,`SECEX Planos (3M, kt)`,2.5),
+    ds(c3.secexSeries,C_OR,`SECEX Total ${pp} (3M, kt)`,2.5),
     ds(c3.expSeries,  C_BK,`China +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 4. China 12M ─────────────────────────────────────────────────────────
-  const c12=buildOne(chinaRaw,secexFlat,12);
+  const c12=buildOne(chinaRaw,12);
   mkChart('pd-12m-china','line',c12.labels,[
-    ds(c12.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(c12.secexSeries,C_OR,`SECEX Total ${pp} (12M, kt)`,2.5),
     ds(c12.expSeries,  C_BK,`China +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 
   // ── 5. Coreia + China 12M ────────────────────────────────────────────────
-  const comb=buildCombined(secexFlat,12);
+  const comb=buildCombined(12);
   mkChart('pd-12m-combined','line',comb.labels,[
-    ds(comb.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(comb.secexSeries,C_OR,`SECEX Total ${pp} (12M, kt)`,2.5),
     ds(comb.expSeries,  C_BK,`Coreia+China +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 }

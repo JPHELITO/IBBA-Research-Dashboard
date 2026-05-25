@@ -424,18 +424,25 @@ def load_inda(path, conn):
 # HRC NCMs (SH6 prefix 7208): hot-rolled coil/sheet
 # CRC NCMs (SH6 prefix 7209): cold-rolled coil/sheet
 # ══════════════════════════════════════════════════════════════════════════════
-HRC_SH6_PREFIXES = ('720827', '720837', '720838', '720839', '720851',
-                    '720852', '720853', '720854', '720890', '722530',
-                    '722540', '722550', '722591', '722599')
-CRC_SH6_PREFIXES = ('720916', '720917', '720918', '720915', '720912',
-                    '720919', '722610', '722620', '722692', '721049',
-                    '721030', '721070', '721061')
+HRC_SH6 = {
+    720890, 720826, 720827, 720837, 720838, 720839, 720853, 720854,
+    722540, 722691, 720825, 721190, 722530, 720810, 720836, 721113,
+    721114, 721119, 720840,
+}
+CRC_SH6 = {
+    720916, 720917, 720926, 720927, 720915, 720918, 722550, 721129,
+    722692, 720990, 721123, 722519, 722619, 720925, 720928,
+}
 
 def _classify_sh6(sh6):
-    s = str(sh6).strip()
-    if any(s.startswith(p[:4]) for p in HRC_SH6_PREFIXES):
+    """Exact 6-digit SH6 code match for HRC / CRC classification."""
+    try:
+        code = int(str(sh6).strip().split('.')[0])
+    except (ValueError, TypeError):
+        return 'OTHER'
+    if code in HRC_SH6:
         return 'HRC'
-    if any(s.startswith(p[:4]) for p in CRC_SH6_PREFIXES):
+    if code in CRC_SH6:
         return 'CRC'
     return 'OTHER'
 
