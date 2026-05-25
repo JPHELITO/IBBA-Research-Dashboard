@@ -246,13 +246,15 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <div class="chart-wrap h200"><canvas id="ex-yoy"></canvas></div>
     </div>
   </div>
-  <!-- Quarterly breakdown always shown -->
-  <div class="sec-block-header">Breakdown Trimestral por Produto <span>últimos 12 trimestres</span></div>
-  <div class="charts-row c1">
-    <div class="chart-card">
-      <div class="chart-title">Exportações por Produto — Trimestral (kt)</div>
-      <div class="chart-sub">SECEX · Planos + Longos + Semis · independente do filtro de produto</div>
-      <div class="chart-wrap h240"><canvas id="ex-qvol"></canvas></div>
+  <!-- Breakdown por produto — só aparece em Total -->
+  <div id="ex-breakdown-block">
+    <div class="sec-block-header" id="ex-breakdown-header">Breakdown por Produto <span id="ex-breakdown-tag"></span></div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title" id="ex-breakdown-title">Exportações por Produto (kt)</div>
+        <div class="chart-sub">SECEX · Planos + Longos + Semis · filtro de granularidade aplicado</div>
+        <div class="chart-wrap h240"><canvas id="ex-qvol"></canvas></div>
+      </div>
     </div>
   </div>
 </div>
@@ -669,20 +671,49 @@ function renderExports(){
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 
-  // Quarterly stacked (always 12Q, independent of product filter)
-  const flatQ=toQ(SEEXP['flat']||[],['volume_ktons']).slice(-12);
-  const longQ=toQ(SEEXP['long']||[],['volume_ktons']).slice(-12);
-  const semiQ=toQ(SEEXP['semi']||[],['volume_ktons']).slice(-12);
-  const totQ =toQ(SEEXP['total']||[],['volume_ktons']).slice(-12);
-  const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
-  const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
-  const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
-  const qLbs=totQ.map(r=>r.period);
-  mkChart('ex-qvol','bar',qLbs,[
-    stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
-    stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
-    stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
-  ],{...LEG,...STACKED});
+  // Breakdown por produto — só renderiza quando currentProd === 'total'
+  const breakBlock=document.getElementById('ex-breakdown-block');
+  if(currentProd!=='total'){
+    breakBlock.style.display='none';
+    destroyChart('ex-qvol');
+  } else {
+    breakBlock.style.display='';
+    if(gran){
+      // Trimestral — últimos 12Q completos
+      const flatQ=toQ(SEEXP['flat']||[],['volume_ktons']).slice(-12);
+      const longQ=toQ(SEEXP['long']||[],['volume_ktons']).slice(-12);
+      const semiQ=toQ(SEEXP['semi']||[],['volume_ktons']).slice(-12);
+      const totQ =toQ(SEEXP['total']||[],['volume_ktons']).slice(-12);
+      const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
+      const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
+      const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
+      const qLbs=totQ.map(r=>r.period);
+      document.getElementById('ex-breakdown-title').textContent='Exportações por Produto — Trimestral (kt)';
+      document.getElementById('ex-breakdown-tag').textContent='últimos 12 trimestres';
+      mkChart('ex-qvol','bar',qLbs,[
+        stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
+        stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
+        stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
+      ],{...LEG,...STACKED});
+    } else {
+      // Mensal — aplica janela selecionada
+      const flatM=applyWin(SEEXP['flat']||[]);
+      const longM=applyWin(SEEXP['long']||[]);
+      const semiM=applyWin(SEEXP['semi']||[]);
+      const totM =applyWin(SEEXP['total']||[]);
+      const mLbs=totM.map(r=>r.period);
+      const fMap=Object.fromEntries(flatM.map(r=>[r.period,r.volume_ktons]));
+      const lMap=Object.fromEntries(longM.map(r=>[r.period,r.volume_ktons]));
+      const sMap=Object.fromEntries(semiM.map(r=>[r.period,r.volume_ktons]));
+      document.getElementById('ex-breakdown-title').textContent='Exportações por Produto — Mensal (kt)';
+      document.getElementById('ex-breakdown-tag').textContent=`janela ${currentWin}`;
+      mkChart('ex-qvol','bar',mLbs,[
+        stackDs(mLbs.map(p=>fMap[p]??null),C_OR,'Planos'),
+        stackDs(mLbs.map(p=>lMap[p]??null),C_BK,'Longos'),
+        stackDs(mLbs.map(p=>sMap[p]??null),C_GR,'Semis'),
+      ],{...LEG,...STACKED});
+    }
+  }
 }
 
 // ─── RENDER: IMPORTAÇÃO ──────────────────────────────────────────────────────
