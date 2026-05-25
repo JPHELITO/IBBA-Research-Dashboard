@@ -142,6 +142,15 @@ def init_db(conn):
         updated_at TEXT,
         PRIMARY KEY (period, product, country)
     );
+    CREATE TABLE IF NOT EXISTS pred_exports (
+        period     TEXT,
+        country    TEXT,
+        product    TEXT,
+        value_usd  REAL,
+        volume_kg  REAL,
+        updated_at TEXT,
+        PRIMARY KEY (period, country, product)
+    );
     """)
     conn.commit()
 
@@ -454,6 +463,87 @@ def _classify_country(country):
         return 'China'
     return 'Other'
 
+def load_korea_exports(xl, conn):
+    """KOREA sheet: Korean export data to Brazil.
+    Columns (0-indexed): 3=Country(dest), 11=DATE, 12=SF6, 13=Value(USD thousands),
+    14=Volume(metric tons → convert ×1000 to kg).
+    Filter: Country (iloc[3]) == 'Brazil'.
+    """
+    if 'KOREA' not in xl.sheet_names:
+        print("  [KOREA] KOREA sheet not found — skipping.")
+        return
+    df = xl.parse('KOREA', header=0)
+    agg = {}
+    for _, row in df.iterrows():
+        try:
+            dest = str(row.iloc[3] if not pd.isnull(row.iloc[3]) else '').strip()
+            if dest.lower() != 'brazil':
+                continue
+            dt = pd.to_datetime(row.iloc[11], errors='coerce')
+            if pd.isnull(dt):
+                continue
+            period  = dt.strftime('%Y-%m')
+            sf6     = row.iloc[12]
+            product = _classify_sh6(sf6)
+            if product == 'OTHER':
+                continue
+            vol_mt  = _safe_float(row.iloc[14]) or 0
+            vol_kg  = vol_mt * 1000          # metric tons → kg
+            val_usd = (_safe_float(row.iloc[13]) or 0) * 1000  # USD thousands → USD
+            key = (period, 'Korea', product)
+            if key not in agg:
+                agg[key] = [0.0, 0.0]
+            agg[key][0] += val_usd
+            agg[key][1] += vol_kg
+        except Exception:
+            continue
+    out = [(p, c, pr, v[0], v[1], NOW) for (p, c, pr), v in agg.items()]
+    conn.executemany(
+        "INSERT OR REPLACE INTO pred_exports "
+        "(period,country,product,value_usd,volume_kg,updated_at) VALUES (?,?,?,?,?,?)",
+        out)
+    conn.commit()
+    print(f"  [KOREA] {len(out)} period×product rows (Brazil filter) loaded.")
+
+
+def load_china_exports(xl, conn):
+    """CHINA sheet: Chinese export data to Brazil.
+    All rows are already filtered to Brazil (Trading partner = Brazil).
+    Columns (0-indexed): 11=DATE, 12=SF6, 13=Value(USD), 14=Volume(kg).
+    """
+    if 'CHINA' not in xl.sheet_names:
+        print("  [CHINA] CHINA sheet not found — skipping.")
+        return
+    df = xl.parse('CHINA', header=0)
+    agg = {}
+    for _, row in df.iterrows():
+        try:
+            dt = pd.to_datetime(row.iloc[11], errors='coerce')
+            if pd.isnull(dt):
+                continue
+            period  = dt.strftime('%Y-%m')
+            sf6     = row.iloc[12]
+            product = _classify_sh6(sf6)
+            if product == 'OTHER':
+                continue
+            vol_kg  = _safe_float(row.iloc[14]) or 0   # already in kg
+            val_usd = _safe_float(row.iloc[13]) or 0
+            key = (period, 'China', product)
+            if key not in agg:
+                agg[key] = [0.0, 0.0]
+            agg[key][0] += val_usd
+            agg[key][1] += vol_kg
+        except Exception:
+            continue
+    out = [(p, c, pr, v[0], v[1], NOW) for (p, c, pr), v in agg.items()]
+    conn.executemany(
+        "INSERT OR REPLACE INTO pred_exports "
+        "(period,country,product,value_usd,volume_kg,updated_at) VALUES (?,?,?,?,?,?)",
+        out)
+    conn.commit()
+    print(f"  [CHINA] {len(out)} period×product rows loaded.")
+
+
 def load_prediction(path, conn):
     print(f"\n[PRED] Loading {path.name} ...")
     xl = pd.ExcelFile(path, engine='openpyxl')
@@ -500,7 +590,13 @@ def load_prediction(path, conn):
         out
     )
     conn.commit()
-    print(f"  [PRED] {len(out)} period×product×country rows loaded.")
+    print(f"  [PRED SECEX] {len(out)} period×product×country rows loaded.")
+
+    # Also load Korea and China EXPORT data (leading indicators)
+    conn.execute("DELETE FROM pred_exports")
+    conn.commit()
+    load_korea_exports(xl, conn)
+    load_china_exports(xl, conn)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

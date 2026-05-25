@@ -507,6 +507,7 @@ let PROD=[], CONS=[], EXPI=[], IMPI=[], DOM=[];
 let SEEXP={}, SEIMP={};
 let INDA=[];
 let PRED={};
+let PRED_EXP={};
 
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -685,6 +686,13 @@ async function loadDB(){
       if(!PRED[r.product])PRED[r.product]={};
       if(!PRED[r.product][r.country])PRED[r.product][r.country]=[];
       PRED[r.product][r.country].push(r);
+    }
+
+    const rPredExp=toObj(db.exec(`SELECT period,country,product,value_usd,volume_kg FROM pred_exports ORDER BY period,country,product`)[0]);
+    for(const r of rPredExp){
+      if(!PRED_EXP[r.product])PRED_EXP[r.product]={};
+      if(!PRED_EXP[r.product][r.country])PRED_EXP[r.product][r.country]=[];
+      PRED_EXP[r.product][r.country].push(r);
     }
     db.close();
 
@@ -921,8 +929,14 @@ function renderImportsSECEX(){
 
 function renderPrediction(){
   const pp=predProduct;
-  const koreaRaw=PRED?.[pp]?.Korea||[];
-  const chinaRaw=PRED?.[pp]?.China||[];
+
+  // SECEX import data — Brazilian customs records by country of origin (unshifted baseline)
+  const koreaSec=PRED?.[pp]?.Korea||[];
+  const chinaSec=PRED?.[pp]?.China||[];
+
+  // Export data — Korea/China customs records of shipments to Brazil (shifted leading indicator)
+  const koreaExp=PRED_EXP?.[pp]?.Korea||[];
+  const chinaExp=PRED_EXP?.[pp]?.China||[];
 
   // Update dynamic section headers + info-box delay text
   document.getElementById('pd-korea-header').textContent   =`Coreia — ${pp}`;
@@ -930,26 +944,22 @@ function renderPrediction(){
   document.getElementById('pd-combined-header').textContent=`Coreia + China — ${pp}`;
   document.getElementById('pd-delay-text').textContent     =`+${predDelay}M`;
 
-  // ── Build chart for a single country ─────────────────────────────────────
-  // The SAME array serves both roles:
-  //   • SECEX (laranja): rolling sum plotted at the ORIGINAL period T
-  //   • Export (preto) : rolling sum plotted at T+predDelay (leading indicator)
-  // Because import_prediction contains Brazilian SECEX records by country of
-  // origin, the export perspective is just the same goods shifted forward by
-  // the transit time (predDelay months).
-  function buildOne(countryArr,n){
-    const roll=rollingN(countryArr,'volume_kg',n);
+  // ── Build chart for a single country using TWO separate data sources ──────
+  //   exportRaw : Korea/China customs export data → shifted +predDelay (leading indicator)
+  //   secexRaw  : Brazilian SECEX import data → plotted at original period (actual arrivals)
+  function buildOne(exportRaw,secexRaw,n){
+    const expRoll=rollingN(exportRaw,'volume_kg',n);
+    const sxRoll =rollingN(secexRaw, 'volume_kg',n);
 
     const expMap={},sxMap={};
-    countryArr.forEach((r,i)=>{
-      if(roll[i]==null)return;
-      const kt=kg2kt(roll[i]);
-      sxMap[r.period]                         =kt; // SECEX: unshifted (original period)
-      expMap[shiftPeriod(r.period,predDelay)] =kt; // Export: shifted +N months
+    exportRaw.forEach((r,i)=>{
+      if(expRoll[i]!=null) expMap[shiftPeriod(r.period,predDelay)]=kg2kt(expRoll[i]);
+    });
+    secexRaw.forEach((r,i)=>{
+      if(sxRoll[i]!=null) sxMap[r.period]=kg2kt(sxRoll[i]);
     });
 
-    // Sorted union of both period sets
-    const allP=[...new Set([...Object.keys(sxMap),...Object.keys(expMap)])].sort();
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
     return{
       labels:      allP.map(fmtPeriod),
       secexSeries: allP.map(p=>sxMap[p] ??null),
@@ -957,30 +967,24 @@ function renderPrediction(){
     };
   }
 
-  // ── Build chart for combined Korea + China ────────────────────────────────
-  // Roll each country separately, then sum at each original period before
-  // shifting. This keeps rolling windows within each country's own series.
+  // ── Build combined Korea+China chart from separate export and SECEX sources ─
   function buildCombined(n){
-    const kRoll=rollingN(koreaRaw,'volume_kg',n);
-    const cRoll=rollingN(chinaRaw,'volume_kg',n);
+    const kExpRoll=rollingN(koreaExp,'volume_kg',n);
+    const cExpRoll=rollingN(chinaExp,'volume_kg',n);
+    const kSxRoll =rollingN(koreaSec,'volume_kg',n);
+    const cSxRoll =rollingN(chinaSec,'volume_kg',n);
 
-    // Accumulate per original period
-    const byPeriod={};
-    koreaRaw.forEach((r,i)=>{
-      if(kRoll[i]!=null) byPeriod[r.period]=(byPeriod[r.period]||0)+kRoll[i];
-    });
-    chinaRaw.forEach((r,i)=>{
-      if(cRoll[i]!=null) byPeriod[r.period]=(byPeriod[r.period]||0)+cRoll[i];
-    });
+    const expByP={},sxByP={};
+    koreaExp.forEach((r,i)=>{if(kExpRoll[i]!=null) expByP[r.period]=(expByP[r.period]||0)+kExpRoll[i];});
+    chinaExp.forEach((r,i)=>{if(cExpRoll[i]!=null) expByP[r.period]=(expByP[r.period]||0)+cExpRoll[i];});
+    koreaSec.forEach((r,i)=>{if(kSxRoll[i]!=null)  sxByP[r.period]=(sxByP[r.period]||0)+kSxRoll[i];});
+    chinaSec.forEach((r,i)=>{if(cSxRoll[i]!=null)  sxByP[r.period]=(sxByP[r.period]||0)+cSxRoll[i];});
 
     const expMap={},sxMap={};
-    Object.entries(byPeriod).forEach(([period,kgSum])=>{
-      const kt=kg2kt(kgSum);
-      sxMap[period]                        =kt;
-      expMap[shiftPeriod(period,predDelay)]=kt;
-    });
+    Object.entries(expByP).forEach(([p,kg])=>{expMap[shiftPeriod(p,predDelay)]=kg2kt(kg);});
+    Object.entries(sxByP).forEach(([p,kg])=>{sxMap[p]=kg2kt(kg);});
 
-    const allP=[...new Set([...Object.keys(sxMap),...Object.keys(expMap)])].sort();
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
     return{
       labels:      allP.map(fmtPeriod),
       secexSeries: allP.map(p=>sxMap[p] ??null),
@@ -1001,45 +1005,45 @@ function renderPrediction(){
   }
 
   // ── 1. Coreia 3M ─────────────────────────────────────────────────────────
-  const k3=buildOne(koreaRaw,3);
+  const k3=buildOne(koreaExp,koreaSec,3);
   mkChart('pd-3m-korea','line',k3.labels,[
     ds(k3.secexSeries,C_OR,`SECEX Coreia (3M, kt)`,2.5),
-    ds(k3.expSeries,  C_BK,`Coreia +${predDelay}M (3M, kt)`,1.8),
+    ds(k3.expSeries,  C_BK,`Coreia Export +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 2. Coreia 12M ────────────────────────────────────────────────────────
-  const k12=buildOne(koreaRaw,12);
+  const k12=buildOne(koreaExp,koreaSec,12);
   mkChart('pd-12m-korea','line',k12.labels,[
     ds(k12.secexSeries,C_OR,`SECEX Coreia (12M, kt)`,2.5),
-    ds(k12.expSeries,  C_BK,`Coreia +${predDelay}M (12M, kt)`,1.8),
+    ds(k12.expSeries,  C_BK,`Coreia Export +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 
   // ── 3. China 3M ──────────────────────────────────────────────────────────
-  const c3=buildOne(chinaRaw,3);
+  const c3=buildOne(chinaExp,chinaSec,3);
   mkChart('pd-3m-china','line',c3.labels,[
     ds(c3.secexSeries,C_OR,`SECEX China (3M, kt)`,2.5),
-    ds(c3.expSeries,  C_BK,`China +${predDelay}M (3M, kt)`,1.8),
+    ds(c3.expSeries,  C_BK,`China Export +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 4. China 12M ─────────────────────────────────────────────────────────
-  const c12=buildOne(chinaRaw,12);
+  const c12=buildOne(chinaExp,chinaSec,12);
   mkChart('pd-12m-china','line',c12.labels,[
     ds(c12.secexSeries,C_OR,`SECEX China (12M, kt)`,2.5),
-    ds(c12.expSeries,  C_BK,`China +${predDelay}M (12M, kt)`,1.8),
+    ds(c12.expSeries,  C_BK,`China Export +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 
   // ── 5. Coreia + China 3M ─────────────────────────────────────────────────
   const comb3=buildCombined(3);
   mkChart('pd-3m-combined','line',comb3.labels,[
     ds(comb3.secexSeries,C_OR,`SECEX Coreia+China (3M, kt)`,2.5),
-    ds(comb3.expSeries,  C_BK,`Coreia+China +${predDelay}M (3M, kt)`,1.8),
+    ds(comb3.expSeries,  C_BK,`Coreia+China Export +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 6. Coreia + China 12M ────────────────────────────────────────────────
   const comb12=buildCombined(12);
   mkChart('pd-12m-combined','line',comb12.labels,[
     ds(comb12.secexSeries,C_OR,`SECEX Coreia+China (12M, kt)`,2.5),
-    ds(comb12.expSeries,  C_BK,`Coreia+China +${predDelay}M (12M, kt)`,1.8),
+    ds(comb12.expSeries,  C_BK,`Coreia+China Export +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 }
 
