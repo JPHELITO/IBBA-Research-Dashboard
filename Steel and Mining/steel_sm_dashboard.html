@@ -183,8 +183,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div class="filter-bar">
   <span class="filter-label">Produto:</span>
   <div class="filter-btns" id="prod-btns">
-    <button class="fbtn"        data-prod="total" onclick="setProd('total')">Total</button>
-    <button class="fbtn active" data-prod="flat"  onclick="setProd('flat')">Planos</button>
+    <button class="fbtn active" data-prod="total" onclick="setProd('total')">Total</button>
+    <button class="fbtn"        data-prod="flat"  onclick="setProd('flat')">Planos</button>
     <button class="fbtn"        data-prod="long"  onclick="setProd('long')">Longos</button>
     <button class="fbtn"        data-prod="semi"  onclick="setProd('semi')" id="btn-semi">Semis</button>
   </div>
@@ -478,7 +478,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 let currentSector = 'steel';
 let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
-let currentProd   = 'flat';
+let currentProd   = 'total';
 let currentGran   = 'monthly';
 let currentWin    = '5y';
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
