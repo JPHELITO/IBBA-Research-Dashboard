@@ -537,7 +537,9 @@ function toQ(monthly,sumF=[],lastF=[]){
     if(!map[key])map[key]={period:`${q}T${String(yr).slice(-2)}`,year:yr,quarter:q,_r:[]};
     map[key]._r.push(r);
   });
-  return Object.values(map).sort((a,b)=>a.year*10+a.quarter-b.year*10-b.quarter).map(e=>{
+  return Object.values(map).sort((a,b)=>a.year*10+a.quarter-b.year*10-b.quarter)
+    .filter(e=>e._r.length>=3)  // drop incomplete quarters
+    .map(e=>{
     const o={period:e.period,year:e.year,quarter:e.quarter};
     sumF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?v.reduce((s,x)=>s+x,0):null;});
     lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
