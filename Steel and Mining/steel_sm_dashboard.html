@@ -661,11 +661,62 @@ function renderExports(){
   const arr=applyWin(gran?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):src);
   const lbs=arr.map(r=>r.period);
 
-  mkChart('ex-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_OR,0.12,'Receita (US$ mn)')],YINT);
-  mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kt)')],YINT);
-  mkChart('ex-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_OR,'Preço (US$/t)')],
-    {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
+  const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
+  if(currentProd==='total'){
+    // ── Receita & Volume: stacked area (Planos + Longos + Semis) ──────────────
+    // Build per-product arrays aligned to the total's periods
+    const cats=['flat','long','semi'];
+    const labels=['Planos','Longos','Semis'];
+    const bgs=[C_OR_A(0.80), C_BK_A(0.72), C_GR_A(0.60)];
+    const borders=[C_OR, C_BK, C_GR];
+
+    function stackedAreaData(field){
+      // Reference periods come from total (already windowed)
+      const refLbs = arr.map(r=>r.period);
+      return cats.map((c,i)=>{
+        const cArr=gran?toQ(SEEXP[c]||[],[field]):SEEXP[c]||[];
+        const cMap=Object.fromEntries(cArr.map(r=>[r.period,r[field]]));
+        return{
+          type:'line', label:labels[i],
+          data:refLbs.map(p=>cMap[p]??null),
+          borderColor:borders[i], backgroundColor:bgs[i],
+          fill:true, borderWidth:1.5, pointRadius:0, tension:0.3
+        };
+      });
+    }
+
+    const STACKED_AREA={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    mkChart('ex-rev','line',lbs,stackedAreaData('revenue_usd_mn'),STACKED_AREA);
+    mkChart('ex-vol','line',lbs,stackedAreaData('volume_ktons'),STACKED_AREA);
+
+    // ── Preço: total destacado (laranja espesso) + flat/long/semi mais claros ──
+    const priceCats=['flat','long','semi','total'];
+    const priceLbls=['Planos','Longos','Semis','Total'];
+    const priceBorders=[C_OR_A(0.30), C_BK_A(0.30), C_GR_A(0.40), C_OR];
+    const priceWidths=[1, 1, 1, 2.5];
+    const priceDash=[[4,3],[4,3],[4,3],[]];
+    const priceDs=priceCats.map((c,i)=>{
+      const cArr=gran?toQ(SEEXP[c]||[],[],['price_usd_ton']):SEEXP[c]||[];
+      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.price_usd_ton]));
+      return{
+        type:'line', label:priceLbls[i],
+        data:lbs.map(p=>cMap[p]??null),
+        borderColor:priceBorders[i], backgroundColor:'transparent',
+        fill:false, borderWidth:priceWidths[i], pointRadius:0, tension:0.3,
+        ...(priceDash[i].length?{borderDash:priceDash[i]}:{})
+      };
+    });
+    mkChart('ex-price','line',lbs,priceDs,{...LEG,...PRICE_TICK});
+
+  } else {
+    // ── Produto individual: área simples ──────────────────────────────────────
+    mkChart('ex-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_OR,0.12,'Receita (US$ mn)')],YINT);
+    mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kt)')],YINT);
+    mkChart('ex-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_OR,'Preço (US$/t)')],PRICE_TICK);
+  }
+
+  // YoY — sempre baseado no produto selecionado
   const yoyV=arr.map((r,i)=>r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i));
   mkChart('ex-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
