@@ -118,6 +118,17 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   padding:9px 14px;margin-bottom:10px;font-size:11.5px;color:var(--gray-dark);}
 .info-box strong{color:var(--orange);}
 
+/* INNER TABS (within a section) */
+.inner-tab-bar{display:flex;gap:1px;margin-bottom:14px;
+  border-bottom:2px solid var(--border);}
+.itab{padding:6px 18px;font-size:11.5px;font-weight:600;border-radius:4px 4px 0 0;
+  cursor:pointer;border:1px solid transparent;border-bottom:none;background:none;
+  color:var(--gray-mid);font-family:var(--font);transition:all .15s;white-space:nowrap;}
+.itab.active{background:var(--black);color:#fff;border-color:var(--black);}
+.itab:hover:not(.active){color:var(--gray-dark);background:#F0F0F0;}
+.inner-tab-content{display:none;}
+.inner-tab-content.active{display:block;}
+
 /* COMING SOON */
 .coming-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;
   min-height:300px;gap:10px;color:var(--gray-mid);}
@@ -263,67 +274,77 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
      IMPORTAÇÃO
 ════════════════════════════════════════════════════════════════ -->
 <div id="sec-imports" class="section">
-  <!-- SECEX volumes & receitas -->
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Receita de Importação (US$ mn)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
-      <div class="chart-wrap h240"><canvas id="im-rev"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Volume Importado (kt)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
-      <div class="chart-wrap h240"><canvas id="im-vol"></canvas></div>
-    </div>
+  <!-- Inner tab bar -->
+  <div class="inner-tab-bar">
+    <button class="itab active" data-itab="secex"      onclick="setImportTab('secex')">📊 Análise SECEX</button>
+    <button class="itab"        data-itab="prediction" onclick="setImportTab('prediction')">📈 Modelo Preditivo</button>
   </div>
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Preço Médio Importação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · receita ÷ volume</div>
-      <div class="chart-wrap h200"><canvas id="im-price"></canvas></div>
+
+  <!-- ── SECEX TAB ── -->
+  <div id="im-tab-secex" class="inner-tab-content active">
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Receita de Importação (US$ mn)</div>
+        <div class="chart-sub">SECEX/MDIC · filtro por produto · Total = composição empilhada</div>
+        <div class="chart-wrap h240"><canvas id="im-rev"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Volume Importado (kt)</div>
+        <div class="chart-sub">SECEX/MDIC · filtro por produto · Total = composição empilhada</div>
+        <div class="chart-wrap h240"><canvas id="im-vol"></canvas></div>
+      </div>
     </div>
-    <div class="chart-card">
-      <div class="chart-title">YoY Volume Importado (%)</div>
-      <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
-      <div class="chart-wrap h200"><canvas id="im-yoy"></canvas></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Preço Médio Importação (US$/t)</div>
+        <div class="chart-sub">SECEX/MDIC · Total = destaque + produto individual em cinza</div>
+        <div class="chart-wrap h200"><canvas id="im-price"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Volume Importado (%)</div>
+        <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
+        <div class="chart-wrap h200"><canvas id="im-yoy"></canvas></div>
+      </div>
     </div>
-  </div>
-  <div class="charts-row c1">
-    <div class="chart-card">
-      <div class="chart-title">Importações por Produto — Trimestral (kt)</div>
-      <div class="chart-sub">SECEX · Planos + Longos + Semis · últimos 12 trimestres</div>
-      <div class="chart-wrap h220"><canvas id="im-qvol"></canvas></div>
+    <!-- Breakdown por produto — só aparece em Total -->
+    <div id="im-breakdown-block">
+      <div class="sec-block-header" id="im-breakdown-header">Breakdown por Produto <span id="im-breakdown-tag"></span></div>
+      <div class="charts-row c1">
+        <div class="chart-card">
+          <div class="chart-title" id="im-breakdown-title">Importações por Produto (kt)</div>
+          <div class="chart-sub">SECEX · Planos + Longos + Semis · filtro de granularidade aplicado</div>
+          <div class="chart-wrap h240"><canvas id="im-qvol"></canvas></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- PREDICTION BLOCK -->
-  <div class="sec-block-header" style="margin-top:8px;">
-    Modelo Preditivo — Korea &amp; China
-    <span>use os controles acima para ajustar produto, comparação e defasagem</span>
-  </div>
-  <div class="info-box">
-    <strong>Lógica:</strong> Exportações de Coreia/China (SECEX Prediction) representam remessas realizadas.
-    Com defasagem de ~3 meses, essas remessas aparecem como importações no SECEX brasileiro.
-    Ajuste a defasagem para alinhar as curvas — o trecho à direita da última leitura SECEX é a <strong>projeção</strong>.
-    Volumes em acumulado 3 meses (3M) para redução de ruído sazonal.
-  </div>
-  <div class="charts-row c1">
-    <div class="chart-card">
-      <div class="chart-title" id="pd-compare-title">HRC — Exportações Coreia+China vs. Importações SECEX (3M acumulado, kt)</div>
-      <div class="chart-sub">Laranja (tracejado futuro) = projeção · Preto = SECEX importações realizadas · defasagem ajustável</div>
-      <div class="chart-wrap h280"><canvas id="pd-compare"></canvas></div>
+  <!-- ── PREDICTION TAB ── -->
+  <div id="im-tab-prediction" class="inner-tab-content">
+    <div class="info-box">
+      <strong>Lógica:</strong> Exportações de Coreia/China representam remessas realizadas.
+      Com defasagem de ~3 meses, essas remessas aparecem como importações no SECEX brasileiro.
+      Ajuste a defasagem — o trecho à direita da última leitura SECEX é a <strong>projeção</strong>.
+      Volumes em acumulado 3 meses (3M) para redução de ruído sazonal.
     </div>
-  </div>
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title" id="pd-mktshare-title">Market Share — Coreia vs. China (HRC, últimos 24M)</div>
-      <div class="chart-sub">Participação % no total de exportações Coreia+China</div>
-      <div class="chart-wrap h200"><canvas id="pd-mktshare"></canvas></div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title" id="pd-compare-title">HRC — Coreia+China vs. SECEX Importações (3M acumulado, kt)</div>
+        <div class="chart-sub">Laranja sólido = histórico · Laranja tracejado = projeção · Preto = SECEX realizado · defasagem ajustável acima</div>
+        <div class="chart-wrap h280"><canvas id="pd-compare"></canvas></div>
+      </div>
     </div>
-    <div class="chart-card">
-      <div class="chart-title" id="pd-monthly-title">HRC — Volume Mensal por Origem (kt)</div>
-      <div class="chart-sub">Exportações mensais brutas de Coreia e China · sem defasagem</div>
-      <div class="chart-wrap h200"><canvas id="pd-monthly"></canvas></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title" id="pd-mktshare-title">Market Share — Coreia vs. China (HRC, últimos 24M)</div>
+        <div class="chart-sub">Participação % nas exportações Coreia+China para o Brasil</div>
+        <div class="chart-wrap h200"><canvas id="pd-mktshare"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="pd-monthly-title">HRC — Volume Mensal por Origem (kt)</div>
+        <div class="chart-sub">Exportações mensais brutas · sem defasagem · janela selecionada</div>
+        <div class="chart-wrap h200"><canvas id="pd-monthly"></canvas></div>
+      </div>
     </div>
   </div>
 </div>
@@ -456,6 +477,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let currentSector = 'steel';
 let currentSub    = 'exports';
+let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'flat';
 let currentGran   = 'monthly';
 let currentWin    = '5y';
@@ -769,38 +791,108 @@ function renderExports(){
 
 // ─── RENDER: IMPORTAÇÃO ──────────────────────────────────────────────────────
 function renderImports(){
+  if(importTab==='secex')      renderImportsSECEX();
+  else                         renderPrediction();
+}
+
+function renderImportsSECEX(){
   const cat=secat();
   const gran=currentGran==='quarterly';
   const src=SEIMP[cat]||[];
   const arr=applyWin(gran?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):src);
   const lbs=arr.map(r=>r.period);
+  const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
-  mkChart('im-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_BK,0.10,'Receita (US$ mn)')],YINT);
-  mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kt)')],YINT);
-  mkChart('im-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_BK,'Preço (US$/t)')],
-    {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
+  if(currentProd==='total'){
+    // ── Stacked area: composição Planos + Longos + Semis ─────────────────────
+    const cats=['flat','long','semi'];
+    const lbls=['Planos','Longos','Semis'];
+    const bgs=[C_OR_A(0.80),C_BK_A(0.72),C_GR_A(0.60)];
+    const borders=[C_OR,C_BK,C_GR];
 
+    function stackedData(field){
+      const refLbs=arr.map(r=>r.period);
+      return cats.map((c,i)=>{
+        const cArr=gran?toQ(SEIMP[c]||[],[field]):SEIMP[c]||[];
+        const cMap=Object.fromEntries(cArr.map(r=>[r.period,r[field]]));
+        return{type:'line',label:lbls[i],data:refLbs.map(p=>cMap[p]??null),
+          borderColor:borders[i],backgroundColor:bgs[i],
+          fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
+      });
+    }
+    const STACK_A={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    mkChart('im-rev','line',lbs,stackedData('revenue_usd_mn'),STACK_A);
+    mkChart('im-vol','line',lbs,stackedData('volume_ktons'),STACK_A);
+
+    // ── Preços: total preto espesso + produtos tracejados mais claros ─────────
+    const pCats=['flat','long','semi','total'];
+    const pLbls=['Planos','Longos','Semis','Total'];
+    const pBorders=[C_OR_A(0.30),C_BK_A(0.30),C_GR_A(0.40),C_BK];
+    const pWidths=[1,1,1,2.5];
+    const pDash=[[4,3],[4,3],[4,3],[]];
+    const priceDs=pCats.map((c,i)=>{
+      const cArr=gran?toQ(SEIMP[c]||[],[],['price_usd_ton']):SEIMP[c]||[];
+      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.price_usd_ton]));
+      return{type:'line',label:pLbls[i],data:lbs.map(p=>cMap[p]??null),
+        borderColor:pBorders[i],backgroundColor:'transparent',
+        fill:false,borderWidth:pWidths[i],pointRadius:0,tension:0.3,
+        ...(pDash[i].length?{borderDash:pDash[i]}:{})};
+    });
+    mkChart('im-price','line',lbs,priceDs,{...LEG,...PRICE_TICK});
+
+  }else{
+    // ── Produto individual: área simples ──────────────────────────────────────
+    mkChart('im-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_BK,0.10,'Receita (US$ mn)')],YINT);
+    mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kt)')],YINT);
+    mkChart('im-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_BK,'Preço (US$/t)')],PRICE_TICK);
+  }
+
+  // YoY — sempre baseado no produto selecionado
   const yoyV=arr.map((r,i)=>r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i));
   mkChart('im-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 
-  // Quarterly stacked (always 12Q)
-  const flatQ=toQ(SEIMP['flat']||[],['volume_ktons']).slice(-12);
-  const longQ=toQ(SEIMP['long']||[],['volume_ktons']).slice(-12);
-  const semiQ=toQ(SEIMP['semi']||[],['volume_ktons']).slice(-12);
-  const totQ =toQ(SEIMP['total']||[],['volume_ktons']).slice(-12);
-  const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
-  const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
-  const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
-  const qLbs=totQ.map(r=>r.period);
-  mkChart('im-qvol','bar',qLbs,[
-    stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
-    stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
-    stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
-  ],{...LEG,...STACKED});
-
-  renderPrediction();
+  // Breakdown por produto (só em Total, responde à granularidade)
+  const bb=document.getElementById('im-breakdown-block');
+  if(currentProd!=='total'){
+    bb.style.display='none'; destroyChart('im-qvol');
+  }else{
+    bb.style.display='';
+    if(gran){
+      const flatQ=toQ(SEIMP['flat']||[],['volume_ktons']).slice(-12);
+      const longQ=toQ(SEIMP['long']||[],['volume_ktons']).slice(-12);
+      const semiQ=toQ(SEIMP['semi']||[],['volume_ktons']).slice(-12);
+      const totQ =toQ(SEIMP['total']||[],['volume_ktons']).slice(-12);
+      const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
+      const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
+      const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
+      const qLbs=totQ.map(r=>r.period);
+      document.getElementById('im-breakdown-title').textContent='Importações por Produto — Trimestral (kt)';
+      document.getElementById('im-breakdown-tag').textContent='últimos 12 trimestres';
+      mkChart('im-qvol','bar',qLbs,[
+        stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
+        stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
+        stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
+      ],{...LEG,...STACKED});
+    }else{
+      const flatM=applyWin(SEIMP['flat']||[]);
+      const longM=applyWin(SEIMP['long']||[]);
+      const semiM=applyWin(SEIMP['semi']||[]);
+      const totM =applyWin(SEIMP['total']||[]);
+      const mLbs=totM.map(r=>r.period);
+      const fMap=Object.fromEntries(flatM.map(r=>[r.period,r.volume_ktons]));
+      const lMap=Object.fromEntries(longM.map(r=>[r.period,r.volume_ktons]));
+      const sMap=Object.fromEntries(semiM.map(r=>[r.period,r.volume_ktons]));
+      document.getElementById('im-breakdown-title').textContent='Importações por Produto — Mensal (kt)';
+      document.getElementById('im-breakdown-tag').textContent=`janela ${currentWin}`;
+      mkChart('im-qvol','bar',mLbs,[
+        stackDs(mLbs.map(p=>fMap[p]??null),C_OR,'Planos'),
+        stackDs(mLbs.map(p=>lMap[p]??null),C_BK,'Longos'),
+        stackDs(mLbs.map(p=>sMap[p]??null),C_GR,'Semis'),
+      ],{...LEG,...STACKED});
+    }
+  }
 }
 
 function renderPrediction(){
@@ -1093,17 +1185,27 @@ function setSub(s){
   const secId=s==='exports'?'sec-exports':s==='imports'?'sec-imports':
                s==='domestic'?'sec-domestic':s==='prices'?'sec-prices':'sec-mining';
   document.getElementById(secId)?.classList.add('active');
-  // Prediction controls bar
-  document.getElementById('pred-controls').style.display=s==='imports'?'flex':'none';
+  // Prediction controls bar: só aparece em imports + aba prediction
+  document.getElementById('pred-controls').style.display=
+    (s==='imports'&&importTab==='prediction')?'flex':'none';
   // Semi button visibility
   const semiBtn=document.getElementById('btn-semi');
   if(s==='domestic'){
     semiBtn.style.display='none';
     if(currentProd==='semi'){currentProd='total';updateProdButtons();}
-  } else {
+  }else{
     semiBtn.style.display='';
   }
   render();
+}
+function setImportTab(t){
+  importTab=t;
+  document.querySelectorAll('[data-itab]').forEach(b=>b.classList.toggle('active',b.dataset.itab===t));
+  document.getElementById('im-tab-secex').classList.toggle('active',t==='secex');
+  document.getElementById('im-tab-prediction').classList.toggle('active',t==='prediction');
+  // Prediction controls: só visível na aba preditiva
+  document.getElementById('pred-controls').style.display=t==='prediction'?'flex':'none';
+  renderImports();
 }
 
 function setProd(p){
