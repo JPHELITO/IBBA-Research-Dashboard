@@ -206,19 +206,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
 </div>
 
-<!-- PREDICTION CONTROLS (visible only in imports section) -->
+<!-- PREDICTION CONTROLS (visible only in prediction sub-tab) -->
 <div class="pred-controls" id="pred-controls" style="display:none;">
   <span class="pred-label">Produto:</span>
   <div class="pred-btns">
     <button class="fbtn active" data-pp="HRC" onclick="setPredProd('HRC')">HRC</button>
     <button class="fbtn"        data-pp="CRC" onclick="setPredProd('CRC')">CRC</button>
-  </div>
-  <div class="filter-sep"></div>
-  <span class="pred-label">Comparação:</span>
-  <div class="pred-btns">
-    <button class="fbtn active" data-pm="korea-china" onclick="setPredMode('korea-china')">Coreia+China vs SECEX</button>
-    <button class="fbtn"        data-pm="korea"       onclick="setPredMode('korea')">Coreia vs SECEX</button>
-    <button class="fbtn"        data-pm="china"       onclick="setPredMode('china')">China vs SECEX</button>
   </div>
   <div class="filter-sep"></div>
   <span class="pred-label">Defasagem:</span>
@@ -321,29 +314,48 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
   <!-- ── PREDICTION TAB ── -->
   <div id="im-tab-prediction" class="inner-tab-content">
-    <div class="info-box">
-      <strong>Lógica:</strong> Exportações de Coreia/China representam remessas realizadas.
-      Com defasagem de ~3 meses, essas remessas aparecem como importações no SECEX brasileiro.
-      Ajuste a defasagem — o trecho à direita da última leitura SECEX é a <strong>projeção</strong>.
-      Volumes em acumulado 3 meses (3M) para redução de ruído sazonal.
+    <div class="info-box" id="pd-info-box">
+      <strong>Lógica:</strong> Exportações de Coreia/China são registradas quando as remessas partem.
+      As importações SECEX são registradas quando chegam ao Brasil — com defasagem de ~3 meses.
+      Deslocando os dados de exportação <strong id="pd-delay-text">+3M</strong>, é possível
+      projetar as futuras leituras do SECEX. O trecho onde a linha de exportação avança além
+      do último dado SECEX é a <strong>zona de projeção</strong>.
     </div>
-    <div class="charts-row c1">
-      <div class="chart-card">
-        <div class="chart-title" id="pd-compare-title">HRC — Coreia+China vs. SECEX Importações (3M acumulado, kt)</div>
-        <div class="chart-sub">Laranja sólido = histórico · Laranja tracejado = projeção · Preto = SECEX realizado · defasagem ajustável acima</div>
-        <div class="chart-wrap h280"><canvas id="pd-compare"></canvas></div>
-      </div>
-    </div>
+    <!-- Coreia: 3M + 12M -->
+    <div class="sec-block-header" id="pd-korea-header">Coreia — HRC</div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title" id="pd-mktshare-title">Market Share — Coreia vs. China (HRC, últimos 24M)</div>
-        <div class="chart-sub">Participação % nas exportações Coreia+China para o Brasil</div>
-        <div class="chart-wrap h200"><canvas id="pd-mktshare"></canvas></div>
+        <div class="chart-title" id="pd-3m-korea-title">3M Acumulado — Coreia</div>
+        <div class="chart-sub">Preto = Exportações Coreia (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-wrap h240"><canvas id="pd-3m-korea"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title" id="pd-monthly-title">HRC — Volume Mensal por Origem (kt)</div>
-        <div class="chart-sub">Exportações mensais brutas · sem defasagem · janela selecionada</div>
-        <div class="chart-wrap h200"><canvas id="pd-monthly"></canvas></div>
+        <div class="chart-title" id="pd-12m-korea-title">12M Acumulado — Coreia</div>
+        <div class="chart-sub">Preto = Exportações Coreia (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-wrap h240"><canvas id="pd-12m-korea"></canvas></div>
+      </div>
+    </div>
+    <!-- China: 3M + 12M -->
+    <div class="sec-block-header" id="pd-china-header">China — HRC</div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title" id="pd-3m-china-title">3M Acumulado — China</div>
+        <div class="chart-sub">Preto = Exportações China (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-wrap h240"><canvas id="pd-3m-china"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="pd-12m-china-title">12M Acumulado — China</div>
+        <div class="chart-sub">Preto = Exportações China (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-wrap h240"><canvas id="pd-12m-china"></canvas></div>
+      </div>
+    </div>
+    <!-- Combinado Korea+China 12M -->
+    <div class="sec-block-header" id="pd-combined-header">Coreia + China — HRC</div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title" id="pd-12m-combined-title">12M Acumulado — Coreia + China</div>
+        <div class="chart-sub">Preto = Exportações Coreia+China (deslocado) · Laranja = Importações SECEX Total Planos</div>
+        <div class="chart-wrap h240"><canvas id="pd-12m-combined"></canvas></div>
       </div>
     </div>
   </div>
@@ -577,11 +589,18 @@ function rolling12(arr,f){
     return sl.length===12?s:null;
   });
 }
-function rolling3(arr,f){
+function rollingN(arr,f,n){
+  // n-month rolling sum; returns null for first n-1 periods (insufficient history)
   return arr.map((_,i)=>{
-    if(i<2)return null;
-    return(arr[i-2][f]||0)+(arr[i-1][f]||0)+(arr[i][f]||0);
+    if(i<n-1)return null;
+    return arr.slice(i-n+1,i+1).reduce((t,r)=>t+(r[f]||0),0);
   });
+}
+const PT_MO=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function fmtPeriod(p){
+  if(!p||p.length<7)return p;
+  const[y,m]=p.split('-').map(Number);
+  return`${PT_MO[m-1]}-${String(y).slice(-2)}`;
 }
 function kg2kt(v){return v!=null?v/1e6:null;}
 function shiftPeriod(p,months){
@@ -897,79 +916,117 @@ function renderImportsSECEX(){
 
 function renderPrediction(){
   const pp=predProduct;
-  const koreaRaw=(PRED?.[pp]?.Korea||[]);
-  const chinaRaw=(PRED?.[pp]?.China||[]);
+  const koreaRaw=PRED?.[pp]?.Korea||[];
+  const chinaRaw=PRED?.[pp]?.China||[];
+  const secexFlat=SEIMP['flat']||[];
 
-  // 3M rolling cumulative (on original unshifted data)
-  const koreaR3=rolling3(koreaRaw,'volume_kg');
-  const chinaR3=rolling3(chinaRaw,'volume_kg');
+  // Update dynamic section headers + info-box delay text
+  document.getElementById('pd-korea-header').textContent   =`Coreia — ${pp}`;
+  document.getElementById('pd-china-header').textContent   =`China — ${pp}`;
+  document.getElementById('pd-combined-header').textContent=`Coreia + China — ${pp}`;
+  document.getElementById('pd-delay-text').textContent     =`+${predDelay}M`;
 
-  // Build shifted maps: shiftedPeriod → 3M kt
-  const koreaMap={},chinaMap={};
-  koreaRaw.forEach((r,i)=>{if(koreaR3[i]!=null)koreaMap[shiftPeriod(r.period,predDelay)]=kg2kt(koreaR3[i]);});
-  chinaRaw.forEach((r,i)=>{if(chinaR3[i]!=null)chinaMap[shiftPeriod(r.period,predDelay)]=kg2kt(chinaR3[i]);});
+  // ── Build chart data for a single-country chart ──────────────────────────
+  // exportRaw: [{period,volume_kg}]  secexArr: [{period,volume_ktons}]  n: 3 or 12
+  function buildOne(exportRaw,secexArr,n){
+    const expR=rollingN(exportRaw,'volume_kg',n);       // kg → converted below
+    const sxR =rollingN(secexArr ,'volume_ktons',n);    // already ktons
 
-  // SECEX flat/total imports 3M rolling
-  const secexSrc=SEIMP['flat']||[];
-  const secexR3=rolling3(secexSrc,'volume_ktons');
-  const secexMap={};
-  secexSrc.forEach((r,i)=>{if(secexR3[i]!=null)secexMap[r.period]=secexR3[i];});
-  const lastSecex=secexSrc.length?secexSrc[secexSrc.length-1].period:'';
+    // Shifted export map: export period T → placed at T+predDelay on x-axis
+    const expMap={};
+    exportRaw.forEach((r,i)=>{
+      if(expR[i]!=null)
+        expMap[shiftPeriod(r.period,predDelay)]=kg2kt(expR[i]);
+    });
 
-  // Unified sorted timeline
-  const allP=[...new Set([...Object.keys(koreaMap),...Object.keys(chinaMap),...Object.keys(secexMap)])].sort();
+    // SECEX map: plotted at its own unshifted period
+    const sxMap={};
+    secexArr.forEach((r,i)=>{
+      if(sxR[i]!=null) sxMap[r.period]=sxR[i];
+    });
 
-  // Prediction series based on mode
-  function predVal(p){
-    if(predMode==='korea')return koreaMap[p]??null;
-    if(predMode==='china')return chinaMap[p]??null;
-    // korea-china: sum when either exists
-    const k=koreaMap[p]??0,c=chinaMap[p]??0;
-    return(k||c)?k+c:null;
+    // Unified sorted periods (export-shifted ∪ secex)
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
+    return{
+      labels:      allP.map(fmtPeriod),
+      secexSeries: allP.map(p=>sxMap[p] ??null),
+      expSeries:   allP.map(p=>expMap[p]??null),
+    };
   }
 
-  const secexSeries=allP.map(p=>secexMap[p]??null);
-  const overlapSeries=allP.map(p=>p<=lastSecex?predVal(p):null);   // solid (historical comparison)
-  const futureSeries =allP.map(p=>p>lastSecex ?predVal(p):null);   // dashed (projection)
+  // ── Build combined Korea+China chart data ─────────────────────────────────
+  function buildCombined(secexArr,n){
+    const kR =rollingN(koreaRaw,'volume_kg',n);
+    const cR =rollingN(chinaRaw,'volume_kg',n);
+    const sxR=rollingN(secexArr ,'volume_ktons',n);
 
-  const modeLabel=predMode==='korea'?`Coreia (${pp}+${predDelay}M)`:
-                  predMode==='china'?`China (${pp}+${predDelay}M)`:
-                  `Coreia+China (${pp}+${predDelay}M)`;
+    const expMap={};
+    koreaRaw.forEach((r,i)=>{
+      if(kR[i]!=null){const sp=shiftPeriod(r.period,predDelay);expMap[sp]=(expMap[sp]||0)+kg2kt(kR[i]);}
+    });
+    chinaRaw.forEach((r,i)=>{
+      if(cR[i]!=null){const sp=shiftPeriod(r.period,predDelay);expMap[sp]=(expMap[sp]||0)+kg2kt(cR[i]);}
+    });
 
-  const titleBase=`${pp} — ${predMode==='korea'?'Coreia':predMode==='china'?'China':'Coreia+China'} vs. Importações SECEX`;
-  document.getElementById('pd-compare-title').textContent=
-    `${titleBase} (3M acumulado, kt · defasagem ${predDelay}M)`;
+    const sxMap={};
+    secexArr.forEach((r,i)=>{
+      if(sxR[i]!=null) sxMap[r.period]=sxR[i];
+    });
 
-  mkChart('pd-compare','line',allP,[
-    {...lineDs(secexSeries,C_BK,'SECEX Importações Planos (kt)'),borderWidth:2.5},
-    {...lineDs(overlapSeries,C_OR,modeLabel),borderWidth:2},
-    {...lineDs(futureSeries,C_OR,'Projeção'),borderDash:[6,3],borderWidth:1.5,
-     backgroundColor:C_OR_A(0.07),fill:true},
-  ],{...LEG,...YINT});
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
+    return{
+      labels:      allP.map(fmtPeriod),
+      secexSeries: allP.map(p=>sxMap[p] ??null),
+      expSeries:   allP.map(p=>expMap[p]??null),
+    };
+  }
 
-  // Market share chart (last 24M, Korea vs China, no shift)
-  const mshPeriods=[...new Set([...koreaRaw,...chinaRaw].map(r=>r.period))].sort().slice(-24);
-  const kMap24=Object.fromEntries(koreaRaw.map(r=>[r.period,kg2kt(r.volume_kg)||0]));
-  const cMap24=Object.fromEntries(chinaRaw.map(r=>[r.period,kg2kt(r.volume_kg)||0]));
-  const totals24=mshPeriods.map(p=>(kMap24[p]||0)+(cMap24[p]||0));
-  mkChart('pd-mktshare','bar',mshPeriods,[
-    stackDs(mshPeriods.map((p,i)=>totals24[i]>0?+((kMap24[p]||0)/totals24[i]*100).toFixed(1):null),C_OR,'Coreia %'),
-    stackDs(mshPeriods.map((p,i)=>totals24[i]>0?+((cMap24[p]||0)/totals24[i]*100).toFixed(1):null),C_BK,'China %'),
-  ],{...LEG,...STACKED,scales:{x:{stacked:true},y:{stacked:true,max:100,ticks:{callback:v=>v+'%'}}}});
+  // ── Shared chart options ──────────────────────────────────────────────────
+  const predOpts={
+    ...LEG,
+    scales:{
+      x:{ticks:{color:'#999',font:{size:9},maxRotation:45,maxTicksLimit:24}},
+      y:{ticks:{color:'#999',font:{size:9},callback:v=>v!=null?v.toFixed(0):''}}
+    }
+  };
+  function ds(series,color,label,width){
+    return{...lineDs(series,color,label),borderWidth:width,pointRadius:0,tension:0.3};
+  }
 
-  document.getElementById('pd-mktshare-title').textContent=`Market Share — Coreia vs. China (${pp}, últimos 24M)`;
-  document.getElementById('pd-monthly-title').textContent=`${pp} — Volume Mensal por Origem (kt)`;
+  // ── 1. Coreia 3M ─────────────────────────────────────────────────────────
+  const k3=buildOne(koreaRaw,secexFlat,3);
+  mkChart('pd-3m-korea','line',k3.labels,[
+    ds(k3.secexSeries,C_OR,`SECEX Planos (3M, kt)`,2.5),
+    ds(k3.expSeries,  C_BK,`Coreia +${predDelay}M (3M, kt)`,1.8),
+  ],predOpts);
 
-  // Raw monthly Korea vs China line
-  const rawP=[...new Set([...koreaRaw,...chinaRaw].map(r=>r.period))].sort();
-  const rawArr=applyWin(rawP.map(p=>({period:p})));
-  const rawPf=rawArr.map(r=>r.period);
-  const kRawM=Object.fromEntries(koreaRaw.map(r=>[r.period,kg2kt(r.volume_kg)]));
-  const cRawM=Object.fromEntries(chinaRaw.map(r=>[r.period,kg2kt(r.volume_kg)]));
-  mkChart('pd-monthly','line',rawPf,[
-    lineDs(rawPf.map(p=>kRawM[p]??null),C_OR,'Coreia'),
-    lineDs(rawPf.map(p=>cRawM[p]??null),C_BK,'China'),
-  ],{...LEG,...YINT});
+  // ── 2. Coreia 12M ────────────────────────────────────────────────────────
+  const k12=buildOne(koreaRaw,secexFlat,12);
+  mkChart('pd-12m-korea','line',k12.labels,[
+    ds(k12.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(k12.expSeries,  C_BK,`Coreia +${predDelay}M (12M, kt)`,1.8),
+  ],predOpts);
+
+  // ── 3. China 3M ──────────────────────────────────────────────────────────
+  const c3=buildOne(chinaRaw,secexFlat,3);
+  mkChart('pd-3m-china','line',c3.labels,[
+    ds(c3.secexSeries,C_OR,`SECEX Planos (3M, kt)`,2.5),
+    ds(c3.expSeries,  C_BK,`China +${predDelay}M (3M, kt)`,1.8),
+  ],predOpts);
+
+  // ── 4. China 12M ─────────────────────────────────────────────────────────
+  const c12=buildOne(chinaRaw,secexFlat,12);
+  mkChart('pd-12m-china','line',c12.labels,[
+    ds(c12.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(c12.expSeries,  C_BK,`China +${predDelay}M (12M, kt)`,1.8),
+  ],predOpts);
+
+  // ── 5. Coreia + China 12M ────────────────────────────────────────────────
+  const comb=buildCombined(secexFlat,12);
+  mkChart('pd-12m-combined','line',comb.labels,[
+    ds(comb.secexSeries,C_OR,`SECEX Planos (12M, kt)`,2.5),
+    ds(comb.expSeries,  C_BK,`Coreia+China +${predDelay}M (12M, kt)`,1.8),
+  ],predOpts);
 }
 
 // ─── RENDER: MERCADO DOMÉSTICO ────────────────────────────────────────────────
@@ -1178,6 +1235,12 @@ function setSector(s){
   }
 }
 
+// Hides the global filter-bar when on the prediction tab (it has its own controls)
+function updateGlobalFilters(){
+  const onPred=currentSub==='imports'&&importTab==='prediction';
+  document.querySelector('.filter-bar').style.display=onPred?'none':'';
+}
+
 function setSub(s){
   currentSub=s;
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
@@ -1188,6 +1251,8 @@ function setSub(s){
   // Prediction controls bar: só aparece em imports + aba prediction
   document.getElementById('pred-controls').style.display=
     (s==='imports'&&importTab==='prediction')?'flex':'none';
+  // Global filter-bar visibility
+  updateGlobalFilters();
   // Semi button visibility
   const semiBtn=document.getElementById('btn-semi');
   if(s==='domestic'){
@@ -1205,6 +1270,8 @@ function setImportTab(t){
   document.getElementById('im-tab-prediction').classList.toggle('active',t==='prediction');
   // Prediction controls: só visível na aba preditiva
   document.getElementById('pred-controls').style.display=t==='prediction'?'flex':'none';
+  // Global filter-bar visibility
+  updateGlobalFilters();
   renderImports();
 }
 
