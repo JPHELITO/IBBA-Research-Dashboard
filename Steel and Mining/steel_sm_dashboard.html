@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Steel &amp; Mining Dashboard — Itaú BBA</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5500;--black:#1A1A1A;--gray-dark:#333;--gray-mid:#888;
+  --gray-light:#F4F4F4;--border:#E5E5E5;--white:#fff;
+  --green:#27AE60;--red:#C0392B;--blue:#2980B9;
+  --font:'Segoe UI',Helvetica,Arial,sans-serif;
+}
+html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);min-height:100%;font-size:13px;}
+
+/* TOP BAR */
+.top-bar{background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;height:50px;gap:14px;}
+.back-btn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-mid);
+  cursor:pointer;padding:5px 10px;border-radius:4px;border:1px solid var(--border);
+  background:none;transition:all .15s;}
+.back-btn:hover{color:var(--gray-dark);border-color:#ccc;}
+.top-bar-divider{width:1px;height:22px;background:var(--border);}
+.top-title{font-size:15px;font-weight:700;color:var(--black);}
+.top-sub{font-size:11px;color:var(--gray-mid);}
+.top-latest{margin-left:auto;font-size:11px;color:var(--gray-mid);
+  background:#F9F9F9;border:1px solid var(--border);border-radius:4px;
+  padding:4px 10px;white-space:nowrap;}
+.top-latest strong{color:var(--orange);}
+.orange-rule{height:3px;background:var(--orange);}
+
+/* SECTION TABS */
+.section-bar{background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;height:42px;gap:2px;}
+.sec-btn{padding:5px 16px;font-size:12.5px;border-radius:4px 4px 0 0;cursor:pointer;
+  border:1px solid transparent;border-bottom:none;background:none;color:var(--gray-mid);
+  font-family:var(--font);transition:all .15s;font-weight:600;}
+.sec-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+.sec-btn:hover:not(.active){color:var(--gray-dark);background:#F5F5F5;}
+
+/* FILTER BAR */
+.filter-bar{background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;height:38px;gap:16px;flex-wrap:wrap;}
+.filter-label{font-size:10.5px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+.filter-btns{display:flex;gap:3px;}
+.fbtn{padding:3px 11px;font-size:11.5px;border-radius:3px;cursor:pointer;
+  border:1px solid var(--border);background:none;color:var(--gray-mid);
+  font-family:var(--font);transition:all .12s;}
+.fbtn.active{background:var(--orange);color:#fff;border-color:var(--orange);font-weight:700;}
+.fbtn:hover:not(.active){border-color:#bbb;color:var(--gray-dark);}
+.filter-sep{width:1px;height:18px;background:var(--border);}
+
+/* SECTION CONTENT */
+.section{display:none;padding:14px 16px;}
+.section.active{display:block;}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.kpi-label{font-size:10.5px;color:var(--gray-mid);text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-bottom:6px;}
+.kpi-value{font-size:22px;font-weight:700;color:var(--black);}
+.kpi-unit{font-size:11px;color:var(--gray-mid);margin-left:3px;}
+.kpi-delta{font-size:11px;margin-top:4px;display:flex;gap:10px;}
+.delta-mom{color:var(--gray-mid);}
+.delta-yoy{color:var(--gray-mid);}
+.pos{color:var(--green);}
+.neg{color:var(--red);}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.charts-row.single{grid-template-columns:1fr;}
+.charts-row.triple{grid-template-columns:1fr 1fr 1fr;}
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:8px;
+  padding:14px 16px 10px;display:flex;flex-direction:column;}
+.chart-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px;}
+.chart-title{font-size:12.5px;font-weight:700;color:var(--black);}
+.chart-sub{font-size:10.5px;color:var(--gray-mid);margin-top:2px;}
+.chart-stat{font-size:10.5px;color:var(--gray-mid);text-align:right;flex-shrink:0;}
+.chart-stat strong{color:var(--orange);}
+.chart-wrap{position:relative;}
+.chart-wrap.h180{height:180px;}
+.chart-wrap.h220{height:220px;}
+.chart-wrap.h260{height:260px;}
+
+/* TRADE TOGGLE */
+.trade-toggle{display:flex;gap:4px;margin-bottom:12px;}
+.ttbtn{padding:4px 14px;font-size:12px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--border);background:none;color:var(--gray-mid);font-family:var(--font);}
+.ttbtn.active{background:var(--black);color:#fff;border-color:var(--black);}
+
+/* NOTE BAR */
+.note-bar{background:#FFFBF8;border-top:1px solid #FFD9C8;padding:5px 20px;
+  font-size:10.5px;color:var(--gray-mid);}
+.note-bar em{color:var(--orange);}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:rgba(255,255,255,.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999;}
+.spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:var(--orange);
+  border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:13px;color:var(--gray-mid);}
+
+/* TABLE */
+.tbl-wrap{overflow:auto;max-height:280px;margin-top:12px;}
+table{width:100%;border-collapse:collapse;font-size:11.5px;}
+thead tr{background:#FAFAFA;border-bottom:2px solid var(--border);}
+th{padding:6px 8px;text-align:right;font-weight:700;font-size:10px;color:var(--gray-mid);
+  text-transform:uppercase;position:sticky;top:0;background:#FAFAFA;z-index:1;}
+th:first-child{text-align:left;}
+td{padding:5px 8px;text-align:right;border-bottom:1px solid #F5F5F5;white-space:nowrap;}
+td:first-child{text-align:left;font-weight:600;color:var(--black);}
+tr:hover td{background:#FFF8F5;}
+.td-hi{font-weight:700;color:var(--orange);}
+.td-na{color:#ccc;font-size:10px;}
+.td-pos{color:var(--green);font-weight:700;}
+.td-neg{color:var(--red);font-weight:700;}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><p>Loading steel_sm.db…</p></div>
+
+<div class="top-bar">
+  <button class="back-btn" onclick="history.back()">&#8592; Back</button>
+  <div class="top-bar-divider"></div>
+  <div>
+    <div class="top-title">&#127758; Brazil Steel &amp; Mining Dashboard</div>
+    <div class="top-sub">IABr · SECEX/MDIC · INDA · Korea-China Import Model</div>
+  </div>
+  <div class="top-latest">Latest data: <strong id="latest-label">—</strong></div>
+</div>
+<div class="orange-rule"></div>
+
+<!-- SECTION TABS -->
+<div class="section-bar">
+  <button class="sec-btn active" onclick="setSection('overview')">Visão Geral</button>
+  <button class="sec-btn" onclick="setSection('production')">Produção</button>
+  <button class="sec-btn" onclick="setSection('trade')">Comércio Exterior</button>
+  <button class="sec-btn" onclick="setSection('distribution')">Distribuição (INDA)</button>
+  <button class="sec-btn" onclick="setSection('prediction')">Projeção Importações</button>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <span class="filter-label">Produto:</span>
+  <div class="filter-btns">
+    <button class="fbtn active" data-prod="total" onclick="setProd('total')">Total</button>
+    <button class="fbtn" data-prod="flat" onclick="setProd('flat')">Planos</button>
+    <button class="fbtn" data-prod="long" onclick="setProd('long')">Longos</button>
+    <button class="fbtn" data-prod="semi" onclick="setProd('semi')">Semis</button>
+  </div>
+  <div class="filter-sep"></div>
+  <span class="filter-label">Granularidade:</span>
+  <div class="filter-btns">
+    <button class="fbtn active" data-gran="monthly" onclick="setGran('monthly')">Mensal</button>
+    <button class="fbtn" data-gran="quarterly" onclick="setGran('quarterly')">Trimestral</button>
+  </div>
+  <div class="filter-sep"></div>
+  <span class="filter-label">Janela:</span>
+  <div class="filter-btns">
+    <button class="fbtn" data-win="3m" onclick="setWin('3m')">3M</button>
+    <button class="fbtn" data-win="6m" onclick="setWin('6m')">6M</button>
+    <button class="fbtn" data-win="1y" onclick="setWin('1y')">1A</button>
+    <button class="fbtn" data-win="3y" onclick="setWin('3y')">3A</button>
+    <button class="fbtn active" data-win="5y" onclick="setWin('5y')">5A</button>
+    <button class="fbtn" data-win="all" onclick="setWin('all')">Tudo</button>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION: OVERVIEW ═══════════ -->
+<div id="sec-overview" class="section active">
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Produção Aço Bruto</div>
+      <div class="kpi-value"><span id="kpi-crude">—</span><span class="kpi-unit">kt</span></div>
+      <div class="kpi-delta"><span class="delta-mom" id="kpi-crude-mom"></span><span class="delta-yoy" id="kpi-crude-yoy"></span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Consumo Aparente</div>
+      <div class="kpi-value"><span id="kpi-cons">—</span><span class="kpi-unit">kt</span></div>
+      <div class="kpi-delta"><span class="delta-mom" id="kpi-cons-mom"></span><span class="delta-yoy" id="kpi-cons-yoy"></span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Penetração Importações</div>
+      <div class="kpi-value"><span id="kpi-penet">—</span><span class="kpi-unit">%</span></div>
+      <div class="kpi-delta"><span class="delta-mom" id="kpi-penet-mom"></span><span class="delta-yoy" id="kpi-penet-yoy"></span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Estoque INDA</div>
+      <div class="kpi-value"><span id="kpi-inv">—</span><span class="kpi-unit">meses</span></div>
+      <div class="kpi-delta"><span class="delta-mom" id="kpi-inv-mom"></span><span class="delta-yoy" id="kpi-inv-yoy"></span></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Consumo Aparente (kt)</div><div class="chart-sub">Total · Filtro de janela e produto aplicados</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="ov-cons"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Saldo Comercial (kt)</div><div class="chart-sub">Exportações − Importações</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="ov-balance"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Produção de Aço Bruto (kt)</div><div class="chart-sub">IABr — Fonte: Instituto Aço Brasil</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="ov-prod"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Estoque Distribuidores INDA (kt)</div><div class="chart-sub">Nível de inventário · Média histórica</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="ov-inda"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION: PRODUCTION ═══════════ -->
+<div id="sec-production" class="section">
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Produção Total (kt)</div><div class="chart-sub">Aço Bruto · Planos · Longos · Semis</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="pr-breakdown"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Vendas Domésticas vs. Consumo Aparente (kt)</div><div class="chart-sub">Planos + Longos</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="pr-sales-cons"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Variação Anual — Produção (YoY %)</div><div class="chart-sub">Aço Bruto · comparação mesmo mês ano anterior</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="pr-yoy"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Sazonalidade — Produção de Aço Bruto</div><div class="chart-sub">Cada linha = 1 ano · Laranja = atual · Preto = anterior</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="pr-season"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION: TRADE ═══════════ -->
+<div id="sec-trade" class="section">
+  <div class="trade-toggle">
+    <button class="ttbtn active" data-tt="exp" onclick="setTradeView('exp')">Exportações</button>
+    <button class="ttbtn" data-tt="imp" onclick="setTradeView('imp')">Importações</button>
+    <button class="ttbtn" data-tt="balance" onclick="setTradeView('balance')">Saldo</button>
+    <button class="ttbtn" data-tt="penet" onclick="setTradeView('penet')">Penetração</button>
+  </div>
+  <div class="charts-row" id="trade-charts-vol-rev">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title" id="tr-vol-title">Volume Exportações (kt)</div><div class="chart-sub">Planos · Longos · Semis</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="tr-vol"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title" id="tr-rev-title">Receita Exportações (US$ mn)</div><div class="chart-sub">Planos · Longos · Semis</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="tr-rev"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title" id="tr-price-title">Preço Médio Exportações (US$/t)</div><div class="chart-sub">Total · Planos · Longos</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="tr-price"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Variação Anual — Volume (YoY %)</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="tr-yoy"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION: DISTRIBUTION ═══════════ -->
+<div id="sec-distribution" class="section">
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Compras vs. Vendas de Distribuidores (kt)</div><div class="chart-sub">INDA — Planos · mensal</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="di-purch-sales"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Estoque de Distribuidores (kt)</div><div class="chart-sub">Nível de inventário · Média histórica (3.07 kt)</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="di-inv"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Estoque em Meses</div><div class="chart-sub">Nível em relação às vendas mensais</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="di-inv-months"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Variação Anual — Estoque (YoY %)</div><div class="chart-sub">Evolução do inventário vs. mesmo mês do ano anterior</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="di-inv-yoy"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION: PREDICTION ═══════════ -->
+<div id="sec-prediction" class="section">
+  <div style="background:var(--white);border:1px solid #FFD9C8;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:11.5px;color:var(--gray-dark);">
+    <strong style="color:var(--orange);">Modelo de projeção:</strong>
+    Importações de CRC e HRC pela Coreia do Sul e China têm alta correlação com chegadas ao Brasil com 1–2 meses de defasagem.
+    Os dados refletem importações brasileiras por origem conforme NCM da SECEX.
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Importações de CRC (kt) — Coreia vs. China</div><div class="chart-sub">Laminado a Frio · NCM 7209xx</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="pd-crc"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Importações de HRC (kt) — Coreia vs. China</div><div class="chart-sub">Laminado a Quente · NCM 7208xx</div></div>
+      </div>
+      <div class="chart-wrap h260"><canvas id="pd-hrc"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Total CRC + HRC — Coreia + China (kt, 12M Rolling)</div><div class="chart-sub">Acumulado 12 meses móveis — indicador antecedente</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="pd-rolling"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-title">Market Share — Coreia vs. China nas Importações</div><div class="chart-sub">CRC + HRC · % por país</div></div>
+      </div>
+      <div class="chart-wrap h220"><canvas id="pd-share"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="note-bar">
+  Fontes: <em>IABr</em> (produção, vendas, consumo) · <em>SECEX/MDIC</em> (comércio exterior, NCMs 7206–7229) · <em>INDA</em> (distribuidores planos) · Penetração = Importações ÷ Consumo Aparente · Volume em kton
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentSection = 'overview';
+let currentProd    = 'total';
+let currentGran    = 'monthly';
+let currentWin     = '5y';
+let currentTrade   = 'exp';
+
+// ─── DATA STORES ─────────────────────────────────────────────────────────────
+let PROD  = [];   // iabr_production
+let CONS  = [];   // iabr_consumption
+let EXPI  = [];   // iabr_exports
+let IMPI  = [];   // iabr_imports
+let DOM   = [];   // iabr_domestic_sales
+let SEEXP = {};   // secex_exports by category
+let SEIMP = {};   // secex_imports by category
+let INDA  = [];   // inda_distribution
+let PRED  = {};   // import_prediction
+
+const MONTHS_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const WIN_MONTHS   = {'3m':3,'6m':6,'1y':12,'3y':36,'5y':60,'all':null};
+let charts = {};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function toObj(stmt) {
+  if (!stmt || !stmt.values.length) return [];
+  return stmt.values.map(r => {
+    const o = {}; stmt.columns.forEach((c,i)=>{ o[c]=r[i]; }); return o;
+  });
+}
+function fmt(v,dec=1) { return v==null?'—':v.toFixed(dec); }
+function fmtK(v)      { return v==null?'—':Math.round(v).toLocaleString(); }
+function pct(v)       { if(v==null)return'—'; const s=v>=0?'+':''; return s+(v*100).toFixed(1)+'%'; }
+function pctDelta(v)  { if(v==null)return''; const cls=v>=0?'pos':'neg'; return `<span class="${cls}">${pct(v)}</span>`; }
+function deltaOf(arr,field,idx){
+  if(idx<1)return null;
+  const cur=arr[idx][field], prv=arr[idx-1][field];
+  if(cur==null||prv==null||prv===0)return null;
+  return(cur-prv)/Math.abs(prv);
+}
+function yoyOf(arr,field,idx){
+  const period=arr[idx]?.period; if(!period)return null;
+  const yr=parseInt(period.slice(0,4))-1, mo=period.slice(5,7);
+  const ly=arr.find(r=>r.period===`${yr}-${mo}`);
+  if(!ly)return null;
+  const cur=arr[idx][field], prv=ly[field];
+  if(cur==null||prv==null||prv===0)return null;
+  return(cur-prv)/Math.abs(prv);
+}
+
+function applyWin(arr, keyField='period') {
+  const mo = WIN_MONTHS[currentWin];
+  if (!mo || !arr.length) return arr;
+  const last = arr[arr.length-1][keyField];
+  if (!last) return arr;
+  const yr = parseInt(last.slice(0,4));
+  const mn = parseInt(last.slice(5,7));
+  let cy = yr, cm = mn - mo;
+  while (cm <= 0) { cy--; cm += 12; }
+  const cutoff = `${cy}-${String(cm).padStart(2,'0')}`;
+  return arr.filter(r => r[keyField] >= cutoff);
+}
+
+// ─── QUARTERLY AGGREGATION ────────────────────────────────────────────────────
+function toQ(monthly, sumFields=[], lastFields=[], skipNullSum=false) {
+  const map = {};
+  monthly.forEach(r => {
+    const q = Math.ceil((r.month||parseInt(r.period?.slice(5,7)||'1'))/3);
+    const yr = r.year || parseInt(r.period?.slice(0,4));
+    const key = `${yr}-Q${q}`;
+    if (!map[key]) map[key] = {period:`${q}Q${String(yr).slice(-2)}`,year:yr,quarter:q,_rows:[]};
+    map[key]._rows.push(r);
+  });
+  return Object.values(map)
+    .sort((a,b) => a.year*10+a.quarter - b.year*10-b.quarter)
+    .map(e => {
+      const out = {period:e.period, year:e.year, quarter:e.quarter};
+      sumFields.forEach(f => {
+        const vals = e._rows.map(r=>r[f]).filter(v=>v!=null);
+        out[f] = vals.length ? vals.reduce((s,v)=>s+v,0) : null;
+      });
+      lastFields.forEach(f => {
+        const last = e._rows[e._rows.length-1];
+        out[f] = last ? last[f] : null;
+      });
+      return out;
+    });
+}
+
+// ─── DATA ACCESS BY PRODUCT ───────────────────────────────────────────────────
+function getSecexRows(table, product) {
+  // table = 'exp' or 'imp', product = 'flat','long','semi','total'
+  const cat = product === 'long' ? 'long' : product;
+  const src = table === 'exp' ? SEEXP : SEIMP;
+  return src[cat] || [];
+}
+
+function getProdField(product) {
+  // Maps product filter → iabr_production field
+  const map = {total:'crude_steel', flat:'flat', long:'long_prod', semi:'semi'};
+  return map[product] || 'crude_steel';
+}
+
+function getConsField(product) {
+  const map = {total:'total', flat:'flat', long:'long_prod'};
+  return map[product] || 'total';
+}
+
+// ─── CHART OPTIONS HELPER ─────────────────────────────────────────────────────
+function baseOpts(overrides={}) {
+  const {tooltip, scales, plugins: pluginsOvr, ...rest} = overrides;
+  return {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      datalabels:{display:false},
+      tooltip:{
+        backgroundColor:'#333',titleColor:'#ccc',bodyColor:'#eee',
+        borderColor:'#555',borderWidth:1,
+        ...(tooltip||{})
+      },
+      ...(pluginsOvr||{})
+    },
+    scales:{
+      x:{ticks:{color:'#999',font:{size:9},maxTicksLimit:10,maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'}},
+      y:{ticks:{color:'#999',font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}},
+      ...(scales||{})
+    },
+    ...rest
+  };
+}
+
+function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function makeChart(id, type, labels, datasets, opts={}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {type, data:{labels,datasets}, options:baseOpts(opts)});
+}
+
+// ─── LOAD DATABASE ────────────────────────────────────────────────────────────
+async function loadDB() {
+  const el = document.getElementById('loading');
+  try {
+    const SQL = await initSqlJs({ locateFile: f =>
+      `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` });
+    const _cb = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const resp = await fetch(`steel_sm.db?v=${_cb}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const db = new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+
+    PROD = toObj(db.exec(`SELECT period,year,month,crude_steel,flat,long_prod,semi,slabs,billets,pig_iron FROM iabr_production ORDER BY period`)[0]);
+    CONS = toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_consumption ORDER BY period`)[0]);
+    EXPI = toObj(db.exec(`SELECT period,year,month,flat_ktons,long_ktons,semi_ktons,total_ktons,total_usd_mn FROM iabr_exports ORDER BY period`)[0]);
+    IMPI = toObj(db.exec(`SELECT period,year,month,flat_ktons,long_ktons,semi_ktons,total_ktons,total_usd_mn FROM iabr_imports ORDER BY period`)[0]);
+    DOM  = toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_domestic_sales ORDER BY period`)[0]);
+
+    const rawExp = toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,working_days,yoy_revenue,yoy_volume FROM secex_exports ORDER BY period,category`)[0]);
+    const rawImp = toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,working_days,yoy_revenue,yoy_volume FROM secex_imports ORDER BY period,category`)[0]);
+    for (const r of rawExp) { if(!SEEXP[r.category]) SEEXP[r.category]=[]; SEEXP[r.category].push(r); }
+    for (const r of rawImp) { if(!SEIMP[r.category]) SEIMP[r.category]=[]; SEIMP[r.category].push(r); }
+
+    INDA = toObj(db.exec(`SELECT period,year,month,inventories,inv_months,purchases,sales,inv_yoy,hist_avg,sales_ltm,sales_ma3 FROM inda_distribution ORDER BY period`)[0]);
+
+    const rawPred = toObj(db.exec(`SELECT period,product,country,value_usd,volume_kg FROM import_prediction ORDER BY period,product,country`)[0]);
+    for (const r of rawPred) {
+      if(!PRED[r.product]) PRED[r.product]={};
+      if(!PRED[r.product][r.country]) PRED[r.product][r.country]=[];
+      PRED[r.product][r.country].push(r);
+    }
+
+    db.close();
+
+    // Latest period
+    const lp = PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period || '—';
+    document.getElementById('latest-label').textContent = lp;
+
+    el.style.display = 'none';
+    render();
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:40px">
+      <div style="font-size:14px;color:#c00;margin-bottom:8px;">&#9888; Falha ao carregar steel_sm.db</div>
+      <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
+  }
+}
+
+// ─── KPI CARDS ────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  // Crude Steel
+  const pLast = PROD.filter(r=>r.crude_steel!=null);
+  if (pLast.length) {
+    const idx = pLast.length-1;
+    document.getElementById('kpi-crude').textContent = fmtK(pLast[idx].crude_steel);
+    document.getElementById('kpi-crude-mom').innerHTML = 'MoM: '+pctDelta(deltaOf(pLast,'crude_steel',idx));
+    document.getElementById('kpi-crude-yoy').innerHTML = '&nbsp;YoY: '+pctDelta(yoyOf(pLast,'crude_steel',idx));
+  }
+  // Consumption
+  const cLast = CONS.filter(r=>r.total!=null);
+  if (cLast.length) {
+    const idx = cLast.length-1;
+    document.getElementById('kpi-cons').textContent = fmtK(cLast[idx].total);
+    document.getElementById('kpi-cons-mom').innerHTML = 'MoM: '+pctDelta(deltaOf(cLast,'total',idx));
+    document.getElementById('kpi-cons-yoy').innerHTML = '&nbsp;YoY: '+pctDelta(yoyOf(cLast,'total',idx));
+  }
+  // Import penetration
+  const iLast = IMPI.filter(r=>r.total_ktons!=null);
+  const cIdx  = CONS.findLastIndex(r=>r.total!=null);
+  if (iLast.length && cIdx>=0) {
+    const period = IMPI[iLast.length-1].period;
+    const cRow   = CONS.find(r=>r.period===period);
+    const penet  = cRow?.total ? (iLast[iLast.length-1].total_ktons / cRow.total) : null;
+    document.getElementById('kpi-penet').textContent = penet!=null ? (penet*100).toFixed(1) : '—';
+    // YoY penet
+    const yr = parseInt(period.slice(0,4))-1, mo=period.slice(5,7);
+    const impLY = IMPI.find(r=>r.period===`${yr}-${mo}`);
+    const cLY   = CONS.find(r=>r.period===`${yr}-${mo}`);
+    const penetLY = (impLY?.total_ktons && cLY?.total) ? impLY.total_ktons/cLY.total : null;
+    const chg = (penet!=null && penetLY!=null) ? (penet-penetLY) : null;
+    document.getElementById('kpi-penet-yoy').innerHTML = chg!=null
+      ? '&nbsp;YoY: <span class="'+(chg>=0?'neg':'pos')+'">'+(chg*100).toFixed(1)+'pp</span>' : '';
+    document.getElementById('kpi-penet-mom').innerHTML = 'vs. LY';
+  }
+  // INDA Inventory months
+  const iLast2 = INDA.filter(r=>r.inv_months!=null);
+  if (iLast2.length) {
+    const idx = iLast2.length-1;
+    document.getElementById('kpi-inv').textContent = fmt(iLast2[idx].inv_months,1);
+    const mom = deltaOf(iLast2,'inv_months',idx);
+    document.getElementById('kpi-inv-mom').innerHTML = 'MoM: '+pctDelta(mom);
+    const yoy = yoyOf(iLast2,'inv_months',idx);
+    document.getElementById('kpi-inv-yoy').innerHTML = '&nbsp;YoY: '+pctDelta(yoy);
+  }
+}
+
+// ─── OVERVIEW CHARTS ─────────────────────────────────────────────────────────
+function renderOverview() {
+  renderKPIs();
+
+  // Chart 1: Apparent Consumption
+  const cf = getConsField(currentProd);
+  const consArr = applyWin(currentGran==='quarterly'
+    ? toQ(CONS, [cf])
+    : CONS.filter(r=>r[cf]!=null));
+  const consVals = consArr.map(r=>r[cf]);
+  makeChart('ov-cons','bar',
+    consArr.map(r=>r.period),
+    [{data:consVals,backgroundColor:'rgba(255,85,0,0.75)',borderColor:'#FF5500',borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 2: Trade Balance
+  const expField = currentProd==='total'?'total_ktons':(currentProd+'_ktons');
+  const impField = expField;
+  const joined = [];
+  const periodSet = new Set([...EXPI.map(r=>r.period),...IMPI.map(r=>r.period)]);
+  const allP = [...periodSet].sort();
+  for (const p of allP) {
+    const e = EXPI.find(r=>r.period===p);
+    const i = IMPI.find(r=>r.period===p);
+    const ev = e?.[expField], iv = i?.[impField];
+    if (ev==null && iv==null) continue;
+    joined.push({period:p, year:parseInt(p.slice(0,4)), month:parseInt(p.slice(5,7)),
+      balance:(ev!=null&&iv!=null)?ev-iv:null, exp:ev, imp:iv});
+  }
+  const balArr = applyWin(currentGran==='quarterly' ? toQ(joined,['balance','exp','imp']) : joined);
+  const balVals = balArr.map(r=>r.balance);
+  makeChart('ov-balance','bar',
+    balArr.map(r=>r.period),
+    [{data:balVals,
+      backgroundColor:balVals.map(v=>v==null?'#ccc':v>=0?'rgba(39,174,96,0.7)':'rgba(192,57,43,0.7)'),
+      borderWidth:0,label:'Saldo'}],
+    {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 3: Production
+  const pf = getProdField(currentProd);
+  const prodArr = applyWin(currentGran==='quarterly'
+    ? toQ(PROD,[pf])
+    : PROD.filter(r=>r[pf]!=null));
+  makeChart('ov-prod','bar',
+    prodArr.map(r=>r.period),
+    [{data:prodArr.map(r=>r[pf]),backgroundColor:'rgba(26,26,26,0.75)',borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 4: INDA inventory
+  const indaArr = applyWin(INDA.filter(r=>r.inventories!=null));
+  const histAvg = INDA.find(r=>r.hist_avg!=null)?.hist_avg;
+  const ds4 = [{data:indaArr.map(r=>r.inventories),backgroundColor:'rgba(41,128,185,0.65)',borderWidth:0,label:'Estoque'}];
+  if (histAvg) ds4.push({type:'line',data:indaArr.map(()=>histAvg),borderColor:'#FF5500',
+    borderDash:[6,4],borderWidth:1.5,pointRadius:0,label:'Média Hist.',order:0});
+  makeChart('ov-inda','bar',indaArr.map(r=>r.period),ds4,
+    {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+}
+
+// ─── PRODUCTION CHARTS ────────────────────────────────────────────────────────
+function renderProduction() {
+  // Chart 1: Stacked bar breakdown
+  const prodArr = applyWin(currentGran==='quarterly'
+    ? toQ(PROD,['flat','long_prod','semi'])
+    : PROD);
+  const lbs = prodArr.map(r=>r.period);
+  makeChart('pr-breakdown','bar', lbs, [
+    {data:prodArr.map(r=>r.flat),    backgroundColor:'rgba(255,85,0,0.80)', label:'Planos',  stack:'s'},
+    {data:prodArr.map(r=>r.long_prod),backgroundColor:'rgba(26,26,26,0.75)', label:'Longos',  stack:'s'},
+    {data:prodArr.map(r=>r.semi),    backgroundColor:'rgba(136,136,136,0.6)',label:'Semis',   stack:'s'},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 2: Domestic sales vs consumption
+  const domArr  = applyWin(currentGran==='quarterly' ? toQ(DOM,['flat','long_prod']) : DOM);
+  const consArr = applyWin(currentGran==='quarterly' ? toQ(CONS,['flat','long_prod','total']) : CONS);
+  const consMap = Object.fromEntries(consArr.map(r=>[r.period,r]));
+  const domLbs  = domArr.map(r=>r.period);
+  makeChart('pr-sales-cons','line', domLbs, [
+    {data:domArr.map(r=>r.flat),  borderColor:'#FF5500',backgroundColor:'transparent',borderWidth:2,pointRadius:0,label:'Vendas Planos'},
+    {data:domArr.map(r=>r.long_prod),borderColor:'#1A1A1A',backgroundColor:'transparent',borderWidth:2,pointRadius:0,label:'Vendas Longos'},
+    {data:domLbs.map(p=>consMap[p]?.flat),borderColor:'#FF9966',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,label:'Cons. Planos'},
+    {data:domLbs.map(p=>consMap[p]?.long_prod),borderColor:'#888',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,label:'Cons. Longos'},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 3: YoY production
+  const pf = getProdField(currentProd);
+  const pArr = applyWin(PROD.filter(r=>r[pf]!=null));
+  const yoyVals = pArr.map((r,i)=>yoyOf(pArr,pf,i));
+  makeChart('pr-yoy','bar', pArr.map(r=>r.period),
+    [{data:yoyVals,backgroundColor:yoyVals.map(v=>v==null?'#eee':v>=0?'rgba(39,174,96,0.7)':'rgba(192,57,43,0.7)'),borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>(v*100).toFixed(1)+'%'}}}});
+
+  // Chart 4: Seasonality (crude steel)
+  const allProd = PROD.filter(r=>r.crude_steel!=null);
+  const byYear = {};
+  allProd.forEach(r=>{ if(!byYear[r.year])byYear[r.year]=new Array(12).fill(null); byYear[r.year][r.month-1]=r.crude_steel; });
+  const years = Object.keys(byYear).map(Number).sort();
+  const latestY = years[years.length-1], prevY = latestY-1;
+  const grayYears = years.filter(y=>y<latestY && y!==prevY && y>=latestY-5);
+  const seasonDS = [];
+  grayYears.forEach(y=>seasonDS.push({data:byYear[y],borderColor:'rgba(160,160,160,0.30)',borderWidth:1,pointRadius:0,tension:.3}));
+  if(byYear[prevY]) seasonDS.push({data:byYear[prevY],borderColor:'#1A1A1A',borderWidth:2,pointRadius:2,tension:.3,label:`${prevY}`});
+  seasonDS.push({data:byYear[latestY],borderColor:'#FF5500',borderWidth:2.5,pointRadius:3,tension:.3,label:`${latestY}`});
+  makeChart('pr-season','line', MONTHS_SHORT, seasonDS,
+    {plugins:{legend:{display:true,position:'right',labels:{font:{size:10},boxWidth:10,filter:i=>!!i.text&&(!i.text.match(/^\d{4}$/)||[String(prevY),String(latestY)].includes(i.text))}}},
+     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+}
+
+// ─── TRADE CHARTS ─────────────────────────────────────────────────────────────
+function renderTrade() {
+  const isExp     = currentTrade==='exp' || currentTrade==='balance' || currentTrade==='penet';
+  const isImp     = currentTrade==='imp' || currentTrade==='balance' || currentTrade==='penet';
+  const showBal   = currentTrade==='balance';
+  const showPenet = currentTrade==='penet';
+
+  // Determine data source
+  const catMap = {total:'total',flat:'flat',long:'long',semi:'semi'};
+  const cat = (currentProd==='long')?'long':currentProd;
+
+  const expRows = applyWin(currentGran==='quarterly'
+    ? toQ(SEEXP[cat]||[],['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+    : (SEEXP[cat]||[]));
+  const impRows = applyWin(currentGran==='quarterly'
+    ? toQ(SEIMP[cat]||[],['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+    : (SEIMP[cat]||[]));
+
+  // Volume chart
+  const volArr  = currentTrade==='imp' ? impRows : expRows;
+  const volLbl  = volArr.map(r=>r.period||r.period);
+  const volKey  = 'volume_ktons';
+
+  // Title updates
+  document.getElementById('tr-vol-title').textContent  =
+    currentTrade==='imp'?'Volume Importações (kt)':currentTrade==='balance'?'Saldo Volume (kt)':currentTrade==='penet'?'Penetração Importações (%)':'Volume Exportações (kt)';
+  document.getElementById('tr-rev-title').textContent  =
+    currentTrade==='imp'?'Receita Importações (US$ mn)':'Receita Exportações (US$ mn)';
+  document.getElementById('tr-price-title').textContent=
+    currentTrade==='imp'?'Preço Médio Importações (US$/t)':'Preço Médio Exportações (US$/t)';
+
+  // Stacked volume by category (flat/long/semi) — only for total product view
+  const flatExp = applyWin(currentGran==='quarterly' ? toQ(SEEXP['flat']||[],['volume_ktons']) : (SEEXP['flat']||[]));
+  const longExp = applyWin(currentGran==='quarterly' ? toQ(SEEXP['long']||[],['volume_ktons']) : (SEEXP['long']||[]));
+  const semiExp = applyWin(currentGran==='quarterly' ? toQ(SEEXP['semi']||[],['volume_ktons']) : (SEEXP['semi']||[]));
+  const flatImp = applyWin(currentGran==='quarterly' ? toQ(SEIMP['flat']||[],['volume_ktons']) : (SEIMP['flat']||[]));
+  const longImp = applyWin(currentGran==='quarterly' ? toQ(SEIMP['long']||[],['volume_ktons']) : (SEIMP['long']||[]));
+  const semiImp = applyWin(currentGran==='quarterly' ? toQ(SEIMP['semi']||[],['volume_ktons']) : (SEIMP['semi']||[]));
+  const totExp  = applyWin(currentGran==='quarterly' ? toQ(SEEXP['total']||[],['volume_ktons','revenue_usd_mn'],['price_usd_ton']) : (SEEXP['total']||[]));
+  const totImp  = applyWin(currentGran==='quarterly' ? toQ(SEIMP['total']||[],['volume_ktons','revenue_usd_mn'],['price_usd_ton']) : (SEIMP['total']||[]));
+
+  const srcFlat = currentTrade==='imp'?flatImp:flatExp;
+  const srcLong = currentTrade==='imp'?longImp:longExp;
+  const srcSemi = currentTrade==='imp'?semiImp:semiExp;
+  const srcTot  = currentTrade==='imp'?totImp:totExp;
+  const oppTot  = currentTrade==='imp'?totExp:totImp;
+
+  const lbs = (currentProd==='total' ? srcTot : (currentTrade==='imp'?impRows:expRows)).map(r=>r.period);
+
+  // Vol chart
+  if (showBal) {
+    // Balance: Exports - Imports
+    const bPeriods = totExp.map(r=>r.period);
+    const impMap   = Object.fromEntries(totImp.map(r=>[r.period,r.volume_ktons]));
+    const bVals    = totExp.map(r=>r.volume_ktons!=null&&impMap[r.period]!=null ? r.volume_ktons-impMap[r.period] : null);
+    makeChart('tr-vol','bar', bPeriods, [{
+      data:bVals,label:'Saldo',
+      backgroundColor:bVals.map(v=>v==null?'#eee':v>=0?'rgba(39,174,96,0.7)':'rgba(192,57,43,0.7)'),
+      borderWidth:0}],{scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+  } else if (showPenet) {
+    // Penetration: Imports/Consumption
+    const penetData = [];
+    const consMap2  = Object.fromEntries(CONS.map(r=>[r.period,r.total]));
+    for (const r of totImp) {
+      const c = consMap2[r.period];
+      penetData.push({period:r.period, penet: (c && r.volume_ktons!=null) ? r.volume_ktons/c : null});
+    }
+    const pArr2 = applyWin(penetData,'period');
+    makeChart('tr-vol','line', pArr2.map(r=>r.period),
+      [{data:pArr2.map(r=>r.penet!=null?+(r.penet*100).toFixed(2):null),
+        borderColor:'#C0392B',backgroundColor:'rgba(192,57,43,0.08)',fill:true,borderWidth:2,pointRadius:0,tension:.3}],
+      {scales:{y:{ticks:{callback:v=>v.toFixed(1)+'%'}}}});
+  } else if (currentProd === 'total') {
+    makeChart('tr-vol','bar', srcTot.map(r=>r.period), [
+      {data:srcFlat.map(r=>r.volume_ktons),backgroundColor:'rgba(255,85,0,0.80)',label:'Planos',stack:'s'},
+      {data:srcLong.map(r=>r.volume_ktons),backgroundColor:'rgba(26,26,26,0.75)',label:'Longos',stack:'s'},
+      {data:srcSemi.map(r=>r.volume_ktons),backgroundColor:'rgba(136,136,136,0.6)',label:'Semis',stack:'s'},
+    ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+       scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(0)}}}});
+  } else {
+    const rows = currentTrade==='imp'?impRows:expRows;
+    makeChart('tr-vol','bar', rows.map(r=>r.period),
+      [{data:rows.map(r=>r.volume_ktons),backgroundColor:'rgba(255,85,0,0.75)',borderWidth:0}],
+      {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+  }
+
+  // Revenue chart
+  if (showBal || showPenet) {
+    const balRev = totExp.map(r=>{
+      const impRev=(SEIMP['total']||[]).find(i=>i.period===r.period)?.revenue_usd_mn;
+      return {period:r.period, val: r.revenue_usd_mn!=null&&impRev!=null?r.revenue_usd_mn-impRev:null};
+    });
+    const bArr = applyWin(balRev);
+    makeChart('tr-rev','bar', bArr.map(r=>r.period),
+      [{data:bArr.map(r=>r.val),backgroundColor:bArr.map(r=>r.val==null?'#eee':r.val>=0?'rgba(39,174,96,0.7)':'rgba(192,57,43,0.7)'),borderWidth:0}],
+      {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+  } else {
+    const revSrc = currentTrade==='imp'?totImp:totExp;
+    makeChart('tr-rev','bar', revSrc.map(r=>r.period),
+      [{data:revSrc.map(r=>r.revenue_usd_mn),backgroundColor:'rgba(41,128,185,0.70)',borderWidth:0}],
+      {scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+  }
+
+  // Price chart
+  const prSrc = currentTrade==='imp'?totImp:totExp;
+  makeChart('tr-price','line', prSrc.map(r=>r.period),
+    [{data:prSrc.map(r=>r.price_usd_ton),borderColor:'#FF5500',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,label:'Total'},
+     {data:(currentTrade==='imp'?flatImp:flatExp).map(r=>r.price_usd_ton),borderColor:'#1A1A1A',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,label:'Planos'},
+     {data:(currentTrade==='imp'?longImp:longExp).map(r=>r.price_usd_ton),borderColor:'#888',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,label:'Longos'}],
+    {plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // YoY chart
+  const yoySrc = currentTrade==='imp'?totImp:totExp;
+  const yoyVs  = yoySrc.map((r,i)=>yoySrc[i].yoy_volume!=null ? yoySrc[i].yoy_volume : yoyOf(yoySrc,'volume_ktons',i));
+  makeChart('tr-yoy','bar', yoySrc.map(r=>r.period),
+    [{data:yoyVs,backgroundColor:yoyVs.map(v=>v==null?'#eee':v>=0?'rgba(39,174,96,0.7)':'rgba(192,57,43,0.7)'),borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>v==null?'':((v*100).toFixed(1)+'%')}}}});
+}
+
+// ─── DISTRIBUTION CHARTS ──────────────────────────────────────────────────────
+function renderDistribution() {
+  const indaArr = applyWin(INDA);
+
+  // Chart 1: Purchases vs Sales
+  makeChart('di-purch-sales','bar', indaArr.map(r=>r.period), [
+    {data:indaArr.map(r=>r.purchases),backgroundColor:'rgba(41,128,185,0.70)',label:'Compras',stack:'g'},
+    {type:'line',data:indaArr.map(r=>r.sales),borderColor:'#FF5500',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.3,label:'Vendas',order:0},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 2: Inventory level
+  const histAvg = INDA.find(r=>r.hist_avg!=null)?.hist_avg;
+  const invDS = [{data:indaArr.map(r=>r.inventories),backgroundColor:'rgba(136,136,136,0.6)',label:'Estoque',borderWidth:0}];
+  if (histAvg) invDS.push({type:'line',data:indaArr.map(()=>histAvg),borderColor:'#FF5500',borderDash:[6,3],borderWidth:1.5,pointRadius:0,label:`Média hist. (${histAvg.toFixed(0)} kt)`,order:0});
+  makeChart('di-inv','bar', indaArr.map(r=>r.period), invDS,
+    {plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}});
+
+  // Chart 3: Inventory months
+  makeChart('di-inv-months','line', indaArr.map(r=>r.period), [
+    {data:indaArr.map(r=>r.inv_months),borderColor:'#2980B9',backgroundColor:'rgba(41,128,185,0.08)',fill:true,borderWidth:2,pointRadius:0,tension:.3},
+    {data:indaArr.map(()=>3.0),borderColor:'#FF5500',borderDash:[6,3],borderWidth:1,pointRadius:0},
+  ],{scales:{y:{min:0,ticks:{callback:v=>v.toFixed(1)+'M'}}}});
+
+  // Chart 4: Inventory YoY
+  const invYoyVals = indaArr.map(r=>r.inv_yoy);
+  makeChart('di-inv-yoy','bar', indaArr.map(r=>r.period),
+    [{data:invYoyVals,backgroundColor:invYoyVals.map(v=>v==null?'#eee':v>=0?'rgba(41,128,185,0.7)':'rgba(192,57,43,0.7)'),borderWidth:0}],
+    {scales:{y:{ticks:{callback:v=>v==null?'':((v*100).toFixed(1)+'%')}}}});
+}
+
+// ─── PREDICTION CHARTS ────────────────────────────────────────────────────────
+function renderPrediction() {
+  const crcKorea = applyWin(PRED?.CRC?.Korea||[]);
+  const crcChina = applyWin(PRED?.CRC?.China||[]);
+  const hrcKorea = applyWin(PRED?.HRC?.Korea||[]);
+  const hrcChina = applyWin(PRED?.HRC?.China||[]);
+
+  const kg2kt = v => v!=null ? v/1e6 : null;
+
+  // Unify periods for CRC
+  const crcPeriods = [...new Set([...crcKorea,...crcChina].map(r=>r.period))].sort();
+  const crcKMap = Object.fromEntries(crcKorea.map(r=>[r.period,r.volume_kg]));
+  const crcCMap = Object.fromEntries(crcChina.map(r=>[r.period,r.volume_kg]));
+
+  makeChart('pd-crc','bar', crcPeriods, [
+    {data:crcPeriods.map(p=>kg2kt(crcKMap[p]||null)),backgroundColor:'rgba(255,85,0,0.75)',label:'Coreia',stack:'c'},
+    {data:crcPeriods.map(p=>kg2kt(crcCMap[p]||null)),backgroundColor:'rgba(26,26,26,0.70)',label:'China',stack:'c'},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(1)}}}});
+
+  // HRC
+  const hrcPeriods = [...new Set([...hrcKorea,...hrcChina].map(r=>r.period))].sort();
+  const hrcKMap = Object.fromEntries(hrcKorea.map(r=>[r.period,r.volume_kg]));
+  const hrcCMap = Object.fromEntries(hrcChina.map(r=>[r.period,r.volume_kg]));
+
+  makeChart('pd-hrc','bar', hrcPeriods, [
+    {data:hrcPeriods.map(p=>kg2kt(hrcKMap[p]||null)),backgroundColor:'rgba(255,85,0,0.75)',label:'Coreia',stack:'h'},
+    {data:hrcPeriods.map(p=>kg2kt(hrcCMap[p]||null)),backgroundColor:'rgba(26,26,26,0.70)',label:'China',stack:'h'},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(1)}}}});
+
+  // Rolling 12M total (CRC+HRC, Korea+China)
+  const allPeriods = [...new Set([...crcPeriods,...hrcPeriods])].sort();
+  const monthly = allPeriods.map(p=>({
+    period:p,
+    total: (kg2kt(crcKMap[p])||0)+(kg2kt(crcCMap[p])||0)+(kg2kt(hrcKMap[p])||0)+(kg2kt(hrcCMap[p])||0)
+  }));
+  // 12M rolling
+  const rolling = monthly.map((r,i)=>{
+    const slice = monthly.slice(Math.max(0,i-11),i+1);
+    const sum   = slice.reduce((s,x)=>s+x.total,0);
+    return {period:r.period, rolling12: slice.length===12?sum:null};
+  });
+  const rollArr = applyWin(rolling);
+  makeChart('pd-rolling','line', rollArr.map(r=>r.period),
+    [{data:rollArr.map(r=>r.rolling12),borderColor:'#FF5500',backgroundColor:'rgba(255,85,0,0.08)',fill:true,borderWidth:2,pointRadius:0,tension:.3}],
+    {scales:{y:{ticks:{callback:v=>v.toFixed(1)}}}});
+
+  // Market share chart (Korea vs China, CRC+HRC combined)
+  const sharePeriods = [...new Set([...crcPeriods,...hrcPeriods])].sort().slice(-24);
+  const kTotal = sharePeriods.map(p=>(kg2kt(crcKMap[p])||0)+(kg2kt(hrcKMap[p])||0));
+  const cTotal = sharePeriods.map(p=>(kg2kt(crcCMap[p])||0)+(kg2kt(hrcCMap[p])||0));
+  const tot    = sharePeriods.map((_,i)=>(kTotal[i]||0)+(cTotal[i]||0));
+  const kShare = sharePeriods.map((_,i)=>tot[i]>0?(kTotal[i]/tot[i]*100):null);
+  const cShare = sharePeriods.map((_,i)=>tot[i]>0?(cTotal[i]/tot[i]*100):null);
+  makeChart('pd-share','bar', sharePeriods, [
+    {data:kShare,backgroundColor:'rgba(255,85,0,0.75)',label:'Coreia %',stack:'s'},
+    {data:cShare,backgroundColor:'rgba(26,26,26,0.70)',label:'China %',stack:'s'},
+  ],{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+     scales:{x:{stacked:true},y:{stacked:true,max:100,ticks:{callback:v=>v.toFixed(0)+'%'}}}});
+}
+
+// ─── MAIN RENDER ──────────────────────────────────────────────────────────────
+function render() {
+  if (currentSection === 'overview')     renderOverview();
+  if (currentSection === 'production')   renderProduction();
+  if (currentSection === 'trade')        renderTrade();
+  if (currentSection === 'distribution') renderDistribution();
+  if (currentSection === 'prediction')   renderPrediction();
+}
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────────
+function setSection(s) {
+  currentSection = s;
+  document.querySelectorAll('.sec-btn').forEach(b=>b.classList.toggle('active', b.textContent.toLowerCase().includes(s.slice(0,4).toLowerCase()) || b.getAttribute('onclick').includes(`'${s}'`)));
+  document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
+  document.getElementById(`sec-${s}`)?.classList.add('active');
+  render();
+}
+function setProd(p) {
+  currentProd = p;
+  document.querySelectorAll('[data-prod]').forEach(b=>b.classList.toggle('active',b.dataset.prod===p));
+  render();
+}
+function setGran(g) {
+  currentGran = g;
+  document.querySelectorAll('[data-gran]').forEach(b=>b.classList.toggle('active',b.dataset.gran===g));
+  render();
+}
+function setWin(w) {
+  currentWin = w;
+  document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win===w));
+  render();
+}
+function setTradeView(t) {
+  currentTrade = t;
+  document.querySelectorAll('[data-tt]').forEach(b=>b.classList.toggle('active',b.dataset.tt===t));
+  renderTrade();
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+Chart.register(ChartDataLabels);
+loadDB();
+</script>
+</body>
+</html>

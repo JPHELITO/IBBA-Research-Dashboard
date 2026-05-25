@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>IBBA Research Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5500;--black:#1A1A1A;--gray-dark:#333;--gray-mid:#888;
+  --gray-light:#F4F4F4;--border:#E5E5E5;--white:#fff;
+  --font:'Segoe UI',Helvetica,Arial,sans-serif;
+}
+html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);min-height:100%;}
+
+.header{background:var(--white);border-bottom:3px solid var(--orange);padding:20px 36px;display:flex;align-items:center;gap:20px;}
+.header-logo{width:36px;height:36px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.header-logo span{color:#fff;font-weight:900;font-size:16px;}
+.header-text h1{font-size:18px;font-weight:700;color:var(--black);}
+.header-text p{font-size:12px;color:var(--gray-mid);margin-top:2px;}
+
+.container{max-width:960px;margin:36px auto;padding:0 24px;}
+.section-title{font-size:11px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-bottom:40px;}
+
+.card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;text-decoration:none;color:inherit;
+  transition:box-shadow .15s,transform .15s;position:relative;overflow:hidden;display:block;}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.10);transform:translateY(-2px);}
+.card.disabled{opacity:.55;pointer-events:none;}
+
+.card-accent{height:4px;position:absolute;top:0;left:0;right:0;border-radius:10px 10px 0 0;}
+.card-accent.orange{background:var(--orange);}
+.card-accent.gray{background:#C8C8C8;}
+
+.card-icon{font-size:28px;margin-bottom:12px;}
+.card-sector{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-mid);margin-bottom:4px;}
+.card-title{font-size:16px;font-weight:700;color:var(--black);margin-bottom:8px;}
+.card-desc{font-size:12px;color:var(--gray-mid);line-height:1.5;}
+.card-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-status{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.card-status.live{background:#EAFAF1;color:#27AE60;}
+.card-status.soon{background:#F5F5F5;color:#888;}
+.card-arrow{color:var(--orange);font-size:16px;}
+
+.footer{text-align:center;font-size:11px;color:#bbb;padding:24px;border-top:1px solid var(--border);background:var(--white);}
+.footer strong{color:var(--orange);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><span>IB</span></div>
+  <div class="header-text">
+    <h1>IBBA Research Dashboard</h1>
+    <p>Equity Research · Itaú BBA · Dados atualizados automaticamente</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-title">Setores disponíveis</div>
+  <div class="cards">
+
+    <a class="card" href="Steel and Mining/steel_sm_dashboard.html">
+      <div class="card-accent orange"></div>
+      <div class="card-icon">⛏️</div>
+      <div class="card-sector">Siderurgia &amp; Mineração</div>
+      <div class="card-title">Steel &amp; Mining</div>
+      <div class="card-desc">Produção, consumo aparente, comércio exterior (SECEX), distribuidores INDA e modelo de projeção de importações Coreia/China.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Ao vivo</span>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <div class="card disabled">
+      <div class="card-accent gray"></div>
+      <div class="card-icon">🌲</div>
+      <div class="card-sector">Papel &amp; Celulose</div>
+      <div class="card-title">Pulp &amp; Paper</div>
+      <div class="card-desc">Produção de celulose e papel, exportações por destino, preços FOEX/BHKP e capacidade instalada.</div>
+      <div class="card-footer">
+        <span class="card-status soon">Em breve</span>
+      </div>
+    </div>
+
+    <div class="card disabled">
+      <div class="card-accent gray"></div>
+      <div class="card-icon">🏗️</div>
+      <div class="card-sector">Cimento</div>
+      <div class="card-title">Cement</div>
+      <div class="card-desc">Expedições, capacidade instalada, consumo per capita e comparações regionais.</div>
+      <div class="card-footer">
+        <span class="card-status soon">Em breve</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  <strong>Itaú BBA</strong> · Research Dashboard · Uso interno
+</div>
+
+</body>
+</html>
