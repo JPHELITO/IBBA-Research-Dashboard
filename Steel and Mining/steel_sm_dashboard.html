@@ -939,10 +939,10 @@ function renderPrediction(){
         expMap[shiftPeriod(r.period,predDelay)]=kg2kt(expR[i]);
     });
 
-    // SECEX map: plotted at its own unshifted period
+    // SECEX map: plotted at its own unshifted period (÷1000 to match kt scale)
     const sxMap={};
     secexArr.forEach((r,i)=>{
-      if(sxR[i]!=null) sxMap[r.period]=sxR[i];
+      if(sxR[i]!=null) sxMap[r.period]=sxR[i]/1000;
     });
 
     // Unified sorted periods (export-shifted ∪ secex)
@@ -970,7 +970,7 @@ function renderPrediction(){
 
     const sxMap={};
     secexArr.forEach((r,i)=>{
-      if(sxR[i]!=null) sxMap[r.period]=sxR[i];
+      if(sxR[i]!=null) sxMap[r.period]=sxR[i]/1000;
     });
 
     const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
