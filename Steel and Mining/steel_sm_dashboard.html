@@ -52,6 +52,9 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .snav-btn:hover:not(.active){color:var(--gray-dark);background:#F0F0F0;}
 .snav-btn.soon{opacity:.45;cursor:default;}
 
+/* STICKY HEADER WRAPPER */
+.sticky-header{position:sticky;top:0;z-index:100;}
+
 /* FILTER BAR */
 .filter-bar{background:var(--white);border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 20px;gap:14px;flex-wrap:nowrap;height:36px;overflow:hidden;}
@@ -148,6 +151,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 <div id="loading"><div class="spinner"></div><p>Carregando dados…</p></div>
 
+<!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
+<div class="sticky-header">
 <!-- TOP BAR -->
 <div class="top-bar">
   <button class="back-btn" onclick="history.back()">&#8592; Voltar</button>
@@ -201,8 +206,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <button class="fbtn" data-win="6m"  onclick="setWin('6m')">6M</button>
     <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1A</button>
     <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3A</button>
-    <button class="fbtn active" data-win="5y" onclick="setWin('5y')">5A</button>
-    <button class="fbtn" data-win="all" onclick="setWin('all')">Tudo</button>
+    <button class="fbtn" data-win="5y"  onclick="setWin('5y')">5A</button>
+    <button class="fbtn active" data-win="all" onclick="setWin('all')">Histórico</button>
   </div>
 </div>
 
@@ -220,6 +225,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <span class="pred-delay-val" id="delay-label">3 meses</span>
   </div>
 </div>
+</div><!-- /sticky-header -->
 
 <!-- ══════════════════════════════════════════════════════════════
      EXPORTAÇÃO
@@ -497,7 +503,7 @@ let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
 let currentGran   = 'monthly';
-let currentWin    = '5y';
+let currentWin    = 'all';
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
 let predDelay     = 3;
 let predProduct   = 'HRC';          // 'HRC'|'CRC'
