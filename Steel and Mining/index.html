@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ITAÚ BBA — Steel &amp; Mining</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#27AE60;
+  --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
+  --shadow-hover:0 4px 12px rgba(0,0,0,0.08),0 16px 40px rgba(0,0,0,0.10);
+}
+html,body{
+  font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
+  min-height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────────────────── */
+.header{
+  background:var(--black);
+  display:flex;align-items:center;padding:0 40px;height:62px;gap:16px;
+}
+.brand-link{display:flex;align-items:center;gap:12px;text-decoration:none;flex:1;min-width:0;}
+.brand-icon{flex-shrink:0;}
+.brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
+.brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
+  letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
+.orange-rule{height:2px;background:var(--orange);}
+
+/* Home icon */
+.top-home{flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:7px;text-decoration:none;
+  color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);
+  transition:color .2s,border-color .2s,background .2s;}
+.top-home:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08);}
+
+/* ── BACK LINK ───────────────────────────────────────────────────────────────── */
+.back-wrap{max-width:1100px;margin:0 auto;padding:32px 40px 0;}
+.back-link{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:500;color:var(--gray-mid);
+  text-decoration:none;transition:color .15s;
+}
+.back-link svg{flex-shrink:0;transition:transform .15s;}
+.back-link:hover{color:var(--gray-dark);}
+.back-link:hover svg{transform:translateX(-2px);}
+
+/* ── HERO ────────────────────────────────────────────────────────────────────── */
+.hero{padding:28px 40px 48px;max-width:1100px;margin:0 auto;}
+
+.hero-eyebrow{
+  display:flex;align-items:center;gap:10px;margin-bottom:16px;
+}
+.hero-label{
+  font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:.9px;
+}
+.hero-badge{
+  font-size:9px;font-weight:700;letter-spacing:.5px;
+  background:rgba(39,174,96,.12);color:var(--green);
+  padding:2px 9px;border-radius:20px;text-transform:uppercase;
+}
+
+.hero-title{
+  font-size:36px;font-weight:700;color:var(--black);
+  letter-spacing:-.04em;line-height:1.1;margin-bottom:12px;
+}
+.hero-title span{color:var(--orange);}
+.hero-sub{
+  font-size:14px;color:var(--gray-mid);font-weight:400;
+  line-height:1.65;max-width:500px;
+}
+
+/* Stats strip */
+.stats-strip{
+  display:flex;align-items:center;gap:24px;margin-top:28px;
+}
+.stat-item{display:flex;align-items:center;gap:7px;}
+.stat-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);flex-shrink:0;}
+.stat-text{font-size:11px;color:var(--gray-mid);font-weight:400;}
+.stat-sep{width:1px;height:14px;background:var(--border);}
+
+/* ── SECTION LABEL ───────────────────────────────────────────────────────────── */
+.section-label-wrap{max-width:1100px;margin:0 auto;padding:0 40px 20px;}
+.section-label{
+  font-size:9.5px;font-weight:600;color:rgba(0,0,0,.28);
+  text-transform:uppercase;letter-spacing:.8px;
+  border-bottom:1px solid var(--border);padding-bottom:20px;
+}
+
+/* ── CARDS ───────────────────────────────────────────────────────────────────── */
+.cards-wrapper{max-width:1100px;margin:0 auto;padding:0 40px 64px;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+
+.card{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:28px 26px 22px;text-decoration:none;color:inherit;
+  display:block;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);
+  transition:box-shadow .25s,transform .25s;
+}
+.card:not(.disabled):hover{
+  box-shadow:var(--shadow-hover);
+  transform:translateY(-3px);
+}
+.card.disabled{opacity:.46;pointer-events:none;cursor:default;}
+
+/* Top accent bar */
+.card-accent{
+  position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.card-accent.orange{background:var(--orange);}
+.card-accent.gray{background:#D0D0D0;}
+
+/* Icon */
+.card-icon{
+  width:42px;height:42px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:18px;
+}
+.card-icon.live{background:rgba(255,80,0,.07);}
+.card-icon.soon{background:rgba(0,0,0,.04);}
+
+/* Card text */
+.card-eyebrow{
+  font-size:9.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--gray-mid);margin-bottom:5px;
+}
+.card-title{font-size:18px;font-weight:700;color:var(--black);
+  letter-spacing:-.025em;margin-bottom:10px;}
+.card-desc{font-size:12px;color:var(--gray-mid);line-height:1.65;font-weight:400;}
+
+/* Footer */
+.card-footer{
+  margin-top:22px;padding-top:14px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-status{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.card-status.live{background:rgba(39,174,96,.1);color:var(--green);}
+.card-status.soon{background:rgba(0,0,0,.05);color:var(--gray-mid);}
+
+/* CTA button with fill animation */
+.card-cta{
+  position:relative;overflow:hidden;
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--gray-dark);
+  padding:5px 14px;border:1.5px solid var(--border);border-radius:20px;
+  background:transparent;display:flex;align-items:center;gap:6px;
+  transition:color .2s,border-color .2s;z-index:1;
+}
+.card-cta::before{
+  content:'';position:absolute;inset:0;background:var(--black);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:-1;
+  border-radius:20px;
+}
+.card:not(.disabled):hover .card-cta{color:#fff;border-color:var(--black);}
+.card:not(.disabled):hover .card-cta::before{transform:scaleX(1);}
+
+/* Disabled card — last item spans full width if odd */
+.card-full{grid-column:1 / -1;}
+
+/* ── FOOTER ──────────────────────────────────────────────────────────────────── */
+.footer{
+  background:var(--white);border-top:1px solid var(--border);
+  padding:14px 40px;display:flex;align-items:center;gap:8px;
+}
+.footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
+.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
+
+/* ── MOBILE ─────────────────────────────────────────────────────────────────── */
+@media (max-width:768px){
+  .header{padding:0 18px;height:52px;}
+  .brand-sub{display:none;}
+  .back-wrap{padding:20px 20px 0;}
+  .hero{padding:22px 20px 36px;}
+  .hero-title{font-size:28px;}
+  .stats-strip{flex-wrap:wrap;gap:14px;}
+  .stat-sep{display:none;}
+  .section-label-wrap{padding:0 20px 16px;}
+  .cards-wrapper{padding:0 20px 48px;}
+  .cards{grid-template-columns:1fr;}
+  .card-full{grid-column:auto;}
+  .footer{padding:14px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <a class="brand-link" href="../">
+    <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    </svg>
+    <div>
+      <div class="brand-name">ITAÚ BBA</div>
+      <div class="brand-sub">Research Dashboard</div>
+    </div>
+  </a>
+  <a href="../" class="top-home" title="Todos os setores">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
+            stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
+    </svg>
+  </a>
+</div>
+<div class="orange-rule"></div>
+
+<!-- BACK LINK -->
+<div class="back-wrap">
+  <a href="../" class="back-link">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M8 2L3 6.5L8 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Todos os setores
+  </a>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">
+    <span class="hero-label">Siderurgia &amp; Mineração</span>
+    <span class="hero-badge">Ao vivo</span>
+  </div>
+  <div class="hero-title">Steel &amp; <span>Mining</span></div>
+  <div class="hero-sub">Dados mensais de produção, comércio exterior e preços do mercado siderúrgico brasileiro. Selecione o tema de análise.</div>
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-dot"></div>
+      <span class="stat-text">4 análises disponíveis</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <div class="stat-dot" style="background:var(--gray-mid)"></div>
+      <span class="stat-text">Atualização mensal</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <div class="stat-dot" style="background:var(--gray-mid)"></div>
+      <span class="stat-text">Fontes: SECEX · IABr · INDA</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION LABEL -->
+<div class="section-label-wrap">
+  <div class="section-label">Selecione o tema</div>
+</div>
+
+<!-- CARDS -->
+<div class="cards-wrapper">
+  <div class="cards">
+
+    <!-- Exportação -->
+    <a class="card" href="steel_sm_dashboard.html?s=exports">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M5 17L17 5" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round"/>
+          <path d="M9 5H17V13" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">SECEX · Comércio Exterior</div>
+      <div class="card-title">Exportação</div>
+      <div class="card-desc">Volumes e receitas de exportação de aço plano, longo e semi por mercado de destino. Granularidade mensal e trimestral.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Ao vivo</span>
+        <span class="card-cta">Acessar <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Importação -->
+    <a class="card" href="steel_sm_dashboard.html?s=imports">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M17 5L5 17" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round"/>
+          <path d="M13 17H5V9" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">SECEX · Modelo Preditivo</div>
+      <div class="card-title">Importação</div>
+      <div class="card-desc">Fluxo de importações com modelo preditivo baseado em dados antecipados de embarques da Coreia e China.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Ao vivo</span>
+        <span class="card-cta">Acessar <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Mercado Doméstico -->
+    <a class="card" href="steel_sm_dashboard.html?s=domestic">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">IABr · INDA</div>
+      <div class="card-title">Mercado Doméstico</div>
+      <div class="card-desc">Produção bruta de aço, consumo aparente e penetração de importados. Distribuidores INDA: estoques, compras e vendas.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Ao vivo</span>
+        <span class="card-cta">Acessar <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Preços -->
+    <a class="card" href="steel_sm_dashboard.html?s=prices">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M3 7.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M3 14.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="7" cy="7.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
+          <circle cx="15" cy="14.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
+          <path d="M7 9.7L15 12.3" stroke="#FF5000" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2.5 2"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">SECEX · Prêmio de Importação</div>
+      <div class="card-title">Preços</div>
+      <div class="card-desc">Comparação entre preço de importação e referência doméstica (proxy export SECEX). Prêmio histórico e variações YoY.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Ao vivo</span>
+        <span class="card-cta">Acessar <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Global — em breve (span full width) -->
+    <div class="card disabled card-full">
+      <div class="card-accent gray"></div>
+      <div class="card-icon soon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="8.5" stroke="#BBBBBB" stroke-width="1.5"/>
+          <path d="M11 2.5C8.5 5.2 7 7.9 7 11C7 14.1 8.5 16.8 11 19.5" stroke="#BBBBBB" stroke-width="1.5"/>
+          <path d="M11 2.5C13.5 5.2 15 7.9 15 11C15 14.1 13.5 16.8 11 19.5" stroke="#BBBBBB" stroke-width="1.5"/>
+          <path d="M2.5 8.5H19.5" stroke="#BBBBBB" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M2.5 13.5H19.5" stroke="#BBBBBB" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">Dados Globais</div>
+      <div class="card-title">Global</div>
+      <div class="card-desc">Comparativos internacionais de produção, consumo e comércio de aço. World Steel Association, ISSB e fluxos por região.</div>
+      <div class="card-footer">
+        <span class="card-status soon">Em breve</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span class="footer-text">Itaú BBA · Equity Research</span>
+  <div class="footer-dot"></div>
+  <span class="footer-text">Uso restrito</span>
+</div>
+
+</body>
+</html>

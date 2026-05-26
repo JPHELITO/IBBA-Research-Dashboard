@@ -303,7 +303,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Latest update -->
   <div class="top-latest">Última: <strong id="latest-label">—</strong></div>
   <!-- Home: back to index -->
-  <a href="/" class="top-home" title="Todos os setores">
+  <a href="./" class="top-home" title="Steel &amp; Mining — Temas">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
             stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
@@ -372,7 +372,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 ════════════════════════════════════════════════════════════════════════════ -->
 <div id="mob-picker" class="mob-picker">
   <div class="mob-picker-inner">
-    <a href="/" class="mob-picker-back-root">← Todos os setores</a>
+    <a href="../" class="mob-picker-back-root">← Todos os setores</a>
     <div class="mob-picker-heading">
       <div class="mob-picker-eyebrow">Siderurgia &amp; Mineração</div>
       <div class="mob-picker-title">Steel &amp; Mining</div>
@@ -917,7 +917,15 @@ async function loadDB(){
     const lp=PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period||'—';
     document.getElementById('latest-label').textContent=lp;
     el.style.display='none';
-    if(window.innerWidth<=768){ showMobPicker(); } else { render(); }
+    // Honour ?s= URL param (coming from section picker page)
+    const urlSec=new URLSearchParams(window.location.search).get('s');
+    if(urlSec&&['exports','imports','domestic','prices'].includes(urlSec)){
+      setSub(urlSec);
+    } else if(window.innerWidth<=768){
+      showMobPicker();
+    } else {
+      render();
+    }
   }catch(e){
     el.innerHTML=`<div style="text-align:center;padding:40px">
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Falha ao carregar steel_sm.db</div>
