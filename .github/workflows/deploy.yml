@@ -14,11 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy dashboard files to root
+      - name: Prepare deploy folder
         run: |
           mkdir -p _deploy
-          cp "Steel and Mining/steel_sm_dashboard.html" _deploy/
-          cp "Steel and Mining/steel_sm.db" _deploy/
+          cp "Steel and Mining/steel_sm_dashboard.html" _deploy/index.html
+          cp "Steel and Mining/steel_sm.db" _deploy/steel_sm.db
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
