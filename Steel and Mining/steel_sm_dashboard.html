@@ -1009,7 +1009,7 @@ function renderPrediction(){
     const total=this.chart.data.labels.length;
     if(!total)return null;
     const skip=Math.max(1,Math.ceil(total/24));
-    return(index%skip===0||index===total-1)?val:null;
+    return(index%skip===0||index===total-1)?this.getLabelForValue(val):null;
   }
   const predOpts={
     ...LEG,
