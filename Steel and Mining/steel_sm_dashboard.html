@@ -1070,26 +1070,27 @@ function renderDomestic(){
   document.getElementById('inda-block').style.display=showInda?'':'none';
 
   if(showInda){
-    const indaArr=applyWin(INDA);
+    const indaGran=currentGran==='quarterly';
+    // Quarterly: SUM purchases+sales; LAST-of-quarter for balance/rolling metrics
+    const indaArr=applyWin(indaGran
+      ?toQ(INDA,['purchases','sales'],['inventories','inv_months','sales_ltm','sales_ma3'])
+      :INDA);
     const lbs=indaArr.map(r=>r.period);
 
-    // Estoque (dual Y-axis: left=kt, right=meses) — suporte a trimestral
-    const stockGran=currentGran==='quarterly';
-    const indaStockArr=applyWin(stockGran?toQ(INDA,[],['inventories','inv_months']):INDA);
-    const stockLbs=indaStockArr.map(r=>r.period);
-    const invMvals=indaStockArr.filter(r=>r.inv_months!=null).map(r=>r.inv_months);
-    const stockWinLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+    // Estoque (dual Y-axis: left=kt, right=meses)
+    const invMvals=indaArr.filter(r=>r.inv_months!=null).map(r=>r.inv_months);
+    const indaWinLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
     const histAvgM=invMvals.length?+(invMvals.reduce((a,b)=>a+b,0)/invMvals.length).toFixed(2):null;
     destroyChart('di-stock');
     const ctx=document.getElementById('di-stock')?.getContext('2d');
     if(ctx){
       charts['di-stock']=new Chart(ctx,{
         type:'bar',
-        data:{labels:stockLbs,datasets:[
-          {...barDs(indaStockArr.map(r=>r.inventories),C_GR_A(0.50),'Estoque (kt)'),yAxisID:'y',order:3},
-          {...lineDs(indaStockArr.map(r=>r.inv_months),C_OR,'Meses de Estoque'),yAxisID:'y1',type:'line',order:1},
-          {...lineDs(stockLbs.map(()=>histAvgM),C_BK,
-            `Média ${stockWinLbl} (${histAvgM!=null?histAvgM.toFixed(1):'—'} meses)`,[5,3]),
+        data:{labels:lbs,datasets:[
+          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Estoque (kt)'),yAxisID:'y',order:3},
+          {...lineDs(indaArr.map(r=>r.inv_months),C_OR,'Meses de Estoque'),yAxisID:'y1',type:'line',order:1},
+          {...lineDs(lbs.map(()=>histAvgM),C_BK,
+            `Média ${indaWinLbl} (${histAvgM!=null?histAvgM.toFixed(1):'—'} meses)`,[5,3]),
             yAxisID:'y1',type:'line',order:1,borderWidth:1.5},
         ]},
         options:baseOpts({
@@ -1106,18 +1107,18 @@ function renderDomestic(){
       });
     }
 
-    // Compras vs. Vendas
+    // Compras vs. Vendas — quarterly=soma do trimestre
     mkChart('di-purcsales','bar',lbs,[
       barDs(indaArr.map(r=>r.purchases),C_OR_A(0.75),'Compras'),
       barDs(indaArr.map(r=>r.sales),C_BK_A(0.75),'Vendas'),
     ],{...LEG,...YINT});
 
-    // Vendas LTM
+    // Vendas LTM — quarterly=último valor do trimestre (já é acumulado 12M)
     mkChart('di-ltm','line',lbs,
       [lineDs(indaArr.map(r=>r.sales_ltm),C_OR,'Vendas LTM (kt)')],
       {...LEG,...YINT});
 
-    // Vendas 3M MA
+    // Vendas 3M MA — quarterly=último valor do trimestre (já é MM3M)
     mkChart('di-ma3','line',lbs,
       [lineDs(indaArr.map(r=>r.sales_ma3),C_BK,'Vendas 3M MA (kt)')],
       {...LEG,...YINT});
@@ -1213,15 +1214,30 @@ function renderDomestic(){
 }
 
 function _renderSeasonality(id,allData,field){
+  const gran=currentGran==='quarterly';
+
+  // Build byY: year → array of values (12 months or 4 quarters)
   const byY={};
-  allData.forEach(r=>{if(!byY[r.year])byY[r.year]=new Array(12).fill(null);byY[r.year][r.month-1]=r[field];});
+  if(gran){
+    allData.forEach(r=>{
+      if(!byY[r.year])byY[r.year]=new Array(4).fill(null);
+      const qi=Math.ceil(r.month/3)-1;
+      if(r[field]!=null) byY[r.year][qi]=(byY[r.year][qi]??0)+r[field];
+    });
+  }else{
+    allData.forEach(r=>{
+      if(!byY[r.year])byY[r.year]=new Array(12).fill(null);
+      byY[r.year][r.month-1]=r[field];
+    });
+  }
+
+  const xLabels=gran?['Q1','Q2','Q3','Q4']:MONTHS;
+  const n=gran?4:12;
   const years=Object.keys(byY).map(Number).sort();
   const latY=years[years.length-1];
-
-  // Only last 5 years
   const show=years.filter(y=>y>=latY-4);
 
-  // Colors for the 4 non-current years (oldest → newest: latY-4 → latY-1)
+  // Colors for the 4 non-current years (oldest→newest: latY-4→latY-1)
   const OTHER_COLORS=['#27AE60','#2E86C1','#555555','#1A1A1A'];
 
   const ds=[];
@@ -1229,7 +1245,7 @@ function _renderSeasonality(id,allData,field){
     const color=OTHER_COLORS[idx]||'#888';
     ds.push({
       type:'line',label:`${y}`,
-      data:byY[y]||new Array(12).fill(null),
+      data:byY[y]||new Array(n).fill(null),
       borderColor:color,backgroundColor:'transparent',
       fill:false,borderWidth:1.8,pointRadius:0,tension:0.3,
       borderDash:[5,4]
@@ -1242,7 +1258,7 @@ function _renderSeasonality(id,allData,field){
     borderWidth:2.8,pointRadius:3,pointBackgroundColor:C_OR
   });
 
-  mkChart(id,'line',MONTHS,ds,{
+  mkChart(id,'line',xLabels,ds,{
     plugins:{legend:{display:true,position:'right',
       labels:{font:{size:10},boxWidth:10,padding:6}}},
     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}
