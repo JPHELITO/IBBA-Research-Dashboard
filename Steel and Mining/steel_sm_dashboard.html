@@ -1073,18 +1073,23 @@ function renderDomestic(){
     const indaArr=applyWin(INDA);
     const lbs=indaArr.map(r=>r.period);
 
-    // Estoque (dual Y-axis: left=kt, right=meses)
-    const invMvals=INDA.filter(r=>r.inv_months!=null).map(r=>r.inv_months);
+    // Estoque (dual Y-axis: left=kt, right=meses) — suporte a trimestral
+    const stockGran=currentGran==='quarterly';
+    const indaStockArr=applyWin(stockGran?toQ(INDA,[],['inventories','inv_months']):INDA);
+    const stockLbs=indaStockArr.map(r=>r.period);
+    const invMvals=indaStockArr.filter(r=>r.inv_months!=null).map(r=>r.inv_months);
+    const stockWinLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
     const histAvgM=invMvals.length?+(invMvals.reduce((a,b)=>a+b,0)/invMvals.length).toFixed(2):null;
     destroyChart('di-stock');
     const ctx=document.getElementById('di-stock')?.getContext('2d');
     if(ctx){
       charts['di-stock']=new Chart(ctx,{
         type:'bar',
-        data:{labels:lbs,datasets:[
-          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Estoque (kt)'),yAxisID:'y',order:3},
-          {...lineDs(indaArr.map(r=>r.inv_months),C_OR,'Estoque Mensal (meses)'),yAxisID:'y1',type:'line',order:1},
-          {...lineDs(indaArr.map(()=>histAvgM),C_BK,`Média Hist. (${histAvgM?.toFixed(1)}M)`,[5,3]),
+        data:{labels:stockLbs,datasets:[
+          {...barDs(indaStockArr.map(r=>r.inventories),C_GR_A(0.50),'Estoque (kt)'),yAxisID:'y',order:3},
+          {...lineDs(indaStockArr.map(r=>r.inv_months),C_OR,'Meses de Estoque'),yAxisID:'y1',type:'line',order:1},
+          {...lineDs(stockLbs.map(()=>histAvgM),C_BK,
+            `Média ${stockWinLbl} (${histAvgM!=null?histAvgM.toFixed(1):'—'} meses)`,[5,3]),
             yAxisID:'y1',type:'line',order:1,borderWidth:1.5},
         ]},
         options:baseOpts({
@@ -1094,7 +1099,7 @@ function renderDomestic(){
             y:{position:'left',ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)},
                title:{display:true,text:'kt',color:'#999',font:{size:9}}},
             y1:{position:'right',grid:{drawOnChartArea:false},
-                ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)+'M'},
+                ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)},
                 title:{display:true,text:'meses',color:C_OR,font:{size:9}}}
           }
         })
