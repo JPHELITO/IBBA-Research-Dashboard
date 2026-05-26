@@ -1,0 +1,104 @@
+name: 🔄 Auto-Update SECEX Steel & Mining
+
+# Roda nos primeiros 8 dias de cada mês (SECEX publica ~4º dia útil)
+# Também pode ser disparado manualmente
+on:
+  schedule:
+    - cron: "0 12 2,4,6,8 * *"   # 12h UTC nos dias 2,4,6,8 de cada mês
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Forçar recarga mesmo sem novidades"
+        required: false
+        default: "false"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────────
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests
+
+      # ── 3. Verificar e atualizar dados ───────────────────────────────────────
+      - name: Check & update SECEX data
+        id: update
+        run: |
+          FORCE_FLAG=""
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
+          python "Steel and Mining/updater_sm.py" --update $FORCE_FLAG
+        env:
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT:   587
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+
+      # ── 4. Rodar extractor principal (atualiza DB com novos dados) ───────────
+      - name: Run main extractor (se houver novidades)
+        if: env.NEW_DATA == 'true'
+        run: |
+          echo "Novo período detectado: $LATEST_PERIOD"
+          # O updater já atualizou secex_country e secex_port.
+          # Se houver arquivos IABr/INDA novos, rodar extractor_sm.py aqui também.
+
+      # ── 5. Enviar e-mail de notificação ─────────────────────────────────────
+      - name: Send email notification
+        if: env.NEW_DATA == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port:    587
+          secure:         false
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          to:             jphelito@gmail.com,joao.helito@itaubba.com
+          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
+          subject:        "🔔 SECEX Steel & Mining — novo dado: ${{ env.LATEST_PERIOD }}"
+          body: |
+            Olá,
+
+            O SECEX (MDIC) publicou novos dados de comércio exterior de aço.
+
+            📅 Novo período disponível: ${{ env.LATEST_PERIOD }}
+            📊 Dashboard atualizado: https://ibba-research-dashboard.vercel.app/Steel%20and%20Mining/
+
+            Os dados de importação e exportação por país e porto foram
+            atualizados automaticamente no Steel & Mining Dashboard.
+
+            ---
+            Itaú BBA — Equity Research | Steel & Mining
+            (mensagem automática gerada pelo GitHub Actions)
+
+      # ── 6. Commit e push do DB atualizado ───────────────────────────────────
+      - name: Commit updated DB
+        if: env.NEW_DATA == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "data: atualiza steel_sm.db → ${{ env.LATEST_PERIOD }}"
+          file_pattern: "Steel and Mining/steel_sm.db"
+          commit_user_name:  "IBBA Bot"
+          commit_user_email: "bot@itaubba.com"
+
+      # ── 7. Log final ────────────────────────────────────────────────────────
+      - name: Summary
+        run: |
+          if [ "$NEW_DATA" = "true" ]; then
+            echo "✅ Novo dado inserido: $LATEST_PERIOD — DB commitado e e-mail enviado."
+          else
+            echo "ℹ️  Nenhum dado novo. DB inalterado."
+          fi
