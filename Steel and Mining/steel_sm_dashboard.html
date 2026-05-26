@@ -178,6 +178,79 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .coming-soon h2{font-size:28px;font-weight:700;color:var(--border);}
 .coming-soon p{font-size:13px;font-weight:400;}
 
+/* ── MOBILE BACK BUTTON (top-bar) ────────────────────────────────────────── */
+.mob-back-btn{display:none;align-items:center;gap:5px;font-size:11px;font-weight:500;
+  color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;
+  font-family:var(--font);padding:4px 0;transition:color .15s;white-space:nowrap;}
+.mob-back-btn:hover{color:#fff;}
+
+/* ── MOBILE SECTION PICKER ───────────────────────────────────────────────── */
+.mob-picker{display:none;background:var(--gray-light);
+  min-height:calc(100vh - 100px);padding:0;}
+.mob-picker-inner{max-width:540px;margin:0 auto;padding:28px 20px 48px;}
+.mob-picker-back-root{display:inline-flex;align-items:center;gap:6px;font-size:11px;
+  color:var(--gray-mid);text-decoration:none;font-weight:500;margin-bottom:28px;
+  transition:color .15s;}
+.mob-picker-back-root:hover{color:var(--gray-dark);}
+.mob-picker-heading{margin-bottom:24px;}
+.mob-picker-eyebrow{font-size:9.5px;font-weight:600;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+.mob-picker-title{font-size:28px;font-weight:700;color:var(--black);
+  letter-spacing:-.03em;line-height:1.15;}
+.mob-sections-list{border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--white);overflow:hidden;box-shadow:var(--shadow);}
+.mob-sec-item{display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;background:none;border:none;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  font-family:var(--font);text-align:left;width:100%;
+  transition:background .15s;}
+.mob-sec-item:last-child{border-bottom:none;}
+.mob-sec-item:not(.disabled):hover{background:#F8F7F4;}
+.mob-sec-item.disabled{opacity:.42;cursor:default;}
+.mob-sec-info{flex:1;min-width:0;}
+.mob-sec-title{font-size:14px;font-weight:600;color:var(--black);
+  letter-spacing:-.01em;margin-bottom:3px;}
+.mob-sec-desc{font-size:11px;color:var(--gray-mid);font-weight:400;line-height:1.4;}
+.mob-sec-arrow{color:var(--orange);font-size:18px;font-weight:600;
+  flex-shrink:0;margin-left:14px;}
+.mob-sec-badge{font-size:9.5px;font-weight:600;color:var(--gray-mid);
+  background:rgba(0,0,0,.06);border-radius:20px;padding:3px 10px;
+  flex-shrink:0;margin-left:14px;white-space:nowrap;}
+
+/* ── MEDIA: MOBILE (≤ 768px) ─────────────────────────────────────────────── */
+@media (max-width:768px){
+  /* Top bar */
+  .mob-back-btn{display:flex;}
+  .top-sector-nav{display:none;}
+  .top-latest{display:none;}
+  .top-bar{height:50px;padding:0 18px;gap:14px;}
+  .brand-sub{display:none;}
+  .brand-icon{width:18px;height:18px;}
+  /* Section nav */
+  .secondary-nav{display:none;}
+  /* Filter bar: horizontal scroll, no labels */
+  .filter-bar{overflow-x:auto;padding:0 14px;gap:10px;-webkit-overflow-scrolling:touch;}
+  .filter-label{display:none;}
+  .filter-sep{display:none;}
+  /* Section padding */
+  .section{padding:10px 12px 24px;}
+  /* Collapse all grids to single column */
+  .charts-row.c2,.charts-row.c3{grid-template-columns:1fr;}
+  .kpi-row{grid-template-columns:1fr 1fr;}
+  /* Reduce chart heights */
+  .chart-wrap.h300{height:210px;}.chart-wrap.h280{height:200px;}
+  .chart-wrap.h260{height:190px;}.chart-wrap.h240{height:180px;}
+  .chart-wrap.h230{height:174px;}.chart-wrap.h220{height:168px;}
+  .chart-wrap.h210{height:162px;}.chart-wrap.h200{height:156px;}
+  .chart-wrap.h190{height:150px;}.chart-wrap.h180{height:145px;}
+  .chart-wrap.h160{height:136px;}
+}
+/* Desktop: always hide mobile elements */
+@media (min-width:769px){
+  .mob-picker{display:none !important;}
+  .mob-back-btn{display:none !important;}
+}
+
 /* ── LOADING ─────────────────────────────────────────────────────────────── */
 #loading{position:fixed;inset:0;background:rgba(255,255,255,.97);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
@@ -207,7 +280,9 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <div class="top-sub">S&amp;M Research Dashboard</div>
     </div>
   </div>
-  <!-- Sector selector -->
+  <!-- Mobile: back to section picker -->
+  <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Seções</button>
+  <!-- Sector selector (desktop only) -->
   <div class="top-sector-nav">
     <button class="pnav-btn active" id="pnav-steel" onclick="setSector('steel')">Steel <span class="pnav-tag live">live</span></button>
     <button class="pnav-btn" id="pnav-mining" onclick="setSector('mining')">Mining <span class="pnav-tag">em breve</span></button>
@@ -271,6 +346,56 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
 </div>
 </div><!-- /sticky-header -->
+
+<!-- ══ MOBILE SECTION PICKER ═══════════════════════════════════════════════
+     Visível apenas em mobile (< 769px), controlado por JS.
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="mob-picker" class="mob-picker">
+  <div class="mob-picker-inner">
+    <a href="/" class="mob-picker-back-root">← Todos os setores</a>
+    <div class="mob-picker-heading">
+      <div class="mob-picker-eyebrow">Siderurgia &amp; Mineração</div>
+      <div class="mob-picker-title">Steel &amp; Mining</div>
+    </div>
+    <div class="mob-sections-list">
+      <button class="mob-sec-item" onclick="mobSelect('exports')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Exportação</div>
+          <div class="mob-sec-desc">Volumes e receitas de exportação por produto</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item" onclick="mobSelect('imports')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Importação</div>
+          <div class="mob-sec-desc">Fluxo de importações e modelo preditivo</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item" onclick="mobSelect('domestic')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Mercado Doméstico</div>
+          <div class="mob-sec-desc">Produção, consumo aparente e distribuidores INDA</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item" onclick="mobSelect('prices')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Preços</div>
+          <div class="mob-sec-desc">Importação vs. referência doméstica</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <div class="mob-sec-item disabled">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Global</div>
+          <div class="mob-sec-desc">Comparativos internacionais de mercado</div>
+        </div>
+        <span class="mob-sec-badge">em breve</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════════════
      EXPORTAÇÃO
@@ -772,7 +897,7 @@ async function loadDB(){
     const lp=PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period||'—';
     document.getElementById('latest-label').textContent=lp;
     el.style.display='none';
-    render();
+    if(window.innerWidth<=768){ showMobPicker(); } else { render(); }
   }catch(e){
     el.innerHTML=`<div style="text-align:center;padding:40px">
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Falha ao carregar steel_sm.db</div>
@@ -1485,6 +1610,21 @@ function setDelay(v){
   predDelay=+v;
   document.getElementById('delay-label').textContent=`${v} ${+v===1?'mês':'meses'}`;
   if(currentSub==='imports')renderPrediction();
+}
+
+// ─── MOBILE SECTION PICKER ───────────────────────────────────────────────────
+function showMobPicker(){
+  document.getElementById('mob-picker').style.display='block';
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('mob-back-btn').style.display='none';
+}
+function hideMobPicker(){
+  document.getElementById('mob-picker').style.display='none';
+  document.getElementById('mob-back-btn').style.display='flex';
+}
+function mobSelect(sub){
+  hideMobPicker();
+  setSub(sub);
 }
 
 Chart.register(ChartDataLabels);
