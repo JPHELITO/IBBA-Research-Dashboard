@@ -169,12 +169,16 @@ IABR_ROW_FIELDS = {
     8:  ('prod', 'slabs'),
     9:  ('prod', 'billets'),
     10: ('prod', 'pig_iron'),
-    13: ('dom',  'flat'),
-    14: ('dom',  'long_prod'),
-    15: ('dom',  'semi'),
-    20: ('for',  'flat'),
-    21: ('for',  'long_prod'),
-    22: ('for',  'semi'),
+    13: ('dom',  'flat'),        # Laminados Planos
+    14: ('dom',  'long_prod'),   # Laminados Longos
+    15: ('dom',  'semi'),        # Semiacabados subtotal (not stored)
+    16: ('dom',  'slabs'),       # Placas → merged into dom flat
+    17: ('dom',  'billets'),     # Blocos/Tarugos → merged into dom long
+    20: ('for',  'flat'),        # Laminados Planos
+    21: ('for',  'long_prod'),   # Laminados Longos
+    22: ('for',  'semi'),        # Semiacabados subtotal (not stored)
+    23: ('for',  'slabs'),       # Placas → merged into for flat
+    24: ('for',  'billets'),     # Blocos/Tarugos → merged into for long
     28: ('exp',  'flat_ktons'),
     29: ('exp',  'long_ktons'),
     30: ('exp',  'semi_ktons'),
@@ -186,8 +190,8 @@ IABR_ROW_FIELDS = {
     40: ('imp',  'total_ktons'),
     41: ('imp',  'total_usd_mn'),
     42: ('cons', 'total'),
-    43: ('cons', 'flat'),
-    44: ('cons', 'long_prod'),
+    43: ('cons', 'flat'),        # Consumo Planos (already includes Slabs per IABr)
+    44: ('cons', 'long_prod'),   # Consumo Longos (already includes Billets per IABr)
 }
 
 def load_iabr(path, conn):
@@ -236,16 +240,26 @@ def load_iabr(path, conn):
     prod_rows, dom_rows, for_rows, exp_rows, imp_rows, cons_rows = [], [], [], [], [], []
     for period, d in sorted(data.items()):
         y, m = d.get('year'), d.get('month')
-        # Domestic total = dom flat + dom long + dom semi (rolled products)
-        dom_flat = d.get('dom_flat'); dom_long = d.get('dom_long'); dom_semi = d.get('dom_semi')
-        dom_total = None
-        if dom_flat is not None and dom_long is not None and dom_semi is not None:
-            dom_total = dom_flat + dom_long + dom_semi
+        # Domestic Sales:
+        #   Flat  = Laminados Planos + Placas (Slabs)
+        #   Long  = Laminados Longos + Blocos/Tarugos (Ingots, Blooms & Billets)
+        #   Semi  = not stored separately (absorbed into Flat and Long)
+        _df = d.get('dom_flat');    _ds = d.get('dom_slabs')
+        _dl = d.get('dom_long_prod'); _db = d.get('dom_billets')
+        dom_flat  = (_df or 0) + (_ds or 0) if (_df is not None or _ds is not None) else None
+        dom_long  = (_dl or 0) + (_db or 0) if (_dl is not None or _db is not None) else None
+        dom_semi  = None  # absorbed into flat and long above
+        dom_total = (dom_flat + dom_long) if (dom_flat is not None and dom_long is not None) else None
 
-        for_flat = d.get('for_flat'); for_long = d.get('for_long'); for_semi = d.get('for_semi')
-        for_total = None
-        if for_flat is not None and for_long is not None and for_semi is not None:
-            for_total = for_flat + for_long + for_semi
+        # Foreign Market:
+        #   Flat  = Laminados Planos + Placas (Slabs)
+        #   Long  = Laminados Longos + Blocos/Tarugos (Ingots, Blooms & Billets)
+        _ff = d.get('for_flat');    _fs = d.get('for_slabs')
+        _fl = d.get('for_long_prod'); _fb = d.get('for_billets')
+        for_flat  = (_ff or 0) + (_fs or 0) if (_ff is not None or _fs is not None) else None
+        for_long  = (_fl or 0) + (_fb or 0) if (_fl is not None or _fb is not None) else None
+        for_semi  = None  # absorbed into flat and long above
+        for_total = (for_flat + for_long) if (for_flat is not None and for_long is not None) else None
 
         prod_rows.append((
             period, y, m,
