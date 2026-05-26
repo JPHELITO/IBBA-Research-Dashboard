@@ -3,93 +3,206 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>IBBA Research Dashboard</title>
+<title>ITAÚ BBA — Research Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --orange:#FF5500;--black:#1A1A1A;--gray-dark:#333;--gray-mid:#888;
-  --gray-light:#F4F4F4;--border:#E5E5E5;--white:#fff;
-  --font:'Segoe UI',Helvetica,Arial,sans-serif;
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#27AE60;
+  --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
+  --shadow-hover:0 4px 12px rgba(0,0,0,0.08),0 16px 40px rgba(0,0,0,0.10);
 }
-html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);min-height:100%;}
+html,body{
+  font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
+  min-height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
 
-.header{background:var(--white);border-bottom:3px solid var(--orange);padding:20px 36px;display:flex;align-items:center;gap:20px;}
-.header-logo{width:36px;height:36px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.header-logo span{color:#fff;font-weight:900;font-size:16px;}
-.header-text h1{font-size:18px;font-weight:700;color:var(--black);}
-.header-text p{font-size:12px;color:var(--gray-mid);margin-top:2px;}
+/* ── HEADER ─────────────────────────────────────────────────────────────────── */
+.header{
+  background:var(--black);
+  display:flex;align-items:center;padding:0 40px;height:62px;gap:14px;
+}
+.brand-icon{flex-shrink:0;}
+.brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
+.brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
+  letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
+.orange-rule{height:2px;background:var(--orange);}
 
-.container{max-width:960px;margin:36px auto;padding:0 24px;}
-.section-title{font-size:11px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
+/* ── HERO ────────────────────────────────────────────────────────────────────── */
+.hero{
+  padding:56px 40px 48px;max-width:1100px;margin:0 auto;
+}
+.hero-label{
+  font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;
+  letter-spacing:.9px;margin-bottom:14px;
+}
+.hero-title{
+  font-size:32px;font-weight:700;color:var(--black);letter-spacing:-.03em;
+  line-height:1.15;margin-bottom:10px;
+}
+.hero-sub{
+  font-size:14px;color:var(--gray-mid);font-weight:400;
+  line-height:1.6;max-width:520px;
+}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-bottom:40px;}
+/* ── SECTION LABEL ───────────────────────────────────────────────────────────── */
+.section-label{
+  max-width:1100px;margin:0 auto;padding:0 40px 18px;
+  font-size:9.5px;font-weight:600;color:rgba(0,0,0,.3);
+  text-transform:uppercase;letter-spacing:.8px;
+  border-bottom:1px solid var(--border);margin-bottom:24px;
+}
+.section-label-inner{max-width:1100px;margin:0 auto;padding:0 40px;}
 
-.card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;text-decoration:none;color:inherit;
-  transition:box-shadow .15s,transform .15s;position:relative;overflow:hidden;display:block;}
-.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.10);transform:translateY(-2px);}
-.card.disabled{opacity:.55;pointer-events:none;}
+/* ── CARDS ───────────────────────────────────────────────────────────────────── */
+.cards-wrapper{max-width:1100px;margin:0 auto;padding:0 40px 60px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
 
-.card-accent{height:4px;position:absolute;top:0;left:0;right:0;border-radius:10px 10px 0 0;}
+.card{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:26px 24px 20px;text-decoration:none;color:inherit;
+  display:block;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);
+  transition:box-shadow .25s,transform .25s;
+}
+.card:not(.disabled):hover{
+  box-shadow:var(--shadow-hover);
+  transform:translateY(-3px);
+}
+.card.disabled{opacity:.5;pointer-events:none;cursor:default;}
+
+/* Top accent bar */
+.card-accent{
+  position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0;
+}
 .card-accent.orange{background:var(--orange);}
-.card-accent.gray{background:#C8C8C8;}
+.card-accent.gray{background:#D0D0D0;}
 
-.card-icon{font-size:28px;margin-bottom:12px;}
-.card-sector{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-mid);margin-bottom:4px;}
-.card-title{font-size:16px;font-weight:700;color:var(--black);margin-bottom:8px;}
-.card-desc{font-size:12px;color:var(--gray-mid);line-height:1.5;}
-.card-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-.card-status{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;}
-.card-status.live{background:#EAFAF1;color:#27AE60;}
-.card-status.soon{background:#F5F5F5;color:#888;}
-.card-arrow{color:var(--orange);font-size:16px;}
+/* Card body */
+.card-icon{
+  width:40px;height:40px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:16px;font-size:20px;
+}
+.card-icon.live{background:rgba(255,80,0,.08);}
+.card-icon.soon{background:rgba(0,0,0,.04);}
 
-.footer{text-align:center;font-size:11px;color:#bbb;padding:24px;border-top:1px solid var(--border);background:var(--white);}
-.footer strong{color:var(--orange);}
+.card-eyebrow{
+  font-size:9.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--gray-mid);margin-bottom:5px;
+}
+.card-title{font-size:17px;font-weight:700;color:var(--black);
+  letter-spacing:-.02em;margin-bottom:9px;}
+.card-desc{font-size:11.5px;color:var(--gray-mid);line-height:1.6;font-weight:400;}
+
+.card-footer{
+  margin-top:20px;padding-top:14px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-status{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.card-status.live{background:rgba(39,174,96,.1);color:var(--green);}
+.card-status.soon{background:rgba(0,0,0,.05);color:var(--gray-mid);}
+
+/* Arrow with animated fill like nav tabs */
+.card-cta{
+  position:relative;overflow:hidden;
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--gray-dark);
+  padding:5px 14px;border:1.5px solid var(--border);border-radius:20px;
+  background:transparent;display:flex;align-items:center;gap:6px;
+  transition:color .2s,border-color .2s;z-index:1;
+}
+.card-cta::before{
+  content:'';position:absolute;inset:0;background:var(--black);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:-1;
+}
+.card:not(.disabled):hover .card-cta{color:#fff;border-color:var(--black);}
+.card:not(.disabled):hover .card-cta::before{transform:scaleX(1);}
+
+/* ── FOOTER ──────────────────────────────────────────────────────────────────── */
+.footer{
+  background:var(--white);border-top:1px solid var(--border);
+  padding:14px 40px;display:flex;align-items:center;gap:8px;
+}
+.footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
+.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <div class="header">
-  <div class="header-logo"><span>IB</span></div>
-  <div class="header-text">
-    <h1>IBBA Research Dashboard</h1>
-    <p>Equity Research · Itaú BBA · Dados atualizados automaticamente</p>
+  <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+  </svg>
+  <div>
+    <div class="brand-name">ITAÚ BBA</div>
+    <div class="brand-sub">Research Dashboard</div>
   </div>
 </div>
+<div class="orange-rule"></div>
 
-<div class="container">
-  <div class="section-title">Setores disponíveis</div>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">Equity Research · Itaú BBA</div>
+  <div class="hero-title">Dados. Análise.<br>Decisão.</div>
+  <div class="hero-sub">Dashboards de equity research desenvolvidos pelo time de análise setorial do Itaú BBA. Selecione o setor para acessar.</div>
+</div>
+
+<!-- SECTION LABEL -->
+<div class="section-label-inner">
+  <div class="section-label">Setores disponíveis</div>
+</div>
+
+<!-- CARDS -->
+<div class="cards-wrapper">
   <div class="cards">
 
+    <!-- Steel & Mining — LIVE -->
     <a class="card" href="Steel and Mining/steel_sm_dashboard.html">
       <div class="card-accent orange"></div>
-      <div class="card-icon">⛏️</div>
-      <div class="card-sector">Siderurgia &amp; Mineração</div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">Siderurgia &amp; Mineração</div>
       <div class="card-title">Steel &amp; Mining</div>
-      <div class="card-desc">Produção, consumo aparente, comércio exterior (SECEX), distribuidores INDA e modelo de projeção de importações Coreia/China.</div>
+      <div class="card-desc">Produção, consumo aparente e penetração de importados. Comércio exterior SECEX, distribuidores INDA e modelo preditivo Coreia/China.</div>
       <div class="card-footer">
         <span class="card-status live">● Ao vivo</span>
-        <span class="card-arrow">→</span>
+        <span class="card-cta">Acessar <span>→</span></span>
       </div>
     </a>
 
+    <!-- Pulp & Paper — em breve -->
     <div class="card disabled">
       <div class="card-accent gray"></div>
-      <div class="card-icon">🌲</div>
-      <div class="card-sector">Papel &amp; Celulose</div>
+      <div class="card-icon soon">🌲</div>
+      <div class="card-eyebrow">Papel &amp; Celulose</div>
       <div class="card-title">Pulp &amp; Paper</div>
-      <div class="card-desc">Produção de celulose e papel, exportações por destino, preços FOEX/BHKP e capacidade instalada.</div>
+      <div class="card-desc">Produção de celulose e papel, exportações por destino, preços FOEX/BHKP e capacidade instalada por produtor.</div>
       <div class="card-footer">
         <span class="card-status soon">Em breve</span>
       </div>
     </div>
 
+    <!-- Cement — em breve -->
     <div class="card disabled">
       <div class="card-accent gray"></div>
-      <div class="card-icon">🏗️</div>
-      <div class="card-sector">Cimento</div>
+      <div class="card-icon soon">🏗️</div>
+      <div class="card-eyebrow">Cimento</div>
       <div class="card-title">Cement</div>
-      <div class="card-desc">Expedições, capacidade instalada, consumo per capita e comparações regionais.</div>
+      <div class="card-desc">Expedições, capacidade instalada, consumo per capita e comparações regionais de mercado.</div>
       <div class="card-footer">
         <span class="card-status soon">Em breve</span>
       </div>
@@ -98,8 +211,11 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
 </div>
 
+<!-- FOOTER -->
 <div class="footer">
-  <strong>Itaú BBA</strong> · Research Dashboard · Uso interno
+  <span class="footer-text">Itaú BBA · Equity Research</span>
+  <div class="footer-dot"></div>
+  <span class="footer-text">Uso restrito</span>
 </div>
 
 </body>
