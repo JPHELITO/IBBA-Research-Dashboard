@@ -993,10 +993,21 @@ function renderPrediction(){
   }
 
   // ── Shared chart options ──────────────────────────────────────────────────
+  // afterBuildTicks: ensure the last x-axis label is always shown as a tick,
+  // even when Chart.js's maxTicksLimit step-size algorithm would skip it.
+  function forceFinalTick(axis){
+    const lbs=axis.chart.data.labels;
+    if(!lbs||!lbs.length)return;
+    const lastIdx=lbs.length-1;
+    if(!axis.ticks.some(t=>t.value===lastIdx)){
+      axis.ticks.push({value:lastIdx,label:lbs[lastIdx]});
+      axis.ticks.sort((a,b)=>a.value-b.value);
+    }
+  }
   const predOpts={
     ...LEG,
     scales:{
-      x:{ticks:{color:'#999',font:{size:9},maxRotation:45,maxTicksLimit:24}},
+      x:{afterBuildTicks:forceFinalTick,ticks:{color:'#999',font:{size:9},maxRotation:45,maxTicksLimit:24}},
       y:{ticks:{color:'#999',font:{size:9},callback:v=>v!=null?v.toFixed(0):''}}
     }
   };
