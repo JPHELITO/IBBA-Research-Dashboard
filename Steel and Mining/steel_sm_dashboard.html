@@ -50,6 +50,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
   border-radius:20px;padding:4px 14px;white-space:nowrap;font-weight:500;flex-shrink:0;}
 .top-latest strong{color:var(--orange);font-weight:600;}
+/* Home icon — back to index */
+.top-home{flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:7px;text-decoration:none;
+  color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);
+  transition:color .2s,border-color .2s,background .2s;margin-left:10px;}
+.top-home:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08);}
 /* Hidden legacy elements */
 .back-btn{display:none;}
 .top-bar-div{display:none;}
@@ -223,6 +229,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .mob-back-btn{display:flex;}
   .top-sector-nav{display:none;}
   .top-latest{display:none;}
+  .top-home{margin-left:auto;}
   .top-bar{height:50px;padding:0 18px;gap:14px;}
   .brand-sub{display:none;}
   .brand-icon{width:18px;height:18px;}
@@ -244,6 +251,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .chart-wrap.h210{height:162px;}.chart-wrap.h200{height:156px;}
   .chart-wrap.h190{height:150px;}.chart-wrap.h180{height:145px;}
   .chart-wrap.h160{height:136px;}
+}
+/* Mobile: picker-active mode — show picker, hide sections */
+@media (max-width:768px){
+  body.mob-picker-active .mob-picker{display:block;}
+  body.mob-picker-active .section{display:none !important;}
+  body.mob-picker-active #mob-back-btn{display:none;}
 }
 /* Desktop: always hide mobile elements */
 @media (min-width:769px){
@@ -289,6 +302,13 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
   <!-- Latest update -->
   <div class="top-latest">Última: <strong id="latest-label">—</strong></div>
+  <!-- Home: back to index -->
+  <a href="/" class="top-home" title="Todos os setores">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
+            stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
+    </svg>
+  </a>
 </div>
 <div class="orange-rule"></div>
 
@@ -1614,13 +1634,11 @@ function setDelay(v){
 
 // ─── MOBILE SECTION PICKER ───────────────────────────────────────────────────
 function showMobPicker(){
-  document.getElementById('mob-picker').style.display='block';
+  document.body.classList.add('mob-picker-active');
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.getElementById('mob-back-btn').style.display='none';
 }
 function hideMobPicker(){
-  document.getElementById('mob-picker').style.display='none';
-  document.getElementById('mob-back-btn').style.display='flex';
+  document.body.classList.remove('mob-picker-active');
 }
 function mobSelect(sub){
   hideMobPicker();
