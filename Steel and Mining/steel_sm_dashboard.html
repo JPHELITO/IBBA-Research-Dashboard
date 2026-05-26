@@ -1173,7 +1173,7 @@ function renderDomestic(){
         {...lineDs(penSeries,C_OR,'Penetração Importado (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
         // Média histórica da penetração — cinza pontilhado, eixo direito
         {...lineDs(consLbs.map(()=>penHistAvg),C_GR,
-          `Média ${winLbl} (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
+          `Penetração — Média ${winLbl} (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
           [5,3]),yAxisID:'y1',borderWidth:1.2,order:2,pointRadius:0},
       ]},
       options:baseOpts({
