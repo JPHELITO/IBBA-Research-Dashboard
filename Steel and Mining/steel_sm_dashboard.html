@@ -430,13 +430,13 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="charts-row c2">
     <div class="chart-card">
       <div class="chart-title">Sazonalidade — Vendas Domésticas (kt/mês)</div>
-      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · filtro Planos/Longos</div>
-      <div class="chart-wrap h220"><canvas id="dom-seasdom"></canvas></div>
+      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · cores = outros anos · filtro Planos/Longos</div>
+      <div class="chart-wrap h260"><canvas id="dom-seasdom"></canvas></div>
     </div>
     <div class="chart-card">
       <div class="chart-title">Sazonalidade — Consumo Aparente (kt/mês)</div>
-      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · filtro Planos/Longos</div>
-      <div class="chart-wrap h220"><canvas id="dom-seascons"></canvas></div>
+      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · cores = outros anos · filtro Planos/Longos</div>
+      <div class="chart-wrap h260"><canvas id="dom-seascons"></canvas></div>
     </div>
   </div>
 </div>
@@ -1212,15 +1212,44 @@ function _renderSeasonality(id,allData,field){
   allData.forEach(r=>{if(!byY[r.year])byY[r.year]=new Array(12).fill(null);byY[r.year][r.month-1]=r[field];});
   const years=Object.keys(byY).map(Number).sort();
   const latY=years[years.length-1],prevY=latY-1;
-  const grayY=years.filter(y=>y<latY&&y!==prevY&&y>=latY-5);
+  const olderY=years.filter(y=>y!==latY&&y!==prevY);
+
+  // Vivid palette — assigned newest-older → oldest-older
+  const VIVID=['#2E86C1','#27AE60','#9B59B6','#E74C3C','#F39C12','#16A085'];
+  function rgba(hex,a){
+    const m=hex.match(/^#(..)(..)(..)$/);
+    return`rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${a})`;
+  }
+
   const ds=[];
-  grayY.forEach(y=>ds.push({data:byY[y],borderColor:C_GR_A(0.30),borderWidth:1,pointRadius:0,tension:.3}));
-  if(byY[prevY])ds.push(lineDs(byY[prevY],C_BK,`${prevY}`));
-  if(byY[latY])ds.push({...lineDs(byY[latY],C_OR,`${latY}`),borderWidth:2.5,pointRadius:3});
+  olderY.forEach((y,idx)=>{
+    const fromEnd=olderY.length-1-idx; // 0 = most recent older year
+    const vivid=fromEnd<VIVID.length;
+    const color=vivid?VIVID[fromEnd]:'#888888';
+    const alpha=vivid?Math.max(0.55,1-fromEnd*0.10):Math.max(0.18,0.38-(fromEnd-VIVID.length)*0.06);
+    ds.push({
+      type:'line',label:`${y}`,
+      data:byY[y]||new Array(12).fill(null),
+      borderColor:rgba(color,alpha),backgroundColor:'transparent',
+      fill:false,borderWidth:vivid?1.5:1,pointRadius:0,tension:0.3,
+      ...(vivid?{}:{borderDash:[3,3]})
+    });
+  });
+
+  // Previous year — preto, médio
+  if(byY[prevY])ds.push({
+    ...lineDs(byY[prevY],C_BK,`${prevY}`),
+    borderWidth:2,pointRadius:2,pointBackgroundColor:C_BK
+  });
+  // Current year — laranja, destaque máximo
+  if(byY[latY])ds.push({
+    ...lineDs(byY[latY],C_OR,`${latY}`),
+    borderWidth:2.5,pointRadius:3,pointBackgroundColor:C_OR
+  });
+
   mkChart(id,'line',MONTHS,ds,{
     plugins:{legend:{display:true,position:'right',
-      labels:{font:{size:10},boxWidth:10,
-        filter:i=>!!i.text&&(!i.text.match(/^\d{4}$/)||[String(prevY),String(latY)].includes(i.text))}}},
+      labels:{font:{size:9},boxWidth:10,padding:4}}},
     scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}
   });
 }
