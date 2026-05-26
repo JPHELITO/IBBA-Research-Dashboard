@@ -445,35 +445,46 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
      PREÇOS
 ════════════════════════════════════════════════════════════════ -->
 <div id="sec-prices" class="section">
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Preço Médio Exportação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
-      <div class="chart-wrap h240"><canvas id="px-exp"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Preço Médio Importação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
-      <div class="chart-wrap h240"><canvas id="px-imp"></canvas></div>
-    </div>
-  </div>
+  <!-- Gráfico principal: comparação importação vs. referência doméstica -->
   <div class="charts-row c1">
     <div class="chart-card">
-      <div class="chart-title">Spread Preço Export. − Import. (US$/t)</div>
-      <div class="chart-sub">SECEX · exportação menos importação · positivo = exportação mais cara</div>
-      <div class="chart-wrap h200"><canvas id="px-spread"></canvas></div>
+      <div class="chart-title">Preço Importação vs. Referência Doméstica (US$/t)</div>
+      <div class="chart-sub">SECEX · preto = importação · laranja = exportação (proxy doméstico) · empresas se beneficiam quando importação &gt; doméstico</div>
+      <div class="chart-wrap h260"><canvas id="px-compare"></canvas></div>
     </div>
   </div>
+  <!-- Prêmio da importação: métrica central -->
+  <div class="charts-row c1">
+    <div class="chart-card">
+      <div class="chart-title">Prêmio da Importação — Import. − Ref. Dom. (US$/t)</div>
+      <div class="chart-sub">SECEX · verde = importação mais cara que o doméstico (favorável às empresas) · vermelho = importação mais barata (risco competitivo)</div>
+      <div class="chart-wrap h230"><canvas id="px-spread"></canvas></div>
+    </div>
+  </div>
+  <!-- Preços individuais -->
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Preço Exportação — Comparativo Export vs. Import</div>
-      <div class="chart-sub">SECEX · laranja = exportação · preto = importação</div>
-      <div class="chart-wrap h220"><canvas id="px-compare"></canvas></div>
+      <div class="chart-title">Referência Doméstica — Preço Exportação (US$/t)</div>
+      <div class="chart-sub">SECEX/MDIC · proxy do preço doméstico · filtro por produto</div>
+      <div class="chart-wrap h210"><canvas id="px-exp"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Preço Exportação — YoY (%)</div>
+      <div class="chart-title">Preço de Importação (US$/t)</div>
+      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
+      <div class="chart-wrap h210"><canvas id="px-imp"></canvas></div>
+    </div>
+  </div>
+  <!-- YoY: evolução dos preços -->
+  <div class="charts-row c2">
+    <div class="chart-card">
+      <div class="chart-title">YoY — Preço de Importação (%)</div>
       <div class="chart-sub">SECEX · variação vs. mesmo período do ano anterior</div>
-      <div class="chart-wrap h220"><canvas id="px-yoy"></canvas></div>
+      <div class="chart-wrap h190"><canvas id="px-yoy"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">YoY — Referência Doméstica / Exportação (%)</div>
+      <div class="chart-sub">SECEX · variação vs. mesmo período do ano anterior</div>
+      <div class="chart-wrap h190"><canvas id="px-yoy2"></canvas></div>
     </div>
   </div>
 </div>
@@ -1278,31 +1289,52 @@ function renderPrices(){
 
   const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
-  mkChart('px-exp','line',expArr.map(r=>r.period),
-    [areaDs(expArr.map(r=>r.price_usd_ton),C_OR,0.10,'Preço Exportação (US$/t)')],priceTick);
-  mkChart('px-imp','line',impArr.map(r=>r.period),
-    [areaDs(impArr.map(r=>r.price_usd_ton),C_BK,0.08,'Preço Importação (US$/t)')],priceTick);
-
-  // Spread (align by period)
+  // Align both series by period
   const expPMap=Object.fromEntries(expArr.map(r=>[r.period,r.price_usd_ton]));
   const impPMap=Object.fromEntries(impArr.map(r=>[r.period,r.price_usd_ton]));
   const allP=[...new Set([...expArr,...impArr].map(r=>r.period))].sort();
-  const spreadVals=allP.map(p=>{const e=expPMap[p],i=impPMap[p];return(e!=null&&i!=null)?+(e-i).toFixed(2):null;});
-  mkChart('px-spread','bar',allP,
-    [barDs(spreadVals,spreadVals.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'Spread (US$/t)')],
-    {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
 
-  // Compare export vs import
-  const cmpP=allP;
-  mkChart('px-compare','line',cmpP,[
-    lineDs(cmpP.map(p=>expPMap[p]??null),C_OR,'Exportação (US$/t)'),
-    lineDs(cmpP.map(p=>impPMap[p]??null),C_BK,'Importação (US$/t)'),
+  // 1. Main comparison: importação (preto espesso) vs ref. doméstica (laranja)
+  mkChart('px-compare','line',allP,[
+    {type:'line',data:allP.map(p=>impPMap[p]??null),label:'Importação (US$/t)',
+     borderColor:C_BK,backgroundColor:'transparent',borderWidth:2.5,
+     pointRadius:0,tension:0.25},
+    {type:'line',data:allP.map(p=>expPMap[p]??null),label:'Ref. Doméstica / Export. (US$/t)',
+     borderColor:C_OR,backgroundColor:'transparent',borderWidth:1.8,
+     borderDash:[],pointRadius:0,tension:0.25},
   ],{...LEG,...priceTick});
 
-  // YoY export price
-  const yoyP=expArr.map((r,i)=>r.yoy_revenue!=null?r.yoy_revenue:yoyOf(expArr,'price_usd_ton',i));
-  mkChart('px-yoy','bar',expArr.map(r=>r.period),
-    [barDs(yoyP.map(v=>v!=null?+(v*100).toFixed(2):null),yoyP.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Preço Exp. %')],
+  // 2. Prêmio da importação = imp - dom (positivo = favorável às empresas)
+  const premVals=allP.map(p=>{
+    const e=expPMap[p],i=impPMap[p];
+    return(e!=null&&i!=null)?+(i-e).toFixed(2):null;
+  });
+  const validPrem=premVals.filter(v=>v!=null);
+  const avgPrem=validPrem.length?+(validPrem.reduce((s,x)=>s+x,0)/validPrem.length).toFixed(1):null;
+  mkChart('px-spread','bar',allP,[
+    barDs(premVals,premVals.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'Prêmio Import. (US$/t)'),
+    {type:'line',data:allP.map(()=>avgPrem),
+     label:`Média hist. (${avgPrem!=null?avgPrem.toFixed(0)+' US$/t':'—'})`,
+     borderColor:'#555',backgroundColor:'transparent',borderWidth:1.5,
+     borderDash:[5,3],pointRadius:0,tension:0},
+  ],{...LEG,scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
+
+  // 3. Preços individuais
+  mkChart('px-exp','line',expArr.map(r=>r.period),
+    [areaDs(expArr.map(r=>r.price_usd_ton),C_OR,0.10,'Ref. Dom. / Export. (US$/t)')],priceTick);
+  mkChart('px-imp','line',impArr.map(r=>r.period),
+    [areaDs(impArr.map(r=>r.price_usd_ton),C_BK,0.08,'Importação (US$/t)')],priceTick);
+
+  // 4. YoY importação e YoY exportação
+  const yoyImp=impArr.map((r,i)=>yoyOf(impArr,'price_usd_ton',i));
+  mkChart('px-yoy','bar',impArr.map(r=>r.period),
+    [barDs(yoyImp.map(v=>v!=null?+(v*100).toFixed(2):null),
+           yoyImp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Preço Import. %')],
+    {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
+  const yoyExp=expArr.map((r,i)=>yoyOf(expArr,'price_usd_ton',i));
+  mkChart('px-yoy2','bar',expArr.map(r=>r.period),
+    [barDs(yoyExp.map(v=>v!=null?+(v*100).toFixed(2):null),
+           yoyExp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Ref. Dom. %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 }
 
