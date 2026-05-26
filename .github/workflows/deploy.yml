@@ -14,9 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Copy dashboard files to root
+        run: |
+          mkdir -p _deploy
+          cp "Steel and Mining/steel_sm_dashboard.html" _deploy/
+          cp "Steel and Mining/steel_sm.db" _deploy/
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: Steel and Mining
+          folder: _deploy
           clean: true
