@@ -445,23 +445,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
      PREÇOS
 ════════════════════════════════════════════════════════════════ -->
 <div id="sec-prices" class="section">
-  <!-- PLATTS: HRC China — visível quando Planos selecionado -->
-  <div id="px-hrc-row" class="charts-row c1" style="display:none">
-    <div class="chart-card">
-      <div class="chart-title">HRC China — Preço FOB Exportação (US$/t)</div>
-      <div class="chart-sub">PLATTS · China HRC FOB Export Price · média mensal</div>
-      <div class="chart-wrap h220"><canvas id="px-hrc"></canvas></div>
-    </div>
-  </div>
-  <!-- PLATTS: Turkey Rebar — visível quando Longos selecionado -->
-  <div id="px-rebar-row" class="charts-row c1" style="display:none">
-    <div class="chart-card">
-      <div class="chart-title">Turquia Rebar — Preço FOB Exportação (US$/t)</div>
-      <div class="chart-sub">PLATTS · Turkey Rebar FOB Export Price · média mensal</div>
-      <div class="chart-wrap h220"><canvas id="px-rebar"></canvas></div>
-    </div>
-  </div>
-  <!-- SECEX: export/import prices -->
   <div class="charts-row c2">
     <div class="chart-card">
       <div class="chart-title">Preço Médio Exportação (US$/t)</div>
@@ -510,7 +493,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   Fontes: <em>IABr</em> (produção, vendas domésticas, consumo aparente, exp/imp) ·
   <em>SECEX/MDIC</em> (comércio exterior por NCM/categoria) · <em>INDA</em> (distribuidores planos) ·
   <em>SECEX Prediction</em> (exportações Coreia+China por NCM HRC/CRC) ·
-  <em>PLATTS</em> (HRC China FOB · Turkey Rebar FOB · média mensal de cotações semanais) ·
   Penetração = Importações ÷ Consumo Aparente · Volumes em kton
 </div>
 
@@ -532,7 +514,6 @@ let SEEXP={}, SEIMP={};
 let INDA=[];
 let PRED={};
 let PRED_EXP={};
-let PLATTS={};
 
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -595,10 +576,9 @@ function applyWin(arr,key='period'){
   return arr.filter(r=>r[key]>=cut);
 }
 // Apply window on monthly data BEFORE toQ — avoids applyWin parsing quarterly period strings.
-// Usage: gran ? qToQ(src, sumF, lastF, avgF) : applyWin(src)
-// avgF: fields to average across months within a quarter (e.g. price series)
-function qToQ(arr,sumF=[],lastF=[],avgF=[]){ return toQ(applyWin(arr),sumF,lastF,avgF); }
-function toQ(monthly,sumF=[],lastF=[],avgF=[]){
+// Usage: gran ? qToQ(src, sumF, lastF) : applyWin(src)
+function qToQ(arr,sumF=[],lastF=[]){ return toQ(applyWin(arr),sumF,lastF); }
+function toQ(monthly,sumF=[],lastF=[]){
   const map={};
   monthly.forEach(r=>{
     const mo=r.month||parseInt(r.period?.slice(5,7)||'1');
@@ -614,7 +594,6 @@ function toQ(monthly,sumF=[],lastF=[],avgF=[]){
     const o={period:e.period,year:e.year,quarter:e.quarter};
     sumF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?v.reduce((s,x)=>s+x,0):null;});
     lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
-    avgF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?+(v.reduce((s,x)=>s+x,0)/v.length).toFixed(2):null;});
     return o;
   });
 }
@@ -724,15 +703,6 @@ async function loadDB(){
       if(!PRED_EXP[r.product][r.country])PRED_EXP[r.product][r.country]=[];
       PRED_EXP[r.product][r.country].push(r);
     }
-
-    const rPlatts=toObj(db.exec(`SELECT period,metric,price_usd_ton FROM platts_prices ORDER BY metric,period`)[0]);
-    for(const r of rPlatts){
-      const[y,m]=r.period.split('-').map(Number);
-      r.year=y; r.month=m;
-      if(!PLATTS[r.metric])PLATTS[r.metric]=[];
-      PLATTS[r.metric].push(r);
-    }
-
     db.close();
 
     const lp=PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period||'—';
@@ -1301,34 +1271,12 @@ function _renderSeasonality(id,allData,field){
 function renderPrices(){
   const cat=secat();
   const gran=currentGran==='quarterly';
-
-  // ── PLATTS charts (conditional on product) ───────────────────────────────
-  const showHRC   = currentProd==='flat';
-  const showRebar = currentProd==='long';
-  document.getElementById('px-hrc-row').style.display   = showHRC   ? '' : 'none';
-  document.getElementById('px-rebar-row').style.display = showRebar ? '' : 'none';
-
-  const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
-
-  if(showHRC){
-    const hrcSrc=PLATTS['hrc_china']||[];
-    const hrcArr=gran?qToQ(hrcSrc,[],[],['price_usd_ton']):applyWin(hrcSrc);
-    mkChart('px-hrc','line',hrcArr.map(r=>r.period),
-      [areaDs(hrcArr.map(r=>r.price_usd_ton),C_OR,0.10,'HRC China FOB (US$/t)')],priceTick);
-  }else{ destroyChart('px-hrc'); }
-
-  if(showRebar){
-    const rebarSrc=PLATTS['rebar_turkey']||[];
-    const rebarArr=gran?qToQ(rebarSrc,[],[],['price_usd_ton']):applyWin(rebarSrc);
-    mkChart('px-rebar','line',rebarArr.map(r=>r.period),
-      [areaDs(rebarArr.map(r=>r.price_usd_ton),C_BK,0.08,'Turquia Rebar FOB (US$/t)')],priceTick);
-  }else{ destroyChart('px-rebar'); }
-
-  // ── SECEX export / import prices ─────────────────────────────────────────
   const expSrc=SEEXP[cat]||[];
   const impSrc=SEIMP[cat]||[];
-  const expArr=gran?qToQ(expSrc,['revenue_usd_mn','volume_ktons'],[],['price_usd_ton']):applyWin(expSrc);
-  const impArr=gran?qToQ(impSrc,['revenue_usd_mn','volume_ktons'],[],['price_usd_ton']):applyWin(impSrc);
+  const expArr=gran?qToQ(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(expSrc);
+  const impArr=gran?qToQ(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(impSrc);
+
+  const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
   mkChart('px-exp','line',expArr.map(r=>r.period),
     [areaDs(expArr.map(r=>r.price_usd_ton),C_OR,0.10,'Preço Exportação (US$/t)')],priceTick);
@@ -1345,9 +1293,10 @@ function renderPrices(){
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
 
   // Compare export vs import
-  mkChart('px-compare','line',allP,[
-    lineDs(allP.map(p=>expPMap[p]??null),C_OR,'Exportação (US$/t)'),
-    lineDs(allP.map(p=>impPMap[p]??null),C_BK,'Importação (US$/t)'),
+  const cmpP=allP;
+  mkChart('px-compare','line',cmpP,[
+    lineDs(cmpP.map(p=>expPMap[p]??null),C_OR,'Exportação (US$/t)'),
+    lineDs(cmpP.map(p=>impPMap[p]??null),C_BK,'Importação (US$/t)'),
   ],{...LEG,...priceTick});
 
   // YoY export price
