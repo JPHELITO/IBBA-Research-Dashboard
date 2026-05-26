@@ -1150,8 +1150,9 @@ function renderDomestic(){
     return +((cons-dom)/cons*100).toFixed(2);
   });
 
-  // Historical average penetration over ALL available data (full series, not windowed)
-  const penHistVals=CONS.filter(r=>r[cf]!=null).map(r=>{
+  // Average penetration over the SELECTED WINDOW (same data visible in the chart)
+  const winLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+  const penHistVals=consArr.filter(r=>r[cf]!=null).map(r=>{
     const dom=domMapPen[r.period];
     return (dom!=null&&r[cf]>0)?((r[cf]-dom)/r[cf]*100):null;
   }).filter(v=>v!=null);
@@ -1172,7 +1173,7 @@ function renderDomestic(){
         {...lineDs(penSeries,C_OR,'Penetração Importado (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
         // Média histórica da penetração — cinza pontilhado, eixo direito
         {...lineDs(consLbs.map(()=>penHistAvg),C_GR,
-          `Média Hist. (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
+          `Média ${winLbl} (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
           [5,3]),yAxisID:'y1',borderWidth:1.2,order:2,pointRadius:0},
       ]},
       options:baseOpts({
