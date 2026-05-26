@@ -1140,14 +1140,24 @@ function renderDomestic(){
   // Consumo Aparente + Penetração (dual Y-axis)
   const consArr=applyWin(gran?toQ(CONS,[cf]):CONS.filter(r=>r[cf]!=null));
   const consLbs=consArr.map(r=>r.period);
-  // Penetration: iabr_imports / consumption
-  const impField={flat:'flat_ktons',long_prod:'long_ktons',total:'total_ktons'}[cf]||'total_ktons';
-  const impMap=Object.fromEntries(IMPI.map(r=>[r.period,r[impField]]));
+
+  // Penetração = (Consumo Aparente - Vendas Domésticas) / Consumo Aparente
+  // Matches product filter: cf = 'flat' | 'long_prod' | 'total'
+  const domMapPen=Object.fromEntries(DOM.filter(r=>r[cf]!=null).map(r=>[r.period,r[cf]]));
   const penSeries=consArr.map(r=>{
-    const cons=r[cf],imp=gran?null:impMap[r.period];
-    if(gran||cons==null||imp==null||cons===0)return null;
-    return +(imp/cons*100).toFixed(2);
+    const cons=r[cf],dom=gran?null:domMapPen[r.period];
+    if(gran||cons==null||dom==null||cons===0)return null;
+    return +((cons-dom)/cons*100).toFixed(2);
   });
+
+  // Historical average penetration over ALL available data (full series, not windowed)
+  const penHistVals=CONS.filter(r=>r[cf]!=null).map(r=>{
+    const dom=domMapPen[r.period];
+    return (dom!=null&&r[cf]>0)?((r[cf]-dom)/r[cf]*100):null;
+  }).filter(v=>v!=null);
+  const penHistAvg=penHistVals.length
+    ?+(penHistVals.reduce((a,b)=>a+b,0)/penHistVals.length).toFixed(2):null;
+
   destroyChart('dom-cons');
   const ctx2=document.getElementById('dom-cons')?.getContext('2d');
   if(ctx2){
@@ -1156,8 +1166,14 @@ function renderDomestic(){
     charts['dom-cons']=new Chart(ctx2,{
       type:'line',
       data:{labels:consLbs,datasets:[
-        {...areaDs(consArr.map(r=>r[cf]),C_OR,0.12,consLabel),yAxisID:'y',order:2},
-        {...lineDs(penSeries,C_GR,'Penetração Importado (%)'),yAxisID:'y1',borderWidth:1.5,order:1},
+        // Consumo Aparente — preto, área preenchida, eixo esquerdo
+        {...areaDs(consArr.map(r=>r[cf]),C_BK,0.08,consLabel),yAxisID:'y',order:3},
+        // Penetração importado — laranja, eixo direito
+        {...lineDs(penSeries,C_OR,'Penetração Importado (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
+        // Média histórica da penetração — cinza pontilhado, eixo direito
+        {...lineDs(consLbs.map(()=>penHistAvg),C_GR,
+          `Média Hist. (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
+          [5,3]),yAxisID:'y1',borderWidth:1.2,order:2,pointRadius:0},
       ]},
       options:baseOpts({
         ...LEG,
@@ -1166,8 +1182,8 @@ function renderDomestic(){
           y:{position:'left',ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)},
              title:{display:true,text:'kt',color:'#999',font:{size:9}}},
           y1:{position:'right',grid:{drawOnChartArea:false},
-              ticks:{color:C_GR,font:{size:9},callback:v=>v.toFixed(1)+'%'},
-              title:{display:true,text:'penetração %',color:C_GR,font:{size:9}}}
+              ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)+'%'},
+              title:{display:true,text:'penetração %',color:C_OR,font:{size:9}}}
         }
       })
     });
