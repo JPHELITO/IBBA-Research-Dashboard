@@ -1198,7 +1198,7 @@ function renderDomestic(){
   }
 
   // Seasonality — Vendas Domésticas
-  const seasField=currentProd==='long'?'long_prod':'flat'; // default flat
+  const seasField=currentProd==='long'?'long_prod':currentProd==='flat'?'flat':'total';
   const domAll=DOM.filter(r=>r[seasField]!=null);
   _renderSeasonality('dom-seasdom',domAll,seasField);
 
@@ -1216,8 +1216,8 @@ function _renderSeasonality(id,allData,field){
   // Only last 5 years
   const show=years.filter(y=>y>=latY-4);
 
-  // Colors for the 4 non-current years (newest → oldest)
-  const OTHER_COLORS=['#1A1A1A','#2E86C1','#27AE60','#9B59B6'];
+  // Colors for the 4 non-current years (oldest → newest: latY-4 → latY-1)
+  const OTHER_COLORS=['#27AE60','#2E86C1','#555555','#1A1A1A'];
 
   const ds=[];
   show.filter(y=>y!==latY).forEach((y,idx)=>{
