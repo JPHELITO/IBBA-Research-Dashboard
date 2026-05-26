@@ -575,6 +575,9 @@ function applyWin(arr,key='period'){
   const cut=`${cy}-${String(cm).padStart(2,'0')}`;
   return arr.filter(r=>r[key]>=cut);
 }
+// Apply window on monthly data BEFORE toQ — avoids applyWin parsing quarterly period strings.
+// Usage: gran ? qToQ(src, sumF, lastF) : applyWin(src)
+function qToQ(arr,sumF=[],lastF=[]){ return toQ(applyWin(arr),sumF,lastF); }
 function toQ(monthly,sumF=[],lastF=[]){
   const map={};
   monthly.forEach(r=>{
@@ -718,7 +721,7 @@ function renderExports(){
   const cat=secat();
   const gran=currentGran==='quarterly';
   const src=SEEXP[cat]||[];
-  const arr=applyWin(gran?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):src);
+  const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
   const lbs=arr.map(r=>r.period);
 
   const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
@@ -790,17 +793,16 @@ function renderExports(){
   } else {
     breakBlock.style.display='';
     if(gran){
-      // Trimestral — últimos 12Q completos
-      const flatQ=toQ(SEEXP['flat']||[],['volume_ktons']).slice(-12);
-      const longQ=toQ(SEEXP['long']||[],['volume_ktons']).slice(-12);
-      const semiQ=toQ(SEEXP['semi']||[],['volume_ktons']).slice(-12);
-      const totQ =toQ(SEEXP['total']||[],['volume_ktons']).slice(-12);
+      const flatQ=qToQ(SEEXP['flat']||[],['volume_ktons']);
+      const longQ=qToQ(SEEXP['long']||[],['volume_ktons']);
+      const semiQ=qToQ(SEEXP['semi']||[],['volume_ktons']);
+      const totQ =qToQ(SEEXP['total']||[],['volume_ktons']);
       const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
       const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
       const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
       const qLbs=totQ.map(r=>r.period);
       document.getElementById('ex-breakdown-title').textContent='Exportações por Produto — Trimestral (kt)';
-      document.getElementById('ex-breakdown-tag').textContent='últimos 12 trimestres';
+      document.getElementById('ex-breakdown-tag').textContent=currentWin==='all'?'histórico completo':`janela ${currentWin}`;
       mkChart('ex-qvol','bar',qLbs,[
         stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
         stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
@@ -837,7 +839,7 @@ function renderImportsSECEX(){
   const cat=secat();
   const gran=currentGran==='quarterly';
   const src=SEIMP[cat]||[];
-  const arr=applyWin(gran?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):src);
+  const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
   const lbs=arr.map(r=>r.period);
   const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
@@ -898,16 +900,16 @@ function renderImportsSECEX(){
   }else{
     bb.style.display='';
     if(gran){
-      const flatQ=toQ(SEIMP['flat']||[],['volume_ktons']).slice(-12);
-      const longQ=toQ(SEIMP['long']||[],['volume_ktons']).slice(-12);
-      const semiQ=toQ(SEIMP['semi']||[],['volume_ktons']).slice(-12);
-      const totQ =toQ(SEIMP['total']||[],['volume_ktons']).slice(-12);
+      const flatQ=qToQ(SEIMP['flat']||[],['volume_ktons']);
+      const longQ=qToQ(SEIMP['long']||[],['volume_ktons']);
+      const semiQ=qToQ(SEIMP['semi']||[],['volume_ktons']);
+      const totQ =qToQ(SEIMP['total']||[],['volume_ktons']);
       const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
       const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
       const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
       const qLbs=totQ.map(r=>r.period);
       document.getElementById('im-breakdown-title').textContent='Importações por Produto — Trimestral (kt)';
-      document.getElementById('im-breakdown-tag').textContent='últimos 12 trimestres';
+      document.getElementById('im-breakdown-tag').textContent=currentWin==='all'?'histórico completo':`janela ${currentWin}`;
       mkChart('im-qvol','bar',qLbs,[
         stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
         stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
@@ -1072,9 +1074,9 @@ function renderDomestic(){
   if(showInda){
     const indaGran=currentGran==='quarterly';
     // Quarterly: SUM purchases+sales; LAST-of-quarter for balance/rolling metrics
-    const indaArr=applyWin(indaGran
-      ?toQ(INDA,['purchases','sales'],['inventories','inv_months','sales_ltm','sales_ma3'])
-      :INDA);
+    const indaArr=indaGran
+      ?qToQ(INDA,['purchases','sales'],['inventories','inv_months','sales_ltm','sales_ma3'])
+      :applyWin(INDA);
     const lbs=indaArr.map(r=>r.period);
 
     // Estoque (dual Y-axis: left=kt, right=meses)
@@ -1131,26 +1133,26 @@ function renderDomestic(){
 
   // Vendas Domésticas
   if(currentProd==='total'){
-    const domArr=applyWin(gran?toQ(DOM,['flat','long_prod']):DOM);
+    const domArr=gran?qToQ(DOM,['flat','long_prod']):applyWin(DOM);
     const lbs=domArr.map(r=>r.period);
     mkChart('dom-sales','bar',lbs,[
       stackDs(domArr.map(r=>r.flat),C_OR,'Planos'),
       stackDs(domArr.map(r=>r.long_prod),C_BK,'Longos'),
     ],{...LEG,...STACKED});
   } else {
-    const domArr=applyWin(gran?toQ(DOM,[df]):DOM.filter(r=>r[df]!=null));
+    const domArr=gran?qToQ(DOM.filter(r=>r[df]!=null),[df]):applyWin(DOM.filter(r=>r[df]!=null));
     const lbs=domArr.map(r=>r.period);
     const label=currentProd==='flat'?'Planos (kt)':'Longos (kt)';
     mkChart('dom-sales','line',lbs,[areaDs(domArr.map(r=>r[df]),C_OR,0.12,label)],YINT);
   }
 
   // Produção Aço Bruto (always total crude_steel)
-  const prodArr=applyWin(gran?toQ(PROD,['crude_steel']):PROD.filter(r=>r.crude_steel!=null));
+  const prodArr=gran?qToQ(PROD.filter(r=>r.crude_steel!=null),['crude_steel']):applyWin(PROD.filter(r=>r.crude_steel!=null));
   mkChart('dom-crude','line',prodArr.map(r=>r.period),
     [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Produção (kt)')],YINT);
 
   // Consumo Aparente + Penetração (dual Y-axis)
-  const consArr=applyWin(gran?toQ(CONS,[cf]):CONS.filter(r=>r[cf]!=null));
+  const consArr=gran?qToQ(CONS.filter(r=>r[cf]!=null),[cf]):applyWin(CONS.filter(r=>r[cf]!=null));
   const consLbs=consArr.map(r=>r.period);
 
   // Penetração = (Consumo Aparente - Vendas Domésticas) / Consumo Aparente
@@ -1271,8 +1273,8 @@ function renderPrices(){
   const gran=currentGran==='quarterly';
   const expSrc=SEEXP[cat]||[];
   const impSrc=SEIMP[cat]||[];
-  const expArr=applyWin(gran?toQ(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):expSrc);
-  const impArr=applyWin(gran?toQ(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):impSrc);
+  const expArr=gran?qToQ(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(expSrc);
+  const impArr=gran?qToQ(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(impSrc);
 
   const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
