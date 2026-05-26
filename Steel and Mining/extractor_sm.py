@@ -380,27 +380,38 @@ def load_secex(path, table, label, conn):
 #                      10=InvYoY 11=HistAvg 12=SalesLTM 13=SalesWK 14=SalesMA3
 # ══════════════════════════════════════════════════════════════════════════════
 def load_inda(path, conn):
+    """Read INDA data from INPUT DATA sheet (full history since 2006).
+    CHART DATA only has ~73 recent months; INPUT DATA has the complete series.
+
+    INPUT DATA columns (0-indexed):
+      8=Date  9=Inventories  10=InvMonths  11=Purchases  12=Sales
+      13=WorkingDays  14=InvYoY  15=HistoricalAvg
+
+    sales_ltm and sales_ma3 are not present in INPUT DATA and are computed here.
+    """
     print(f"\n[INDA] Loading {path.name} ...")
     wb = openpyxl.load_workbook(path, data_only=True, keep_vba=True)
-    ws = wb['CHART DATA']
+    ws = wb['INPUT DATA']
 
-    # Find header row by looking for 'Date' in col D (index 3)
     rows = list(ws.iter_rows(values_only=True))
+
+    # Find header row: 'Date' in col I (index 8)
     data_start = None
     for i, row in enumerate(rows):
-        if len(row) > 3 and str(row[3]).strip().lower() == 'date':
+        if len(row) > 8 and str(row[8]).strip().lower() == 'date':
             data_start = i + 1
             break
 
     if data_start is None:
-        print("  [INDA] Header not found.")
+        print("  [INDA] Header not found in INPUT DATA.")
         wb.close()
         return
 
-    out = []
+    # Parse raw rows
+    raw = []
     for row in rows[data_start:]:
         try:
-            dt = row[3]
+            dt = row[8]
             if dt is None:
                 continue
             if not isinstance(dt, datetime) and not hasattr(dt, 'year'):
@@ -411,23 +422,52 @@ def load_inda(path, conn):
             p = _period(dt)
             if not p:
                 continue
-            inv    = _safe_float(row[6])
-            inv_mo = _safe_float(row[7])
-            purch  = _safe_float(row[8])
-            sales  = _safe_float(row[9])
-            inv_yy = _safe_float(row[10])
-            hist   = _safe_float(row[11])
-            ltm    = _safe_float(row[12])
-            swk    = _safe_float(row[13])
-            ma3    = _safe_float(row[14])
-            wdays_raw = _safe_float(row[4]) if len(row) > 4 else None  # subtractor proxy
+            inv    = _safe_float(row[9])
+            inv_mo = _safe_float(row[10])
+            purch  = _safe_float(row[11])
+            sales  = _safe_float(row[12])
+            wdays  = _safe_float(row[13])
+            inv_yy = _safe_float(row[14])
+            hist   = _safe_float(row[15])
             if inv is None and purch is None and sales is None:
                 continue
             dt2 = datetime.strptime(p, "%Y-%m")
-            out.append((p, dt2.year, dt2.month, inv, inv_mo, purch, sales,
-                        None, inv_yy, hist, ltm, ma3, NOW))
+            raw.append({
+                'period': p, 'year': dt2.year, 'month': dt2.month,
+                'inventories': inv, 'inv_months': inv_mo,
+                'purchases': purch, 'sales': sales,
+                'working_days': int(wdays) if wdays is not None else None,
+                'inv_yoy': inv_yy, 'hist_avg': hist,
+            })
         except Exception:
             continue
+
+    # Ensure chronological order
+    raw.sort(key=lambda r: r['period'])
+
+    # Compute rolling metrics not available in INPUT DATA
+    sales_vals = [r['sales'] for r in raw]
+    for i, r in enumerate(raw):
+        # sales_ltm: 12-month trailing sum (requires 12 observations)
+        if i >= 11:
+            window = sales_vals[i - 11:i + 1]
+            r['sales_ltm'] = sum(v for v in window if v is not None)
+        else:
+            r['sales_ltm'] = None
+        # sales_ma3: 3-month moving average (requires 3 observations)
+        if i >= 2:
+            window3 = sales_vals[i - 2:i + 1]
+            valid3 = [v for v in window3 if v is not None]
+            r['sales_ma3'] = round(sum(valid3) / len(valid3), 4) if valid3 else None
+        else:
+            r['sales_ma3'] = None
+
+    out = [(
+        r['period'], r['year'], r['month'],
+        r['inventories'], r['inv_months'], r['purchases'], r['sales'],
+        r['working_days'], r['inv_yoy'], r['hist_avg'], r['sales_ltm'], r['sales_ma3'],
+        NOW
+    ) for r in raw]
 
     conn.executemany(
         "INSERT OR REPLACE INTO inda_distribution "
@@ -437,7 +477,7 @@ def load_inda(path, conn):
     )
     conn.commit()
     wb.close()
-    print(f"  [INDA] {len(out)} months loaded.")
+    print(f"  [INDA] {len(out)} months loaded from INPUT DATA ({raw[0]['period']} to {raw[-1]['period']}).")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
