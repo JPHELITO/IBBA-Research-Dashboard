@@ -1,10 +1,10 @@
 name: 🔄 Auto-Update SECEX Steel & Mining
 
-# Roda nos primeiros 8 dias de cada mês (SECEX publica ~4º dia útil)
+# Roda todos os dias 1–10 de cada mês (SECEX publica ~4º dia útil)
 # Também pode ser disparado manualmente
 on:
   schedule:
-    - cron: "0 12 2,4,6,8 * *"   # 12h UTC nos dias 2,4,6,8 de cada mês
+    - cron: "0 12 1-10 * *"   # 12h UTC todos os dias 1 a 10 de cada mês
   workflow_dispatch:
     inputs:
       force:
