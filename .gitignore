@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Dados brutos (Excel/XLSM — fontes proprietárias, nunca commitar)
+*.xlsx
+*.xlsm
+*.xls
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
