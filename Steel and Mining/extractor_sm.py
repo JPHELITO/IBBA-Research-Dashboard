@@ -32,11 +32,12 @@ HERE      = Path(__file__).parent
 DB_PATH   = HERE / "steel_sm.db"
 DOWNLOADS = Path.home() / "Downloads"
 
-DEFAULT_IABR = DOWNLOADS / "IABR - Brazilian Steel Market Data.xlsm"
-DEFAULT_EXP  = DOWNLOADS / "SECEX - Steel Foreign Trade_Exports.xlsx"
-DEFAULT_IMP  = DOWNLOADS / "SECEX - Steel Foreign Trade_Imports.xlsx"
-DEFAULT_INDA = DOWNLOADS / "INDA - Flat Steel Distributor Data.xlsm"
-DEFAULT_PRED = DOWNLOADS / "SECEX - Prediction Analysis.xlsx"
+DEFAULT_IABR   = DOWNLOADS / "IABR - Brazilian Steel Market Data.xlsm"
+DEFAULT_EXP    = DOWNLOADS / "SECEX - Steel Foreign Trade_Exports.xlsx"
+DEFAULT_IMP    = DOWNLOADS / "SECEX - Steel Foreign Trade_Imports.xlsx"
+DEFAULT_INDA   = DOWNLOADS / "INDA - Flat Steel Distributor Data.xlsm"
+DEFAULT_PRED   = DOWNLOADS / "SECEX - Prediction Analysis.xlsx"
+DEFAULT_PLATTS = DOWNLOADS / "PLATTS - Steel Rebar_HRC_Historical_Parity.xlsx"
 
 NOW = datetime.utcnow().isoformat()
 
@@ -150,6 +151,13 @@ def init_db(conn):
         volume_kg  REAL,
         updated_at TEXT,
         PRIMARY KEY (period, country, product)
+    );
+    CREATE TABLE IF NOT EXISTS platts_prices (
+        period        TEXT,
+        metric        TEXT,
+        price_usd_ton REAL,
+        updated_at    TEXT,
+        PRIMARY KEY (period, metric)
     );
     """)
     conn.commit()
@@ -654,26 +662,78 @@ def load_prediction(path, conn):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PLATTS PARSER — weekly prices → monthly averages
+# Sheet 'Input - Parity HRC'  : China HRC FOB Export Price    → metric='hrc_china'
+# Sheet 'Input - Parity Rebar': Turkey Rebar FOB Export Price → metric='rebar_turkey'
+# Layout: row index 4 = date headers (from col index 2)
+#         row index 6 = price values (US$/ton)
+# ══════════════════════════════════════════════════════════════════════════════
+def load_platts(path, conn):
+    print(f"\n[PLATTS] Loading {path.name} ...")
+    specs = [
+        ('Input - Parity HRC',   'hrc_china',     'China HRC FOB Export Price'),
+        ('Input - Parity Rebar', 'rebar_turkey',   'Turkey Rebar FOB Export Price'),
+    ]
+    out = []
+    for sheet_name, metric, label in specs:
+        try:
+            df = pd.read_excel(path, sheet_name=sheet_name, header=None, engine='openpyxl')
+        except Exception as e:
+            print(f"  [PLATTS] Sheet '{sheet_name}' not found: {e}")
+            continue
+
+        date_row  = df.iloc[4, 2:]
+        price_row = df.iloc[6, 2:]
+
+        monthly = {}
+        for date_val, price_val in zip(date_row, price_row):
+            if date_val is None or (isinstance(date_val, float) and pd.isna(date_val)):
+                continue
+            dt = pd.to_datetime(date_val, errors='coerce')
+            if pd.isnull(dt):
+                continue
+            price = _safe_float(price_val)
+            if price is None or price <= 0:
+                continue
+            period = dt.strftime("%Y-%m")
+            monthly.setdefault(period, []).append(price)
+
+        for period, prices in sorted(monthly.items()):
+            avg = round(sum(prices) / len(prices), 2)
+            out.append((period, metric, avg, NOW))
+        print(f"  [PLATTS] {sheet_name}: {len(monthly)} months ({label})")
+
+    conn.executemany(
+        "INSERT OR REPLACE INTO platts_prices (period,metric,price_usd_ton,updated_at) VALUES (?,?,?,?)",
+        out
+    )
+    conn.commit()
+    print(f"  [PLATTS] Total: {len(out)} rows inserted.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 def main():
     parser = argparse.ArgumentParser(description="Steel & Mining DB Extractor")
-    parser.add_argument('--iabr', default=str(DEFAULT_IABR))
-    parser.add_argument('--exp',  default=str(DEFAULT_EXP))
-    parser.add_argument('--imp',  default=str(DEFAULT_IMP))
-    parser.add_argument('--inda', default=str(DEFAULT_INDA))
-    parser.add_argument('--pred', default=str(DEFAULT_PRED))
+    parser.add_argument('--iabr',   default=str(DEFAULT_IABR))
+    parser.add_argument('--exp',    default=str(DEFAULT_EXP))
+    parser.add_argument('--imp',    default=str(DEFAULT_IMP))
+    parser.add_argument('--inda',   default=str(DEFAULT_INDA))
+    parser.add_argument('--pred',   default=str(DEFAULT_PRED))
+    parser.add_argument('--platts', default=str(DEFAULT_PLATTS))
     args = parser.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
     print(f"Database: {DB_PATH}")
 
-    iabr = Path(args.iabr)
-    exp  = Path(args.exp)
-    imp  = Path(args.imp)
-    inda = Path(args.inda)
-    pred = Path(args.pred)
+    iabr   = Path(args.iabr)
+    exp    = Path(args.exp)
+    imp    = Path(args.imp)
+    inda   = Path(args.inda)
+    pred   = Path(args.pred)
+    platts = Path(args.platts)
 
     if iabr.exists():
         load_iabr(iabr, conn)
@@ -699,6 +759,11 @@ def main():
         load_prediction(pred, conn)
     else:
         print(f"\n[PRED] File not found: {pred}")
+
+    if platts.exists():
+        load_platts(platts, conn)
+    else:
+        print(f"\n[PLATTS] File not found: {platts}")
 
     conn.close()
     print("\nDone.")
