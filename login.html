@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ITAÚ BBA — Acesso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- ── Supabase JS SDK (via CDN) ─────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#27AE60;
+  --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 20px rgba(0,0,0,0.08);
+}
+html,body{
+  font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
+  min-height:100vh;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────────────── */
+.header{
+  background:var(--black);
+  display:flex;align-items:center;padding:0 40px;height:62px;gap:14px;
+}
+.brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
+.brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
+  letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
+.orange-rule{height:2px;background:var(--orange);}
+
+/* ── MAIN ─────────────────────────────────────────────────────────────── */
+.main{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:48px 24px;
+}
+
+/* ── LOGIN CARD ───────────────────────────────────────────────────────── */
+.login-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:14px;box-shadow:var(--shadow);
+  padding:44px 40px 40px;width:100%;max-width:400px;
+  position:relative;overflow:hidden;
+}
+.login-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--orange);border-radius:14px 14px 0 0;
+}
+
+.login-eyebrow{
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--orange);margin-bottom:8px;
+}
+.login-title{
+  font-size:22px;font-weight:700;color:var(--black);
+  letter-spacing:-.03em;margin-bottom:6px;
+}
+.login-sub{
+  font-size:12.5px;color:var(--gray-mid);line-height:1.55;margin-bottom:32px;
+}
+
+/* ── FORM ─────────────────────────────────────────────────────────────── */
+.field{margin-bottom:18px;}
+.field label{
+  display:block;font-size:11px;font-weight:600;color:var(--gray-dark);
+  letter-spacing:.02em;margin-bottom:6px;
+}
+.field input{
+  width:100%;padding:10px 13px;
+  border:1.5px solid var(--border);border-radius:8px;
+  font-size:13.5px;font-family:var(--font);color:var(--black);
+  background:var(--white);outline:none;
+  transition:border-color .18s,box-shadow .18s;
+}
+.field input:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(255,80,0,.08);
+}
+.field input::placeholder{color:#BBBBB8;}
+
+/* ── FORGOT PASSWORD ──────────────────────────────────────────────────── */
+.forgot-wrap{text-align:right;margin-top:-10px;margin-bottom:20px;}
+.forgot-link{
+  font-size:11px;color:var(--gray-mid);text-decoration:none;
+  transition:color .15s;
+}
+.forgot-link:hover{color:var(--orange);}
+
+/* ── SUBMIT BUTTON ────────────────────────────────────────────────────── */
+.btn-submit{
+  width:100%;padding:12px;
+  background:var(--black);color:#fff;
+  font-size:13px;font-weight:600;letter-spacing:.04em;
+  border:none;border-radius:8px;cursor:pointer;
+  font-family:var(--font);
+  position:relative;overflow:hidden;
+  transition:background .2s;
+}
+.btn-submit:hover{background:#2C2C2C;}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;}
+.btn-submit .btn-text{transition:opacity .15s;}
+.btn-submit .btn-spinner{
+  display:none;position:absolute;inset:0;
+  align-items:center;justify-content:center;
+}
+.btn-submit.loading .btn-text{opacity:0;}
+.btn-submit.loading .btn-spinner{display:flex;}
+
+/* spinner */
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner-ring{
+  width:18px;height:18px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
+/* ── ERROR / SUCCESS MESSAGES ─────────────────────────────────────────── */
+.msg{
+  display:none;padding:10px 13px;border-radius:7px;
+  font-size:12px;font-weight:500;margin-bottom:16px;line-height:1.4;
+}
+.msg.error{background:rgba(192,57,43,.08);color:#C0392B;border:1px solid rgba(192,57,43,.2);}
+.msg.info{background:rgba(39,174,96,.08);color:#27AE60;border:1px solid rgba(39,174,96,.2);}
+.msg.visible{display:block;}
+
+/* ── FOOTER ───────────────────────────────────────────────────────────── */
+.footer{
+  background:var(--white);border-top:1px solid var(--border);
+  padding:14px 40px;display:flex;align-items:center;gap:8px;
+}
+.footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
+.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
+
+@media(max-width:480px){
+  .header{padding:0 20px;}
+  .login-card{padding:36px 24px 32px;}
+  .footer{padding:14px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+  </svg>
+  <div>
+    <div class="brand-name">ITAÚ BBA</div>
+    <div class="brand-sub">Research Dashboard</div>
+  </div>
+</div>
+<div class="orange-rule"></div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="login-card">
+    <div class="login-eyebrow">Equity Research · Acesso restrito</div>
+    <div class="login-title">Bem-vindo</div>
+    <div class="login-sub">Insira suas credenciais para acessar o dashboard de análise setorial.</div>
+
+    <div id="msg-error" class="msg error"></div>
+    <div id="msg-info"  class="msg info"></div>
+
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" placeholder="seu@email.com" autocomplete="email" required/>
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
+      </div>
+
+      <div class="forgot-wrap">
+        <a href="#" class="forgot-link" onclick="handleForgot(event)">Esqueceu a senha?</a>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-submit">
+        <span class="btn-text">Entrar</span>
+        <span class="btn-spinner"><div class="spinner-ring"></div></span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span class="footer-text">Itaú BBA · Equity Research</span>
+  <div class="footer-dot"></div>
+  <span class="footer-text">Uso restrito</span>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚠️  CONFIGURE AQUI — substitua os valores abaixo pelas suas credenciais
+//     Supabase → Settings → API
+// ─────────────────────────────────────────────────────────────────────────────
+const SUPA_URL = 'https://COLE-AQUI-A-URL-DO-PROJETO.supabase.co'
+const SUPA_KEY = 'COLE-AQUI-O-ANON-PUBLIC-KEY'
+// ─────────────────────────────────────────────────────────────────────────────
+
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY)
+
+// ── Se o usuário já tem sessão válida, redireciona direto ─────────────────
+;(async () => {
+  const { data: { session } } = await sb.auth.getSession()
+  if (session) {
+    setAuthCookie(session)
+    window.location.replace('/')
+  }
+})()
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function setAuthCookie(session) {
+  const exp = new Date(session.expires_at * 1000).toUTCString()
+  document.cookie = `sb-access-token=${session.access_token}; expires=${exp}; path=/; SameSite=Lax; Secure`
+}
+
+function showError(msg) {
+  const el = document.getElementById('msg-error')
+  el.textContent = msg
+  el.classList.add('visible')
+  document.getElementById('msg-info').classList.remove('visible')
+}
+
+function showInfo(msg) {
+  const el = document.getElementById('msg-info')
+  el.textContent = msg
+  el.classList.add('visible')
+  document.getElementById('msg-error').classList.remove('visible')
+}
+
+function setLoading(on) {
+  const btn = document.getElementById('btn-submit')
+  btn.disabled = on
+  btn.classList.toggle('loading', on)
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────
+async function handleLogin(e) {
+  e.preventDefault()
+  const email    = document.getElementById('email').value.trim()
+  const password = document.getElementById('password').value
+  document.getElementById('msg-error').classList.remove('visible')
+  document.getElementById('msg-info').classList.remove('visible')
+
+  setLoading(true)
+  const { data, error } = await sb.auth.signInWithPassword({ email, password })
+  setLoading(false)
+
+  if (error) {
+    showError(error.message === 'Invalid login credentials'
+      ? 'E-mail ou senha incorretos. Tente novamente.'
+      : error.message)
+    return
+  }
+
+  setAuthCookie(data.session)
+  window.location.replace('/')
+}
+
+// ── Esqueceu a senha ──────────────────────────────────────────────────────
+async function handleForgot(e) {
+  e.preventDefault()
+  const email = document.getElementById('email').value.trim()
+  if (!email) {
+    showError('Digite seu e-mail no campo acima antes de solicitar a redefinição.')
+    return
+  }
+
+  setLoading(true)
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/login.html`
+  })
+  setLoading(false)
+
+  if (error) {
+    showError(error.message)
+  } else {
+    showInfo('E-mail de redefinição enviado. Verifique sua caixa de entrada.')
+  }
+}
+</script>
+</body>
+</html>
