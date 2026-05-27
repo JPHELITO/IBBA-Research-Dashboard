@@ -1,4 +1,9 @@
-import { jwtVerify } from 'jose'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
+
+// Supabase usa ECC (P-256) — verificamos contra as chaves públicas via JWKS
+const JWKS = createRemoteJWKSet(
+  new URL('https://mmhkqkpjrvyxovpihnio.supabase.co/auth/v1/.well-known/jwks.json')
+)
 
 // Protege tudo, exceto a página de login e o favicon
 export const config = {
@@ -14,9 +19,8 @@ export default async function middleware(request) {
   }
 
   try {
-    // Verifica o JWT com o segredo do Supabase (HS256)
-    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET)
-    await jwtVerify(token, secret)
+    // Verifica o JWT contra a chave pública ECC do Supabase
+    await jwtVerify(token, JWKS)
     // Token válido → deixa passar (Vercel serve o arquivo estático)
   } catch {
     // Token inválido ou expirado → limpa o cookie e redireciona
