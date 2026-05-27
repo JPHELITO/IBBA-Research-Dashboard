@@ -7,6 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ⚠️  Substitua pelos seus valores: Supabase → Settings → API
+const SUPA_URL = 'https://COLE-AQUI-A-URL-DO-PROJETO.supabase.co'
+const SUPA_KEY = 'COLE-AQUI-O-ANON-PUBLIC-KEY'
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY)
+function _setAuthCookie(s){const e=new Date(s.expires_at*1000).toUTCString();document.cookie=`sb-access-token=${s.access_token}; expires=${e}; path=/; SameSite=Lax; Secure`}
+</script>
+<!-- ── Chart.js + sql.js ──────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
@@ -59,6 +69,15 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .top-icon-btn:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08);}
 /* Alias kept for specificity */
 .top-home,.top-menu{}
+/* Logout button */
+.logout-btn{
+  flex-shrink:0;font-size:10.5px;font-weight:600;letter-spacing:.03em;
+  color:rgba(255,255,255,.4);background:none;
+  border:1px solid rgba(255,255,255,.12);border-radius:6px;
+  padding:4px 11px;cursor:pointer;font-family:var(--font);
+  transition:color .2s,border-color .2s;
+}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.38);}
 /* Hidden legacy elements */
 .back-btn{display:none;}
 .top-bar-div{display:none;}
@@ -319,6 +338,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
             stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
     </svg>
   </a>
+  <!-- Logout -->
+  <button class="logout-btn" onclick="logout()" title="Sair da conta">Sair</button>
 </div>
 <div class="orange-rule"></div>
 
@@ -741,6 +762,22 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 </div>
 
 <script>
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+// Verifica sessão e mantém o cookie atualizado para o Edge Middleware
+;(async()=>{
+  const{data:{session}}=await sbAuth.auth.getSession()
+  if(!session){window.location.replace('/login.html');return}
+  _setAuthCookie(session)
+  sbAuth.auth.onAuthStateChange((ev,s)=>{
+    if(s?.access_token)_setAuthCookie(s)
+    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
+  })
+  // Inicia o dashboard apenas após confirmar autenticação
+  Chart.register(ChartDataLabels)
+  loadDB()
+})()
+async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let currentSector = 'steel';
 let currentSub    = 'exports';
@@ -1745,8 +1782,7 @@ function mobSelect(sub){
   setSub(sub);
 }
 
-Chart.register(ChartDataLabels);
-loadDB();
+// Chart.register e loadDB() são chamados pelo bloco de auth acima
 </script>
 </body>
 </html>

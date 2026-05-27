@@ -7,6 +7,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ⚠️  Substitua pelos seus valores: Supabase → Settings → API
+const SUPA_URL = 'https://COLE-AQUI-A-URL-DO-PROJETO.supabase.co'
+const SUPA_KEY = 'COLE-AQUI-O-ANON-PUBLIC-KEY'
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY)
+function _setAuthCookie(s){const e=new Date(s.expires_at*1000).toUTCString();document.cookie=`sb-access-token=${s.access_token}; expires=${e}; path=/; SameSite=Lax; Secure`}
+;(async()=>{
+  const{data:{session}}=await sbAuth.auth.getSession()
+  if(!session){window.location.replace('/login.html');return}
+  _setAuthCookie(session)
+  sbAuth.auth.onAuthStateChange((ev,s)=>{
+    if(s?.access_token)_setAuthCookie(s)
+    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
+  })
+})()
+async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -33,6 +52,16 @@ html,body{
 .brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
   letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
 .orange-rule{height:2px;background:var(--orange);}
+
+/* Logout button */
+.logout-btn{
+  flex-shrink:0;font-size:11px;font-weight:600;letter-spacing:.03em;
+  color:rgba(255,255,255,.45);background:none;
+  border:1px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:5px 13px;cursor:pointer;font-family:var(--font);
+  transition:color .2s,border-color .2s;
+}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.4);}
 
 /* Home icon */
 .top-home{flex-shrink:0;display:flex;align-items:center;justify-content:center;
@@ -205,6 +234,7 @@ html,body{
       <div class="brand-sub">Research Dashboard</div>
     </div>
   </a>
+  <button class="logout-btn" onclick="logout()">Sair</button>
   <a href="../" class="top-home" title="Todos os setores">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
