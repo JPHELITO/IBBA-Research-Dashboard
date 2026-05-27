@@ -29,9 +29,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: "Steel and Mining/requirements.txt"
 
       - name: Install dependencies
-        run: pip install pandas openpyxl requests
+        run: pip install -r "Steel and Mining/requirements.txt"
 
       # ── 3. Verificar e atualizar dados ───────────────────────────────────────
       - name: Check & update SECEX data
