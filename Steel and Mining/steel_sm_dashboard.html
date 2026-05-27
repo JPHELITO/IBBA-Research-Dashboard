@@ -431,29 +431,45 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
      EXPORTAÇÃO
 ════════════════════════════════════════════════════════════════ -->
 <div id="sec-exports" class="section active">
-  <!-- SECEX volumes & receitas -->
+  <!-- Volume + YoY -->
   <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Receita de Exportação (US$ mn)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
-      <div class="chart-wrap h240"><canvas id="ex-rev"></canvas></div>
-    </div>
     <div class="chart-card">
       <div class="chart-title">Volume Exportado (kt)</div>
       <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
       <div class="chart-wrap h240"><canvas id="ex-vol"></canvas></div>
     </div>
-  </div>
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Preço Médio Exportação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · receita ÷ volume</div>
-      <div class="chart-wrap h200"><canvas id="ex-price"></canvas></div>
-    </div>
     <div class="chart-card">
       <div class="chart-title">YoY Volume Exportado (%)</div>
       <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
-      <div class="chart-wrap h200"><canvas id="ex-yoy"></canvas></div>
+      <div class="chart-wrap h240"><canvas id="ex-yoy"></canvas></div>
+    </div>
+  </div>
+  <!-- Exportações por Origem -->
+  <div id="ex-origin-block">
+    <div class="sec-block-header">Exportações por Origem <span id="ex-origin-tag"></span></div>
+    <div class="charts-row c2" id="ex-ctry-row-a">
+      <div class="chart-card">
+        <div class="chart-title" id="ex-ctry-a-title">Por País — Total</div>
+        <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
+        <div class="chart-wrap h300"><canvas id="ex-ctry-a"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="ex-port-a-title">Por Porto — Total</div>
+        <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
+        <div class="chart-wrap h300"><canvas id="ex-port-a"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2" id="ex-ctry-row-b" style="display:none">
+      <div class="chart-card">
+        <div class="chart-title" id="ex-ctry-b-title">Por País — HRC</div>
+        <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
+        <div class="chart-wrap h300"><canvas id="ex-ctry-b"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="ex-port-b-title">Por Porto — HRC</div>
+        <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
+        <div class="chart-wrap h300"><canvas id="ex-port-b"></canvas></div>
+      </div>
     </div>
   </div>
   <!-- Breakdown por produto — só aparece em Total -->
@@ -481,28 +497,45 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
   <!-- ── SECEX TAB ── -->
   <div id="im-tab-secex" class="inner-tab-content active">
+    <!-- Volume + YoY -->
     <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">Receita de Importação (US$ mn)</div>
-        <div class="chart-sub">SECEX/MDIC · filtro por produto · Total = composição empilhada</div>
-        <div class="chart-wrap h240"><canvas id="im-rev"></canvas></div>
-      </div>
       <div class="chart-card">
         <div class="chart-title">Volume Importado (kt)</div>
         <div class="chart-sub">SECEX/MDIC · filtro por produto · Total = composição empilhada</div>
         <div class="chart-wrap h240"><canvas id="im-vol"></canvas></div>
       </div>
-    </div>
-    <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">Preço Médio Importação (US$/t)</div>
-        <div class="chart-sub">SECEX/MDIC · Total = destaque + produto individual em cinza</div>
-        <div class="chart-wrap h200"><canvas id="im-price"></canvas></div>
-      </div>
       <div class="chart-card">
         <div class="chart-title">YoY Volume Importado (%)</div>
         <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
-        <div class="chart-wrap h200"><canvas id="im-yoy"></canvas></div>
+        <div class="chart-wrap h240"><canvas id="im-yoy"></canvas></div>
+      </div>
+    </div>
+    <!-- Importações por Origem -->
+    <div id="im-origin-block">
+      <div class="sec-block-header">Importações por Origem <span id="im-origin-tag"></span></div>
+      <div class="charts-row c2" id="im-ctry-row-a">
+        <div class="chart-card">
+          <div class="chart-title" id="im-ctry-a-title">Por País — Total</div>
+          <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
+          <div class="chart-wrap h300"><canvas id="im-ctry-a"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title" id="im-port-a-title">Por Porto — Total</div>
+          <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
+          <div class="chart-wrap h300"><canvas id="im-port-a"></canvas></div>
+        </div>
+      </div>
+      <div class="charts-row c2" id="im-ctry-row-b" style="display:none">
+        <div class="chart-card">
+          <div class="chart-title" id="im-ctry-b-title">Por País — HRC</div>
+          <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
+          <div class="chart-wrap h300"><canvas id="im-ctry-b"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title" id="im-port-b-title">Por Porto — HRC</div>
+          <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
+          <div class="chart-wrap h300"><canvas id="im-port-b"></canvas></div>
+        </div>
       </div>
     </div>
     <!-- Breakdown por produto — só aparece em Total -->
@@ -725,6 +758,8 @@ let SEEXP={}, SEIMP={};
 let INDA=[];
 let PRED={};
 let PRED_EXP={};
+let SCTY={exp:{},imp:{}};   // secex_country: {exp:{flat:[],long:[],...}, imp:{...}}
+let SPRT={exp:{},imp:{}};   // secex_port:    same structure, grouped by UF
 
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -922,6 +957,15 @@ async function loadDB(){
       if(!PRED_EXP[r.product][r.country])PRED_EXP[r.product][r.country]=[];
       PRED_EXP[r.product][r.country].push(r);
     }
+
+    // ── secex_country & secex_port (origem por país e porto) ──────────────────
+    for(const cat of ['flat','long','semi','hrc','rebar']){
+      SCTY.exp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='exp' AND category='${cat}' ORDER BY period,country`)[0]);
+      SCTY.imp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='imp' AND category='${cat}' ORDER BY period,country`)[0]);
+      SPRT.exp[cat]=toObj(db.exec(`SELECT period,uf,volume_ktons FROM secex_port WHERE direction='exp' AND category='${cat}' ORDER BY period,uf`)[0]);
+      SPRT.imp[cat]=toObj(db.exec(`SELECT period,uf,volume_ktons FROM secex_port WHERE direction='imp' AND category='${cat}' ORDER BY period,uf`)[0]);
+    }
+
     db.close();
 
     const lp=PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period||'—';
@@ -943,6 +987,100 @@ async function loadDB(){
   }
 }
 
+// ─── ORIGIN CHARTS (por país / por porto) ────────────────────────────────────
+const ORIGIN_PALETTE=['#FF5000','#1A1A1A','#4A90D9','#27AE60','#8E44AD','#E67E22'];
+
+function mergeOriginRows(catList,dir,gf){
+  // Merge rows from multiple categories, summing volume per (period, group)
+  const src=gf==='country'?SCTY:SPRT;
+  const merged={};
+  catList.forEach(cat=>{
+    (src[dir]?.[cat]||[]).forEach(r=>{
+      const key=`${r.period}|${r[gf]}`;
+      if(!merged[key])merged[key]={period:r.period,[gf]:r[gf],volume_ktons:0};
+      merged[key].volume_ktons+=(r.volume_ktons||0);
+    });
+  });
+  return Object.values(merged);
+}
+
+function mkOriginChart(canvasId,rows,gf){
+  // Annual stacked bar: top 5 groups + Outros
+  const byYG={};
+  rows.forEach(r=>{
+    const yr=r.period?.slice(0,4);
+    if(!yr)return;
+    const grp=r[gf]||'—';
+    if(!byYG[yr])byYG[yr]={};
+    byYG[yr][grp]=(byYG[yr][grp]||0)+(r.volume_ktons||0);
+  });
+  const years=Object.keys(byYG).sort();
+  if(!years.length){destroyChart(canvasId);return;}
+
+  // Rank groups by total volume
+  const totals={};
+  years.forEach(yr=>Object.entries(byYG[yr]).forEach(([g,v])=>{totals[g]=(totals[g]||0)+v;}));
+  const top5=Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+
+  const datasets=top5.map((grp,i)=>({
+    type:'bar',label:grp,stack:'s',borderWidth:0,
+    backgroundColor:ORIGIN_PALETTE[i],
+    data:years.map(yr=>+((byYG[yr]?.[grp])||0).toFixed(1))
+  }));
+
+  const outrosData=years.map(yr=>
+    +Object.entries(byYG[yr]||{}).filter(([g])=>!top5.includes(g))
+      .reduce((s,[,v])=>s+v,0).toFixed(1)
+  );
+  if(outrosData.some(v=>v>0))
+    datasets.push({type:'bar',label:'Outros',stack:'s',borderWidth:0,
+      backgroundColor:'#CCCCCC',data:outrosData});
+
+  mkChart(canvasId,'bar',years,datasets,{
+    ...LEG,
+    scales:{
+      x:{stacked:true,ticks:{color:'#999',font:{size:9},maxRotation:45}},
+      y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:9}}}
+    }
+  });
+}
+
+function renderOriginCharts(dir){
+  const p=dir==='exp'?'ex':'im';
+  const rowA=document.getElementById(`${p}-ctry-row-a`);
+  const rowB=document.getElementById(`${p}-ctry-row-b`);
+
+  let catsA,labelA,catsB='',labelB='',showB=false;
+  if(currentProd==='total'){
+    catsA=['flat','long','semi'];labelA='Total';
+  }else if(currentProd==='flat'){
+    catsA=['flat'];labelA='Planos';catsB=['hrc'];labelB='HRC';showB=true;
+  }else if(currentProd==='long'){
+    catsA=['long'];labelA='Longos';catsB=['rebar'];labelB='Rebar';showB=true;
+  }else{
+    catsA=['semi'];labelA='Semis';
+  }
+
+  document.getElementById(`${p}-origin-tag`).textContent=showB?`${labelA} · ${labelB}`:labelA;
+  document.getElementById(`${p}-ctry-a-title`).textContent=`Por País — ${labelA}`;
+  document.getElementById(`${p}-port-a-title`).textContent=`Por Porto — ${labelA}`;
+
+  mkOriginChart(`${p}-ctry-a`,mergeOriginRows(catsA,dir,'country'),'country');
+  mkOriginChart(`${p}-port-a`,mergeOriginRows(catsA,dir,'uf'),'uf');
+
+  if(showB){
+    rowB.style.display='';
+    document.getElementById(`${p}-ctry-b-title`).textContent=`Por País — ${labelB}`;
+    document.getElementById(`${p}-port-b-title`).textContent=`Por Porto — ${labelB}`;
+    mkOriginChart(`${p}-ctry-b`,mergeOriginRows(catsB,dir,'country'),'country');
+    mkOriginChart(`${p}-port-b`,mergeOriginRows(catsB,dir,'uf'),'uf');
+  }else{
+    rowB.style.display='none';
+    destroyChart(`${p}-ctry-b`);
+    destroyChart(`${p}-port-b`);
+  }
+}
+
 // ─── RENDER: EXPORTAÇÃO ──────────────────────────────────────────────────────
 function renderExports(){
   const cat=secat();
@@ -951,59 +1089,23 @@ function renderExports(){
   const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
   const lbs=arr.map(r=>r.period);
 
-  const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
-
   if(currentProd==='total'){
-    // ── Receita & Volume: stacked area (Planos + Longos + Semis) ──────────────
-    // Build per-product arrays aligned to the total's periods
+    // ── Volume: stacked area (Planos + Longos + Semis) ──────────────────────
     const cats=['flat','long','semi'];
     const labels=['Planos','Longos','Semis'];
     const bgs=[C_OR_A(0.80), C_BK_A(0.72), C_GR_A(0.60)];
     const borders=[C_OR, C_BK, C_GR];
-
-    function stackedAreaData(field){
-      // Reference periods come from total (already windowed)
-      const refLbs = arr.map(r=>r.period);
-      return cats.map((c,i)=>{
-        const cArr=gran?toQ(SEEXP[c]||[],[field]):SEEXP[c]||[];
-        const cMap=Object.fromEntries(cArr.map(r=>[r.period,r[field]]));
-        return{
-          type:'line', label:labels[i],
-          data:refLbs.map(p=>cMap[p]??null),
-          borderColor:borders[i], backgroundColor:bgs[i],
-          fill:true, borderWidth:1.5, pointRadius:0, tension:0.3
-        };
-      });
-    }
-
-    const STACKED_AREA={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
-    mkChart('ex-rev','line',lbs,stackedAreaData('revenue_usd_mn'),STACKED_AREA);
-    mkChart('ex-vol','line',lbs,stackedAreaData('volume_ktons'),STACKED_AREA);
-
-    // ── Preço: total destacado (laranja espesso) + flat/long/semi mais claros ──
-    const priceCats=['flat','long','semi','total'];
-    const priceLbls=['Planos','Longos','Semis','Total'];
-    const priceBorders=[C_OR_A(0.30), C_BK_A(0.30), C_GR_A(0.40), C_OR];
-    const priceWidths=[1, 1, 1, 2.5];
-    const priceDash=[[4,3],[4,3],[4,3],[]];
-    const priceDs=priceCats.map((c,i)=>{
-      const cArr=gran?toQ(SEEXP[c]||[],[],['price_usd_ton']):SEEXP[c]||[];
-      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.price_usd_ton]));
-      return{
-        type:'line', label:priceLbls[i],
-        data:lbs.map(p=>cMap[p]??null),
-        borderColor:priceBorders[i], backgroundColor:'transparent',
-        fill:false, borderWidth:priceWidths[i], pointRadius:0, tension:0.3,
-        ...(priceDash[i].length?{borderDash:priceDash[i]}:{})
-      };
+    const refLbs=arr.map(r=>r.period);
+    const volDs=cats.map((c,i)=>{
+      const cArr=gran?toQ(SEEXP[c]||[],['volume_ktons']):SEEXP[c]||[];
+      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.volume_ktons]));
+      return{type:'line',label:labels[i],data:refLbs.map(p=>cMap[p]??null),
+        borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
     });
-    mkChart('ex-price','line',lbs,priceDs,{...LEG,...PRICE_TICK});
-
+    const STACKED_AREA={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    mkChart('ex-vol','line',lbs,volDs,STACKED_AREA);
   } else {
-    // ── Produto individual: área simples ──────────────────────────────────────
-    mkChart('ex-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_OR,0.12,'Receita (US$ mn)')],YINT);
     mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kt)')],YINT);
-    mkChart('ex-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_OR,'Preço (US$/t)')],PRICE_TICK);
   }
 
   // YoY — sempre baseado no produto selecionado
@@ -1011,6 +1113,9 @@ function renderExports(){
   mkChart('ex-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
+
+  // Origem por país e porto
+  renderOriginCharts('exp');
 
   // Breakdown por produto — só renderiza quando currentProd === 'total'
   const breakBlock=document.getElementById('ex-breakdown-block');
@@ -1068,50 +1173,24 @@ function renderImportsSECEX(){
   const src=SEIMP[cat]||[];
   const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
   const lbs=arr.map(r=>r.period);
-  const PRICE_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
   if(currentProd==='total'){
-    // ── Stacked area: composição Planos + Longos + Semis ─────────────────────
+    // ── Volume: stacked area (Planos + Longos + Semis) ──────────────────────
     const cats=['flat','long','semi'];
     const lbls=['Planos','Longos','Semis'];
     const bgs=[C_OR_A(0.80),C_BK_A(0.72),C_GR_A(0.60)];
     const borders=[C_OR,C_BK,C_GR];
-
-    function stackedData(field){
-      const refLbs=arr.map(r=>r.period);
-      return cats.map((c,i)=>{
-        const cArr=gran?toQ(SEIMP[c]||[],[field]):SEIMP[c]||[];
-        const cMap=Object.fromEntries(cArr.map(r=>[r.period,r[field]]));
-        return{type:'line',label:lbls[i],data:refLbs.map(p=>cMap[p]??null),
-          borderColor:borders[i],backgroundColor:bgs[i],
-          fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
-      });
-    }
-    const STACK_A={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
-    mkChart('im-rev','line',lbs,stackedData('revenue_usd_mn'),STACK_A);
-    mkChart('im-vol','line',lbs,stackedData('volume_ktons'),STACK_A);
-
-    // ── Preços: total preto espesso + produtos tracejados mais claros ─────────
-    const pCats=['flat','long','semi','total'];
-    const pLbls=['Planos','Longos','Semis','Total'];
-    const pBorders=[C_OR_A(0.30),C_BK_A(0.30),C_GR_A(0.40),C_BK];
-    const pWidths=[1,1,1,2.5];
-    const pDash=[[4,3],[4,3],[4,3],[]];
-    const priceDs=pCats.map((c,i)=>{
-      const cArr=gran?toQ(SEIMP[c]||[],[],['price_usd_ton']):SEIMP[c]||[];
-      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.price_usd_ton]));
-      return{type:'line',label:pLbls[i],data:lbs.map(p=>cMap[p]??null),
-        borderColor:pBorders[i],backgroundColor:'transparent',
-        fill:false,borderWidth:pWidths[i],pointRadius:0,tension:0.3,
-        ...(pDash[i].length?{borderDash:pDash[i]}:{})};
+    const refLbs=arr.map(r=>r.period);
+    const volDs=cats.map((c,i)=>{
+      const cArr=gran?toQ(SEIMP[c]||[],['volume_ktons']):SEIMP[c]||[];
+      const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.volume_ktons]));
+      return{type:'line',label:lbls[i],data:refLbs.map(p=>cMap[p]??null),
+        borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
     });
-    mkChart('im-price','line',lbs,priceDs,{...LEG,...PRICE_TICK});
-
+    const STACK_A={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    mkChart('im-vol','line',lbs,volDs,STACK_A);
   }else{
-    // ── Produto individual: área simples ──────────────────────────────────────
-    mkChart('im-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_BK,0.10,'Receita (US$ mn)')],YINT);
     mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kt)')],YINT);
-    mkChart('im-price','line',lbs,[lineDs(arr.map(r=>r.price_usd_ton),C_BK,'Preço (US$/t)')],PRICE_TICK);
   }
 
   // YoY — sempre baseado no produto selecionado
@@ -1119,6 +1198,9 @@ function renderImportsSECEX(){
   mkChart('im-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
+
+  // Origem por país e porto
+  renderOriginCharts('imp');
 
   // Breakdown por produto (só em Total, responde à granularidade)
   const bb=document.getElementById('im-breakdown-block');
