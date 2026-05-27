@@ -173,16 +173,13 @@ html,body{
 
     <form id="login-form" onsubmit="handleLogin(event)">
       <div class="field">
-        <label for="email">E-mail</label>
-        <input id="email" type="email" placeholder="seu@email.com" autocomplete="email" required/>
+        <label for="username">Usuário</label>
+        <input id="username" type="text" placeholder="Ex: IBBA" autocomplete="username"
+               autocapitalize="none" spellcheck="false" required/>
       </div>
       <div class="field">
         <label for="password">Senha</label>
         <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
-      </div>
-
-      <div class="forgot-wrap">
-        <a href="#" class="forgot-link" onclick="handleForgot(event)">Esqueceu a senha?</a>
       </div>
 
       <button type="submit" class="btn-submit" id="btn-submit">
@@ -247,10 +244,14 @@ function setLoading(on) {
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────
+// O usuário digita um nome (ex: "IBBA") que é convertido internamente
+// para email do formato: ibba@ibba.internal
 async function handleLogin(e) {
   e.preventDefault()
-  const email    = document.getElementById('email').value.trim()
+  const username = document.getElementById('username').value.trim().toLowerCase()
   const password = document.getElementById('password').value
+  const email    = `${username}@ibba.internal`
+
   document.getElementById('msg-error').classList.remove('visible')
   document.getElementById('msg-info').classList.remove('visible')
 
@@ -259,36 +260,12 @@ async function handleLogin(e) {
   setLoading(false)
 
   if (error) {
-    showError(error.message === 'Invalid login credentials'
-      ? 'E-mail ou senha incorretos. Tente novamente.'
-      : error.message)
+    showError('Usuário ou senha incorretos. Tente novamente.')
     return
   }
 
   setAuthCookie(data.session)
   window.location.replace('/')
-}
-
-// ── Esqueceu a senha ──────────────────────────────────────────────────────
-async function handleForgot(e) {
-  e.preventDefault()
-  const email = document.getElementById('email').value.trim()
-  if (!email) {
-    showError('Digite seu e-mail no campo acima antes de solicitar a redefinição.')
-    return
-  }
-
-  setLoading(true)
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/login.html`
-  })
-  setLoading(false)
-
-  if (error) {
-    showError(error.message)
-  } else {
-    showInfo('E-mail de redefinição enviado. Verifique sua caixa de entrada.')
-  }
 }
 </script>
 </body>
