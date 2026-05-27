@@ -7,6 +7,16 @@ export const config = {
   matcher: ['/((?!login\\.html|favicon\\.ico).*)']
 }
 
+// Parse cookie do header (request.cookies não existe em sites estáticos — só no Next.js)
+function getCookie(request, name) {
+  const header = request.headers.get('cookie') || ''
+  for (const part of header.split(';')) {
+    const [k, ...v] = part.trim().split('=')
+    if (k.trim() === name) return v.join('=')
+  }
+  return null
+}
+
 // Cache de chaves públicas (reutilizado entre requests no mesmo edge node)
 let _keys = null
 async function getKeys() {
@@ -50,7 +60,7 @@ async function verifyJWT(token) {
 }
 
 export default async function middleware(request) {
-  const token = request.cookies.get('sb-access-token')?.value
+  const token = getCookie(request, 'sb-access-token')
 
   // Sem token → redireciona para login
   if (!token) {
