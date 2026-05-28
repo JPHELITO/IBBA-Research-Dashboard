@@ -52,6 +52,8 @@ html,body{
 .brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
 .brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
   letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
+.brand-team{font-size:8.5px;color:rgba(255,255,255,.28);font-weight:400;
+  letter-spacing:.02em;margin-top:2px;}
 .orange-rule{height:2px;background:var(--orange);}
 
 /* Logout button */
@@ -249,8 +251,8 @@ html,body{
       <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
     </svg>
     <div>
-      <div class="brand-name">ITAÚ BBA</div>
-      <div class="brand-sub">Research Dashboard</div>
+      <div class="brand-name">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="brand-team">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
     </div>
   </a>
   <button class="logout-btn" onclick="logout()">Sign out</button>
@@ -308,7 +310,47 @@ html,body{
 <div class="cards-wrapper">
   <div class="cards">
 
-    <!-- Exportação -->
+    <!-- Prices -->
+    <a class="card" href="steel_sm_dashboard.html?s=prices">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M3 7.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M3 14.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="7" cy="7.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
+          <circle cx="15" cy="14.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
+          <path d="M7 9.7L15 12.3" stroke="#FF5000" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2.5 2"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">SECEX · Import Premium</div>
+      <div class="card-title">Prices</div>
+      <div class="card-desc">Comparison between import price and domestic reference (SECEX export proxy). Historical premium and YoY changes.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Domestic Market -->
+    <a class="card" href="steel_sm_dashboard.html?s=domestic">
+      <div class="card-accent orange"></div>
+      <div class="card-icon live">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+          <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <div class="card-eyebrow">IABr · INDA</div>
+      <div class="card-title">Domestic Market</div>
+      <div class="card-desc">Crude steel production, apparent consumption and import penetration. INDA distributors: inventory, purchases and sales.</div>
+      <div class="card-footer">
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
+      </div>
+    </a>
+
+    <!-- Exports -->
     <a class="card" href="steel_sm_dashboard.html?s=exports">
       <div class="card-accent orange"></div>
       <div class="card-icon live">
@@ -338,46 +380,6 @@ html,body{
       <div class="card-eyebrow">SECEX · Predictive Model</div>
       <div class="card-title">Imports</div>
       <div class="card-desc">Import flows with predictive model based on leading export data from Korea and China.</div>
-      <div class="card-footer">
-        <span class="card-status live">● Live</span>
-        <span class="card-cta">Open <span>→</span></span>
-      </div>
-    </a>
-
-    <!-- Domestic Market -->
-    <a class="card" href="steel_sm_dashboard.html?s=domestic">
-      <div class="card-accent orange"></div>
-      <div class="card-icon live">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-          <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-          <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-        </svg>
-      </div>
-      <div class="card-eyebrow">IABr · INDA</div>
-      <div class="card-title">Domestic Market</div>
-      <div class="card-desc">Crude steel production, apparent consumption and import penetration. INDA distributors: inventory, purchases and sales.</div>
-      <div class="card-footer">
-        <span class="card-status live">● Live</span>
-        <span class="card-cta">Open <span>→</span></span>
-      </div>
-    </a>
-
-    <!-- Prices -->
-    <a class="card" href="steel_sm_dashboard.html?s=prices">
-      <div class="card-accent orange"></div>
-      <div class="card-icon live">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M3 7.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M3 14.5H19" stroke="#FF5000" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="7" cy="7.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
-          <circle cx="15" cy="14.5" r="2.2" fill="rgba(255,80,0,.15)" stroke="#FF5000" stroke-width="1.4"/>
-          <path d="M7 9.7L15 12.3" stroke="#FF5000" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2.5 2"/>
-        </svg>
-      </div>
-      <div class="card-eyebrow">SECEX · Import Premium</div>
-      <div class="card-title">Prices</div>
-      <div class="card-desc">Comparison between import price and domestic reference (SECEX export proxy). Historical premium and YoY changes.</div>
       <div class="card-footer">
         <span class="card-status live">● Live</span>
         <span class="card-cta">Open <span>→</span></span>

@@ -1958,7 +1958,7 @@ function _renderSeasonality(id,allData,field){
   mkChart(id,'line',xLabels,ds,{
     plugins:{legend:{display:true,position:'right',
       labels:{font:{size:10},boxWidth:10,padding:6}}},
-    scales:{y:{ticks:{callback:v=>v.toFixed(0)}}}
+    scales:{y:{ticks:{callback:fmtY}}}
   });
 }
 
@@ -1977,7 +1977,7 @@ function renderPrices(){
                :currentGran==='annual'   ?toA(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
                :impSrc;
 
-  const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
+  const priceTick={scales:{y:{ticks:{callback:fmtY}}}};
 
   // Align both series by period
   const expPMap=Object.fromEntries(expArr.map(r=>[r.period,r.price_usd_ton]));
@@ -2007,7 +2007,7 @@ function renderPrices(){
      label:`Hist. avg. (${avgPrem!=null?avgPrem.toFixed(0)+' US$/t':'—'})`,
      borderColor:'#555',backgroundColor:'transparent',borderWidth:1.5,
      borderDash:[5,3],pointRadius:0,tension:0},
-  ],{...LEG,scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
+  ],{...LEG,scales:{y:{ticks:{callback:fmtY}}}});
 
   // 3. Preços individuais
   mkChart('px-exp','line',expArr.map(r=>r.period),
