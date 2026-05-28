@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111111"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>ITAÚ BBA — S&amp;M Research Dashboard</title>
+<title>ITAÚ BBA — Steel Research Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -497,16 +497,11 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     </div>
   </div>
   <!-- Mobile: back to section picker -->
-  <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Seções</button>
-  <!-- Sector selector (desktop only) -->
-  <div class="top-sector-nav">
-    <button class="pnav-btn active" id="pnav-steel" onclick="setSector('steel')">Steel <span class="pnav-tag live">live</span></button>
-    <button class="pnav-btn" id="pnav-mining" onclick="setSector('mining')">Mining <span class="pnav-tag">coming soon</span></button>
-  </div>
+  <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Sections</button>
   <!-- Latest update -->
   <div class="top-latest">Last: <strong id="latest-label">—</strong></div>
   <!-- Menu (☰): back to S&M section picker -->
-  <a href="./" class="top-icon-btn top-menu" title="Topics — Steel &amp; Mining">
+  <a href="./" class="top-icon-btn top-menu" title="Topics — Steel">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <line x1="2" y1="4.5" x2="13" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <line x1="2" y1="7.5" x2="13" y2="7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -595,8 +590,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="mob-picker-inner">
     <a href="../" class="mob-picker-back-root">← All sectors</a>
     <div class="mob-picker-heading">
-      <div class="mob-picker-eyebrow">Steel &amp; Mining</div>
-      <div class="mob-picker-title">Steel &amp; Mining</div>
+      <div class="mob-picker-eyebrow">Steel</div>
+      <div class="mob-picker-title">Steel</div>
     </div>
     <div class="mob-sections-list">
       <button class="mob-sec-item" onclick="mobSelect('exports')">
@@ -899,16 +894,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     MINING (placeholder)
-════════════════════════════════════════════════════════════════ -->
-<div id="sec-mining" class="section">
-  <div class="coming-soon">
-    <h2>⛏</h2>
-    <p style="font-size:16px;font-weight:700;color:#bbb;">Mining — Coming Soon</p>
-    <p>This section will be developed in a future iteration.</p>
-  </div>
-</div>
 
 <div class="note-bar">
   Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
@@ -935,7 +920,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let currentSector = 'steel';
 let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
@@ -2036,7 +2020,6 @@ function renderPrices(){
 
 // ─── RENDER DISPATCH ─────────────────────────────────────────────────────────
 function render(){
-  if(currentSector==='mining')return; // placeholder
   if(currentSub==='exports')  renderExports();
   if(currentSub==='imports')  renderImports();
   if(currentSub==='domestic') renderDomestic();
@@ -2044,18 +2027,6 @@ function render(){
 }
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────────
-function setSector(s){
-  currentSector=s;
-  document.querySelectorAll('.pnav-btn').forEach(b=>b.classList.toggle('active',b.id===`pnav-${s}`));
-  // Show correct section
-  if(s==='mining'){
-    document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
-    document.getElementById('sec-mining').classList.add('active');
-    document.getElementById('pred-controls').style.display='none';
-  } else {
-    setSub(currentSub);
-  }
-}
 
 // Hides the global filter-bar when on the prediction tab (it has its own controls)
 function updateGlobalFilters(){
@@ -2068,7 +2039,7 @@ function setSub(s){
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
   const secId=s==='exports'?'sec-exports':s==='imports'?'sec-imports':
-               s==='domestic'?'sec-domestic':s==='prices'?'sec-prices':'sec-mining';
+               s==='domestic'?'sec-domestic':'sec-prices';
   document.getElementById(secId)?.classList.add('active');
   // Prediction controls bar: só aparece em imports + aba prediction
   document.getElementById('pred-controls').style.display=
