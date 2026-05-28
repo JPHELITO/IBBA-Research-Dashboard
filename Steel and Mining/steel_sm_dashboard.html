@@ -46,7 +46,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .brand-icon{flex-shrink:0;display:block;}
 .top-title{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;}
 .top-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
-  letter-spacing:.06em;margin-top:2px;text-transform:uppercase;}
+  letter-spacing:.03em;margin-top:2px;}
 /* Sector nav (Steel / Mining) — inside top-bar */
 .top-sector-nav{display:flex;gap:4px;}
 .pnav-btn{padding:5px 16px;font-size:10px;font-weight:600;letter-spacing:.6px;
@@ -492,8 +492,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
     </svg>
     <div>
-      <div class="top-title">ITAÚ BBA</div>
-      <div class="top-sub">S&amp;M Research Dashboard</div>
+      <div class="top-title">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="top-sub">D. Sasson · E. Pinto Souza · M. Furlan · J.P. Helito</div>
     </div>
   </div>
   <!-- Mobile: back to section picker -->
@@ -530,10 +530,10 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
-  <button class="snav-btn active" data-sub="exports"  onclick="setSub('exports')">Exports</button>
-  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
-  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
   <button class="snav-btn"        data-sub="prices"   onclick="setSub('prices')">Prices</button>
+  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
+  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
+  <button class="snav-btn active" data-sub="exports"  onclick="setSub('exports')">Exports</button>
   <button class="snav-btn soon"   data-sub="global"   onclick="">Global</button>
 </div>
 
@@ -556,11 +556,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="filter-sep"></div>
   <span class="filter-label">Window:</span>
   <div class="filter-btns">
+    <button class="fbtn active" data-win="ytd" onclick="setWin('ytd')">YTD</button>
     <button class="fbtn" data-win="3m"  onclick="setWin('3m')">3M</button>
     <button class="fbtn" data-win="6m"  onclick="setWin('6m')">6M</button>
     <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1Y</button>
     <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3Y</button>
-    <button class="fbtn active" data-win="5y"  onclick="setWin('5y')">5Y</button>
+    <button class="fbtn" data-win="5y"  onclick="setWin('5y')">5Y</button>
     <button class="fbtn" data-win="all" onclick="setWin('all')">All</button>
   </div>
   <div class="custom-range" title="Select a custom date range">
@@ -644,7 +645,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Volume + YoY -->
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Export Volume (kt)</div>
+      <div class="chart-title">Export Volume (kton)</div>
       <div class="chart-sub">SECEX/MDIC · filter by product</div>
       <div class="chart-wrap h240"><canvas id="ex-vol"></canvas></div>
     </div>
@@ -671,7 +672,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
             </div>
           </div>
         </div>
-        <div class="chart-sub" id="ex-origin-sub">kt · SECEX/MDIC</div>
+        <div class="chart-sub" id="ex-origin-sub">kton · SECEX/MDIC</div>
         <div class="chart-wrap h280"><canvas id="ex-ctry-a"></canvas></div>
       </div>
     </div>
@@ -693,7 +694,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <!-- Volume + YoY -->
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">Import Volume (kt)</div>
+        <div class="chart-title">Import Volume (kton)</div>
         <div class="chart-sub">SECEX/MDIC · filter by product · Total = stacked composition</div>
         <div class="chart-wrap h240"><canvas id="im-vol"></canvas></div>
       </div>
@@ -720,7 +721,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
               </div>
             </div>
           </div>
-          <div class="chart-sub" id="im-origin-sub">kt · SECEX/MDIC</div>
+          <div class="chart-sub" id="im-origin-sub">kton · SECEX/MDIC</div>
           <div class="chart-wrap h280"><canvas id="im-ctry-a"></canvas></div>
         </div>
       </div>
@@ -791,24 +792,24 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <div class="sec-block-header">INDA — Flat Steel Distributors <span>Flat only</span></div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">Distributor Inventory (kt · right axis = months)</div>
-        <div class="chart-sub">INDA · bars = inventory kt (left) · lines = months of inventory + historical avg (right)</div>
+        <div class="chart-title">Distributor Inventory (kton · right axis = months)</div>
+        <div class="chart-sub">INDA · bars = inventory kton (left) · lines = months of inventory + historical avg (right)</div>
         <div class="chart-wrap h240"><canvas id="di-stock"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">Distributor Purchases vs. Sales (kt)</div>
+        <div class="chart-title">Distributor Purchases vs. Sales (kton)</div>
         <div class="chart-sub">INDA · monthly grouped bars</div>
         <div class="chart-wrap h240"><canvas id="di-purcsales"></canvas></div>
       </div>
     </div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">LTM Sales — Distributors (kt)</div>
+        <div class="chart-title">LTM Sales — Distributors (kton)</div>
         <div class="chart-sub">INDA · trailing 12-month cumulative</div>
         <div class="chart-wrap h200"><canvas id="di-ltm"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">3M Avg Sales — Distributors (kt)</div>
+        <div class="chart-title">3M Avg Sales — Distributors (kton)</div>
         <div class="chart-sub">INDA · 3-month moving average</div>
         <div class="chart-wrap h200"><canvas id="di-ma3"></canvas></div>
       </div>
@@ -819,31 +820,31 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="sec-block-header" id="iabr-block-header">Domestic Market — IABr</div>
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">IABr Domestic Sales (kt)</div>
+      <div class="chart-title">IABr Domestic Sales (kton)</div>
       <div class="chart-sub">IABr · Flat + Long · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-sales"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">IABr Crude Steel Production (kt)</div>
+      <div class="chart-title">IABr Crude Steel Production (kton)</div>
       <div class="chart-sub">IABr · total</div>
       <div class="chart-wrap h240"><canvas id="dom-crude"></canvas></div>
     </div>
   </div>
   <div class="charts-row c1">
     <div class="chart-card">
-      <div class="chart-title">IABr Apparent Consumption (kt) + Import Penetration (%)</div>
+      <div class="chart-title">IABr Apparent Consumption (kton) + Import Penetration (%)</div>
       <div class="chart-sub">IABr · area = consumption (left) · line = imports ÷ apparent consumption (right) · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-cons"></canvas></div>
     </div>
   </div>
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Seasonality — Domestic Sales (kt/month)</div>
+      <div class="chart-title">Seasonality — Domestic Sales (kton/month)</div>
       <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
       <div class="chart-wrap h260"><canvas id="dom-seasdom"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Seasonality — Apparent Consumption (kt/month)</div>
+      <div class="chart-title">Seasonality — Apparent Consumption (kton/month)</div>
       <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
       <div class="chart-wrap h260"><canvas id="dom-seascons"></canvas></div>
     </div>
@@ -939,7 +940,7 @@ let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
 let currentGran   = 'monthly';      // 'monthly' | 'quarterly' | 'annual'
-let currentWin    = '5y';           // 'all' | '5y' | '3y' | '1y' | '6m' | '3m' | 'custom'
+let currentWin    = 'ytd';          // 'all' | 'ytd' | '5y' | '3y' | '1y' | '6m' | '3m' | 'custom'
 let customRange   = {from:null, to:null};  // 'YYYY-MM' strings quando currentWin==='custom'
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
 let predDelay     = 3;
@@ -954,7 +955,7 @@ let PRED_EXP={};
 let SCTY={exp:{},imp:{}};   // secex_country: todas as categorias por direção
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
+const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
 let charts={};
 
 // ─── COLORS ──────────────────────────────────────────────────────────────────
@@ -987,6 +988,7 @@ function toObj(stmt){
 }
 function fmt(v,d=1){return v==null?'—':v.toFixed(d);}
 function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('pt-BR');}
+function fmtY(v){return v==null?'':Math.round(v).toLocaleString('en-US');}  // Y-axis: thousands separator
 function pctDelta(v){
   if(v==null)return'';
   const cls=v>=0?'pos':'neg',s=v>=0?'+':'';
@@ -1029,6 +1031,10 @@ function applyWin(arr,key='period'){
       if(to&&p>to)return false;
       return true;
     });
+  }
+  if(currentWin==='ytd'){
+    const cut=`${new Date().getFullYear()}-01`;
+    return arr.filter(r=>r[key]>=cut);
   }
   const mo=WIN_MO[currentWin];
   if(!mo)return arr;
@@ -1098,7 +1104,7 @@ function winLabel(){
     const t=to?to.slice(0,4)+'/'+to.slice(5,7):'…';
     return`${f}–${t}`;
   }
-  return{'all':'All','5y':'5Y','3y':'3Y','1y':'1Y','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+  return{'all':'All','ytd':'YTD','5y':'5Y','3y':'3Y','1y':'1Y','6m':'6M','3m':'3M'}[currentWin]||currentWin;
 }
 function rolling12(arr,f){
   return arr.map((_,i)=>{
@@ -1192,8 +1198,8 @@ function mkChart(id,type,labels,datasets,opts={}){
 // LEG via getter para responder ao viewport
 const LEG={get plugins(){return{legend:{display:true,position:'top',
   labels:{font:{size:IS_MOBILE()?9:10},boxWidth:IS_MOBILE()?8:10,padding:IS_MOBILE()?5:8}}};}};
-const YINT={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
-const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(0)}}}};
+const YINT={scales:{y:{ticks:{callback:fmtY}}}};
+const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}};
 
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
 async function loadDB(){
@@ -1326,7 +1332,7 @@ function getPillDefs(){
   return[
     {label:'Total',cats:['semi']},
     {label:'Ingot/Billet',cats:['ingot_billet']},
-    {label:'Placa',cats:['placa']},
+    {label:'Slab',cats:['placa']},
   ];
 }
 
@@ -1441,14 +1447,14 @@ function renderCountryChart(dir){
       x:{stacked:true,
          ticks:{color:'#999',font:{size:fSize},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},
          grid:{display:false}},
-      y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:fSize}}}
+      y:{stacked:true,ticks:{callback:fmtY,color:'#999',font:{size:fSize}}}
     }
   });
 
   // Tag + subtitle
   document.getElementById(`${p}-origin-tag`).textContent=activePill.label;
   const gLbl=currentGran==='annual'?'annual':currentGran==='quarterly'?'quarterly':'monthly';
-  document.getElementById(`${p}-origin-sub`).textContent=`${gLbl} · kt · SECEX/MDIC`;
+  document.getElementById(`${p}-origin-sub`).textContent=`${gLbl} · kton · SECEX/MDIC`;
 }
 
 // Renderiza pills de produto para uma direção
@@ -1577,10 +1583,10 @@ function renderExports(){
       return{type:'line',label:labels[i],data:refLbs.map(p=>cMap[p]??null),
         borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
     });
-    const STACKED_AREA={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    const STACKED_AREA={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:fmtY}}}};
     mkChart('ex-vol','line',lbs,volDs,STACKED_AREA);
   } else {
-    mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kt)')],YINT);
+    mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kton)')],YINT);
   }
 
   // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
@@ -1621,10 +1627,10 @@ function renderImportsSECEX(){
       return{type:'line',label:lbls[i],data:refLbs.map(p=>cMap[p]??null),
         borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
     });
-    const STACK_A={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)}}}};
+    const STACK_A={...LEG,scales:{y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:fmtY}}}};
     mkChart('im-vol','line',lbs,volDs,STACK_A);
   }else{
-    mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kt)')],YINT);
+    mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kton)')],YINT);
   }
 
   // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
@@ -1720,7 +1726,7 @@ function renderPrediction(){
     ...LEG,
     scales:{
       x:{ticks:{color:'#999',font:{size:9},maxRotation:45,autoSkip:false,callback:predTickCb}},
-      y:{ticks:{color:'#999',font:{size:9},callback:v=>v!=null?v.toFixed(0):''}}
+      y:{ticks:{color:'#999',font:{size:9},callback:fmtY}}
     }
   };
   function ds(series,color,label,width){
@@ -1730,43 +1736,43 @@ function renderPrediction(){
   // ── 1. Coreia 3M ─────────────────────────────────────────────────────────
   const k3=buildOne(koreaExp,koreaSec,3);
   mkChart('pd-3m-korea','line',k3.labels,[
-    ds(k3.secexSeries,C_OR,`SECEX Korea (3M, kt)`,2.5),
-    ds(k3.expSeries,  C_BK,`Korea Export +${predDelay}M (3M, kt)`,1.8),
+    ds(k3.secexSeries,C_OR,`SECEX Korea (3M, kton)`,2.5),
+    ds(k3.expSeries,  C_BK,`Korea Export +${predDelay}M (3M, kton)`,1.8),
   ],predOpts);
 
   // ── 2. Coreia 12M ────────────────────────────────────────────────────────
   const k12=buildOne(koreaExp,koreaSec,12);
   mkChart('pd-12m-korea','line',k12.labels,[
-    ds(k12.secexSeries,C_OR,`SECEX Korea (12M, kt)`,2.5),
-    ds(k12.expSeries,  C_BK,`Korea Export +${predDelay}M (12M, kt)`,1.8),
+    ds(k12.secexSeries,C_OR,`SECEX Korea (12M, kton)`,2.5),
+    ds(k12.expSeries,  C_BK,`Korea Export +${predDelay}M (12M, kton)`,1.8),
   ],predOpts);
 
   // ── 3. China 3M ──────────────────────────────────────────────────────────
   const c3=buildOne(chinaExp,chinaSec,3);
   mkChart('pd-3m-china','line',c3.labels,[
-    ds(c3.secexSeries,C_OR,`SECEX China (3M, kt)`,2.5),
-    ds(c3.expSeries,  C_BK,`China Export +${predDelay}M (3M, kt)`,1.8),
+    ds(c3.secexSeries,C_OR,`SECEX China (3M, kton)`,2.5),
+    ds(c3.expSeries,  C_BK,`China Export +${predDelay}M (3M, kton)`,1.8),
   ],predOpts);
 
   // ── 4. China 12M ─────────────────────────────────────────────────────────
   const c12=buildOne(chinaExp,chinaSec,12);
   mkChart('pd-12m-china','line',c12.labels,[
-    ds(c12.secexSeries,C_OR,`SECEX China (12M, kt)`,2.5),
-    ds(c12.expSeries,  C_BK,`China Export +${predDelay}M (12M, kt)`,1.8),
+    ds(c12.secexSeries,C_OR,`SECEX China (12M, kton)`,2.5),
+    ds(c12.expSeries,  C_BK,`China Export +${predDelay}M (12M, kton)`,1.8),
   ],predOpts);
 
   // ── 5. Coreia + China 3M ─────────────────────────────────────────────────
   const comb3=buildCombined(3);
   mkChart('pd-3m-combined','line',comb3.labels,[
-    ds(comb3.secexSeries,C_OR,`SECEX Korea+China (3M, kt)`,2.5),
-    ds(comb3.expSeries,  C_BK,`Korea+China Export +${predDelay}M (3M, kt)`,1.8),
+    ds(comb3.secexSeries,C_OR,`SECEX Korea+China (3M, kton)`,2.5),
+    ds(comb3.expSeries,  C_BK,`Korea+China Export +${predDelay}M (3M, kton)`,1.8),
   ],predOpts);
 
   // ── 6. Coreia + China 12M ────────────────────────────────────────────────
   const comb12=buildCombined(12);
   mkChart('pd-12m-combined','line',comb12.labels,[
-    ds(comb12.secexSeries,C_OR,`SECEX Korea+China (12M, kt)`,2.5),
-    ds(comb12.expSeries,  C_BK,`Korea+China Export +${predDelay}M (12M, kt)`,1.8),
+    ds(comb12.secexSeries,C_OR,`SECEX Korea+China (12M, kton)`,2.5),
+    ds(comb12.expSeries,  C_BK,`Korea+China Export +${predDelay}M (12M, kton)`,1.8),
   ],predOpts);
 }
 
@@ -1791,7 +1797,7 @@ function renderDomestic(){
       charts['di-stock']=new Chart(ctx,{
         type:'bar',
         data:{labels:lbs,datasets:[
-          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Inventory (kt)'),yAxisID:'y',order:3},
+          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Inventory (kton)'),yAxisID:'y',order:3},
           {...lineDs(indaArr.map(r=>r.inv_months),C_OR,'Months of Inventory'),yAxisID:'y1',type:'line',order:1},
           {...lineDs(lbs.map(()=>histAvgM),C_BK,
             `${indaWinLbl} avg (${histAvgM!=null?histAvgM.toFixed(1):'—'} months)`,[5,3]),
@@ -1801,8 +1807,8 @@ function renderDomestic(){
           ...LEG,
           scales:{
             x:{ticks:{color:'#999',font:{size:9},maxTicksLimit:14,maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'}},
-            y:{position:'left',ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)},
-               title:{display:true,text:'kt',color:'#999',font:{size:9}}},
+            y:{position:'left',ticks:{color:'#999',font:{size:9},callback:fmtY},
+               title:{display:true,text:'kton',color:'#999',font:{size:9}}},
             y1:{position:'right',grid:{drawOnChartArea:false},
                 ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)},
                 title:{display:true,text:'months',color:C_OR,font:{size:9}}}
@@ -1819,12 +1825,12 @@ function renderDomestic(){
 
     // Vendas LTM — quarterly=último valor do trimestre (já é acumulado 12M)
     mkChart('di-ltm','line',lbs,
-      [lineDs(indaArr.map(r=>r.sales_ltm),C_OR,'LTM Sales (kt)')],
+      [lineDs(indaArr.map(r=>r.sales_ltm),C_OR,'LTM Sales (kton)')],
       {...LEG,...YINT});
 
     // Vendas 3M MA — quarterly=último valor do trimestre (já é MM3M)
     mkChart('di-ma3','line',lbs,
-      [lineDs(indaArr.map(r=>r.sales_ma3),C_BK,'3M MA Sales (kt)')],
+      [lineDs(indaArr.map(r=>r.sales_ma3),C_BK,'3M MA Sales (kton)')],
       {...LEG,...YINT});
   }
 
@@ -1843,14 +1849,14 @@ function renderDomestic(){
   } else {
     const domArr=tx(DOM.filter(r=>r[df]!=null),[df]);
     const lbs=domArr.map(r=>r.period);
-    const label=currentProd==='flat'?'Flat (kt)':'Long (kt)';
+    const label=currentProd==='flat'?'Flat (kton)':'Long (kton)';
     mkChart('dom-sales','line',lbs,[areaDs(domArr.map(r=>r[df]),C_OR,0.12,label)],YINT);
   }
 
   // Produção Aço Bruto (always total crude_steel)
   const prodArr=tx(PROD.filter(r=>r.crude_steel!=null),['crude_steel']);
   mkChart('dom-crude','line',prodArr.map(r=>r.period),
-    [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Production (kt)')],YINT);
+    [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Production (kton)')],YINT);
 
   // Consumo Aparente + Penetração (dual Y-axis)
   const consArr=tx(CONS.filter(r=>r[cf]!=null),[cf]);
@@ -1877,8 +1883,8 @@ function renderDomestic(){
   destroyChart('dom-cons');
   const ctx2=document.getElementById('dom-cons')?.getContext('2d');
   if(ctx2){
-    const consLabel=currentProd==='flat'?'Apparent Cons. Flat (kt)':
-                    currentProd==='long'?'Apparent Cons. Long (kt)':'Apparent Cons. Total (kt)';
+    const consLabel=currentProd==='flat'?'Apparent Cons. Flat (kton)':
+                    currentProd==='long'?'Apparent Cons. Long (kton)':'Apparent Cons. Total (kton)';
     charts['dom-cons']=new Chart(ctx2,{
       type:'line',
       data:{labels:consLbs,datasets:[
@@ -1895,11 +1901,11 @@ function renderDomestic(){
         ...LEG,
         scales:{
           x:{ticks:{color:'#999',font:{size:9},maxTicksLimit:14,maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'}},
-          y:{position:'left',ticks:{color:'#999',font:{size:9},callback:v=>v.toFixed(0)},
-             title:{display:true,text:'kt',color:'#999',font:{size:9}}},
+          y:{position:'left',ticks:{color:'#999',font:{size:9},callback:fmtY},
+             title:{display:true,text:'kton',color:'#999',font:{size:9}}},
           y1:{position:'right',grid:{drawOnChartArea:false},
               ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)+'%'},
-              title:{display:true,text:'penetração %',color:C_OR,font:{size:9}}}
+              title:{display:true,text:'import penetration %',color:C_OR,font:{size:9}}}
         }
       })
     });
