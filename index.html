@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — Research Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -159,6 +160,31 @@ html,body{
 }
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
+
+/* ── MOBILE ─────────────────────────────────────────────────────────────── */
+@media (max-width:768px){
+  .header{padding:0 16px;height:54px;gap:10px;}
+  .brand-sub{display:none;}
+  .brand-name{font-size:12.5px;}
+  .logout-btn{padding:6px 11px;font-size:10.5px;}
+  .hero{padding:38px 18px 32px;}
+  .hero-title{font-size:26px;line-height:1.1;}
+  .hero-sub{font-size:13px;}
+  .section-label-inner{padding:0 18px;}
+  .section-label{padding:0 18px 14px;}
+  .cards-wrapper{padding:0 18px 40px;}
+  .cards{grid-template-columns:1fr;gap:12px;}
+  .card{padding:22px 20px 18px;}
+  .card-title{font-size:16px;}
+  .card-desc{font-size:11.5px;}
+  .footer{padding:14px 18px;}
+}
+@media (max-width:420px){
+  .header{padding:0 12px;}
+  .hero{padding:28px 14px 26px;}
+  .hero-title{font-size:23px;}
+  .cards-wrapper{padding:0 14px 32px;}
+}
 </style>
 </head>
 <body>
