@@ -493,7 +493,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     </svg>
     <div>
       <div class="top-title">ITAÚ BBA S&amp;M | P&amp;P</div>
-      <div class="top-sub">D. Sasson · E. Pinto Souza · M. Furlan · J.P. Helito</div>
+      <div class="top-sub">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
     </div>
   </div>
   <!-- Mobile: back to section picker -->
@@ -525,10 +525,10 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
-  <button class="snav-btn"        data-sub="prices"   onclick="setSub('prices')">Prices</button>
+  <button class="snav-btn active" data-sub="prices"   onclick="setSub('prices')">Prices</button>
   <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
-  <button class="snav-btn active" data-sub="exports"  onclick="setSub('exports')">Exports</button>
+  <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
   <button class="snav-btn soon"   data-sub="global"   onclick="">Global</button>
 </div>
 
@@ -920,7 +920,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let currentSub    = 'exports';
+let currentSub    = 'prices';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
 let currentGran   = 'monthly';      // 'monthly' | 'quarterly' | 'annual'
@@ -983,22 +983,19 @@ function deltaOf(arr,f,i){
   const c=arr[i][f],p=arr[i-1][f];
   return(c==null||p==null||p===0)?null:(c-p)/Math.abs(p);
 }
-function yoyOf(arr,f,i){
+// lookupArr: array where prior period is searched — defaults to arr itself.
+// Pass the full unwindowed array to get YoY even when the display window is short.
+function yoyOf(arr,f,i,lookupArr=arr){
   const per=arr[i]?.period;if(!per)return null;
   let prev=null;
-  // Anual: 'YYYY' → procura 'YYYY-1'
   if(/^\d{4}$/.test(per)){
-    prev=arr.find(r=>r.period===String(parseInt(per)-1));
-  }
-  // Trimestral: '1T24' → procura '1T23'
-  else if(/^[1-4]T\d{2}$/.test(per)){
+    prev=lookupArr.find(r=>r.period===String(parseInt(per)-1));
+  } else if(/^[1-4]T\d{2}$/.test(per)){
     const q=per[0],yy=parseInt(per.slice(2));
-    prev=arr.find(r=>r.period===`${q}T${String(yy-1).padStart(2,'0')}`);
-  }
-  // Mensal: 'YYYY-MM' → procura 'YYYY-1-MM'
-  else{
+    prev=lookupArr.find(r=>r.period===`${q}T${String(yy-1).padStart(2,'0')}`);
+  } else {
     const yr=parseInt(per.slice(0,4))-1,mo=per.slice(5,7);
-    prev=arr.find(r=>r.period===`${yr}-${mo}`);
+    prev=lookupArr.find(r=>r.period===`${yr}-${mo}`);
   }
   const c=arr[i][f],p=prev?.[f];
   return(c==null||p==null||p===0)?null:(c-p)/Math.abs(p);
@@ -1573,11 +1570,14 @@ function renderExports(){
     mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kton)')],YINT);
   }
 
-  // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
+  // YoY — monthly uses pre-computed value; quarterly/annual recomputes from full (unwindowed) source
+  const srcFullEx = currentGran==='quarterly'?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume'])
+                  : currentGran==='annual'   ?toA(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume'])
+                  : src;
   const yoyV=arr.map((r,i)=>
     currentGran==='monthly'
-      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i))
-      :yoyOf(arr,'volume_ktons',i));
+      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i,srcFullEx))
+      :yoyOf(arr,'volume_ktons',i,srcFullEx));
   mkChart('ex-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
@@ -1617,11 +1617,14 @@ function renderImportsSECEX(){
     mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kton)')],YINT);
   }
 
-  // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
+  // YoY — monthly uses pre-computed value; quarterly/annual recomputes from full (unwindowed) source
+  const srcFullIm = currentGran==='quarterly'?toQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume'])
+                  : currentGran==='annual'   ?toA(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume'])
+                  : src;
   const yoyV=arr.map((r,i)=>
     currentGran==='monthly'
-      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i))
-      :yoyOf(arr,'volume_ktons',i));
+      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i,srcFullIm))
+      :yoyOf(arr,'volume_ktons',i,srcFullIm));
   mkChart('im-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
@@ -1966,6 +1969,13 @@ function renderPrices(){
   const impSrc=SEIMP[cat]||[];
   const expArr=tx(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']);
   const impArr=tx(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']);
+  // Full (unwindowed) arrays for prior-year YoY lookups
+  const expFull=currentGran==='quarterly'?toQ(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+               :currentGran==='annual'   ?toA(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+               :expSrc;
+  const impFull=currentGran==='quarterly'?toQ(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+               :currentGran==='annual'   ?toA(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton'])
+               :impSrc;
 
   const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
@@ -1992,9 +2002,9 @@ function renderPrices(){
   const validPrem=premVals.filter(v=>v!=null);
   const avgPrem=validPrem.length?+(validPrem.reduce((s,x)=>s+x,0)/validPrem.length).toFixed(1):null;
   mkChart('px-spread','bar',allP,[
-    barDs(premVals,premVals.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'Prêmio Import. (US$/t)'),
+    barDs(premVals,premVals.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'Import Premium (US$/t)'),
     {type:'line',data:allP.map(()=>avgPrem),
-     label:`Média hist. (${avgPrem!=null?avgPrem.toFixed(0)+' US$/t':'—'})`,
+     label:`Hist. avg. (${avgPrem!=null?avgPrem.toFixed(0)+' US$/t':'—'})`,
      borderColor:'#555',backgroundColor:'transparent',borderWidth:1.5,
      borderDash:[5,3],pointRadius:0,tension:0},
   ],{...LEG,scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}});
@@ -2005,13 +2015,13 @@ function renderPrices(){
   mkChart('px-imp','line',impArr.map(r=>r.period),
     [areaDs(impArr.map(r=>r.price_usd_ton),C_BK,0.08,'Import (US$/t)')],priceTick);
 
-  // 4. YoY importação e YoY exportação
-  const yoyImp=impArr.map((r,i)=>yoyOf(impArr,'price_usd_ton',i));
+  // 4. YoY import price and YoY ref. domestic price (full arrays for prior-year lookup)
+  const yoyImp=impArr.map((r,i)=>yoyOf(impArr,'price_usd_ton',i,impFull));
   mkChart('px-yoy','bar',impArr.map(r=>r.period),
     [barDs(yoyImp.map(v=>v!=null?+(v*100).toFixed(2):null),
            yoyImp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Import Price %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
-  const yoyExp=expArr.map((r,i)=>yoyOf(expArr,'price_usd_ton',i));
+  const yoyExp=expArr.map((r,i)=>yoyOf(expArr,'price_usd_ton',i,expFull));
   mkChart('px-yoy2','bar',expArr.map(r=>r.period),
     [barDs(yoyExp.map(v=>v!=null?+(v*100).toFixed(2):null),
            yoyExp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Ref. Dom. %')],
