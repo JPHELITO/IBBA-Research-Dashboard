@@ -293,6 +293,32 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 @keyframes spin{to{transform:rotate(360deg);}}
 #loading p{font-size:12px;color:var(--gray-mid);font-weight:500;letter-spacing:.03em;}
 
+/* ── CUSTOM DATE RANGE (filter bar) ──────────────────────────────────────── */
+.custom-range{
+  display:flex;align-items:center;gap:5px;margin-left:6px;padding:3px 8px;
+  border:1.5px solid var(--border);border-radius:6px;background:var(--white);
+  transition:border-color .15s;
+}
+.custom-range:hover,.custom-range:focus-within{border-color:var(--orange);}
+.cr-input{
+  border:none;outline:none;background:transparent;font-size:11px;font-family:var(--font);
+  color:var(--gray-dark);padding:2px 0;width:108px;cursor:pointer;
+}
+.cr-input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.55;filter:saturate(0);}
+.cr-input:hover::-webkit-calendar-picker-indicator{opacity:.95;filter:none;}
+.cr-sep{color:var(--gray-mid);font-size:11px;}
+.cr-clear{
+  background:none;border:none;color:var(--gray-mid);font-size:14px;line-height:1;
+  cursor:pointer;padding:0 3px;border-radius:3px;visibility:hidden;
+}
+.cr-clear.visible{visibility:visible;}
+.cr-clear:hover{color:var(--orange);background:var(--gray-light);}
+.custom-range.active{border-color:var(--orange);background:rgba(255,80,0,.04);}
+.custom-range.active .cr-input{color:var(--black);font-weight:600;}
+
+/* ── ORIGIN CARD (gráfico por país — meia largura) ───────────────────────── */
+.origin-card{max-width:100%;}
+
 /* ── ORIGIN CHART CONTROLS ───────────────────────────────────────────────── */
 .origin-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
 .product-pills{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
@@ -413,6 +439,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="filter-btns">
     <button class="fbtn active" data-gran="monthly"   onclick="setGran('monthly')">Mensal</button>
     <button class="fbtn"        data-gran="quarterly" onclick="setGran('quarterly')">Trimestral</button>
+    <button class="fbtn"        data-gran="annual"    onclick="setGran('annual')">Anual</button>
   </div>
   <div class="filter-sep"></div>
   <span class="filter-label">Janela:</span>
@@ -423,6 +450,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3A</button>
     <button class="fbtn" data-win="5y"  onclick="setWin('5y')">5A</button>
     <button class="fbtn active" data-win="all" onclick="setWin('all')">Histórico</button>
+  </div>
+  <div class="custom-range" title="Selecione um intervalo customizado">
+    <input type="month" id="win-from" class="cr-input" onchange="setCustomRange()" aria-label="De">
+    <span class="cr-sep">–</span>
+    <input type="month" id="win-to"   class="cr-input" onchange="setCustomRange()" aria-label="Até">
+    <button class="cr-clear" id="cr-clear" onclick="clearCustomRange()" title="Limpar intervalo">×</button>
   </div>
 </div>
 
@@ -512,8 +545,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Exportações por País — interativo -->
   <div id="ex-origin-block">
     <div class="sec-block-header">Exportações por País <span id="ex-origin-tag"></span></div>
-    <div class="charts-row c1">
-      <div class="chart-card">
+    <div class="charts-row c2">
+      <div class="chart-card origin-card">
         <div class="origin-controls">
           <div class="product-pills" id="ex-pills"></div>
           <div class="country-selector">
@@ -526,8 +559,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
             </div>
           </div>
         </div>
-        <div class="chart-sub">Acumulado anual · kt · SECEX/MDIC</div>
-        <div class="chart-wrap h340"><canvas id="ex-ctry-a"></canvas></div>
+        <div class="chart-sub" id="ex-origin-sub">kt · SECEX/MDIC</div>
+        <div class="chart-wrap h280"><canvas id="ex-ctry-a"></canvas></div>
       </div>
     </div>
   </div>
@@ -561,8 +594,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <!-- Importações por País — interativo -->
     <div id="im-origin-block">
       <div class="sec-block-header">Importações por País <span id="im-origin-tag"></span></div>
-      <div class="charts-row c1">
-        <div class="chart-card">
+      <div class="charts-row c2">
+        <div class="chart-card origin-card">
           <div class="origin-controls">
             <div class="product-pills" id="im-pills"></div>
             <div class="country-selector">
@@ -575,8 +608,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
               </div>
             </div>
           </div>
-          <div class="chart-sub">Acumulado anual · kt · SECEX/MDIC</div>
-          <div class="chart-wrap h340"><canvas id="im-ctry-a"></canvas></div>
+          <div class="chart-sub" id="im-origin-sub">kt · SECEX/MDIC</div>
+          <div class="chart-wrap h280"><canvas id="im-ctry-a"></canvas></div>
         </div>
       </div>
     </div>
@@ -793,8 +826,9 @@ let currentSector = 'steel';
 let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
-let currentGran   = 'monthly';
-let currentWin    = 'all';
+let currentGran   = 'monthly';      // 'monthly' | 'quarterly' | 'annual'
+let currentWin    = 'all';          // 'all' | '5y' | '3y' | '1y' | '6m' | '3m' | 'custom'
+let customRange   = {from:null, to:null};  // 'YYYY-MM' strings quando currentWin==='custom'
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
 let predDelay     = 3;
 let predProduct   = 'HRC';          // 'HRC'|'CRC'
@@ -853,14 +887,39 @@ function deltaOf(arr,f,i){
 }
 function yoyOf(arr,f,i){
   const per=arr[i]?.period;if(!per)return null;
-  const yr=parseInt(per.slice(0,4))-1,mo=per.slice(5,7);
-  const ly=arr.find(r=>r.period===`${yr}-${mo}`);
-  const c=arr[i][f],p=ly?.[f];
+  let prev=null;
+  // Anual: 'YYYY' → procura 'YYYY-1'
+  if(/^\d{4}$/.test(per)){
+    prev=arr.find(r=>r.period===String(parseInt(per)-1));
+  }
+  // Trimestral: '1T24' → procura '1T23'
+  else if(/^[1-4]T\d{2}$/.test(per)){
+    const q=per[0],yy=parseInt(per.slice(2));
+    prev=arr.find(r=>r.period===`${q}T${String(yy-1).padStart(2,'0')}`);
+  }
+  // Mensal: 'YYYY-MM' → procura 'YYYY-1-MM'
+  else{
+    const yr=parseInt(per.slice(0,4))-1,mo=per.slice(5,7);
+    prev=arr.find(r=>r.period===`${yr}-${mo}`);
+  }
+  const c=arr[i][f],p=prev?.[f];
   return(c==null||p==null||p===0)?null:(c-p)/Math.abs(p);
 }
 function applyWin(arr,key='period'){
+  if(!arr.length)return arr;
+  // Range customizado tem prioridade
+  if(currentWin==='custom'){
+    const {from,to}=customRange;
+    if(!from&&!to)return arr;
+    return arr.filter(r=>{
+      const p=r[key];if(!p)return false;
+      if(from&&p<from)return false;
+      if(to&&p>to)return false;
+      return true;
+    });
+  }
   const mo=WIN_MO[currentWin];
-  if(!mo||!arr.length)return arr;
+  if(!mo)return arr;
   const last=arr[arr.length-1][key];if(!last)return arr;
   const yr=parseInt(last.slice(0,4)),mn=parseInt(last.slice(5,7));
   let cy=yr,cm=mn-mo;while(cm<=0){cy--;cm+=12;}
@@ -868,7 +927,6 @@ function applyWin(arr,key='period'){
   return arr.filter(r=>r[key]>=cut);
 }
 // Apply window on monthly data BEFORE toQ — avoids applyWin parsing quarterly period strings.
-// Usage: gran ? qToQ(src, sumF, lastF) : applyWin(src)
 function qToQ(arr,sumF=[],lastF=[]){ return toQ(applyWin(arr),sumF,lastF); }
 function toQ(monthly,sumF=[],lastF=[]){
   const map={};
@@ -888,6 +946,47 @@ function toQ(monthly,sumF=[],lastF=[]){
     lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
     return o;
   });
+}
+// Annual aggregation
+function aToA(arr,sumF=[],lastF=[]){ return toA(applyWin(arr),sumF,lastF); }
+function toA(monthly,sumF=[],lastF=[]){
+  const map={};
+  monthly.forEach(r=>{
+    const yr=r.year||parseInt(r.period?.slice(0,4));
+    if(!yr)return;
+    if(!map[yr])map[yr]={period:String(yr),year:yr,_r:[]};
+    map[yr]._r.push(r);
+  });
+  return Object.values(map).sort((a,b)=>a.year-b.year)
+    .filter(e=>e._r.length>=12)  // drop incomplete years (mostly current year)
+    .map(e=>{
+      const o={period:e.period,year:e.year};
+      sumF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?v.reduce((s,x)=>s+x,0):null;});
+      lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
+      return o;
+    });
+}
+// Universal transform: aplica janela + granularidade
+function tx(arr,sumF=[],lastF=[]){
+  if(currentGran==='quarterly') return qToQ(arr,sumF,lastF);
+  if(currentGran==='annual')    return aToA(arr,sumF,lastF);
+  return applyWin(arr);
+}
+// Sem janela (já filtrado): só aplica granularidade
+function txNoWin(arr,sumF=[],lastF=[]){
+  if(currentGran==='quarterly') return toQ(arr,sumF,lastF);
+  if(currentGran==='annual')    return toA(arr,sumF,lastF);
+  return arr;
+}
+// Label legível da janela atual (para subtítulos)
+function winLabel(){
+  if(currentWin==='custom'){
+    const {from,to}=customRange;
+    const f=from?from.slice(0,4)+'/'+from.slice(5,7):'…';
+    const t=to?to.slice(0,4)+'/'+to.slice(5,7):'…';
+    return`${f}–${t}`;
+  }
+  return{'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
 }
 function rolling12(arr,f){
   return arr.map((_,i)=>{
@@ -1089,27 +1188,42 @@ function mergeOriginRows(cats,dir){
   return Object.values(merged);
 }
 
-// Agrega por ano+país → {year:{country:vol}}
-function aggregateYearCountry(rows){
-  const byYC={};
-  rows.forEach(r=>{
-    const yr=r.period?.slice(0,4);if(!yr)return;
+// Chave de período de acordo com granularidade
+function periodKey(p){
+  if(!p||p.length<7)return null;
+  const yr=p.slice(0,4), mo=parseInt(p.slice(5,7));
+  if(currentGran==='annual')    return yr;
+  if(currentGran==='quarterly') return `${yr}-Q${Math.ceil(mo/3)}`;
+  return p; // monthly
+}
+// Label legível para eixo X
+function periodLabelDisplay(key){
+  if(currentGran==='annual')    return key;             // '2024'
+  if(currentGran==='quarterly'){const[yr,q]=key.split('-Q');return`${q}T${yr.slice(-2)}`;}
+  return fmtPeriod(key);                                 // 'Jan-24'
+}
+
+// Agrega por (período, país) respeitando granularidade + janela
+function aggregatePeriodCountry(rows){
+  const acc={};
+  applyWin(rows).forEach(r=>{
+    const pk=periodKey(r.period);if(!pk)return;
     const c=r.country||'—';
-    if(!byYC[yr])byYC[yr]={};
-    byYC[yr][c]=(byYC[yr][c]||0)+(r.volume_ktons||0);
+    if(!acc[pk])acc[pk]={};
+    acc[pk][c]=(acc[pk][c]||0)+(r.volume_ktons||0);
   });
-  return byYC;
+  return acc;
 }
 
 // Ranqueia países por volume total
-function rankCountries(byYC){
+function rankCountries(byPC){
   const tot={};
-  Object.values(byYC).forEach(yObj=>Object.entries(yObj).forEach(([c,v])=>{tot[c]=(tot[c]||0)+v;}));
+  Object.values(byPC).forEach(yObj=>Object.entries(yObj).forEach(([c,v])=>{tot[c]=(tot[c]||0)+v;}));
   return Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
 }
 
 // Constrói datasets Chart.js: países selecionados (stacked) + Outros
-function buildOriginDatasets(byYC,years,selected){
+function buildOriginDatasets(byPC,periods,selected){
   const isOthers=(c)=>!selected.includes(c)&&c!=='Outros';
   const pal=[...ORIGIN_PALETTE];
   const datasets=[];
@@ -1117,12 +1231,12 @@ function buildOriginDatasets(byYC,years,selected){
     datasets.push({
       type:'bar',label:c,stack:'s',borderWidth:0,
       backgroundColor:pal[i%pal.length],
-      data:years.map(yr=>+((byYC[yr]?.[c])||0).toFixed(1))
+      data:periods.map(p=>+((byPC[p]?.[c])||0).toFixed(1))
     });
   });
   // Outros = tudo que não está selecionado
-  const outrosData=years.map(yr=>{
-    const v=Object.entries(byYC[yr]||{})
+  const outrosData=periods.map(p=>{
+    const v=Object.entries(byPC[p]||{})
       .filter(([c])=>isOthers(c))
       .reduce((s,[,v])=>s+v,0);
     return +v.toFixed(1);
@@ -1139,36 +1253,43 @@ function renderCountryChart(dir){
   const state=originState[dir];
   const pills=getPillDefs();
 
-  // Determinar cats ativas (da pill selecionada ou padrão=primeira)
   const activePill=state.pillCat!==null
     ?pills.find(d=>d.label===state.pillCat)||pills[0]
     :pills[0];
   const cats=activePill.cats;
 
   const rows=mergeOriginRows(cats,dir);
-  const byYC=aggregateYearCountry(rows);
-  const years=Object.keys(byYC).sort();
-  if(!years.length){destroyChart(`${p}-ctry-a`);return;}
+  const byPC=aggregatePeriodCountry(rows);
+  // Ordenação: chaves canônicas são sortáveis lexicograficamente (YYYY, YYYY-Q1, YYYY-MM)
+  const periods=Object.keys(byPC).sort();
+  if(!periods.length){destroyChart(`${p}-ctry-a`);return;}
 
-  const ranked=rankCountries(byYC);
+  const ranked=rankCountries(byPC);
 
-  // Se seleção manual nula → auto top5+Outros
+  // Default: top5 + Outros automaticamente
   if(!state.countries){
     state.countries=[...ranked.slice(0,5),'Outros'];
   }
 
-  // Construir e renderizar
-  const datasets=buildOriginDatasets(byYC,years,state.countries);
-  mkChart(`${p}-ctry-a`,'bar',years,datasets,{
+  const labels=periods.map(periodLabelDisplay);
+  const datasets=buildOriginDatasets(byPC,periods,state.countries);
+
+  // Limitar maxTicksLimit baseado em densidade
+  const maxTicks=currentGran==='annual'?30:currentGran==='quarterly'?24:12;
+  mkChart(`${p}-ctry-a`,'bar',labels,datasets,{
     ...LEG,
     scales:{
-      x:{stacked:true,ticks:{color:'#999',font:{size:9},maxRotation:45},grid:{display:false}},
+      x:{stacked:true,
+         ticks:{color:'#999',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},
+         grid:{display:false}},
       y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:9}}}
     }
   });
 
-  // Actualizar tag
+  // Tag + subtitle
   document.getElementById(`${p}-origin-tag`).textContent=activePill.label;
+  const gLbl=currentGran==='annual'?'anual':currentGran==='quarterly'?'trimestral':'mensal';
+  document.getElementById(`${p}-origin-sub`).textContent=`${gLbl} · kt · SECEX/MDIC`;
 }
 
 // Renderiza pills de produto para uma direção
@@ -1204,8 +1325,8 @@ function buildCountryPanel(dir){
   const activePill=state.pillCat!==null
     ?pills.find(d=>d.label===state.pillCat)||pills[0]:pills[0];
   const rows=mergeOriginRows(activePill.cats,dir);
-  const byYC=aggregateYearCountry(rows);
-  const ranked=rankCountries(byYC);
+  const byPC=aggregatePeriodCountry(rows);
+  const ranked=rankCountries(byPC);
 
   if(!state.countries) state.countries=[...ranked.slice(0,5),'Outros'];
 
@@ -1269,9 +1390,7 @@ document.addEventListener('click',e=>{
 });
 
 function renderOriginCharts(dir){
-  // Ao mudar de aba (currentProd), reset pill e países
-  originState[dir].pillCat=null;
-  originState[dir].countries=null;
+  // Renderiza com o estado atual (não reseta — reset acontece em setProd)
   renderPills(dir);
   renderCountryChart(dir);
 }
@@ -1279,9 +1398,8 @@ function renderOriginCharts(dir){
 // ─── RENDER: EXPORTAÇÃO ──────────────────────────────────────────────────────
 function renderExports(){
   const cat=secat();
-  const gran=currentGran==='quarterly';
   const src=SEEXP[cat]||[];
-  const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
+  const arr=tx(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']);
   const lbs=arr.map(r=>r.period);
 
   if(currentProd==='total'){
@@ -1292,7 +1410,7 @@ function renderExports(){
     const borders=[C_OR, C_BK, C_GR];
     const refLbs=arr.map(r=>r.period);
     const volDs=cats.map((c,i)=>{
-      const cArr=gran?toQ(SEEXP[c]||[],['volume_ktons']):SEEXP[c]||[];
+      const cArr=tx(SEEXP[c]||[],['volume_ktons']);
       const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.volume_ktons]));
       return{type:'line',label:labels[i],data:refLbs.map(p=>cMap[p]??null),
         borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
@@ -1303,8 +1421,11 @@ function renderExports(){
     mkChart('ex-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kt)')],YINT);
   }
 
-  // YoY — sempre baseado no produto selecionado
-  const yoyV=arr.map((r,i)=>r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i));
+  // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
+  const yoyV=arr.map((r,i)=>
+    currentGran==='monthly'
+      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i))
+      :yoyOf(arr,'volume_ktons',i));
   mkChart('ex-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
@@ -1321,9 +1442,8 @@ function renderImports(){
 
 function renderImportsSECEX(){
   const cat=secat();
-  const gran=currentGran==='quarterly';
   const src=SEIMP[cat]||[];
-  const arr=gran?qToQ(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']):applyWin(src);
+  const arr=tx(src,['revenue_usd_mn','volume_ktons'],['price_usd_ton','yoy_volume']);
   const lbs=arr.map(r=>r.period);
 
   if(currentProd==='total'){
@@ -1334,7 +1454,7 @@ function renderImportsSECEX(){
     const borders=[C_OR,C_BK,C_GR];
     const refLbs=arr.map(r=>r.period);
     const volDs=cats.map((c,i)=>{
-      const cArr=gran?toQ(SEIMP[c]||[],['volume_ktons']):SEIMP[c]||[];
+      const cArr=tx(SEIMP[c]||[],['volume_ktons']);
       const cMap=Object.fromEntries(cArr.map(r=>[r.period,r.volume_ktons]));
       return{type:'line',label:lbls[i],data:refLbs.map(p=>cMap[p]??null),
         borderColor:borders[i],backgroundColor:bgs[i],fill:true,borderWidth:1.5,pointRadius:0,tension:0.3};
@@ -1345,8 +1465,11 @@ function renderImportsSECEX(){
     mkChart('im-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_BK,0.10,'Volume (kt)')],YINT);
   }
 
-  // YoY — sempre baseado no produto selecionado
-  const yoyV=arr.map((r,i)=>r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i));
+  // YoY — em mensal usa precomputado; em trimestral/anual recalcula dos totais agregados
+  const yoyV=arr.map((r,i)=>
+    currentGran==='monthly'
+      ?(r.yoy_volume!=null?r.yoy_volume:yoyOf(arr,'volume_ktons',i))
+      :yoyOf(arr,'volume_ktons',i));
   mkChart('im-yoy','bar',lbs,
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
@@ -1492,16 +1615,13 @@ function renderDomestic(){
   document.getElementById('inda-block').style.display=showInda?'':'none';
 
   if(showInda){
-    const indaGran=currentGran==='quarterly';
-    // Quarterly: SUM purchases+sales; LAST-of-quarter for balance/rolling metrics
-    const indaArr=indaGran
-      ?qToQ(INDA,['purchases','sales'],['inventories','inv_months','sales_ltm','sales_ma3'])
-      :applyWin(INDA);
+    // SUM purchases+sales; LAST-of-period for balance/rolling metrics
+    const indaArr=tx(INDA,['purchases','sales'],['inventories','inv_months','sales_ltm','sales_ma3']);
     const lbs=indaArr.map(r=>r.period);
 
     // Estoque (dual Y-axis: left=kt, right=meses)
     const invMvals=indaArr.filter(r=>r.inv_months!=null).map(r=>r.inv_months);
-    const indaWinLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+    const indaWinLbl=winLabel();
     const histAvgM=invMvals.length?+(invMvals.reduce((a,b)=>a+b,0)/invMvals.length).toFixed(2):null;
     destroyChart('di-stock');
     const ctx=document.getElementById('di-stock')?.getContext('2d');
@@ -1547,37 +1667,35 @@ function renderDomestic(){
   }
 
   // ── IABr always shown ──
-  const gran=currentGran==='quarterly';
   const df=domField();   // flat | long_prod | total
   const cf=consField();  // flat | long_prod | total
 
   // Vendas Domésticas
   if(currentProd==='total'){
-    const domArr=gran?qToQ(DOM,['flat','long_prod']):applyWin(DOM);
+    const domArr=tx(DOM,['flat','long_prod']);
     const lbs=domArr.map(r=>r.period);
     mkChart('dom-sales','bar',lbs,[
       stackDs(domArr.map(r=>r.flat),C_OR,'Planos'),
       stackDs(domArr.map(r=>r.long_prod),C_BK,'Longos'),
     ],{...LEG,...STACKED});
   } else {
-    const domArr=gran?qToQ(DOM.filter(r=>r[df]!=null),[df]):applyWin(DOM.filter(r=>r[df]!=null));
+    const domArr=tx(DOM.filter(r=>r[df]!=null),[df]);
     const lbs=domArr.map(r=>r.period);
     const label=currentProd==='flat'?'Planos (kt)':'Longos (kt)';
     mkChart('dom-sales','line',lbs,[areaDs(domArr.map(r=>r[df]),C_OR,0.12,label)],YINT);
   }
 
   // Produção Aço Bruto (always total crude_steel)
-  const prodArr=gran?qToQ(PROD.filter(r=>r.crude_steel!=null),['crude_steel']):applyWin(PROD.filter(r=>r.crude_steel!=null));
+  const prodArr=tx(PROD.filter(r=>r.crude_steel!=null),['crude_steel']);
   mkChart('dom-crude','line',prodArr.map(r=>r.period),
     [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Produção (kt)')],YINT);
 
   // Consumo Aparente + Penetração (dual Y-axis)
-  const consArr=gran?qToQ(CONS.filter(r=>r[cf]!=null),[cf]):applyWin(CONS.filter(r=>r[cf]!=null));
+  const consArr=tx(CONS.filter(r=>r[cf]!=null),[cf]);
   const consLbs=consArr.map(r=>r.period);
 
-  // Penetração = (Consumo Aparente - Vendas Domésticas) / Consumo Aparente
-  // Build domMapPen using same granularity as consArr so periods always align
-  const domRaw=gran?toQ(DOM,[cf]):DOM.filter(r=>r[cf]!=null);
+  // Penetração — same granularity for align
+  const domRaw=txNoWin(DOM.filter(r=>r[cf]!=null),[cf]);
   const domMapPen=Object.fromEntries(domRaw.filter(r=>r[cf]!=null).map(r=>[r.period,r[cf]]));
   const penSeries=consArr.map(r=>{
     const cons=r[cf],dom=domMapPen[r.period];
@@ -1586,7 +1704,7 @@ function renderDomestic(){
   });
 
   // Average penetration over the SELECTED WINDOW (same data visible in the chart)
-  const winLbl={'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+  const winLbl=winLabel();
   const penHistVals=consArr.filter(r=>r[cf]!=null).map(r=>{
     const dom=domMapPen[r.period];
     return (dom!=null&&r[cf]>0)?((r[cf]-dom)/r[cf]*100):null;
@@ -1636,6 +1754,8 @@ function renderDomestic(){
 }
 
 function _renderSeasonality(id,allData,field){
+  // Seasonality compares periods across years; trimestral mostra 4 trimestres,
+  // mensal/anual mostram 12 meses (anual cai pra mensal pois 1 ponto/ano não faz sentido)
   const gran=currentGran==='quarterly';
 
   // Build byY: year → array of values (12 months or 4 quarters)
@@ -1690,11 +1810,10 @@ function _renderSeasonality(id,allData,field){
 // ─── RENDER: PREÇOS ──────────────────────────────────────────────────────────
 function renderPrices(){
   const cat=secat();
-  const gran=currentGran==='quarterly';
   const expSrc=SEEXP[cat]||[];
   const impSrc=SEIMP[cat]||[];
-  const expArr=gran?qToQ(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(expSrc);
-  const impArr=gran?qToQ(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']):applyWin(impSrc);
+  const expArr=tx(expSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']);
+  const impArr=tx(impSrc,['revenue_usd_mn','volume_ktons'],['price_usd_ton']);
 
   const priceTick={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 
@@ -1811,7 +1930,11 @@ function setImportTab(t){
 }
 
 function setProd(p){
-  currentProd=p;updateProdButtons();render();
+  currentProd=p;
+  // Reset country chart state ao trocar de produto (Total/Flat/Long/Semi)
+  originState.exp.pillCat=null; originState.exp.countries=null;
+  originState.imp.pillCat=null; originState.imp.countries=null;
+  updateProdButtons();render();
 }
 function updateProdButtons(){
   document.querySelectorAll('[data-prod]').forEach(b=>b.classList.toggle('active',b.dataset.prod===currentProd));
@@ -1824,8 +1947,37 @@ function setGran(g){
 }
 function setWin(w){
   currentWin=w;
+  // Limpa range custom quando usuário escolhe botão fixo
+  customRange={from:null,to:null};
+  const fEl=document.getElementById('win-from'),tEl=document.getElementById('win-to');
+  if(fEl)fEl.value=''; if(tEl)tEl.value='';
+  document.querySelector('.custom-range')?.classList.remove('active');
+  document.getElementById('cr-clear')?.classList.remove('visible');
   document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win===w));
   render();
+}
+function setCustomRange(){
+  const f=document.getElementById('win-from').value;
+  const t=document.getElementById('win-to').value;
+  customRange={from:f||null,to:t||null};
+  if(f||t){
+    currentWin='custom';
+    document.querySelectorAll('[data-win]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('.custom-range').classList.add('active');
+    document.getElementById('cr-clear').classList.add('visible');
+  } else {
+    // Ambos vazios → volta para Histórico
+    currentWin='all';
+    document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win==='all'));
+    document.querySelector('.custom-range').classList.remove('active');
+    document.getElementById('cr-clear').classList.remove('visible');
+  }
+  render();
+}
+function clearCustomRange(){
+  document.getElementById('win-from').value='';
+  document.getElementById('win-to').value='';
+  setCustomRange();
 }
 function setPredMode(m){
   predMode=m;
