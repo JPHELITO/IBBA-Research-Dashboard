@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -138,10 +139,18 @@ html,body{
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 
-@media(max-width:480px){
-  .header{padding:0 20px;}
-  .login-card{padding:36px 24px 32px;}
-  .footer{padding:14px 20px;}
+@media(max-width:768px){
+  .header{padding:0 18px;height:56px;}
+  .main{padding:32px 16px;}
+  .login-card{padding:32px 22px 28px;max-width:100%;}
+  .login-title{font-size:20px;}
+  .field input{font-size:16px;padding:11px 13px;} /* 16px evita zoom auto no iOS */
+  .btn-submit{padding:13px;font-size:13px;}
+  .footer{padding:14px 18px;}
+}
+@media(max-width:420px){
+  .header{padding:0 14px;}
+  .login-card{padding:28px 18px 24px;}
 }
 </style>
 </head>

@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>ITAÚ BBA — S&amp;M Research Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -246,37 +249,144 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   flex-shrink:0;margin-left:14px;white-space:nowrap;}
 
 /* ── MEDIA: MOBILE (≤ 768px) ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE STYLES (≤768px) — polished UX for phones/tablets
+═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width:768px){
-  /* Top bar */
-  .mob-back-btn{display:flex;}
+  body{font-size:13px;}
+
+  /* ── Top bar ──────────────────────────────────────────────────────────── */
+  .top-bar{height:54px;padding:0 14px;gap:10px;}
+  .brand-sub{display:none;}
+  .brand-icon{width:20px;height:20px;}
+  .brand-name{font-size:12.5px;}
   .top-sector-nav{display:none;}
   .top-latest{display:none;}
-  .top-bar{height:50px;padding:0 18px;gap:14px;}
-  .brand-sub{display:none;}
-  .brand-icon{width:18px;height:18px;}
-  /* Section nav */
-  .secondary-nav{display:none;}
-  /* Filter bar: horizontal scroll, no labels */
-  .filter-bar{overflow-x:auto;padding:0 14px;gap:10px;-webkit-overflow-scrolling:touch;}
-  .filter-label{display:none;}
+  .mob-back-btn{display:flex;}
+  /* Compact icon buttons */
+  .top-icon-btn{width:34px;height:34px;}
+  .logout-btn{padding:6px 11px;font-size:10.5px;}
+
+  /* ── Section nav (Exports/Imports/...) — horizontal scroll bar ────────── */
+  .secondary-nav{
+    display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding:0 14px;gap:6px;scrollbar-width:none;
+    border-bottom:1px solid var(--border);background:var(--white);
+  }
+  .secondary-nav::-webkit-scrollbar{display:none;}
+  .snav-btn{flex-shrink:0;padding:11px 14px;font-size:12px;white-space:nowrap;}
+
+  /* ── Filter bar — vertical stack with horizontal scrollable rows ──────── */
+  .filter-bar{
+    flex-direction:column;align-items:stretch;gap:8px;
+    padding:10px 14px;overflow:visible;
+  }
+  .filter-label{
+    display:block;font-size:9.5px;color:var(--gray-mid);font-weight:600;
+    text-transform:uppercase;letter-spacing:.6px;margin-bottom:0;
+  }
   .filter-sep{display:none;}
-  /* Section padding */
+  .filter-btns{
+    display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:2px;
+  }
+  .filter-btns::-webkit-scrollbar{display:none;}
+  .fbtn{
+    flex-shrink:0;padding:8px 12px;font-size:11.5px;min-height:36px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  /* Custom date range — full width on mobile */
+  .custom-range{
+    margin-left:0;padding:8px 10px;width:100%;
+    display:flex;justify-content:space-between;gap:6px;
+  }
+  .cr-input{
+    font-size:13px;width:auto;flex:1;min-width:0;
+    /* iOS prevents zoom when input font-size >= 16px, mas com 13px + sem focus auto fica ok */
+  }
+  .cr-clear{width:28px;height:28px;visibility:visible;opacity:0;
+    transition:opacity .15s;display:flex;align-items:center;justify-content:center;}
+  .cr-clear.visible{opacity:1;}
+
+  /* ── Sections & layout ─────────────────────────────────────────────────── */
   .section{padding:10px 12px 24px;}
-  /* Collapse all grids to single column */
+  .sec-block-header{font-size:12px;padding:14px 0 8px;}
+  .charts-row{gap:10px;margin-bottom:10px;}
   .charts-row.c2,.charts-row.c3{grid-template-columns:1fr;}
-  .kpi-row{grid-template-columns:1fr 1fr;}
-  /* Reduce chart heights */
-  .chart-wrap.h300{height:210px;}.chart-wrap.h280{height:200px;}
-  .chart-wrap.h260{height:190px;}.chart-wrap.h240{height:180px;}
-  .chart-wrap.h230{height:174px;}.chart-wrap.h220{height:168px;}
-  .chart-wrap.h210{height:162px;}.chart-wrap.h200{height:156px;}
-  .chart-wrap.h190{height:150px;}.chart-wrap.h180{height:145px;}
-  .chart-wrap.h160{height:136px;}
+  .kpi-row{grid-template-columns:1fr 1fr;gap:8px;}
+
+  /* ── Chart cards — reduced padding ────────────────────────────────────── */
+  .chart-card{padding:12px 12px 14px;}
+  .chart-title{font-size:12px;line-height:1.35;}
+  .chart-sub{font-size:10px;line-height:1.4;margin-bottom:8px;}
+
+  /* ── Chart heights ─────────────────────────────────────────────────────── */
+  .chart-wrap.h340{height:230px;}.chart-wrap.h300{height:215px;}
+  .chart-wrap.h280{height:210px;}.chart-wrap.h260{height:195px;}
+  .chart-wrap.h240{height:185px;}.chart-wrap.h230{height:178px;}
+  .chart-wrap.h220{height:170px;}.chart-wrap.h210{height:164px;}
+  .chart-wrap.h200{height:158px;}.chart-wrap.h190{height:152px;}
+  .chart-wrap.h180{height:148px;}.chart-wrap.h160{height:138px;}
+
+  /* ── Inner tab bar (SECEX / Predictive Model) ─────────────────────────── */
+  .inner-tab-bar{padding:0 12px;gap:4px;}
+  .itab{padding:9px 12px;font-size:11.5px;}
+
+  /* ── Country chart: pills & selector adaptive ─────────────────────────── */
+  .origin-controls{flex-direction:column;align-items:stretch;gap:8px;}
+  .product-pills{
+    flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:2px;
+  }
+  .product-pills::-webkit-scrollbar{display:none;}
+  .pill-btn{padding:7px 13px;font-size:11px;min-height:32px;}
+  .country-selector{align-self:flex-end;}
+  .cs-toggle{padding:7px 13px;font-size:11px;min-height:32px;}
+  /* Country panel: bottom-sheet style on mobile */
+  .cs-panel{
+    position:fixed;right:auto;left:0;top:auto;bottom:0;width:100%;
+    max-width:100%;border-radius:16px 16px 0 0;padding:14px 16px 20px;
+    box-shadow:0 -6px 28px rgba(0,0,0,0.18);max-height:60vh;
+  }
+  .cs-panel.open{animation:slideUp .25s ease-out;}
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .cs-panel-header{font-size:12px;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;}
+  .cs-list{max-height:42vh;}
+  .cs-item{padding:8px 6px;}
+  .cs-item input[type=checkbox]{width:17px;height:17px;}
+  .cs-item label{font-size:13.5px;}
+  /* Backdrop when bottom sheet open */
+  body.cs-open::before{
+    content:'';position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99;
+    animation:fadeIn .2s ease-out;
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+  /* ── Prediction controls (slider) ─────────────────────────────────────── */
+  .pred-controls{flex-direction:column;align-items:stretch;gap:8px;padding:10px 14px;}
+  .pred-slider-wrap{width:100%;}
+  .pred-slider-wrap input[type=range]{flex:1;}
+
+  /* ── Note bar (footer disclaimer) ──────────────────────────────────────── */
+  .note-bar{font-size:10px;padding:14px 12px;line-height:1.5;}
 }
+
+/* Very small screens (≤420px): more aggressive compaction */
+@media (max-width:420px){
+  .top-bar{padding:0 10px;gap:6px;}
+  .brand-name{font-size:11.5px;}
+  .top-icon-btn{width:32px;height:32px;}
+  .logout-btn{padding:5px 9px;font-size:10px;}
+  .section{padding:8px 10px 20px;}
+  .chart-card{padding:10px 10px 12px;}
+}
+
 /* Mobile: picker-active mode — show picker, hide sections */
 @media (max-width:768px){
   body.mob-picker-active .mob-picker{display:block;}
   body.mob-picker-active .section{display:none !important;}
+  body.mob-picker-active .filter-bar{display:none !important;}
+  body.mob-picker-active .secondary-nav{display:none !important;}
   body.mob-picker-active #mob-back-btn{display:none;}
 }
 /* Desktop: always hide mobile elements */
@@ -389,12 +499,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Sector selector (desktop only) -->
   <div class="top-sector-nav">
     <button class="pnav-btn active" id="pnav-steel" onclick="setSector('steel')">Steel <span class="pnav-tag live">live</span></button>
-    <button class="pnav-btn" id="pnav-mining" onclick="setSector('mining')">Mining <span class="pnav-tag">em breve</span></button>
+    <button class="pnav-btn" id="pnav-mining" onclick="setSector('mining')">Mining <span class="pnav-tag">coming soon</span></button>
   </div>
   <!-- Latest update -->
-  <div class="top-latest">Última: <strong id="latest-label">—</strong></div>
+  <div class="top-latest">Last: <strong id="latest-label">—</strong></div>
   <!-- Menu (☰): back to S&M section picker -->
-  <a href="./" class="top-icon-btn top-menu" title="Temas — Steel &amp; Mining">
+  <a href="./" class="top-icon-btn top-menu" title="Topics — Steel &amp; Mining">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <line x1="2" y1="4.5" x2="13" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <line x1="2" y1="7.5" x2="13" y2="7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -402,7 +512,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     </svg>
   </a>
   <!-- Home (🏠): back to root sector selection -->
-  <a href="../" class="top-icon-btn top-home" title="Todos os setores">
+  <a href="../" class="top-icon-btn top-home" title="All sectors">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
             stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
@@ -427,7 +537,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 <!-- FILTER BAR -->
 <div class="filter-bar">
-  <span class="filter-label">Produto:</span>
+  <span class="filter-label">Product:</span>
   <div class="filter-btns" id="prod-btns">
     <button class="fbtn active" data-prod="total" onclick="setProd('total')">Total</button>
     <button class="fbtn"        data-prod="flat"  onclick="setProd('flat')">Flat</button>
@@ -1031,39 +1141,52 @@ function consField(){
 
 // ─── CHART FACTORY ───────────────────────────────────────────────────────────
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+const IS_MOBILE = ()=>window.innerWidth<=768;
 function baseOpts(ov={}){
   const{tooltip,scales,plugins:pOvr,...rest}=ov;
-  const TICK={color:'#ADADAD',font:{size:9,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
+  const mobile=IS_MOBILE();
+  const tickSize=mobile?8:9;
+  const TICK={color:'#ADADAD',font:{size:tickSize,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
   return{
     responsive:true,maintainAspectRatio:false,
     interaction:{mode:'index',intersect:false},
+    // Em mobile, melhora UX touch (tap fora não suspende, tap-and-hold abre tooltip)
+    events:mobile?['touchstart','touchmove','mousemove','mouseout','click']:undefined,
     plugins:{
       legend:{display:false},datalabels:{display:false},
       tooltip:{
         backgroundColor:'#1A1A1A',titleColor:'rgba(255,255,255,.75)',
         bodyColor:'#fff',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
-        padding:10,cornerRadius:8,boxPadding:4,
-        titleFont:{size:10,weight:'600',family:"'Inter','Segoe UI',sans-serif"},
-        bodyFont:{size:11,family:"'Inter','Segoe UI',sans-serif"},
+        padding:mobile?8:10,cornerRadius:8,boxPadding:4,
+        titleFont:{size:mobile?9.5:10,weight:'600',family:"'Inter','Segoe UI',sans-serif"},
+        bodyFont:{size:mobile?10.5:11,family:"'Inter','Segoe UI',sans-serif"},
         ...(tooltip||{})
       },
       ...(pOvr||{})
     },
     scales:{
-      x:{ticks:{...TICK,maxTicksLimit:14},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},
-      y:{ticks:{...TICK},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
+      x:{ticks:{...TICK,maxTicksLimit:mobile?7:14},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},
+      y:{ticks:{...TICK,maxTicksLimit:mobile?6:8},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
       ...(scales||{})
     },
     ...rest
   };
 }
+// Re-render charts em resize (orientation change em mobile)
+let _resizeT;
+window.addEventListener('resize',()=>{
+  clearTimeout(_resizeT);
+  _resizeT=setTimeout(()=>{if(typeof render==='function')render();},250);
+});
 function mkChart(id,type,labels,datasets,opts={}){
   destroyChart(id);
   const ctx=document.getElementById(id)?.getContext('2d');
   if(!ctx)return;
   charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:baseOpts(opts)});
 }
-const LEG={plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10,padding:8}}}};
+// LEG via getter para responder ao viewport
+const LEG={get plugins(){return{legend:{display:true,position:'top',
+  labels:{font:{size:IS_MOBILE()?9:10},boxWidth:IS_MOBILE()?8:10,padding:IS_MOBILE()?5:8}}};}};
 const YINT={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(0)}}}};
 const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v.toFixed(0)}}}};
 
@@ -1301,15 +1424,19 @@ function renderCountryChart(dir){
   const labels=periods.map(periodLabelDisplay);
   const datasets=buildOriginDatasets(byPC,periods,state.countries);
 
-  // Limitar maxTicksLimit baseado em densidade
-  const maxTicks=currentGran==='annual'?30:currentGran==='quarterly'?24:12;
+  // Limitar maxTicksLimit baseado em densidade + viewport
+  const mob=IS_MOBILE();
+  const maxTicks=mob
+    ?(currentGran==='annual'?10:currentGran==='quarterly'?8:6)
+    :(currentGran==='annual'?30:currentGran==='quarterly'?24:12);
+  const fSize=mob?8:9;
   mkChart(`${p}-ctry-a`,'bar',labels,datasets,{
     ...LEG,
     scales:{
       x:{stacked:true,
-         ticks:{color:'#999',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},
+         ticks:{color:'#999',font:{size:fSize},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},
          grid:{display:false}},
-      y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:9}}}
+      y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:fSize}}}
     }
   });
 
@@ -1395,10 +1522,12 @@ function toggleCountryPanel(dir){
   // Close all panels first
   document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
   document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+  document.body.classList.remove('cs-open');
   if(!isOpen){
     buildCountryPanel(dir);
     panel.classList.add('open');
     toggle.classList.add('open');
+    document.body.classList.add('cs-open');
   }
 }
 
@@ -1408,11 +1537,12 @@ function resetCountries(dir){
   renderCountryChart(dir);
 }
 
-// Fechar painel ao clicar fora
+// Fechar painel ao clicar fora (também fecha bottom-sheet em mobile)
 document.addEventListener('click',e=>{
-  if(!e.target.closest('.country-selector')){
+  if(!e.target.closest('.country-selector')&&!e.target.closest('.cs-panel')){
     document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
     document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+    document.body.classList.remove('cs-open');
   }
 });
 

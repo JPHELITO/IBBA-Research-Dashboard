@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — Steel &amp; Mining</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -204,18 +205,36 @@ html,body{
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────────── */
 @media (max-width:768px){
-  .header{padding:0 18px;height:52px;}
+  .header{padding:0 16px;height:54px;gap:10px;}
   .brand-sub{display:none;}
-  .back-wrap{padding:20px 20px 0;}
-  .hero{padding:22px 20px 36px;}
-  .hero-title{font-size:28px;}
-  .stats-strip{flex-wrap:wrap;gap:14px;}
+  .brand-name{font-size:12.5px;}
+  .logout-btn{padding:6px 11px;font-size:10.5px;}
+  .top-home{width:34px;height:34px;}
+  .back-wrap{padding:20px 18px 0;}
+  .back-link{font-size:12px;}
+  .hero{padding:22px 18px 36px;}
+  .hero-eyebrow{flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .hero-label{font-size:9.5px;}
+  .hero-badge{font-size:8.5px;padding:2px 7px;}
+  .hero-title{font-size:26px;line-height:1.1;}
+  .hero-sub{font-size:13px;}
+  .stats-strip{flex-wrap:wrap;gap:10px 14px;}
   .stat-sep{display:none;}
-  .section-label-wrap{padding:0 20px 16px;}
-  .cards-wrapper{padding:0 20px 48px;}
-  .cards{grid-template-columns:1fr;}
+  .stat-text{font-size:10px;}
+  .section-label-wrap{padding:0 18px 14px;}
+  .cards-wrapper{padding:0 18px 40px;}
+  .cards{grid-template-columns:1fr;gap:12px;}
+  .card{padding:22px 20px 18px;}
+  .card-title{font-size:16px;}
+  .card-desc{font-size:11.5px;}
   .card-full{grid-column:auto;}
-  .footer{padding:14px 20px;}
+  .footer{padding:14px 18px;}
+}
+@media (max-width:420px){
+  .header{padding:0 12px;}
+  .hero{padding:18px 14px 30px;}
+  .hero-title{font-size:23px;}
+  .cards-wrapper{padding:0 14px 32px;}
 }
 </style>
 </head>
