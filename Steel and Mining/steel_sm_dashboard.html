@@ -448,8 +448,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <button class="fbtn" data-win="6m"  onclick="setWin('6m')">6M</button>
     <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1A</button>
     <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3A</button>
-    <button class="fbtn" data-win="5y"  onclick="setWin('5y')">5A</button>
-    <button class="fbtn active" data-win="all" onclick="setWin('all')">Histórico</button>
+    <button class="fbtn active" data-win="5y"  onclick="setWin('5y')">5A</button>
+    <button class="fbtn" data-win="all" onclick="setWin('all')">Histórico</button>
   </div>
   <div class="custom-range" title="Selecione um intervalo customizado">
     <input type="month" id="win-from" class="cr-input" onchange="setCustomRange()" aria-label="De">
@@ -545,7 +545,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Exportações por País — interativo -->
   <div id="ex-origin-block">
     <div class="sec-block-header">Exportações por País <span id="ex-origin-tag"></span></div>
-    <div class="charts-row c2">
+    <div class="charts-row c1">
       <div class="chart-card origin-card">
         <div class="origin-controls">
           <div class="product-pills" id="ex-pills"></div>
@@ -594,7 +594,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <!-- Importações por País — interativo -->
     <div id="im-origin-block">
       <div class="sec-block-header">Importações por País <span id="im-origin-tag"></span></div>
-      <div class="charts-row c2">
+      <div class="charts-row c1">
         <div class="chart-card origin-card">
           <div class="origin-controls">
             <div class="product-pills" id="im-pills"></div>
@@ -827,7 +827,7 @@ let currentSub    = 'exports';
 let importTab     = 'secex';        // 'secex'|'prediction'
 let currentProd   = 'total';
 let currentGran   = 'monthly';      // 'monthly' | 'quarterly' | 'annual'
-let currentWin    = 'all';          // 'all' | '5y' | '3y' | '1y' | '6m' | '3m' | 'custom'
+let currentWin    = '5y';           // 'all' | '5y' | '3y' | '1y' | '6m' | '3m' | 'custom'
 let customRange   = {from:null, to:null};  // 'YYYY-MM' strings quando currentWin==='custom'
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
 let predDelay     = 3;
