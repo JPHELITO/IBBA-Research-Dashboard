@@ -276,35 +276,37 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .secondary-nav::-webkit-scrollbar{display:none;}
   .snav-btn{flex-shrink:0;padding:11px 14px;font-size:12px;white-space:nowrap;}
 
-  /* ── Filter bar — vertical stack with horizontal scrollable rows ──────── */
+  /* ── Filter bar — single scrollable row (compact chip strip) ────────── */
   .filter-bar{
-    flex-direction:column;align-items:stretch;gap:8px;
-    padding:10px 14px;overflow:visible;height:auto;
+    flex-direction:row;flex-wrap:nowrap;align-items:center;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    height:auto;padding:8px 14px;gap:5px;
   }
-  .filter-label{
-    display:block;font-size:9.5px;color:var(--gray-mid);font-weight:600;
-    text-transform:uppercase;letter-spacing:.6px;margin-bottom:0;
+  .filter-bar::-webkit-scrollbar{display:none;}
+  /* Fade hint on right edge */
+  .sticky-header{position:relative;}
+  .sticky-header::after{
+    content:'';pointer-events:none;
+    position:absolute;right:0;bottom:0;width:28px;
+    height:38px; /* matches filter-bar visible area */
+    background:linear-gradient(to right,transparent,var(--gray-light));
+    z-index:1;
   }
-  .filter-sep{display:none;}
-  .filter-btns{
-    display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;padding-bottom:2px;
+  .filter-label{display:none;}
+  .filter-sep{
+    display:flex;flex-shrink:0;width:1px;height:18px;
+    background:var(--border);margin:0 2px;
   }
-  .filter-btns::-webkit-scrollbar{display:none;}
+  .filter-btns{flex-shrink:0;display:flex;gap:4px;}
   .fbtn{
-    flex-shrink:0;padding:8px 12px;font-size:11.5px;min-height:36px;
+    flex-shrink:0;padding:5px 11px;font-size:11.5px;min-height:30px;
     display:flex;align-items:center;justify-content:center;
   }
-  /* Custom date range — full width on mobile */
-  .custom-range{
-    margin-left:0;padding:8px 10px;width:100%;
-    display:flex;justify-content:space-between;gap:6px;
-  }
-  .cr-input{
-    font-size:13px;width:auto;flex:1;min-width:0;
-    /* iOS prevents zoom when input font-size >= 16px, mas com 13px + sem focus auto fica ok */
-  }
-  .cr-clear{width:28px;height:28px;visibility:visible;opacity:0;
+  /* Custom date range — hidden unless active; compact inline */
+  .custom-range{display:none;margin-left:4px;padding:4px 8px;width:auto;min-width:190px;}
+  .custom-range.active{display:flex;}
+  .cr-input{font-size:12px;width:auto;flex:1;min-width:70px;}
+  .cr-clear{width:24px;height:24px;visibility:visible;opacity:0;
     transition:opacity .15s;display:flex;align-items:center;justify-content:center;}
   .cr-clear.visible{opacity:1;}
 
