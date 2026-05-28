@@ -1174,9 +1174,12 @@ function baseOpts(ov={}){
     ...rest
   };
 }
-// Re-render charts em resize (orientation change em mobile)
-let _resizeT;
+// Re-render only when WIDTH changes (mobile scroll hides address bar → height-only resize → ignore)
+let _resizeT, _lastW=window.innerWidth;
 window.addEventListener('resize',()=>{
+  const w=window.innerWidth;
+  if(w===_lastW)return;   // height-only change — skip
+  _lastW=w;
   clearTimeout(_resizeT);
   _resizeT=setTimeout(()=>{if(typeof render==='function')render();},250);
 });
