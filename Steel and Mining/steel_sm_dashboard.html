@@ -292,6 +292,50 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #loading p{font-size:12px;color:var(--gray-mid);font-weight:500;letter-spacing:.03em;}
+
+/* ── ORIGIN CHART CONTROLS ───────────────────────────────────────────────── */
+.origin-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.product-pills{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
+.pill-btn{
+  padding:4px 11px;font-size:10.5px;font-weight:600;letter-spacing:.03em;
+  border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--white);color:var(--gray-mid);
+  transition:all .15s;white-space:nowrap;
+}
+.pill-btn:hover{border-color:var(--orange);color:var(--orange);}
+.pill-btn.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+
+.country-selector{position:relative;}
+.cs-toggle{
+  padding:4px 12px;font-size:10.5px;font-weight:600;
+  border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--white);color:var(--gray-dark);
+  transition:all .15s;white-space:nowrap;
+}
+.cs-toggle:hover,.cs-toggle.open{border-color:var(--orange);color:var(--orange);}
+.cs-panel{
+  display:none;position:absolute;right:0;top:calc(100% + 6px);
+  background:var(--white);border:1.5px solid var(--border);border-radius:10px;
+  padding:12px;min-width:200px;max-width:280px;z-index:100;
+  box-shadow:0 4px 20px rgba(0,0,0,0.10);
+}
+.cs-panel.open{display:block;}
+.cs-panel-header{font-size:10px;font-weight:700;color:var(--gray-mid);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.cs-reset{font-size:10px;font-weight:500;color:var(--orange);cursor:pointer;
+  text-decoration:none;letter-spacing:0;text-transform:none;
+}
+.cs-reset:hover{text-decoration:underline;}
+.cs-list{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.cs-item{display:flex;align-items:center;gap:7px;cursor:pointer;
+  padding:3px 4px;border-radius:5px;transition:background .12s;
+}
+.cs-item:hover{background:var(--gray-light);}
+.cs-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--orange);cursor:pointer;}
+.cs-item label{font-size:11.5px;color:var(--gray-dark);cursor:pointer;flex:1;}
+.cs-item.outros label{color:var(--gray-mid);font-style:italic;}
 </style>
 </head>
 <body>
@@ -465,42 +509,25 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <div class="chart-wrap h240"><canvas id="ex-yoy"></canvas></div>
     </div>
   </div>
-  <!-- Exportações por Origem -->
+  <!-- Exportações por País — interativo -->
   <div id="ex-origin-block">
-    <div class="sec-block-header">Exportações por Origem <span id="ex-origin-tag"></span></div>
-    <div class="charts-row c2" id="ex-ctry-row-a">
-      <div class="chart-card">
-        <div class="chart-title" id="ex-ctry-a-title">Por País — Total</div>
-        <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
-        <div class="chart-wrap h300"><canvas id="ex-ctry-a"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title" id="ex-port-a-title">Por Porto — Total</div>
-        <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
-        <div class="chart-wrap h300"><canvas id="ex-port-a"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-row c2" id="ex-ctry-row-b" style="display:none">
-      <div class="chart-card">
-        <div class="chart-title" id="ex-ctry-b-title">Por País — HRC</div>
-        <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
-        <div class="chart-wrap h300"><canvas id="ex-ctry-b"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title" id="ex-port-b-title">Por Porto — HRC</div>
-        <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
-        <div class="chart-wrap h300"><canvas id="ex-port-b"></canvas></div>
-      </div>
-    </div>
-  </div>
-  <!-- Breakdown por produto — só aparece em Total -->
-  <div id="ex-breakdown-block">
-    <div class="sec-block-header" id="ex-breakdown-header">Breakdown por Produto <span id="ex-breakdown-tag"></span></div>
+    <div class="sec-block-header">Exportações por País <span id="ex-origin-tag"></span></div>
     <div class="charts-row c1">
       <div class="chart-card">
-        <div class="chart-title" id="ex-breakdown-title">Exportações por Produto (kt)</div>
-        <div class="chart-sub">SECEX · Planos + Longos + Semis · filtro de granularidade aplicado</div>
-        <div class="chart-wrap h240"><canvas id="ex-qvol"></canvas></div>
+        <div class="origin-controls">
+          <div class="product-pills" id="ex-pills"></div>
+          <div class="country-selector">
+            <button class="cs-toggle" id="ex-cs-toggle" onclick="toggleCountryPanel('exp')">Países &#9660;</button>
+            <div class="cs-panel" id="ex-cs-panel">
+              <div class="cs-panel-header">
+                Países <span class="cs-reset" onclick="resetCountries('exp')">Redefinir</span>
+              </div>
+              <div class="cs-list" id="ex-cs-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-sub">Acumulado anual · kt · SECEX/MDIC</div>
+        <div class="chart-wrap h340"><canvas id="ex-ctry-a"></canvas></div>
       </div>
     </div>
   </div>
@@ -531,42 +558,25 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         <div class="chart-wrap h240"><canvas id="im-yoy"></canvas></div>
       </div>
     </div>
-    <!-- Importações por Origem -->
+    <!-- Importações por País — interativo -->
     <div id="im-origin-block">
-      <div class="sec-block-header">Importações por Origem <span id="im-origin-tag"></span></div>
-      <div class="charts-row c2" id="im-ctry-row-a">
-        <div class="chart-card">
-          <div class="chart-title" id="im-ctry-a-title">Por País — Total</div>
-          <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
-          <div class="chart-wrap h300"><canvas id="im-ctry-a"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title" id="im-port-a-title">Por Porto — Total</div>
-          <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
-          <div class="chart-wrap h300"><canvas id="im-port-a"></canvas></div>
-        </div>
-      </div>
-      <div class="charts-row c2" id="im-ctry-row-b" style="display:none">
-        <div class="chart-card">
-          <div class="chart-title" id="im-ctry-b-title">Por País — HRC</div>
-          <div class="chart-sub">Top 5 países + Outros · acumulado anual · kt · SECEX/MDIC</div>
-          <div class="chart-wrap h300"><canvas id="im-ctry-b"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title" id="im-port-b-title">Por Porto — HRC</div>
-          <div class="chart-sub">Top 5 portos/UF + Outros · acumulado anual · kt · SECEX/MDIC</div>
-          <div class="chart-wrap h300"><canvas id="im-port-b"></canvas></div>
-        </div>
-      </div>
-    </div>
-    <!-- Breakdown por produto — só aparece em Total -->
-    <div id="im-breakdown-block">
-      <div class="sec-block-header" id="im-breakdown-header">Breakdown por Produto <span id="im-breakdown-tag"></span></div>
+      <div class="sec-block-header">Importações por País <span id="im-origin-tag"></span></div>
       <div class="charts-row c1">
         <div class="chart-card">
-          <div class="chart-title" id="im-breakdown-title">Importações por Produto (kt)</div>
-          <div class="chart-sub">SECEX · Planos + Longos + Semis · filtro de granularidade aplicado</div>
-          <div class="chart-wrap h240"><canvas id="im-qvol"></canvas></div>
+          <div class="origin-controls">
+            <div class="product-pills" id="im-pills"></div>
+            <div class="country-selector">
+              <button class="cs-toggle" id="im-cs-toggle" onclick="toggleCountryPanel('imp')">Países &#9660;</button>
+              <div class="cs-panel" id="im-cs-panel">
+                <div class="cs-panel-header">
+                  Países <span class="cs-reset" onclick="resetCountries('imp')">Redefinir</span>
+                </div>
+                <div class="cs-list" id="im-cs-list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-sub">Acumulado anual · kt · SECEX/MDIC</div>
+          <div class="chart-wrap h340"><canvas id="im-ctry-a"></canvas></div>
         </div>
       </div>
     </div>
@@ -795,8 +805,7 @@ let SEEXP={}, SEIMP={};
 let INDA=[];
 let PRED={};
 let PRED_EXP={};
-let SCTY={exp:{},imp:{}};   // secex_country: {exp:{flat:[],long:[],...}, imp:{...}}
-let SPRT={exp:{},imp:{}};   // secex_port:    same structure, grouped by UF
+let SCTY={exp:{},imp:{}};   // secex_country: todas as categorias por direção
 
 const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -995,12 +1004,13 @@ async function loadDB(){
       PRED_EXP[r.product][r.country].push(r);
     }
 
-    // ── secex_country & secex_port (origem por país e porto) ──────────────────
-    for(const cat of ['flat','long','semi','hrc','rebar']){
+    // ── secex_country — todas as subcategorias ────────────────────────────────
+    const ALL_CATS=['flat','hrc','crc','coated','heavy_plate','flat_others',
+                    'long','rebar','bar','wire_rod','shapes','long_others',
+                    'semi','ingot_billet','placa'];
+    for(const cat of ALL_CATS){
       SCTY.exp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='exp' AND category='${cat}' ORDER BY period,country`)[0]);
       SCTY.imp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='imp' AND category='${cat}' ORDER BY period,country`)[0]);
-      SPRT.exp[cat]=toObj(db.exec(`SELECT period,uf,volume_ktons FROM secex_port WHERE direction='exp' AND category='${cat}' ORDER BY period,uf`)[0]);
-      SPRT.imp[cat]=toObj(db.exec(`SELECT period,uf,volume_ktons FROM secex_port WHERE direction='imp' AND category='${cat}' ORDER BY period,uf`)[0]);
     }
 
     db.close();
@@ -1024,98 +1034,246 @@ async function loadDB(){
   }
 }
 
-// ─── ORIGIN CHARTS (por país / por porto) ────────────────────────────────────
+// ─── ORIGIN CHARTS — sistema interativo por país ─────────────────────────────
 const ORIGIN_PALETTE=['#FF5000','#1A1A1A','#4A90D9','#27AE60','#8E44AD','#E67E22'];
+const OUTROS_COLOR='#CCCCCC';
 
-function mergeOriginRows(catList,dir,gf){
-  // Merge rows from multiple categories, summing volume per (period, group)
-  const src=gf==='country'?SCTY:SPRT;
+// Estado de seleção por direção
+const originState={
+  exp:{pillCat:null,countries:null},   // pillCat=null → usa categoria padrão da aba
+  imp:{pillCat:null,countries:null}
+};
+
+// Pills disponíveis por aba (currentProd)
+function getPillDefs(){
+  if(currentProd==='total') return[
+    {label:'Total',cats:['flat','long','semi']},
+    {label:'Flat', cats:['flat']},
+    {label:'Long', cats:['long']},
+    {label:'Semi', cats:['semi']},
+  ];
+  if(currentProd==='flat') return[
+    {label:'Total',cats:['flat']},
+    {label:'HRC',cats:['hrc']},
+    {label:'CRC',cats:['crc']},
+    {label:'Coated',cats:['coated']},
+    {label:'Heavy Plate',cats:['heavy_plate']},
+    {label:'Others',cats:['flat_others']},
+  ];
+  if(currentProd==='long') return[
+    {label:'Total',cats:['long']},
+    {label:'Rebar',cats:['rebar']},
+    {label:'Bar',cats:['bar']},
+    {label:'Wire Rod',cats:['wire_rod']},
+    {label:'Shapes',cats:['shapes']},
+    {label:'Others',cats:['long_others']},
+  ];
+  // semi
+  return[
+    {label:'Total',cats:['semi']},
+    {label:'Ingot/Billet',cats:['ingot_billet']},
+    {label:'Placa',cats:['placa']},
+  ];
+}
+
+// Mescla múltiplas categorias por (period, country)
+function mergeOriginRows(cats,dir){
   const merged={};
-  catList.forEach(cat=>{
-    (src[dir]?.[cat]||[]).forEach(r=>{
-      const key=`${r.period}|${r[gf]}`;
-      if(!merged[key])merged[key]={period:r.period,[gf]:r[gf],volume_ktons:0};
+  cats.forEach(cat=>{
+    (SCTY[dir]?.[cat]||[]).forEach(r=>{
+      const key=`${r.period}|${r.country}`;
+      if(!merged[key])merged[key]={period:r.period,country:r.country,volume_ktons:0};
       merged[key].volume_ktons+=(r.volume_ktons||0);
     });
   });
   return Object.values(merged);
 }
 
-function mkOriginChart(canvasId,rows,gf){
-  // Annual stacked bar: top 5 groups + Outros
-  const byYG={};
+// Agrega por ano+país → {year:{country:vol}}
+function aggregateYearCountry(rows){
+  const byYC={};
   rows.forEach(r=>{
-    const yr=r.period?.slice(0,4);
-    if(!yr)return;
-    const grp=r[gf]||'—';
-    if(!byYG[yr])byYG[yr]={};
-    byYG[yr][grp]=(byYG[yr][grp]||0)+(r.volume_ktons||0);
+    const yr=r.period?.slice(0,4);if(!yr)return;
+    const c=r.country||'—';
+    if(!byYC[yr])byYC[yr]={};
+    byYC[yr][c]=(byYC[yr][c]||0)+(r.volume_ktons||0);
   });
-  const years=Object.keys(byYG).sort();
-  if(!years.length){destroyChart(canvasId);return;}
+  return byYC;
+}
 
-  // Rank groups by total volume
-  const totals={};
-  years.forEach(yr=>Object.entries(byYG[yr]).forEach(([g,v])=>{totals[g]=(totals[g]||0)+v;}));
-  const top5=Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+// Ranqueia países por volume total
+function rankCountries(byYC){
+  const tot={};
+  Object.values(byYC).forEach(yObj=>Object.entries(yObj).forEach(([c,v])=>{tot[c]=(tot[c]||0)+v;}));
+  return Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+}
 
-  const datasets=top5.map((grp,i)=>({
-    type:'bar',label:grp,stack:'s',borderWidth:0,
-    backgroundColor:ORIGIN_PALETTE[i],
-    data:years.map(yr=>+((byYG[yr]?.[grp])||0).toFixed(1))
-  }));
-
-  const outrosData=years.map(yr=>
-    +Object.entries(byYG[yr]||{}).filter(([g])=>!top5.includes(g))
-      .reduce((s,[,v])=>s+v,0).toFixed(1)
-  );
-  if(outrosData.some(v=>v>0))
+// Constrói datasets Chart.js: países selecionados (stacked) + Outros
+function buildOriginDatasets(byYC,years,selected){
+  const isOthers=(c)=>!selected.includes(c)&&c!=='Outros';
+  const pal=[...ORIGIN_PALETTE];
+  const datasets=[];
+  selected.filter(c=>c!=='Outros').forEach((c,i)=>{
+    datasets.push({
+      type:'bar',label:c,stack:'s',borderWidth:0,
+      backgroundColor:pal[i%pal.length],
+      data:years.map(yr=>+((byYC[yr]?.[c])||0).toFixed(1))
+    });
+  });
+  // Outros = tudo que não está selecionado
+  const outrosData=years.map(yr=>{
+    const v=Object.entries(byYC[yr]||{})
+      .filter(([c])=>isOthers(c))
+      .reduce((s,[,v])=>s+v,0);
+    return +v.toFixed(1);
+  });
+  if(selected.includes('Outros')&&outrosData.some(v=>v>0))
     datasets.push({type:'bar',label:'Outros',stack:'s',borderWidth:0,
-      backgroundColor:'#CCCCCC',data:outrosData});
+      backgroundColor:OUTROS_COLOR,data:outrosData});
+  return datasets;
+}
 
-  mkChart(canvasId,'bar',years,datasets,{
+// Renderiza/atualiza gráfico de país para uma direção
+function renderCountryChart(dir){
+  const p=dir==='exp'?'ex':'im';
+  const state=originState[dir];
+  const pills=getPillDefs();
+
+  // Determinar cats ativas (da pill selecionada ou padrão=primeira)
+  const activePill=state.pillCat!==null
+    ?pills.find(d=>d.label===state.pillCat)||pills[0]
+    :pills[0];
+  const cats=activePill.cats;
+
+  const rows=mergeOriginRows(cats,dir);
+  const byYC=aggregateYearCountry(rows);
+  const years=Object.keys(byYC).sort();
+  if(!years.length){destroyChart(`${p}-ctry-a`);return;}
+
+  const ranked=rankCountries(byYC);
+
+  // Se seleção manual nula → auto top5+Outros
+  if(!state.countries){
+    state.countries=[...ranked.slice(0,5),'Outros'];
+  }
+
+  // Construir e renderizar
+  const datasets=buildOriginDatasets(byYC,years,state.countries);
+  mkChart(`${p}-ctry-a`,'bar',years,datasets,{
     ...LEG,
     scales:{
-      x:{stacked:true,ticks:{color:'#999',font:{size:9},maxRotation:45}},
+      x:{stacked:true,ticks:{color:'#999',font:{size:9},maxRotation:45},grid:{display:false}},
       y:{stacked:true,ticks:{callback:v=>v.toFixed(0),color:'#999',font:{size:9}}}
     }
   });
+
+  // Actualizar tag
+  document.getElementById(`${p}-origin-tag`).textContent=activePill.label;
 }
 
-function renderOriginCharts(dir){
+// Renderiza pills de produto para uma direção
+function renderPills(dir){
   const p=dir==='exp'?'ex':'im';
-  const rowA=document.getElementById(`${p}-ctry-row-a`);
-  const rowB=document.getElementById(`${p}-ctry-row-b`);
+  const container=document.getElementById(`${p}-pills`);
+  if(!container)return;
+  const pills=getPillDefs();
+  const state=originState[dir];
+  container.innerHTML='';
+  pills.forEach(def=>{
+    const btn=document.createElement('button');
+    btn.className='pill-btn'+((!state.pillCat&&def===pills[0])||state.pillCat===def.label?' active':'');
+    btn.textContent=def.label;
+    btn.onclick=()=>{
+      state.pillCat=def.label;
+      state.countries=null;  // reset países ao mudar produto
+      renderPills(dir);
+      buildCountryPanel(dir);
+      renderCountryChart(dir);
+    };
+    container.appendChild(btn);
+  });
+}
 
-  let catsA,labelA,catsB='',labelB='',showB=false;
-  if(currentProd==='total'){
-    catsA=['flat','long','semi'];labelA='Total';
-  }else if(currentProd==='flat'){
-    catsA=['flat'];labelA='Planos';catsB=['hrc'];labelB='HRC';showB=true;
-  }else if(currentProd==='long'){
-    catsA=['long'];labelA='Longos';catsB=['rebar'];labelB='Rebar';showB=true;
-  }else{
-    catsA=['semi'];labelA='Semis';
+// Constrói painel de checkboxes de países
+function buildCountryPanel(dir){
+  const p=dir==='exp'?'ex':'im';
+  const list=document.getElementById(`${p}-cs-list`);
+  if(!list)return;
+  const state=originState[dir];
+  const pills=getPillDefs();
+  const activePill=state.pillCat!==null
+    ?pills.find(d=>d.label===state.pillCat)||pills[0]:pills[0];
+  const rows=mergeOriginRows(activePill.cats,dir);
+  const byYC=aggregateYearCountry(rows);
+  const ranked=rankCountries(byYC);
+
+  if(!state.countries) state.countries=[...ranked.slice(0,5),'Outros'];
+
+  list.innerHTML='';
+  // Países regulares (top 20 para não sobrecarregar)
+  ranked.slice(0,20).forEach(country=>{
+    const checked=state.countries.includes(country);
+    const item=document.createElement('div');
+    item.className='cs-item';
+    item.innerHTML=`<input type="checkbox" id="${p}-c-${country.replace(/\s/g,'_')}" ${checked?'checked':''}>
+      <label for="${p}-c-${country.replace(/\s/g,'_')}">${country}</label>`;
+    item.querySelector('input').onchange=e=>{
+      if(e.target.checked) state.countries.push(country);
+      else state.countries=state.countries.filter(c=>c!==country);
+      if(state.countries.length===0) state.countries=null; // reset to auto
+      renderCountryChart(dir);
+    };
+    list.appendChild(item);
+  });
+  // Outros — sempre no final
+  const othItem=document.createElement('div');
+  othItem.className='cs-item outros';
+  const othChecked=state.countries?.includes('Outros')??true;
+  othItem.innerHTML=`<input type="checkbox" id="${p}-c-Outros" ${othChecked?'checked':''}>
+    <label for="${p}-c-Outros">Outros</label>`;
+  othItem.querySelector('input').onchange=e=>{
+    if(e.target.checked){if(!state.countries)state.countries=[];state.countries.push('Outros');}
+    else{state.countries=(state.countries||[]).filter(c=>c!=='Outros');}
+    renderCountryChart(dir);
+  };
+  list.appendChild(othItem);
+}
+
+function toggleCountryPanel(dir){
+  const p=dir==='exp'?'ex':'im';
+  const panel=document.getElementById(`${p}-cs-panel`);
+  const toggle=document.getElementById(`${p}-cs-toggle`);
+  const isOpen=panel.classList.contains('open');
+  // Close all panels first
+  document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+  if(!isOpen){
+    buildCountryPanel(dir);
+    panel.classList.add('open');
+    toggle.classList.add('open');
   }
+}
 
-  document.getElementById(`${p}-origin-tag`).textContent=showB?`${labelA} · ${labelB}`:labelA;
-  document.getElementById(`${p}-ctry-a-title`).textContent=`Por País — ${labelA}`;
-  document.getElementById(`${p}-port-a-title`).textContent=`Por Porto — ${labelA}`;
+function resetCountries(dir){
+  originState[dir].countries=null;
+  buildCountryPanel(dir);
+  renderCountryChart(dir);
+}
 
-  mkOriginChart(`${p}-ctry-a`,mergeOriginRows(catsA,dir,'country'),'country');
-  mkOriginChart(`${p}-port-a`,mergeOriginRows(catsA,dir,'uf'),'uf');
-
-  if(showB){
-    rowB.style.display='';
-    document.getElementById(`${p}-ctry-b-title`).textContent=`Por País — ${labelB}`;
-    document.getElementById(`${p}-port-b-title`).textContent=`Por Porto — ${labelB}`;
-    mkOriginChart(`${p}-ctry-b`,mergeOriginRows(catsB,dir,'country'),'country');
-    mkOriginChart(`${p}-port-b`,mergeOriginRows(catsB,dir,'uf'),'uf');
-  }else{
-    rowB.style.display='none';
-    destroyChart(`${p}-ctry-b`);
-    destroyChart(`${p}-port-b`);
+// Fechar painel ao clicar fora
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.country-selector')){
+    document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+    document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
   }
+});
+
+function renderOriginCharts(dir){
+  // Ao mudar de aba (currentProd), reset pill e países
+  originState[dir].pillCat=null;
+  originState[dir].countries=null;
+  renderPills(dir);
+  renderCountryChart(dir);
 }
 
 // ─── RENDER: EXPORTAÇÃO ──────────────────────────────────────────────────────
@@ -1151,51 +1309,8 @@ function renderExports(){
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 
-  // Origem por país e porto
+  // Gráfico interativo por país
   renderOriginCharts('exp');
-
-  // Breakdown por produto — só renderiza quando currentProd === 'total'
-  const breakBlock=document.getElementById('ex-breakdown-block');
-  if(currentProd!=='total'){
-    breakBlock.style.display='none';
-    destroyChart('ex-qvol');
-  } else {
-    breakBlock.style.display='';
-    if(gran){
-      const flatQ=qToQ(SEEXP['flat']||[],['volume_ktons']);
-      const longQ=qToQ(SEEXP['long']||[],['volume_ktons']);
-      const semiQ=qToQ(SEEXP['semi']||[],['volume_ktons']);
-      const totQ =qToQ(SEEXP['total']||[],['volume_ktons']);
-      const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
-      const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
-      const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
-      const qLbs=totQ.map(r=>r.period);
-      document.getElementById('ex-breakdown-title').textContent='Exportações por Produto — Trimestral (kt)';
-      document.getElementById('ex-breakdown-tag').textContent=currentWin==='all'?'histórico completo':`janela ${currentWin}`;
-      mkChart('ex-qvol','bar',qLbs,[
-        stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
-        stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
-        stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
-      ],{...LEG,...STACKED});
-    } else {
-      // Mensal — aplica janela selecionada
-      const flatM=applyWin(SEEXP['flat']||[]);
-      const longM=applyWin(SEEXP['long']||[]);
-      const semiM=applyWin(SEEXP['semi']||[]);
-      const totM =applyWin(SEEXP['total']||[]);
-      const mLbs=totM.map(r=>r.period);
-      const fMap=Object.fromEntries(flatM.map(r=>[r.period,r.volume_ktons]));
-      const lMap=Object.fromEntries(longM.map(r=>[r.period,r.volume_ktons]));
-      const sMap=Object.fromEntries(semiM.map(r=>[r.period,r.volume_ktons]));
-      document.getElementById('ex-breakdown-title').textContent='Exportações por Produto — Mensal (kt)';
-      document.getElementById('ex-breakdown-tag').textContent=`janela ${currentWin}`;
-      mkChart('ex-qvol','bar',mLbs,[
-        stackDs(mLbs.map(p=>fMap[p]??null),C_OR,'Planos'),
-        stackDs(mLbs.map(p=>lMap[p]??null),C_BK,'Longos'),
-        stackDs(mLbs.map(p=>sMap[p]??null),C_GR,'Semis'),
-      ],{...LEG,...STACKED});
-    }
-  }
 }
 
 // ─── RENDER: IMPORTAÇÃO ──────────────────────────────────────────────────────
@@ -1236,49 +1351,8 @@ function renderImportsSECEX(){
     [barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 
-  // Origem por país e porto
+  // Gráfico interativo por país
   renderOriginCharts('imp');
-
-  // Breakdown por produto (só em Total, responde à granularidade)
-  const bb=document.getElementById('im-breakdown-block');
-  if(currentProd!=='total'){
-    bb.style.display='none'; destroyChart('im-qvol');
-  }else{
-    bb.style.display='';
-    if(gran){
-      const flatQ=qToQ(SEIMP['flat']||[],['volume_ktons']);
-      const longQ=qToQ(SEIMP['long']||[],['volume_ktons']);
-      const semiQ=qToQ(SEIMP['semi']||[],['volume_ktons']);
-      const totQ =qToQ(SEIMP['total']||[],['volume_ktons']);
-      const fM=Object.fromEntries(flatQ.map(r=>[r.period,r.volume_ktons]));
-      const lM=Object.fromEntries(longQ.map(r=>[r.period,r.volume_ktons]));
-      const sM=Object.fromEntries(semiQ.map(r=>[r.period,r.volume_ktons]));
-      const qLbs=totQ.map(r=>r.period);
-      document.getElementById('im-breakdown-title').textContent='Importações por Produto — Trimestral (kt)';
-      document.getElementById('im-breakdown-tag').textContent=currentWin==='all'?'histórico completo':`janela ${currentWin}`;
-      mkChart('im-qvol','bar',qLbs,[
-        stackDs(qLbs.map(p=>fM[p]??null),C_OR,'Planos'),
-        stackDs(qLbs.map(p=>lM[p]??null),C_BK,'Longos'),
-        stackDs(qLbs.map(p=>sM[p]??null),C_GR,'Semis'),
-      ],{...LEG,...STACKED});
-    }else{
-      const flatM=applyWin(SEIMP['flat']||[]);
-      const longM=applyWin(SEIMP['long']||[]);
-      const semiM=applyWin(SEIMP['semi']||[]);
-      const totM =applyWin(SEIMP['total']||[]);
-      const mLbs=totM.map(r=>r.period);
-      const fMap=Object.fromEntries(flatM.map(r=>[r.period,r.volume_ktons]));
-      const lMap=Object.fromEntries(longM.map(r=>[r.period,r.volume_ktons]));
-      const sMap=Object.fromEntries(semiM.map(r=>[r.period,r.volume_ktons]));
-      document.getElementById('im-breakdown-title').textContent='Importações por Produto — Mensal (kt)';
-      document.getElementById('im-breakdown-tag').textContent=`janela ${currentWin}`;
-      mkChart('im-qvol','bar',mLbs,[
-        stackDs(mLbs.map(p=>fMap[p]??null),C_OR,'Planos'),
-        stackDs(mLbs.map(p=>lMap[p]??null),C_BK,'Longos'),
-        stackDs(mLbs.map(p=>sMap[p]??null),C_GR,'Semis'),
-      ],{...LEG,...STACKED});
-    }
-  }
 }
 
 function renderPrediction(){
