@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -234,8 +234,8 @@ html,body{
       <div class="brand-sub">Research Dashboard</div>
     </div>
   </a>
-  <button class="logout-btn" onclick="logout()">Sair</button>
-  <a href="../" class="top-home" title="Todos os setores">
+  <button class="logout-btn" onclick="logout()">Sign out</button>
+  <a href="../" class="top-home" title="All sectors">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
             stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
@@ -250,39 +250,39 @@ html,body{
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
       <path d="M8 2L3 6.5L8 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    Todos os setores
+    All sectors
   </a>
 </div>
 
 <!-- HERO -->
 <div class="hero">
   <div class="hero-eyebrow">
-    <span class="hero-label">Siderurgia &amp; Mineração</span>
-    <span class="hero-badge">Ao vivo</span>
+    <span class="hero-label">Steel &amp; Mining</span>
+    <span class="hero-badge">Live</span>
   </div>
   <div class="hero-title">Steel &amp; Mining</div>
-  <div class="hero-sub">Dados mensais de produção, comércio exterior e preços do mercado siderúrgico brasileiro. Selecione o tema de análise.</div>
+  <div class="hero-sub">Monthly production, foreign trade and price data for the Brazilian steel market. Select a topic to explore.</div>
   <div class="stats-strip">
     <div class="stat-item">
       <div class="stat-dot"></div>
-      <span class="stat-text">4 análises disponíveis</span>
+      <span class="stat-text">4 analyses available</span>
     </div>
     <div class="stat-sep"></div>
     <div class="stat-item">
       <div class="stat-dot" style="background:var(--gray-mid)"></div>
-      <span class="stat-text">Atualização mensal</span>
+      <span class="stat-text">Monthly updates</span>
     </div>
     <div class="stat-sep"></div>
     <div class="stat-item">
       <div class="stat-dot" style="background:var(--gray-mid)"></div>
-      <span class="stat-text">Fontes: SECEX · IABr · INDA</span>
+      <span class="stat-text">Sources: SECEX · IABr · INDA</span>
     </div>
   </div>
 </div>
 
 <!-- SECTION LABEL -->
 <div class="section-label-wrap">
-  <div class="section-label">Selecione o tema</div>
+  <div class="section-label">Select a topic</div>
 </div>
 
 <!-- CARDS -->
@@ -298,16 +298,16 @@ html,body{
           <path d="M9 5H17V13" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <div class="card-eyebrow">SECEX · Comércio Exterior</div>
-      <div class="card-title">Exportação</div>
-      <div class="card-desc">Volumes e receitas de exportação de aço plano, longo e semi por mercado de destino. Granularidade mensal e trimestral.</div>
+      <div class="card-eyebrow">SECEX · Foreign Trade</div>
+      <div class="card-title">Exports</div>
+      <div class="card-desc">Export volumes and revenues for flat, long and semi steel by destination market. Monthly, quarterly and annual granularity.</div>
       <div class="card-footer">
-        <span class="card-status live">● Ao vivo</span>
-        <span class="card-cta">Acessar <span>→</span></span>
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
       </div>
     </a>
 
-    <!-- Importação -->
+    <!-- Imports -->
     <a class="card" href="steel_sm_dashboard.html?s=imports">
       <div class="card-accent orange"></div>
       <div class="card-icon live">
@@ -316,16 +316,16 @@ html,body{
           <path d="M13 17H5V9" stroke="#FF5000" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <div class="card-eyebrow">SECEX · Modelo Preditivo</div>
-      <div class="card-title">Importação</div>
-      <div class="card-desc">Fluxo de importações com modelo preditivo baseado em dados antecipados de embarques da Coreia e China.</div>
+      <div class="card-eyebrow">SECEX · Predictive Model</div>
+      <div class="card-title">Imports</div>
+      <div class="card-desc">Import flows with predictive model based on leading export data from Korea and China.</div>
       <div class="card-footer">
-        <span class="card-status live">● Ao vivo</span>
-        <span class="card-cta">Acessar <span>→</span></span>
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
       </div>
     </a>
 
-    <!-- Mercado Doméstico -->
+    <!-- Domestic Market -->
     <a class="card" href="steel_sm_dashboard.html?s=domestic">
       <div class="card-accent orange"></div>
       <div class="card-icon live">
@@ -336,15 +336,15 @@ html,body{
         </svg>
       </div>
       <div class="card-eyebrow">IABr · INDA</div>
-      <div class="card-title">Mercado Doméstico</div>
-      <div class="card-desc">Produção bruta de aço, consumo aparente e penetração de importados. Distribuidores INDA: estoques, compras e vendas.</div>
+      <div class="card-title">Domestic Market</div>
+      <div class="card-desc">Crude steel production, apparent consumption and import penetration. INDA distributors: inventory, purchases and sales.</div>
       <div class="card-footer">
-        <span class="card-status live">● Ao vivo</span>
-        <span class="card-cta">Acessar <span>→</span></span>
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
       </div>
     </a>
 
-    <!-- Preços -->
+    <!-- Prices -->
     <a class="card" href="steel_sm_dashboard.html?s=prices">
       <div class="card-accent orange"></div>
       <div class="card-icon live">
@@ -356,16 +356,16 @@ html,body{
           <path d="M7 9.7L15 12.3" stroke="#FF5000" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2.5 2"/>
         </svg>
       </div>
-      <div class="card-eyebrow">SECEX · Prêmio de Importação</div>
-      <div class="card-title">Preços</div>
-      <div class="card-desc">Comparação entre preço de importação e referência doméstica (proxy export SECEX). Prêmio histórico e variações YoY.</div>
+      <div class="card-eyebrow">SECEX · Import Premium</div>
+      <div class="card-title">Prices</div>
+      <div class="card-desc">Comparison between import price and domestic reference (SECEX export proxy). Historical premium and YoY changes.</div>
       <div class="card-footer">
-        <span class="card-status live">● Ao vivo</span>
-        <span class="card-cta">Acessar <span>→</span></span>
+        <span class="card-status live">● Live</span>
+        <span class="card-cta">Open <span>→</span></span>
       </div>
     </a>
 
-    <!-- Global — em breve (span full width) -->
+    <!-- Global — coming soon (span full width) -->
     <div class="card disabled card-full">
       <div class="card-accent gray"></div>
       <div class="card-icon soon">
@@ -377,11 +377,11 @@ html,body{
           <path d="M2.5 13.5H19.5" stroke="#BBBBBB" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="card-eyebrow">Dados Globais</div>
+      <div class="card-eyebrow">Global Data</div>
       <div class="card-title">Global</div>
-      <div class="card-desc">Comparativos internacionais de produção, consumo e comércio de aço. World Steel Association, ISSB e fluxos por região.</div>
+      <div class="card-desc">International comparisons of steel production, consumption and trade. World Steel Association, ISSB and regional flows.</div>
       <div class="card-footer">
-        <span class="card-status soon">Em breve</span>
+        <span class="card-status soon">Coming soon</span>
       </div>
     </div>
 
@@ -392,7 +392,7 @@ html,body{
 <div class="footer">
   <span class="footer-text">Itaú BBA · Equity Research</span>
   <div class="footer-dot"></div>
-  <span class="footer-text">Uso restrito</span>
+  <span class="footer-text">Restricted use</span>
 </div>
 
 </body>

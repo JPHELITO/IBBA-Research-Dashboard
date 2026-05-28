@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>ITAÚ BBA — Acesso</title>
+<title>ITAÚ BBA — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -164,26 +164,26 @@ html,body{
 <!-- MAIN -->
 <div class="main">
   <div class="login-card">
-    <div class="login-eyebrow">Equity Research · Acesso restrito</div>
-    <div class="login-title">Bem-vindo</div>
-    <div class="login-sub">Insira suas credenciais para acessar o dashboard de análise setorial.</div>
+    <div class="login-eyebrow">Equity Research · Restricted access</div>
+    <div class="login-title">Welcome</div>
+    <div class="login-sub">Enter your credentials to access the sector research dashboard.</div>
 
     <div id="msg-error" class="msg error"></div>
     <div id="msg-info"  class="msg info"></div>
 
     <form id="login-form" onsubmit="handleLogin(event)">
       <div class="field">
-        <label for="username">Usuário</label>
-        <input id="username" type="text" placeholder="Ex: IBBA" autocomplete="username"
+        <label for="username">Username</label>
+        <input id="username" type="text" placeholder="e.g.: IBBA" autocomplete="username"
                autocapitalize="none" spellcheck="false" required/>
       </div>
       <div class="field">
-        <label for="password">Senha</label>
+        <label for="password">Password</label>
         <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
       </div>
 
       <button type="submit" class="btn-submit" id="btn-submit">
-        <span class="btn-text">Entrar</span>
+        <span class="btn-text">Sign in</span>
         <span class="btn-spinner"><div class="spinner-ring"></div></span>
       </button>
     </form>
@@ -194,7 +194,7 @@ html,body{
 <div class="footer">
   <span class="footer-text">Itaú BBA · Equity Research</span>
   <div class="footer-dot"></div>
-  <span class="footer-text">Uso restrito</span>
+  <span class="footer-text">Restricted use</span>
 </div>
 
 <script>
@@ -260,7 +260,7 @@ async function handleLogin(e) {
   setLoading(false)
 
   if (error) {
-    showError('Usuário ou senha incorretos. Tente novamente.')
+    showError('Incorrect username or password. Please try again.')
     return
   }
 
