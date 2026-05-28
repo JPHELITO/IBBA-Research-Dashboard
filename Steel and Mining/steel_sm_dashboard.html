@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -366,7 +366,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 </head>
 <body>
 
-<div id="loading"><div class="spinner"></div><p>Carregando dados…</p></div>
+<div id="loading"><div class="spinner"></div><p>Loading data…</p></div>
 
 <!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
 <div class="sticky-header">
@@ -409,7 +409,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     </svg>
   </a>
   <!-- Logout -->
-  <button class="logout-btn" onclick="logout()" title="Sair da conta">Sair</button>
+  <button class="logout-btn" onclick="logout()" title="Sign out">Sign out</button>
 </div>
 <div class="orange-rule"></div>
 
@@ -418,10 +418,10 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
-  <button class="snav-btn active" data-sub="exports"  onclick="setSub('exports')">Exportação</button>
-  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Importação</button>
-  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Mercado Doméstico</button>
-  <button class="snav-btn"        data-sub="prices"   onclick="setSub('prices')">Preços</button>
+  <button class="snav-btn active" data-sub="exports"  onclick="setSub('exports')">Exports</button>
+  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
+  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
+  <button class="snav-btn"        data-sub="prices"   onclick="setSub('prices')">Prices</button>
   <button class="snav-btn soon"   data-sub="global"   onclick="">Global</button>
 </div>
 
@@ -430,32 +430,32 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <span class="filter-label">Produto:</span>
   <div class="filter-btns" id="prod-btns">
     <button class="fbtn active" data-prod="total" onclick="setProd('total')">Total</button>
-    <button class="fbtn"        data-prod="flat"  onclick="setProd('flat')">Planos</button>
-    <button class="fbtn"        data-prod="long"  onclick="setProd('long')">Longos</button>
-    <button class="fbtn"        data-prod="semi"  onclick="setProd('semi')" id="btn-semi">Semis</button>
+    <button class="fbtn"        data-prod="flat"  onclick="setProd('flat')">Flat</button>
+    <button class="fbtn"        data-prod="long"  onclick="setProd('long')">Long</button>
+    <button class="fbtn"        data-prod="semi"  onclick="setProd('semi')" id="btn-semi">Semi</button>
   </div>
   <div class="filter-sep"></div>
-  <span class="filter-label">Granularidade:</span>
+  <span class="filter-label">Granularity:</span>
   <div class="filter-btns">
-    <button class="fbtn active" data-gran="monthly"   onclick="setGran('monthly')">Mensal</button>
-    <button class="fbtn"        data-gran="quarterly" onclick="setGran('quarterly')">Trimestral</button>
-    <button class="fbtn"        data-gran="annual"    onclick="setGran('annual')">Anual</button>
+    <button class="fbtn active" data-gran="monthly"   onclick="setGran('monthly')">Monthly</button>
+    <button class="fbtn"        data-gran="quarterly" onclick="setGran('quarterly')">Quarterly</button>
+    <button class="fbtn"        data-gran="annual"    onclick="setGran('annual')">Annual</button>
   </div>
   <div class="filter-sep"></div>
-  <span class="filter-label">Janela:</span>
+  <span class="filter-label">Window:</span>
   <div class="filter-btns">
     <button class="fbtn" data-win="3m"  onclick="setWin('3m')">3M</button>
     <button class="fbtn" data-win="6m"  onclick="setWin('6m')">6M</button>
-    <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1A</button>
-    <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3A</button>
-    <button class="fbtn active" data-win="5y"  onclick="setWin('5y')">5A</button>
-    <button class="fbtn" data-win="all" onclick="setWin('all')">Histórico</button>
+    <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1Y</button>
+    <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3Y</button>
+    <button class="fbtn active" data-win="5y"  onclick="setWin('5y')">5Y</button>
+    <button class="fbtn" data-win="all" onclick="setWin('all')">All</button>
   </div>
-  <div class="custom-range" title="Selecione um intervalo customizado">
-    <input type="month" id="win-from" class="cr-input" onchange="setCustomRange()" aria-label="De">
+  <div class="custom-range" title="Select a custom date range">
+    <input type="month" id="win-from" class="cr-input" onchange="setCustomRange()" aria-label="From">
     <span class="cr-sep">–</span>
-    <input type="month" id="win-to"   class="cr-input" onchange="setCustomRange()" aria-label="Até">
-    <button class="cr-clear" id="cr-clear" onclick="clearCustomRange()" title="Limpar intervalo">×</button>
+    <input type="month" id="win-to"   class="cr-input" onchange="setCustomRange()" aria-label="To">
+    <button class="cr-clear" id="cr-clear" onclick="clearCustomRange()" title="Clear range">×</button>
   </div>
 </div>
 
@@ -467,10 +467,10 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <button class="fbtn"        data-pp="CRC" onclick="setPredProd('CRC')">CRC</button>
   </div>
   <div class="filter-sep"></div>
-  <span class="pred-label">Defasagem:</span>
+  <span class="pred-label">Lag:</span>
   <div class="pred-slider-wrap">
     <input type="range" id="delay-slider" min="0" max="6" value="3" oninput="setDelay(this.value)">
-    <span class="pred-delay-val" id="delay-label">3 meses</span>
+    <span class="pred-delay-val" id="delay-label">3 months</span>
   </div>
 </div>
 </div><!-- /sticky-header -->
@@ -480,46 +480,46 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 ════════════════════════════════════════════════════════════════════════════ -->
 <div id="mob-picker" class="mob-picker">
   <div class="mob-picker-inner">
-    <a href="../" class="mob-picker-back-root">← Todos os setores</a>
+    <a href="../" class="mob-picker-back-root">← All sectors</a>
     <div class="mob-picker-heading">
-      <div class="mob-picker-eyebrow">Siderurgia &amp; Mineração</div>
+      <div class="mob-picker-eyebrow">Steel &amp; Mining</div>
       <div class="mob-picker-title">Steel &amp; Mining</div>
     </div>
     <div class="mob-sections-list">
       <button class="mob-sec-item" onclick="mobSelect('exports')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Exportação</div>
-          <div class="mob-sec-desc">Volumes e receitas de exportação por produto</div>
+          <div class="mob-sec-title">Exports</div>
+          <div class="mob-sec-desc">Export volumes and revenues by product</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <button class="mob-sec-item" onclick="mobSelect('imports')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Importação</div>
-          <div class="mob-sec-desc">Fluxo de importações e modelo preditivo</div>
+          <div class="mob-sec-title">Imports</div>
+          <div class="mob-sec-desc">Import flows and predictive model</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <button class="mob-sec-item" onclick="mobSelect('domestic')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Mercado Doméstico</div>
-          <div class="mob-sec-desc">Produção, consumo aparente e distribuidores INDA</div>
+          <div class="mob-sec-title">Domestic Market</div>
+          <div class="mob-sec-desc">Production, apparent consumption and INDA distributors</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <button class="mob-sec-item" onclick="mobSelect('prices')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Preços</div>
-          <div class="mob-sec-desc">Importação vs. referência doméstica</div>
+          <div class="mob-sec-title">Prices</div>
+          <div class="mob-sec-desc">Imports vs. domestic reference</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <div class="mob-sec-item disabled">
         <div class="mob-sec-info">
           <div class="mob-sec-title">Global</div>
-          <div class="mob-sec-desc">Comparativos internacionais de mercado</div>
+          <div class="mob-sec-desc">International market comparisons</div>
         </div>
-        <span class="mob-sec-badge">em breve</span>
+        <span class="mob-sec-badge">coming soon</span>
       </div>
     </div>
   </div>
@@ -532,28 +532,28 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Volume + YoY -->
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Volume Exportado (kt)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
+      <div class="chart-title">Export Volume (kt)</div>
+      <div class="chart-sub">SECEX/MDIC · filter by product</div>
       <div class="chart-wrap h240"><canvas id="ex-vol"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">YoY Volume Exportado (%)</div>
-      <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
+      <div class="chart-title">YoY Export Volume (%)</div>
+      <div class="chart-sub">Change vs. same period prior year</div>
       <div class="chart-wrap h240"><canvas id="ex-yoy"></canvas></div>
     </div>
   </div>
-  <!-- Exportações por País — interativo -->
+  <!-- Exports by Country — interactive -->
   <div id="ex-origin-block">
-    <div class="sec-block-header">Exportações por País <span id="ex-origin-tag"></span></div>
+    <div class="sec-block-header">Exports by Country <span id="ex-origin-tag"></span></div>
     <div class="charts-row c1">
       <div class="chart-card origin-card">
         <div class="origin-controls">
           <div class="product-pills" id="ex-pills"></div>
           <div class="country-selector">
-            <button class="cs-toggle" id="ex-cs-toggle" onclick="toggleCountryPanel('exp')">Países &#9660;</button>
+            <button class="cs-toggle" id="ex-cs-toggle" onclick="toggleCountryPanel('exp')">Countries &#9660;</button>
             <div class="cs-panel" id="ex-cs-panel">
               <div class="cs-panel-header">
-                Países <span class="cs-reset" onclick="resetCountries('exp')">Redefinir</span>
+                Countries <span class="cs-reset" onclick="resetCountries('exp')">Reset</span>
               </div>
               <div class="cs-list" id="ex-cs-list"></div>
             </div>
@@ -572,8 +572,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div id="sec-imports" class="section">
   <!-- Inner tab bar -->
   <div class="inner-tab-bar">
-    <button class="itab active" data-itab="secex"      onclick="setImportTab('secex')">📊 Análise SECEX</button>
-    <button class="itab"        data-itab="prediction" onclick="setImportTab('prediction')">📈 Modelo Preditivo</button>
+    <button class="itab active" data-itab="secex"      onclick="setImportTab('secex')">📊 SECEX Analysis</button>
+    <button class="itab"        data-itab="prediction" onclick="setImportTab('prediction')">📈 Predictive Model</button>
   </div>
 
   <!-- ── SECEX TAB ── -->
@@ -581,28 +581,28 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <!-- Volume + YoY -->
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">Volume Importado (kt)</div>
-        <div class="chart-sub">SECEX/MDIC · filtro por produto · Total = composição empilhada</div>
+        <div class="chart-title">Import Volume (kt)</div>
+        <div class="chart-sub">SECEX/MDIC · filter by product · Total = stacked composition</div>
         <div class="chart-wrap h240"><canvas id="im-vol"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">YoY Volume Importado (%)</div>
-        <div class="chart-sub">Variação vs. mesmo período do ano anterior</div>
+        <div class="chart-title">YoY Import Volume (%)</div>
+        <div class="chart-sub">Change vs. same period prior year</div>
         <div class="chart-wrap h240"><canvas id="im-yoy"></canvas></div>
       </div>
     </div>
-    <!-- Importações por País — interativo -->
+    <!-- Imports by Country — interactive -->
     <div id="im-origin-block">
-      <div class="sec-block-header">Importações por País <span id="im-origin-tag"></span></div>
+      <div class="sec-block-header">Imports by Country <span id="im-origin-tag"></span></div>
       <div class="charts-row c1">
         <div class="chart-card origin-card">
           <div class="origin-controls">
             <div class="product-pills" id="im-pills"></div>
             <div class="country-selector">
-              <button class="cs-toggle" id="im-cs-toggle" onclick="toggleCountryPanel('imp')">Países &#9660;</button>
+              <button class="cs-toggle" id="im-cs-toggle" onclick="toggleCountryPanel('imp')">Countries &#9660;</button>
               <div class="cs-panel" id="im-cs-panel">
                 <div class="cs-panel-header">
-                  Países <span class="cs-reset" onclick="resetCountries('imp')">Redefinir</span>
+                  Countries <span class="cs-reset" onclick="resetCountries('imp')">Reset</span>
                 </div>
                 <div class="cs-list" id="im-cs-list"></div>
               </div>
@@ -618,23 +618,23 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- ── PREDICTION TAB ── -->
   <div id="im-tab-prediction" class="inner-tab-content">
     <div class="info-box" id="pd-info-box">
-      <strong>Lógica:</strong> Exportações de Coreia/China são registradas quando as remessas partem.
-      As importações SECEX são registradas quando chegam ao Brasil — com defasagem de ~3 meses.
-      Deslocando os dados de exportação <strong id="pd-delay-text">+3M</strong>, é possível
-      projetar as futuras leituras do SECEX. O trecho onde a linha de exportação avança além
-      do último dado SECEX é a <strong>zona de projeção</strong>.
+      <strong>Logic:</strong> Exports from Korea/China are recorded when shipments depart.
+      Brazilian SECEX imports are recorded when goods arrive in Brazil — with a ~3-month lag.
+      By shifting export data <strong id="pd-delay-text">+3M</strong>, future SECEX readings
+      can be projected. The portion where the export line extends beyond the last SECEX
+      reading is the <strong>projection zone</strong>.
     </div>
-    <!-- Coreia: 3M + 12M -->
-    <div class="sec-block-header" id="pd-korea-header">Coreia — HRC</div>
+    <!-- Korea: 3M + 12M -->
+    <div class="sec-block-header" id="pd-korea-header">Korea — HRC</div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title" id="pd-3m-korea-title">3M Acumulado — Coreia</div>
-        <div class="chart-sub">Preto = Exportações Coreia (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-title" id="pd-3m-korea-title">3M Cumulative — Korea</div>
+        <div class="chart-sub">Black = Korea exports (shifted) · Orange = SECEX imports</div>
         <div class="chart-wrap h240"><canvas id="pd-3m-korea"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title" id="pd-12m-korea-title">12M Acumulado — Coreia</div>
-        <div class="chart-sub">Preto = Exportações Coreia (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-title" id="pd-12m-korea-title">12M Cumulative — Korea</div>
+        <div class="chart-sub">Black = Korea exports (shifted) · Orange = SECEX imports</div>
         <div class="chart-wrap h240"><canvas id="pd-12m-korea"></canvas></div>
       </div>
     </div>
@@ -642,27 +642,27 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <div class="sec-block-header" id="pd-china-header">China — HRC</div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title" id="pd-3m-china-title">3M Acumulado — China</div>
-        <div class="chart-sub">Preto = Exportações China (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-title" id="pd-3m-china-title">3M Cumulative — China</div>
+        <div class="chart-sub">Black = China exports (shifted) · Orange = SECEX imports</div>
         <div class="chart-wrap h240"><canvas id="pd-3m-china"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title" id="pd-12m-china-title">12M Acumulado — China</div>
-        <div class="chart-sub">Preto = Exportações China (deslocado) · Laranja = Importações SECEX</div>
+        <div class="chart-title" id="pd-12m-china-title">12M Cumulative — China</div>
+        <div class="chart-sub">Black = China exports (shifted) · Orange = SECEX imports</div>
         <div class="chart-wrap h240"><canvas id="pd-12m-china"></canvas></div>
       </div>
     </div>
-    <!-- Combinado Korea+China 3M + 12M -->
-    <div class="sec-block-header" id="pd-combined-header">Coreia + China — HRC</div>
+    <!-- Combined Korea+China 3M + 12M -->
+    <div class="sec-block-header" id="pd-combined-header">Korea + China — HRC</div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title" id="pd-3m-combined-title">3M Acumulado — Coreia + China</div>
-        <div class="chart-sub">Preto = Exp. Coreia+China (deslocado +NM) · Laranja = SECEX Coreia+China (importações)</div>
+        <div class="chart-title" id="pd-3m-combined-title">3M Cumulative — Korea + China</div>
+        <div class="chart-sub">Black = Korea+China exports (shifted +NM) · Orange = SECEX Korea+China imports</div>
         <div class="chart-wrap h240"><canvas id="pd-3m-combined"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title" id="pd-12m-combined-title">12M Acumulado — Coreia + China</div>
-        <div class="chart-sub">Preto = Exp. Coreia+China (deslocado +NM) · Laranja = SECEX Coreia+China (importações)</div>
+        <div class="chart-title" id="pd-12m-combined-title">12M Cumulative — Korea + China</div>
+        <div class="chart-sub">Black = Korea+China exports (shifted +NM) · Orange = SECEX Korea+China imports</div>
         <div class="chart-wrap h240"><canvas id="pd-12m-combined"></canvas></div>
       </div>
     </div>
@@ -676,111 +676,111 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
   <!-- INDA BLOCK — only when Flat selected -->
   <div id="inda-block">
-    <div class="sec-block-header">INDA — Distribuidores de Aço Plano <span>somente Planos</span></div>
+    <div class="sec-block-header">INDA — Flat Steel Distributors <span>Flat only</span></div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">Estoque de Distribuidores (kt · eixo dir = meses)</div>
-        <div class="chart-sub">INDA · barras = estoque kt (esq.) · linhas = estoque em meses + média histórica (dir.)</div>
+        <div class="chart-title">Distributor Inventory (kt · right axis = months)</div>
+        <div class="chart-sub">INDA · bars = inventory kt (left) · lines = months of inventory + historical avg (right)</div>
         <div class="chart-wrap h240"><canvas id="di-stock"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">Compras vs. Vendas dos Distribuidores (kt)</div>
-        <div class="chart-sub">INDA · barras agrupadas mensais</div>
+        <div class="chart-title">Distributor Purchases vs. Sales (kt)</div>
+        <div class="chart-sub">INDA · monthly grouped bars</div>
         <div class="chart-wrap h240"><canvas id="di-purcsales"></canvas></div>
       </div>
     </div>
     <div class="charts-row c2">
       <div class="chart-card">
-        <div class="chart-title">Vendas LTM — Distribuidores (kt)</div>
-        <div class="chart-sub">INDA · acumulado 12 meses móveis</div>
+        <div class="chart-title">LTM Sales — Distributors (kt)</div>
+        <div class="chart-sub">INDA · trailing 12-month cumulative</div>
         <div class="chart-wrap h200"><canvas id="di-ltm"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">Vendas Média 3 Meses — Distribuidores (kt)</div>
-        <div class="chart-sub">INDA · média móvel 3 meses</div>
+        <div class="chart-title">3M Avg Sales — Distributors (kt)</div>
+        <div class="chart-sub">INDA · 3-month moving average</div>
         <div class="chart-wrap h200"><canvas id="di-ma3"></canvas></div>
       </div>
     </div>
   </div>
 
   <!-- IABr — always shown -->
-  <div class="sec-block-header" id="iabr-block-header">Mercado Doméstico — IABr</div>
+  <div class="sec-block-header" id="iabr-block-header">Domestic Market — IABr</div>
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Vendas Domésticas IABr (kt)</div>
-      <div class="chart-sub">IABr · Planos + Longos · filtro por produto</div>
+      <div class="chart-title">IABr Domestic Sales (kt)</div>
+      <div class="chart-sub">IABr · Flat + Long · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-sales"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Produção de Aço Bruto IABr (kt)</div>
+      <div class="chart-title">IABr Crude Steel Production (kt)</div>
       <div class="chart-sub">IABr · total</div>
       <div class="chart-wrap h240"><canvas id="dom-crude"></canvas></div>
     </div>
   </div>
   <div class="charts-row c1">
     <div class="chart-card">
-      <div class="chart-title">Consumo Aparente IABr (kt) + Penetração do Importado (%)</div>
-      <div class="chart-sub">IABr · área = consumo (esq.) · linha = imp. ÷ consumo aparente (dir.) · filtro por produto</div>
+      <div class="chart-title">IABr Apparent Consumption (kt) + Import Penetration (%)</div>
+      <div class="chart-sub">IABr · area = consumption (left) · line = imports ÷ apparent consumption (right) · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-cons"></canvas></div>
     </div>
   </div>
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Sazonalidade — Vendas Domésticas (kt/mês)</div>
-      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · cores = outros anos · filtro Planos/Longos</div>
+      <div class="chart-title">Seasonality — Domestic Sales (kt/month)</div>
+      <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
       <div class="chart-wrap h260"><canvas id="dom-seasdom"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Sazonalidade — Consumo Aparente (kt/mês)</div>
-      <div class="chart-sub">IABr · cada linha = 1 ano · laranja = atual · preto = anterior · cores = outros anos · filtro Planos/Longos</div>
+      <div class="chart-title">Seasonality — Apparent Consumption (kt/month)</div>
+      <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
       <div class="chart-wrap h260"><canvas id="dom-seascons"></canvas></div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
-     PREÇOS
+     PRICES
 ════════════════════════════════════════════════════════════════ -->
 <div id="sec-prices" class="section">
-  <!-- Gráfico principal: comparação importação vs. referência doméstica -->
+  <!-- Main chart: import vs domestic reference -->
   <div class="charts-row c1">
     <div class="chart-card">
-      <div class="chart-title">Preço Importação vs. Referência Doméstica (US$/t)</div>
-      <div class="chart-sub">SECEX · preto = importação · laranja = exportação (proxy doméstico) · empresas se beneficiam quando importação &gt; doméstico</div>
+      <div class="chart-title">Import Price vs. Domestic Reference (US$/t)</div>
+      <div class="chart-sub">SECEX · black = import · orange = export (domestic proxy) · companies benefit when import &gt; domestic</div>
       <div class="chart-wrap h260"><canvas id="px-compare"></canvas></div>
     </div>
   </div>
-  <!-- Prêmio da importação: métrica central -->
+  <!-- Import premium: key metric -->
   <div class="charts-row c1">
     <div class="chart-card">
-      <div class="chart-title">Prêmio da Importação — Import. − Ref. Dom. (US$/t)</div>
-      <div class="chart-sub">SECEX · verde = importação mais cara que o doméstico (favorável às empresas) · vermelho = importação mais barata (risco competitivo)</div>
+      <div class="chart-title">Import Premium — Import − Domestic Ref. (US$/t)</div>
+      <div class="chart-sub">SECEX · green = imports more expensive than domestic (favorable to companies) · red = imports cheaper (competitive risk)</div>
       <div class="chart-wrap h230"><canvas id="px-spread"></canvas></div>
     </div>
   </div>
-  <!-- Preços individuais -->
+  <!-- Individual prices -->
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">Referência Doméstica — Preço Exportação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · proxy do preço doméstico · filtro por produto</div>
+      <div class="chart-title">Domestic Reference — Export Price (US$/t)</div>
+      <div class="chart-sub">SECEX/MDIC · domestic price proxy · filter by product</div>
       <div class="chart-wrap h210"><canvas id="px-exp"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Preço de Importação (US$/t)</div>
-      <div class="chart-sub">SECEX/MDIC · filtro por produto</div>
+      <div class="chart-title">Import Price (US$/t)</div>
+      <div class="chart-sub">SECEX/MDIC · filter by product</div>
       <div class="chart-wrap h210"><canvas id="px-imp"></canvas></div>
     </div>
   </div>
-  <!-- YoY: evolução dos preços -->
+  <!-- YoY: price evolution -->
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">YoY — Preço de Importação (%)</div>
-      <div class="chart-sub">SECEX · variação vs. mesmo período do ano anterior</div>
+      <div class="chart-title">YoY — Import Price (%)</div>
+      <div class="chart-sub">SECEX · change vs. same period prior year</div>
       <div class="chart-wrap h190"><canvas id="px-yoy"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">YoY — Referência Doméstica / Exportação (%)</div>
-      <div class="chart-sub">SECEX · variação vs. mesmo período do ano anterior</div>
+      <div class="chart-title">YoY — Domestic Reference / Export (%)</div>
+      <div class="chart-sub">SECEX · change vs. same period prior year</div>
       <div class="chart-wrap h190"><canvas id="px-yoy2"></canvas></div>
     </div>
   </div>
@@ -792,16 +792,16 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div id="sec-mining" class="section">
   <div class="coming-soon">
     <h2>⛏</h2>
-    <p style="font-size:16px;font-weight:700;color:#bbb;">Mining — Em Breve</p>
-    <p>Esta seção será desenvolvida em próxima iteração.</p>
+    <p style="font-size:16px;font-weight:700;color:#bbb;">Mining — Coming Soon</p>
+    <p>This section will be developed in a future iteration.</p>
   </div>
 </div>
 
 <div class="note-bar">
-  Fontes: <em>IABr</em> (produção, vendas domésticas, consumo aparente, exp/imp) ·
-  <em>SECEX/MDIC</em> (comércio exterior por NCM/categoria) · <em>INDA</em> (distribuidores planos) ·
-  <em>SECEX Prediction</em> (exportações Coreia+China por NCM HRC/CRC) ·
-  Penetração = Importações ÷ Consumo Aparente · Volumes em kton
+  Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
+  <em>SECEX/MDIC</em> (foreign trade by NCM/category) · <em>INDA</em> (flat distributors) ·
+  <em>SECEX Prediction</em> (Korea+China exports for HRC/CRC NCMs) ·
+  Penetration = Imports ÷ Apparent Consumption · Volumes in kton
 </div>
 
 <script>
@@ -841,7 +841,7 @@ let PRED={};
 let PRED_EXP={};
 let SCTY={exp:{},imp:{}};   // secex_country: todas as categorias por direção
 
-const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const WIN_MO={all:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
 let charts={};
 
@@ -986,7 +986,7 @@ function winLabel(){
     const t=to?to.slice(0,4)+'/'+to.slice(5,7):'…';
     return`${f}–${t}`;
   }
-  return{'all':'Hist.','5y':'5A','3y':'3A','1y':'1A','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+  return{'all':'All','5y':'5Y','3y':'3Y','1y':'1Y','6m':'6M','3m':'3M'}[currentWin]||currentWin;
 }
 function rolling12(arr,f){
   return arr.map((_,i)=>{
@@ -1002,7 +1002,7 @@ function rollingN(arr,f,n){
     return arr.slice(i-n+1,i+1).reduce((t,r)=>t+(r[f]||0),0);
   });
 }
-const PT_MO=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const PT_MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function fmtPeriod(p){
   if(!p||p.length<7)return p;
   const[y,m]=p.split('-').map(Number);
@@ -1128,7 +1128,7 @@ async function loadDB(){
     }
   }catch(e){
     el.innerHTML=`<div style="text-align:center;padding:40px">
-      <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Falha ao carregar steel_sm.db</div>
+      <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load steel_sm.db</div>
       <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
   }
 }
@@ -1136,6 +1136,33 @@ async function loadDB(){
 // ─── ORIGIN CHARTS — sistema interativo por país ─────────────────────────────
 const ORIGIN_PALETTE=['#FF5000','#1A1A1A','#4A90D9','#27AE60','#8E44AD','#E67E22'];
 const OUTROS_COLOR='#CCCCCC';
+
+// Tradução PT-BR → EN dos principais países (dados vêm do SECEX em português)
+const COUNTRY_EN={
+  'Estados Unidos':'United States','Coreia do Sul':'South Korea','China':'China',
+  'Argentina':'Argentina','México':'Mexico','Taiwan (Formosa)':'Taiwan','Alemanha':'Germany',
+  'Países Baixos (Holanda)':'Netherlands','Países Baixos':'Netherlands','Itália':'Italy',
+  'Bélgica':'Belgium','Espanha':'Spain','Reino Unido':'United Kingdom','França':'France',
+  'Japão':'Japan','Índia':'India','Vietnã':'Vietnam','Tailândia':'Thailand','Turquia':'Turkey',
+  'Rússia, Federação da':'Russia','Rússia':'Russia','Ucrânia':'Ukraine','Polônia':'Poland',
+  'República Tcheca':'Czech Republic','Eslováquia':'Slovakia','Áustria':'Austria','Suécia':'Sweden',
+  'Finlândia':'Finland','Noruega':'Norway','Dinamarca':'Denmark','Suíça':'Switzerland',
+  'Portugal':'Portugal','Grécia':'Greece','Romênia':'Romania','Bulgária':'Bulgaria',
+  'Hungria':'Hungary','Croácia':'Croatia','Sérvia':'Serbia','Eslovênia':'Slovenia',
+  'Lituânia':'Lithuania','Letônia':'Latvia','Estônia':'Estonia',
+  'Canadá':'Canada','Chile':'Chile','Colômbia':'Colombia','Peru':'Peru','Venezuela':'Venezuela',
+  'Equador':'Ecuador','Uruguai':'Uruguay','Paraguai':'Paraguay','Bolívia':'Bolivia',
+  'África do Sul':'South Africa','Egito':'Egypt','Marrocos':'Morocco','Argélia':'Algeria',
+  'Nigéria':'Nigeria','Quênia':'Kenya','Tunísia':'Tunisia','Angola':'Angola','Moçambique':'Mozambique',
+  'Arábia Saudita':'Saudi Arabia','Emirados Árabes Unidos':'United Arab Emirates',
+  'Irã, República Islâmica do':'Iran','Iraque':'Iraq','Israel':'Israel','Líbano':'Lebanon',
+  'Indonésia':'Indonesia','Malásia':'Malaysia','Filipinas':'Philippines','Singapura':'Singapore',
+  'Cingapura':'Singapore','Paquistão':'Pakistan','Bangladesh':'Bangladesh',
+  'Austrália':'Australia','Nova Zelândia':'New Zealand',
+  'Hong Kong':'Hong Kong','Coreia, República Popular Democrática da':'North Korea',
+  'Não declarado':'Not declared','Outros':'Others','Others':'Others'
+};
+function trCountry(name){return COUNTRY_EN[name]||name;}
 
 // Estado de seleção por direção
 const originState={
@@ -1224,12 +1251,12 @@ function rankCountries(byPC){
 
 // Constrói datasets Chart.js: países selecionados (stacked) + Outros
 function buildOriginDatasets(byPC,periods,selected){
-  const isOthers=(c)=>!selected.includes(c)&&c!=='Outros';
+  const isOthers=(c)=>!selected.includes(c)&&c!=='Others';
   const pal=[...ORIGIN_PALETTE];
   const datasets=[];
-  selected.filter(c=>c!=='Outros').forEach((c,i)=>{
+  selected.filter(c=>c!=='Others').forEach((c,i)=>{
     datasets.push({
-      type:'bar',label:c,stack:'s',borderWidth:0,
+      type:'bar',label:trCountry(c),stack:'s',borderWidth:0,
       backgroundColor:pal[i%pal.length],
       data:periods.map(p=>+((byPC[p]?.[c])||0).toFixed(1))
     });
@@ -1241,8 +1268,8 @@ function buildOriginDatasets(byPC,periods,selected){
       .reduce((s,[,v])=>s+v,0);
     return +v.toFixed(1);
   });
-  if(selected.includes('Outros')&&outrosData.some(v=>v>0))
-    datasets.push({type:'bar',label:'Outros',stack:'s',borderWidth:0,
+  if(selected.includes('Others')&&outrosData.some(v=>v>0))
+    datasets.push({type:'bar',label:'Others',stack:'s',borderWidth:0,
       backgroundColor:OUTROS_COLOR,data:outrosData});
   return datasets;
 }
@@ -1268,7 +1295,7 @@ function renderCountryChart(dir){
 
   // Default: top5 + Outros automaticamente
   if(!state.countries){
-    state.countries=[...ranked.slice(0,5),'Outros'];
+    state.countries=[...ranked.slice(0,5),'Others'];
   }
 
   const labels=periods.map(periodLabelDisplay);
@@ -1288,7 +1315,7 @@ function renderCountryChart(dir){
 
   // Tag + subtitle
   document.getElementById(`${p}-origin-tag`).textContent=activePill.label;
-  const gLbl=currentGran==='annual'?'anual':currentGran==='quarterly'?'trimestral':'mensal';
+  const gLbl=currentGran==='annual'?'annual':currentGran==='quarterly'?'quarterly':'monthly';
   document.getElementById(`${p}-origin-sub`).textContent=`${gLbl} · kt · SECEX/MDIC`;
 }
 
@@ -1328,7 +1355,7 @@ function buildCountryPanel(dir){
   const byPC=aggregatePeriodCountry(rows);
   const ranked=rankCountries(byPC);
 
-  if(!state.countries) state.countries=[...ranked.slice(0,5),'Outros'];
+  if(!state.countries) state.countries=[...ranked.slice(0,5),'Others'];
 
   list.innerHTML='';
   // Países regulares (top 20 para não sobrecarregar)
@@ -1337,7 +1364,7 @@ function buildCountryPanel(dir){
     const item=document.createElement('div');
     item.className='cs-item';
     item.innerHTML=`<input type="checkbox" id="${p}-c-${country.replace(/\s/g,'_')}" ${checked?'checked':''}>
-      <label for="${p}-c-${country.replace(/\s/g,'_')}">${country}</label>`;
+      <label for="${p}-c-${country.replace(/\s/g,'_')}">${trCountry(country)}</label>`;
     item.querySelector('input').onchange=e=>{
       if(e.target.checked) state.countries.push(country);
       else state.countries=state.countries.filter(c=>c!==country);
@@ -1349,12 +1376,12 @@ function buildCountryPanel(dir){
   // Outros — sempre no final
   const othItem=document.createElement('div');
   othItem.className='cs-item outros';
-  const othChecked=state.countries?.includes('Outros')??true;
-  othItem.innerHTML=`<input type="checkbox" id="${p}-c-Outros" ${othChecked?'checked':''}>
-    <label for="${p}-c-Outros">Outros</label>`;
+  const othChecked=state.countries?.includes('Others')??true;
+  othItem.innerHTML=`<input type="checkbox" id="${p}-c-Others" ${othChecked?'checked':''}>
+    <label for="${p}-c-Others">Others</label>`;
   othItem.querySelector('input').onchange=e=>{
-    if(e.target.checked){if(!state.countries)state.countries=[];state.countries.push('Outros');}
-    else{state.countries=(state.countries||[]).filter(c=>c!=='Outros');}
+    if(e.target.checked){if(!state.countries)state.countries=[];state.countries.push('Others');}
+    else{state.countries=(state.countries||[]).filter(c=>c!=='Others');}
     renderCountryChart(dir);
   };
   list.appendChild(othItem);
@@ -1405,7 +1432,7 @@ function renderExports(){
   if(currentProd==='total'){
     // ── Volume: stacked area (Planos + Longos + Semis) ──────────────────────
     const cats=['flat','long','semi'];
-    const labels=['Planos','Longos','Semis'];
+    const labels=['Flat','Long','Semi'];
     const bgs=[C_OR_A(0.80), C_BK_A(0.72), C_GR_A(0.60)];
     const borders=[C_OR, C_BK, C_GR];
     const refLbs=arr.map(r=>r.period);
@@ -1449,7 +1476,7 @@ function renderImportsSECEX(){
   if(currentProd==='total'){
     // ── Volume: stacked area (Planos + Longos + Semis) ──────────────────────
     const cats=['flat','long','semi'];
-    const lbls=['Planos','Longos','Semis'];
+    const lbls=['Flat','Long','Semi'];
     const bgs=[C_OR_A(0.80),C_BK_A(0.72),C_GR_A(0.60)];
     const borders=[C_OR,C_BK,C_GR];
     const refLbs=arr.map(r=>r.period);
@@ -1490,9 +1517,9 @@ function renderPrediction(){
   const chinaExp=PRED_EXP?.[pp]?.China||[];
 
   // Update dynamic section headers + info-box delay text
-  document.getElementById('pd-korea-header').textContent   =`Coreia — ${pp}`;
+  document.getElementById('pd-korea-header').textContent   =`Korea — ${pp}`;
   document.getElementById('pd-china-header').textContent   =`China — ${pp}`;
-  document.getElementById('pd-combined-header').textContent=`Coreia + China — ${pp}`;
+  document.getElementById('pd-combined-header').textContent=`Korea + China — ${pp}`;
   document.getElementById('pd-delay-text').textContent     =`+${predDelay}M`;
 
   // ── Build chart for a single country using TWO separate data sources ──────
@@ -1568,15 +1595,15 @@ function renderPrediction(){
   // ── 1. Coreia 3M ─────────────────────────────────────────────────────────
   const k3=buildOne(koreaExp,koreaSec,3);
   mkChart('pd-3m-korea','line',k3.labels,[
-    ds(k3.secexSeries,C_OR,`SECEX Coreia (3M, kt)`,2.5),
-    ds(k3.expSeries,  C_BK,`Coreia Export +${predDelay}M (3M, kt)`,1.8),
+    ds(k3.secexSeries,C_OR,`SECEX Korea (3M, kt)`,2.5),
+    ds(k3.expSeries,  C_BK,`Korea Export +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 2. Coreia 12M ────────────────────────────────────────────────────────
   const k12=buildOne(koreaExp,koreaSec,12);
   mkChart('pd-12m-korea','line',k12.labels,[
-    ds(k12.secexSeries,C_OR,`SECEX Coreia (12M, kt)`,2.5),
-    ds(k12.expSeries,  C_BK,`Coreia Export +${predDelay}M (12M, kt)`,1.8),
+    ds(k12.secexSeries,C_OR,`SECEX Korea (12M, kt)`,2.5),
+    ds(k12.expSeries,  C_BK,`Korea Export +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 
   // ── 3. China 3M ──────────────────────────────────────────────────────────
@@ -1596,15 +1623,15 @@ function renderPrediction(){
   // ── 5. Coreia + China 3M ─────────────────────────────────────────────────
   const comb3=buildCombined(3);
   mkChart('pd-3m-combined','line',comb3.labels,[
-    ds(comb3.secexSeries,C_OR,`SECEX Coreia+China (3M, kt)`,2.5),
-    ds(comb3.expSeries,  C_BK,`Coreia+China Export +${predDelay}M (3M, kt)`,1.8),
+    ds(comb3.secexSeries,C_OR,`SECEX Korea+China (3M, kt)`,2.5),
+    ds(comb3.expSeries,  C_BK,`Korea+China Export +${predDelay}M (3M, kt)`,1.8),
   ],predOpts);
 
   // ── 6. Coreia + China 12M ────────────────────────────────────────────────
   const comb12=buildCombined(12);
   mkChart('pd-12m-combined','line',comb12.labels,[
-    ds(comb12.secexSeries,C_OR,`SECEX Coreia+China (12M, kt)`,2.5),
-    ds(comb12.expSeries,  C_BK,`Coreia+China Export +${predDelay}M (12M, kt)`,1.8),
+    ds(comb12.secexSeries,C_OR,`SECEX Korea+China (12M, kt)`,2.5),
+    ds(comb12.expSeries,  C_BK,`Korea+China Export +${predDelay}M (12M, kt)`,1.8),
   ],predOpts);
 }
 
@@ -1629,10 +1656,10 @@ function renderDomestic(){
       charts['di-stock']=new Chart(ctx,{
         type:'bar',
         data:{labels:lbs,datasets:[
-          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Estoque (kt)'),yAxisID:'y',order:3},
-          {...lineDs(indaArr.map(r=>r.inv_months),C_OR,'Meses de Estoque'),yAxisID:'y1',type:'line',order:1},
+          {...barDs(indaArr.map(r=>r.inventories),C_GR_A(0.50),'Inventory (kt)'),yAxisID:'y',order:3},
+          {...lineDs(indaArr.map(r=>r.inv_months),C_OR,'Months of Inventory'),yAxisID:'y1',type:'line',order:1},
           {...lineDs(lbs.map(()=>histAvgM),C_BK,
-            `Média ${indaWinLbl} (${histAvgM!=null?histAvgM.toFixed(1):'—'} meses)`,[5,3]),
+            `${indaWinLbl} avg (${histAvgM!=null?histAvgM.toFixed(1):'—'} months)`,[5,3]),
             yAxisID:'y1',type:'line',order:1,borderWidth:1.5},
         ]},
         options:baseOpts({
@@ -1643,7 +1670,7 @@ function renderDomestic(){
                title:{display:true,text:'kt',color:'#999',font:{size:9}}},
             y1:{position:'right',grid:{drawOnChartArea:false},
                 ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)},
-                title:{display:true,text:'meses',color:C_OR,font:{size:9}}}
+                title:{display:true,text:'months',color:C_OR,font:{size:9}}}
           }
         })
       });
@@ -1651,18 +1678,18 @@ function renderDomestic(){
 
     // Compras vs. Vendas — quarterly=soma do trimestre
     mkChart('di-purcsales','bar',lbs,[
-      barDs(indaArr.map(r=>r.purchases),C_OR_A(0.75),'Compras'),
-      barDs(indaArr.map(r=>r.sales),C_BK_A(0.75),'Vendas'),
+      barDs(indaArr.map(r=>r.purchases),C_OR_A(0.75),'Purchases'),
+      barDs(indaArr.map(r=>r.sales),C_BK_A(0.75),'Sales'),
     ],{...LEG,...YINT});
 
     // Vendas LTM — quarterly=último valor do trimestre (já é acumulado 12M)
     mkChart('di-ltm','line',lbs,
-      [lineDs(indaArr.map(r=>r.sales_ltm),C_OR,'Vendas LTM (kt)')],
+      [lineDs(indaArr.map(r=>r.sales_ltm),C_OR,'LTM Sales (kt)')],
       {...LEG,...YINT});
 
     // Vendas 3M MA — quarterly=último valor do trimestre (já é MM3M)
     mkChart('di-ma3','line',lbs,
-      [lineDs(indaArr.map(r=>r.sales_ma3),C_BK,'Vendas 3M MA (kt)')],
+      [lineDs(indaArr.map(r=>r.sales_ma3),C_BK,'3M MA Sales (kt)')],
       {...LEG,...YINT});
   }
 
@@ -1675,20 +1702,20 @@ function renderDomestic(){
     const domArr=tx(DOM,['flat','long_prod']);
     const lbs=domArr.map(r=>r.period);
     mkChart('dom-sales','bar',lbs,[
-      stackDs(domArr.map(r=>r.flat),C_OR,'Planos'),
-      stackDs(domArr.map(r=>r.long_prod),C_BK,'Longos'),
+      stackDs(domArr.map(r=>r.flat),C_OR,'Flat'),
+      stackDs(domArr.map(r=>r.long_prod),C_BK,'Long'),
     ],{...LEG,...STACKED});
   } else {
     const domArr=tx(DOM.filter(r=>r[df]!=null),[df]);
     const lbs=domArr.map(r=>r.period);
-    const label=currentProd==='flat'?'Planos (kt)':'Longos (kt)';
+    const label=currentProd==='flat'?'Flat (kt)':'Long (kt)';
     mkChart('dom-sales','line',lbs,[areaDs(domArr.map(r=>r[df]),C_OR,0.12,label)],YINT);
   }
 
   // Produção Aço Bruto (always total crude_steel)
   const prodArr=tx(PROD.filter(r=>r.crude_steel!=null),['crude_steel']);
   mkChart('dom-crude','line',prodArr.map(r=>r.period),
-    [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Produção (kt)')],YINT);
+    [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Production (kt)')],YINT);
 
   // Consumo Aparente + Penetração (dual Y-axis)
   const consArr=tx(CONS.filter(r=>r[cf]!=null),[cf]);
@@ -1715,18 +1742,18 @@ function renderDomestic(){
   destroyChart('dom-cons');
   const ctx2=document.getElementById('dom-cons')?.getContext('2d');
   if(ctx2){
-    const consLabel=currentProd==='flat'?'Cons. Aparente Planos (kt)':
-                    currentProd==='long'?'Cons. Aparente Longos (kt)':'Cons. Aparente Total (kt)';
+    const consLabel=currentProd==='flat'?'Apparent Cons. Flat (kt)':
+                    currentProd==='long'?'Apparent Cons. Long (kt)':'Apparent Cons. Total (kt)';
     charts['dom-cons']=new Chart(ctx2,{
       type:'line',
       data:{labels:consLbs,datasets:[
         // Consumo Aparente — preto, área preenchida, eixo esquerdo
         {...areaDs(consArr.map(r=>r[cf]),C_BK,0.08,consLabel),yAxisID:'y',order:3},
         // Penetração importado — laranja, eixo direito
-        {...lineDs(penSeries,C_OR,'Penetração Importado (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
+        {...lineDs(penSeries,C_OR,'Import Penetration (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
         // Média histórica da penetração — cinza pontilhado, eixo direito
         {...lineDs(consLbs.map(()=>penHistAvg),C_GR,
-          `Penetração — Média ${winLbl} (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
+          `Penetration — ${winLbl} avg (${penHistAvg!=null?penHistAvg.toFixed(1):'—'}%)`,
           [5,3]),yAxisID:'y1',borderWidth:1.2,order:2,pointRadius:0},
       ]},
       options:baseOpts({
@@ -1824,7 +1851,7 @@ function renderPrices(){
 
   // 1. Main comparison: importação (preto espesso) vs ref. doméstica (laranja)
   mkChart('px-compare','line',allP,[
-    {type:'line',data:allP.map(p=>impPMap[p]??null),label:'Importação (US$/t)',
+    {type:'line',data:allP.map(p=>impPMap[p]??null),label:'Import (US$/t)',
      borderColor:C_BK,backgroundColor:'transparent',borderWidth:2.5,
      pointRadius:0,tension:0.25},
     {type:'line',data:allP.map(p=>expPMap[p]??null),label:'Ref. Doméstica / Export. (US$/t)',
@@ -1851,13 +1878,13 @@ function renderPrices(){
   mkChart('px-exp','line',expArr.map(r=>r.period),
     [areaDs(expArr.map(r=>r.price_usd_ton),C_OR,0.10,'Ref. Dom. / Export. (US$/t)')],priceTick);
   mkChart('px-imp','line',impArr.map(r=>r.period),
-    [areaDs(impArr.map(r=>r.price_usd_ton),C_BK,0.08,'Importação (US$/t)')],priceTick);
+    [areaDs(impArr.map(r=>r.price_usd_ton),C_BK,0.08,'Import (US$/t)')],priceTick);
 
   // 4. YoY importação e YoY exportação
   const yoyImp=impArr.map((r,i)=>yoyOf(impArr,'price_usd_ton',i));
   mkChart('px-yoy','bar',impArr.map(r=>r.period),
     [barDs(yoyImp.map(v=>v!=null?+(v*100).toFixed(2):null),
-           yoyImp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Preço Import. %')],
+           yoyImp.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY Import Price %')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
   const yoyExp=expArr.map((r,i)=>yoyOf(expArr,'price_usd_ton',i));
   mkChart('px-yoy2','bar',expArr.map(r=>r.period),
@@ -1991,7 +2018,7 @@ function setPredProd(pp){
 }
 function setDelay(v){
   predDelay=+v;
-  document.getElementById('delay-label').textContent=`${v} ${+v===1?'mês':'meses'}`;
+  document.getElementById('delay-label').textContent=`${v} ${+v===1?'month':'months'}`;
   if(currentSub==='imports')renderPrediction();
 }
 
