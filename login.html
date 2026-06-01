@@ -215,21 +215,18 @@ const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
 // ─────────────────────────────────────────────────────────────────────────────
 
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY)
+// sessionStorage: session is cleared when the browser/tab is closed
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
+  auth: { storage: window.sessionStorage }
+})
 
-// ── Se o usuário já tem sessão válida, redireciona direto ─────────────────
-;(async () => {
-  const { data: { session } } = await sb.auth.getSession()
-  if (session) {
-    setAuthCookie(session)
-    window.location.replace('/')
-  }
-})()
+// ── Never auto-redirect from login — always require explicit sign-in ──────
+// (no getSession() check here so returning users must enter password again)
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function setAuthCookie(session) {
-  const exp = new Date(session.expires_at * 1000).toUTCString()
-  document.cookie = `sb-access-token=${session.access_token}; expires=${exp}; path=/; SameSite=Lax; Secure`
+  // Session cookie (no expires) — cleared automatically when browser closes
+  document.cookie = `sb-access-token=${session.access_token}; path=/; SameSite=Lax; Secure`
 }
 
 function showError(msg) {

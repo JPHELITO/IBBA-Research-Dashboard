@@ -16,8 +16,8 @@
 // ⚠️  Substitua pelos seus valores: Supabase → Settings → API
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
-const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY)
-function _setAuthCookie(s){const e=new Date(s.expires_at*1000).toUTCString();document.cookie=`sb-access-token=${s.access_token}; expires=${e}; path=/; SameSite=Lax; Secure`}
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:window.sessionStorage}})
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
 </script>
 <!-- ── Chart.js + sql.js ──────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
