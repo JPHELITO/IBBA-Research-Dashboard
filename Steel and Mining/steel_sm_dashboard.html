@@ -2376,7 +2376,7 @@ async function fetchNewsFromSupabase(){
   // Busca as 300 notícias mais recentes, ordenadas por data de publicação
   const q=`url,domain,source_name,title,snippet,published_at,found_at`;
   const res=await fetch(
-    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=found_at.desc&limit=300`,
+    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=300`,
     {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
   );
   if(!res.ok){
