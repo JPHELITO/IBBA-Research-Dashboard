@@ -2300,19 +2300,19 @@ let _newsCache       = [];
 let _newsSrc         = 'all';
 let _newsLoaded      = false;
 let _newsTimer       = null;
-let _newsLastRefresh = 0;         // timestamp do último refresh
-let _newsArticleCount = 0;
-const NEWS_INTERVAL  = 2 * 60 * 1000;   // 2min — mais responsivo
+let _newsLastRefresh   = 0;     // último fetch do dashboard ao Supabase
+let _newsLastHunterRun = 0;     // último run do hunter (max(found_at))
+let _newsArticleCount  = 0;
+const NEWS_INTERVAL    = 2 * 60 * 1000;
 
 function _updateStatusText(){
   const txt=document.getElementById('news-status-text');
-  if(!txt||!_newsLastRefresh)return;
-  const s=Math.round((Date.now()-_newsLastRefresh)/1000);
+  if(!txt||!_newsLastHunterRun)return;
+  const s=Math.round((Date.now()-_newsLastHunterRun)/1000);
   let when;
-  if(s<10)        when='verificado agora';
-  else if(s<60)   when=`verificado há ${s}s`;
-  else if(s<3600) when=`verificado há ${Math.floor(s/60)}min`;
-  else            when=`verificado há ${Math.floor(s/3600)}h`;
+  if(s<60)        when='última atualização agora';
+  else if(s<3600) when=`última atualização há ${Math.floor(s/60)}min`;
+  else            when=`última atualização há ${Math.floor(s/3600)}h`;
   txt.textContent=`${_newsArticleCount} notícias · ${when}`;
 }
 
@@ -2451,6 +2451,13 @@ async function refreshNews(){
     const newCount=articles.filter(a=>!prevUrls.has(a.url)).length;
     _newsCache=articles;
     _newsLastRefresh=Date.now();
+    // Extrai o max(found_at) — momento exato do último run do hunter
+    let maxFound=0;
+    for(const a of articles){
+      const f=a.found_at?Date.parse(a.found_at):0;
+      if(f>maxFound)maxFound=f;
+    }
+    if(maxFound>0)_newsLastHunterRun=maxFound;
     _buildNewsPills(articles);
     _renderNewsFeed(articles);
     _newsArticleCount=articles.length;
