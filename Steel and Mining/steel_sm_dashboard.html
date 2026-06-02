@@ -492,15 +492,13 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 .news-status{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .news-status-text{font-size:10px;color:var(--gray-mid);}
-.news-refresh-btn{
-  font-size:10px;font-weight:600;color:var(--gray-mid);
-  background:none;border:1px solid var(--border);border-radius:6px;
-  padding:3px 10px;cursor:pointer;font-family:var(--font);
-  transition:color .15s,border-color .15s;
+/* dot pulsante indicando sincronização ativa */
+.news-status-text::before{
+  content:'';display:inline-block;width:6px;height:6px;
+  background:#22c55e;border-radius:50%;margin-right:7px;vertical-align:middle;
+  animation:syncpulse 2s ease-in-out infinite;
 }
-.news-refresh-btn:hover{color:var(--gray-dark);border-color:#aaa;}
-.news-refresh-btn.spinning{animation:nspin .8s linear infinite;}
-@keyframes nspin{to{transform:rotate(360deg);}}
+@keyframes syncpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 .news-feed{padding:0 24px 32px;display:flex;flex-direction:column;gap:1px;}
 .news-empty{
@@ -726,7 +724,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <div class="news-status">
       <span class="news-new-badge" id="news-new-badge" onclick="scrollToNewArticles()"></span>
       <span class="news-status-text" id="news-status-text">—</span>
-      <button class="news-refresh-btn" id="news-refresh-btn" onclick="triggerNewsRefresh()">↺ Refresh</button>
     </div>
   </div>
   <div id="news-feed" class="news-feed">
@@ -2303,17 +2300,18 @@ let _newsTimer       = null;
 let _newsLastRefresh   = 0;     // último fetch do dashboard ao Supabase
 let _newsLastHunterRun = 0;     // último run do hunter (max(found_at))
 let _newsArticleCount  = 0;
-let _manualRefreshFlag = false; // true quando o usuário clica em ↺ Refresh
-const NEWS_INTERVAL    = 2 * 60 * 1000;
+// Polling de 60s para minimizar a latência entre run do hunter (5min)
+// e exibição na tela. Worst case: 5+1=6min do source até o usuário ver.
+const NEWS_INTERVAL    = 60 * 1000;
 
 function _updateStatusText(){
   const txt=document.getElementById('news-status-text');
   if(!txt||!_newsLastHunterRun)return;
   const s=Math.round((Date.now()-_newsLastHunterRun)/1000);
   let when;
-  if(s<60)        when='última atualização agora';
-  else if(s<3600) when=`última atualização há ${Math.floor(s/60)}min`;
-  else            when=`última atualização há ${Math.floor(s/3600)}h`;
+  if(s<60)        when='sincronizado agora';
+  else if(s<3600) when=`sincronizado há ${Math.floor(s/60)}min`;
+  else            when=`sincronizado há ${Math.floor(s/3600)}h`;
   txt.textContent=`${_newsArticleCount} notícias · ${when}`;
 }
 
@@ -2441,18 +2439,15 @@ async function fetchNewsFromSupabase(){
 }
 
 async function refreshNews(){
-  const btn=document.getElementById('news-refresh-btn');
   const txt=document.getElementById('news-status-text');
   const badge=document.getElementById('news-new-badge');
-  if(btn)btn.classList.add('spinning');
   try{
     const articles=await fetchNewsFromSupabase();
-    // Detecta artigos novos comparando com cache anterior
     const prevUrls=new Set(_newsCache.map(a=>a.url));
     const newCount=articles.filter(a=>!prevUrls.has(a.url)).length;
     _newsCache=articles;
     _newsLastRefresh=Date.now();
-    // Extrai o max(found_at) — momento exato do último run do hunter
+    // max(found_at) = momento exato do último run do hunter
     let maxFound=0;
     for(const a of articles){
       const f=a.found_at?Date.parse(a.found_at):0;
@@ -2463,37 +2458,16 @@ async function refreshNews(){
     _renderNewsFeed(articles);
     _newsArticleCount=articles.length;
     _updateStatusText();
-    // Feedback visual no badge:
-    //  • Artigos novos chegaram → "↑ X novas" (laranja, 15s)
-    //  • Nenhuma novidade (e usuário clicou manualmente) → "✓ Sem novidades" (3s)
-    if(badge&&prevUrls.size>0){
-      if(newCount>0){
-        badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
-        badge.style.background='var(--orange)';
-        badge.classList.add('visible');
-        setTimeout(()=>badge.classList.remove('visible'),15000);
-      } else if(_manualRefreshFlag){
-        badge.textContent='✓ Sem novidades';
-        badge.style.background='#666';
-        badge.classList.add('visible');
-        setTimeout(()=>{
-          badge.classList.remove('visible');
-          badge.style.background='';  // restaura laranja para próximas
-        },3000);
-      }
+    // Badge "↑ X novas" quando o auto-refresh detecta artigos novos
+    if(badge&&newCount>0&&prevUrls.size>0){
+      badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
+      badge.classList.add('visible');
+      setTimeout(()=>badge.classList.remove('visible'),15000);
     }
-    _manualRefreshFlag=false;
   }catch(e){
-    if(txt)txt.textContent='Erro ao carregar';
+    if(txt)txt.textContent='Erro de sincronização';
     console.warn('News fetch error:',e);
-  }finally{
-    if(btn)btn.classList.remove('spinning');
   }
-}
-
-function triggerNewsRefresh(){
-  _manualRefreshFlag=true;
-  refreshNews();
 }
 
 // Cooldown anti-spam: evita refreshes seguidos em < 10s
