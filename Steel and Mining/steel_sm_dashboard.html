@@ -2394,8 +2394,9 @@ function _renderNewsFeed(articles){
   feed.innerHTML=filtered.map(a=>{
     const lbl=_cleanLabel(a.source_name,a.domain);
     const cls=_badgeCls(a.source_name);
-    // Idade = quanto tempo a notícia está visível na dashboard (found_at).
-    const ageRef = a.found_at || a.published_at;
+    // Idade = quanto tempo desde que a fonte publicou.
+    // Fallback para found_at se a fonte omitir a data.
+    const ageRef = a.published_at || a.found_at;
     const pubDate = a.published_at ? new Date(a.published_at) : null;
     const pubTooltip = pubDate
       ? `Publicado em ${pubDate.toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}`
@@ -2431,7 +2432,7 @@ async function fetchNewsFromSupabase(){
   if(!session)return[];
   const q=`url,domain,source_name,title,snippet,published_at,found_at`;
   const res=await fetch(
-    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=found_at.desc&limit=400`,
+    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=400`,
     {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
   );
   if(!res.ok){console.error('News fetch error:',res.status);return[];}
