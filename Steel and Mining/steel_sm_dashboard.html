@@ -2186,7 +2186,7 @@ function setSub(s){
   const secId=s==='exports'?'sec-exports':s==='imports'?'sec-imports':
                s==='domestic'?'sec-domestic':s==='news'?'sec-news':'sec-prices';
   document.getElementById(secId)?.classList.add('active');
-  if(s==='news'){loadNewsOnce();}
+  if(s==='news'){enterNewsTab();}
   // Prediction controls bar: só aparece em imports + aba prediction
   document.getElementById('pred-controls').style.display=
     (s==='imports'&&importTab==='prediction')?'flex':'none';
@@ -2304,7 +2304,23 @@ let _newsSrc         = 'all';
 let _newsLoaded      = false;
 let _newsTimer       = null;
 let _newsLastRefresh = 0;         // timestamp do último refresh
-const NEWS_INTERVAL  = 5 * 60 * 1000;
+let _newsArticleCount = 0;
+const NEWS_INTERVAL  = 2 * 60 * 1000;   // 2min — mais responsivo
+
+function _updateStatusText(){
+  const txt=document.getElementById('news-status-text');
+  if(!txt||!_newsLastRefresh)return;
+  const s=Math.round((Date.now()-_newsLastRefresh)/1000);
+  let when;
+  if(s<10)        when='agora';
+  else if(s<60)   when=`${s}s atrás`;
+  else if(s<3600) when=`${Math.floor(s/60)}min atrás`;
+  else            when=`${Math.floor(s/3600)}h atrás`;
+  txt.textContent=`${_newsArticleCount} notícias · ${when}`;
+}
+
+// Atualiza o "X min atrás" a cada 15s sem refetch
+setInterval(()=>{if(currentSub==='news')_updateStatusText();},15000);
 
 // ── Badge: 3 categorias uniformes baseadas no source_name ────────────────────
 const _BR_SOURCES = new Set([
@@ -2431,8 +2447,8 @@ async function refreshNews(){
     _newsLastRefresh=Date.now();
     _buildNewsPills(articles);
     _renderNewsFeed(articles);
-    const now=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    if(txt)txt.textContent=`${articles.length} notícias · ${now}`;
+    _newsArticleCount=articles.length;
+    _updateStatusText();
     // Mostra badge de novidades se houver artigos novos (exceto no primeiro load)
     if(badge&&newCount>0&&prevUrls.size>0){
       badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
@@ -2449,18 +2465,32 @@ async function refreshNews(){
 
 function triggerNewsRefresh(){refreshNews();}
 
-function loadNewsOnce(){
+// Cooldown anti-spam: evita refreshes seguidos em < 10s
+const NEWS_COOLDOWN = 10 * 1000;
+
+function maybeRefreshNews(){
+  const elapsed=Date.now()-_newsLastRefresh;
+  if(elapsed<NEWS_COOLDOWN)return;  // cooldown
+  refreshNews();
+}
+
+// Chamado toda vez que o usuário entra na aba News (clica no botão)
+function enterNewsTab(){
   if(!_newsLoaded){
     _newsLoaded=true;
-    refreshNews();
-    _newsTimer=setInterval(refreshNews,NEWS_INTERVAL);
-    // Re-verifica quando o usuário volta à aba (browser throttle timers em bg)
+    refreshNews();                                       // primeira carga
+    _newsTimer=setInterval(refreshNews,NEWS_INTERVAL);   // 5min em background
+    // Toda vez que a aba do browser volta a ficar visível → refresh imediato (com cooldown)
     document.addEventListener('visibilitychange',()=>{
-      if(!document.hidden&&currentSub==='news'){
-        const elapsed=Date.now()-_newsLastRefresh;
-        if(elapsed>NEWS_INTERVAL)refreshNews();
-      }
+      if(!document.hidden&&currentSub==='news')maybeRefreshNews();
     });
+    // Quando a janela ganha foco (alt-tab) → refresh imediato
+    window.addEventListener('focus',()=>{
+      if(currentSub==='news')maybeRefreshNews();
+    });
+  } else {
+    // Já carregou antes → refresh imediato ao reentrar na aba (com cooldown)
+    maybeRefreshNews();
   }
 }
 </script>
