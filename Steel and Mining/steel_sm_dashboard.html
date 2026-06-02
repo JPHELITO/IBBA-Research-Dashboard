@@ -519,14 +519,21 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   padding:2px 7px;border-radius:3px;color:#fff;white-space:nowrap;
 }
-.nb-platts{background:#FF5000;}
-.nb-fastmarkets{background:#1D4ED8;}
-.nb-valor{background:#16A34A;}
-.nb-mining{background:#6B7280;}
-.nb-estadao{background:#1E3A5F;}
-.nb-worldcement{background:#92400E;}
-.nb-elfinanciero{background:#0D9488;}
-.nb-other{background:#6B7280;}
+/* 3 categorias uniformes */
+.nb-intl{background:#2C2C2C;}      /* Internacional: Reuters, Bloomberg, Platts… */
+.nb-br{background:#FF5000;}        /* Brasil: Valor, Estadão, InfoMoney… */
+.nb-spec{background:#4B6A8A;}      /* Especializados: Mining.com, Mysteel, Kallanish… */
+.nb-assoc{background:#5A7A5A;}     /* Associações: IBRAM, ANM, World Steel… */
+
+/* Badge "novas notícias" */
+.news-new-badge{
+  display:none;background:var(--orange);color:#fff;
+  font-size:9.5px;font-weight:700;border-radius:20px;
+  padding:3px 10px;cursor:pointer;
+  animation:pulse-badge .6s ease-in-out 3;
+}
+.news-new-badge.visible{display:inline-block;}
+@keyframes pulse-badge{0%,100%{opacity:1;}50%{opacity:.5;}}
 .news-item-age{font-size:9.5px;color:var(--gray-mid);white-space:nowrap;}
 .news-item-body{flex:1;min-width:0;}
 .news-item-title{
@@ -720,6 +727,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <button class="news-pill active" data-src="all" onclick="setNewsSrc('all')">All sources</button>
     </div>
     <div class="news-status">
+      <span class="news-new-badge" id="news-new-badge" onclick="scrollToNewArticles()"></span>
       <span class="news-status-text" id="news-status-text">—</span>
       <button class="news-refresh-btn" id="news-refresh-btn" onclick="triggerNewsRefresh()">↺ Refresh</button>
     </div>
@@ -2291,50 +2299,70 @@ function mobSelect(sub){
 <!-- ── NEWS TAB ──────────────────────────────────────────────────────────── -->
 <script>
 // ─── News state ──────────────────────────────────────────────────────────────
-let _newsCache    = [];          // all articles fetched
-let _newsSrc      = 'all';       // active source filter
-let _newsLoaded   = false;       // first load done?
-let _newsTimer    = null;        // setInterval handle
-const NEWS_INTERVAL = 5 * 60 * 1000;  // 5 minutes
+let _newsCache       = [];
+let _newsSrc         = 'all';
+let _newsLoaded      = false;
+let _newsTimer       = null;
+let _newsLastRefresh = 0;         // timestamp do último refresh
+const NEWS_INTERVAL  = 5 * 60 * 1000;
 
-// Source → badge CSS class mapping
-const NEWS_BADGE = {
-  'core.spglobal.com':          {cls:'nb-platts',      label:'Platts'},
-  'dashboard.fastmarkets.com':  {cls:'nb-fastmarkets', label:'Fastmarkets'},
-  'valor.globo.com':            {cls:'nb-valor',       label:'Valor'},
-  'www.mining.com':             {cls:'nb-mining',      label:'Mining.com'},
-  'www.estadao.com.br':         {cls:'nb-estadao',     label:'Estadão'},
-  'www.worldcement.com':        {cls:'nb-worldcement', label:'World Cement'},
-  'www.elfinanciero.com.mx':    {cls:'nb-elfinanciero',label:'El Financiero'},
-};
+// ── Badge: 3 categorias uniformes baseadas no source_name ────────────────────
+const _BR_SOURCES = new Set([
+  'Valor Econômico','Estadão','O Estado de S. Paulo','Folha de S.Paulo',
+  'InfoMoney','Exame','Money Times','CNN Brasil','G1','O Globo',
+  'Agência Brasil','Reuters Brasil','Siderurgia Brasil','Instituto Aço Brasil',
+  'IBRAM','Ibá','ANM','ABTCP','ANTAQ','MME','ABRAMAT','ANFAVEA',
+]);
+const _SPEC_SOURCES = new Set([
+  'Mining.com','Mining Weekly','SteelOrbis',
+  'Mysteel','Shanghai Metals Market','SMM',
+  'Kallanish','Kallanish Commodities','Kallanish Steel',
+  'Portal Celulose','Paper Advance','ICIS',
+  'GMK Center','EUROMETAL',
+]);
+const _ASSOC_SOURCES = new Set([
+  'World Steel Association','World Steel Assoc',
+  'AISI','CISA','CEPI',
+]);
+
+function _badgeCls(sourceName){
+  if(_BR_SOURCES.has(sourceName))   return 'nb-br';
+  if(_SPEC_SOURCES.has(sourceName)) return 'nb-spec';
+  if(_ASSOC_SOURCES.has(sourceName))return 'nb-assoc';
+  return 'nb-intl';  // default: internacional (Reuters, Bloomberg, Platts…)
+}
+
+function _cleanLabel(sourceName, domain){
+  // Se source_name é genérico, usa domínio como fallback legível
+  if(!sourceName || sourceName==='Google News' || sourceName==='Google Notícias'){
+    const d=domain.replace('www.','').replace('.com','').replace('.com.br','');
+    return d.charAt(0).toUpperCase()+d.slice(1);
+  }
+  return sourceName;
+}
 
 function _newsAge(iso){
   if(!iso) return '—';
   const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));
-  if(s<60)   return 'just now';
-  if(s<3600) return `${Math.floor(s/60)}m ago`;
-  if(s<86400)return `${Math.floor(s/3600)}h ago`;
-  return     `${Math.floor(s/86400)}d ago`;
-}
-
-function _badgeInfo(domain){
-  return NEWS_BADGE[domain]||{cls:'nb-other',label:domain.replace('www.','').split('.')[0]};
+  if(s<60)   return 'agora';
+  if(s<3600) return `${Math.floor(s/60)}m`;
+  if(s<86400)return `${Math.floor(s/3600)}h`;
+  return     `${Math.floor(s/86400)}d`;
 }
 
 function _buildNewsPills(articles){
-  const seen=new Set();
-  const domains=[];
-  articles.forEach(a=>{if(!seen.has(a.domain)){seen.add(a.domain);domains.push(a.domain);}});
+  const seen=new Set(); const sources=[];
+  articles.forEach(a=>{
+    const lbl=_cleanLabel(a.source_name,a.domain);
+    if(!seen.has(lbl)){seen.add(lbl);sources.push({lbl,domain:a.domain,sn:a.source_name});}
+  });
   const wrap=document.getElementById('news-pills');
   if(!wrap)return;
-  wrap.innerHTML='<button class="news-pill active" data-src="all" onclick="setNewsSrc(\'all\')">All sources</button>';
-  domains.forEach(d=>{
-    const b=_badgeInfo(d);
+  wrap.innerHTML='<button class="news-pill active" data-src="all" onclick="setNewsSrc(\'all\')">Todas</button>';
+  sources.forEach(({lbl,domain,sn})=>{
     const btn=document.createElement('button');
-    btn.className='news-pill';
-    btn.dataset.src=d;
-    btn.textContent=b.label;
-    btn.onclick=()=>setNewsSrc(d);
+    btn.className='news-pill'; btn.dataset.src=lbl; btn.textContent=lbl;
+    btn.onclick=()=>setNewsSrc(lbl);
     wrap.appendChild(btn);
   });
 }
@@ -2342,18 +2370,19 @@ function _buildNewsPills(articles){
 function _renderNewsFeed(articles){
   const feed=document.getElementById('news-feed');
   if(!feed)return;
-  const filtered=_newsSrc==='all'?articles:articles.filter(a=>a.domain===_newsSrc);
+  const filtered=_newsSrc==='all'?articles:articles.filter(a=>_cleanLabel(a.source_name,a.domain)===_newsSrc);
   if(!filtered.length){
-    feed.innerHTML='<div class="news-empty">No articles found for this source in the last 48h.</div>';
+    feed.innerHTML='<div class="news-empty">Nenhum artigo encontrado para esta fonte.</div>';
     return;
   }
   feed.innerHTML=filtered.map(a=>{
-    const b=_badgeInfo(a.domain);
+    const lbl=_cleanLabel(a.source_name,a.domain);
+    const cls=_badgeCls(a.source_name);
     const date=a.published_at||a.found_at;
     const snip=a.snippet?`<div class="news-item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
     return`<a class="news-item" href="${a.url}" target="_blank" rel="noopener">
       <div class="news-item-left">
-        <span class="news-badge ${b.cls}">${b.label}</span>
+        <span class="news-badge ${cls}">${lbl}</span>
         <span class="news-item-age">${_newsAge(date)}</span>
       </div>
       <div class="news-item-body">
@@ -2370,35 +2399,48 @@ function setNewsSrc(src){
   _renderNewsFeed(_newsCache);
 }
 
+function scrollToNewArticles(){
+  document.getElementById('news-feed')?.scrollIntoView({behavior:'smooth',block:'start'});
+  const badge=document.getElementById('news-new-badge');
+  if(badge){badge.classList.remove('visible');badge.textContent='';}
+}
+
 async function fetchNewsFromSupabase(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return[];
-  // Busca as 300 notícias mais recentes, ordenadas por data de publicação
   const q=`url,domain,source_name,title,snippet,published_at,found_at`;
   const res=await fetch(
-    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=300`,
+    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=400`,
     {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
   );
-  if(!res.ok){
-    console.error('News fetch error:',res.status,await res.text());
-    return[];
-  }
+  if(!res.ok){console.error('News fetch error:',res.status);return[];}
   return res.json();
 }
 
 async function refreshNews(){
   const btn=document.getElementById('news-refresh-btn');
   const txt=document.getElementById('news-status-text');
+  const badge=document.getElementById('news-new-badge');
   if(btn)btn.classList.add('spinning');
   try{
     const articles=await fetchNewsFromSupabase();
+    // Detecta artigos novos comparando com cache anterior
+    const prevUrls=new Set(_newsCache.map(a=>a.url));
+    const newCount=articles.filter(a=>!prevUrls.has(a.url)).length;
     _newsCache=articles;
+    _newsLastRefresh=Date.now();
     _buildNewsPills(articles);
     _renderNewsFeed(articles);
-    const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    if(txt)txt.textContent=`${articles.length} articles · updated ${now}`;
+    const now=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(txt)txt.textContent=`${articles.length} notícias · ${now}`;
+    // Mostra badge de novidades se houver artigos novos (exceto no primeiro load)
+    if(badge&&newCount>0&&prevUrls.size>0){
+      badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
+      badge.classList.add('visible');
+      setTimeout(()=>badge.classList.remove('visible'),15000);
+    }
   }catch(e){
-    if(txt)txt.textContent='Failed to load — check connection';
+    if(txt)txt.textContent='Erro ao carregar';
     console.warn('News fetch error:',e);
   }finally{
     if(btn)btn.classList.remove('spinning');
@@ -2412,6 +2454,13 @@ function loadNewsOnce(){
     _newsLoaded=true;
     refreshNews();
     _newsTimer=setInterval(refreshNews,NEWS_INTERVAL);
+    // Re-verifica quando o usuário volta à aba (browser throttle timers em bg)
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden&&currentSub==='news'){
+        const elapsed=Date.now()-_newsLastRefresh;
+        if(elapsed>NEWS_INTERVAL)refreshNews();
+      }
+    });
   }
 }
 </script>
