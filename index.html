@@ -64,12 +64,10 @@ html,body{
 .orange-rule{height:2px;background:var(--orange);}
 
 /* ── LAYOUT BASE ─────────────────────────────────────────────────────────── */
-.page{max-width:1280px;margin:0 auto;padding:32px 32px 64px;}
-.page-grid{
-  display:grid;grid-template-columns:1.6fr 1fr;gap:24px;
-}
-.col-left{display:flex;flex-direction:column;gap:24px;}
-.col-right{display:flex;flex-direction:column;gap:24px;}
+.page{max-width:1320px;margin:0 auto;padding:24px 32px 64px;
+  display:flex;flex-direction:column;gap:22px;}
+/* Linha inferior: 3 colunas iguais */
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;}
 
 /* ── SECTION CARDS ───────────────────────────────────────────────────────── */
 .sec{
@@ -91,8 +89,18 @@ html,body{
 @keyframes syncpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 .sec-link{font-size:11px;font-weight:600;color:var(--orange);
   text-decoration:none;display:flex;align-items:center;gap:4px;
-  transition:gap .15s;}
+  transition:gap .15s;white-space:nowrap;}
 .sec-link:hover{gap:8px;}
+
+/* Badge laranja "↑ X novas" */
+.sec-new-badge{
+  display:none;background:var(--orange);color:#fff;
+  font-size:10px;font-weight:700;letter-spacing:.02em;
+  padding:3px 11px;border-radius:20px;cursor:pointer;
+  animation:pulse-badge 1s ease-in-out 2;margin-right:6px;
+}
+.sec-new-badge.visible{display:inline-block;}
+@keyframes pulse-badge{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
 
 /* ── HERO ────────────────────────────────────────────────────────────────── */
 .hero{
@@ -107,32 +115,38 @@ html,body{
   line-height:1.15;
 }
 
-/* ── NEWS FEED (compacto) ────────────────────────────────────────────────── */
-.news-feed{padding:6px 20px 16px;}
-.news-empty{padding:36px 20px;text-align:center;color:var(--gray-mid);font-size:12px;}
+/* ── NEWS FEED ──────────────────────────────────────────────────────────── */
+.news-feed{
+  padding:6px 0 8px;
+  /* lista em 2 colunas em telas largas para mostrar mais notícias */
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+}
+.news-empty{padding:36px 20px;text-align:center;color:var(--gray-mid);font-size:12px;
+  grid-column:1/-1;}
 .news-item{
-  display:flex;align-items:flex-start;gap:12px;
-  padding:12px 0;border-bottom:1px solid var(--border);
-  text-decoration:none;color:inherit;
+  padding:13px 20px;border-bottom:1px solid var(--border);
+  text-decoration:none;color:inherit;position:relative;
+  transition:background .15s;
 }
-.news-item:last-child{border-bottom:none;}
+.news-item:hover{background:#FBFAF7;}
 .news-item:hover .news-item-title{color:var(--orange);}
-.news-item-left{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:84px;}
-.news-badge{
-  font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-  padding:2px 6px;border-radius:3px;color:#fff;white-space:nowrap;
-  background:#2C2C2C;
+/* Destaque laranja para notícias NOVAS (recentemente descobertas) */
+.news-item.is-new{
+  background:linear-gradient(90deg, rgba(255,80,0,.06) 0%, transparent 60%);
+  border-left:3px solid var(--orange);padding-left:17px;
 }
-.news-item-age{font-size:9px;color:var(--gray-mid);white-space:nowrap;}
-.news-item-body{flex:1;min-width:0;}
 .news-item-title{
-  font-size:12px;font-weight:600;color:var(--black);letter-spacing:-.01em;
-  line-height:1.4;margin-bottom:2px;transition:color .15s;
-}
-.news-item-snippet{
-  font-size:10.5px;color:var(--gray-mid);line-height:1.5;
+  font-size:13px;font-weight:600;color:var(--black);letter-spacing:-.01em;
+  line-height:1.4;margin-bottom:6px;transition:color .15s;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
+.news-item-meta{
+  font-size:10.5px;font-weight:500;color:var(--orange);
+  display:flex;align-items:center;gap:8px;letter-spacing:.01em;
+}
+.news-item-meta .sep{color:rgba(255,80,0,.4);}
+.news-item-source{font-weight:600;}
+.news-item-age{color:rgba(255,80,0,.7);}
 
 /* ── SECTOR CARDS ────────────────────────────────────────────────────────── */
 .sector-grid{padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
@@ -211,8 +225,8 @@ html,body{
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
 @media (max-width:1024px){
-  .page-grid{grid-template-columns:1fr;}
-  .sector-grid{grid-template-columns:repeat(3,1fr);}
+  .row-3{grid-template-columns:1fr;}
+  .news-feed{grid-template-columns:1fr;}
 }
 @media (max-width:768px){
   .header{padding:0 16px;height:54px;gap:10px;}
@@ -220,16 +234,16 @@ html,body{
   .logout-btn{padding:6px 11px;font-size:10.5px;}
   .hero{padding:24px 16px 12px;}
   .hero-title{font-size:21px;}
-  .page{padding:16px 14px 40px;}
+  .page{padding:16px 14px 40px;gap:14px;}
   .sec-head{padding:12px 14px 10px;}
-  .news-feed{padding:4px 14px 12px;}
-  .sector-grid{padding:12px;grid-template-columns:1fr 1fr;gap:8px;}
+  .news-item{padding:11px 14px;}
+  .news-item.is-new{padding-left:11px;}
+  .sector-grid{padding:12px;grid-template-columns:1fr !important;gap:8px;}
   .contact-row{padding:12px 14px;}
   .quotes-grid{padding:10px;}
   .footer{padding:14px 18px;}
 }
 @media (max-width:420px){
-  .sector-grid{grid-template-columns:1fr;}
   .hero-title{font-size:19px;}
 }
 </style>
@@ -259,88 +273,83 @@ html,body{
 
 <!-- MAIN GRID -->
 <div class="page">
-  <div class="page-grid">
 
-    <!-- COLUNA ESQUERDA -->
-    <div class="col-left">
-
-      <!-- ── NEWS HUNTER (compacto: top 8) ────────────────────────── -->
-      <div class="sec">
-        <div class="sec-head">
-          <span class="sec-title">News Hunter</span>
-          <span class="sec-meta" id="news-meta">carregando…</span>
-        </div>
-        <div class="news-feed" id="news-feed">
-          <div class="news-empty">Carregando notícias…</div>
-        </div>
+  <!-- ══ NEWS HUNTER (full-width) ═════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-title">News Hunter</span>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
+        <span class="sec-meta" id="news-meta">carregando…</span>
+        <a class="sec-link" href="news.html">Ver histórico <span>→</span></a>
       </div>
+    </div>
+    <div class="news-feed" id="news-feed">
+      <div class="news-empty">Carregando notícias…</div>
+    </div>
+  </div>
 
-      <!-- ── SETORES ──────────────────────────────────────────────── -->
-      <div class="sec">
-        <div class="sec-head">
-          <span class="sec-title">Setores</span>
-        </div>
-        <div class="sector-grid">
+  <!-- ══ LINHA INFERIOR — Setores, Cotações, Equipe ═══════════════════════ -->
+  <div class="row-3">
 
-          <a class="sector-card live" href="Steel and Mining/steel_sm_dashboard.html#prices">
-            <span class="sector-card-eyebrow">● Live</span>
-            <span class="sector-card-title">Steel</span>
-            <div class="sector-tabs">
-              <span class="sector-tab">Prices</span>
-              <span class="sector-tab">Domestic</span>
-              <span class="sector-tab">Imports</span>
-              <span class="sector-tab">Exports</span>
-              <span class="sector-tab">News</span>
-            </div>
-          </a>
-
-          <div class="sector-card soon">
-            <span class="sector-card-eyebrow">Em breve</span>
-            <span class="sector-card-title">Mining</span>
-            <div class="sector-tabs">
-              <span class="sector-tab">Production</span>
-              <span class="sector-tab">Exports</span>
-              <span class="sector-tab">Prices</span>
-            </div>
-          </div>
-
-          <div class="sector-card soon">
-            <span class="sector-card-eyebrow">Em breve</span>
-            <span class="sector-card-title">Pulp &amp; Paper</span>
-            <div class="sector-tabs">
-              <span class="sector-tab">Pulp Price</span>
-              <span class="sector-tab">Exports</span>
-              <span class="sector-tab">Capacity</span>
-            </div>
-          </div>
-
-        </div>
+    <!-- ── SETORES ──────────────────────────────────────────────── -->
+    <div class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Setores</span>
       </div>
+      <div class="sector-grid" style="grid-template-columns:1fr;">
 
+        <a class="sector-card live" href="Steel and Mining/steel_sm_dashboard.html#prices">
+          <span class="sector-card-eyebrow">● Live</span>
+          <span class="sector-card-title">Steel</span>
+          <div class="sector-tabs">
+            <span class="sector-tab">Prices</span>
+            <span class="sector-tab">Domestic</span>
+            <span class="sector-tab">Imports</span>
+            <span class="sector-tab">Exports</span>
+          </div>
+        </a>
+
+        <div class="sector-card soon">
+          <span class="sector-card-eyebrow">Em breve</span>
+          <span class="sector-card-title">Mining</span>
+          <div class="sector-tabs">
+            <span class="sector-tab">Production</span>
+            <span class="sector-tab">Exports</span>
+            <span class="sector-tab">Prices</span>
+          </div>
+        </div>
+
+        <div class="sector-card soon">
+          <span class="sector-card-eyebrow">Em breve</span>
+          <span class="sector-card-title">Pulp &amp; Paper</span>
+          <div class="sector-tabs">
+            <span class="sector-tab">Pulp Price</span>
+            <span class="sector-tab">Exports</span>
+            <span class="sector-tab">Capacity</span>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <!-- COLUNA DIREITA -->
-    <div class="col-right">
-
-      <!-- ── COTAÇÕES ─────────────────────────────────────────────── -->
-      <div class="sec">
-        <div class="sec-head">
-          <span class="sec-title">Cotações — B3</span>
-          <span class="sec-meta" id="quotes-meta">tempo real</span>
-        </div>
-        <div class="quotes-wrap">
-          <div class="quotes-grid" id="quotes-grid">
-            <!-- preenchido por JS -->
-          </div>
-        </div>
+    <!-- ── COTAÇÕES ─────────────────────────────────────────────── -->
+    <div class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Cotações — B3</span>
+        <span class="sec-meta" id="quotes-meta">tempo real</span>
       </div>
+      <div class="quotes-wrap">
+        <div class="quotes-grid" id="quotes-grid" style="grid-template-columns:1fr 1fr;"></div>
+      </div>
+    </div>
 
-      <!-- ── ANALISTAS ────────────────────────────────────────────── -->
-      <div class="sec">
-        <div class="sec-head">
-          <span class="sec-title">Equipe</span>
-        </div>
-        <div class="contacts-list">
+    <!-- ── ANALISTAS ────────────────────────────────────────────── -->
+    <div class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Equipe</span>
+      </div>
+      <div class="contacts-list">
 
           <div class="contact-row">
             <div class="contact-avatar">DS</div>
@@ -394,10 +403,9 @@ html,body{
             </div>
           </div>
 
-        </div>
       </div>
-
     </div>
+
   </div>
 </div>
 
@@ -414,9 +422,12 @@ html,body{
 <script>
 
 // ─── NEWS FEED ────────────────────────────────────────────────────────────
-const NEWS_LIMIT = 8;
+const NEWS_LIMIT = 20;                  // mais notícias na home
 const NEWS_INTERVAL = 60 * 1000;
+const NEW_HIGHLIGHT_WINDOW = 15 * 60 * 1000;  // 15min em laranja "novo"
 let _newsLastHunterRun = 0;
+let _seenUrls = new Set();              // URLs já vistas pelo usuário
+let _firstLoad = true;
 
 const _LABEL_ALIAS = {
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
@@ -459,6 +470,20 @@ async function loadNews(){
     const articles=await newsRes.json();
     const runRows=runRes.ok?await runRes.json():[];
     if(runRows[0]?.ran_at)_newsLastHunterRun=Date.parse(runRows[0].ran_at);
+
+    // Detecta novas notícias (não vistas em refreshes anteriores)
+    const newUrls=articles.filter(a=>!_seenUrls.has(a.url));
+    if(!_firstLoad && newUrls.length){
+      const badge=document.getElementById('news-new-badge');
+      if(badge){
+        badge.textContent=`↑ ${newUrls.length} nova${newUrls.length>1?'s':''}`;
+        badge.classList.add('visible');
+        setTimeout(()=>badge.classList.remove('visible'),20000);
+      }
+    }
+    articles.forEach(a=>_seenUrls.add(a.url));
+    _firstLoad=false;
+
     _renderNews(articles);
     _updateNewsMeta();
   }catch(e){
@@ -470,16 +495,18 @@ async function loadNews(){
 function _renderNews(articles){
   const feed=document.getElementById('news-feed');
   if(!articles.length){feed.innerHTML='<div class="news-empty">Nenhuma notícia disponível.</div>';return;}
+  const now=Date.now();
   feed.innerHTML=articles.map(a=>{
     const lbl=_label(a);
     const date=a.found_at||a.published_at;
-    return`<a class="news-item" href="${a.url}" target="_blank" rel="noopener">
-      <div class="news-item-left">
-        <span class="news-badge">${lbl}</span>
+    const foundMs=a.found_at?Date.parse(a.found_at):0;
+    const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
+    return`<a class="news-item ${isNew?'is-new':''}" href="${a.url}" target="_blank" rel="noopener">
+      <div class="news-item-title">${a.title}</div>
+      <div class="news-item-meta">
+        <span class="news-item-source">${lbl}</span>
+        <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
-      </div>
-      <div class="news-item-body">
-        <div class="news-item-title">${a.title}</div>
       </div>
     </a>`;
   }).join('');
