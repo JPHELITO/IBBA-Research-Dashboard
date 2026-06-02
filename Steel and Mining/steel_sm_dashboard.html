@@ -2303,6 +2303,7 @@ let _newsTimer       = null;
 let _newsLastRefresh   = 0;     // último fetch do dashboard ao Supabase
 let _newsLastHunterRun = 0;     // último run do hunter (max(found_at))
 let _newsArticleCount  = 0;
+let _manualRefreshFlag = false; // true quando o usuário clica em ↺ Refresh
 const NEWS_INTERVAL    = 2 * 60 * 1000;
 
 function _updateStatusText(){
@@ -2462,12 +2463,26 @@ async function refreshNews(){
     _renderNewsFeed(articles);
     _newsArticleCount=articles.length;
     _updateStatusText();
-    // Mostra badge de novidades se houver artigos novos (exceto no primeiro load)
-    if(badge&&newCount>0&&prevUrls.size>0){
-      badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
-      badge.classList.add('visible');
-      setTimeout(()=>badge.classList.remove('visible'),15000);
+    // Feedback visual no badge:
+    //  • Artigos novos chegaram → "↑ X novas" (laranja, 15s)
+    //  • Nenhuma novidade (e usuário clicou manualmente) → "✓ Sem novidades" (3s)
+    if(badge&&prevUrls.size>0){
+      if(newCount>0){
+        badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
+        badge.style.background='var(--orange)';
+        badge.classList.add('visible');
+        setTimeout(()=>badge.classList.remove('visible'),15000);
+      } else if(_manualRefreshFlag){
+        badge.textContent='✓ Sem novidades';
+        badge.style.background='#666';
+        badge.classList.add('visible');
+        setTimeout(()=>{
+          badge.classList.remove('visible');
+          badge.style.background='';  // restaura laranja para próximas
+        },3000);
+      }
     }
+    _manualRefreshFlag=false;
   }catch(e){
     if(txt)txt.textContent='Erro ao carregar';
     console.warn('News fetch error:',e);
@@ -2476,7 +2491,10 @@ async function refreshNews(){
   }
 }
 
-function triggerNewsRefresh(){refreshNews();}
+function triggerNewsRefresh(){
+  _manualRefreshFlag=true;
+  refreshNews();
+}
 
 // Cooldown anti-spam: evita refreshes seguidos em < 10s
 const NEWS_COOLDOWN = 10 * 1000;
