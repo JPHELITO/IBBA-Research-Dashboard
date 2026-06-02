@@ -8,10 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// ⚠️  Substitua pelos seus valores: Supabase → Settings → API
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
 const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:window.sessionStorage}})
@@ -27,6 +27,7 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 </script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -58,104 +59,149 @@ html,body{
 .logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.4);}
 .brand-icon{flex-shrink:0;}
 .brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
-.brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
-  letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
 .brand-team{font-size:8.5px;color:rgba(255,255,255,.28);font-weight:400;
   letter-spacing:.02em;margin-top:2px;}
 .orange-rule{height:2px;background:var(--orange);}
 
-/* ── HERO ────────────────────────────────────────────────────────────────────── */
-.hero{
-  padding:56px 40px 48px;max-width:1100px;margin:0 auto;
+/* ── LAYOUT BASE ─────────────────────────────────────────────────────────── */
+.page{max-width:1280px;margin:0 auto;padding:32px 32px 64px;}
+.page-grid{
+  display:grid;grid-template-columns:1.6fr 1fr;gap:24px;
 }
-.hero-label{
+.col-left{display:flex;flex-direction:column;gap:24px;}
+.col-right{display:flex;flex-direction:column;gap:24px;}
+
+/* ── SECTION CARDS ───────────────────────────────────────────────────────── */
+.sec{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.sec-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px 12px;border-bottom:1px solid var(--border);
+}
+.sec-title{font-size:11px;font-weight:700;color:var(--black);
+  letter-spacing:.08em;text-transform:uppercase;}
+.sec-meta{font-size:10px;color:var(--gray-mid);
+  display:flex;align-items:center;gap:8px;}
+.sec-meta::before{
+  content:'';display:inline-block;width:6px;height:6px;background:#22c55e;
+  border-radius:50%;animation:syncpulse 2s ease-in-out infinite;
+}
+@keyframes syncpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.sec-link{font-size:11px;font-weight:600;color:var(--orange);
+  text-decoration:none;display:flex;align-items:center;gap:4px;
+  transition:gap .15s;}
+.sec-link:hover{gap:8px;}
+
+/* ── HERO ────────────────────────────────────────────────────────────────── */
+.hero{
+  padding:32px 32px 16px;max-width:1280px;margin:0 auto;
+}
+.hero-eyebrow{
   font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;
-  letter-spacing:.9px;margin-bottom:14px;
+  letter-spacing:.9px;margin-bottom:10px;
 }
 .hero-title{
-  font-size:32px;font-weight:700;color:var(--black);letter-spacing:-.03em;
-  line-height:1.15;margin-bottom:10px;
-}
-.hero-sub{
-  font-size:14px;color:var(--gray-mid);font-weight:400;
-  line-height:1.6;max-width:520px;
+  font-size:26px;font-weight:700;color:var(--black);letter-spacing:-.025em;
+  line-height:1.15;
 }
 
-/* ── SECTION LABEL ───────────────────────────────────────────────────────────── */
-.section-label{
-  max-width:1100px;margin:0 auto;padding:0 40px 18px;
-  font-size:9.5px;font-weight:600;color:rgba(0,0,0,.3);
-  text-transform:uppercase;letter-spacing:.8px;
-  border-bottom:1px solid var(--border);margin-bottom:24px;
+/* ── NEWS FEED (compacto) ────────────────────────────────────────────────── */
+.news-feed{padding:6px 20px 16px;}
+.news-empty{padding:36px 20px;text-align:center;color:var(--gray-mid);font-size:12px;}
+.news-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--border);
+  text-decoration:none;color:inherit;
 }
-.section-label-inner{max-width:1100px;margin:0 auto;padding:0 40px;}
+.news-item:last-child{border-bottom:none;}
+.news-item:hover .news-item-title{color:var(--orange);}
+.news-item-left{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:84px;}
+.news-badge{
+  font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 6px;border-radius:3px;color:#fff;white-space:nowrap;
+  background:#2C2C2C;
+}
+.news-item-age{font-size:9px;color:var(--gray-mid);white-space:nowrap;}
+.news-item-body{flex:1;min-width:0;}
+.news-item-title{
+  font-size:12px;font-weight:600;color:var(--black);letter-spacing:-.01em;
+  line-height:1.4;margin-bottom:2px;transition:color .15s;
+}
+.news-item-snippet{
+  font-size:10.5px;color:var(--gray-mid);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
 
-/* ── CARDS ───────────────────────────────────────────────────────────────────── */
-.cards-wrapper{max-width:1100px;margin:0 auto;padding:0 40px 60px;}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
+/* ── SECTOR CARDS ────────────────────────────────────────────────────────── */
+.sector-grid{padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.sector-card{
+  background:var(--gray-light);border:1px solid var(--border);border-radius:8px;
+  padding:16px 14px;text-decoration:none;color:inherit;
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+  display:flex;flex-direction:column;gap:8px;position:relative;
+}
+.sector-card.live{cursor:pointer;}
+.sector-card.live:hover{
+  transform:translateY(-2px);box-shadow:var(--shadow-hover);
+  border-color:var(--orange);
+}
+.sector-card.soon{opacity:.45;cursor:default;}
+.sector-card-eyebrow{font-size:9px;font-weight:700;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.06em;}
+.sector-card.soon .sector-card-eyebrow{color:var(--gray-mid);}
+.sector-card-title{font-size:14px;font-weight:700;color:var(--black);letter-spacing:-.01em;}
+.sector-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.sector-tab{
+  font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
+  background:var(--white);border:1px solid var(--border);color:var(--gray-mid);
+}
 
-.card{
-  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
-  padding:26px 24px 20px;text-decoration:none;color:inherit;
-  display:block;position:relative;overflow:hidden;
-  box-shadow:var(--shadow);
-  transition:box-shadow .25s,transform .25s;
+/* ── CONTACTS ────────────────────────────────────────────────────────────── */
+.contacts-list{padding:8px 0;}
+.contact-row{
+  display:flex;align-items:center;gap:14px;padding:14px 20px;
+  border-bottom:1px solid var(--border);text-decoration:none;color:inherit;
+  transition:background .15s;
 }
-.card:not(.disabled):hover{
-  box-shadow:var(--shadow-hover);
-  transform:translateY(-3px);
+.contact-row:last-child{border-bottom:none;}
+.contact-row:hover{background:var(--gray-light);}
+.contact-avatar{
+  width:38px;height:38px;border-radius:50%;background:var(--orange);
+  color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.card.disabled{opacity:.5;pointer-events:none;cursor:default;}
+.contact-info{flex:1;min-width:0;}
+.contact-name{font-size:12.5px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
+.contact-role{font-size:10px;color:var(--gray-mid);margin-top:2px;}
+.contact-actions{display:flex;gap:6px;flex-shrink:0;}
+.contact-btn{
+  width:28px;height:28px;border-radius:6px;border:1px solid var(--border);
+  background:var(--white);display:flex;align-items:center;justify-content:center;
+  color:var(--gray-mid);text-decoration:none;transition:all .15s;
+}
+.contact-btn:hover{color:var(--orange);border-color:var(--orange);}
+.contact-btn svg{width:14px;height:14px;}
 
-/* Top accent bar */
-.card-accent{
-  position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0;
+/* ── QUOTES (TradingView widget container) ───────────────────────────────── */
+.quotes-wrap{padding:0;background:#fff;}
+.quotes-grid{padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.quote-card{
+  background:var(--gray-light);border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:4px;
+  text-decoration:none;color:inherit;transition:border-color .15s,transform .15s;
 }
-.card-accent.orange{background:var(--orange);}
-.card-accent.gray{background:#D0D0D0;}
+.quote-card:hover{border-color:var(--orange);transform:translateY(-1px);}
+.quote-ticker{font-size:11px;font-weight:700;color:var(--black);letter-spacing:.02em;}
+.quote-name{font-size:9.5px;color:var(--gray-mid);}
+.quote-price{font-size:15px;font-weight:700;color:var(--black);margin-top:2px;}
+.quote-change{font-size:10px;font-weight:600;}
+.quote-change.up{color:var(--green);}
+.quote-change.down{color:#C0392B;}
+.quote-loading{color:var(--gray-mid);font-size:10px;}
 
-/* Card body */
-.card-icon{
-  width:40px;height:40px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  margin-bottom:16px;font-size:20px;
-}
-.card-icon.live{background:rgba(255,80,0,.08);}
-.card-icon.soon{background:rgba(0,0,0,.04);}
-
-.card-eyebrow{
-  font-size:9.5px;font-weight:600;text-transform:uppercase;
-  letter-spacing:.7px;color:var(--gray-mid);margin-bottom:5px;
-}
-.card-title{font-size:17px;font-weight:700;color:var(--black);
-  letter-spacing:-.02em;margin-bottom:9px;}
-.card-desc{font-size:11.5px;color:var(--gray-mid);line-height:1.6;font-weight:400;}
-
-.card-footer{
-  margin-top:20px;padding-top:14px;border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-}
-.card-status{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;}
-.card-status.live{background:rgba(39,174,96,.1);color:var(--green);}
-.card-status.soon{background:rgba(0,0,0,.05);color:var(--gray-mid);}
-
-/* Arrow with animated fill like nav tabs */
-.card-cta{
-  position:relative;overflow:hidden;
-  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--gray-dark);
-  padding:5px 14px;border:1.5px solid var(--border);border-radius:20px;
-  background:transparent;display:flex;align-items:center;gap:6px;
-  transition:color .2s,border-color .2s;z-index:1;
-}
-.card-cta::before{
-  content:'';position:absolute;inset:0;background:var(--black);
-  transform:scaleX(0);transform-origin:left;
-  transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:-1;
-}
-.card:not(.disabled):hover .card-cta{color:#fff;border-color:var(--black);}
-.card:not(.disabled):hover .card-cta::before{transform:scaleX(1);}
-
-/* ── FOOTER ──────────────────────────────────────────────────────────────────── */
+/* ── FOOTER ──────────────────────────────────────────────────────────────── */
 .footer{
   background:var(--white);border-top:1px solid var(--border);
   padding:14px 40px;display:flex;align-items:center;gap:8px;
@@ -164,28 +210,27 @@ html,body{
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
+@media (max-width:1024px){
+  .page-grid{grid-template-columns:1fr;}
+  .sector-grid{grid-template-columns:repeat(3,1fr);}
+}
 @media (max-width:768px){
   .header{padding:0 16px;height:54px;gap:10px;}
-  .brand-sub{display:none;}
   .brand-name{font-size:12.5px;}
   .logout-btn{padding:6px 11px;font-size:10.5px;}
-  .hero{padding:38px 18px 32px;}
-  .hero-title{font-size:26px;line-height:1.1;}
-  .hero-sub{font-size:13px;}
-  .section-label-inner{padding:0 18px;}
-  .section-label{padding:0 18px 14px;}
-  .cards-wrapper{padding:0 18px 40px;}
-  .cards{grid-template-columns:1fr;gap:12px;}
-  .card{padding:22px 20px 18px;}
-  .card-title{font-size:16px;}
-  .card-desc{font-size:11.5px;}
+  .hero{padding:24px 16px 12px;}
+  .hero-title{font-size:21px;}
+  .page{padding:16px 14px 40px;}
+  .sec-head{padding:12px 14px 10px;}
+  .news-feed{padding:4px 14px 12px;}
+  .sector-grid{padding:12px;grid-template-columns:1fr 1fr;gap:8px;}
+  .contact-row{padding:12px 14px;}
+  .quotes-grid{padding:10px;}
   .footer{padding:14px 18px;}
 }
 @media (max-width:420px){
-  .header{padding:0 12px;}
-  .hero{padding:28px 14px 26px;}
-  .hero-title{font-size:23px;}
-  .cards-wrapper{padding:0 14px 32px;}
+  .sector-grid{grid-template-columns:1fr;}
+  .hero-title{font-size:19px;}
 }
 </style>
 </head>
@@ -208,64 +253,151 @@ html,body{
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-label">Equity Research · Itaú BBA</div>
-  <div class="hero-title">Data. Analysis.<br>Decision.</div>
-  <div class="hero-sub">Equity research dashboards developed by Itaú BBA's sector analysis team. Select a sector to access.</div>
+  <div class="hero-eyebrow">Equity Research · Itaú BBA</div>
+  <div class="hero-title">Data. Analysis. Decision.</div>
 </div>
 
-<!-- SECTION LABEL -->
-<div class="section-label-inner">
-  <div class="section-label">Available sectors</div>
-</div>
+<!-- MAIN GRID -->
+<div class="page">
+  <div class="page-grid">
 
-<!-- CARDS -->
-<div class="cards-wrapper">
-  <div class="cards">
+    <!-- COLUNA ESQUERDA -->
+    <div class="col-left">
 
-    <!-- Steel — LIVE -->
-    <a class="card" href="Steel and Mining/">
-      <div class="card-accent orange"></div>
-      <div class="card-icon live">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-          <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-          <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-        </svg>
+      <!-- ── NEWS HUNTER (compacto: top 8) ────────────────────────── -->
+      <div class="sec">
+        <div class="sec-head">
+          <span class="sec-title">News Hunter</span>
+          <span class="sec-meta" id="news-meta">carregando…</span>
+        </div>
+        <div class="news-feed" id="news-feed">
+          <div class="news-empty">Carregando notícias…</div>
+        </div>
       </div>
-      <div class="card-eyebrow">Steel</div>
-      <div class="card-title">Steel</div>
-      <div class="card-desc">Production, apparent consumption and import penetration. SECEX foreign trade, INDA distributors and Korea/China predictive model.</div>
-      <div class="card-footer">
-        <span class="card-status live">● Live</span>
-        <span class="card-cta">Open <span>→</span></span>
-      </div>
-    </a>
 
-    <!-- Mining — coming soon -->
-    <div class="card disabled">
-      <div class="card-accent gray"></div>
-      <div class="card-icon soon">⛏️</div>
-      <div class="card-eyebrow">Mining</div>
-      <div class="card-title">Mining</div>
-      <div class="card-desc">Mining production, iron ore exports by destination, price indicators and installed capacity by producer.</div>
-      <div class="card-footer">
-        <span class="card-status soon">Coming soon</span>
+      <!-- ── SETORES ──────────────────────────────────────────────── -->
+      <div class="sec">
+        <div class="sec-head">
+          <span class="sec-title">Setores</span>
+        </div>
+        <div class="sector-grid">
+
+          <a class="sector-card live" href="Steel and Mining/steel_sm_dashboard.html#prices">
+            <span class="sector-card-eyebrow">● Live</span>
+            <span class="sector-card-title">Steel</span>
+            <div class="sector-tabs">
+              <span class="sector-tab">Prices</span>
+              <span class="sector-tab">Domestic</span>
+              <span class="sector-tab">Imports</span>
+              <span class="sector-tab">Exports</span>
+              <span class="sector-tab">News</span>
+            </div>
+          </a>
+
+          <div class="sector-card soon">
+            <span class="sector-card-eyebrow">Em breve</span>
+            <span class="sector-card-title">Mining</span>
+            <div class="sector-tabs">
+              <span class="sector-tab">Production</span>
+              <span class="sector-tab">Exports</span>
+              <span class="sector-tab">Prices</span>
+            </div>
+          </div>
+
+          <div class="sector-card soon">
+            <span class="sector-card-eyebrow">Em breve</span>
+            <span class="sector-card-title">Pulp &amp; Paper</span>
+            <div class="sector-tabs">
+              <span class="sector-tab">Pulp Price</span>
+              <span class="sector-tab">Exports</span>
+              <span class="sector-tab">Capacity</span>
+            </div>
+          </div>
+
+        </div>
       </div>
+
     </div>
 
-    <!-- Pulp & Paper — coming soon -->
-    <div class="card disabled">
-      <div class="card-accent gray"></div>
-      <div class="card-icon soon">🌲</div>
-      <div class="card-eyebrow">Pulp &amp; Paper</div>
-      <div class="card-title">Pulp &amp; Paper</div>
-      <div class="card-desc">Pulp and paper production, exports by destination, FOEX/BHKP prices and installed capacity by producer.</div>
-      <div class="card-footer">
-        <span class="card-status soon">Coming soon</span>
+    <!-- COLUNA DIREITA -->
+    <div class="col-right">
+
+      <!-- ── COTAÇÕES ─────────────────────────────────────────────── -->
+      <div class="sec">
+        <div class="sec-head">
+          <span class="sec-title">Cotações — B3</span>
+          <span class="sec-meta" id="quotes-meta">tempo real</span>
+        </div>
+        <div class="quotes-wrap">
+          <div class="quotes-grid" id="quotes-grid">
+            <!-- preenchido por JS -->
+          </div>
+        </div>
       </div>
+
+      <!-- ── ANALISTAS ────────────────────────────────────────────── -->
+      <div class="sec">
+        <div class="sec-head">
+          <span class="sec-title">Equipe</span>
+        </div>
+        <div class="contacts-list">
+
+          <div class="contact-row">
+            <div class="contact-avatar">DS</div>
+            <div class="contact-info">
+              <div class="contact-name">Daniel Sasson</div>
+              <div class="contact-role">Head of Steel &amp; Mining</div>
+            </div>
+            <div class="contact-actions">
+              <a class="contact-btn" href="mailto:daniel.sasson@itaubba.com" title="Email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-avatar">EP</div>
+            <div class="contact-info">
+              <div class="contact-name">Edgard Pinto Souza</div>
+              <div class="contact-role">Senior Analyst</div>
+            </div>
+            <div class="contact-actions">
+              <a class="contact-btn" href="mailto:edgard.souza@itaubba.com" title="Email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-avatar">MF</div>
+            <div class="contact-info">
+              <div class="contact-name">Marcelo Furlan</div>
+              <div class="contact-role">Senior Analyst — Pulp &amp; Paper</div>
+            </div>
+            <div class="contact-actions">
+              <a class="contact-btn" href="mailto:marcelo.furlan@itaubba.com" title="Email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-avatar">JH</div>
+            <div class="contact-info">
+              <div class="contact-name">João Paulo Helito</div>
+              <div class="contact-role">Analyst</div>
+            </div>
+            <div class="contact-actions">
+              <a class="contact-btn" href="mailto:joao.helito@itaubba.com" title="Email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
-
-
   </div>
 </div>
 
@@ -275,6 +407,148 @@ html,body{
   <div class="footer-dot"></div>
   <span class="footer-text">Restricted use</span>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!--                              JAVASCRIPT                                -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<script>
+
+// ─── NEWS FEED ────────────────────────────────────────────────────────────
+const NEWS_LIMIT = 8;
+const NEWS_INTERVAL = 60 * 1000;
+let _newsLastHunterRun = 0;
+
+const _LABEL_ALIAS = {
+  'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
+  'Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish',
+  'Shanghai Metals Market':'SMM','World Steel Association':'World Steel',
+  'O Estado de S. Paulo':'Estadão','Folha de São Paulo':'Folha de S.Paulo',
+  'IBRAM - Mineração do Brasil':'IBRAM',
+  'S&P Global':'S&P Platts','S&P Global Commodity Insights':'S&P Platts',
+};
+function _label(a){
+  const sn=a.source_name||'';
+  if(_LABEL_ALIAS[sn])return _LABEL_ALIAS[sn];
+  if(sn==='Google News'||sn==='Google Notícias'||sn===''){
+    const d=(a.domain||'').replace('www.','').split('.')[0];
+    return d?d.charAt(0).toUpperCase()+d.slice(1):'—';
+  }
+  return sn;
+}
+function _age(iso){
+  if(!iso)return '—';
+  const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));
+  if(s<60)return 'agora';
+  if(s<3600)return `${Math.floor(s/60)}m`;
+  if(s<86400)return `${Math.floor(s/3600)}h`;
+  return `${Math.floor(s/86400)}d`;
+}
+
+async function loadNews(){
+  const {data:{session}}=await sbAuth.auth.getSession();
+  if(!session)return;
+  const q='url,domain,source_name,title,snippet,published_at,found_at';
+  try{
+    const [newsRes,runRes]=await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/news_articles?select=${q}&order=found_at.desc&limit=${NEWS_LIMIT}`,
+        {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}),
+      fetch(`${SUPA_URL}/rest/v1/hunter_runs?select=ran_at&order=ran_at.desc&limit=1`,
+        {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}),
+    ]);
+    if(!newsRes.ok)throw new Error('news fetch error');
+    const articles=await newsRes.json();
+    const runRows=runRes.ok?await runRes.json():[];
+    if(runRows[0]?.ran_at)_newsLastHunterRun=Date.parse(runRows[0].ran_at);
+    _renderNews(articles);
+    _updateNewsMeta();
+  }catch(e){
+    document.getElementById('news-feed').innerHTML='<div class="news-empty">Erro ao carregar notícias.</div>';
+    console.warn('News error:',e);
+  }
+}
+
+function _renderNews(articles){
+  const feed=document.getElementById('news-feed');
+  if(!articles.length){feed.innerHTML='<div class="news-empty">Nenhuma notícia disponível.</div>';return;}
+  feed.innerHTML=articles.map(a=>{
+    const lbl=_label(a);
+    const date=a.found_at||a.published_at;
+    return`<a class="news-item" href="${a.url}" target="_blank" rel="noopener">
+      <div class="news-item-left">
+        <span class="news-badge">${lbl}</span>
+        <span class="news-item-age">${_age(date)}</span>
+      </div>
+      <div class="news-item-body">
+        <div class="news-item-title">${a.title}</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+function _updateNewsMeta(){
+  const el=document.getElementById('news-meta');
+  if(!el||!_newsLastHunterRun)return;
+  const s=Math.round((Date.now()-_newsLastHunterRun)/1000);
+  let when;
+  if(s<60)when='sincronizado agora';
+  else if(s<3600)when=`sincronizado há ${Math.floor(s/60)}min`;
+  else when=`sincronizado há ${Math.floor(s/3600)}h`;
+  el.textContent=when;
+}
+setInterval(_updateNewsMeta,15000);
+
+// ─── COTAÇÕES (Yahoo Finance via proxy público) ──────────────────────────
+const TICKERS = [
+  {sym:'VALE3.SA', name:'Vale'},
+  {sym:'CSNA3.SA', name:'CSN'},
+  {sym:'GGBR4.SA', name:'Gerdau'},
+  {sym:'USIM5.SA', name:'Usiminas'},
+  {sym:'SUZB3.SA', name:'Suzano'},
+  {sym:'KLBN11.SA', name:'Klabin'},
+];
+
+function _renderQuotes(data){
+  const grid=document.getElementById('quotes-grid');
+  if(!data||!data.length){
+    grid.innerHTML=TICKERS.map(t=>`<div class="quote-card"><div class="quote-ticker">${t.sym.replace('.SA','')}</div><div class="quote-name">${t.name}</div><div class="quote-loading">—</div></div>`).join('');
+    return;
+  }
+  grid.innerHTML=data.map(q=>{
+    const change=q.regularMarketChangePercent||0;
+    const cls=change>=0?'up':'down';
+    const sign=change>=0?'+':'';
+    return`<a class="quote-card" href="https://finance.yahoo.com/quote/${q.symbol}" target="_blank" rel="noopener">
+      <div class="quote-ticker">${q.symbol.replace('.SA','')}</div>
+      <div class="quote-name">${q.shortName||''}</div>
+      <div class="quote-price">R$ ${q.regularMarketPrice?.toFixed(2)||'—'}</div>
+      <div class="quote-change ${cls}">${sign}${change.toFixed(2)}%</div>
+    </a>`;
+  }).join('');
+}
+
+async function loadQuotes(){
+  // Yahoo Finance API via Yahoo direct (no key) — funciona quando CORS permite
+  // Fallback: mostra estrutura sem dados
+  try{
+    const symbols=TICKERS.map(t=>t.sym).join(',');
+    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
+    const res=await fetch(url);
+    if(res.ok){
+      const j=await res.json();
+      _renderQuotes(j.quoteResponse?.result||[]);
+      return;
+    }
+  }catch(e){console.warn('Yahoo CORS blocked:',e);}
+  // Fallback: skeleton (sem dado real — Yahoo bloqueia CORS direto)
+  _renderQuotes(null);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────
+loadNews();
+loadQuotes();
+setInterval(loadNews, NEWS_INTERVAL);
+setInterval(loadQuotes, 30 * 1000);  // cotações a cada 30s
+</script>
 
 <!-- STAGING BADGE — auto-detects preview URL; never shows in production -->
 <script>
