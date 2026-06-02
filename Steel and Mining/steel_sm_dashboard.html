@@ -2438,22 +2438,34 @@ async function fetchNewsFromSupabase(){
   return res.json();
 }
 
+// Lê o timestamp do último run do hunter (mesmo quando sem novidades)
+async function fetchLastHunterRun(){
+  const {data:{session}}=await sbAuth.auth.getSession();
+  if(!session)return null;
+  const res=await fetch(
+    `${SUPA_URL}/rest/v1/hunter_runs?select=ran_at&order=ran_at.desc&limit=1`,
+    {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
+  );
+  if(!res.ok)return null;
+  const rows=await res.json();
+  return rows[0]?.ran_at?Date.parse(rows[0].ran_at):null;
+}
+
 async function refreshNews(){
   const txt=document.getElementById('news-status-text');
   const badge=document.getElementById('news-new-badge');
   try{
-    const articles=await fetchNewsFromSupabase();
+    // Faz os 2 fetches em paralelo (artigos + último run do hunter)
+    const [articles, lastRun]=await Promise.all([
+      fetchNewsFromSupabase(),
+      fetchLastHunterRun(),
+    ]);
     const prevUrls=new Set(_newsCache.map(a=>a.url));
     const newCount=articles.filter(a=>!prevUrls.has(a.url)).length;
     _newsCache=articles;
     _newsLastRefresh=Date.now();
-    // max(found_at) = momento exato do último run do hunter
-    let maxFound=0;
-    for(const a of articles){
-      const f=a.found_at?Date.parse(a.found_at):0;
-      if(f>maxFound)maxFound=f;
-    }
-    if(maxFound>0)_newsLastHunterRun=maxFound;
+    // Timestamp confiável do último run do hunter (independente de novidades)
+    if(lastRun)_newsLastHunterRun=lastRun;
     _buildNewsPills(articles);
     _renderNewsFeed(articles);
     _newsArticleCount=articles.length;
