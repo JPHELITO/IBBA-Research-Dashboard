@@ -475,77 +475,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .cs-item label{font-size:11.5px;color:var(--gray-dark);cursor:pointer;flex:1;}
 .cs-item.outros label{color:var(--gray-mid);font-style:italic;}
 
-/* ── NEWS TAB ─────────────────────────────────────────────────────────────── */
-.news-controls{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 24px 10px;gap:12px;flex-wrap:wrap;
-}
-.news-pills{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.news-pill{
-  font-size:10.5px;font-weight:600;letter-spacing:.03em;
-  padding:4px 13px;border-radius:20px;border:1.5px solid var(--border);
-  background:transparent;color:var(--gray-mid);cursor:pointer;
-  font-family:var(--font);transition:all .18s;
-}
-.news-pill.active{background:var(--black);color:#fff;border-color:var(--black);}
-.news-pill:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
-
-.news-status{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.news-status-text{font-size:10px;color:var(--gray-mid);}
-/* dot pulsante indicando sincronização ativa */
-.news-status-text::before{
-  content:'';display:inline-block;width:6px;height:6px;
-  background:#22c55e;border-radius:50%;margin-right:7px;vertical-align:middle;
-  animation:syncpulse 2s ease-in-out infinite;
-}
-@keyframes syncpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-
-.news-feed{padding:0 24px 32px;display:flex;flex-direction:column;gap:1px;}
-.news-empty{
-  text-align:center;padding:48px 24px;color:var(--gray-mid);font-size:12.5px;
-}
-.news-item{
-  display:flex;align-items:flex-start;gap:14px;
-  padding:13px 0;border-bottom:1px solid var(--border);
-  text-decoration:none;color:inherit;
-  transition:background .15s;
-}
-.news-item:last-child{border-bottom:none;}
-.news-item:hover .news-item-title{color:var(--orange);}
-.news-item-left{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:90px;}
-.news-badge{
-  font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-  padding:2px 7px;border-radius:3px;color:#fff;white-space:nowrap;
-}
-/* Badge único — neutro, sem cor por categoria */
-.nb-default{background:#2C2C2C;}
-
-/* Badge "novas notícias" */
-.news-new-badge{
-  display:none;background:var(--orange);color:#fff;
-  font-size:9.5px;font-weight:700;border-radius:20px;
-  padding:3px 10px;cursor:pointer;
-  animation:pulse-badge .6s ease-in-out 3;
-}
-.news-new-badge.visible{display:inline-block;}
-@keyframes pulse-badge{0%,100%{opacity:1;}50%{opacity:.5;}}
-.news-item-age{font-size:9.5px;color:var(--gray-mid);white-space:nowrap;}
-.news-item-body{flex:1;min-width:0;}
-.news-item-title{
-  font-size:12.5px;font-weight:600;color:var(--black);
-  letter-spacing:-.01em;line-height:1.4;margin-bottom:3px;
-  transition:color .15s;
-}
-.news-item-snippet{
-  font-size:11px;color:var(--gray-mid);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
-@media(max-width:768px){
-  .news-controls{padding:10px 14px 8px;}
-  .news-feed{padding:0 14px 24px;}
-  .news-item-left{min-width:74px;}
-  .news-item-title{font-size:12px;}
-}
 </style>
 </head>
 <body>
@@ -602,7 +531,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
   <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
   <button class="snav-btn soon"   data-sub="global"   onclick="">Global</button>
-  <button class="snav-btn"        data-sub="news"     onclick="setSub('news')">News</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -702,32 +630,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         </div>
         <span class="mob-sec-badge">coming soon</span>
       </div>
-      <button class="mob-sec-item" onclick="mobSelect('news')">
-        <div class="mob-sec-info">
-          <div class="mob-sec-title">News</div>
-          <div class="mob-sec-desc">Latest headlines from Platts, Fastmarkets, Valor and more</div>
-        </div>
-        <span class="mob-sec-arrow">→</span>
-      </button>
     </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     NEWS FEED
-════════════════════════════════════════════════════════════════ -->
-<div id="sec-news" class="section">
-  <div class="news-controls">
-    <div class="news-pills" id="news-pills">
-      <button class="news-pill active" data-src="all" onclick="setNewsSrc('all')">All sources</button>
-    </div>
-    <div class="news-status">
-      <span class="news-new-badge" id="news-new-badge" onclick="scrollToNewArticles()"></span>
-      <span class="news-status-text" id="news-status-text">—</span>
-    </div>
-  </div>
-  <div id="news-feed" class="news-feed">
-    <div class="news-empty">Select the <strong>News</strong> tab to load headlines.</div>
   </div>
 </div>
 
@@ -2169,8 +2072,7 @@ function render(){
 // Hides the global filter-bar when on the prediction tab (it has its own controls)
 function updateGlobalFilters(){
   const onPred=currentSub==='imports'&&importTab==='prediction';
-  const onNews=currentSub==='news';
-  document.querySelector('.filter-bar').style.display=(onPred||onNews)?'none':'';
+  document.querySelector('.filter-bar').style.display=onPred?'none':'';
 }
 
 function setSub(s){
@@ -2178,9 +2080,8 @@ function setSub(s){
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
   const secId=s==='exports'?'sec-exports':s==='imports'?'sec-imports':
-               s==='domestic'?'sec-domestic':s==='news'?'sec-news':'sec-prices';
+               s==='domestic'?'sec-domestic':'sec-prices';
   document.getElementById(secId)?.classList.add('active');
-  if(s==='news'){enterNewsTab();}
   // Prediction controls bar: só aparece em imports + aba prediction
   document.getElementById('pred-controls').style.display=
     (s==='imports'&&importTab==='prediction')?'flex':'none';
@@ -2290,227 +2191,6 @@ function mobSelect(sub){
 // Chart.register e loadDB() são chamados pelo bloco de auth acima
 </script>
 
-<!-- ── NEWS TAB ──────────────────────────────────────────────────────────── -->
-<script>
-// ─── News state ──────────────────────────────────────────────────────────────
-let _newsCache       = [];
-let _newsSrc         = 'all';
-let _newsLoaded      = false;
-let _newsTimer       = null;
-let _newsLastRefresh   = 0;     // último fetch do dashboard ao Supabase
-let _newsLastHunterRun = 0;     // último run do hunter (max(found_at))
-let _newsArticleCount  = 0;
-// Polling de 60s para minimizar a latência entre run do hunter (5min)
-// e exibição na tela. Worst case: 5+1=6min do source até o usuário ver.
-const NEWS_INTERVAL    = 60 * 1000;
-
-function _updateStatusText(){
-  const txt=document.getElementById('news-status-text');
-  if(!txt||!_newsLastHunterRun)return;
-  const s=Math.round((Date.now()-_newsLastHunterRun)/1000);
-  let when;
-  if(s<60)        when='sincronizado agora';
-  else if(s<3600) when=`sincronizado há ${Math.floor(s/60)}min`;
-  else            when=`sincronizado há ${Math.floor(s/3600)}h`;
-  txt.textContent=`${_newsArticleCount} notícias · ${when}`;
-}
-
-// Atualiza o "X min atrás" a cada 15s sem refetch
-setInterval(()=>{if(currentSub==='news')_updateStatusText();},15000);
-
-// Mapa de normalização de nomes — converte variações em um nome canônico
-const _LABEL_ALIAS = {
-  'Bloomberg.com':'Bloomberg',
-  'Reuters Brasil':'Reuters',
-  'Kallanish Commodities':'Kallanish',
-  'Kallanish Steel':'Kallanish',
-  'Shanghai Metals Market':'SMM',
-  'World Steel Association':'World Steel',
-  'World Steel Assoc':'World Steel',
-  'O Estado de S. Paulo':'Estadão',
-  'Folha de São Paulo':'Folha de S.Paulo',
-  'Mining Weekly':'Mining.com',
-  'IBRAM - Mineração do Brasil':'IBRAM',
-  'Ibá - Indústria Brasileira de Árvores':'Ibá',
-  'Agência iNFRA':'Agência iNFRA',
-  'American Iron and Steel Institute':'AISI',
-  'CPG Click Petróleo e Gás':'Google News',
-  'S&P Global':'S&P Platts',
-  'S&P Global Commodity Insights':'S&P Platts',
-};
-
-// Badge sempre com a mesma cor — sem categorização visual
-function _badgeCls(_sourceName){ return 'nb-default'; }
-
-function _cleanLabel(sourceName, domain){
-  if(!sourceName) sourceName = '';
-  // Aplica alias
-  if(_LABEL_ALIAS[sourceName]) return _LABEL_ALIAS[sourceName];
-  // Genéricos: tenta derivar do domínio
-  if(sourceName==='Google News' || sourceName==='Google Notícias' || sourceName===''){
-    if(!domain) return sourceName || '—';
-    const parts = domain.replace('www.','').split('.');
-    const main = parts[0] || domain;
-    return main.charAt(0).toUpperCase()+main.slice(1);
-  }
-  return sourceName;
-}
-
-function _newsAge(iso){
-  if(!iso) return '—';
-  const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));
-  if(s<60)   return 'agora';
-  if(s<3600) return `${Math.floor(s/60)}m`;
-  if(s<86400)return `${Math.floor(s/3600)}h`;
-  return     `${Math.floor(s/86400)}d`;
-}
-
-function _buildNewsPills(articles){
-  const seen=new Set(); const sources=[];
-  articles.forEach(a=>{
-    const lbl=_cleanLabel(a.source_name,a.domain);
-    if(!seen.has(lbl)){seen.add(lbl);sources.push({lbl,domain:a.domain,sn:a.source_name});}
-  });
-  const wrap=document.getElementById('news-pills');
-  if(!wrap)return;
-  wrap.innerHTML='<button class="news-pill active" data-src="all" onclick="setNewsSrc(\'all\')">Todas</button>';
-  sources.forEach(({lbl,domain,sn})=>{
-    const btn=document.createElement('button');
-    btn.className='news-pill'; btn.dataset.src=lbl; btn.textContent=lbl;
-    btn.onclick=()=>setNewsSrc(lbl);
-    wrap.appendChild(btn);
-  });
-}
-
-function _renderNewsFeed(articles){
-  const feed=document.getElementById('news-feed');
-  if(!feed)return;
-  const filtered=_newsSrc==='all'?articles:articles.filter(a=>_cleanLabel(a.source_name,a.domain)===_newsSrc);
-  if(!filtered.length){
-    feed.innerHTML='<div class="news-empty">Nenhum artigo encontrado para esta fonte.</div>';
-    return;
-  }
-  feed.innerHTML=filtered.map(a=>{
-    const lbl=_cleanLabel(a.source_name,a.domain);
-    const cls=_badgeCls(a.source_name);
-    // Idade = quanto tempo desde que a fonte publicou (published_at).
-    // Fallback: found_at quando a fonte omite data (Google News).
-    const ageRef = a.published_at || a.found_at;
-    const pubDate = a.published_at ? new Date(a.published_at) : null;
-    const pubTooltip = pubDate
-      ? `Publicado em ${pubDate.toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}`
-      : '';
-    const snip=a.snippet?`<div class="news-item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
-    return`<a class="news-item" href="${a.url}" target="_blank" rel="noopener" title="${pubTooltip}">
-      <div class="news-item-left">
-        <span class="news-badge ${cls}">${lbl}</span>
-        <span class="news-item-age">${_newsAge(ageRef)}</span>
-      </div>
-      <div class="news-item-body">
-        <div class="news-item-title">${a.title}</div>
-        ${snip}
-      </div>
-    </a>`;
-  }).join('');
-}
-
-function setNewsSrc(src){
-  _newsSrc=src;
-  document.querySelectorAll('.news-pill').forEach(b=>b.classList.toggle('active',b.dataset.src===src));
-  _renderNewsFeed(_newsCache);
-}
-
-function scrollToNewArticles(){
-  document.getElementById('news-feed')?.scrollIntoView({behavior:'smooth',block:'start'});
-  const badge=document.getElementById('news-new-badge');
-  if(badge){badge.classList.remove('visible');badge.textContent='';}
-}
-
-async function fetchNewsFromSupabase(){
-  const {data:{session}}=await sbAuth.auth.getSession();
-  if(!session)return[];
-  const q=`url,domain,source_name,title,snippet,published_at,found_at`;
-  const res=await fetch(
-    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=400`,
-    {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
-  );
-  if(!res.ok){console.error('News fetch error:',res.status);return[];}
-  return res.json();
-}
-
-// Lê o timestamp do último run do hunter (mesmo quando sem novidades)
-async function fetchLastHunterRun(){
-  const {data:{session}}=await sbAuth.auth.getSession();
-  if(!session)return null;
-  const res=await fetch(
-    `${SUPA_URL}/rest/v1/hunter_runs?select=ran_at&order=ran_at.desc&limit=1`,
-    {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
-  );
-  if(!res.ok)return null;
-  const rows=await res.json();
-  return rows[0]?.ran_at?Date.parse(rows[0].ran_at):null;
-}
-
-async function refreshNews(){
-  const txt=document.getElementById('news-status-text');
-  const badge=document.getElementById('news-new-badge');
-  try{
-    // Faz os 2 fetches em paralelo (artigos + último run do hunter)
-    const [articles, lastRun]=await Promise.all([
-      fetchNewsFromSupabase(),
-      fetchLastHunterRun(),
-    ]);
-    const prevUrls=new Set(_newsCache.map(a=>a.url));
-    const newCount=articles.filter(a=>!prevUrls.has(a.url)).length;
-    _newsCache=articles;
-    _newsLastRefresh=Date.now();
-    // Timestamp confiável do último run do hunter (independente de novidades)
-    if(lastRun)_newsLastHunterRun=lastRun;
-    _buildNewsPills(articles);
-    _renderNewsFeed(articles);
-    _newsArticleCount=articles.length;
-    _updateStatusText();
-    // Badge "↑ X novas" quando o auto-refresh detecta artigos novos
-    if(badge&&newCount>0&&prevUrls.size>0){
-      badge.textContent=`↑ ${newCount} nova${newCount>1?'s':''}`;
-      badge.classList.add('visible');
-      setTimeout(()=>badge.classList.remove('visible'),15000);
-    }
-  }catch(e){
-    if(txt)txt.textContent='Erro de sincronização';
-    console.warn('News fetch error:',e);
-  }
-}
-
-// Cooldown anti-spam: evita refreshes seguidos em < 10s
-const NEWS_COOLDOWN = 10 * 1000;
-
-function maybeRefreshNews(){
-  const elapsed=Date.now()-_newsLastRefresh;
-  if(elapsed<NEWS_COOLDOWN)return;  // cooldown
-  refreshNews();
-}
-
-// Chamado toda vez que o usuário entra na aba News (clica no botão)
-function enterNewsTab(){
-  if(!_newsLoaded){
-    _newsLoaded=true;
-    refreshNews();                                       // primeira carga
-    _newsTimer=setInterval(refreshNews,NEWS_INTERVAL);   // 5min em background
-    // Toda vez que a aba do browser volta a ficar visível → refresh imediato (com cooldown)
-    document.addEventListener('visibilitychange',()=>{
-      if(!document.hidden&&currentSub==='news')maybeRefreshNews();
-    });
-    // Quando a janela ganha foco (alt-tab) → refresh imediato
-    window.addEventListener('focus',()=>{
-      if(currentSub==='news')maybeRefreshNews();
-    });
-  } else {
-    // Já carregou antes → refresh imediato ao reentrar na aba (com cooldown)
-    maybeRefreshNews();
-  }
-}
-</script>
 
 <!-- STAGING BADGE — auto-detects preview URL; never shows in production -->
 <script>
