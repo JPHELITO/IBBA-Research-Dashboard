@@ -519,11 +519,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   padding:2px 7px;border-radius:3px;color:#fff;white-space:nowrap;
 }
-/* 3 categorias uniformes */
-.nb-intl{background:#2C2C2C;}      /* Internacional: Reuters, Bloomberg, Platts… */
-.nb-br{background:#FF5000;}        /* Brasil: Valor, Estadão, InfoMoney… */
-.nb-spec{background:#4B6A8A;}      /* Especializados: Mining.com, Mysteel, Kallanish… */
-.nb-assoc{background:#5A7A5A;}     /* Associações: IBRAM, ANM, World Steel… */
+/* Badge único — neutro, sem cor por categoria */
+.nb-default{background:#2C2C2C;}
 
 /* Badge "novas notícias" */
 .news-new-badge{
@@ -2322,37 +2319,40 @@ function _updateStatusText(){
 // Atualiza o "X min atrás" a cada 15s sem refetch
 setInterval(()=>{if(currentSub==='news')_updateStatusText();},15000);
 
-// ── Badge: 3 categorias uniformes baseadas no source_name ────────────────────
-const _BR_SOURCES = new Set([
-  'Valor Econômico','Estadão','O Estado de S. Paulo','Folha de S.Paulo',
-  'InfoMoney','Exame','Money Times','CNN Brasil','G1','O Globo',
-  'Agência Brasil','Reuters Brasil','Siderurgia Brasil','Instituto Aço Brasil',
-  'IBRAM','Ibá','ANM','ABTCP','ANTAQ','MME','ABRAMAT','ANFAVEA',
-]);
-const _SPEC_SOURCES = new Set([
-  'Mining.com','Mining Weekly','SteelOrbis',
-  'Mysteel','Shanghai Metals Market','SMM',
-  'Kallanish','Kallanish Commodities','Kallanish Steel',
-  'Portal Celulose','Paper Advance','ICIS',
-  'GMK Center','EUROMETAL',
-]);
-const _ASSOC_SOURCES = new Set([
-  'World Steel Association','World Steel Assoc',
-  'AISI','CISA','CEPI',
-]);
+// Mapa de normalização de nomes — converte variações em um nome canônico
+const _LABEL_ALIAS = {
+  'Bloomberg.com':'Bloomberg',
+  'Reuters Brasil':'Reuters',
+  'Kallanish Commodities':'Kallanish',
+  'Kallanish Steel':'Kallanish',
+  'Shanghai Metals Market':'SMM',
+  'World Steel Association':'World Steel',
+  'World Steel Assoc':'World Steel',
+  'O Estado de S. Paulo':'Estadão',
+  'Folha de São Paulo':'Folha de S.Paulo',
+  'Mining Weekly':'Mining.com',
+  'IBRAM - Mineração do Brasil':'IBRAM',
+  'Ibá - Indústria Brasileira de Árvores':'Ibá',
+  'Agência iNFRA':'Agência iNFRA',
+  'American Iron and Steel Institute':'AISI',
+  'CPG Click Petróleo e Gás':'Google News',
+  'S&P Global':'S&P Platts',
+  'S&P Global Commodity Insights':'S&P Platts',
+};
 
-function _badgeCls(sourceName){
-  if(_BR_SOURCES.has(sourceName))   return 'nb-br';
-  if(_SPEC_SOURCES.has(sourceName)) return 'nb-spec';
-  if(_ASSOC_SOURCES.has(sourceName))return 'nb-assoc';
-  return 'nb-intl';  // default: internacional (Reuters, Bloomberg, Platts…)
-}
+// Badge sempre com a mesma cor — sem categorização visual
+function _badgeCls(_sourceName){ return 'nb-default'; }
 
 function _cleanLabel(sourceName, domain){
-  // Se source_name é genérico, usa domínio como fallback legível
-  if(!sourceName || sourceName==='Google News' || sourceName==='Google Notícias'){
-    const d=domain.replace('www.','').replace('.com','').replace('.com.br','');
-    return d.charAt(0).toUpperCase()+d.slice(1);
+  if(!sourceName) sourceName = '';
+  // Aplica alias
+  if(_LABEL_ALIAS[sourceName]) return _LABEL_ALIAS[sourceName];
+  // Genéricos: tenta derivar do domínio
+  if(sourceName==='Google News' || sourceName==='Google Notícias' || sourceName===''){
+    if(!domain) return sourceName || '—';
+    const parts = domain.replace('www.','').split('.');
+    const main = parts[0] || domain;
+    return main.charAt(0).toUpperCase()+main.slice(1);
   }
   return sourceName;
 }
@@ -2394,10 +2394,9 @@ function _renderNewsFeed(articles){
   feed.innerHTML=filtered.map(a=>{
     const lbl=_cleanLabel(a.source_name,a.domain);
     const cls=_badgeCls(a.source_name);
-    // Idade = quanto tempo está visível na dashboard (found_at).
-    // found_at agora é imutável (ignore-duplicates no sync) → cada notícia
-    // tem um timestamp único de "primeira aparição".
-    const ageRef = a.found_at || a.published_at;
+    // Idade = quanto tempo desde que a fonte publicou (published_at).
+    // Fallback: found_at quando a fonte omite data (Google News).
+    const ageRef = a.published_at || a.found_at;
     const pubDate = a.published_at ? new Date(a.published_at) : null;
     const pubTooltip = pubDate
       ? `Publicado em ${pubDate.toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}`
@@ -2433,7 +2432,7 @@ async function fetchNewsFromSupabase(){
   if(!session)return[];
   const q=`url,domain,source_name,title,snippet,published_at,found_at`;
   const res=await fetch(
-    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=found_at.desc&limit=400`,
+    `${SUPA_URL}/rest/v1/news_articles?select=${q}&order=published_at.desc.nullslast,found_at.desc&limit=400`,
     {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}
   );
   if(!res.ok){console.error('News fetch error:',res.status);return[];}
