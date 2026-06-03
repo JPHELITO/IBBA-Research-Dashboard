@@ -603,25 +603,30 @@ async function loadPulse(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   const cutoff = new Date(Date.now() - 24*3600*1000).toISOString();
-  let url = `${SUPA_URL}/rest/v1/news_articles?select=sentiment&found_at=gte.${encodeURIComponent(cutoff)}&limit=2000`;
+  // Seleciona take (novo classificador) + sentiment (fallback para artigos antigos)
+  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,sentiment&found_at=gte.${encodeURIComponent(cutoff)}&limit=2000`;
   if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
   try {
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('pulse fetch');
     const rows = await r.json();
-    let pos = 0, neg = 0, neu = 0, sum = 0, n = 0;
+    let pos = 0, neg = 0, neu = 0;
     for(const a of rows){
-      const s = a.sentiment;
-      if(s == null) continue;
-      n++;
-      sum += s;
-      if(s > 0.2) pos++;
-      else if(s < -0.2) neg++;
-      else neu++;
+      if(a.take != null){
+        // Novo classificador: "+"/"-"/"="/"review"
+        if(a.take === '+') pos++;
+        else if(a.take === '-') neg++;
+        else neu++;  // "=" e "review" → neutro
+      } else if(a.sentiment != null){
+        // Fallback: sentiment float [-1, 1] para artigos sem take ainda
+        if(a.sentiment > 0.2) pos++;
+        else if(a.sentiment < -0.2) neg++;
+        else neu++;
+      }
     }
     const tot = pos + neg + neu;
-    const avg = n ? sum / n : 0;
-    const gaugeVal = Math.round(50 + avg * 50);
+    // Gauge baseado em ratio pos/neg (não em média de sentiment)
+    const gaugeVal = tot > 0 ? Math.round(50 + (pos - neg) / tot * 50) : 50;
     _renderGauge(gaugeVal);
     document.getElementById('stat-pos').textContent = pos;
     document.getElementById('stat-neg').textContent = neg;
