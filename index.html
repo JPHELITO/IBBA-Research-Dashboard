@@ -213,18 +213,20 @@ html,body{
 
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
 .heatmap-grid{padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;}
-.hm-card{padding:8px 10px;border-radius:6px;text-decoration:none;color:#fff;
-  display:flex;flex-direction:column;gap:2px;transition:transform .15s;}
+.hm-card{padding:9px 11px;border-radius:6px;text-decoration:none;color:#fff;
+  display:flex;flex-direction:column;gap:3px;transition:transform .15s;}
 .hm-card:hover{transform:translateY(-1px);}
 .hm-card.up-strong{background:#16a34a;}
 .hm-card.up{background:#86c587;color:#1a3d23;}
 .hm-card.flat{background:#d3d3d0;color:#444;}
 .hm-card.down{background:#f0a3a3;color:#5e1a1a;}
 .hm-card.down-strong{background:#c0392b;}
-.hm-ticker{font-size:11px;font-weight:700;letter-spacing:.02em;}
+.hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
+.hm-ticker{font-size:11.5px;font-weight:700;letter-spacing:.02em;}
+.hm-change{font-size:11.5px;font-weight:700;letter-spacing:-.01em;}
 .hm-name{font-size:8.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hm-change{font-size:12.5px;font-weight:700;text-align:right;letter-spacing:-.01em;}
+.hm-price{font-size:12px;font-weight:600;margin-top:1px;letter-spacing:-.01em;opacity:.92;}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
 .kv-list{padding:4px 0;}
@@ -653,9 +655,7 @@ function _renderGauge(val){
   }
 }
 
-// ─── HEATMAP — Quotes ─────────────────────────────────────────────────
-const SECTOR_ORDER = {'mining':0, 'steel':1, 'pp':2};
-
+// ─── HEATMAP — Quotes (sorted by performance, best to worst) ──────────
 async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
@@ -664,11 +664,8 @@ async function loadQuotes(){
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('quotes fetch');
     const rows = await r.json();
-    rows.sort((a,b) => {
-      const sd = (SECTOR_ORDER[a.sector]||9) - (SECTOR_ORDER[b.sector]||9);
-      if(sd !== 0) return sd;
-      return (b.change_pct||0) - (a.change_pct||0);
-    });
+    // Ordena por performance: maior change_pct primeiro (best → worst)
+    rows.sort((a,b) => (b.change_pct ?? -Infinity) - (a.change_pct ?? -Infinity));
     _renderHeatmap(rows);
     _updateMeta('quotes-meta', rows[0]?.updated_at);
   } catch(e){
@@ -685,6 +682,14 @@ function _heatClass(pct){
   return 'flat';
 }
 
+// Formata preço com locale apropriado por exchange (decimal/thousands separators)
+function _fmtPrice(value, exchange){
+  if(value == null) return '—';
+  const useCommaDecimal = exchange === 'B3' || exchange === 'BCS';
+  const locale = useCommaDecimal ? 'pt-BR' : 'en-US';
+  return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
 function _renderHeatmap(rows){
   const grid = document.getElementById('heatmap-grid');
   if(!rows.length){
@@ -695,11 +700,15 @@ function _renderHeatmap(rows){
     const pct = q.change_pct;
     const sign = pct >= 0 ? '+' : '';
     const pctStr = pct != null ? `${sign}${pct.toFixed(2)}%` : '—';
+    const priceStr = _fmtPrice(q.price, q.exchange);
     const tickerShort = q.ticker.replace('.SA','').replace('.SN','').replace('.MX','');
     return `<a class="hm-card ${_heatClass(pct)}" href="#" title="${q.name} (${q.exchange})">
-      <div class="hm-ticker">${tickerShort}</div>
+      <div class="hm-card-top">
+        <div class="hm-ticker">${tickerShort}</div>
+        <div class="hm-change">${pctStr}</div>
+      </div>
       <div class="hm-name">${q.name}</div>
-      <div class="hm-change">${pctStr}</div>
+      <div class="hm-price">${priceStr}</div>
     </a>`;
   }).join('');
 }
