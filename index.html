@@ -32,7 +32,7 @@ async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-t
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
-  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#27AE60;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
   --radius:10px;
   --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
@@ -43,19 +43,14 @@ html,body{
   min-height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
 
-/* ── HEADER ─────────────────────────────────────────────────────────────────── */
-.header{
-  background:var(--black);
-  display:flex;align-items:center;padding:0 40px;height:62px;gap:14px;
-}
-.logout-btn{
-  margin-left:auto;flex-shrink:0;
-  font-size:11px;font-weight:600;letter-spacing:.03em;
-  color:rgba(255,255,255,.45);background:none;
+/* ══ HEADER ════════════════════════════════════════════════════════════════ */
+.header{background:var(--black);display:flex;align-items:center;
+  padding:0 40px;height:62px;gap:14px;}
+.logout-btn{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:600;
+  letter-spacing:.03em;color:rgba(255,255,255,.45);background:none;
   border:1px solid rgba(255,255,255,.15);border-radius:6px;
   padding:5px 13px;cursor:pointer;font-family:var(--font);
-  transition:color .2s,border-color .2s;
-}
+  transition:color .2s,border-color .2s;}
 .logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.4);}
 .brand-icon{flex-shrink:0;}
 .brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
@@ -63,188 +58,219 @@ html,body{
   letter-spacing:.02em;margin-top:2px;}
 .orange-rule{height:2px;background:var(--orange);}
 
-/* ── LAYOUT BASE ─────────────────────────────────────────────────────────── */
-.page{max-width:1320px;margin:0 auto;padding:24px 32px 64px;
-  display:flex;flex-direction:column;gap:22px;}
-/* Linha inferior: 3 colunas iguais */
-.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;}
+/* ── HERO ────────────────────────────────────────────────────────────── */
+.hero{padding:24px 32px 12px;max-width:1320px;margin:0 auto;}
+.hero-eyebrow{font-size:10px;font-weight:600;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.9px;margin-bottom:8px;}
+.hero-title{font-size:24px;font-weight:700;color:var(--black);
+  letter-spacing:-.025em;line-height:1.15;}
 
-/* ── SECTION CARDS ───────────────────────────────────────────────────────── */
-.sec{
-  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden;
+/* ══ GRID 12-COL ═════════════════════════════════════════════════════════ */
+.page{
+  max-width:1320px;margin:0 auto;padding:8px 32px 64px;
+  display:grid;gap:18px;
+  grid-template-columns:repeat(12,1fr);
+  grid-template-areas:
+    "secrow secrow secrow secrow secrow secrow secrow secrow secrow team team team"
+    "pulse pulse pulse pulse pulse pulse pulse pulse pulse pulse pulse pulse"
+    "news news news news news news news news heat heat heat heat"
+    "comm comm comm comm comm comm macro macro macro macro macro macro";
 }
-.sec-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:16px 20px 12px;border-bottom:1px solid var(--border);
-}
-.sec-title{font-size:11px;font-weight:700;color:var(--black);
+.area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+.area-team  {grid-area:team;}
+.area-pulse {grid-area:pulse;}
+.area-news  {grid-area:news;}
+.area-heat  {grid-area:heat;}
+.area-comm  {grid-area:comm;}
+.area-macro {grid-area:macro;}
+
+/* ── CARD BASE ──────────────────────────────────────────────────────── */
+.sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;}
+.sec-head{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 10px;border-bottom:1px solid var(--border);gap:8px;}
+.sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;}
-.sec-meta{font-size:10px;color:var(--gray-mid);
-  display:flex;align-items:center;gap:8px;}
+.sec-meta{font-size:9.5px;color:var(--gray-mid);display:flex;align-items:center;gap:7px;}
 .sec-meta::before{
   content:'';display:inline-block;width:6px;height:6px;background:#22c55e;
   border-radius:50%;animation:syncpulse 2s ease-in-out infinite;
 }
 @keyframes syncpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-.sec-link{font-size:11px;font-weight:600;color:var(--orange);
+.sec-link{font-size:10.5px;font-weight:600;color:var(--orange);
   text-decoration:none;display:flex;align-items:center;gap:4px;
   transition:gap .15s;white-space:nowrap;}
 .sec-link:hover{gap:8px;}
 
-/* Badge laranja "↑ X novas" */
-.sec-new-badge{
-  display:none;background:var(--orange);color:#fff;
-  font-size:10px;font-weight:700;letter-spacing:.02em;
-  padding:3px 11px;border-radius:20px;cursor:pointer;
-  animation:pulse-badge 1s ease-in-out 2;margin-right:6px;
+/* ── SECTOR CARDS ─────────────────────────────────────────────────────── */
+.sector-card{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 18px 16px;text-decoration:none;color:inherit;
+  display:flex;flex-direction:column;gap:8px;position:relative;
+  box-shadow:var(--shadow);
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+  min-height:148px;
 }
+.sector-card.live{cursor:pointer;}
+.sector-card.live:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);
+  border-color:var(--orange);}
+.sector-card.soon{opacity:.55;cursor:default;}
+.sector-card-eyebrow{font-size:9px;font-weight:700;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.08em;}
+.sector-card.soon .sector-card-eyebrow{color:var(--gray-mid);}
+.sector-card-title{font-size:16px;font-weight:700;color:var(--black);letter-spacing:-.01em;}
+.sector-card-desc{font-size:11px;color:var(--gray-mid);line-height:1.4;}
+.sector-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:8px;}
+.sector-tab{font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
+  background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
+
+/* ── TEAM ─────────────────────────────────────────────────────────────── */
+.team-list{padding:6px 0;}
+.team-row{display:flex;align-items:center;gap:11px;padding:9px 16px;
+  border-bottom:1px solid var(--border);}
+.team-row:last-child{border-bottom:none;}
+.team-avatar{width:30px;height:30px;border-radius:50%;background:var(--orange);
+  color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.team-info{flex:1;min-width:0;}
+.team-name{font-size:11.5px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
+.team-role{font-size:9px;color:var(--gray-mid);margin-top:1px;}
+.team-actions{display:flex;gap:5px;flex-shrink:0;}
+.ti-btn{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:var(--white);display:flex;align-items:center;justify-content:center;
+  color:var(--gray-mid);text-decoration:none;transition:all .15s;
+}
+.ti-btn:hover{color:var(--orange);border-color:var(--orange);}
+.ti-btn svg{width:13px;height:13px;}
+.ti-wa:hover{color:#25D366;border-color:#25D366;}
+
+/* ── MARKET PULSE ─────────────────────────────────────────────────────── */
+.pulse-controls{display:flex;gap:5px;}
+.pulse-chip{font-size:10.5px;font-weight:600;padding:4px 12px;border-radius:20px;
+  border:1.5px solid var(--border);background:transparent;color:var(--gray-mid);
+  cursor:pointer;font-family:var(--font);transition:all .15s;}
+.pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
+.pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
+
+.pulse-body{padding:18px 22px;display:grid;
+  grid-template-columns:auto 1fr;gap:24px;align-items:center;}
+.gauge{width:140px;height:90px;position:relative;}
+.gauge svg{width:100%;height:100%;}
+.gauge-val{position:absolute;bottom:14px;left:0;right:0;text-align:center;
+  font-size:28px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;bottom:-2px;left:0;right:0;text-align:center;
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.gauge-label.bullish{color:var(--green);}
+.gauge-label.bearish{color:var(--red);}
+.gauge-label.neutral{color:var(--gray-mid);}
+
+.pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.pulse-stat{text-align:center;}
+.pulse-stat-num{font-size:22px;font-weight:700;letter-spacing:-.02em;}
+.pulse-stat-num.pos{color:var(--green);}
+.pulse-stat-num.neg{color:var(--red);}
+.pulse-stat-num.neu{color:var(--gray-mid);}
+.pulse-stat-lbl{font-size:9.5px;font-weight:600;color:var(--gray-mid);
+  letter-spacing:.06em;text-transform:uppercase;margin-top:3px;}
+.pulse-bar{height:6px;border-radius:3px;display:flex;overflow:hidden;
+  margin-top:14px;grid-column:1/-1;background:var(--border);}
+.pulse-bar-seg{transition:flex .3s;}
+.pulse-bar-seg.pos{background:var(--green);}
+.pulse-bar-seg.neg{background:var(--red);}
+.pulse-bar-seg.neu{background:var(--gray-mid);}
+
+/* ── NEWS HUNTER (2 cols × 10 rows) ────────────────────────────────── */
+.sec-new-badge{display:none;background:var(--orange);color:#fff;
+  font-size:10px;font-weight:700;letter-spacing:.02em;
+  padding:3px 10px;border-radius:20px;cursor:pointer;
+  animation:pulse-badge 1s ease-in-out 2;}
 .sec-new-badge.visible{display:inline-block;}
 @keyframes pulse-badge{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
 
-/* ── HERO ────────────────────────────────────────────────────────────────── */
-.hero{
-  padding:32px 32px 16px;max-width:1280px;margin:0 auto;
-}
-.hero-eyebrow{
-  font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;
-  letter-spacing:.9px;margin-bottom:10px;
-}
-.hero-title{
-  font-size:26px;font-weight:700;color:var(--black);letter-spacing:-.025em;
-  line-height:1.15;
-}
-
-/* ── NEWS FEED ──────────────────────────────────────────────────────────── */
-.news-feed{
-  padding:6px 0 8px;
-  /* lista em 2 colunas em telas largas para mostrar mais notícias */
-  display:grid;grid-template-columns:1fr 1fr;gap:0;
-}
-.news-empty{padding:36px 20px;text-align:center;color:var(--gray-mid);font-size:12px;
-  grid-column:1/-1;}
-.news-item{
-  padding:13px 20px;border-bottom:1px solid var(--border);
-  text-decoration:none;color:inherit;position:relative;
-  transition:background .15s;
-}
+.news-feed{padding:4px 0;display:grid;grid-template-columns:1fr 1fr;
+  grid-auto-flow:column;grid-template-rows:repeat(10,auto);}
+.news-empty{padding:30px 18px;text-align:center;color:var(--gray-mid);
+  font-size:12px;grid-column:1/-1;}
+.news-item{padding:10px 16px;border-bottom:1px solid var(--border);
+  border-right:1px solid var(--border);text-decoration:none;color:inherit;
+  position:relative;transition:background .15s;}
+.news-item:nth-child(10n){border-bottom:none;}
+.news-item:nth-child(n+11){border-right:none;}
 .news-item:hover{background:#FBFAF7;}
 .news-item:hover .news-item-title{color:var(--orange);}
-/* Destaque laranja para notícias NOVAS (recentemente descobertas) */
-.news-item.is-new{
-  background:linear-gradient(90deg, rgba(255,80,0,.06) 0%, transparent 60%);
-  border-left:3px solid var(--orange);padding-left:17px;
-}
-.news-item-title{
-  font-size:13px;font-weight:600;color:var(--black);letter-spacing:-.01em;
-  line-height:1.4;margin-bottom:6px;transition:color .15s;
+.news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.06) 0%,transparent 60%);
+  border-left:3px solid var(--orange);padding-left:13px;}
+.news-item-title{font-size:11.5px;font-weight:600;color:var(--black);
+  letter-spacing:-.01em;line-height:1.35;margin-bottom:5px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
-.news-item-meta{
-  font-size:10.5px;font-weight:500;color:var(--orange);
-  display:flex;align-items:center;gap:8px;letter-spacing:.01em;
-}
+  transition:color .15s;}
+.news-item-meta{font-size:9.5px;font-weight:500;color:var(--orange);
+  display:flex;align-items:center;gap:6px;letter-spacing:.01em;}
 .news-item-meta .sep{color:rgba(255,80,0,.4);}
 .news-item-source{font-weight:600;}
 .news-item-age{color:rgba(255,80,0,.7);}
 
-/* ── SECTOR CARDS ────────────────────────────────────────────────────────── */
-.sector-grid{padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.sector-card{
-  background:var(--gray-light);border:1px solid var(--border);border-radius:8px;
-  padding:16px 14px;text-decoration:none;color:inherit;
-  transition:transform .2s,box-shadow .2s,border-color .2s;
-  display:flex;flex-direction:column;gap:8px;position:relative;
-}
-.sector-card.live{cursor:pointer;}
-.sector-card.live:hover{
-  transform:translateY(-2px);box-shadow:var(--shadow-hover);
-  border-color:var(--orange);
-}
-.sector-card.soon{opacity:.45;cursor:default;}
-.sector-card-eyebrow{font-size:9px;font-weight:700;color:var(--orange);
-  text-transform:uppercase;letter-spacing:.06em;}
-.sector-card.soon .sector-card-eyebrow{color:var(--gray-mid);}
-.sector-card-title{font-size:14px;font-weight:700;color:var(--black);letter-spacing:-.01em;}
-.sector-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
-.sector-tab{
-  font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
-  background:var(--white);border:1px solid var(--border);color:var(--gray-mid);
-}
+/* ── HEATMAP ──────────────────────────────────────────────────────── */
+.heatmap-grid{padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.hm-card{padding:8px 10px;border-radius:6px;text-decoration:none;color:#fff;
+  display:flex;flex-direction:column;gap:2px;transition:transform .15s;}
+.hm-card:hover{transform:translateY(-1px);}
+.hm-card.up-strong{background:#16a34a;}
+.hm-card.up{background:#86c587;color:#1a3d23;}
+.hm-card.flat{background:#d3d3d0;color:#444;}
+.hm-card.down{background:#f0a3a3;color:#5e1a1a;}
+.hm-card.down-strong{background:#c0392b;}
+.hm-ticker{font-size:11px;font-weight:700;letter-spacing:.02em;}
+.hm-name{font-size:8.5px;font-weight:500;opacity:.82;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-change{font-size:12.5px;font-weight:700;text-align:right;letter-spacing:-.01em;}
 
-/* ── CONTACTS ────────────────────────────────────────────────────────────── */
-.contacts-list{padding:8px 0;}
-.contact-row{
-  display:flex;align-items:center;gap:14px;padding:14px 20px;
-  border-bottom:1px solid var(--border);text-decoration:none;color:inherit;
-  transition:background .15s;
-}
-.contact-row:last-child{border-bottom:none;}
-.contact-row:hover{background:var(--gray-light);}
-.contact-avatar{
-  width:38px;height:38px;border-radius:50%;background:var(--orange);
-  color:#fff;font-size:13px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.contact-info{flex:1;min-width:0;}
-.contact-name{font-size:12.5px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
-.contact-role{font-size:10px;color:var(--gray-mid);margin-top:2px;}
-.contact-actions{display:flex;gap:6px;flex-shrink:0;}
-.contact-btn{
-  width:28px;height:28px;border-radius:6px;border:1px solid var(--border);
-  background:var(--white);display:flex;align-items:center;justify-content:center;
-  color:var(--gray-mid);text-decoration:none;transition:all .15s;
-}
-.contact-btn:hover{color:var(--orange);border-color:var(--orange);}
-.contact-btn svg{width:14px;height:14px;}
+/* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
+.kv-list{padding:4px 0;}
+.kv-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;
+  padding:9px 18px;border-bottom:1px solid var(--border);align-items:baseline;}
+.kv-row:last-child{border-bottom:none;}
+.kv-name{font-size:11px;color:var(--gray-dark);font-weight:500;}
+.kv-value{font-size:12px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
+.kv-change{font-size:10.5px;font-weight:600;text-align:right;min-width:58px;}
+.kv-change.up{color:var(--green);}
+.kv-change.down{color:var(--red);}
+.kv-change.flat{color:var(--gray-mid);}
+.kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
 
-/* ── QUOTES (TradingView widget container) ───────────────────────────────── */
-.quotes-wrap{padding:0;background:#fff;}
-.quotes-grid{padding:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-.quote-card{
-  background:var(--gray-light);border:1px solid var(--border);border-radius:8px;
-  padding:12px 14px;display:flex;flex-direction:column;gap:4px;
-  text-decoration:none;color:inherit;transition:border-color .15s,transform .15s;
-}
-.quote-card:hover{border-color:var(--orange);transform:translateY(-1px);}
-.quote-ticker{font-size:11px;font-weight:700;color:var(--black);letter-spacing:.02em;}
-.quote-name{font-size:9.5px;color:var(--gray-mid);}
-.quote-price{font-size:15px;font-weight:700;color:var(--black);margin-top:2px;}
-.quote-change{font-size:10px;font-weight:600;}
-.quote-change.up{color:var(--green);}
-.quote-change.down{color:#C0392B;}
-.quote-loading{color:var(--gray-mid);font-size:10px;}
-
-/* ── FOOTER ──────────────────────────────────────────────────────────────── */
-.footer{
-  background:var(--white);border-top:1px solid var(--border);
-  padding:14px 40px;display:flex;align-items:center;gap:8px;
-}
+/* ── FOOTER ──────────────────────────────────────────────────────────── */
+.footer{background:var(--white);border-top:1px solid var(--border);
+  padding:14px 40px;display:flex;align-items:center;gap:8px;}
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
 @media (max-width:1024px){
-  .row-3{grid-template-columns:1fr;}
-  .news-feed{grid-template-columns:1fr;}
+  .page{grid-template-columns:1fr;grid-template-areas:
+    "secrow" "team" "pulse" "news" "heat" "comm" "macro";}
+  .area-secrow{grid-template-columns:1fr 1fr 1fr;}
+  .news-feed{grid-template-columns:1fr 1fr;}
 }
 @media (max-width:768px){
   .header{padding:0 16px;height:54px;gap:10px;}
   .brand-name{font-size:12.5px;}
   .logout-btn{padding:6px 11px;font-size:10.5px;}
-  .hero{padding:24px 16px 12px;}
-  .hero-title{font-size:21px;}
-  .page{padding:16px 14px 40px;gap:14px;}
-  .sec-head{padding:12px 14px 10px;}
-  .news-item{padding:11px 14px;}
-  .news-item.is-new{padding-left:11px;}
-  .sector-grid{padding:12px;grid-template-columns:1fr !important;gap:8px;}
-  .contact-row{padding:12px 14px;}
-  .quotes-grid{padding:10px;}
+  .hero{padding:20px 16px 8px;}
+  .hero-title{font-size:20px;}
+  .page{padding:8px 14px 40px;gap:14px;}
+  .area-secrow{grid-template-columns:1fr;}
+  .pulse-body{grid-template-columns:1fr;gap:14px;padding:14px;}
+  .gauge{margin:0 auto;}
+  .news-feed{grid-template-columns:1fr;grid-auto-flow:row;
+    grid-template-rows:none;}
+  .news-item{border-right:none;}
+  .heatmap-grid{grid-template-columns:1fr 1fr;}
   .footer{padding:14px 18px;}
 }
 @media (max-width:420px){
-  .hero-title{font-size:19px;}
+  .hero-title{font-size:18px;}
+  .pulse-stats{grid-template-columns:repeat(2,1fr);}
 }
 </style>
 </head>
@@ -271,142 +297,153 @@ html,body{
   <div class="hero-title">Data. Analysis. Decision.</div>
 </div>
 
-<!-- MAIN GRID -->
+<!-- ══ MAIN GRID ════════════════════════════════════════════════════════ -->
 <div class="page">
 
-  <!-- ══ NEWS HUNTER (full-width) ═════════════════════════════════════════ -->
-  <div class="sec">
+  <!-- TOP ROW — 3 sector cards (equal size) -->
+  <div class="area-secrow">
+
+    <a class="sector-card live" href="Steel and Mining/steel_sm_dashboard.html#prices">
+      <span class="sector-card-eyebrow">● Live</span>
+      <span class="sector-card-title">Steel</span>
+      <span class="sector-card-desc">Pricing, domestic market, imports & exports</span>
+      <div class="sector-tabs">
+        <span class="sector-tab">Prices</span>
+        <span class="sector-tab">Domestic</span>
+        <span class="sector-tab">Imports</span>
+        <span class="sector-tab">Exports</span>
+      </div>
+    </a>
+
+    <div class="sector-card soon">
+      <span class="sector-card-eyebrow">Coming soon</span>
+      <span class="sector-card-title">Mining</span>
+      <span class="sector-card-desc">Iron ore, copper and other key commodities</span>
+      <div class="sector-tabs">
+        <span class="sector-tab">Production</span>
+        <span class="sector-tab">Exports</span>
+        <span class="sector-tab">Prices</span>
+      </div>
+    </div>
+
+    <div class="sector-card soon">
+      <span class="sector-card-eyebrow">Coming soon</span>
+      <span class="sector-card-title">Pulp &amp; Paper</span>
+      <span class="sector-card-desc">Pulp pricing, capacity and demand drivers</span>
+      <div class="sector-tabs">
+        <span class="sector-tab">Pulp Price</span>
+        <span class="sector-tab">Exports</span>
+        <span class="sector-tab">Capacity</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RESEARCH TEAM (top-right) -->
+  <div class="sec area-team">
+    <div class="sec-head">
+      <span class="sec-title">Research Team</span>
+    </div>
+    <div class="team-list" id="team-list"></div>
+  </div>
+
+  <!-- MARKET PULSE (full width) -->
+  <div class="sec area-pulse">
+    <div class="sec-head">
+      <span class="sec-title">Market Pulse</span>
+      <div class="pulse-controls" id="pulse-controls">
+        <button class="pulse-chip active" data-sector="all">All</button>
+        <button class="pulse-chip" data-sector="steel">Steel</button>
+        <button class="pulse-chip" data-sector="mining">Mining</button>
+        <button class="pulse-chip" data-sector="pp">Pulp &amp; Paper</button>
+      </div>
+    </div>
+    <div class="pulse-body">
+      <div class="gauge" id="pulse-gauge">
+        <svg viewBox="0 0 140 90">
+          <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#E3E3E3" stroke-width="10" fill="none" stroke-linecap="round"/>
+          <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#FF5000" stroke-width="10" fill="none"
+                stroke-linecap="round" stroke-dasharray="188 188" id="gauge-arc"/>
+        </svg>
+        <div class="gauge-val" id="gauge-val">—</div>
+        <div class="gauge-label neutral" id="gauge-label">LOADING</div>
+      </div>
+      <div>
+        <div class="pulse-stats">
+          <div class="pulse-stat">
+            <div class="pulse-stat-num pos" id="stat-pos">—</div>
+            <div class="pulse-stat-lbl">Positive</div>
+          </div>
+          <div class="pulse-stat">
+            <div class="pulse-stat-num neg" id="stat-neg">—</div>
+            <div class="pulse-stat-lbl">Negative</div>
+          </div>
+          <div class="pulse-stat">
+            <div class="pulse-stat-num neu" id="stat-neu">—</div>
+            <div class="pulse-stat-lbl">Neutral</div>
+          </div>
+          <div class="pulse-stat">
+            <div class="pulse-stat-num" id="stat-tot">—</div>
+            <div class="pulse-stat-lbl">Total (24h)</div>
+          </div>
+        </div>
+        <div class="pulse-bar">
+          <div class="pulse-bar-seg pos" id="bar-pos" style="flex:0;"></div>
+          <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
+          <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEWS HUNTER -->
+  <div class="sec area-news">
     <div class="sec-head">
       <span class="sec-title">News Hunter</span>
-      <div style="display:flex;align-items:center;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
         <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
-        <span class="sec-meta" id="news-meta">carregando…</span>
-        <a class="sec-link" href="news.html">Ver histórico <span>→</span></a>
+        <span class="sec-meta" id="news-meta">loading…</span>
+        <a class="sec-link" href="news.html">View history <span>→</span></a>
       </div>
     </div>
     <div class="news-feed" id="news-feed">
-      <div class="news-empty">Carregando notícias…</div>
+      <div class="news-empty">Loading news…</div>
     </div>
   </div>
 
-  <!-- ══ LINHA INFERIOR — Setores, Cotações, Equipe ═══════════════════════ -->
-  <div class="row-3">
-
-    <!-- ── SETORES ──────────────────────────────────────────────── -->
-    <div class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Setores</span>
-      </div>
-      <div class="sector-grid" style="grid-template-columns:1fr;">
-
-        <a class="sector-card live" href="Steel and Mining/steel_sm_dashboard.html#prices">
-          <span class="sector-card-eyebrow">● Live</span>
-          <span class="sector-card-title">Steel</span>
-          <div class="sector-tabs">
-            <span class="sector-tab">Prices</span>
-            <span class="sector-tab">Domestic</span>
-            <span class="sector-tab">Imports</span>
-            <span class="sector-tab">Exports</span>
-          </div>
-        </a>
-
-        <div class="sector-card soon">
-          <span class="sector-card-eyebrow">Em breve</span>
-          <span class="sector-card-title">Mining</span>
-          <div class="sector-tabs">
-            <span class="sector-tab">Production</span>
-            <span class="sector-tab">Exports</span>
-            <span class="sector-tab">Prices</span>
-          </div>
-        </div>
-
-        <div class="sector-card soon">
-          <span class="sector-card-eyebrow">Em breve</span>
-          <span class="sector-card-title">Pulp &amp; Paper</span>
-          <div class="sector-tabs">
-            <span class="sector-tab">Pulp Price</span>
-            <span class="sector-tab">Exports</span>
-            <span class="sector-tab">Capacity</span>
-          </div>
-        </div>
-
-      </div>
+  <!-- HEATMAP — Quotes -->
+  <div class="sec area-heat">
+    <div class="sec-head">
+      <span class="sec-title">Heatmap — Quotes</span>
+      <span class="sec-meta" id="quotes-meta">—</span>
     </div>
-
-    <!-- ── COTAÇÕES ─────────────────────────────────────────────── -->
-    <div class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Cotações — B3</span>
-        <span class="sec-meta" id="quotes-meta">tempo real</span>
-      </div>
-      <div class="quotes-wrap">
-        <div class="quotes-grid" id="quotes-grid" style="grid-template-columns:1fr 1fr;"></div>
-      </div>
+    <div class="heatmap-grid" id="heatmap-grid">
+      <div class="kv-loading">Loading quotes…</div>
     </div>
-
-    <!-- ── ANALISTAS ────────────────────────────────────────────── -->
-    <div class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Equipe</span>
-      </div>
-      <div class="contacts-list">
-
-          <div class="contact-row">
-            <div class="contact-avatar">DS</div>
-            <div class="contact-info">
-              <div class="contact-name">Daniel Sasson</div>
-              <div class="contact-role">Head of Steel &amp; Mining</div>
-            </div>
-            <div class="contact-actions">
-              <a class="contact-btn" href="mailto:daniel.sasson@itaubba.com" title="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </a>
-            </div>
-          </div>
-
-          <div class="contact-row">
-            <div class="contact-avatar">EP</div>
-            <div class="contact-info">
-              <div class="contact-name">Edgard Pinto Souza</div>
-              <div class="contact-role">Senior Analyst</div>
-            </div>
-            <div class="contact-actions">
-              <a class="contact-btn" href="mailto:edgard.souza@itaubba.com" title="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </a>
-            </div>
-          </div>
-
-          <div class="contact-row">
-            <div class="contact-avatar">MF</div>
-            <div class="contact-info">
-              <div class="contact-name">Marcelo Furlan</div>
-              <div class="contact-role">Senior Analyst — Pulp &amp; Paper</div>
-            </div>
-            <div class="contact-actions">
-              <a class="contact-btn" href="mailto:marcelo.furlan@itaubba.com" title="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </a>
-            </div>
-          </div>
-
-          <div class="contact-row">
-            <div class="contact-avatar">JH</div>
-            <div class="contact-info">
-              <div class="contact-name">João Paulo Helito</div>
-              <div class="contact-role">Analyst</div>
-            </div>
-            <div class="contact-actions">
-              <a class="contact-btn" href="mailto:joao.helito@itaubba.com" title="Email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </a>
-            </div>
-          </div>
-
-      </div>
-    </div>
-
   </div>
+
+  <!-- COMMODITIES -->
+  <div class="sec area-comm">
+    <div class="sec-head">
+      <span class="sec-title">Commodities</span>
+      <span class="sec-meta" id="comm-meta">—</span>
+    </div>
+    <div class="kv-list" id="comm-list">
+      <div class="kv-loading">Loading commodities…</div>
+    </div>
+  </div>
+
+  <!-- MACRO INDICATORS -->
+  <div class="sec area-macro">
+    <div class="sec-head">
+      <span class="sec-title">Macro Indicators</span>
+      <span class="sec-meta" id="macro-meta">—</span>
+    </div>
+    <div class="kv-list" id="macro-list">
+      <div class="kv-loading">Loading indicators…</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- FOOTER -->
@@ -421,12 +458,39 @@ html,body{
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <script>
 
-// ─── NEWS FEED ────────────────────────────────────────────────────────────
-const NEWS_LIMIT = 20;                  // mais notícias na home
+// ─── TEAM ──────────────────────────────────────────────────────────────
+const TEAM = [
+  {ini:'DS', name:'Daniel Sasson',      role:'Head of Steel &amp; Mining',          email:'daniel.sasson@itaubba.com',   wa:'5511996741242'},
+  {ini:'EP', name:'Edgard Pinto Souza', role:'Senior Analyst',                     email:'edgard.souza@itaubba.com',    wa:'5511950628972'},
+  {ini:'MF', name:'Marcelo Furlan',     role:'Senior Analyst — Pulp &amp; Paper',  email:'marcelo.palhares@itaubba.com',wa:'5511974642801'},
+  {ini:'JH', name:'João Paulo Helito',  role:'Analyst',                            email:'joao.helito@itaubba.com',     wa:'5511934527535'},
+];
+const SVG_EMAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
+const SVG_WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.94 11.94 0 0 0 12.07.13C5.5.13.18 5.46.18 12.03c0 2.12.55 4.18 1.6 6L0 24l6.18-1.62a11.93 11.93 0 0 0 5.89 1.5h.01c6.57 0 11.9-5.33 11.9-11.89 0-3.18-1.24-6.16-3.46-8.51zM12.07 21.78h-.01a9.84 9.84 0 0 1-5.02-1.38l-.36-.21-3.67.96.98-3.57-.24-.37a9.83 9.83 0 0 1-1.51-5.18c0-5.45 4.43-9.88 9.88-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.43 9.74-9.93 9.74zm5.42-7.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>';
+
+function renderTeam(){
+  const el = document.getElementById('team-list');
+  el.innerHTML = TEAM.map(p => `
+    <div class="team-row">
+      <div class="team-avatar">${p.ini}</div>
+      <div class="team-info">
+        <div class="team-name">${p.name}</div>
+        <div class="team-role">${p.role}</div>
+      </div>
+      <div class="team-actions">
+        <a class="ti-btn ti-email" href="mailto:${p.email}" title="Email">${SVG_EMAIL}</a>
+        <a class="ti-btn ti-wa" href="https://wa.me/${p.wa}" target="_blank" rel="noopener" title="WhatsApp">${SVG_WA}</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── NEWS FEED ─────────────────────────────────────────────────────────
+const NEWS_LIMIT = 20;
 const NEWS_INTERVAL = 60 * 1000;
-const NEW_HIGHLIGHT_WINDOW = 15 * 60 * 1000;  // 15min em laranja "novo"
+const NEW_HIGHLIGHT_WINDOW = 15 * 60 * 1000;
 let _newsLastHunterRun = 0;
-let _seenUrls = new Set();              // URLs já vistas pelo usuário
+let _seenUrls = new Set();
 let _firstLoad = true;
 
 const _LABEL_ALIAS = {
@@ -449,7 +513,7 @@ function _label(a){
 function _age(iso){
   if(!iso)return '—';
   const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));
-  if(s<60)return 'agora';
+  if(s<60)return 'now';
   if(s<3600)return `${Math.floor(s/60)}m`;
   if(s<86400)return `${Math.floor(s/3600)}h`;
   return `${Math.floor(s/86400)}d`;
@@ -470,31 +534,28 @@ async function loadNews(){
     const articles=await newsRes.json();
     const runRows=runRes.ok?await runRes.json():[];
     if(runRows[0]?.ran_at)_newsLastHunterRun=Date.parse(runRows[0].ran_at);
-
-    // Detecta novas notícias (não vistas em refreshes anteriores)
     const newUrls=articles.filter(a=>!_seenUrls.has(a.url));
     if(!_firstLoad && newUrls.length){
       const badge=document.getElementById('news-new-badge');
       if(badge){
-        badge.textContent=`↑ ${newUrls.length} nova${newUrls.length>1?'s':''}`;
+        badge.textContent=`↑ ${newUrls.length} new`;
         badge.classList.add('visible');
         setTimeout(()=>badge.classList.remove('visible'),20000);
       }
     }
     articles.forEach(a=>_seenUrls.add(a.url));
     _firstLoad=false;
-
     _renderNews(articles);
     _updateNewsMeta();
   }catch(e){
-    document.getElementById('news-feed').innerHTML='<div class="news-empty">Erro ao carregar notícias.</div>';
+    document.getElementById('news-feed').innerHTML='<div class="news-empty">Failed to load news.</div>';
     console.warn('News error:',e);
   }
 }
 
 function _renderNews(articles){
   const feed=document.getElementById('news-feed');
-  if(!articles.length){feed.innerHTML='<div class="news-empty">Nenhuma notícia disponível.</div>';return;}
+  if(!articles.length){feed.innerHTML='<div class="news-empty">No news available.</div>';return;}
   const now=Date.now();
   feed.innerHTML=articles.map(a=>{
     const lbl=_label(a);
@@ -517,67 +578,205 @@ function _updateNewsMeta(){
   if(!el||!_newsLastHunterRun)return;
   const s=Math.round((Date.now()-_newsLastHunterRun)/1000);
   let when;
-  if(s<60)when='sincronizado agora';
-  else if(s<3600)when=`sincronizado há ${Math.floor(s/60)}min`;
-  else when=`sincronizado há ${Math.floor(s/3600)}h`;
+  if(s<60)when='synced now';
+  else if(s<3600)when=`synced ${Math.floor(s/60)}m ago`;
+  else when=`synced ${Math.floor(s/3600)}h ago`;
   el.textContent=when;
 }
 setInterval(_updateNewsMeta,15000);
 
-// ─── COTAÇÕES (Yahoo Finance via proxy público) ──────────────────────────
-const TICKERS = [
-  {sym:'VALE3.SA', name:'Vale'},
-  {sym:'CSNA3.SA', name:'CSN'},
-  {sym:'GGBR4.SA', name:'Gerdau'},
-  {sym:'USIM5.SA', name:'Usiminas'},
-  {sym:'SUZB3.SA', name:'Suzano'},
-  {sym:'KLBN11.SA', name:'Klabin'},
-];
+// ─── MARKET PULSE ─────────────────────────────────────────────────────
+let _pulseSector = 'all';
 
-function _renderQuotes(data){
-  const grid=document.getElementById('quotes-grid');
-  if(!data||!data.length){
-    grid.innerHTML=TICKERS.map(t=>`<div class="quote-card"><div class="quote-ticker">${t.sym.replace('.SA','')}</div><div class="quote-name">${t.name}</div><div class="quote-loading">—</div></div>`).join('');
+document.getElementById('pulse-controls').addEventListener('click', e => {
+  const btn = e.target.closest('.pulse-chip');
+  if(!btn) return;
+  document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _pulseSector = btn.dataset.sector;
+  loadPulse();
+});
+
+async function loadPulse(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  const cutoff = new Date(Date.now() - 24*3600*1000).toISOString();
+  let url = `${SUPA_URL}/rest/v1/news_articles?select=sentiment&found_at=gte.${encodeURIComponent(cutoff)}&limit=2000`;
+  if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
+  try {
+    const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('pulse fetch');
+    const rows = await r.json();
+    let pos = 0, neg = 0, neu = 0, sum = 0, n = 0;
+    for(const a of rows){
+      const s = a.sentiment;
+      if(s == null) continue;
+      n++;
+      sum += s;
+      if(s > 0.2) pos++;
+      else if(s < -0.2) neg++;
+      else neu++;
+    }
+    const tot = pos + neg + neu;
+    const avg = n ? sum / n : 0;
+    const gaugeVal = Math.round(50 + avg * 50);
+    _renderGauge(gaugeVal);
+    document.getElementById('stat-pos').textContent = pos;
+    document.getElementById('stat-neg').textContent = neg;
+    document.getElementById('stat-neu').textContent = neu;
+    document.getElementById('stat-tot').textContent = tot;
+    document.getElementById('bar-pos').style.flex = pos;
+    document.getElementById('bar-neu').style.flex = neu;
+    document.getElementById('bar-neg').style.flex = neg;
+  } catch(e){
+    console.warn('pulse error:', e);
+  }
+}
+
+function _renderGauge(val){
+  val = Math.max(0, Math.min(100, val));
+  document.getElementById('gauge-val').textContent = val;
+  const arc = document.getElementById('gauge-arc');
+  const total = 188;  // length of half-circle arc with r=60 in viewBox
+  const filled = total * val / 100;
+  arc.setAttribute('stroke-dasharray', `${filled} ${total}`);
+  const label = document.getElementById('gauge-label');
+  if(val >= 65){
+    label.textContent = 'BULLISH'; label.className = 'gauge-label bullish';
+    arc.setAttribute('stroke', '#16a34a');
+  } else if(val < 35){
+    label.textContent = 'BEARISH'; label.className = 'gauge-label bearish';
+    arc.setAttribute('stroke', '#c0392b');
+  } else {
+    label.textContent = 'NEUTRAL'; label.className = 'gauge-label neutral';
+    arc.setAttribute('stroke', '#8C8C8C');
+  }
+}
+
+// ─── HEATMAP — Quotes ─────────────────────────────────────────────────
+const SECTOR_ORDER = {'mining':0, 'steel':1, 'pp':2};
+
+async function loadQuotes(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=*`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('quotes fetch');
+    const rows = await r.json();
+    rows.sort((a,b) => {
+      const sd = (SECTOR_ORDER[a.sector]||9) - (SECTOR_ORDER[b.sector]||9);
+      if(sd !== 0) return sd;
+      return (b.change_pct||0) - (a.change_pct||0);
+    });
+    _renderHeatmap(rows);
+    _updateMeta('quotes-meta', rows[0]?.updated_at);
+  } catch(e){
+    console.warn('quotes error:', e);
+  }
+}
+
+function _heatClass(pct){
+  if(pct == null) return 'flat';
+  if(pct >= 2) return 'up-strong';
+  if(pct >= 0.05) return 'up';
+  if(pct <= -2) return 'down-strong';
+  if(pct <= -0.05) return 'down';
+  return 'flat';
+}
+
+function _renderHeatmap(rows){
+  const grid = document.getElementById('heatmap-grid');
+  if(!rows.length){
+    grid.innerHTML = '<div class="kv-loading">No quotes available.</div>';
     return;
   }
-  grid.innerHTML=data.map(q=>{
-    const change=q.regularMarketChangePercent||0;
-    const cls=change>=0?'up':'down';
-    const sign=change>=0?'+':'';
-    return`<a class="quote-card" href="https://finance.yahoo.com/quote/${q.symbol}" target="_blank" rel="noopener">
-      <div class="quote-ticker">${q.symbol.replace('.SA','')}</div>
-      <div class="quote-name">${q.shortName||''}</div>
-      <div class="quote-price">R$ ${q.regularMarketPrice?.toFixed(2)||'—'}</div>
-      <div class="quote-change ${cls}">${sign}${change.toFixed(2)}%</div>
+  grid.innerHTML = rows.map(q => {
+    const pct = q.change_pct;
+    const sign = pct >= 0 ? '+' : '';
+    const pctStr = pct != null ? `${sign}${pct.toFixed(2)}%` : '—';
+    const tickerShort = q.ticker.replace('.SA','').replace('.SN','').replace('.MX','');
+    return `<a class="hm-card ${_heatClass(pct)}" href="#" title="${q.name} (${q.exchange})">
+      <div class="hm-ticker">${tickerShort}</div>
+      <div class="hm-name">${q.name}</div>
+      <div class="hm-change">${pctStr}</div>
     </a>`;
   }).join('');
 }
 
-async function loadQuotes(){
-  // Yahoo Finance API via Yahoo direct (no key) — funciona quando CORS permite
-  // Fallback: mostra estrutura sem dados
-  try{
-    const symbols=TICKERS.map(t=>t.sym).join(',');
-    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
-    const res=await fetch(url);
-    if(res.ok){
-      const j=await res.json();
-      _renderQuotes(j.quoteResponse?.result||[]);
-      return;
-    }
-  }catch(e){console.warn('Yahoo CORS blocked:',e);}
-  // Fallback: skeleton (sem dado real — Yahoo bloqueia CORS direto)
-  _renderQuotes(null);
+// ─── COMMODITIES + MACRO ──────────────────────────────────────────────
+function _kvRow(name, value, unit, pct){
+  const valStr = value != null
+    ? (Math.abs(value) >= 100 ? value.toLocaleString('en-US', {maximumFractionDigits:2}) : value.toFixed(2))
+    : '—';
+  const valDisplay = unit ? `${valStr} ${unit}` : valStr;
+  let pctCls = 'flat', pctStr = '—';
+  if(pct != null){
+    pctCls = pct > 0.05 ? 'up' : pct < -0.05 ? 'down' : 'flat';
+    pctStr = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+  }
+  return `<div class="kv-row">
+    <span class="kv-name">${name}</span>
+    <span class="kv-value">${valDisplay}</span>
+    <span class="kv-change ${pctCls}">${pctStr}</span>
+  </div>`;
 }
 
-// ─── INIT ────────────────────────────────────────────────────────────────
+async function loadCommodities(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=*`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('commodities');
+    const rows = await r.json();
+    const list = document.getElementById('comm-list');
+    if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
+    list.innerHTML = rows.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
+    _updateMeta('comm-meta', rows[0]?.updated_at);
+  } catch(e){console.warn('commodities error:', e);}
+}
+
+async function loadMacro(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/macro_indicators?select=*`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('macro');
+    const rows = await r.json();
+    const list = document.getElementById('macro-list');
+    if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
+    list.innerHTML = rows.map(m => _kvRow(m.name, m.value, m.unit, m.change_pct)).join('');
+    _updateMeta('macro-meta', rows[0]?.updated_at);
+  } catch(e){console.warn('macro error:', e);}
+}
+
+function _updateMeta(elId, iso){
+  const el = document.getElementById(elId);
+  if(!el || !iso) return;
+  const s = Math.round((Date.now() - new Date(iso))/1000);
+  if(s < 60) el.textContent = 'updated now';
+  else if(s < 3600) el.textContent = `updated ${Math.floor(s/60)}m ago`;
+  else el.textContent = `updated ${Math.floor(s/3600)}h ago`;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+renderTeam();
 loadNews();
+loadPulse();
 loadQuotes();
+loadCommodities();
+loadMacro();
+
 setInterval(loadNews, NEWS_INTERVAL);
-setInterval(loadQuotes, 30 * 1000);  // cotações a cada 30s
+setInterval(loadPulse, 5 * 60 * 1000);
+setInterval(loadQuotes, 60 * 1000);
+setInterval(loadCommodities, 5 * 60 * 1000);
+setInterval(loadMacro, 5 * 60 * 1000);
 </script>
 
-<!-- STAGING BADGE — auto-detects preview URL; never shows in production -->
+<!-- STAGING BADGE -->
 <script>
 (function(){
   const h=window.location.hostname;

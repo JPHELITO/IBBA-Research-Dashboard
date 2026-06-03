@@ -175,38 +175,38 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <span style="font-size:11px;color:var(--gray-dark);font-weight:600;">News History</span>
   </div>
 
-  <div class="page-title">News Hunter — Histórico</div>
+  <div class="page-title">News Hunter — History</div>
 
   <!-- FILTERS -->
   <div class="filters">
     <div class="filter-group">
-      <span class="filter-label">Período</span>
+      <span class="filter-label">Period</span>
       <div class="filter-chips" id="period-chips">
-        <button class="chip active" data-period="24">Últimas 24h</button>
+        <button class="chip active" data-period="24">Last 24h</button>
         <button class="chip" data-period="48">48h</button>
-        <button class="chip" data-period="168">7 dias</button>
-        <button class="chip" data-period="all">Tudo</button>
+        <button class="chip" data-period="168">7 days</button>
+        <button class="chip" data-period="all">All</button>
       </div>
     </div>
     <div class="filter-group">
-      <span class="filter-label">Fonte</span>
+      <span class="filter-label">Source</span>
       <select class="search-input" id="source-select">
-        <option value="">Todas as fontes</option>
+        <option value="">All sources</option>
       </select>
     </div>
     <div class="filter-group" style="margin-left:auto;">
       <input type="search" class="search-input" id="search-input"
-             placeholder="Buscar no título…"/>
+             placeholder="Search title…"/>
     </div>
   </div>
 
-  <div class="results-meta" id="results-meta">Carregando…</div>
+  <div class="results-meta" id="results-meta">Loading…</div>
 
   <div class="feed" id="feed">
-    <div class="empty">Carregando…</div>
+    <div class="empty">Loading…</div>
   </div>
 
-  <button class="load-more" id="load-more" style="display:none;">Carregar mais</button>
+  <button class="load-more" id="load-more" style="display:none;">Load more</button>
 
 </div>
 
@@ -248,9 +248,9 @@ function _dayLabel(iso){
   const today=new Date(); today.setHours(0,0,0,0);
   const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
   const articleDay=new Date(d); articleDay.setHours(0,0,0,0);
-  if(articleDay.getTime()===today.getTime())return 'HOJE';
-  if(articleDay.getTime()===yesterday.getTime())return 'ONTEM';
-  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase();
+  if(articleDay.getTime()===today.getTime())return 'TODAY';
+  if(articleDay.getTime()===yesterday.getTime())return 'YESTERDAY';
+  return d.toLocaleDateString('en-US',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase();
 }
 
 // ─── State ─────────────────────────────────────────────────────────────
@@ -291,10 +291,10 @@ function _renderFeed(){
   const loadMore=document.getElementById('load-more');
   const filtered=_filterArticles();
 
-  meta.innerHTML=`<strong>${filtered.length}</strong> notícia${filtered.length!==1?'s':''} encontrada${filtered.length!==1?'s':''}`;
+  meta.innerHTML=`<strong>${filtered.length}</strong> article${filtered.length!==1?'s':''} found`;
 
   if(!filtered.length){
-    feed.innerHTML='<div class="empty">Nenhuma notícia encontrada com esses filtros.</div>';
+    feed.innerHTML='<div class="empty">No articles found with these filters.</div>';
     loadMore.style.display='none';
     return;
   }
@@ -337,7 +337,7 @@ function _buildSourceFilter(){
 }
 
 async function refresh(){
-  document.getElementById('feed').innerHTML='<div class="empty">Carregando…</div>';
+  document.getElementById('feed').innerHTML='<div class="empty">Loading…</div>';
   _allArticles=await fetchArticles();
   _buildSourceFilter();
   _renderFeed();
