@@ -86,14 +86,23 @@ jobs:
             (mensagem automática gerada pelo GitHub Actions)
 
       # ── 6. Commit e push do DB atualizado ───────────────────────────────────
-      - name: Commit updated DB
+      # NÃO usar git-auto-commit-action: o file_pattern sofre word-split e o
+      # espaço em "Steel and Mining" faz o git não achar o arquivo →
+      # "Working tree clean. Nothing to commit." (bug histórico). Commit manual
+      # com o caminho entre aspas resolve.
+      - name: Commit & push updated DB
         if: env.NEW_DATA == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "data: atualiza steel_sm.db → ${{ env.LATEST_PERIOD }}"
-          file_pattern: "Steel and Mining/steel_sm.db"
-          commit_user_name:  "IBBA Bot"
-          commit_user_email: "bot@itaubba.com"
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Steel and Mining/steel_sm.db"
+          if git diff --staged --quiet; then
+            echo "::warning::NEW_DATA=true mas o .db não mudou — verificar updater."
+          else
+            git commit -m "data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
+            git push
+            echo "✅ steel_sm.db commitado e pushado → ${LATEST_PERIOD}"
+          fi
 
       # ── 7. Log final ────────────────────────────────────────────────────────
       - name: Summary
