@@ -834,8 +834,12 @@ async function loadCommodities(){
     const rows = await r.json();
     const list = document.getElementById('comm-list');
     if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
-    list.innerHTML = rows.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
-    _updateMeta('comm-meta', rows[0]?.updated_at);
+    // Ordem fixa: Iron Ore 61% · HRC China · Rebar Turkey · Asian Met Coal · Copper · Gold
+    const ORDER=['IRON_ORE','HRC_CHINA','REBAR_TURKEY','MET_COAL','COPPER','GOLD'];
+    const ranked=rows.filter(c=>ORDER.includes(c.code))
+                     .sort((a,b)=>ORDER.indexOf(a.code)-ORDER.indexOf(b.code));
+    list.innerHTML = ranked.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
+    _updateMeta('comm-meta', ranked[0]?.updated_at);
   } catch(e){console.warn('commodities error:', e);}
 }
 
@@ -885,7 +889,7 @@ setInterval(loadMacro, 5 * 60 * 1000);
   if(h==='localhost'||h==='127.0.0.1'||h.includes('git-staging')||h.includes('-staging.')){
     const b=document.createElement('div');
     b.style.cssText='position:fixed;bottom:16px;right:16px;background:#D97706;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:20px;z-index:9999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.25)';
-    b.textContent='⚠ STAGING · ORDER-FIX';
+    b.textContent='⚠ STAGING · COMMODITIES-V2';
     document.body.appendChild(b);
   }
 })();
