@@ -182,8 +182,8 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <div class="filter-group">
       <span class="filter-label">Period</span>
       <div class="filter-chips" id="period-chips">
-        <button class="chip active" data-period="24">Last 24h</button>
-        <button class="chip" data-period="48">48h</button>
+        <button class="chip" data-period="24">Last 24h</button>
+        <button class="chip active" data-period="48">48h</button>
         <button class="chip" data-period="168">7 days</button>
         <button class="chip" data-period="all">All</button>
       </div>
@@ -254,7 +254,7 @@ function _dayLabel(iso){
 }
 
 // ─── State ─────────────────────────────────────────────────────────────
-let _periodHours = 24;
+let _periodHours = 48;   // default 48h = mesma janela da home (NEWS_MAX_AGE_HOURS)
 let _sourceFilter = '';
 let _searchText = '';
 let _allArticles = [];
@@ -262,18 +262,31 @@ let _displayLimit = 50;
 const PAGE_SIZE = 50;
 
 // ─── Fetch ─────────────────────────────────────────────────────────────
+// Timestamp efetivo: publicação real, found_at como fallback (igual à home).
+function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
+
 async function fetchArticles(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return [];
-  const q='url,domain,source_name,title,snippet,published_at,found_at';
-  let url=`${SUPA_URL}/rest/v1/news_articles?select=${q}&order=found_at.desc&limit=1000`;
+  const q='url,domain,source_name,title,snippet,published_at,found_at,take';
+  // MESMO filtro da home: só notícias relevantes (include_in_report=true).
+  let url=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc&limit=1000`;
   if(_periodHours!=='all'){
     const cutoff=new Date(Date.now()-_periodHours*3600*1000).toISOString();
-    url+=`&found_at=gte.${encodeURIComponent(cutoff)}`;
+    // Janela por data de publicação (fontes sem published_at também passam).
+    url+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
   const res=await fetch(url,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
   if(!res.ok)return [];
-  return res.json();
+  const rows=await res.json();
+  // Ordena por timestamp efetivo (mais nova primeiro) + remove duplicatas de título.
+  const seen=new Set(), out=[];
+  for(const a of rows.sort((x,y)=>_effTs(y)-_effTs(x))){
+    const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
+    if(!key||seen.has(key)) continue;
+    seen.add(key); out.push(a);
+  }
+  return out;
 }
 
 // ─── Render ────────────────────────────────────────────────────────────
@@ -303,7 +316,7 @@ function _renderFeed(){
   let lastDay='';
   let html='';
   for(const a of slice){
-    const date=a.found_at||a.published_at;
+    const date=a.published_at||a.found_at;   // idade/dia pela publicação real
     const day=_dayLabel(date);
     if(day!==lastDay){
       html+=`<div class="day-divider">${day}</div>`;
