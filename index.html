@@ -685,16 +685,24 @@ async function loadPulse(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   const cutoff = new Date(Date.now() - 24*3600*1000).toISOString();
-  // Conta só notícias relevantes (include_in_report=true): exclui cripto/política/
-  // esporte e demais artigos sem take de mercado que o classificador descartou.
-  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,sentiment&found_at=gte.${encodeURIComponent(cutoff)}&include_in_report=eq.true&limit=2000`;
+  // "Últimas 24h" pela RECÊNCIA EFETIVA (publicação real; found_at só para quem
+  // não tem published_at) — mesma régua do feed. Impede que notícia antiga, mas
+  // descoberta há pouco (found_at recente), entre no pulse.
+  // Conta só relevantes (include_in_report=true): exclui cripto/política/esporte
+  // e artigos sem take de mercado que o classificador descartou.
+  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,sentiment,published_at,found_at`
+    +`&or=(published_at.gte.${cutoff},and(published_at.is.null,found_at.gte.${cutoff}))`
+    +`&include_in_report=eq.true&limit=2000`;
   if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
   try {
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('pulse fetch');
     const rows = await r.json();
+    // Guarda client-side: garante a janela de 24h pelo timestamp efetivo.
+    const cutoffMs = Date.now() - 24*3600*1000;
+    const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= cutoffMs);
     let pos = 0, neg = 0, neu = 0;
-    for(const a of rows){
+    for(const a of recent){
       if(a.take != null){
         // Novo classificador: "+"/"-"/"="/"review"
         if(a.take === '+') pos++;

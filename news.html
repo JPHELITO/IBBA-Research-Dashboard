@@ -104,6 +104,16 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .item:hover .item-title{color:var(--orange);}
 .item-title{font-size:13.5px;font-weight:600;color:var(--black);
   letter-spacing:-.01em;line-height:1.45;margin-bottom:5px;transition:color .15s;}
+/* ── Take badge (+/−/=/~) por notícia — mesmo padrão do index ─────────── */
+.item-titlerow{display:flex;align-items:flex-start;gap:7px;margin-bottom:5px;}
+.item-titlerow .item-title{margin-bottom:0;}
+.news-take{display:inline-flex;align-items:center;justify-content:center;
+  min-width:17px;height:17px;border-radius:4px;font-size:11px;font-weight:800;
+  flex-shrink:0;line-height:1;padding:0 4px;margin-top:1px;}
+.news-take.pos{background:rgba(22,163,74,.15);color:#15803d;}
+.news-take.neg{background:rgba(192,57,43,.15);color:#c0392b;}
+.news-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
+.news-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
 .item-meta{font-size:10.5px;font-weight:500;color:var(--orange);
   display:flex;align-items:center;gap:8px;}
 .item-meta .sep{color:rgba(255,80,0,.4);}
@@ -290,6 +300,14 @@ async function fetchArticles(){
 }
 
 // ─── Render ────────────────────────────────────────────────────────────
+function _takeBadge(t){
+  if(t==='+')     return '<span class="news-take pos" title="Positive">+</span>';
+  if(t==='-')     return '<span class="news-take neg" title="Negative">−</span>';
+  if(t==='=')     return '<span class="news-take neu" title="Neutral">=</span>';
+  if(t==='review')return '<span class="news-take rev" title="Review">~</span>';
+  return '';
+}
+
 function _filterArticles(){
   return _allArticles.filter(a=>{
     if(_sourceFilter && _label(a)!==_sourceFilter)return false;
@@ -325,7 +343,7 @@ function _renderFeed(){
     const lbl=_label(a);
     const snip=a.snippet?`<div class="item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
     html+=`<a class="item" href="${a.url}" target="_blank" rel="noopener">
-      <div class="item-title">${a.title}</div>
+      <div class="item-titlerow">${_takeBadge(a.take)}<div class="item-title">${a.title}</div></div>
       <div class="item-meta">
         <span class="item-source">${lbl}</span>
         <span class="sep">·</span>
