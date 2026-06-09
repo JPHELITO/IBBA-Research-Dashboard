@@ -483,7 +483,9 @@ html,body{
           <button data-r="D" class="active">D</button>
           <button data-r="W">WoW</button>
           <button data-r="M">MoM</button>
+          <button data-r="YTD">YTD</button>
           <button data-r="Y">YoY</button>
+          <button data-r="MAX">Max</button>
         </div>
         <span class="sec-meta" id="quotes-meta">—</span>
       </div>
@@ -799,8 +801,8 @@ function _renderGauge(val){
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
 let _dailyMap = {};                            // ticker -> série diária (robusto à ordem de carga)
 let _range  = 'D';                             // período ativo do heatmap
-const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', Y:'YoY'};
-const _RANGE_N     = {W:6, M:22, Y:252};       // nº de closes diários por período
+const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY', MAX:'Max'};
+const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (heatmap)
 
 async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
@@ -860,9 +862,13 @@ function _seriesFor(q, range){
   }
   const daily = q.daily;
   if(!daily || daily.length < 2) return { closes: [], pct: null };
-  const slice = daily.slice(-_RANGE_N[range]);
-  const first = slice[0][1], last = slice[slice.length-1][1];
-  return { closes: slice.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
+  let arr;
+  if(range === 'MAX'){ arr = daily; }
+  else if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = daily.filter(p=>p[0]>=jan1); }
+  else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = daily.filter(p=>p[0]>=cut); }
+  if(arr.length < 2) arr = daily.slice(-2);
+  const first = arr[0][1], last = arr[arr.length-1][1];
+  return { closes: arr.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
 }
 
 // Sparkline SVG: usa currentColor → legível em qualquer cor de card. Estica na largura.
@@ -932,7 +938,8 @@ function _ensureModal(){
     </div>
     <div class="modal-ranges" id="co-ranges">
       <button data-r="1W">1W</button><button data-r="1M">1M</button>
-      <button data-r="3M" class="active">3M</button><button data-r="6M">6M</button><button data-r="1Y">1Y</button>
+      <button data-r="3M" class="active">3M</button><button data-r="6M">6M</button>
+      <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button><button data-r="Max">Max</button>
     </div>
     <div class="modal-chart" id="co-chart"></div>
     <div class="modal-compare"><span class="mc-label">Comparar:</span><div class="mc-chips" id="co-compare"></div></div>
@@ -981,11 +988,13 @@ function _renderCompareChips(){
 }
 
 // Série diária normalizada a 0% no início do range → [[epoch, %], ...]
-function _mcSeries(ticker, days){
+function _mcSeries(ticker, range){
   const q=_quotes.find(x=>x.ticker===ticker);
   if(!q || !q.daily || q.daily.length<2) return null;
-  const cutoff=(Date.now()/1000)-days*86400;
-  let arr=q.daily.filter(p=>p[0]>=cutoff);
+  let arr;
+  if(range==='Max'){ arr=q.daily.slice(); }
+  else if(range==='YTD'){ const jan1=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=q.daily.filter(p=>p[0]>=jan1); }
+  else { const cut=(Date.now()/1000)-(_MC_RANGE_DAYS[range]||372)*86400; arr=q.daily.filter(p=>p[0]>=cut); }
   if(arr.length<2) arr=q.daily.slice(-2);
   const base=arr[0][1];
   return arr.map(p=>[p[0], (p[1]/base-1)*100]);
@@ -993,8 +1002,7 @@ function _mcSeries(ticker, days){
 
 function _renderModalChart(){
   const host=document.getElementById('co-chart'); if(!host) return;
-  const days=_MC_RANGE_DAYS[_mcRange];
-  const lines=_mcSel.map((t,i)=>({ticker:t, color:_MC_COLORS[i%_MC_COLORS.length], pts:_mcSeries(t,days)}))
+  const lines=_mcSel.map((t,i)=>({ticker:t, color:_MC_COLORS[i%_MC_COLORS.length], pts:_mcSeries(t,_mcRange)}))
                     .filter(l=>l.pts);
   if(!lines.length){
     host.innerHTML='<div class="kv-loading">Sem histórico diário ainda (aguarde a 1ª coleta diária).</div>';
