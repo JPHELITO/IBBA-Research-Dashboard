@@ -121,8 +121,11 @@ html,body{
 .sector-card-desc{font-size:11px;color:var(--gray-mid);line-height:1.4;}
 /* cards de setor com imagem de fundo (#5) */
 .sector-card.has-bg{overflow:hidden;border:none;color:#fff;}
-.sector-bg{position:absolute;inset:0;z-index:0;}
-.sector-bg svg{width:100%;height:100%;display:block;}
+.sector-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;}
+.sector-bg::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(120deg,rgba(0,0,0,.62),rgba(0,0,0,.34) 48%,rgba(0,0,0,.12));}
+.sector-bg-steel{background-color:#1a232c;background-image:url('assets/sector-steel.jpg');}
+.sector-bg-pp{background-color:#11401f;background-image:url('assets/sector-pp.jpg');}
 .sector-card.has-bg > :not(.sector-bg){position:relative;z-index:1;}
 .sector-card.has-bg .sector-card-title{color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.4);}
 .sector-card.has-bg .sector-card-desc{color:rgba(255,255,255,.86);}
@@ -141,9 +144,10 @@ html,body{
 .team-row{display:flex;align-items:center;gap:11px;padding:9px 16px;
   border-bottom:1px solid var(--border);}
 .team-row:last-child{border-bottom:none;}
-.team-avatar{width:30px;height:30px;border-radius:50%;background:var(--orange);
-  color:#fff;font-size:11px;font-weight:700;
+.team-avatar{width:36px;height:36px;border-radius:50%;background:var(--orange);
+  color:#fff;font-size:12px;font-weight:700;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+img.team-avatar{object-fit:cover;background:none;}
 .team-info{flex:1;min-width:0;}
 .team-name{font-size:11.5px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
 .team-role{font-size:9px;color:var(--gray-mid);margin-top:1px;}
@@ -379,23 +383,7 @@ html,body{
   <div class="area-secrow">
 
     <a class="sector-card live has-bg" href="Steel and Mining/steel_sm_dashboard.html#prices">
-      <div class="sector-bg">
-        <svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-          <defs><linearGradient id="stlg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#3c4d5f"/><stop offset=".55" stop-color="#212c38"/><stop offset="1" stop-color="#0d131a"/>
-          </linearGradient></defs>
-          <rect width="400" height="170" fill="url(#stlg)"/>
-          <g stroke="#fff" stroke-opacity=".07" stroke-width="2" fill="none">
-            <path d="M0 142 L50 110 L100 142 L150 110 L200 142 L250 110 L300 142 L350 110 L400 142"/>
-            <path d="M0 142 H400" stroke-opacity=".05"/>
-            <path d="M50 110 V142 M150 110 V142 M250 110 V142 M350 110 V142"/>
-          </g>
-          <g transform="translate(332,54)" stroke="#fff" stroke-opacity=".15" fill="none" stroke-width="2.5">
-            <ellipse rx="36" ry="24"/><ellipse rx="22" ry="14.5"/><ellipse rx="9" ry="6"/>
-          </g>
-          <g fill="#fff" fill-opacity=".05"><rect x="22" y="58" width="15" height="84"/><rect x="16" y="54" width="27" height="8" rx="2"/></g>
-        </svg>
-      </div>
+      <div class="sector-bg sector-bg-steel"></div>
       <span class="sector-card-eyebrow">● Live</span>
       <span class="sector-card-title">Steel</span>
       <span class="sector-card-desc">Pricing, domestic market, imports &amp; exports</span>
@@ -408,25 +396,7 @@ html,body{
     </a>
 
     <div class="sector-card soon has-bg">
-      <div class="sector-bg">
-        <svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-          <defs><linearGradient id="ppg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#2e8050"/><stop offset=".55" stop-color="#175a33"/><stop offset="1" stop-color="#093720"/>
-          </linearGradient></defs>
-          <rect width="400" height="170" fill="url(#ppg)"/>
-          <g fill="#fff" fill-opacity=".08">
-            <path d="M78 152 l-27 0 l13 -26 l-17 0 l17 -26 l-12 0 l26 -34 l26 34 l-12 0 l17 26 l-17 0 l13 26 z"/>
-            <path d="M34 152 l-18 0 l9 -18 l-12 0 l12 -18 l-8 0 l17 -24 l17 24 l-8 0 l12 18 l-12 0 l9 18 z" fill-opacity=".055"/>
-          </g>
-          <g transform="translate(300,42) rotate(-7)">
-            <rect x="7" y="7" width="74" height="98" rx="4" fill="#fff" fill-opacity=".06"/>
-            <rect x="0" y="0" width="74" height="98" rx="4" fill="#fff" fill-opacity=".12"/>
-            <g stroke="#093720" stroke-opacity=".22" stroke-width="2">
-              <line x1="13" y1="24" x2="61" y2="24"/><line x1="13" y1="40" x2="61" y2="40"/><line x1="13" y1="56" x2="48" y2="56"/>
-            </g>
-          </g>
-        </svg>
-      </div>
+      <div class="sector-bg sector-bg-pp"></div>
       <span class="sector-card-eyebrow">Coming soon</span>
       <span class="sector-card-title">Pulp &amp; Paper</span>
       <span class="sector-card-desc">Pulp pricing, capacity and demand drivers</span>
@@ -574,10 +544,10 @@ html,body{
 
 // ─── TEAM ──────────────────────────────────────────────────────────────
 const TEAM = [
-  {ini:'DS', name:'Daniel Sasson',      role:'Head',     email:'daniel.sasson@itaubba.com',   wa:'5511996741242'},
-  {ini:'EP', name:'Edgard Pinto Souza', role:'Analyst',  email:'edgard.souza@itaubba.com',    wa:'5511950628972'},
-  {ini:'MF', name:'Marcelo Furlan',     role:'Analyst',  email:'marcelo.palhares@itaubba.com',wa:'5511974642801'},
-  {ini:'JH', name:'João Paulo Helito',  role:'Analyst',  email:'joao.helito@itaubba.com',     wa:'5511934527535'},
+  {ini:'DS', name:'Daniel Sasson',      role:'Head',     photo:'assets/team-daniel.jpg',  email:'daniel.sasson@itaubba.com',   wa:'5511996741242'},
+  {ini:'EP', name:'Edgard Pinto Souza', role:'Analyst',  photo:'assets/team-edgard.jpg',  email:'edgard.souza@itaubba.com',    wa:'5511950628972'},
+  {ini:'MF', name:'Marcelo Furlan',     role:'Analyst',  photo:'assets/team-marcelo.jpg', email:'marcelo.palhares@itaubba.com',wa:'5511974642801'},
+  {ini:'JH', name:'João Paulo Helito',  role:'Analyst',  photo:'assets/team-joao.jpg',    email:'joao.helito@itaubba.com',     wa:'5511934527535'},
 ];
 const SVG_EMAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
 const SVG_WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.94 11.94 0 0 0 12.07.13C5.5.13.18 5.46.18 12.03c0 2.12.55 4.18 1.6 6L0 24l6.18-1.62a11.93 11.93 0 0 0 5.89 1.5h.01c6.57 0 11.9-5.33 11.9-11.89 0-3.18-1.24-6.16-3.46-8.51zM12.07 21.78h-.01a9.84 9.84 0 0 1-5.02-1.38l-.36-.21-3.67.96.98-3.57-.24-.37a9.83 9.83 0 0 1-1.51-5.18c0-5.45 4.43-9.88 9.88-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.43 9.74-9.93 9.74zm5.42-7.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>';
@@ -586,7 +556,9 @@ function renderTeam(){
   const el = document.getElementById('team-list');
   el.innerHTML = TEAM.map(p => `
     <div class="team-row">
-      <div class="team-avatar">${p.ini}</div>
+      ${p.photo
+        ? `<img class="team-avatar" src="${p.photo}" alt="${p.name}" onerror="this.outerHTML='<div class=&quot;team-avatar&quot;>${p.ini}</div>'">`
+        : `<div class="team-avatar">${p.ini}</div>`}
       <div class="team-info">
         <div class="team-name">${p.name}</div>
         <div class="team-role">${p.role}</div>
