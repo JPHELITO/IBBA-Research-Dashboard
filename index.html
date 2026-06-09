@@ -248,6 +248,40 @@ html,body{
 .hm-name{font-size:8.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hm-price{font-size:12px;font-weight:600;margin-top:1px;letter-spacing:-.01em;opacity:.92;}
+.hm-spark{display:block;width:100%;height:26px;margin-top:1px;}
+/* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
+.hm-head-right{display:flex;align-items:center;gap:8px;}
+.hm-range{display:flex;gap:3px;}
+.hm-range button{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 6px;
+  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;transition:all .12s;}
+.hm-range button:hover{color:var(--black);border-color:var(--gray-mid);}
+.hm-range button.active{background:var(--black);color:var(--white);border-color:var(--black);}
+/* ── MODAL — histórico + comparação ─────────────────────────────────── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(17,17,17,.42);z-index:5000;
+  display:flex;align-items:center;justify-content:center;padding:24px;}
+.modal-backdrop[hidden]{display:none;}
+.modal{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-hover);width:min(760px,96vw);max-height:90vh;overflow:auto;padding:18px 20px;}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.modal-title{font-size:17px;font-weight:700;color:var(--black);}
+.modal-sub{font-size:12px;color:var(--gray-mid);margin-top:2px;}
+.modal-close{border:none;background:none;font-size:24px;line-height:1;cursor:pointer;color:var(--gray-mid);padding:0 2px;}
+.modal-close:hover{color:var(--black);}
+.modal-ranges{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0 4px;}
+.modal-ranges button{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border:1px solid var(--border);
+  background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;}
+.modal-ranges button.active{background:var(--black);color:var(--white);border-color:var(--black);}
+.modal-chart{position:relative;width:100%;height:300px;margin-top:4px;}
+.mc-axis{font-size:9px;fill:var(--gray-mid);}
+.mc-tip{position:absolute;pointer-events:none;background:var(--black);color:#fff;font-size:10.5px;line-height:1.5;
+  padding:5px 8px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:3;box-shadow:var(--shadow);}
+.mc-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+.modal-compare{margin-top:14px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
+.mc-label{font-size:11px;color:var(--gray-mid);font-weight:600;padding-top:4px;}
+.mc-chips{display:flex;gap:5px;flex-wrap:wrap;flex:1;}
+.mc-chip{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border:1px solid var(--border);
+  background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;transition:all .12s;}
+.mc-chip:hover{border-color:var(--gray-mid);color:var(--black);}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
 .kv-list{padding:4px 0;}
@@ -444,7 +478,15 @@ html,body{
   <div class="sec area-heat">
     <div class="sec-head">
       <span class="sec-title">Heatmap — Quotes</span>
-      <span class="sec-meta" id="quotes-meta">—</span>
+      <div class="hm-head-right">
+        <div class="hm-range" id="hm-range">
+          <button data-r="D" class="active">D</button>
+          <button data-r="W">WoW</button>
+          <button data-r="M">MoM</button>
+          <button data-r="Y">YoY</button>
+        </div>
+        <span class="sec-meta" id="quotes-meta">—</span>
+      </div>
     </div>
     <div class="heatmap-grid" id="heatmap-grid">
       <div class="kv-loading">Loading quotes…</div>
@@ -753,22 +795,42 @@ function _renderGauge(val){
   }
 }
 
-// ─── HEATMAP — Quotes (sorted by performance, best to worst) ──────────
+// ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
+let _quotes = [];                              // cache (com intraday); daily mesclado à parte
+let _dailyMap = {};                            // ticker -> série diária (robusto à ordem de carga)
+let _range  = 'D';                             // período ativo do heatmap
+const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', Y:'YoY'};
+const _RANGE_N     = {W:6, M:22, Y:252};       // nº de closes diários por período
+
 async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=*`,
+    // payload leve (sem o `daily`, que é pesado e muda 1x/dia → loadQuotesDaily)
+    const cols = 'ticker,name,sector,exchange,price,change_pct,change_abs,updated_at,intraday';
+    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('quotes fetch');
     const rows = await r.json();
-    // Ordena por performance: maior change_pct primeiro (best → worst)
-    rows.sort((a,b) => (b.change_pct ?? -Infinity) - (a.change_pct ?? -Infinity));
-    _renderHeatmap(rows);
-    _updateMeta('quotes-meta', rows[0]?.updated_at);
-  } catch(e){
-    console.warn('quotes error:', e);
-  }
+    const prev = Object.fromEntries(_quotes.map(q=>[q.ticker,q]));
+    _quotes = rows.map(q => ({...prev[q.ticker], ...q, daily:_dailyMap[q.ticker]}));
+    _renderHeatmap();
+    _updateMeta('quotes-meta', rows.reduce((m,q)=> (q.updated_at>m?q.updated_at:m), ''));
+  } catch(e){ console.warn('quotes error:', e); }
+}
+
+// Série diária (~1 ano) — muda 1x/dia. Carrega no init + a cada 1h; mescla no cache por ticker.
+async function loadQuotesDaily(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=ticker,daily`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('daily fetch');
+    _dailyMap = Object.fromEntries((await r.json()).map(q=>[q.ticker, q.daily]));
+    _quotes.forEach(q=> { if(_dailyMap[q.ticker]) q.daily = _dailyMap[q.ticker]; });
+    if(_range !== 'D') _renderHeatmap();         // re-render se o período usa o diário
+  } catch(e){ console.warn('daily error:', e); }
 }
 
 function _heatClass(pct){
@@ -788,27 +850,207 @@ function _fmtPrice(value, exchange){
   return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-function _renderHeatmap(rows){
-  const grid = document.getElementById('heatmap-grid');
-  if(!rows.length){
-    grid.innerHTML = '<div class="kv-loading">No quotes available.</div>';
-    return;
+const _short = t => t.replace(/\.(SA|SN|MX)$/,'');
+
+// Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
+function _seriesFor(q, range){
+  if(range === 'D'){
+    const pts = (q.intraday && q.intraday.pts) || [];
+    return { closes: pts.map(p=>p[1]), pct: q.change_pct };
   }
-  grid.innerHTML = rows.map(q => {
-    const pct = q.change_pct;
-    const sign = pct >= 0 ? '+' : '';
-    const pctStr = pct != null ? `${sign}${pct.toFixed(2)}%` : '—';
-    const priceStr = _fmtPrice(q.price, q.exchange);
-    const tickerShort = q.ticker.replace('.SA','').replace('.SN','').replace('.MX','');
-    return `<a class="hm-card ${_heatClass(pct)}" href="#" title="${q.name} (${q.exchange})">
+  const daily = q.daily;
+  if(!daily || daily.length < 2) return { closes: [], pct: null };
+  const slice = daily.slice(-_RANGE_N[range]);
+  const first = slice[0][1], last = slice[slice.length-1][1];
+  return { closes: slice.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
+}
+
+// Sparkline SVG: usa currentColor → legível em qualquer cor de card. Estica na largura.
+function _sparkline(closes){
+  if(!closes || closes.length < 2) return '<div class="hm-spark"></div>';
+  const W=100, H=26, pad=3;
+  let lo=Math.min(...closes), hi=Math.max(...closes);
+  if(hi===lo){ hi+=1; lo-=1; }
+  const n=closes.length;
+  const yy=v=> (pad + (1-(v-lo)/(hi-lo))*(H-2*pad)).toFixed(1);
+  const pts=closes.map((c,i)=> `${((i/(n-1))*W).toFixed(1)},${yy(c)}`).join(' ');
+  return `<svg class="hm-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polygon points="0,${H} ${pts} ${W},${H}" fill="currentColor" opacity="0.12"></polygon>
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"></polyline>
+  </svg>`;
+}
+
+function _renderHeatmap(){
+  const grid = document.getElementById('heatmap-grid');
+  if(!grid) return;
+  if(!_quotes.length){ grid.innerHTML = '<div class="kv-loading">No quotes available.</div>'; return; }
+  const cards = _quotes.map(q => ({ q, ..._seriesFor(q, _range) }))
+                       .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
+  grid.innerHTML = cards.map(({q, closes, pct}) => {
+    const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
+    return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
+        title="${q.name} (${q.exchange}) — ver histórico">
       <div class="hm-card-top">
-        <div class="hm-ticker">${tickerShort}</div>
+        <div class="hm-ticker">${_short(q.ticker)}</div>
         <div class="hm-change">${pctStr}</div>
       </div>
       <div class="hm-name">${q.name}</div>
-      <div class="hm-price">${priceStr}</div>
+      ${_sparkline(closes)}
+      <div class="hm-price">${_fmtPrice(q.price, q.exchange)}</div>
     </a>`;
   }).join('');
+}
+
+// Botões de período do heatmap
+document.getElementById('hm-range')?.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  _range = b.dataset.r;
+  document.querySelectorAll('#hm-range button').forEach(x=> x.classList.toggle('active', x===b));
+  _renderHeatmap();
+});
+// Clique num card → modal de histórico/comparação
+document.getElementById('heatmap-grid')?.addEventListener('click', e=>{
+  const card = e.target.closest('.hm-card'); if(!card) return;
+  e.preventDefault();
+  openCompanyModal(card.dataset.ticker);
+});
+
+// ─── MODAL — histórico + comparação (SVG à mão) ───────────────────────
+const _MC_COLORS = ['#FF5000','#111111','#2563eb','#16a34a','#9333ea','#0891b2','#c0392b','#b45309'];
+const _MC_RANGE_DAYS = {'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
+let _mcPrimary=null, _mcSel=[], _mcRange='3M';
+
+function _ensureModal(){
+  if(document.getElementById('co-modal')) return;
+  const el=document.createElement('div');
+  el.className='modal-backdrop'; el.id='co-modal'; el.hidden=true;
+  el.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="co-title">
+    <div class="modal-head">
+      <div><div class="modal-title" id="co-title">—</div><div class="modal-sub" id="co-sub">—</div></div>
+      <button class="modal-close" id="co-close" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="modal-ranges" id="co-ranges">
+      <button data-r="1W">1W</button><button data-r="1M">1M</button>
+      <button data-r="3M" class="active">3M</button><button data-r="6M">6M</button><button data-r="1Y">1Y</button>
+    </div>
+    <div class="modal-chart" id="co-chart"></div>
+    <div class="modal-compare"><span class="mc-label">Comparar:</span><div class="mc-chips" id="co-compare"></div></div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', ev=>{ if(ev.target===el) closeCompanyModal(); });
+  el.querySelector('#co-close').addEventListener('click', closeCompanyModal);
+  el.querySelector('#co-ranges').addEventListener('click', ev=>{
+    const b=ev.target.closest('button'); if(!b) return;
+    _mcRange=b.dataset.r;
+    el.querySelectorAll('#co-ranges button').forEach(x=>x.classList.toggle('active',x===b));
+    _renderModalChart();
+  });
+  el.querySelector('#co-compare').addEventListener('click', ev=>{
+    const b=ev.target.closest('.mc-chip'); if(!b) return;
+    const t=b.dataset.t;
+    if(t===_mcPrimary) return;                       // mantém o principal
+    _mcSel = _mcSel.includes(t) ? _mcSel.filter(x=>x!==t) : [..._mcSel, t];
+    _renderCompareChips(); _renderModalChart();
+  });
+}
+
+function openCompanyModal(ticker){
+  _ensureModal();
+  _mcPrimary=ticker; _mcSel=[ticker]; _mcRange='3M';
+  const q=_quotes.find(x=>x.ticker===ticker);
+  document.getElementById('co-title').textContent = q?.name || ticker;
+  document.getElementById('co-sub').textContent =
+    `${_short(ticker)} · ${q?.exchange||''} · ${_fmtPrice(q?.price,q?.exchange)}`;
+  document.querySelectorAll('#co-ranges button').forEach(b=>b.classList.toggle('active',b.dataset.r===_mcRange));
+  _renderCompareChips();
+  _renderModalChart();
+  document.getElementById('co-modal').hidden=false;
+}
+function closeCompanyModal(){ const m=document.getElementById('co-modal'); if(m) m.hidden=true; }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeCompanyModal(); });
+
+function _renderCompareChips(){
+  const box=document.getElementById('co-compare'); if(!box) return;
+  box.innerHTML=_quotes.map(q=>{
+    const idx=_mcSel.indexOf(q.ticker), on=idx>=0;
+    const color=on ? _MC_COLORS[idx%_MC_COLORS.length] : '';
+    const style=on ? `style="background:${color};border-color:${color};color:#fff;"` : '';
+    return `<button class="mc-chip ${on?'on':''}" data-t="${q.ticker}" ${style}>${_short(q.ticker)}</button>`;
+  }).join('');
+}
+
+// Série diária normalizada a 0% no início do range → [[epoch, %], ...]
+function _mcSeries(ticker, days){
+  const q=_quotes.find(x=>x.ticker===ticker);
+  if(!q || !q.daily || q.daily.length<2) return null;
+  const cutoff=(Date.now()/1000)-days*86400;
+  let arr=q.daily.filter(p=>p[0]>=cutoff);
+  if(arr.length<2) arr=q.daily.slice(-2);
+  const base=arr[0][1];
+  return arr.map(p=>[p[0], (p[1]/base-1)*100]);
+}
+
+function _renderModalChart(){
+  const host=document.getElementById('co-chart'); if(!host) return;
+  const days=_MC_RANGE_DAYS[_mcRange];
+  const lines=_mcSel.map((t,i)=>({ticker:t, color:_MC_COLORS[i%_MC_COLORS.length], pts:_mcSeries(t,days)}))
+                    .filter(l=>l.pts);
+  if(!lines.length){
+    host.innerHTML='<div class="kv-loading">Sem histórico diário ainda (aguarde a 1ª coleta diária).</div>';
+    return;
+  }
+  let tMin=Infinity,tMax=-Infinity,vMin=Infinity,vMax=-Infinity;
+  lines.forEach(l=>l.pts.forEach(([t,v])=>{tMin=Math.min(tMin,t);tMax=Math.max(tMax,t);vMin=Math.min(vMin,v);vMax=Math.max(vMax,v);}));
+  if(vMin===vMax){vMin-=1;vMax+=1;}
+  const padV=(vMax-vMin)*0.08; vMin-=padV; vMax+=padV;
+  const W=720,H=300,P={l:46,r:14,t:14,b:24};
+  const X=t=> P.l+(t-tMin)/((tMax-tMin)||1)*(W-P.l-P.r);
+  const Y=v=> P.t+(1-(v-vMin)/((vMax-vMin)||1))*(H-P.t-P.b);
+  let g='';
+  for(let i=0;i<=4;i++){
+    const v=vMin+(vMax-vMin)*i/4, yy=Y(v);
+    g+=`<line x1="${P.l}" y1="${yy.toFixed(1)}" x2="${W-P.r}" y2="${yy.toFixed(1)}" stroke="#eee"></line>
+      <text x="${P.l-6}" y="${(yy+3).toFixed(1)}" text-anchor="end" class="mc-axis">${v>=0?'+':''}${v.toFixed(1)}%</text>`;
+  }
+  const y0=Y(0);
+  g+=`<line x1="${P.l}" y1="${y0.toFixed(1)}" x2="${W-P.r}" y2="${y0.toFixed(1)}" stroke="#bbb" stroke-dasharray="3 3"></line>`;
+  const fmtD=t=>new Date(t*1000).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  g+=`<text x="${P.l}" y="${H-8}" class="mc-axis">${fmtD(tMin)}</text>
+    <text x="${W-P.r}" y="${H-8}" text-anchor="end" class="mc-axis">${fmtD(tMax)}</text>`;
+  const paths=lines.map(l=>{
+    const d=l.pts.map(([t,v],i)=>`${i?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+    return `<path d="${d}" fill="none" stroke="${l.color}" stroke-width="1.8" stroke-linejoin="round"></path>`;
+  }).join('');
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%;">
+    ${g}${paths}
+    <line id="co-cross" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" stroke="#999" stroke-dasharray="2 2" style="display:none"></line>
+  </svg><div class="mc-tip" id="co-tip"></div>`;
+  _attachHover(host, lines, {tMin,tMax,W,P});
+}
+
+function _attachHover(host, lines, dom){
+  const svg=host.querySelector('svg'), tip=host.querySelector('#co-tip'), cross=host.querySelector('#co-cross');
+  const {tMin,tMax,W,P}=dom;
+  host.onmousemove=ev=>{
+    const rect=svg.getBoundingClientRect();
+    let frac=(ev.clientX-rect.left)/rect.width; frac=Math.max(0,Math.min(1,frac));
+    const t=tMin+frac*(tMax-tMin);
+    const xv=P.l+frac*(W-P.l-P.r);
+    cross.setAttribute('x1',xv); cross.setAttribute('x2',xv); cross.style.display='';
+    const rows=lines.map(l=>{
+      let best=l.pts[0], bd=Infinity;
+      for(const p of l.pts){ const d=Math.abs(p[0]-t); if(d<bd){bd=d;best=p;} }
+      return {tk:_short(l.ticker), color:l.color, v:best[1], t:best[0]};
+    });
+    const date=new Date(rows[0].t*1000).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'});
+    tip.innerHTML=`<b>${date}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${r.v>=0?'+':''}${r.v.toFixed(2)}%`).join('');
+    tip.style.opacity='1';
+    const hx=ev.clientX-rect.left;
+    tip.style.left=Math.min(hx+12, rect.width-140)+'px';
+    tip.style.top='8px';
+  };
+  host.onmouseleave=()=>{ tip.style.opacity='0'; cross.style.display='none'; };
 }
 
 // ─── COMMODITIES + MACRO ──────────────────────────────────────────────
@@ -877,12 +1119,14 @@ renderTeam();
 loadNews();
 loadPulse();
 loadQuotes();
+loadQuotesDaily();
 loadCommodities();
 loadMacro();
 
 setInterval(loadNews, NEWS_INTERVAL);
 setInterval(loadPulse, 5 * 60 * 1000);
 setInterval(loadQuotes, 60 * 1000);
+setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 setInterval(loadCommodities, 5 * 60 * 1000);
 setInterval(loadMacro, 5 * 60 * 1000);
 </script>
