@@ -271,6 +271,11 @@ html,body{
 .modal-ranges button{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border:1px solid var(--border);
   background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;}
 .modal-ranges button.active{background:var(--black);color:var(--white);border-color:var(--black);}
+.modal-dates{display:flex;align-items:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap;}
+.md-label{font-size:11px;color:var(--gray-mid);font-weight:600;}
+.md-sep{color:var(--gray-mid);}
+.modal-dates input[type=date]{font:inherit;font-size:11px;padding:2px 6px;border:1px solid var(--border);
+  border-radius:6px;color:var(--gray-dark);background:var(--white);}
 .modal-chart{position:relative;width:100%;height:300px;margin-top:4px;}
 .mc-axis{font-size:9px;fill:var(--gray-mid);}
 .mc-tip{position:absolute;pointer-events:none;background:var(--black);color:#fff;font-size:10.5px;line-height:1.5;
@@ -485,7 +490,6 @@ html,body{
           <button data-r="M">MoM</button>
           <button data-r="YTD">YTD</button>
           <button data-r="Y">YoY</button>
-          <button data-r="MAX">Max</button>
         </div>
         <span class="sec-meta" id="quotes-meta">—</span>
       </div>
@@ -801,7 +805,7 @@ function _renderGauge(val){
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
 let _dailyMap = {};                            // ticker -> série diária (robusto à ordem de carga)
 let _range  = 'D';                             // período ativo do heatmap
-const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY', MAX:'Max'};
+const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY'};
 const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (heatmap)
 
 async function loadQuotes(){
@@ -863,8 +867,7 @@ function _seriesFor(q, range){
   const daily = q.daily;
   if(!daily || daily.length < 2) return { closes: [], pct: null };
   let arr;
-  if(range === 'MAX'){ arr = daily; }
-  else if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = daily.filter(p=>p[0]>=jan1); }
+  if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = daily.filter(p=>p[0]>=jan1); }
   else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = daily.filter(p=>p[0]>=cut); }
   if(arr.length < 2) arr = daily.slice(-2);
   const first = arr[0][1], last = arr[arr.length-1][1];
@@ -925,7 +928,21 @@ document.getElementById('heatmap-grid')?.addEventListener('click', e=>{
 // ─── MODAL — histórico + comparação (SVG à mão) ───────────────────────
 const _MC_COLORS = ['#FF5000','#111111','#2563eb','#16a34a','#9333ea','#0891b2','#c0392b','#b45309'];
 const _MC_RANGE_DAYS = {'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
-let _mcPrimary=null, _mcSel=[], _mcRange='3M';
+let _mcPrimary=null, _mcSel=[], _mcRange='3M', _mcFrom=null, _mcTo=null;
+
+// epoch(seg) <-> 'YYYY-MM-DD' (UTC) p/ os <input type=date>
+function _toDateInput(epoch){ return new Date(epoch*1000).toISOString().slice(0,10); }
+function _fromDateInput(s){ return s ? Date.parse(s+'T00:00:00Z')/1000 : null; }
+// reflete o preset ativo nos campos de data (e sai do modo custom)
+function _syncDatesToPreset(){
+  const f=document.getElementById('co-from'), t=document.getElementById('co-to');
+  if(!f) return;
+  const now=Date.now()/1000;
+  const from = _mcRange==='YTD' ? Date.UTC(new Date().getUTCFullYear(),0,1)/1000
+                                : now-(_MC_RANGE_DAYS[_mcRange]||372)*86400;
+  f.value=_toDateInput(from); t.value=_toDateInput(now);
+  _mcFrom=null; _mcTo=null;
+}
 
 function _ensureModal(){
   if(document.getElementById('co-modal')) return;
@@ -939,7 +956,12 @@ function _ensureModal(){
     <div class="modal-ranges" id="co-ranges">
       <button data-r="1W">1W</button><button data-r="1M">1M</button>
       <button data-r="3M" class="active">3M</button><button data-r="6M">6M</button>
-      <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button><button data-r="Max">Max</button>
+      <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button>
+    </div>
+    <div class="modal-dates">
+      <span class="md-label">Período:</span>
+      <input type="date" id="co-from" aria-label="De"><span class="md-sep">→</span>
+      <input type="date" id="co-to" aria-label="Até">
     </div>
     <div class="modal-chart" id="co-chart"></div>
     <div class="modal-compare"><span class="mc-label">Comparar:</span><div class="mc-chips" id="co-compare"></div></div>
@@ -951,8 +973,18 @@ function _ensureModal(){
     const b=ev.target.closest('button'); if(!b) return;
     _mcRange=b.dataset.r;
     el.querySelectorAll('#co-ranges button').forEach(x=>x.classList.toggle('active',x===b));
+    _syncDatesToPreset();
     _renderModalChart();
   });
+  const _onDate=()=>{
+    _mcFrom=_fromDateInput(el.querySelector('#co-from').value);
+    _mcTo  =_fromDateInput(el.querySelector('#co-to').value);
+    _mcRange='custom';
+    el.querySelectorAll('#co-ranges button').forEach(x=>x.classList.remove('active'));
+    _renderModalChart();
+  };
+  el.querySelector('#co-from').addEventListener('change', _onDate);
+  el.querySelector('#co-to').addEventListener('change', _onDate);
   el.querySelector('#co-compare').addEventListener('click', ev=>{
     const b=ev.target.closest('.mc-chip'); if(!b) return;
     const t=b.dataset.t;
@@ -964,12 +996,16 @@ function _ensureModal(){
 
 function openCompanyModal(ticker){
   _ensureModal();
-  _mcPrimary=ticker; _mcSel=[ticker]; _mcRange='3M';
+  _mcPrimary=ticker; _mcSel=[ticker]; _mcRange='3M'; _mcFrom=null; _mcTo=null;
   const q=_quotes.find(x=>x.ticker===ticker);
   document.getElementById('co-title').textContent = q?.name || ticker;
   document.getElementById('co-sub').textContent =
     `${_short(ticker)} · ${q?.exchange||''} · ${_fmtPrice(q?.price,q?.exchange)}`;
   document.querySelectorAll('#co-ranges button').forEach(b=>b.classList.toggle('active',b.dataset.r===_mcRange));
+  // limites dos seletores de data a partir do histórico disponível (~2000 → hoje)
+  const daily=q&&q.daily, f=document.getElementById('co-from'), t=document.getElementById('co-to');
+  if(daily&&daily.length){ f.min=t.min=_toDateInput(daily[0][0]); f.max=t.max=_toDateInput(daily[daily.length-1][0]); }
+  _syncDatesToPreset();
   _renderCompareChips();
   _renderModalChart();
   document.getElementById('co-modal').hidden=false;
@@ -988,13 +1024,15 @@ function _renderCompareChips(){
 }
 
 // Série diária normalizada a 0% no início do range → [[epoch, %], ...]
-function _mcSeries(ticker, range){
+function _mcSeries(ticker){
   const q=_quotes.find(x=>x.ticker===ticker);
   if(!q || !q.daily || q.daily.length<2) return null;
   let arr;
-  if(range==='Max'){ arr=q.daily.slice(); }
-  else if(range==='YTD'){ const jan1=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=q.daily.filter(p=>p[0]>=jan1); }
-  else { const cut=(Date.now()/1000)-(_MC_RANGE_DAYS[range]||372)*86400; arr=q.daily.filter(p=>p[0]>=cut); }
+  if(_mcRange==='custom' && _mcFrom!=null){
+    const to=(_mcTo!=null)?_mcTo:(Date.now()/1000);
+    arr=q.daily.filter(p=>p[0]>=_mcFrom && p[0]<=to);
+  } else if(_mcRange==='YTD'){ const jan1=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=q.daily.filter(p=>p[0]>=jan1); }
+  else { const cut=(Date.now()/1000)-(_MC_RANGE_DAYS[_mcRange]||372)*86400; arr=q.daily.filter(p=>p[0]>=cut); }
   if(arr.length<2) arr=q.daily.slice(-2);
   const base=arr[0][1];
   return arr.map(p=>[p[0], (p[1]/base-1)*100]);
@@ -1002,7 +1040,7 @@ function _mcSeries(ticker, range){
 
 function _renderModalChart(){
   const host=document.getElementById('co-chart'); if(!host) return;
-  const lines=_mcSel.map((t,i)=>({ticker:t, color:_MC_COLORS[i%_MC_COLORS.length], pts:_mcSeries(t,_mcRange)}))
+  const lines=_mcSel.map((t,i)=>({ticker:t, color:_MC_COLORS[i%_MC_COLORS.length], pts:_mcSeries(t)}))
                     .filter(l=>l.pts);
   if(!lines.length){
     host.innerHTML='<div class="kv-loading">Sem histórico diário ainda (aguarde a 1ª coleta diária).</div>';
