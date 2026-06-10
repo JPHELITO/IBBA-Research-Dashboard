@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>ITAÚ BBA — Pulp &amp; Paper Research Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
+const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:window.sessionStorage}})
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+</script>
+<!-- ── Chart.js + sql.js ──────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;
+  --green:#27AE60;--red:#C0392B;
+  --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
+  --shadow-hover:0 2px 8px rgba(0,0,0,0.07),0 12px 28px rgba(0,0,0,0.09);
+}
+html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
+  min-height:100%;font-size:13px;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+
+/* ── TOP BAR ─────────────────────────────────────────────────────────────── */
+.top-bar{background:var(--black);border-bottom:none;
+  display:flex;align-items:center;padding:0 28px;height:58px;gap:20px;}
+.brand-group{display:flex;align-items:center;gap:12px;flex-shrink:0;text-decoration:none;}
+.brand-icon{flex-shrink:0;display:block;}
+.top-title{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;}
+.top-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
+  letter-spacing:.03em;margin-top:2px;}
+.top-latest{margin-left:auto;font-size:10px;color:rgba(255,255,255,.38);
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:4px 14px;white-space:nowrap;font-weight:500;flex-shrink:0;}
+.top-latest strong{color:var(--orange);font-weight:600;}
+.top-icon-btn{flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:7px;text-decoration:none;
+  color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);background:none;cursor:pointer;
+  font-family:var(--font);
+  transition:color .2s,border-color .2s,background .2s;}
+.top-icon-btn:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.08);}
+.logout-btn{
+  flex-shrink:0;font-size:10.5px;font-weight:600;letter-spacing:.03em;
+  color:rgba(255,255,255,.4);background:none;
+  border:1px solid rgba(255,255,255,.12);border-radius:6px;
+  padding:4px 11px;cursor:pointer;font-family:var(--font);
+  transition:color .2s,border-color .2s;}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.38);}
+.orange-rule{height:2px;background:var(--orange);}
+
+/* ── SECONDARY NAV ───────────────────────────────────────────────────────── */
+.secondary-nav{background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;padding:0 20px;height:44px;gap:0;overflow-x:auto;}
+.snav-btn{
+  position:relative;overflow:hidden;
+  padding:0 22px;font-size:10.5px;font-weight:500;letter-spacing:.04em;
+  cursor:pointer;border:none;background:transparent;color:var(--gray-mid);
+  font-family:var(--font);transition:color .2s;white-space:nowrap;z-index:1;}
+.snav-btn::before{
+  content:'';position:absolute;inset:0;background:var(--black);
+  transform:scaleY(0);transform-origin:bottom;
+  transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:-1;}
+.snav-btn:hover{color:#fff;}
+.snav-btn:hover::before{transform:scaleY(1);}
+.snav-btn.active{color:#fff;font-weight:600;}
+.snav-btn.active::before{background:var(--orange);transform:scaleY(1);}
+
+/* ── STICKY HEADER ───────────────────────────────────────────────────────── */
+.sticky-header{position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.09);}
+
+/* ── FILTER BAR ──────────────────────────────────────────────────────────── */
+.filter-bar{background:var(--gray-light);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:14px;flex-wrap:nowrap;height:38px;overflow:hidden;}
+.filter-label{font-size:9px;font-weight:600;color:rgba(0,0,0,.28);
+  text-transform:uppercase;letter-spacing:.7px;white-space:nowrap;}
+.filter-btns{display:flex;gap:4px;}
+.fbtn{padding:2px 11px;font-size:10px;border-radius:20px;cursor:pointer;
+  border:1.5px solid transparent;background:none;color:rgba(0,0,0,.42);
+  font-family:var(--font);font-weight:500;transition:all .15s;white-space:nowrap;}
+.fbtn.active{background:var(--orange);color:#fff;border-color:var(--orange);font-weight:600;}
+.fbtn:hover:not(.active){border-color:rgba(0,0,0,.18);color:var(--gray-dark);}
+.filter-sep{width:1px;height:14px;background:var(--border);flex-shrink:0;}
+
+/* ── SECTION ─────────────────────────────────────────────────────────────── */
+.section{display:none;padding:18px 22px 32px;}
+.section.active{display:block;}
+
+/* ── SECTION BLOCK ───────────────────────────────────────────────────────── */
+.sec-block{margin-bottom:4px;}
+.sec-block-header{font-size:9.5px;font-weight:700;color:var(--gray-mid);
+  text-transform:uppercase;letter-spacing:.8px;padding:8px 0 6px;
+  border-bottom:1px solid var(--border);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.sec-block-header span{background:var(--orange);color:#fff;font-size:9px;
+  font-weight:600;border-radius:4px;padding:2px 8px;letter-spacing:.2px;}
+
+/* ── CHART GRID ──────────────────────────────────────────────────────────── */
+.charts-row{display:grid;gap:13px;margin-bottom:13px;}
+.charts-row.c1{grid-template-columns:1fr;}
+.charts-row.c2{grid-template-columns:1fr 1fr;}
+.charts-row.c3{grid-template-columns:1fr 1fr 1fr;}
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:17px 19px 13px;display:flex;flex-direction:column;
+  box-shadow:var(--shadow);transition:box-shadow .25s;}
+.chart-card:hover{box-shadow:var(--shadow-hover);}
+.chart-title{font-size:12px;font-weight:600;color:var(--black);
+  margin-bottom:3px;letter-spacing:-.015em;}
+.chart-sub{font-size:9.5px;color:var(--gray-mid);margin-bottom:13px;
+  font-weight:400;line-height:1.45;letter-spacing:.01em;}
+.chart-wrap{position:relative;}
+.chart-wrap.h160{height:160px;}.chart-wrap.h180{height:180px;}
+.chart-wrap.h190{height:190px;}.chart-wrap.h200{height:200px;}
+.chart-wrap.h210{height:210px;}.chart-wrap.h220{height:220px;}
+.chart-wrap.h230{height:230px;}.chart-wrap.h240{height:240px;}
+.chart-wrap.h260{height:260px;}.chart-wrap.h280{height:280px;}
+.chart-wrap.h300{height:300px;}
+
+/* ── KPI CARDS ───────────────────────────────────────────────────────────── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px;}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:15px 17px;border-top:3px solid var(--orange);box-shadow:var(--shadow);}
+.kpi-label{font-size:9.5px;color:var(--gray-mid);text-transform:uppercase;
+  font-weight:600;letter-spacing:.55px;margin-bottom:7px;}
+.kpi-value{font-size:22px;font-weight:700;color:var(--black);
+  line-height:1;letter-spacing:-.025em;}
+.kpi-unit{font-size:10px;color:var(--gray-mid);margin-left:3px;font-weight:400;}
+.kpi-delta{font-size:10px;margin-top:7px;display:flex;gap:8px;color:var(--gray-mid);flex-wrap:wrap;}
+.pos{color:var(--green);font-weight:500;}.neg{color:var(--red);font-weight:500;}
+
+/* ── NOTE BAR ────────────────────────────────────────────────────────────── */
+.note-bar{background:var(--white);border-top:1px solid var(--border);
+  padding:9px 24px;font-size:10px;color:var(--gray-mid);line-height:1.75;}
+.note-bar em{color:var(--orange);font-style:normal;font-weight:500;}
+
+/* ── INFO BOX ────────────────────────────────────────────────────────────── */
+.info-box{background:#FFF9F7;border:1px solid #FFD8CC;border-radius:var(--radius);
+  padding:10px 16px;margin-bottom:13px;font-size:11.5px;color:var(--gray-dark);}
+.info-box strong{color:var(--orange);}
+
+/* ── INNER TABS ──────────────────────────────────────────────────────────── */
+.inner-tab-bar{display:flex;gap:2px;margin-bottom:16px;border-bottom:2px solid var(--border);flex-wrap:wrap;}
+.itab{padding:6px 18px;font-size:11px;font-weight:600;border-radius:5px 5px 0 0;
+  cursor:pointer;border:1px solid transparent;border-bottom:none;background:none;
+  color:var(--gray-mid);font-family:var(--font);transition:all .2s;
+  white-space:nowrap;letter-spacing:.02em;}
+.itab.active{background:var(--black);color:#fff;border-color:var(--black);}
+.itab:hover:not(.active):not(.soon){color:var(--gray-dark);background:rgba(0,0,0,.04);}
+.itab.soon{opacity:.4;cursor:default;}
+.inner-tab-content{display:none;}
+.inner-tab-content.active{display:block;}
+
+/* ── MOBILE BACK BUTTON ──────────────────────────────────────────────────── */
+.mob-back-btn{display:none;align-items:center;gap:5px;font-size:11px;font-weight:500;
+  color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;
+  font-family:var(--font);padding:4px 0;transition:color .15s;white-space:nowrap;}
+.mob-back-btn:hover{color:#fff;}
+
+/* ── MOBILE SECTION PICKER ───────────────────────────────────────────────── */
+.mob-picker{display:none;background:var(--gray-light);min-height:calc(100vh - 100px);padding:0;}
+.mob-picker-inner{max-width:540px;margin:0 auto;padding:28px 20px 48px;}
+.mob-picker-back-root{display:inline-flex;align-items:center;gap:6px;font-size:11px;
+  color:var(--gray-mid);text-decoration:none;font-weight:500;margin-bottom:28px;transition:color .15s;}
+.mob-picker-back-root:hover{color:var(--gray-dark);}
+.mob-picker-heading{margin-bottom:24px;}
+.mob-picker-eyebrow{font-size:9.5px;font-weight:600;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+.mob-picker-title{font-size:28px;font-weight:700;color:var(--black);letter-spacing:-.03em;line-height:1.15;}
+.mob-sections-list{border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--white);overflow:hidden;box-shadow:var(--shadow);}
+.mob-sec-item{display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;background:none;border:none;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  font-family:var(--font);text-align:left;width:100%;transition:background .15s;}
+.mob-sec-item:last-child{border-bottom:none;}
+.mob-sec-item:not(.disabled):hover{background:#F8F7F4;}
+.mob-sec-item.disabled{opacity:.42;cursor:default;}
+.mob-sec-info{flex:1;min-width:0;}
+.mob-sec-title{font-size:14px;font-weight:600;color:var(--black);letter-spacing:-.01em;margin-bottom:3px;}
+.mob-sec-desc{font-size:11px;color:var(--gray-mid);font-weight:400;line-height:1.4;}
+.mob-sec-arrow{color:var(--orange);font-size:18px;font-weight:600;flex-shrink:0;margin-left:14px;}
+.mob-sec-badge{font-size:9.5px;font-weight:600;color:var(--gray-mid);
+  background:rgba(0,0,0,.06);border-radius:20px;padding:3px 10px;
+  flex-shrink:0;margin-left:14px;white-space:nowrap;}
+
+/* ── LOADING ─────────────────────────────────────────────────────────────── */
+#loading{position:fixed;inset:0;background:rgba(255,255,255,.97);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
+.spinner{width:36px;height:36px;border:2.5px solid #eee;border-top-color:var(--orange);
+  border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:12px;color:var(--gray-mid);font-weight:500;letter-spacing:.03em;}
+
+/* ── CUSTOM DATE RANGE ───────────────────────────────────────────────────── */
+.custom-range{display:flex;align-items:center;gap:5px;margin-left:6px;padding:3px 8px;
+  border:1.5px solid var(--border);border-radius:6px;background:var(--white);transition:border-color .15s;}
+.custom-range:hover,.custom-range:focus-within{border-color:var(--orange);}
+.cr-input{border:none;outline:none;background:transparent;font-size:11px;font-family:var(--font);
+  color:var(--gray-dark);padding:2px 0;width:108px;cursor:pointer;}
+.cr-input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.55;filter:saturate(0);}
+.cr-input:hover::-webkit-calendar-picker-indicator{opacity:.95;filter:none;}
+.cr-sep{color:var(--gray-mid);font-size:11px;}
+.cr-clear{background:none;border:none;color:var(--gray-mid);font-size:14px;line-height:1;
+  cursor:pointer;padding:0 3px;border-radius:3px;visibility:hidden;}
+.cr-clear.visible{visibility:visible;}
+.cr-clear:hover{color:var(--orange);background:var(--gray-light);}
+.custom-range.active{border-color:var(--orange);background:rgba(255,80,0,.04);}
+.custom-range.active .cr-input{color:var(--black);font-weight:600;}
+
+/* ── ORIGIN/PORT CHART CONTROLS ──────────────────────────────────────────── */
+.origin-card{max-width:100%;}
+.origin-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.product-pills{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
+.pill-btn{padding:4px 11px;font-size:10.5px;font-weight:600;letter-spacing:.03em;
+  border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--white);color:var(--gray-mid);transition:all .15s;white-space:nowrap;}
+.pill-btn:hover{border-color:var(--orange);color:var(--orange);}
+.pill-btn.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.country-selector{position:relative;}
+.cs-toggle{padding:4px 12px;font-size:10.5px;font-weight:600;
+  border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--white);color:var(--gray-dark);transition:all .15s;white-space:nowrap;}
+.cs-toggle:hover,.cs-toggle.open{border-color:var(--orange);color:var(--orange);}
+.cs-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);
+  background:var(--white);border:1.5px solid var(--border);border-radius:10px;
+  padding:12px;min-width:200px;max-width:280px;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,0.10);}
+.cs-panel.open{display:block;}
+.cs-panel-header{font-size:10px;font-weight:700;color:var(--gray-mid);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;
+  display:flex;justify-content:space-between;align-items:center;}
+.cs-reset{font-size:10px;font-weight:500;color:var(--orange);cursor:pointer;
+  text-decoration:none;letter-spacing:0;text-transform:none;}
+.cs-reset:hover{text-decoration:underline;}
+.cs-list{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.cs-item{display:flex;align-items:center;gap:7px;cursor:pointer;
+  padding:3px 4px;border-radius:5px;transition:background .12s;}
+.cs-item:hover{background:var(--gray-light);}
+.cs-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--orange);cursor:pointer;}
+.cs-item label{font-size:11.5px;color:var(--gray-dark);cursor:pointer;flex:1;}
+.cs-item.outros label{color:var(--gray-mid);font-style:italic;}
+
+/* ── MOBILE ──────────────────────────────────────────────────────────────── */
+@media (max-width:768px){
+  body{font-size:13px;}
+  .top-bar{height:54px;padding:0 14px;gap:10px;}
+  .brand-sub{display:none;}
+  .top-sub{display:none;}
+  .top-latest{display:none;}
+  .mob-back-btn{display:flex;}
+  .top-icon-btn{width:34px;height:34px;}
+  .logout-btn{padding:6px 11px;font-size:10.5px;}
+  .secondary-nav{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding:0 14px;gap:6px;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--white);}
+  .secondary-nav::-webkit-scrollbar{display:none;}
+  .snav-btn{flex-shrink:0;padding:11px 14px;font-size:12px;white-space:nowrap;}
+  .filter-bar{flex-direction:row;flex-wrap:nowrap;align-items:center;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;height:auto;padding:8px 14px;gap:5px;}
+  .filter-bar::-webkit-scrollbar{display:none;}
+  .sticky-header{position:relative;}
+  .sticky-header::after{content:'';pointer-events:none;position:absolute;right:0;bottom:0;width:28px;
+    height:38px;background:linear-gradient(to right,transparent,var(--gray-light));z-index:1;}
+  .filter-label{display:none;}
+  .filter-sep{display:flex;flex-shrink:0;width:1px;height:18px;background:var(--border);margin:0 2px;}
+  .filter-btns{flex-shrink:0;display:flex;gap:4px;}
+  .fbtn{flex-shrink:0;padding:5px 11px;font-size:11.5px;min-height:30px;
+    display:flex;align-items:center;justify-content:center;}
+  .custom-range{display:none;margin-left:4px;padding:4px 8px;width:auto;min-width:190px;}
+  .custom-range.active{display:flex;}
+  .cr-input{font-size:12px;width:auto;flex:1;min-width:70px;}
+  .section{padding:10px 12px 24px;}
+  .sec-block-header{font-size:12px;padding:14px 0 8px;}
+  .charts-row{gap:10px;margin-bottom:10px;}
+  .charts-row.c2,.charts-row.c3{grid-template-columns:1fr;}
+  .kpi-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .chart-card{padding:12px 12px 14px;}
+  .chart-title{font-size:12px;line-height:1.35;}
+  .chart-sub{font-size:10px;line-height:1.4;margin-bottom:8px;}
+  .chart-wrap.h300{height:215px;}.chart-wrap.h280{height:210px;}.chart-wrap.h260{height:195px;}
+  .chart-wrap.h240{height:185px;}.chart-wrap.h230{height:178px;}.chart-wrap.h220{height:170px;}
+  .chart-wrap.h210{height:164px;}.chart-wrap.h200{height:158px;}.chart-wrap.h190{height:152px;}
+  .chart-wrap.h180{height:148px;}.chart-wrap.h160{height:138px;}
+  .inner-tab-bar{padding:0 2px;gap:4px;}
+  .itab{padding:9px 12px;font-size:11.5px;}
+  .origin-controls{flex-direction:column;align-items:stretch;gap:8px;}
+  .product-pills{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
+  .product-pills::-webkit-scrollbar{display:none;}
+  .pill-btn{padding:7px 13px;font-size:11px;min-height:32px;}
+  .country-selector{align-self:flex-end;}
+  .cs-toggle{padding:7px 13px;font-size:11px;min-height:32px;}
+  .cs-panel{position:fixed;right:auto;left:0;top:auto;bottom:0;width:100%;
+    max-width:100%;border-radius:16px 16px 0 0;padding:14px 16px 20px;
+    box-shadow:0 -6px 28px rgba(0,0,0,0.18);max-height:60vh;}
+  .cs-panel.open{animation:slideUp .25s ease-out;}
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .cs-list{max-height:42vh;}
+  .cs-item{padding:8px 6px;}
+  .cs-item input[type=checkbox]{width:17px;height:17px;}
+  .cs-item label{font-size:13.5px;}
+  body.cs-open::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99;animation:fadeIn .2s ease-out;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .note-bar{font-size:10px;padding:14px 12px;line-height:1.5;}
+  body.mob-picker-active .mob-picker{display:block;}
+  body.mob-picker-active .section{display:none !important;}
+  body.mob-picker-active .filter-bar{display:none !important;}
+  body.mob-picker-active .secondary-nav{display:none !important;}
+  body.mob-picker-active #mob-back-btn{display:none;}
+}
+@media (min-width:769px){
+  .mob-picker{display:none !important;}
+  .mob-back-btn{display:none !important;}
+}
+@media (max-width:420px){
+  .top-bar{padding:0 10px;gap:6px;}
+  .top-icon-btn{width:32px;height:32px;}
+  .logout-btn{padding:5px 9px;font-size:10px;}
+  .section{padding:8px 10px 20px;}
+  .chart-card{padding:10px 10px 12px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><p>Loading Pulp &amp; Paper data…</p></div>
+
+<!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
+<div class="sticky-header">
+<div class="top-bar">
+  <div class="brand-group">
+    <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    </svg>
+    <div>
+      <div class="top-title">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="top-sub">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
+    </div>
+  </div>
+  <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Sections</button>
+  <div class="top-latest">Last: <strong id="latest-label">—</strong></div>
+  <a href="./" class="top-icon-btn top-menu" title="Topics — Pulp &amp; Paper">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <line x1="2" y1="4.5" x2="13" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="2" y1="7.5" x2="13" y2="7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="2" y1="10.5" x2="13" y2="10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </a>
+  <a href="../" class="top-icon-btn top-home" title="All sectors">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M1.5 6.5L7.5 1.5L13.5 6.5V13.5H10V9.5H5V13.5H1.5V6.5Z"
+            stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/>
+    </svg>
+  </a>
+  <button class="logout-btn" onclick="logout()" title="Sign out">Sign out</button>
+</div>
+<div class="orange-rule"></div>
+
+<!-- SECONDARY NAV -->
+<div class="secondary-nav" id="pp-subnav">
+  <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp')">Pulp</button>
+  <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper')">Paper &amp; Packaging</button>
+  <button class="snav-btn"        data-sub="companies" onclick="setSub('companies')">Companies</button>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <span class="filter-label" id="prod-label">Product:</span>
+  <div class="filter-btns" id="prod-btns"></div>
+  <div class="filter-sep" id="prod-sep"></div>
+  <span class="filter-label">Granularity:</span>
+  <div class="filter-btns" id="gran-btns">
+    <button class="fbtn active" data-gran="monthly"   onclick="setGran('monthly')">Monthly</button>
+    <button class="fbtn"        data-gran="quarterly" onclick="setGran('quarterly')">Quarterly</button>
+    <button class="fbtn"        data-gran="annual"    onclick="setGran('annual')">Annual</button>
+  </div>
+  <div class="filter-sep"></div>
+  <span class="filter-label">Window:</span>
+  <div class="filter-btns">
+    <button class="fbtn active" data-win="ytd" onclick="setWin('ytd')">YTD</button>
+    <button class="fbtn" data-win="3m"  onclick="setWin('3m')">3M</button>
+    <button class="fbtn" data-win="6m"  onclick="setWin('6m')">6M</button>
+    <button class="fbtn" data-win="1y"  onclick="setWin('1y')">1Y</button>
+    <button class="fbtn" data-win="3y"  onclick="setWin('3y')">3Y</button>
+    <button class="fbtn" data-win="5y"  onclick="setWin('5y')">5Y</button>
+    <button class="fbtn" data-win="all" onclick="setWin('all')">All</button>
+  </div>
+  <div class="custom-range" title="Select a custom date range">
+    <input type="month" id="win-from" class="cr-input" onchange="setCustomRange()" aria-label="From">
+    <span class="cr-sep">–</span>
+    <input type="month" id="win-to"   class="cr-input" onchange="setCustomRange()" aria-label="To">
+    <button class="cr-clear" id="cr-clear" onclick="clearCustomRange()" title="Clear range">×</button>
+  </div>
+</div>
+</div><!-- /sticky-header -->
+
+<!-- ══ MOBILE SECTION PICKER ════════════════════════════════════════════════ -->
+<div id="mob-picker" class="mob-picker">
+  <div class="mob-picker-inner">
+    <a href="../" class="mob-picker-back-root">← All sectors</a>
+    <div class="mob-picker-heading">
+      <div class="mob-picker-eyebrow">Pulp &amp; Paper</div>
+      <div class="mob-picker-title">Pulp &amp; Paper</div>
+    </div>
+    <div class="mob-sections-list">
+      <button class="mob-sec-item" onclick="mobSelect('pulp')">
+        <div class="mob-sec-info"><div class="mob-sec-title">Pulp</div>
+          <div class="mob-sec-desc">SECEX export tracker by port · IBÁ production &amp; trade</div></div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item" onclick="mobSelect('paper')">
+        <div class="mob-sec-info"><div class="mob-sec-title">Paper &amp; Packaging</div>
+          <div class="mob-sec-desc">IBÁ production, sales, trade and consumption by grade</div></div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item" onclick="mobSelect('companies')">
+        <div class="mob-sec-info"><div class="mob-sec-title">Companies</div>
+          <div class="mob-sec-desc">Klabin and Suzano volumes vs. IBÁ industry</div></div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ PULP ═══ -->
+<div id="sec-pulp" class="section active">
+  <div class="inner-tab-bar">
+    <button class="itab active" data-ptab="secex" onclick="setPulpTab('secex')">🚢 Exports — SECEX</button>
+    <button class="itab"        data-ptab="iba"   onclick="setPulpTab('iba')">🏭 Production &amp; Trade — IBÁ</button>
+    <button class="itab soon"   data-ptab="gacc"  title="Coming soon">🌲 Woodchips — GACC</button>
+  </div>
+
+  <!-- ── SECEX TAB ── -->
+  <div id="pl-tab-secex" class="inner-tab-content active">
+    <div class="kpi-row" id="pl-kpis"></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Pulp Export Volume (kton)</div>
+        <div class="chart-sub" id="pl-vol-sub">SECEX · all ports</div>
+        <div class="chart-wrap h240"><canvas id="pl-vol"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Export Volume (%)</div>
+        <div class="chart-sub">Change vs. same period prior year</div>
+        <div class="chart-wrap h240"><canvas id="pl-yoy"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Pulp Export Revenue (US$ mn)</div>
+        <div class="chart-sub">SECEX · FOB value</div>
+        <div class="chart-wrap h220"><canvas id="pl-rev"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Average Export Price (US$/t)</div>
+        <div class="chart-sub">SECEX · revenue ÷ volume</div>
+        <div class="chart-wrap h220"><canvas id="pl-price"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Volume per Working Day (kton/day)</div>
+        <div class="chart-sub">SECEX · volume ÷ Brazilian working days · normalises month length</div>
+        <div class="chart-wrap h200"><canvas id="pl-vwd"></canvas></div>
+      </div>
+    </div>
+    <div id="pl-port-block">
+      <div class="sec-block-header">Pulp Exports by Port <span id="pl-port-tag">Volume</span></div>
+      <div class="charts-row c1">
+        <div class="chart-card origin-card">
+          <div class="origin-controls">
+            <div class="product-pills" id="pl-pills"></div>
+            <div class="country-selector">
+              <button class="cs-toggle" id="pl-cs-toggle" onclick="togglePortPanel()">Ports &#9660;</button>
+              <div class="cs-panel" id="pl-cs-panel">
+                <div class="cs-panel-header">Ports <span class="cs-reset" onclick="resetPorts()">Reset</span></div>
+                <div class="cs-list" id="pl-cs-list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-sub" id="pl-port-sub">kton · SECEX</div>
+          <div class="chart-wrap h300"><canvas id="pl-port"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Export Volume (kton/month)</div>
+        <div class="chart-sub">SECEX · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="pl-seas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── IBÁ TAB ── -->
+  <div id="pl-tab-iba" class="inner-tab-content">
+    <div class="info-box">
+      <strong>Note:</strong> IBÁ pulp series is monthly through 2018, then quarterly
+      (de-cumulated &amp; spread) for 2019–2023, and discontinued thereafter. The
+      fibre split (Hardwood / Softwood / High-Yield) is available through 2018.
+      For live monthly pulp volumes, use the <strong>Exports — SECEX</strong> tab.
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Pulp Production (kton)</div>
+        <div class="chart-sub" id="pi-prod-sub">IBÁ · Total = stacked by fibre</div>
+        <div class="chart-wrap h240"><canvas id="pi-prod"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Apparent Consumption (kton)</div>
+        <div class="chart-sub">IBÁ · domestic pulp demand</div>
+        <div class="chart-wrap h240"><canvas id="pi-cons"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Domestic Sales (kton)</div>
+        <div class="chart-sub">IBÁ · filter by fibre</div>
+        <div class="chart-wrap h220"><canvas id="pi-dom"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Exports (kton)</div>
+        <div class="chart-sub">IBÁ · filter by fibre</div>
+        <div class="chart-wrap h220"><canvas id="pi-exp"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Production by Fibre — share (%)</div>
+        <div class="chart-sub">IBÁ · Hardwood vs. Softwood vs. High-Yield · full history (reported through 2018)</div>
+        <div class="chart-wrap h220"><canvas id="pi-fibre"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ PAPER ═════ -->
+<div id="sec-paper" class="section">
+  <div class="inner-tab-bar">
+    <button class="itab active" data-patab="iba"        onclick="setPaperTab('iba')">🏭 Fundamentals — IBÁ</button>
+    <button class="itab soon"   data-patab="corrugated" title="Coming soon">📦 Corrugated — Empapel</button>
+  </div>
+  <div id="pa-tab-iba" class="inner-tab-content active">
+    <div class="kpi-row" id="pa-kpis"></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Paper Production (kton)</div>
+        <div class="chart-sub" id="pa-prod-sub">IBÁ · Total = stacked by grade</div>
+        <div class="chart-wrap h240"><canvas id="pa-prod"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Production (%)</div>
+        <div class="chart-sub">Change vs. same period prior year</div>
+        <div class="chart-wrap h240"><canvas id="pa-yoy"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Domestic Sales (kton)</div>
+        <div class="chart-sub">IBÁ · filter by grade</div>
+        <div class="chart-wrap h220"><canvas id="pa-dom"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Apparent Consumption (kton)</div>
+        <div class="chart-sub">IBÁ · domestic paper demand</div>
+        <div class="chart-wrap h220"><canvas id="pa-cons"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Exports (kton)</div>
+        <div class="chart-sub">IBÁ · filter by grade</div>
+        <div class="chart-wrap h220"><canvas id="pa-exp"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Imports (kton)</div>
+        <div class="chart-sub">IBÁ · filter by grade</div>
+        <div class="chart-wrap h220"><canvas id="pa-imp"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Apparent Consumption (kton) + Import Penetration (%)</div>
+        <div class="chart-sub">IBÁ · area = consumption (left) · line = imports ÷ apparent consumption (right)</div>
+        <div class="chart-wrap h240"><canvas id="pa-pen"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Domestic Sales (kton/month)</div>
+        <div class="chart-sub">IBÁ · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="pa-seasdom"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Production (kton/month)</div>
+        <div class="chart-sub">IBÁ · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="pa-seasprod"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ COMPANIES ═════ -->
+<div id="sec-companies" class="section">
+  <div class="info-box">
+    <strong>Company volumes (quarterly).</strong> Klabin and Suzano reported sales by
+    product and market — <strong>MI</strong> = domestic (mercado interno),
+    <strong>ME</strong> = export (mercado externo) — shown against the IBÁ industry
+    aggregate. Series runs through 3Q23.
+  </div>
+  <div class="sec-block-header">Klabin <span>quarterly</span></div>
+  <div class="charts-row c3">
+    <div class="chart-card">
+      <div class="chart-title">Corrugated Boxes (kton)</div>
+      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
+      <div class="chart-wrap h220"><canvas id="co-kl-corr"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Industrial Bags / Sacks (kton)</div>
+      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
+      <div class="chart-wrap h220"><canvas id="co-kl-sacks"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Cardboard (kton)</div>
+      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
+      <div class="chart-wrap h220"><canvas id="co-kl-card"></canvas></div>
+    </div>
+  </div>
+  <div class="sec-block-header">Suzano <span>quarterly</span></div>
+  <div class="charts-row c3">
+    <div class="chart-card">
+      <div class="chart-title">Paper Sales by Product (kton)</div>
+      <div class="chart-sub">Suzano · P&amp;W + Cardboard + Tissue</div>
+      <div class="chart-wrap h220"><canvas id="co-sz-mix"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Printing &amp; Writing (kton)</div>
+      <div class="chart-sub">Suzano · domestic (MI) vs. export (ME)</div>
+      <div class="chart-wrap h220"><canvas id="co-sz-pw"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Cardboard (kton)</div>
+      <div class="chart-sub">Suzano · domestic (MI) vs. export (ME)</div>
+      <div class="chart-wrap h220"><canvas id="co-sz-card"></canvas></div>
+    </div>
+  </div>
+  <div class="sec-block-header">Company vs. Industry (IBÁ)</div>
+  <div class="charts-row c2">
+    <div class="chart-card">
+      <div class="chart-title">Klabin Packaging vs. IBÁ Packaging &amp; Wrapping (kton)</div>
+      <div class="chart-sub">Bars = IBÁ industry · line = Klabin packaging</div>
+      <div class="chart-wrap h240"><canvas id="co-cmp-kl"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Suzano P&amp;W vs. IBÁ Printing &amp; Writing (kton)</div>
+      <div class="chart-sub">Bars = IBÁ industry · line = Suzano P&amp;W</div>
+      <div class="chart-wrap h240"><canvas id="co-cmp-sz"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="note-bar">
+  Sources: <em>IBÁ</em> (pulp &amp; paper production, sales, trade, apparent consumption) ·
+  <em>SECEX/MDIC</em> (pulp export volumes &amp; FOB value by customs port) ·
+  <em>Klabin / Suzano</em> (company-reported quarterly volumes) ·
+  Working days exclude Brazilian national holidays · Volumes in kton unless noted ·
+  Pulp fibre: HW = Hardwood (eucalyptus) · SW = Softwood · HY = High-Yield.
+</div>
+
+<script>
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+;(async()=>{
+  const{data:{session}}=await sbAuth.auth.getSession()
+  if(!session){window.location.replace('/login.html');return}
+  _setAuthCookie(session)
+  sbAuth.auth.onAuthStateChange((ev,s)=>{
+    if(s?.access_token)_setAuthCookie(s)
+    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
+  })
+  Chart.register(ChartDataLabels)
+  loadDB()
+})()
+async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentSub  = 'pulp';        // 'pulp' | 'paper' | 'companies'
+let pulpTab     = 'secex';       // 'secex' | 'iba'
+let paperTab    = 'iba';
+let currentProd = 'total';
+let currentGran = 'monthly';
+let currentWin  = 'ytd';
+let customRange = {from:null, to:null};
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[];
+let CAL={};                       // period -> working_days
+let portState={metric:'volume_ktons', ports:null};
+
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
+let charts={};
+
+// ─── PRODUCT DEFINITIONS (contextual filter) ─────────────────────────────────
+const PROD_DEFS={
+  pulp:[{k:'total',l:'Total'},{k:'hw',l:'Hardwood'},{k:'sw',l:'Softwood'},{k:'hy',l:'High-Yield'}],
+  paper:[{k:'total',l:'Total'},{k:'packaging',l:'Packaging'},{k:'pw',l:'P&W'},
+         {k:'newsprint',l:'Newsprint'},{k:'tissue',l:'Tissue'},{k:'cardboard',l:'Cardboard'},{k:'other',l:'Other'}],
+};
+const PAPER_GRADES=['packaging','pw','newsprint','tissue','cardboard','other'];
+const PAPER_GRADE_LBL={packaging:'Packaging',pw:'Printing & Writing',newsprint:'Newsprint',
+  tissue:'Tissue',cardboard:'Cardboard',other:'Other'};
+const PULP_FIBRE_LBL={hw:'Hardwood',sw:'Softwood',hy:'High-Yield'};
+
+// ─── COLORS ──────────────────────────────────────────────────────────────────
+const C_OR='#FF5000', C_BK='#1A1A1A', C_GR='#888888';
+const C_OR_A=v=>`rgba(255,80,0,${v})`;
+const C_BK_A=v=>`rgba(26,26,26,${v})`;
+const C_GR_A=v=>`rgba(136,136,136,${v})`;
+const C_GN='#27AE60', C_RD='#C0392B';
+const GRADE_PALETTE=['#FF5000','#1A1A1A','#4A90D9','#27AE60','#8E44AD','#E67E22','#16A085'];
+
+// ─── DATASET HELPERS ─────────────────────────────────────────────────────────
+function areaDs(data,color,alpha=0.12,label=''){
+  const bg=color===C_OR?C_OR_A(alpha):color===C_BK?C_BK_A(alpha):C_GR_A(alpha);
+  return{type:'line',data,label,borderColor:color,backgroundColor:bg,fill:true,borderWidth:2,pointRadius:0,tension:0.3};
+}
+function lineDs(data,color,label='',dash=[]){
+  return{type:'line',data,label,borderColor:color,backgroundColor:'transparent',fill:false,
+    borderWidth:2,pointRadius:0,tension:0.3,...(dash.length?{borderDash:dash}:{})};
+}
+function barDs(data,colorOrArr,label=''){
+  return{type:'bar',data,label,backgroundColor:colorOrArr,borderWidth:0};
+}
+function stackDs(data,color,label='',stack='s'){
+  return{type:'bar',data,label,backgroundColor:color,borderWidth:0,stack};
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function toObj(stmt){
+  if(!stmt||!stmt.values.length)return[];
+  return stmt.values.map(r=>{const o={};stmt.columns.forEach((c,i)=>{o[c]=r[i];});return o;});
+}
+function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('pt-BR');}
+function fmtY(v){return v==null?'':Math.round(v).toLocaleString('en-US');}
+function deltaOf(arr,f,i){
+  if(i<1)return null;
+  const c=arr[i][f],p=arr[i-1][f];
+  return(c==null||p==null||p===0)?null:(c-p)/Math.abs(p);
+}
+function yoyOf(arr,f,i,lookupArr=arr){
+  const per=arr[i]?.period;if(!per)return null;
+  let prev=null;
+  if(/^\d{4}$/.test(per)){
+    prev=lookupArr.find(r=>r.period===String(parseInt(per)-1));
+  } else if(/^[1-4]T\d{2}$/.test(per)){
+    const q=per[0],yy=parseInt(per.slice(2));
+    prev=lookupArr.find(r=>r.period===`${q}T${String(yy-1).padStart(2,'0')}`);
+  } else {
+    const yr=parseInt(per.slice(0,4))-1,mo=per.slice(5,7);
+    prev=lookupArr.find(r=>r.period===`${yr}-${mo}`);
+  }
+  const c=arr[i][f],p=prev?.[f];
+  return(c==null||p==null||p===0)?null:(c-p)/Math.abs(p);
+}
+function applyWin(arr,key='period'){
+  if(!arr.length)return arr;
+  if(currentWin==='custom'){
+    const {from,to}=customRange;
+    if(!from&&!to)return arr;
+    return arr.filter(r=>{const p=r[key];if(!p)return false;
+      if(from&&p<from)return false;if(to&&p>to)return false;return true;});
+  }
+  if(currentWin==='ytd'){
+    // YTD is relative to the LATEST period in this series (not the wall clock):
+    // P&P sources end at different dates (paper→2025, pulp→2023), so a calendar-
+    // year YTD would render empty. Anchor on the data's own most-recent year.
+    const last=arr[arr.length-1]?.[key];
+    const yr=(last&&last.length>=4)?last.slice(0,4):String(new Date().getFullYear());
+    return arr.filter(r=>r[key]>=`${yr}-01`);
+  }
+  const mo=WIN_MO[currentWin];
+  if(!mo)return arr;
+  const last=arr[arr.length-1][key];if(!last)return arr;
+  const yr=parseInt(last.slice(0,4)),mn=parseInt(last.slice(5,7));
+  let cy=yr,cm=mn-mo;while(cm<=0){cy--;cm+=12;}
+  const cut=`${cy}-${String(cm).padStart(2,'0')}`;
+  return arr.filter(r=>r[key]>=cut);
+}
+function qToQ(arr,sumF=[],lastF=[]){ return toQ(applyWin(arr),sumF,lastF); }
+function toQ(monthly,sumF=[],lastF=[]){
+  const map={};
+  monthly.forEach(r=>{
+    const mo=r.month||parseInt(r.period?.slice(5,7)||'1');
+    const yr=r.year||parseInt(r.period?.slice(0,4));
+    const q=Math.ceil(mo/3);
+    const key=`${yr}-Q${q}`;
+    if(!map[key])map[key]={period:`${q}T${String(yr).slice(-2)}`,year:yr,quarter:q,_r:[]};
+    map[key]._r.push(r);
+  });
+  return Object.values(map).sort((a,b)=>a.year*10+a.quarter-b.year*10-b.quarter)
+    .filter(e=>e._r.length>=3)
+    .map(e=>{
+    const o={period:e.period,year:e.year,quarter:e.quarter};
+    sumF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?v.reduce((s,x)=>s+x,0):null;});
+    lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
+    return o;
+  });
+}
+function aToA(arr,sumF=[],lastF=[]){ return toA(applyWin(arr),sumF,lastF); }
+function toA(monthly,sumF=[],lastF=[]){
+  const map={};
+  monthly.forEach(r=>{
+    const yr=r.year||parseInt(r.period?.slice(0,4));
+    if(!yr)return;
+    if(!map[yr])map[yr]={period:String(yr),year:yr,_r:[]};
+    map[yr]._r.push(r);
+  });
+  return Object.values(map).sort((a,b)=>a.year-b.year)
+    .filter(e=>e._r.length>=12)
+    .map(e=>{
+      const o={period:e.period,year:e.year};
+      sumF.forEach(f=>{const v=e._r.map(r=>r[f]).filter(v=>v!=null);o[f]=v.length?v.reduce((s,x)=>s+x,0):null;});
+      lastF.forEach(f=>{const l=e._r[e._r.length-1];o[f]=l?l[f]:null;});
+      return o;
+    });
+}
+function tx(arr,sumF=[],lastF=[]){
+  if(currentGran==='quarterly') return qToQ(arr,sumF,lastF);
+  if(currentGran==='annual')    return aToA(arr,sumF,lastF);
+  return applyWin(arr);
+}
+function txNoWin(arr,sumF=[],lastF=[]){
+  if(currentGran==='quarterly') return toQ(arr,sumF,lastF);
+  if(currentGran==='annual')    return toA(arr,sumF,lastF);
+  return arr;
+}
+function winLabel(){
+  if(currentWin==='custom'){
+    const {from,to}=customRange;
+    const f=from?from.slice(0,4)+'/'+from.slice(5,7):'…';
+    const t=to?to.slice(0,4)+'/'+to.slice(5,7):'…';
+    return`${f}–${t}`;
+  }
+  return{'all':'All','ytd':'YTD','5y':'5Y','3y':'3Y','1y':'1Y','6m':'6M','3m':'3M'}[currentWin]||currentWin;
+}
+function rollingN(arr,f,n){
+  return arr.map((_,i)=>{
+    if(i<n-1)return null;
+    return arr.slice(i-n+1,i+1).reduce((t,r)=>t+(r[f]||0),0);
+  });
+}
+const PT_MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtPeriod(p){
+  if(!p||p.length<7)return p;
+  const[y,m]=p.split('-').map(Number);
+  return`${PT_MO[m-1]}-${String(y).slice(-2)}`;
+}
+
+// ─── CHART FACTORY ───────────────────────────────────────────────────────────
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+const IS_MOBILE = ()=>window.innerWidth<=768;
+function baseOpts(ov={}){
+  const{tooltip,scales,plugins:pOvr,...rest}=ov;
+  const mobile=IS_MOBILE();
+  const tickSize=mobile?8:9;
+  const TICK={color:'#ADADAD',font:{size:tickSize,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
+  return{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    events:mobile?['touchstart','touchmove','mousemove','mouseout','click']:undefined,
+    plugins:{
+      legend:{display:false},datalabels:{display:false},
+      tooltip:{
+        backgroundColor:'#1A1A1A',titleColor:'rgba(255,255,255,.75)',
+        bodyColor:'#fff',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
+        padding:mobile?8:10,cornerRadius:8,boxPadding:4,
+        titleFont:{size:mobile?9.5:10,weight:'600',family:"'Inter','Segoe UI',sans-serif"},
+        bodyFont:{size:mobile?10.5:11,family:"'Inter','Segoe UI',sans-serif"},
+        ...(tooltip||{})
+      },
+      ...(pOvr||{})
+    },
+    scales:{
+      x:{ticks:{...TICK,maxTicksLimit:mobile?7:14},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},
+      y:{ticks:{...TICK,maxTicksLimit:mobile?6:8},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
+      ...(scales||{})
+    },
+    ...rest
+  };
+}
+let _resizeT, _lastW=window.innerWidth;
+window.addEventListener('resize',()=>{
+  const w=window.innerWidth;
+  if(w===_lastW)return;
+  _lastW=w;
+  clearTimeout(_resizeT);
+  _resizeT=setTimeout(()=>{if(typeof render==='function')render();},250);
+});
+function mkChart(id,type,labels,datasets,opts={}){
+  destroyChart(id);
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:baseOpts(opts)});
+}
+const LEG={get plugins(){return{legend:{display:true,position:'top',
+  labels:{font:{size:IS_MOBILE()?9:10},boxWidth:IS_MOBILE()?8:10,padding:IS_MOBILE()?5:8}}};}};
+const YINT={scales:{y:{ticks:{callback:fmtY}}}};
+const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}};
+const PCT_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}};
+
+// ─── LOAD DB ─────────────────────────────────────────────────────────────────
+async function loadDB(){
+  const el=document.getElementById('loading');
+  try{
+    const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+    const cb=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const resp=await fetch(`pulp_paper.db?v=${cb}`);
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    const db=new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+
+    PAPER=toObj(db.exec(`SELECT * FROM iba_paper ORDER BY period`)[0]);
+    PULP =toObj(db.exec(`SELECT * FROM iba_pulp ORDER BY period`)[0]);
+    SECEX=toObj(db.exec(`SELECT period,year,month,port,volume_ktons,revenue_usd_mn FROM secex_pulp_port ORDER BY period`)[0]);
+    COMP =toObj(db.exec(`SELECT * FROM company_q ORDER BY year,q`)[0]);
+    try{EMPAPEL=toObj(db.exec(`SELECT * FROM empapel ORDER BY period`)[0]);}catch(e){}
+    try{GACC=toObj(db.exec(`SELECT * FROM gacc_woodchips ORDER BY period`)[0]);}catch(e){}
+    const calRows=toObj(db.exec(`SELECT period,working_days FROM calendar`)[0]);
+    calRows.forEach(r=>{CAL[r.period]=r.working_days;});
+
+    db.close();
+
+    const lp=SECEX.length?SECEX[SECEX.length-1].period:(PAPER.length?PAPER[PAPER.length-1].period:'—');
+    document.getElementById('latest-label').textContent=fmtPeriod(lp);
+    el.style.display='none';
+
+    renderProdButtons();
+    const urlSec=new URLSearchParams(window.location.search).get('s');
+    if(urlSec&&['pulp','paper','companies'].includes(urlSec)){
+      setSub(urlSec);
+    } else if(window.innerWidth<=768){
+      showMobPicker();
+    } else {
+      render();
+    }
+  }catch(e){
+    el.innerHTML=`<div style="text-align:center;padding:40px">
+      <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load pulp_paper.db</div>
+      <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
+  }
+}
+
+// ─── SECEX TOTALS (sum across ports per period, with working days) ───────────
+function secexTotals(){
+  const byP={};
+  SECEX.forEach(r=>{
+    if(!byP[r.period])byP[r.period]={period:r.period,year:r.year,month:r.month,
+      volume_ktons:0,revenue_usd_mn:0,working_days:CAL[r.period]||null};
+    byP[r.period].volume_ktons+=r.volume_ktons||0;
+    byP[r.period].revenue_usd_mn+=r.revenue_usd_mn||0;
+  });
+  return Object.values(byP).sort((a,b)=>a.period.localeCompare(b.period));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INTERACTIVE PORT CHART (mirrors the Steel by-country selector)
+// ═══════════════════════════════════════════════════════════════════════════
+const PORT_PALETTE=['#FF5000','#1A1A1A','#4A90D9','#27AE60','#8E44AD','#E67E22'];
+const OUTROS_COLOR='#CCCCCC';
+
+function periodKey(p){
+  if(!p||p.length<7)return null;
+  const yr=p.slice(0,4), mo=parseInt(p.slice(5,7));
+  if(currentGran==='annual')    return yr;
+  if(currentGran==='quarterly') return `${yr}-Q${Math.ceil(mo/3)}`;
+  return p;
+}
+function periodLabelDisplay(key){
+  if(currentGran==='annual')    return key;
+  if(currentGran==='quarterly'){const[yr,q]=key.split('-Q');return`${q}T${yr.slice(-2)}`;}
+  return fmtPeriod(key);
+}
+function aggPeriodPort(){
+  const metric=portState.metric;
+  const acc={};
+  applyWin(SECEX).forEach(r=>{
+    const pk=periodKey(r.period);if(!pk)return;
+    const c=r.port||'—';
+    if(!acc[pk])acc[pk]={};
+    acc[pk][c]=(acc[pk][c]||0)+(r[metric]||0);
+  });
+  return acc;
+}
+function rankPorts(byPC){
+  const tot={};
+  Object.values(byPC).forEach(yObj=>Object.entries(yObj).forEach(([c,v])=>{tot[c]=(tot[c]||0)+v;}));
+  return Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+}
+function buildPortDatasets(byPC,periods,selected){
+  const isOthers=(c)=>!selected.includes(c)&&c!=='Others';
+  const datasets=[];
+  selected.filter(c=>c!=='Others').forEach((c,i)=>{
+    datasets.push({type:'bar',label:c,stack:'s',borderWidth:0,
+      backgroundColor:PORT_PALETTE[i%PORT_PALETTE.length],
+      data:periods.map(p=>+((byPC[p]?.[c])||0).toFixed(1))});
+  });
+  const outrosData=periods.map(p=>{
+    const v=Object.entries(byPC[p]||{}).filter(([c])=>isOthers(c)).reduce((s,[,v])=>s+v,0);
+    return +v.toFixed(1);
+  });
+  if(selected.includes('Others')&&outrosData.some(v=>v>0))
+    datasets.push({type:'bar',label:'Others',stack:'s',borderWidth:0,backgroundColor:OUTROS_COLOR,data:outrosData});
+  return datasets;
+}
+function renderPortChart(){
+  const byPC=aggPeriodPort();
+  const periods=Object.keys(byPC).sort();
+  if(!periods.length){destroyChart('pl-port');return;}
+  const ranked=rankPorts(byPC);
+  if(!portState.ports) portState.ports=[...ranked.slice(0,5),'Others'];
+  const labels=periods.map(periodLabelDisplay);
+  const datasets=buildPortDatasets(byPC,periods,portState.ports);
+  const mob=IS_MOBILE();
+  const maxTicks=mob?(currentGran==='annual'?10:currentGran==='quarterly'?8:6)
+                    :(currentGran==='annual'?30:currentGran==='quarterly'?24:12);
+  const fSize=mob?8:9;
+  const unit=portState.metric==='revenue_usd_mn'?'US$ mn':'kton';
+  mkChart('pl-port','bar',labels,datasets,{
+    ...LEG,
+    scales:{
+      x:{stacked:true,ticks:{color:'#999',font:{size:fSize},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},grid:{display:false}},
+      y:{stacked:true,ticks:{callback:fmtY,color:'#999',font:{size:fSize}}}
+    }
+  });
+  document.getElementById('pl-port-tag').textContent=portState.metric==='revenue_usd_mn'?'Revenue':'Volume';
+  const gLbl=currentGran==='annual'?'annual':currentGran==='quarterly'?'quarterly':'monthly';
+  document.getElementById('pl-port-sub').textContent=`${gLbl} · ${unit} · SECEX`;
+}
+function renderPortPills(){
+  const c=document.getElementById('pl-pills');if(!c)return;
+  const defs=[{k:'volume_ktons',l:'Volume (kton)'},{k:'revenue_usd_mn',l:'Revenue (US$ mn)'}];
+  c.innerHTML='';
+  defs.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='pill-btn'+(portState.metric===d.k?' active':'');
+    b.textContent=d.l;
+    b.onclick=()=>{portState.metric=d.k;renderPortPills();renderPortChart();};
+    c.appendChild(b);
+  });
+}
+function buildPortPanel(){
+  const list=document.getElementById('pl-cs-list');if(!list)return;
+  const byPC=aggPeriodPort();const ranked=rankPorts(byPC);
+  if(!portState.ports) portState.ports=[...ranked.slice(0,5),'Others'];
+  list.innerHTML='';
+  ranked.slice(0,20).forEach(port=>{
+    const checked=portState.ports.includes(port);
+    const id='pl-c-'+port.replace(/\s/g,'_');
+    const item=document.createElement('div');item.className='cs-item';
+    item.innerHTML=`<input type="checkbox" id="${id}" ${checked?'checked':''}><label for="${id}">${port}</label>`;
+    item.querySelector('input').onchange=e=>{
+      if(e.target.checked) portState.ports.push(port);
+      else portState.ports=portState.ports.filter(c=>c!==port);
+      if(portState.ports.length===0) portState.ports=null;
+      renderPortChart();
+    };
+    list.appendChild(item);
+  });
+  const oth=document.createElement('div');oth.className='cs-item outros';
+  const oc=portState.ports?.includes('Others')??true;
+  oth.innerHTML=`<input type="checkbox" id="pl-c-Others" ${oc?'checked':''}><label for="pl-c-Others">Others</label>`;
+  oth.querySelector('input').onchange=e=>{
+    if(e.target.checked){if(!portState.ports)portState.ports=[];portState.ports.push('Others');}
+    else{portState.ports=(portState.ports||[]).filter(c=>c!=='Others');}
+    renderPortChart();
+  };
+  list.appendChild(oth);
+}
+function togglePortPanel(){
+  const panel=document.getElementById('pl-cs-panel'),toggle=document.getElementById('pl-cs-toggle');
+  const isOpen=panel.classList.contains('open');
+  document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+  document.body.classList.remove('cs-open');
+  if(!isOpen){buildPortPanel();panel.classList.add('open');toggle.classList.add('open');document.body.classList.add('cs-open');}
+}
+function resetPorts(){portState.ports=null;buildPortPanel();renderPortChart();}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.country-selector')&&!e.target.closest('.cs-panel')){
+    document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+    document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+    document.body.classList.remove('cs-open');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDER — PULP
+// ═══════════════════════════════════════════════════════════════════════════
+function renderPulp(){ if(pulpTab==='secex') renderPulpSecex(); else renderPulpIba(); }
+
+function kpiCard(label,value,unit,deltas){
+  return`<div class="kpi-card"><div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}<span class="kpi-unit">${unit||''}</span></div>
+    <div class="kpi-delta">${deltas||''}</div></div>`;
+}
+function pctSpan(v){
+  if(v==null)return'<span>—</span>';
+  const cls=v>=0?'pos':'neg',s=v>=0?'+':'';
+  return`<span class="${cls}">${s}${(v*100).toFixed(1)}%</span>`;
+}
+
+function renderPulpSecex(){
+  const totals=secexTotals();
+  const arr=tx(totals,['volume_ktons','revenue_usd_mn','working_days']);
+  const lbs=arr.map(r=>r.period);
+  // price + vol/working-day computed post-aggregation
+  arr.forEach(r=>{
+    r.price=(r.revenue_usd_mn!=null&&r.volume_ktons)?r.revenue_usd_mn*1000/r.volume_ktons:null;
+    r.vwd=(r.working_days)?r.volume_ktons/r.working_days:null;
+  });
+
+  // KPIs — latest monthly reading vs MoM / YoY
+  const mon=applyWin(totals);
+  const full=totals;
+  const li=full.length-1;
+  if(li>=0){
+    const last=full[li];
+    const volMoM=deltaOf(full,'volume_ktons',li);
+    const volYoY=yoyOf(full,'volume_ktons',li,full);
+    const price=last.volume_ktons?last.revenue_usd_mn*1000/last.volume_ktons:null;
+    const pPrev=full[li-1];const priceP=pPrev&&pPrev.volume_ktons?pPrev.revenue_usd_mn*1000/pPrev.volume_ktons:null;
+    const priceMoM=(price!=null&&priceP)?(price-priceP)/priceP:null;
+    const ytd=full.filter(r=>r.year===last.year).reduce((s,r)=>s+(r.volume_ktons||0),0);
+    const ytdPrev=full.filter(r=>r.year===last.year-1&&r.month<=last.month).reduce((s,r)=>s+(r.volume_ktons||0),0);
+    const ytdYoY=ytdPrev?(ytd-ytdPrev)/ytdPrev:null;
+    document.getElementById('pl-kpis').innerHTML=
+      kpiCard(`Volume · ${fmtPeriod(last.period)}`,fmtK(last.volume_ktons),'kt',
+        `MoM ${pctSpan(volMoM)} · YoY ${pctSpan(volYoY)}`)+
+      kpiCard('Revenue',fmtK(last.revenue_usd_mn),'US$mn',
+        `Avg price ${price!=null?Math.round(price):'—'} US$/t`)+
+      kpiCard('Avg Price',price!=null?Math.round(price):'—','US$/t',`MoM ${pctSpan(priceMoM)}`)+
+      kpiCard(`YTD Volume · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdYoY)}`);
+  }
+
+  mkChart('pl-vol','line',lbs,[areaDs(arr.map(r=>r.volume_ktons),C_OR,0.12,'Volume (kton)')],YINT);
+
+  const srcFull=currentGran==='quarterly'?toQ(totals,['volume_ktons']):currentGran==='annual'?toA(totals,['volume_ktons']):totals;
+  const yoyV=arr.map((r,i)=>yoyOf(arr,'volume_ktons',i,srcFull));
+  mkChart('pl-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
+    yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
+
+  mkChart('pl-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_BK,0.10,'Revenue (US$ mn)')],YINT);
+  mkChart('pl-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_OR,'Avg Price (US$/t)')],YINT);
+  mkChart('pl-vwd','bar',lbs,[barDs(arr.map(r=>r.vwd!=null?+r.vwd.toFixed(2):null),C_OR_A(0.7),'kton/day')],
+    {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)}}}});
+
+  renderPortPills();
+  renderPortChart();
+  _renderSeasonality('pl-seas',totals.filter(r=>r.volume_ktons!=null),'volume_ktons');
+}
+
+function pulpField(base){
+  // base: prod|dom|exp|imp ; product filter chooses fibre suffix
+  const suf={total:'total',hw:'hw',sw:'sw',hy:'hy'}[currentProd]||'total';
+  return`${base}_${suf}`;
+}
+function renderPulpIba(){
+  const fibreLbl=currentProd==='total'?'':PULP_FIBRE_LBL[currentProd];
+  document.getElementById('pi-prod-sub').textContent=currentProd==='total'
+    ?'IBÁ · total pulp production':`IBÁ · ${fibreLbl}`;
+
+  // Production — fibre split (HW/SW/HY) only exists pre-2019, so Total shows the
+  // total as an area (the fibre composition lives in the "by Fibre — share" chart).
+  const pf0=pulpField('prod');
+  const a=tx(PULP.filter(r=>r[pf0]!=null),[pf0]);
+  mkChart('pi-prod','line',a.map(r=>r.period),
+    [areaDs(a.map(r=>r[pf0]),C_OR,0.12,currentProd==='total'?'Total':fibreLbl)],YINT);
+
+  const ca=tx(PULP.filter(r=>r.app_cons!=null),['app_cons']);
+  mkChart('pi-cons','line',ca.map(r=>r.period),[areaDs(ca.map(r=>r.app_cons),C_BK,0.08,'Apparent Consumption')],YINT);
+
+  const df=pulpField('dom'),ef=pulpField('exp');
+  const da=tx(PULP.filter(r=>r[df]!=null),[df]);
+  mkChart('pi-dom','line',da.map(r=>r.period),[areaDs(da.map(r=>r[df]),C_OR,0.10,'Domestic Sales')],YINT);
+  const ea=tx(PULP.filter(r=>r[ef]!=null),[ef]);
+  mkChart('pi-exp','line',ea.map(r=>r.period),[areaDs(ea.map(r=>r[ef]),C_BK,0.08,'Exports')],YINT);
+
+  // Fibre share (% of production) — full history (fibre split only reported
+  // through 2018), so this chart ignores the window to show the whole evolution.
+  const fa=txNoWin(PULP.filter(r=>r.prod_hw!=null||r.prod_sw!=null),['prod_hw','prod_sw','prod_hy','prod_total']);
+  const lbs=fa.map(r=>r.period);
+  const share=(f)=>fa.map(r=>{const t=(r.prod_hw||0)+(r.prod_sw||0)+(r.prod_hy||0);return t?+(100*(r[f]||0)/t).toFixed(1):null;});
+  mkChart('pi-fibre','bar',lbs,[
+    {type:'bar',label:'Hardwood',data:share('prod_hw'),backgroundColor:C_OR,stack:'s',borderWidth:0},
+    {type:'bar',label:'Softwood',data:share('prod_sw'),backgroundColor:C_BK,stack:'s',borderWidth:0},
+    {type:'bar',label:'High-Yield',data:share('prod_hy'),backgroundColor:C_GR,stack:'s',borderWidth:0},
+  ],{...LEG,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v+'%'},max:100}}});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDER — PAPER
+// ═══════════════════════════════════════════════════════════════════════════
+function paperField(base){
+  const suf=currentProd==='total'?'total':currentProd;
+  return`${base}_${suf}`;
+}
+function renderPaper(){
+  const gradeLbl=currentProd==='total'?'':PAPER_GRADE_LBL[currentProd];
+  document.getElementById('pa-prod-sub').textContent=currentProd==='total'
+    ?'IBÁ · Total = stacked by grade':`IBÁ · ${gradeLbl}`;
+
+  // KPIs
+  const li=PAPER.length-1;
+  if(li>=0){
+    const last=PAPER[li];
+    const pf=paperField('prod'),cf='app_cons';
+    const prodMoM=deltaOf(PAPER,pf,li),prodYoY=yoyOf(PAPER,pf,li,PAPER);
+    const ytd=PAPER.filter(r=>r.year===last.year).reduce((s,r)=>s+(r[pf]||0),0);
+    const ytdPrev=PAPER.filter(r=>r.year===last.year-1&&r.month<=last.month).reduce((s,r)=>s+(r[pf]||0),0);
+    document.getElementById('pa-kpis').innerHTML=
+      kpiCard(`Production · ${fmtPeriod(last.period)}`,fmtK(last[pf]),'kt',`MoM ${pctSpan(prodMoM)} · YoY ${pctSpan(prodYoY)}`)+
+      kpiCard('Domestic Sales',fmtK(last[paperField('dom')]),'kt','')+
+      kpiCard('Apparent Cons.',fmtK(last[cf]),'kt','')+
+      kpiCard(`YTD Production · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdPrev?(ytd-ytdPrev)/ytdPrev:null)}`);
+  }
+
+  // Production — stacked grades when Total
+  if(currentProd==='total'){
+    const cols=PAPER_GRADES.map(g=>`prod_${g}`);
+    const a=tx(PAPER.filter(r=>r.prod_total!=null),[...cols,'prod_total']);
+    const lbs=a.map(r=>r.period);
+    mkChart('pa-prod','bar',lbs,PAPER_GRADES.map((g,i)=>
+      stackDs(a.map(r=>r[`prod_${g}`]),GRADE_PALETTE[i%GRADE_PALETTE.length],PAPER_GRADE_LBL[g])
+    ),{...LEG,...STACKED});
+    const srcFull=currentGran==='quarterly'?toQ(PAPER,['prod_total']):currentGran==='annual'?toA(PAPER,['prod_total']):PAPER;
+    const yoyV=a.map((r,i)=>yoyOf(a,'prod_total',i,srcFull));
+    mkChart('pa-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
+      yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
+  }else{
+    const pf=paperField('prod');
+    const a=tx(PAPER.filter(r=>r[pf]!=null),[pf]);
+    const lbs=a.map(r=>r.period);
+    mkChart('pa-prod','line',lbs,[areaDs(a.map(r=>r[pf]),C_OR,0.12,gradeLbl)],YINT);
+    const srcFull=currentGran==='quarterly'?toQ(PAPER,[pf]):currentGran==='annual'?toA(PAPER,[pf]):PAPER;
+    const yoyV=a.map((r,i)=>yoyOf(a,pf,i,srcFull));
+    mkChart('pa-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
+      yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
+  }
+
+  const df=paperField('dom'),ef=paperField('exp'),imf=paperField('imp');
+  const da=tx(PAPER.filter(r=>r[df]!=null),[df]);
+  mkChart('pa-dom','line',da.map(r=>r.period),[areaDs(da.map(r=>r[df]),C_OR,0.10,'Domestic Sales')],YINT);
+  const ca=tx(PAPER.filter(r=>r.app_cons!=null),['app_cons']);
+  mkChart('pa-cons','line',ca.map(r=>r.period),[areaDs(ca.map(r=>r.app_cons),C_BK,0.08,'Apparent Consumption')],YINT);
+  const ea=tx(PAPER.filter(r=>r[ef]!=null),[ef]);
+  mkChart('pa-exp','line',ea.map(r=>r.period),[areaDs(ea.map(r=>r[ef]),C_BK,0.08,'Exports')],YINT);
+  const ia=tx(PAPER.filter(r=>r[imf]!=null),[imf]);
+  mkChart('pa-imp','line',ia.map(r=>r.period),[areaDs(ia.map(r=>r[imf]),C_GR,0.10,'Imports')],YINT);
+
+  // Apparent consumption + import penetration (dual axis)
+  const consArr=tx(PAPER.filter(r=>r.app_cons!=null),['app_cons']);
+  const impRaw=txNoWin(PAPER.filter(r=>r[imf]!=null),[imf]);
+  const impMap=Object.fromEntries(impRaw.map(r=>[r.period,r[imf]]));
+  const consLbs=consArr.map(r=>r.period);
+  const pen=consArr.map(r=>{const c=r.app_cons,im=impMap[r.period];return(c&&im!=null)?+(100*im/c).toFixed(2):null;});
+  destroyChart('pa-pen');
+  const ctx=document.getElementById('pa-pen')?.getContext('2d');
+  if(ctx){
+    charts['pa-pen']=new Chart(ctx,{type:'line',data:{labels:consLbs,datasets:[
+      {...areaDs(consArr.map(r=>r.app_cons),C_BK,0.08,'Apparent Consumption (kton)'),yAxisID:'y',order:3},
+      {...lineDs(pen,C_OR,'Import Penetration (%)'),yAxisID:'y1',borderWidth:1.8,order:1},
+    ]},options:baseOpts({...LEG,scales:{
+      x:{ticks:{color:'#999',font:{size:9},maxTicksLimit:14,maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'}},
+      y:{position:'left',ticks:{color:'#999',font:{size:9},callback:fmtY},title:{display:true,text:'kton',color:'#999',font:{size:9}}},
+      y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:C_OR,font:{size:9},callback:v=>v.toFixed(1)+'%'},
+        title:{display:true,text:'import penetration %',color:C_OR,font:{size:9}}}
+    }})});
+  }
+
+  // Seasonality
+  const seasField=currentProd==='total'?'prod_total':`prod_${currentProd}`;
+  _renderSeasonality('pa-seasprod',PAPER.filter(r=>r[seasField]!=null),seasField);
+  const seasDom=currentProd==='total'?'dom_total':`dom_${currentProd}`;
+  _renderSeasonality('pa-seasdom',PAPER.filter(r=>r[seasDom]!=null),seasDom);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SEASONALITY (shared)
+// ═══════════════════════════════════════════════════════════════════════════
+function _renderSeasonality(id,allData,field){
+  const gran=currentGran==='quarterly';
+  const byY={};
+  if(gran){
+    allData.forEach(r=>{const y=r.year||parseInt(r.period.slice(0,4)),m=r.month||parseInt(r.period.slice(5,7));
+      if(!byY[y])byY[y]=new Array(4).fill(null);const qi=Math.ceil(m/3)-1;
+      if(r[field]!=null)byY[y][qi]=(byY[y][qi]??0)+r[field];});
+  }else{
+    allData.forEach(r=>{const y=r.year||parseInt(r.period.slice(0,4)),m=r.month||parseInt(r.period.slice(5,7));
+      if(!byY[y])byY[y]=new Array(12).fill(null);byY[y][m-1]=r[field];});
+  }
+  const xLabels=gran?['Q1','Q2','Q3','Q4']:MONTHS;
+  const n=gran?4:12;
+  const years=Object.keys(byY).map(Number).sort();
+  if(!years.length){destroyChart(id);return;}
+  const latY=years[years.length-1];
+  const show=years.filter(y=>y>=latY-4);
+  const OTHER_COLORS=['#27AE60','#2E86C1','#555555','#1A1A1A'];
+  const ds=[];
+  show.filter(y=>y!==latY).forEach((y,idx)=>{
+    ds.push({type:'line',label:`${y}`,data:byY[y]||new Array(n).fill(null),
+      borderColor:OTHER_COLORS[idx]||'#888',backgroundColor:'transparent',
+      fill:false,borderWidth:1.8,pointRadius:0,tension:0.3,borderDash:[5,4]});
+  });
+  if(byY[latY])ds.push({...lineDs(byY[latY],C_OR,`${latY}`),borderWidth:2.8,pointRadius:3,pointBackgroundColor:C_OR});
+  mkChart(id,'line',xLabels,ds,{plugins:{legend:{display:true,position:'right',
+    labels:{font:{size:10},boxWidth:10,padding:6}}},scales:{y:{ticks:{callback:fmtY}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDER — COMPANIES (quarterly native)
+// ═══════════════════════════════════════════════════════════════════════════
+function companyWindow(){
+  // company_q rows are quarterly; apply window by number of quarters
+  let rows=COMP.slice();
+  if(currentGran==='annual'){
+    const byY={};
+    rows.forEach(r=>{if(!byY[r.year])byY[r.year]={year:r.year,period:String(r.year),_n:0};
+      Object.keys(r).forEach(k=>{if(typeof r[k]==='number'&&k!=='year'&&k!=='q')byY[r.year][k]=(byY[r.year][k]||0)+(r[k]||0);});
+      byY[r.year]._n++;});
+    rows=Object.values(byY).filter(e=>e._n>=4).sort((a,b)=>a.year-b.year);
+  }else{
+    rows=rows.map(r=>({...r,period:`${r.q}T${String(r.year).slice(-2)}`}));
+  }
+  if(currentWin==='custom'){
+    const{from,to}=customRange;
+    if(from||to)rows=rows.filter(r=>{const p=`${r.year}-${String((r.q||1)*3).padStart(2,'0')}`;
+      if(from&&p<from)return false;if(to&&p>to)return false;return true;});
+  }else if(currentWin==='ytd'){
+    const maxY=rows.length?Math.max(...rows.map(r=>r.year)):new Date().getFullYear();
+    rows=rows.filter(r=>r.year>=maxY);   // latest available year
+  }else if(WIN_MO[currentWin]){
+    const nq=Math.max(2,Math.round(WIN_MO[currentWin]/3));rows=rows.slice(-nq);
+  }
+  return rows;
+}
+function renderCompanies(){
+  const rows=companyWindow();
+  const lbs=rows.map(r=>r.period);
+  const grp=(a,b)=>({scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}});
+  // Klabin
+  mkChart('co-kl-corr','bar',lbs,[
+    stackDs(rows.map(r=>r.klabin_corr_mi),C_OR,'Boxes (MI)'),
+    stackDs(rows.map(r=>r.klabin_corr_me),C_BK,'Boxes (ME)'),
+  ],{...LEG,...STACKED});
+  mkChart('co-kl-sacks','bar',lbs,[
+    stackDs(rows.map(r=>r.klabin_sacks_mi),C_OR,'Sacks (MI)'),
+    stackDs(rows.map(r=>r.klabin_sacks_me),C_BK,'Sacks (ME)'),
+  ],{...LEG,...STACKED});
+  mkChart('co-kl-card','bar',lbs,[
+    stackDs(rows.map(r=>r.klabin_card_mi),C_OR,'Cardboard (MI)'),
+    stackDs(rows.map(r=>r.klabin_card_me),C_BK,'Cardboard (ME)'),
+  ],{...LEG,...STACKED});
+  // Suzano
+  mkChart('co-sz-mix','bar',lbs,[
+    stackDs(rows.map(r=>r.suzano_pw),GRADE_PALETTE[2],'P&W'),
+    stackDs(rows.map(r=>r.suzano_cardboard),GRADE_PALETTE[5],'Cardboard'),
+    stackDs(rows.map(r=>r.suzano_tissue),GRADE_PALETTE[3],'Tissue'),
+  ],{...LEG,...STACKED});
+  mkChart('co-sz-pw','bar',lbs,[
+    stackDs(rows.map(r=>r.suzano_pw_mi),C_OR,'P&W (MI)'),
+    stackDs(rows.map(r=>r.suzano_pw_me),C_BK,'P&W (ME)'),
+  ],{...LEG,...STACKED});
+  mkChart('co-sz-card','bar',lbs,[
+    stackDs(rows.map(r=>r.suzano_card_mi),C_OR,'Cardboard (MI)'),
+    stackDs(rows.map(r=>r.suzano_card_me),C_BK,'Cardboard (ME)'),
+  ],{...LEG,...STACKED});
+  // Company vs Industry
+  mkChart('co-cmp-kl','bar',lbs,[
+    barDs(rows.map(r=>r.iba_packaging),C_GR_A(0.5),'IBÁ Packaging'),
+    {...lineDs(rows.map(r=>r.klabin_packaging),C_OR,'Klabin Packaging'),type:'line'},
+  ],{...LEG,...YINT});
+  mkChart('co-cmp-sz','bar',lbs,[
+    barDs(rows.map(r=>r.iba_pw),C_GR_A(0.5),'IBÁ P&W'),
+    {...lineDs(rows.map(r=>r.suzano_pw),C_OR,'Suzano P&W'),type:'line'},
+  ],{...LEG,...YINT});
+}
+
+// ─── RENDER DISPATCH ─────────────────────────────────────────────────────────
+function render(){
+  if(currentSub==='pulp')      renderPulp();
+  if(currentSub==='paper')     renderPaper();
+  if(currentSub==='companies') renderCompanies();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderProdButtons(){
+  const wrap=document.getElementById('prod-btns');
+  const defs=PROD_DEFS[currentSub];
+  const showProd = !!defs && !(currentSub==='pulp'&&pulpTab==='secex');
+  document.getElementById('prod-label').style.display=showProd?'':'none';
+  document.getElementById('prod-sep').style.display=showProd?'':'none';
+  wrap.style.display=showProd?'':'none';
+  if(!showProd){wrap.innerHTML='';return;}
+  if(!defs.some(d=>d.k===currentProd)) currentProd='total';
+  wrap.innerHTML='';
+  defs.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='fbtn'+(currentProd===d.k?' active':'');
+    b.textContent=d.l;b.dataset.prod=d.k;
+    b.onclick=()=>setProd(d.k);
+    wrap.appendChild(b);
+  });
+}
+// Granularity is hidden for Companies (data is natively quarterly)
+function updateGranVisibility(){
+  document.getElementById('gran-btns').parentElement;
+  const monthlyBtn=document.querySelector('[data-gran="monthly"]');
+  if(currentSub==='companies'){
+    if(currentGran==='monthly'){currentGran='quarterly';
+      document.querySelectorAll('[data-gran]').forEach(b=>b.classList.toggle('active',b.dataset.gran==='quarterly'));}
+    if(monthlyBtn)monthlyBtn.style.display='none';
+  }else{
+    if(monthlyBtn)monthlyBtn.style.display='';
+  }
+}
+function setSub(s){
+  currentSub=s;
+  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+  document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
+  document.getElementById('sec-'+s)?.classList.add('active');
+  updateGranVisibility();
+  renderProdButtons();
+  render();
+}
+function setPulpTab(t){
+  if(t==='gacc')return;
+  pulpTab=t;
+  document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===t));
+  document.getElementById('pl-tab-secex').classList.toggle('active',t==='secex');
+  document.getElementById('pl-tab-iba').classList.toggle('active',t==='iba');
+  renderProdButtons();
+  renderPulp();
+}
+function setPaperTab(t){
+  if(t==='corrugated')return;
+  paperTab=t;
+  document.querySelectorAll('[data-patab]').forEach(b=>b.classList.toggle('active',b.dataset.patab===t));
+  renderPaper();
+}
+function setProd(p){
+  currentProd=p;
+  if(currentSub==='pulp'){portState.ports=portState.ports;} // ports independent of fibre
+  document.querySelectorAll('#prod-btns [data-prod]').forEach(b=>b.classList.toggle('active',b.dataset.prod===p));
+  render();
+}
+function setGran(g){
+  currentGran=g;
+  document.querySelectorAll('[data-gran]').forEach(b=>b.classList.toggle('active',b.dataset.gran===g));
+  render();
+}
+function setWin(w){
+  currentWin=w;
+  customRange={from:null,to:null};
+  const fEl=document.getElementById('win-from'),tEl=document.getElementById('win-to');
+  if(fEl)fEl.value=''; if(tEl)tEl.value='';
+  document.querySelector('.custom-range')?.classList.remove('active');
+  document.getElementById('cr-clear')?.classList.remove('visible');
+  document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win===w));
+  render();
+}
+function setCustomRange(){
+  const f=document.getElementById('win-from').value;
+  const t=document.getElementById('win-to').value;
+  customRange={from:f||null,to:t||null};
+  if(f||t){
+    currentWin='custom';
+    document.querySelectorAll('[data-win]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('.custom-range').classList.add('active');
+    document.getElementById('cr-clear').classList.add('visible');
+  } else {
+    currentWin='all';
+    document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win==='all'));
+    document.querySelector('.custom-range').classList.remove('active');
+    document.getElementById('cr-clear').classList.remove('visible');
+  }
+  render();
+}
+function clearCustomRange(){
+  document.getElementById('win-from').value='';
+  document.getElementById('win-to').value='';
+  setCustomRange();
+}
+
+// ─── MOBILE SECTION PICKER ───────────────────────────────────────────────────
+function showMobPicker(){
+  document.body.classList.add('mob-picker-active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+}
+function hideMobPicker(){document.body.classList.remove('mob-picker-active');}
+function mobSelect(sub){hideMobPicker();setSub(sub);}
+</script>
+
+<!-- STAGING BADGE -->
+<script>
+(function(){
+  const h=window.location.hostname;
+  if(h==='localhost'||h==='127.0.0.1'||h.includes('git-staging')||h.includes('-staging.')){
+    const b=document.createElement('div');
+    b.style.cssText='position:fixed;bottom:16px;right:16px;background:#D97706;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:20px;z-index:9999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+    b.textContent='⚠ STAGING';
+    document.body.appendChild(b);
+  }
+})();
+</script>
+</body>
+</html>
