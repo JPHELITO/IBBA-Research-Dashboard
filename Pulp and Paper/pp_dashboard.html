@@ -440,7 +440,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="inner-tab-bar">
     <button class="itab active" data-ptab="secex" onclick="setPulpTab('secex')">🚢 Exports — SECEX</button>
     <button class="itab"        data-ptab="iba"   onclick="setPulpTab('iba')">🏭 Production &amp; Trade — IBÁ</button>
-    <button class="itab soon"   data-ptab="gacc"  title="Coming soon">🌲 Woodchips — GACC</button>
+    <button class="itab"        data-ptab="gacc"  onclick="setPulpTab('gacc')">🌲 Woodchips — GACC</button>
   </div>
 
   <!-- ── SECEX TAB ── -->
@@ -545,13 +545,55 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       </div>
     </div>
   </div>
+
+  <!-- ── GACC TAB (China woodchip imports) ── -->
+  <div id="pl-tab-gacc" class="inner-tab-content">
+    <div class="info-box">
+      <strong>China woodchip imports (GACC customs).</strong> Woodchips are a pulp-fibre
+      input — China's import demand is a forward read on global hardwood (eucalyptus)
+      fibre tightness and competes with Brazilian market pulp. Volumes in
+      <strong>M BDMT</strong> (million bone-dry metric tons). Vietnam is the dominant supplier.
+    </div>
+    <div class="kpi-row" id="gc-kpis"></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">China Woodchip Import Volume (M BDMT)</div>
+        <div class="chart-sub" id="gc-vol-sub">GACC · all suppliers</div>
+        <div class="chart-wrap h240"><canvas id="gc-vol"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Import Volume (%)</div>
+        <div class="chart-sub">Change vs. same period prior year</div>
+        <div class="chart-wrap h240"><canvas id="gc-yoy"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Import Price (US$/BDMT)</div>
+        <div class="chart-sub">GACC · revenue ÷ volume</div>
+        <div class="chart-wrap h220"><canvas id="gc-price"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Import Volume by Supplier (M BDMT)</div>
+        <div class="chart-sub">GACC · Vietnam · Australia · Others (stacked)</div>
+        <div class="chart-wrap h220"><canvas id="gc-ctry"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Import Volume (M BDMT/month)</div>
+        <div class="chart-sub">GACC · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="gc-seas"></canvas></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ PAPER ═════ -->
 <div id="sec-paper" class="section">
   <div class="inner-tab-bar">
     <button class="itab active" data-patab="iba"        onclick="setPaperTab('iba')">🏭 Fundamentals — IBÁ</button>
-    <button class="itab soon"   data-patab="corrugated" title="Coming soon">📦 Corrugated — Empapel</button>
+    <button class="itab"        data-patab="corrugated" onclick="setPaperTab('corrugated')">📦 Corrugated — Empapel</button>
   </div>
   <div id="pa-tab-iba" class="inner-tab-content active">
     <div class="kpi-row" id="pa-kpis"></div>
@@ -608,6 +650,47 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         <div class="chart-title">Seasonality — Production (kton/month)</div>
         <div class="chart-sub">IBÁ · each line = 1 year · orange = current · black = prior</div>
         <div class="chart-wrap h260"><canvas id="pa-seasprod"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CORRUGATED TAB (Empapel) ── -->
+  <div id="pa-tab-corrugated" class="inner-tab-content">
+    <div class="info-box">
+      <strong>Corrugated paper shipments (Empapel)</strong> — a high-frequency proxy for
+      domestic demand: corrugated boxes track packaged-goods activity (food, beverages,
+      consumer goods). <strong>Expeditions/working day</strong> normalises for month length.
+    </div>
+    <div class="kpi-row" id="em-kpis"></div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Corrugated Shipments (kton)</div>
+        <div class="chart-sub">Empapel · monthly</div>
+        <div class="chart-wrap h240"><canvas id="em-ship"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Shipments (%)</div>
+        <div class="chart-sub">Change vs. same period prior year</div>
+        <div class="chart-wrap h240"><canvas id="em-yoy"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Expeditions per Working Day</div>
+        <div class="chart-sub">Empapel · shipments ÷ working days · with 3-month moving average</div>
+        <div class="chart-wrap h220"><canvas id="em-expday"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">LTM Shipments (kton)</div>
+        <div class="chart-sub">Empapel · trailing 12-month cumulative</div>
+        <div class="chart-wrap h220"><canvas id="em-ltm"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row c1">
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Shipments (kton/month)</div>
+        <div class="chart-sub">Empapel · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="em-seas"></canvas></div>
       </div>
     </div>
   </div>
@@ -716,6 +799,7 @@ let charts={};
 // ─── PRODUCT DEFINITIONS (contextual filter) ─────────────────────────────────
 const PROD_DEFS={
   pulp:[{k:'total',l:'Total'},{k:'hw',l:'Hardwood'},{k:'sw',l:'Softwood'},{k:'hy',l:'High-Yield'}],
+  gacc:[{k:'total',l:'Total'},{k:'hw',l:'Hardwood'},{k:'sw',l:'Softwood'}],
   paper:[{k:'total',l:'Total'},{k:'packaging',l:'Packaging'},{k:'pw',l:'P&W'},
          {k:'newsprint',l:'Newsprint'},{k:'tissue',l:'Tissue'},{k:'cardboard',l:'Cardboard'},{k:'other',l:'Other'}],
 };
@@ -755,6 +839,7 @@ function toObj(stmt){
 }
 function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('pt-BR');}
 function fmtY(v){return v==null?'':Math.round(v).toLocaleString('en-US');}
+function fmt2(v){return v==null?'':(+v).toFixed(2);}   // decimals (e.g. M BDMT)
 function deltaOf(arr,f,i){
   if(i<1)return null;
   const c=arr[i][f],p=arr[i-1][f];
@@ -1108,7 +1193,11 @@ document.addEventListener('click',e=>{
 // ═══════════════════════════════════════════════════════════════════════════
 //  RENDER — PULP
 // ═══════════════════════════════════════════════════════════════════════════
-function renderPulp(){ if(pulpTab==='secex') renderPulpSecex(); else renderPulpIba(); }
+function renderPulp(){
+  if(pulpTab==='secex')     renderPulpSecex();
+  else if(pulpTab==='gacc') renderGacc();
+  else                      renderPulpIba();
+}
 
 function kpiCard(label,value,unit,deltas){
   return`<div class="kpi-card"><div class="kpi-label">${label}</div>
@@ -1210,13 +1299,82 @@ function renderPulpIba(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  RENDER — GACC (China woodchip imports)
+// ═══════════════════════════════════════════════════════════════════════════
+function gaccFibre(){return (currentProd==='hw'||currentProd==='sw')?currentProd:'total';}
+function gaccMatch(r,fib){return fib==='total'?true:(fib==='hw'?r.fibre==='HW':r.fibre==='SW');}
+function gaccTotals(fib){
+  const byP={};
+  GACC.forEach(r=>{
+    if(r.country!=='Total'||!gaccMatch(r,fib))return;
+    if(!byP[r.period])byP[r.period]={period:r.period,year:r.year,month:r.month,volume_bdmt:0,revenue_usd_mn:0};
+    byP[r.period].volume_bdmt+=r.volume_bdmt||0;
+    byP[r.period].revenue_usd_mn+=r.revenue_usd_mn||0;
+  });
+  return Object.values(byP).sort((a,b)=>a.period.localeCompare(b.period));
+}
+function renderGacc(){
+  const fib=gaccFibre();
+  const totals=gaccTotals(fib);
+  const arr=tx(totals,['volume_bdmt','revenue_usd_mn']);
+  arr.forEach(r=>{r.price=(r.revenue_usd_mn!=null&&r.volume_bdmt)?r.revenue_usd_mn/r.volume_bdmt:null;});
+  const lbs=arr.map(r=>r.period);
+  document.getElementById('gc-vol-sub').textContent=
+    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · all suppliers`;
+
+  // KPIs
+  const full=totals,li=full.length-1;
+  if(li>=0){
+    const last=full[li];
+    const volMoM=deltaOf(full,'volume_bdmt',li),volYoY=yoyOf(full,'volume_bdmt',li,full);
+    const price=last.volume_bdmt?last.revenue_usd_mn/last.volume_bdmt:null;
+    const pPrev=full[li-1];const priceP=pPrev&&pPrev.volume_bdmt?pPrev.revenue_usd_mn/pPrev.volume_bdmt:null;
+    const ytd=full.filter(r=>r.year===last.year).reduce((s,r)=>s+(r.volume_bdmt||0),0);
+    const vnLast=GACC.filter(r=>r.country==='Vietnam'&&r.period===last.period&&gaccMatch(r,fib))
+      .reduce((s,r)=>s+(r.volume_bdmt||0),0);
+    const vnShare=last.volume_bdmt?vnLast/last.volume_bdmt:null;
+    document.getElementById('gc-kpis').innerHTML=
+      kpiCard(`Volume · ${fmtPeriod(last.period)}`,fmt2(last.volume_bdmt),'M BDMT',`MoM ${pctSpan(volMoM)} · YoY ${pctSpan(volYoY)}`)+
+      kpiCard('Import Price',price!=null?Math.round(price):'—','US$/BDMT',priceP?`MoM ${pctSpan((price-priceP)/priceP)}`:'')+
+      kpiCard(`YTD Volume · ${last.year}`,fmt2(ytd),'M BDMT','')+
+      kpiCard('Vietnam share',vnShare!=null?Math.round(vnShare*100):'—','%','of latest month');
+  }
+
+  mkChart('gc-vol','line',lbs,[areaDs(arr.map(r=>r.volume_bdmt),C_OR,0.12,'Volume (M BDMT)')],{scales:{y:{ticks:{callback:fmt2}}}});
+  const srcFull=currentGran==='quarterly'?toQ(totals,['volume_bdmt']):currentGran==='annual'?toA(totals,['volume_bdmt']):totals;
+  const yoyV=arr.map((r,i)=>yoyOf(arr,'volume_bdmt',i,srcFull));
+  mkChart('gc-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
+    yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
+  mkChart('gc-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_BK,'Price (US$/BDMT)')],YINT);
+
+  // Volume by supplier (stacked) — Vietnam / Australia / Others
+  const acc={};
+  applyWin(GACC.filter(r=>r.country!=='Total'&&gaccMatch(r,fib))).forEach(r=>{
+    const pk=periodKey(r.period);if(!pk)return;
+    if(!acc[pk])acc[pk]={};
+    acc[pk][r.country]=(acc[pk][r.country]||0)+(r.volume_bdmt||0);
+  });
+  const periods=Object.keys(acc).sort();
+  const clabels=periods.map(periodLabelDisplay);
+  const CO=['Vietnam','Australia','Others'],CC=[C_OR,C_BK,C_GR];
+  const cds=CO.map((c,i)=>({type:'bar',label:c,stack:'s',borderWidth:0,backgroundColor:CC[i],
+    data:periods.map(p=>+((acc[p]?.[c])||0).toFixed(3))}));
+  mkChart('gc-ctry','bar',clabels,cds,{...LEG,scales:{
+    x:{stacked:true,ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:IS_MOBILE()?6:14}},
+    y:{stacked:true,ticks:{callback:fmt2}}}});
+
+  _renderSeasonality('gc-seas',totals.filter(r=>r.volume_bdmt!=null),'volume_bdmt',fmt2);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  RENDER — PAPER
 // ═══════════════════════════════════════════════════════════════════════════
 function paperField(base){
   const suf=currentProd==='total'?'total':currentProd;
   return`${base}_${suf}`;
 }
-function renderPaper(){
+function renderPaper(){ if(paperTab==='corrugated') renderEmpapel(); else renderPaperIba(); }
+function renderPaperIba(){
   const gradeLbl=currentProd==='total'?'':PAPER_GRADE_LBL[currentProd];
   document.getElementById('pa-prod-sub').textContent=currentProd==='total'
     ?'IBÁ · Total = stacked by grade':`IBÁ · ${gradeLbl}`;
@@ -1297,9 +1455,53 @@ function renderPaper(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  RENDER — EMPAPEL (corrugated paper shipments)
+// ═══════════════════════════════════════════════════════════════════════════
+function renderEmpapel(){
+  const arr=tx(EMPAPEL,['shipments_kton'],['exp_per_day','ltm_shipments','working_days']);
+  const lbs=arr.map(r=>r.period);
+
+  const full=EMPAPEL,li=full.length-1;
+  if(li>=0){
+    const last=full[li];
+    const shipMoM=deltaOf(full,'shipments_kton',li),shipYoY=yoyOf(full,'shipments_kton',li,full);
+    const ytd=full.filter(r=>r.year===last.year).reduce((s,r)=>s+(r.shipments_kton||0),0);
+    const ytdPrev=full.filter(r=>r.year===last.year-1&&r.month<=last.month).reduce((s,r)=>s+(r.shipments_kton||0),0);
+    document.getElementById('em-kpis').innerHTML=
+      kpiCard(`Shipments · ${fmtPeriod(last.period)}`,fmtK(last.shipments_kton),'kt',`MoM ${pctSpan(shipMoM)} · YoY ${pctSpan(shipYoY)}`)+
+      kpiCard('Exp./Working Day',last.exp_per_day!=null?last.exp_per_day.toFixed(2):'—','',`${last.working_days||'—'} working days`)+
+      kpiCard('LTM Shipments',fmtK(last.ltm_shipments),'kt','')+
+      kpiCard(`YTD · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdPrev?(ytd-ytdPrev)/ytdPrev:null)}`);
+  }
+
+  mkChart('em-ship','line',lbs,[areaDs(arr.map(r=>r.shipments_kton),C_OR,0.12,'Shipments (kton)')],YINT);
+  const srcFull=currentGran==='quarterly'?toQ(EMPAPEL,['shipments_kton']):currentGran==='annual'?toA(EMPAPEL,['shipments_kton']):EMPAPEL;
+  const yoyV=arr.map((r,i)=>yoyOf(arr,'shipments_kton',i,srcFull));
+  mkChart('em-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
+    yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
+
+  // Expeditions/working day + 3M moving average (monthly only)
+  let ma3;
+  if(currentGran==='monthly'){
+    const fe=EMPAPEL.map(r=>r.exp_per_day);
+    const maF=EMPAPEL.map((_,i)=>{if(i<2)return null;const sl=fe.slice(i-2,i+1).filter(v=>v!=null);
+      return sl.length===3?sl.reduce((a,b)=>a+b,0)/3:null;});
+    const mp={};EMPAPEL.forEach((r,i)=>mp[r.period]=maF[i]);
+    ma3=lbs.map(p=>mp[p]!=null?+mp[p].toFixed(2):null);
+  }else ma3=lbs.map(()=>null);
+  mkChart('em-expday','line',lbs,[
+    lineDs(arr.map(r=>r.exp_per_day),C_OR,'Exp./Working Day'),
+    {...lineDs(ma3,C_BK,'3M Moving Avg',[5,3]),borderWidth:1.5},
+  ],{...LEG,scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)}}}});
+
+  mkChart('em-ltm','line',lbs,[lineDs(arr.map(r=>r.ltm_shipments),C_BK,'LTM Shipments (kton)')],YINT);
+  _renderSeasonality('em-seas',EMPAPEL.filter(r=>r.shipments_kton!=null),'shipments_kton');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  SEASONALITY (shared)
 // ═══════════════════════════════════════════════════════════════════════════
-function _renderSeasonality(id,allData,field){
+function _renderSeasonality(id,allData,field,yFmt=fmtY){
   const gran=currentGran==='quarterly';
   const byY={};
   if(gran){
@@ -1325,7 +1527,7 @@ function _renderSeasonality(id,allData,field){
   });
   if(byY[latY])ds.push({...lineDs(byY[latY],C_OR,`${latY}`),borderWidth:2.8,pointRadius:3,pointBackgroundColor:C_OR});
   mkChart(id,'line',xLabels,ds,{plugins:{legend:{display:true,position:'right',
-    labels:{font:{size:10},boxWidth:10,padding:6}}},scales:{y:{ticks:{callback:fmtY}}}});
+    labels:{font:{size:10},boxWidth:10,padding:6}}},scales:{y:{ticks:{callback:yFmt}}}});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1407,10 +1609,23 @@ function render(){
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONTROLS
 // ═══════════════════════════════════════════════════════════════════════════
+function currentProdDefs(){
+  // Product filter set depends on section AND the active inner-tab.
+  if(currentSub==='pulp'){
+    if(pulpTab==='secex') return null;          // hidden — port-based
+    if(pulpTab==='gacc')  return PROD_DEFS.gacc; // Total / Hardwood / Softwood
+    return PROD_DEFS.pulp;                        // IBÁ — fibre
+  }
+  if(currentSub==='paper'){
+    if(paperTab==='corrugated') return null;     // hidden — single series
+    return PROD_DEFS.paper;                        // IBÁ — grade
+  }
+  return null;                                     // companies — hidden
+}
 function renderProdButtons(){
   const wrap=document.getElementById('prod-btns');
-  const defs=PROD_DEFS[currentSub];
-  const showProd = !!defs && !(currentSub==='pulp'&&pulpTab==='secex');
+  const defs=currentProdDefs();
+  const showProd = !!defs;
   document.getElementById('prod-label').style.display=showProd?'':'none';
   document.getElementById('prod-sep').style.display=showProd?'':'none';
   wrap.style.display=showProd?'':'none';
@@ -1447,18 +1662,20 @@ function setSub(s){
   render();
 }
 function setPulpTab(t){
-  if(t==='gacc')return;
   pulpTab=t;
   document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===t));
   document.getElementById('pl-tab-secex').classList.toggle('active',t==='secex');
   document.getElementById('pl-tab-iba').classList.toggle('active',t==='iba');
+  document.getElementById('pl-tab-gacc').classList.toggle('active',t==='gacc');
   renderProdButtons();
   renderPulp();
 }
 function setPaperTab(t){
-  if(t==='corrugated')return;
   paperTab=t;
   document.querySelectorAll('[data-patab]').forEach(b=>b.classList.toggle('active',b.dataset.patab===t));
+  document.getElementById('pa-tab-iba').classList.toggle('active',t==='iba');
+  document.getElementById('pa-tab-corrugated').classList.toggle('active',t==='corrugated');
+  renderProdButtons();
   renderPaper();
 }
 function setProd(p){
