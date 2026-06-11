@@ -1147,7 +1147,12 @@ async function loadCommodities(){
     if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
     // Mostra TODAS as commodities: as conhecidas primeiro (ordem fixa), depois as
     // novas (ex.: novos indicadores da watchlist Platts) em ordem alfabética.
-    const ORDER=['IRON_ORE','HRC_CHINA','REBAR_TURKEY','MET_COAL','COPPER','GOLD'];
+    const ORDER=['IRON_ORE','IOPRM00','IODFE00','IOMGD00',
+                 'IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00',
+                 'IOBFC04','IOFBC00','IOFAC00',
+                 'TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01',
+                 'HRC_CHINA','REBAR_TURKEY','MET_COAL','HCCAU00',
+                 'COPPER','GOLD'];
     const rk=c=>{const i=ORDER.indexOf(c.code);return i===-1?999:i;};
     const ranked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
     list.innerHTML = ranked.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
