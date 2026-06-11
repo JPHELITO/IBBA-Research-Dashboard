@@ -72,7 +72,7 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
   padding:0 12px 10px;
   display:grid;gap:10px;
   grid-template-columns:repeat(12,1fr);
-  grid-template-rows:minmax(0,170px) minmax(0,190px) minmax(0,1fr);
+  grid-template-rows:minmax(0,180px) minmax(0,190px) minmax(0,1fr);
   grid-template-areas:
     "secrow secrow secrow secrow secrow pulse pulse pulse team team team team"
     "news news news news news news news news comm comm comm comm"
@@ -142,8 +142,8 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
-.team-list{flex:1;min-height:0;overflow:hidden;padding:2px 0;}
-.team-row{display:flex;align-items:center;gap:10px;padding:4px 16px;
+.team-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:2px 0;}
+.team-row{flex:1;min-height:0;display:flex;align-items:center;gap:10px;padding:0 16px;
   border-bottom:1px solid var(--border);}
 .team-row:last-child{border-bottom:none;}
 .team-avatar{width:28px;height:28px;border-radius:50%;background:var(--orange);
@@ -171,29 +171,29 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
 
-.pulse-body{flex:1;min-height:0;overflow:auto;padding:16px 18px;display:grid;
-  grid-template-columns:1fr;gap:14px;justify-items:center;align-content:center;}
+.pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 14px;display:grid;
+  grid-template-columns:1fr;gap:6px;justify-items:center;align-content:center;}
 .pulse-body > div{width:100%;}
-.gauge{width:140px;height:90px;position:relative;}
+.gauge{width:120px;height:68px;position:relative;}
 .gauge svg{width:100%;height:100%;}
-.gauge-val{position:absolute;bottom:14px;left:0;right:0;text-align:center;
-  font-size:28px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;bottom:-2px;left:0;right:0;text-align:center;
-  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.gauge-val{position:absolute;bottom:3px;left:0;right:0;text-align:center;
+  font-size:20px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;bottom:-12px;left:0;right:0;text-align:center;
+  font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
 
-.pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
 .pulse-stat{text-align:center;}
-.pulse-stat-num{font-size:22px;font-weight:700;letter-spacing:-.02em;}
+.pulse-stat-num{font-size:16px;font-weight:700;letter-spacing:-.02em;}
 .pulse-stat-num.pos{color:var(--green);}
 .pulse-stat-num.neg{color:var(--red);}
 .pulse-stat-num.neu{color:var(--gray-mid);}
-.pulse-stat-lbl{font-size:9.5px;font-weight:600;color:var(--gray-mid);
-  letter-spacing:.06em;text-transform:uppercase;margin-top:3px;}
-.pulse-bar{height:6px;border-radius:3px;display:flex;overflow:hidden;
-  margin-top:14px;grid-column:1/-1;background:var(--border);}
+.pulse-stat-lbl{font-size:8px;font-weight:600;color:var(--gray-mid);
+  letter-spacing:.04em;text-transform:uppercase;margin-top:1px;}
+.pulse-bar{height:5px;border-radius:3px;display:flex;overflow:hidden;
+  margin-top:6px;grid-column:1/-1;background:var(--border);}
 .pulse-bar-seg{transition:flex .3s;}
 .pulse-bar-seg.pos{background:var(--green);}
 .pulse-bar-seg.neg{background:var(--red);}
@@ -252,22 +252,23 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-filter-chip.neg.active{background:#c0392b;border-color:#c0392b;}
 
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
-.heatmap-grid{flex:1;min-height:0;overflow:auto;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start;}
-.hm-card{padding:9px 11px;border-radius:6px;text-decoration:none;color:#fff;
-  display:flex;flex-direction:column;gap:3px;transition:transform .15s;}
+.heatmap-grid{flex:1;min-height:0;overflow:hidden;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(0,1fr);gap:5px;}
+.hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:#fff;
+  display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;transition:transform .15s;}
 .hm-card:hover{transform:translateY(-1px);}
 .hm-card.up-strong{background:#16a34a;}
 .hm-card.up{background:#86c587;color:#1a3d23;}
 .hm-card.flat{background:#d3d3d0;color:#444;}
 .hm-card.down{background:#f0a3a3;color:#5e1a1a;}
 .hm-card.down-strong{background:#c0392b;}
-.hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
-.hm-ticker{font-size:11.5px;font-weight:700;letter-spacing:.02em;}
-.hm-change{font-size:11.5px;font-weight:700;letter-spacing:-.01em;}
-.hm-name{font-size:8.5px;font-weight:500;opacity:.82;
+.hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;}
+.hm-ticker{font-size:10px;font-weight:700;letter-spacing:.02em;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hm-price{font-size:12px;font-weight:600;margin-top:1px;letter-spacing:-.01em;opacity:.92;}
-.hm-spark{display:block;width:100%;height:26px;margin-top:1px;}
+.hm-change{font-size:9px;font-weight:700;letter-spacing:-.01em;flex:none;}
+.hm-name{font-size:7.5px;font-weight:500;opacity:.82;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;}
+.hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
 .hm-range{display:flex;gap:3px;}
@@ -359,6 +360,8 @@ img.team-avatar{object-fit:cover;background:none;}
     "secrow" "team" "pulse" "news" "heat" "comm";}
   .area-secrow{grid-template-columns:1fr 1fr 1fr;}
   .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
+  .heatmap-grid{grid-auto-rows:auto;}
+  .team-row{flex:none;padding:8px 16px;}
   .area-comm .kv-list{overflow:visible;column-count:1;}
   .news-feed{grid-template-columns:1fr 1fr;}
   .hero{display:block;}
