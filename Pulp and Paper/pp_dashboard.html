@@ -499,15 +499,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <strong>M BDMT</strong> (million bone-dry metric tons). Vietnam is the dominant supplier.
     </div>
     <div class="kpi-row" id="gc-kpis"></div>
-    <div class="origin-controls" style="margin:2px 0 10px;">
-      <div class="country-selector">
-        <button class="cs-toggle" id="gc-cs-toggle" onclick="toggleGaccPanel()">Suppliers &#9660;</button>
-        <div class="cs-panel" id="gc-cs-panel">
-          <div class="cs-panel-header">Suppliers <span class="cs-reset" onclick="resetGaccCountries()">Reset</span></div>
-          <div class="cs-list" id="gc-cs-list"></div>
-        </div>
-      </div>
-    </div>
     <div class="charts-row c2">
       <div class="chart-card">
         <div class="chart-title">China Woodchip Import Volume (M BDMT)</div>
@@ -526,9 +517,18 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         <div class="chart-sub">GACC · revenue ÷ volume</div>
         <div class="chart-wrap h220"><canvas id="gc-price"></canvas></div>
       </div>
-      <div class="chart-card">
+      <div class="chart-card origin-card">
         <div class="chart-title">Import Volume by Supplier (M BDMT)</div>
-        <div class="chart-sub">GACC · Vietnam · Australia · Others (stacked)</div>
+        <div class="origin-controls">
+          <div class="country-selector">
+            <button class="cs-toggle" id="gc-cs-toggle" onclick="toggleGaccPanel()">Suppliers &#9660;</button>
+            <div class="cs-panel" id="gc-cs-panel">
+              <div class="cs-panel-header">Suppliers <span class="cs-reset" onclick="resetGaccCountries()">Reset</span></div>
+              <div class="cs-list" id="gc-cs-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-sub" id="gc-ctry-sub">GACC · Vietnam · Australia · Others (stacked)</div>
         <div class="chart-wrap h220"><canvas id="gc-ctry"></canvas></div>
       </div>
     </div>
@@ -1215,10 +1215,9 @@ function gaccFibre(){return (currentProd==='hw'||currentProd==='sw')?currentProd
 function gaccMatch(r,fib){return fib==='total'?true:(fib==='hw'?r.fibre==='HW':r.fibre==='SW');}
 function gaccSelCountries(){return (gaccCountryState.countries&&gaccCountryState.countries.length)?gaccCountryState.countries:GACC_COUNTRIES;}
 function gaccTotals(fib){
-  const sel=gaccSelCountries();
   const byP={};
   GACC.forEach(r=>{
-    if(r.country==='Total'||!sel.includes(r.country)||!gaccMatch(r,fib))return;
+    if(r.country!=='Total'||!gaccMatch(r,fib))return;
     if(!byP[r.period])byP[r.period]={period:r.period,year:r.year,month:r.month,volume_bdmt:0,revenue_usd_mn:0};
     byP[r.period].volume_bdmt+=r.volume_bdmt||0;
     byP[r.period].revenue_usd_mn+=r.revenue_usd_mn||0;
@@ -1231,10 +1230,8 @@ function renderGacc(){
   const arr=tx(totals,['volume_bdmt','revenue_usd_mn']);
   arr.forEach(r=>{r.price=(r.revenue_usd_mn!=null&&r.volume_bdmt)?r.revenue_usd_mn/r.volume_bdmt:null;});
   const lbs=arr.map(r=>r.period);
-  const _selC=gaccSelCountries();
-  const _supLbl=_selC.length===GACC_COUNTRIES.length?'all suppliers':_selC.join(' + ');
   document.getElementById('gc-vol-sub').textContent=
-    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · ${_supLbl}`;
+    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · all suppliers`;
 
   // KPIs
   const full=totals,li=full.length-1;
@@ -1263,6 +1260,8 @@ function renderGacc(){
 
   // Volume by supplier (stacked) — Vietnam / Australia / Others
   const _selCtry=gaccSelCountries();
+  const _ctrySubEl=document.getElementById('gc-ctry-sub');
+  if(_ctrySubEl) _ctrySubEl.textContent=`GACC · ${_selCtry.join(' · ')} (stacked)`;
   const acc={};
   applyWin(GACC.filter(r=>r.country!=='Total'&&_selCtry.includes(r.country)&&gaccMatch(r,fib))).forEach(r=>{
     const pk=periodKey(r.period);if(!pk)return;
