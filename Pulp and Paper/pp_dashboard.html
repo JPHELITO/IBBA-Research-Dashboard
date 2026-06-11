@@ -499,6 +499,15 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
       <strong>M BDMT</strong> (million bone-dry metric tons). Vietnam is the dominant supplier.
     </div>
     <div class="kpi-row" id="gc-kpis"></div>
+    <div class="origin-controls" style="margin:2px 0 10px;">
+      <div class="country-selector">
+        <button class="cs-toggle" id="gc-cs-toggle" onclick="toggleGaccPanel()">Suppliers &#9660;</button>
+        <div class="cs-panel" id="gc-cs-panel">
+          <div class="cs-panel-header">Suppliers <span class="cs-reset" onclick="resetGaccCountries()">Reset</span></div>
+          <div class="cs-list" id="gc-cs-list"></div>
+        </div>
+      </div>
+    </div>
     <div class="charts-row c2">
       <div class="chart-card">
         <div class="chart-title">China Woodchip Import Volume (M BDMT)</div>
@@ -596,6 +605,18 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         <div class="chart-wrap h260"><canvas id="pa-seasprod"></canvas></div>
       </div>
     </div>
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Exports (kton/month)</div>
+        <div class="chart-sub">IBÁ · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="pa-seasexp"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Seasonality — Imports (kton/month)</div>
+        <div class="chart-sub">IBÁ · each line = 1 year · orange = current · black = prior</div>
+        <div class="chart-wrap h260"><canvas id="pa-seasimp"></canvas></div>
+      </div>
+    </div>
   </div>
 
   <!-- ── CORRUGATED TAB (Empapel) ── -->
@@ -677,6 +698,8 @@ let customRange = {from:null, to:null};
 let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[];
 let CAL={};                       // period -> working_days
 let portState={metric:'volume_ktons', ports:null};
+const GACC_COUNTRIES=['Vietnam','Australia','Others'];
+let gaccCountryState={countries:null};   // null = todos os fornecedores
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -907,7 +930,11 @@ async function loadDB(){
     SECEX=toObj(db.exec(`SELECT period,year,month,port,volume_ktons,revenue_usd_mn FROM secex_pulp_port ORDER BY period`)[0]);
     COMP =toObj(db.exec(`SELECT * FROM company_q ORDER BY year,q`)[0]);
     try{EMPAPEL=toObj(db.exec(`SELECT * FROM empapel ORDER BY period`)[0]);}catch(e){}
-    try{GACC=toObj(db.exec(`SELECT * FROM gacc_woodchips ORDER BY period`)[0]);}catch(e){}
+    try{GACC=toObj(db.exec(`SELECT * FROM gacc_woodchips ORDER BY period`)[0]);
+      // GACC tem 2008-2014 com volume 0 (sem dado real) → corta o vão vazio inicial.
+      const _gFirst=GACC.filter(r=>r.volume_bdmt>0).map(r=>r.period).sort()[0];
+      if(_gFirst) GACC=GACC.filter(r=>r.period>=_gFirst);
+    }catch(e){}
     const calRows=toObj(db.exec(`SELECT period,working_days FROM calendar`)[0]);
     calRows.forEach(r=>{CAL[r.period]=r.working_days;});
 
@@ -1186,10 +1213,12 @@ function renderPulpIba(){
 // ═══════════════════════════════════════════════════════════════════════════
 function gaccFibre(){return (currentProd==='hw'||currentProd==='sw')?currentProd:'total';}
 function gaccMatch(r,fib){return fib==='total'?true:(fib==='hw'?r.fibre==='HW':r.fibre==='SW');}
+function gaccSelCountries(){return (gaccCountryState.countries&&gaccCountryState.countries.length)?gaccCountryState.countries:GACC_COUNTRIES;}
 function gaccTotals(fib){
+  const sel=gaccSelCountries();
   const byP={};
   GACC.forEach(r=>{
-    if(r.country!=='Total'||!gaccMatch(r,fib))return;
+    if(r.country==='Total'||!sel.includes(r.country)||!gaccMatch(r,fib))return;
     if(!byP[r.period])byP[r.period]={period:r.period,year:r.year,month:r.month,volume_bdmt:0,revenue_usd_mn:0};
     byP[r.period].volume_bdmt+=r.volume_bdmt||0;
     byP[r.period].revenue_usd_mn+=r.revenue_usd_mn||0;
@@ -1202,8 +1231,10 @@ function renderGacc(){
   const arr=tx(totals,['volume_bdmt','revenue_usd_mn']);
   arr.forEach(r=>{r.price=(r.revenue_usd_mn!=null&&r.volume_bdmt)?r.revenue_usd_mn/r.volume_bdmt:null;});
   const lbs=arr.map(r=>r.period);
+  const _selC=gaccSelCountries();
+  const _supLbl=_selC.length===GACC_COUNTRIES.length?'all suppliers':_selC.join(' + ');
   document.getElementById('gc-vol-sub').textContent=
-    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · all suppliers`;
+    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · ${_supLbl}`;
 
   // KPIs
   const full=totals,li=full.length-1;
@@ -1231,23 +1262,52 @@ function renderGacc(){
   mkChart('gc-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_BK,'Price (US$/BDMT)')],YINT);
 
   // Volume by supplier (stacked) — Vietnam / Australia / Others
+  const _selCtry=gaccSelCountries();
   const acc={};
-  applyWin(GACC.filter(r=>r.country!=='Total'&&gaccMatch(r,fib))).forEach(r=>{
+  applyWin(GACC.filter(r=>r.country!=='Total'&&_selCtry.includes(r.country)&&gaccMatch(r,fib))).forEach(r=>{
     const pk=periodKey(r.period);if(!pk)return;
     if(!acc[pk])acc[pk]={};
     acc[pk][r.country]=(acc[pk][r.country]||0)+(r.volume_bdmt||0);
   });
   const periods=Object.keys(acc).sort();
   const clabels=periods.map(periodLabelDisplay);
-  const CO=['Vietnam','Australia','Others'],CC=[C_OR,C_BK,C_GR];
-  const cds=CO.map((c,i)=>({type:'bar',label:c,stack:'s',borderWidth:0,backgroundColor:CC[i],
-    data:periods.map(p=>+((acc[p]?.[c])||0).toFixed(3))}));
+  const _coAll=[['Vietnam',C_OR],['Australia',C_BK],['Others',C_GR]];
+  const cds=_coAll.filter(x=>_selCtry.includes(x[0])).map(x=>({type:'bar',label:x[0],stack:'s',borderWidth:0,backgroundColor:x[1],
+    data:periods.map(p=>+((acc[p]?.[x[0]])||0).toFixed(3))}));
   mkChart('gc-ctry','bar',clabels,cds,{...LEG,scales:{
     x:{stacked:true,ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:IS_MOBILE()?6:14}},
     y:{stacked:true,ticks:{callback:fmt2}}}});
 
   _renderSeasonality('gc-seas',totals.filter(r=>r.volume_bdmt!=null),'volume_bdmt',fmt2);
 }
+
+// Filtro de fornecedor (país) do GACC — multi-select estilo SECEX (Vietnam/Australia/Others)
+function buildGaccPanel(){
+  const list=document.getElementById('gc-cs-list');if(!list)return;
+  const sel=gaccSelCountries();
+  list.innerHTML='';
+  GACC_COUNTRIES.forEach(c=>{
+    const checked=sel.includes(c),id='gc-c-'+c.replace(/\s/g,'_');
+    const item=document.createElement('div');item.className='cs-item';
+    item.innerHTML=`<input type="checkbox" id="${id}" ${checked?'checked':''}><label for="${id}">${c}</label>`;
+    item.querySelector('input').onchange=e=>{
+      let cur=gaccCountryState.countries?[...gaccCountryState.countries]:[...GACC_COUNTRIES];
+      if(e.target.checked){if(!cur.includes(c))cur.push(c);}else cur=cur.filter(x=>x!==c);
+      gaccCountryState.countries=cur.length?cur:null;
+      renderGacc();
+    };
+    list.appendChild(item);
+  });
+}
+function toggleGaccPanel(){
+  const panel=document.getElementById('gc-cs-panel'),toggle=document.getElementById('gc-cs-toggle');
+  const isOpen=panel.classList.contains('open');
+  document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+  document.body.classList.remove('cs-open');
+  if(!isOpen){buildGaccPanel();panel.classList.add('open');toggle.classList.add('open');document.body.classList.add('cs-open');}
+}
+function resetGaccCountries(){gaccCountryState.countries=null;buildGaccPanel();renderGacc();}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  RENDER — PAPER
@@ -1273,7 +1333,7 @@ function renderPaperIba(){
     document.getElementById('pa-kpis').innerHTML=
       kpiCard(`Production · ${fmtPeriod(last.period)}`,fmtK(last[pf]),'kt',`MoM ${pctSpan(prodMoM)} · YoY ${pctSpan(prodYoY)}`)+
       kpiCard('Domestic Sales',fmtK(last[paperField('dom')]),'kt','')+
-      kpiCard('Apparent Cons.',fmtK(last[cf]),'kt','')+
+      (currentProd==='total'?kpiCard('Apparent Cons.',fmtK(last[cf]),'kt',''):'')+
       kpiCard(`YTD Production · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdPrev?(ytd-ytdPrev)/ytdPrev:null)}`);
   }
 
@@ -1335,6 +1395,8 @@ function renderPaperIba(){
   _renderSeasonality('pa-seasprod',PAPER.filter(r=>r[seasField]!=null),seasField);
   const seasDom=currentProd==='total'?'dom_total':`dom_${currentProd}`;
   _renderSeasonality('pa-seasdom',PAPER.filter(r=>r[seasDom]!=null),seasDom);
+  _renderSeasonality('pa-seasexp',PAPER.filter(r=>r[ef]!=null),ef);
+  _renderSeasonality('pa-seasimp',PAPER.filter(r=>r[imf]!=null),imf);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1353,8 +1415,7 @@ function renderEmpapel(){
     document.getElementById('em-kpis').innerHTML=
       kpiCard(`Shipments · ${fmtPeriod(last.period)}`,fmtK(last.shipments_kton),'kt',`MoM ${pctSpan(shipMoM)} · YoY ${pctSpan(shipYoY)}`)+
       kpiCard('Exp./Working Day',last.exp_per_day!=null?last.exp_per_day.toFixed(2):'—','',`${last.working_days||'—'} working days`)+
-      kpiCard('LTM Shipments',fmtK(last.ltm_shipments),'kt','')+
-      kpiCard(`YTD · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdPrev?(ytd-ytdPrev)/ytdPrev:null)}`);
+      kpiCard('LTM Shipments',fmtK(last.ltm_shipments),'kt','');
   }
 
   mkChart('em-ship','line',lbs,[areaDs(arr.map(r=>r.shipments_kton),C_OR,0.12,'Shipments (kton)')],YINT);
