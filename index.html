@@ -72,7 +72,7 @@ html,body{
   grid-template-columns:repeat(12,1fr);
   grid-template-areas:
     "secrow secrow secrow secrow secrow secrow secrow secrow secrow team team team"
-    "pulse pulse pulse pulse comm comm comm comm macro macro macro macro"
+    "pulse pulse pulse pulse comm comm comm comm comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
 .area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
@@ -81,7 +81,6 @@ html,body{
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
 .area-comm  {grid-area:comm;}
-.area-macro {grid-area:macro;}
 
 /* ── CARD BASE ──────────────────────────────────────────────────────── */
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
@@ -307,6 +306,9 @@ img.team-avatar{object-fit:cover;background:none;}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
 .kv-list{padding:4px 0;}
+/* Commodities ocupa a faixa larga → lista em 2 colunas (cabe mais indicador) */
+.area-comm .kv-list{column-count:2;column-gap:28px;}
+.area-comm .kv-row{break-inside:avoid;}
 .kv-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;
   padding:9px 18px;border-bottom:1px solid var(--border);align-items:baseline;}
 .kv-row:last-child{border-bottom:none;}
@@ -327,9 +329,10 @@ img.team-avatar{object-fit:cover;background:none;}
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
 @media (max-width:1024px){
   .page{grid-template-columns:1fr;grid-template-areas:
-    "secrow" "team" "pulse" "news" "heat" "comm" "macro";}
+    "secrow" "team" "pulse" "news" "heat" "comm";}
   .area-secrow{grid-template-columns:1fr 1fr 1fr;}
   .news-feed{grid-template-columns:1fr 1fr;}
+  .area-comm .kv-list{column-count:1;}
 }
 @media (max-width:768px){
   .header{padding:0 16px;height:54px;gap:10px;}
@@ -514,17 +517,6 @@ img.team-avatar{object-fit:cover;background:none;}
     </div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
-    </div>
-  </div>
-
-  <!-- MACRO INDICATORS -->
-  <div class="sec area-macro">
-    <div class="sec-head">
-      <span class="sec-title">Macro Indicators</span>
-      <span class="sec-meta" id="macro-meta">—</span>
-    </div>
-    <div class="kv-list" id="macro-list">
-      <div class="kv-loading">Loading indicators…</div>
     </div>
   </div>
 
@@ -1154,28 +1146,14 @@ async function loadCommodities(){
     const rows = await r.json();
     const list = document.getElementById('comm-list');
     if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
-    // Ordem fixa: Iron Ore 61% · HRC China · Rebar Turkey · Asian Met Coal · Copper · Gold
+    // Mostra TODAS as commodities: as conhecidas primeiro (ordem fixa), depois as
+    // novas (ex.: novos indicadores da watchlist Platts) em ordem alfabética.
     const ORDER=['IRON_ORE','HRC_CHINA','REBAR_TURKEY','MET_COAL','COPPER','GOLD'];
-    const ranked=rows.filter(c=>ORDER.includes(c.code))
-                     .sort((a,b)=>ORDER.indexOf(a.code)-ORDER.indexOf(b.code));
+    const rk=c=>{const i=ORDER.indexOf(c.code);return i===-1?999:i;};
+    const ranked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
     list.innerHTML = ranked.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
     _updateMeta('comm-meta', ranked[0]?.updated_at);
   } catch(e){console.warn('commodities error:', e);}
-}
-
-async function loadMacro(){
-  const {data:{session}} = await sbAuth.auth.getSession();
-  if(!session) return;
-  try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/macro_indicators?select=*`,
-      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
-    if(!r.ok) throw new Error('macro');
-    const rows = await r.json();
-    const list = document.getElementById('macro-list');
-    if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
-    list.innerHTML = rows.map(m => _kvRow(m.name, m.value, m.unit, m.change_pct)).join('');
-    _updateMeta('macro-meta', rows[0]?.updated_at);
-  } catch(e){console.warn('macro error:', e);}
 }
 
 function _updateMeta(elId, iso){
@@ -1194,14 +1172,12 @@ loadPulse();
 loadQuotes();
 loadQuotesDaily();
 loadCommodities();
-loadMacro();
 
 setInterval(loadNews, NEWS_INTERVAL);
 setInterval(loadPulse, 5 * 60 * 1000);
 setInterval(loadQuotes, 60 * 1000);
 setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 setInterval(loadCommodities, 5 * 60 * 1000);
-setInterval(loadMacro, 5 * 60 * 1000);
 </script>
 
 <!-- STAGING BADGE -->
