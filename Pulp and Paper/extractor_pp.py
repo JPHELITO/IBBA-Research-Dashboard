@@ -194,6 +194,16 @@ def extract_iba(path):
         rec["exprev_asia"]=num(r[PAPER["rev_as"]]);    rec["exprev_china"]=num(r[PAPER["rev_cn"]])
         paper.append(rec)
 
+    # ── Tissue consolidado em "Others (+Tissue)" ────────────────────────────────
+    # O IBÁ deixou de reportar Tissue em separado (passou a compor "Others"). Para
+    # manter a série consistente, soma-se tissue+other em TODOS os períodos e
+    # remove-se a coluna tissue do output (o frontend rotula "Others (+Tissue)").
+    for rec in paper:
+        for m in ("prod","dom","exp","imp"):
+            ov=rec.get(f"{m}_other"); tv=rec.get(f"{m}_tissue")
+            rec[f"{m}_other"]=None if (ov is None and tv is None) else (ov or 0)+(tv or 0)
+            rec.pop(f"{m}_tissue", None)
+
     # ---- PULP (de-cumulate extensive metrics) ----
     FIB=["total","hw","sw","hy"]
     raw={}   # metric -> {(y,m): value}
@@ -370,7 +380,7 @@ def write_db(out_path, paper, pulp, company, secex, cal, empapel, gacc):
             cur.executemany(f"INSERT INTO {name} VALUES ({ph})",
                             [[r.get(k) for k in keys] for r in rows])
 
-    GR=["total","packaging","pw","newsprint","tissue","cardboard","other"]
+    GR=["total","packaging","pw","newsprint","cardboard","other"]   # tissue consolidado em "other"
     paper_cols=(["period TEXT","year INT","month INT"]
         +[f"{p}_{g} REAL" for p in ("prod","dom","exp","imp") for g in GR]
         +["app_cons REAL","exprev_total REAL","exprev_latam REAL","exprev_europe REAL",
