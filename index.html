@@ -305,19 +305,35 @@ img.team-avatar{object-fit:cover;background:none;}
 .mc-chip:hover{border-color:var(--gray-mid);color:var(--black);}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
-.kv-list{padding:4px 0;}
+.kv-list{padding:6px 0;}
 /* Commodities ocupa a faixa larga → lista em 2 colunas (cabe mais indicador) */
-.area-comm .kv-list{column-count:2;column-gap:28px;}
+.area-comm .kv-list{column-count:2;column-gap:22px;}
 .area-comm .kv-row{break-inside:avoid;}
-.kv-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;
-  padding:9px 18px;border-bottom:1px solid var(--border);align-items:baseline;}
+.kv-row{display:flex;flex-direction:column;gap:5px;
+  padding:10px 18px;border-bottom:1px solid var(--border);}
 .kv-row:last-child{border-bottom:none;}
-.kv-name{font-size:11px;color:var(--gray-dark);font-weight:500;}
-.kv-value{font-size:12px;font-weight:600;color:var(--black);letter-spacing:-.01em;}
-.kv-change{font-size:10.5px;font-weight:600;text-align:right;min-width:58px;}
-.kv-change.up{color:var(--green);}
-.kv-change.down{color:var(--red);}
-.kv-change.flat{color:var(--gray-mid);}
+.kv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.kv-name{font-size:11.5px;color:var(--gray-dark);font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kv-badge{flex:none;font-size:8px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;padding:2px 6px;border-radius:4px;line-height:1.1;
+  display:inline-flex;align-items:center;gap:4px;}
+.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:var(--gray-mid);}
+.kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
+.kv-badge.live::before{content:'';width:5px;height:5px;border-radius:50%;
+  background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
+.kv-main{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.kv-price{display:inline-flex;align-items:baseline;gap:4px;min-width:0;}
+.kv-value{font-size:14px;font-weight:700;color:var(--black);letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;}
+.kv-unit{font-size:9px;color:var(--gray-mid);font-weight:500;}
+.kv-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;}
+.kv-change{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:1px 6px;border-radius:4px;line-height:1.3;}
+.kv-change.up{color:var(--green);background:rgba(22,163,74,.10);}
+.kv-change.down{color:var(--red);background:rgba(192,57,43,.10);}
+.kv-change.flat{color:var(--gray-mid);background:rgba(140,140,140,.10);}
+.kv-date{font-size:9px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;}
 .kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
 
 /* ── FOOTER ──────────────────────────────────────────────────────────── */
@@ -1118,20 +1134,57 @@ function _attachHover(host, lines, dom){
 }
 
 // ─── COMMODITIES + MACRO ──────────────────────────────────────────────
-function _kvRow(name, value, unit, pct){
+// Frequência por commodity (badge Daily/Weekly/Live). Copper/Gold = ao vivo (Yahoo);
+// Platts = Daily por padrão. Preencher FREQ_WEEKLY com os símbolos semanais que o
+// analista indicar. Se a grade Platts passar a expor frequência (c.freq), ela vence o mapa.
+const FREQ_LIVE   = new Set(['COPPER','GOLD']);
+const FREQ_WEEKLY = new Set(['IOBFC04']);   // Pellet Premium é o único semanal
+function _freqOf(c){
+  if(c.freq) return c.freq;
+  if(FREQ_LIVE.has(c.code))   return 'Live';
+  if(FREQ_WEEKLY.has(c.code)) return 'Weekly';
+  return 'Daily';
+}
+
+// Formata a data do assessment de forma amigável: hoje→"today", ontem→"yesterday",
+// até 6 dias→"5d ago", mais antigo→"06 Jun". É o que distingue Daily de Weekly de relance.
+function _fmtAssessed(iso, freq){
+  if(freq === 'Live' || !iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.round((today - d) / 86400000);
+  if(days <= 0)  return 'today';
+  if(days === 1) return 'yesterday';
+  if(days < 7)   return days + 'd ago';
+  return d.toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
+}
+
+function _kvRow(c){
+  const value = c.price, unit = c.unit || '', pct = c.change_pct;
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString('en-US', {maximumFractionDigits:2}) : value.toFixed(2))
     : '—';
-  const valDisplay = unit ? `${valStr} ${unit}` : valStr;
   let pctCls = 'flat', pctStr = '—';
   if(pct != null){
     pctCls = pct > 0.05 ? 'up' : pct < -0.05 ? 'down' : 'flat';
     pctStr = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
   }
+  const freq = _freqOf(c);
+  const fcls = freq === 'Weekly' ? 'wk' : freq === 'Live' ? 'live' : 'daily';
+  const dateStr = _fmtAssessed(c.assessed_at, freq);
   return `<div class="kv-row">
-    <span class="kv-name">${name}</span>
-    <span class="kv-value">${valDisplay}</span>
-    <span class="kv-change ${pctCls}">${pctStr}</span>
+    <div class="kv-head">
+      <span class="kv-name" title="${c.name||''}">${c.name||''}</span>
+      <span class="kv-badge ${fcls}">${freq}</span>
+    </div>
+    <div class="kv-main">
+      <span class="kv-price"><span class="kv-value">${valStr}</span>${unit?` <span class="kv-unit">${unit}</span>`:''}</span>
+      <span class="kv-meta">
+        <span class="kv-change ${pctCls}">${pctStr}</span>
+        ${dateStr?`<span class="kv-date">${dateStr}</span>`:''}
+      </span>
+    </div>
   </div>`;
 }
 
@@ -1155,7 +1208,7 @@ async function loadCommodities(){
                  'COPPER','GOLD'];
     const rk=c=>{const i=ORDER.indexOf(c.code);return i===-1?999:i;};
     const ranked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
-    list.innerHTML = ranked.map(c => _kvRow(c.name, c.price, c.unit, c.change_pct)).join('');
+    list.innerHTML = ranked.map(c => _kvRow(c)).join('');
     _updateMeta('comm-meta', ranked[0]?.updated_at);
   } catch(e){console.warn('commodities error:', e);}
 }
