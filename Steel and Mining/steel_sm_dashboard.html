@@ -500,7 +500,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <!-- Mobile: back to section picker -->
   <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Sections</button>
   <!-- Latest update -->
-  <div class="top-latest">Last: <strong id="latest-label">—</strong></div>
   <!-- Menu (☰): back to S&M section picker -->
   <a href="./" class="top-icon-btn top-menu" title="Topics — Steel">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -530,7 +529,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
   <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
-  <button class="snav-btn soon"   data-sub="global"   onclick="">Global</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -623,13 +621,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
-      <div class="mob-sec-item disabled">
-        <div class="mob-sec-info">
-          <div class="mob-sec-title">Global</div>
-          <div class="mob-sec-desc">International market comparisons</div>
-        </div>
-        <span class="mob-sec-badge">coming soon</span>
-      </div>
     </div>
   </div>
 </div>
@@ -637,7 +628,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <!-- ══════════════════════════════════════════════════════════════
      EXPORTAÇÃO
 ════════════════════════════════════════════════════════════════ -->
-<div id="sec-exports" class="section active">
+<div id="sec-exports" class="section">
   <!-- Volume + YoY -->
   <div class="charts-row c2">
     <div class="chart-card">
@@ -850,7 +841,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <!-- ══════════════════════════════════════════════════════════════
      PRICES
 ════════════════════════════════════════════════════════════════ -->
-<div id="sec-prices" class="section">
+<div id="sec-prices" class="section active">
   <!-- Main chart: import vs domestic reference -->
   <div class="charts-row c1">
     <div class="chart-card">
@@ -1230,17 +1221,16 @@ async function loadDB(){
 
     db.close();
 
-    const lp=PROD.filter(r=>r.crude_steel!=null).slice(-1)[0]?.period||'—';
-    document.getElementById('latest-label').textContent=lp;
     el.style.display='none';
-    // Honour ?s= URL param (coming from section picker page)
+    // Seção inicial: ?s= (legado) OU hash (#prices vindo da home) OU 'prices'.
+    const _valid=['exports','imports','domestic','prices'];
     const urlSec=new URLSearchParams(window.location.search).get('s');
-    if(urlSec&&['exports','imports','domestic','prices'].includes(urlSec)){
-      setSub(urlSec);
-    } else if(window.innerWidth<=768){
+    const hashSec=(location.hash||'').replace('#','');
+    const initSub=_valid.includes(urlSec)?urlSec:(_valid.includes(hashSec)?hashSec:'prices');
+    if(window.innerWidth<=768){
       showMobPicker();
     } else {
-      render();
+      setSub(initSub);   // ativa a seção certa + renderiza (corrige gráficos em branco no load)
     }
   }catch(e){
     el.innerHTML=`<div style="text-align:center;padding:40px">

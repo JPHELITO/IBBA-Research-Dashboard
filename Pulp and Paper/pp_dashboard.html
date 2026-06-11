@@ -351,7 +351,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     </div>
   </div>
   <button id="mob-back-btn" class="mob-back-btn" onclick="showMobPicker()">← Sections</button>
-  <div class="top-latest">Last: <strong id="latest-label">—</strong></div>
   <a href="./" class="top-icon-btn top-menu" title="Topics — Pulp &amp; Paper">
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <line x1="2" y1="4.5" x2="13" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -373,7 +372,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div class="secondary-nav" id="pp-subnav">
   <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp')">Pulp</button>
   <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper')">Paper &amp; Packaging</button>
-  <button class="snav-btn"        data-sub="companies" onclick="setSub('companies')">Companies</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -418,17 +416,12 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
     <div class="mob-sections-list">
       <button class="mob-sec-item" onclick="mobSelect('pulp')">
         <div class="mob-sec-info"><div class="mob-sec-title">Pulp</div>
-          <div class="mob-sec-desc">SECEX export tracker by port · IBÁ production &amp; trade</div></div>
+          <div class="mob-sec-desc">SECEX export tracker by port · GACC woodchips</div></div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <button class="mob-sec-item" onclick="mobSelect('paper')">
         <div class="mob-sec-info"><div class="mob-sec-title">Paper &amp; Packaging</div>
           <div class="mob-sec-desc">IBÁ production, sales, trade and consumption by grade</div></div>
-        <span class="mob-sec-arrow">→</span>
-      </button>
-      <button class="mob-sec-item" onclick="mobSelect('companies')">
-        <div class="mob-sec-info"><div class="mob-sec-title">Companies</div>
-          <div class="mob-sec-desc">Klabin and Suzano volumes vs. IBÁ industry</div></div>
         <span class="mob-sec-arrow">→</span>
       </button>
     </div>
@@ -439,7 +432,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div id="sec-pulp" class="section active">
   <div class="inner-tab-bar">
     <button class="itab active" data-ptab="secex" onclick="setPulpTab('secex')">🚢 Exports — SECEX</button>
-    <button class="itab"        data-ptab="iba"   onclick="setPulpTab('iba')">🏭 Production &amp; Trade — IBÁ</button>
     <button class="itab"        data-ptab="gacc"  onclick="setPulpTab('gacc')">🌲 Woodchips — GACC</button>
   </div>
 
@@ -501,47 +493,6 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
         <div class="chart-title">Seasonality — Export Volume (kton/month)</div>
         <div class="chart-sub">SECEX · each line = 1 year · orange = current · black = prior</div>
         <div class="chart-wrap h260"><canvas id="pl-seas"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── IBÁ TAB ── -->
-  <div id="pl-tab-iba" class="inner-tab-content">
-    <div class="info-box">
-      <strong>Note:</strong> IBÁ pulp series is monthly through 2018, then quarterly
-      (de-cumulated &amp; spread) for 2019–2023, and discontinued thereafter. The
-      fibre split (Hardwood / Softwood / High-Yield) is available through 2018.
-      For live monthly pulp volumes, use the <strong>Exports — SECEX</strong> tab.
-    </div>
-    <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">Pulp Production (kton)</div>
-        <div class="chart-sub" id="pi-prod-sub">IBÁ · Total = stacked by fibre</div>
-        <div class="chart-wrap h240"><canvas id="pi-prod"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Apparent Consumption (kton)</div>
-        <div class="chart-sub">IBÁ · domestic pulp demand</div>
-        <div class="chart-wrap h240"><canvas id="pi-cons"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">Domestic Sales (kton)</div>
-        <div class="chart-sub">IBÁ · filter by fibre</div>
-        <div class="chart-wrap h220"><canvas id="pi-dom"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Exports (kton)</div>
-        <div class="chart-sub">IBÁ · filter by fibre</div>
-        <div class="chart-wrap h220"><canvas id="pi-exp"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-row c1">
-      <div class="chart-card">
-        <div class="chart-title">Production by Fibre — share (%)</div>
-        <div class="chart-sub">IBÁ · Hardwood vs. Softwood vs. High-Yield · full history (reported through 2018)</div>
-        <div class="chart-wrap h220"><canvas id="pi-fibre"></canvas></div>
       </div>
     </div>
   </div>
@@ -696,69 +647,11 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════ COMPANIES ═════ -->
-<div id="sec-companies" class="section">
-  <div class="info-box">
-    <strong>Company volumes (quarterly).</strong> Klabin and Suzano reported sales by
-    product and market — <strong>MI</strong> = domestic (mercado interno),
-    <strong>ME</strong> = export (mercado externo) — shown against the IBÁ industry
-    aggregate. Series runs through 3Q23.
-  </div>
-  <div class="sec-block-header">Klabin <span>quarterly</span></div>
-  <div class="charts-row c3">
-    <div class="chart-card">
-      <div class="chart-title">Corrugated Boxes (kton)</div>
-      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
-      <div class="chart-wrap h220"><canvas id="co-kl-corr"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Industrial Bags / Sacks (kton)</div>
-      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
-      <div class="chart-wrap h220"><canvas id="co-kl-sacks"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Cardboard (kton)</div>
-      <div class="chart-sub">Klabin · domestic (MI) vs. export (ME)</div>
-      <div class="chart-wrap h220"><canvas id="co-kl-card"></canvas></div>
-    </div>
-  </div>
-  <div class="sec-block-header">Suzano <span>quarterly</span></div>
-  <div class="charts-row c3">
-    <div class="chart-card">
-      <div class="chart-title">Paper Sales by Product (kton)</div>
-      <div class="chart-sub">Suzano · P&amp;W + Cardboard + Tissue</div>
-      <div class="chart-wrap h220"><canvas id="co-sz-mix"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Printing &amp; Writing (kton)</div>
-      <div class="chart-sub">Suzano · domestic (MI) vs. export (ME)</div>
-      <div class="chart-wrap h220"><canvas id="co-sz-pw"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Cardboard (kton)</div>
-      <div class="chart-sub">Suzano · domestic (MI) vs. export (ME)</div>
-      <div class="chart-wrap h220"><canvas id="co-sz-card"></canvas></div>
-    </div>
-  </div>
-  <div class="sec-block-header">Company vs. Industry (IBÁ)</div>
-  <div class="charts-row c2">
-    <div class="chart-card">
-      <div class="chart-title">Klabin Packaging vs. IBÁ Packaging &amp; Wrapping (kton)</div>
-      <div class="chart-sub">Bars = IBÁ industry · line = Klabin packaging</div>
-      <div class="chart-wrap h240"><canvas id="co-cmp-kl"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Suzano P&amp;W vs. IBÁ Printing &amp; Writing (kton)</div>
-      <div class="chart-sub">Bars = IBÁ industry · line = Suzano P&amp;W</div>
-      <div class="chart-wrap h240"><canvas id="co-cmp-sz"></canvas></div>
-    </div>
-  </div>
-</div>
 
 <div class="note-bar">
   Sources: <em>IBÁ</em> (pulp &amp; paper production, sales, trade, apparent consumption) ·
   <em>SECEX/MDIC</em> (pulp export volumes &amp; FOB value by customs port) ·
-  <em>Klabin / Suzano</em> (company-reported quarterly volumes) ·
+  <em>GACC</em> (China woodchip imports) ·
   Working days exclude Brazilian national holidays · Volumes in kton unless noted ·
   Pulp fibre: HW = Hardwood (eucalyptus) · SW = Softwood · HY = High-Yield.
 </div>
@@ -1027,13 +920,11 @@ async function loadDB(){
 
     db.close();
 
-    const lp=SECEX.length?SECEX[SECEX.length-1].period:(PAPER.length?PAPER[PAPER.length-1].period:'—');
-    document.getElementById('latest-label').textContent=fmtPeriod(lp);
     el.style.display='none';
 
     renderProdButtons();
     const urlSec=new URLSearchParams(window.location.search).get('s');
-    if(urlSec&&['pulp','paper','companies'].includes(urlSec)){
+    if(urlSec&&['pulp','paper'].includes(urlSec)){
       setSub(urlSec);
     } else if(window.innerWidth<=768){
       showMobPicker();
@@ -1194,9 +1085,8 @@ document.addEventListener('click',e=>{
 //  RENDER — PULP
 // ═══════════════════════════════════════════════════════════════════════════
 function renderPulp(){
-  if(pulpTab==='secex')     renderPulpSecex();
-  else if(pulpTab==='gacc') renderGacc();
-  else                      renderPulpIba();
+  if(pulpTab==='gacc') renderGacc();
+  else                 renderPulpSecex();   // IBÁ removido (dado descontinuado) → default SECEX
 }
 
 function kpiCard(label,value,unit,deltas){
@@ -1603,7 +1493,6 @@ function renderCompanies(){
 function render(){
   if(currentSub==='pulp')      renderPulp();
   if(currentSub==='paper')     renderPaper();
-  if(currentSub==='companies') renderCompanies();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1665,7 +1554,6 @@ function setPulpTab(t){
   pulpTab=t;
   document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===t));
   document.getElementById('pl-tab-secex').classList.toggle('active',t==='secex');
-  document.getElementById('pl-tab-iba').classList.toggle('active',t==='iba');
   document.getElementById('pl-tab-gacc').classList.toggle('active',t==='gacc');
   renderProdButtons();
   renderPulp();
