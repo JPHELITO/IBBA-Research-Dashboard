@@ -69,13 +69,13 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 /* ══ GRID 12-COL ═════════════════════════════════════════════════════════ */
 .page{
   flex:1;min-height:0;overflow:hidden;
-  padding:0 14px 12px;
-  display:grid;gap:12px;
+  padding:0 12px 10px;
+  display:grid;gap:10px;
   grid-template-columns:repeat(12,1fr);
-  grid-template-rows:minmax(0,185px) minmax(0,265px) minmax(0,1fr);
+  grid-template-rows:minmax(0,170px) minmax(0,190px) minmax(0,1fr);
   grid-template-areas:
-    "secrow secrow secrow secrow secrow secrow secrow secrow secrow team team team"
-    "pulse pulse pulse pulse comm comm comm comm comm comm comm comm"
+    "secrow secrow secrow secrow secrow pulse pulse pulse team team team team"
+    "news news news news news news news news comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
 .area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0;}
@@ -89,7 +89,7 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
   box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
 .sec-head{flex:none;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px 10px;border-bottom:1px solid var(--border);gap:8px;}
+  padding:8px 16px 7px;border-bottom:1px solid var(--border);gap:8px;}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;}
 .sec-meta{font-size:9.5px;color:var(--gray-mid);display:flex;align-items:center;gap:7px;}
@@ -123,7 +123,7 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 .sector-card-desc{font-size:11px;color:var(--gray-mid);line-height:1.4;}
 /* cards de setor com imagem de fundo (#5) */
 .sector-card.has-bg{overflow:hidden;border:none;color:#fff;}
-.sector-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;}
+.sector-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center 28%;}
 .sector-bg::after{content:'';position:absolute;inset:0;
   background:linear-gradient(120deg,rgba(0,0,0,.62),rgba(0,0,0,.34) 48%,rgba(0,0,0,.12));}
 .sector-bg-steel{background-color:#1a232c;background-image:url('assets/sector-steel.jpg');}
@@ -142,11 +142,11 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
-.team-list{flex:1;min-height:0;overflow:auto;padding:6px 0;}
-.team-row{display:flex;align-items:center;gap:11px;padding:9px 16px;
+.team-list{flex:1;min-height:0;overflow:hidden;padding:2px 0;}
+.team-row{display:flex;align-items:center;gap:10px;padding:4px 16px;
   border-bottom:1px solid var(--border);}
 .team-row:last-child{border-bottom:none;}
-.team-avatar{width:36px;height:36px;border-radius:50%;background:var(--orange);
+.team-avatar{width:28px;height:28px;border-radius:50%;background:var(--orange);
   color:#fff;font-size:12px;font-weight:700;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 img.team-avatar{object-fit:cover;background:none;}
@@ -308,35 +308,31 @@ img.team-avatar{object-fit:cover;background:none;}
 .mc-chip:hover{border-color:var(--gray-mid);color:var(--black);}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
-.kv-list{padding:6px 0;}
-/* Commodities ocupa a faixa larga → lista em 2 colunas (cabe mais indicador) */
-.area-comm .kv-list{flex:1;min-height:0;overflow:hidden;column-count:2;column-gap:22px;align-content:start;}
-.area-comm .kv-row{break-inside:avoid;}
-.kv-row{display:flex;flex-direction:column;gap:5px;
-  padding:10px 18px;border-bottom:1px solid var(--border);}
+.kv-list{padding:2px 0;}
+/* Commodities = carrossel: lista 1 coluna, linha única compacta (fonte ~ News Hunter) */
+.area-comm .kv-list{flex:1;min-height:0;overflow:hidden;align-content:start;}
+.kv-row{display:flex;align-items:center;gap:7px;
+  padding:6px 16px;border-bottom:1px solid var(--border);}
 .kv-row:last-child{border-bottom:none;}
-.kv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.kv-name{font-size:11.5px;color:var(--gray-dark);font-weight:600;letter-spacing:-.01em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.kv-badge{flex:none;font-size:8px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.05em;padding:2px 6px;border-radius:4px;line-height:1.1;
-  display:inline-flex;align-items:center;gap:4px;}
+.kv-name{font-size:11px;color:var(--gray-dark);font-weight:600;
+  flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kv-badge{flex:none;font-size:7px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.03em;padding:1px 4px;border-radius:3px;line-height:1.1;
+  display:inline-flex;align-items:center;gap:3px;}
 .kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:var(--gray-mid);}
 .kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
-.kv-badge.live::before{content:'';width:5px;height:5px;border-radius:50%;
+.kv-badge.live::before{content:'';width:4px;height:4px;border-radius:50%;
   background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
-.kv-main{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
-.kv-price{display:inline-flex;align-items:baseline;gap:4px;min-width:0;}
-.kv-value{font-size:14px;font-weight:700;color:var(--black);letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;}
-.kv-unit{font-size:9px;color:var(--gray-mid);font-weight:500;}
-.kv-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;}
+.kv-value{font-size:11.5px;font-weight:700;color:var(--black);
+  font-variant-numeric:tabular-nums;flex:none;}
+.kv-unit{font-size:7.5px;color:var(--gray-mid);font-weight:500;flex:none;}
 .kv-change{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;
-  padding:1px 6px;border-radius:4px;line-height:1.3;}
-.kv-change.up{color:var(--green);background:rgba(22,163,74,.10);}
-.kv-change.down{color:var(--red);background:rgba(192,57,43,.10);}
-.kv-change.flat{color:var(--gray-mid);background:rgba(140,140,140,.10);}
-.kv-date{font-size:9px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;}
+  flex:none;min-width:48px;text-align:right;}
+.kv-change.up{color:var(--green);}
+.kv-change.down{color:var(--red);}
+.kv-change.flat{color:var(--gray-mid);}
+.kv-date{font-size:8.5px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;
+  flex:none;min-width:40px;text-align:right;}
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
 .comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
 .comm-dots{display:flex;gap:5px;}
@@ -1195,22 +1191,16 @@ function _kvRow(c){
   const fcls = freq === 'Weekly' ? 'wk' : freq === 'Live' ? 'live' : 'daily';
   const dateStr = _fmtAssessed(c.assessed_at, freq);
   return `<div class="kv-row">
-    <div class="kv-head">
-      <span class="kv-name" title="${c.name||''}">${c.name||''}</span>
-      <span class="kv-badge ${fcls}">${freq}</span>
-    </div>
-    <div class="kv-main">
-      <span class="kv-price"><span class="kv-value">${valStr}</span>${unit?` <span class="kv-unit">${unit}</span>`:''}</span>
-      <span class="kv-meta">
-        <span class="kv-change ${pctCls}">${pctStr}</span>
-        ${dateStr?`<span class="kv-date">${dateStr}</span>`:''}
-      </span>
-    </div>
+    <span class="kv-name" title="${c.name||''}">${c.name||''}</span>
+    <span class="kv-badge ${fcls}">${freq}</span>
+    <span class="kv-value">${valStr}</span>${unit?`<span class="kv-unit">${unit}</span>`:''}
+    <span class="kv-change ${pctCls}">${pctStr}</span>
+    <span class="kv-date">${dateStr}</span>
   </div>`;
 }
 
 let _commRanked=[], _commPage=0;
-const COMM_PAGE_SIZE=8, COMM_ROTATE_MS=10000;   // 3 páginas (8/8/6) girando a cada 10s
+const COMM_PAGE_SIZE=5, COMM_ROTATE_MS=10000;   // 5 por página (~5 páginas) girando a cada 10s
 
 async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
