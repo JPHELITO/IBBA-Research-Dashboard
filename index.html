@@ -80,7 +80,7 @@ html,body{
 .area-pulse {grid-area:pulse;}
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
-.area-comm  {grid-area:comm;}
+.area-comm  {grid-area:comm;align-self:start;}  /* card ajusta à altura do conteúdo (evita vazio branco) */
 
 /* ── CARD BASE ──────────────────────────────────────────────────────── */
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
@@ -402,11 +402,10 @@ img.team-avatar{object-fit:cover;background:none;}
       <div class="sector-bg sector-bg-pp"></div>
       <span class="sector-card-eyebrow">● Live</span>
       <span class="sector-card-title">Pulp &amp; Paper</span>
-      <span class="sector-card-desc">Pulp exports, paper demand &amp; company volumes</span>
+      <span class="sector-card-desc">Pulp exports (SECEX) &amp; paper demand by grade</span>
       <div class="sector-tabs">
         <span class="sector-tab">Pulp</span>
         <span class="sector-tab">Paper</span>
-        <span class="sector-tab">Companies</span>
       </div>
     </a>
 
