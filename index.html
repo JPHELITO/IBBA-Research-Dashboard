@@ -543,7 +543,7 @@ img.team-avatar{object-fit:cover;background:none;}
   <!-- COMMODITIES -->
   <div class="sec area-comm">
     <div class="sec-head">
-      <span class="sec-title">Commodities</span>
+      <span class="sec-title" id="comm-title">Commodities</span>
       <span class="sec-meta" id="comm-meta">—</span>
     </div>
     <div class="kv-list" id="comm-list">
@@ -1202,8 +1202,18 @@ function _kvRow(c){
   </div>`;
 }
 
-let _commRanked=[], _commPage=0;
-const COMM_PAGE_SIZE=5, COMM_ROTATE_MS=10000;   // 5 por página (~5 páginas) girando a cada 10s
+// Grupos do carrossel: cada "página" tem um TÍTULO (dinâmico no cabeçalho) e uma
+// ORDEM FIXA de códigos. Os 4 core usam o code amigável (IODBZ00→IRON_ORE,
+// PLVHA00→MET_COAL, STHRZ02→HRC_CHINA, STCBM00→REBAR_TURKEY).
+const COMM_GROUPS = [
+  {title:'Iron Ore + Pellet',  codes:['IRON_ORE','IOPRM00','IODFE00','IOMGD00','IOBFC04']},
+  {title:'Brand assessments',  codes:['IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00']},
+  {title:'Freight + HCC',      codes:['IOFBC00','IOFAC00','MET_COAL','HCCAU00']},
+  {title:'Forward Curve',      codes:['TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01']},
+  {title:'Steel + Other Ores', codes:['HRC_CHINA','REBAR_TURKEY','COPPER','GOLD']},
+];
+let _commByCode={}, _commPage=0, _commUpdated=null;
+const COMM_ROTATE_MS=10000;   // cada grupo gira a cada 10s
 
 async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
@@ -1213,35 +1223,29 @@ async function loadCommodities(){
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('commodities');
     const rows = await r.json();
-    const list = document.getElementById('comm-list');
-    if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
-    // Ordem fixa (conhecidas primeiro), depois novas em ordem alfabética.
-    const ORDER=['IRON_ORE','IOPRM00','IODFE00','IOMGD00',
-                 'IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00',
-                 'IOBFC04','IOFBC00','IOFAC00',
-                 'TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01',
-                 'HRC_CHINA','REBAR_TURKEY','MET_COAL','HCCAU00',
-                 'COPPER','GOLD'];
-    const rk=c=>{const i=ORDER.indexOf(c.code);return i===-1?999:i;};
-    _commRanked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
-    if(_commPage >= _commPageCount()) _commPage=0;
+    if(!rows.length){ const l=document.getElementById('comm-list'); if(l) l.innerHTML='<div class="kv-loading">No data.</div>'; return; }
+    _commByCode={}; let latest='';
+    rows.forEach(c=>{ _commByCode[c.code]=c; if((c.updated_at||'')>latest) latest=c.updated_at; });
+    _commUpdated=latest;
     _renderCommPage();
-    _updateMeta('comm-meta', _commRanked[0]?.updated_at);
   } catch(e){console.warn('commodities error:', e);}
 }
 
-function _commPageCount(){ return Math.max(1, Math.ceil(_commRanked.length / COMM_PAGE_SIZE)); }
+function _commPageCount(){ return COMM_GROUPS.length; }
 
-// Renderiza a página atual + dots + reinicia a barra de progresso (que dispara a virada via animationend).
+// Renderiza o grupo atual (título dinâmico + itens na ordem do grupo) + dots + barra de progresso.
 function _renderCommPage(){
   const list=document.getElementById('comm-list'); if(!list) return;
-  const s=_commPage*COMM_PAGE_SIZE;
-  list.innerHTML=_commRanked.slice(s, s+COMM_PAGE_SIZE).map(c=>_kvRow(c)).join('');
+  const g=COMM_GROUPS[_commPage] || COMM_GROUPS[0];
+  const items=g.codes.map(code=>_commByCode[code]).filter(Boolean);
+  list.innerHTML=items.length ? items.map(c=>_kvRow(c)).join('') : '<div class="kv-loading">—</div>';
+  const titleEl=document.getElementById('comm-title'); if(titleEl) titleEl.textContent=g.title;
+  _updateMeta('comm-meta', _commUpdated);
   const n=_commPageCount();
   const foot=document.getElementById('comm-foot'); if(foot) foot.style.display = n>1 ? 'flex' : 'none';
   const dots=document.getElementById('comm-dots');
   if(dots) dots.innerHTML=Array.from({length:n},(_,i)=>
-    `<button class="comm-dot ${i===_commPage?'on':''}" data-p="${i}" aria-label="Página ${i+1}"></button>`).join('');
+    `<button class="comm-dot ${i===_commPage?'on':''}" data-p="${i}" aria-label="${COMM_GROUPS[i].title}"></button>`).join('');
   const bar=document.getElementById('comm-prog');
   if(bar){
     if(n>1){ bar.style.animation='none'; void bar.offsetWidth;            // reflow p/ reiniciar a animação
