@@ -92,6 +92,8 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
   padding:8px 16px 7px;border-bottom:1px solid var(--border);gap:8px;}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;}
+.wip-badge{flex:none;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  background:#FDE68A;color:#854D0E;padding:2px 6px;border-radius:4px;line-height:1.15;white-space:nowrap;}
 .sec-meta{font-size:9.5px;color:var(--gray-mid);display:flex;align-items:center;gap:7px;}
 .sec-meta::before{
   content:'';display:inline-block;width:6px;height:6px;background:#22c55e;
@@ -454,7 +456,10 @@ img.team-avatar{object-fit:cover;background:none;}
   <!-- MARKET PULSE (full width) -->
   <div class="sec area-pulse">
     <div class="sec-head">
-      <span class="sec-title">Market Pulse</span>
+      <span style="display:flex;align-items:center;gap:7px;min-width:0;">
+        <span class="sec-title">Market Pulse</span>
+        <span class="wip-badge">Work in progress</span>
+      </span>
       <div class="pulse-controls" id="pulse-controls">
         <button class="pulse-chip active" data-sector="all">All</button>
         <button class="pulse-chip" data-sector="steel">Steel</button>
@@ -700,10 +705,11 @@ function _renderNews(articles){
     const msg=_newsTakeFilter==='all'?'No news available.':'No news with this take.';
     feed.innerHTML=`<div class="news-empty">${msg}</div>`;return;
   }
-  // Ordena cronologicamente (mais nova primeiro) e remove duplicatas de título.
-  // SEM cap por fonte: a home deve ser exatamente as 20 mais recentes da history.
+  // Ordena por ENTRADA na dashboard (found_at desc = recém-coletada primeiro) e remove
+  // duplicatas de título. SEM cap por fonte: as 20 que entraram mais recentemente.
+  const _foundMs=a=>Date.parse(a.found_at||'')||0;
   const seenTitle=new Set(), picked=[];
-  for(const a of [...articles].sort((x,y)=>_effTs(y)-_effTs(x))){
+  for(const a of [...articles].sort((x,y)=>_foundMs(y)-_foundMs(x))){
     const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
     if(!key||seenTitle.has(key)) continue;
     seenTitle.add(key);
@@ -714,8 +720,8 @@ function _renderNews(articles){
   const now=Date.now();
   feed.innerHTML=articles.map(a=>{
     const lbl=_label(a);
-    // Idade pelo timestamp efetivo (publicação real; found_at como fallback).
-    const date=a.published_at||a.found_at;
+    // Idade pela ENTRADA na dashboard (found_at; published_at só como fallback).
+    const date=a.found_at||a.published_at;
     const foundMs=a.found_at?Date.parse(a.found_at):0;
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
