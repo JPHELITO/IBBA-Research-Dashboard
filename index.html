@@ -40,11 +40,12 @@ async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-t
 }
 html,body{
   font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
-  min-height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
+body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* ══ HEADER ════════════════════════════════════════════════════════════════ */
-.header{background:var(--black);display:flex;align-items:center;
+.header{background:var(--black);flex:none;display:flex;align-items:center;
   padding:0 40px;height:62px;gap:14px;}
 .logout-btn{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:600;
   letter-spacing:.03em;color:rgba(255,255,255,.45);background:none;
@@ -56,36 +57,38 @@ html,body{
 .brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
 .brand-team{font-size:8.5px;color:rgba(255,255,255,.28);font-weight:400;
   letter-spacing:.02em;margin-top:2px;}
-.orange-rule{height:2px;background:var(--orange);}
+.orange-rule{height:2px;background:var(--orange);flex:none;}
 
 /* ── HERO ────────────────────────────────────────────────────────────── */
-.hero{padding:24px 32px 12px;max-width:1320px;margin:0 auto;}
+.hero{flex:none;padding:8px 18px 6px;display:flex;align-items:baseline;gap:12px;}
 .hero-eyebrow{font-size:10px;font-weight:600;color:var(--orange);
-  text-transform:uppercase;letter-spacing:.9px;margin-bottom:8px;}
-.hero-title{font-size:24px;font-weight:700;color:var(--black);
+  text-transform:uppercase;letter-spacing:.9px;}
+.hero-title{font-size:15px;font-weight:700;color:var(--black);
   letter-spacing:-.025em;line-height:1.15;}
 
 /* ══ GRID 12-COL ═════════════════════════════════════════════════════════ */
 .page{
-  max-width:1320px;margin:0 auto;padding:8px 32px 64px;
-  display:grid;gap:18px;
+  flex:1;min-height:0;overflow:hidden;
+  padding:0 14px 12px;
+  display:grid;gap:12px;
   grid-template-columns:repeat(12,1fr);
+  grid-template-rows:minmax(0,185px) minmax(0,265px) minmax(0,1fr);
   grid-template-areas:
     "secrow secrow secrow secrow secrow secrow secrow secrow secrow team team team"
     "pulse pulse pulse pulse comm comm comm comm comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
-.area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0;}
 .area-team  {grid-area:team;}
 .area-pulse {grid-area:pulse;}
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
-.area-comm  {grid-area:comm;align-self:start;}  /* card ajusta à altura do conteúdo (evita vazio branco) */
+.area-comm  {grid-area:comm;}
 
 /* ── CARD BASE ──────────────────────────────────────────────────────── */
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden;}
-.sec-head{display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+.sec-head{flex:none;display:flex;align-items:center;justify-content:space-between;
   padding:14px 18px 10px;border-bottom:1px solid var(--border);gap:8px;}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;}
@@ -139,7 +142,7 @@ html,body{
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
-.team-list{padding:6px 0;}
+.team-list{flex:1;min-height:0;overflow:auto;padding:6px 0;}
 .team-row{display:flex;align-items:center;gap:11px;padding:9px 16px;
   border-bottom:1px solid var(--border);}
 .team-row:last-child{border-bottom:none;}
@@ -168,8 +171,8 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
 
-.pulse-body{padding:16px 18px;display:grid;
-  grid-template-columns:1fr;gap:14px;justify-items:center;}
+.pulse-body{flex:1;min-height:0;overflow:auto;padding:16px 18px;display:grid;
+  grid-template-columns:1fr;gap:14px;justify-items:center;align-content:center;}
 .pulse-body > div{width:100%;}
 .gauge{width:140px;height:90px;position:relative;}
 .gauge svg{width:100%;height:100%;}
@@ -206,8 +209,8 @@ img.team-avatar{object-fit:cover;background:none;}
 
 /* Preenchimento COLUNA primeiro: as 10 mais recentes na coluna ESQUERDA
    (topo→baixo), depois as 10 seguintes na coluna DIREITA. */
-.news-feed{padding:4px 0;display:grid;grid-template-columns:1fr 1fr;
-  grid-auto-flow:column;grid-template-rows:repeat(10,auto);}
+.news-feed{flex:1;min-height:0;overflow:auto;padding:4px 0;display:grid;grid-template-columns:1fr 1fr;
+  grid-auto-flow:column;grid-template-rows:repeat(10,auto);align-content:start;}
 .news-empty{padding:30px 18px;text-align:center;color:var(--gray-mid);
   font-size:12px;grid-column:1/-1;}
 .news-item{padding:10px 16px;border-bottom:1px solid var(--border);
@@ -249,7 +252,7 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-filter-chip.neg.active{background:#c0392b;border-color:#c0392b;}
 
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
-.heatmap-grid{padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.heatmap-grid{flex:1;min-height:0;overflow:auto;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start;}
 .hm-card{padding:9px 11px;border-radius:6px;text-decoration:none;color:#fff;
   display:flex;flex-direction:column;gap:3px;transition:transform .15s;}
 .hm-card:hover{transform:translateY(-1px);}
@@ -307,7 +310,7 @@ img.team-avatar{object-fit:cover;background:none;}
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
 .kv-list{padding:6px 0;}
 /* Commodities ocupa a faixa larga → lista em 2 colunas (cabe mais indicador) */
-.area-comm .kv-list{column-count:2;column-gap:22px;}
+.area-comm .kv-list{flex:1;min-height:0;overflow:hidden;column-count:2;column-gap:22px;align-content:start;}
 .area-comm .kv-row{break-inside:avoid;}
 .kv-row{display:flex;flex-direction:column;gap:5px;
   padding:10px 18px;border-bottom:1px solid var(--border);}
@@ -334,21 +337,35 @@ img.team-avatar{object-fit:cover;background:none;}
 .kv-change.down{color:var(--red);background:rgba(192,57,43,.10);}
 .kv-change.flat{color:var(--gray-mid);background:rgba(140,140,140,.10);}
 .kv-date{font-size:9px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;}
+/* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
+.comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
+.comm-dots{display:flex;gap:5px;}
+.comm-dot{width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--border);transition:background .15s;}
+.comm-dot.on{background:var(--orange);}
+.comm-dot:hover{background:var(--gray-mid);}
+.comm-prog-track{flex:1;height:2px;background:var(--border);border-radius:2px;overflow:hidden;}
+.comm-prog{height:100%;width:0;background:var(--orange);}
+@keyframes commfill{from{width:0;}to{width:100%;}}
 .kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
 
 /* ── FOOTER ──────────────────────────────────────────────────────────── */
-.footer{background:var(--white);border-top:1px solid var(--border);
-  padding:14px 40px;display:flex;align-items:center;gap:8px;}
+.footer{background:var(--white);border-top:1px solid var(--border);flex:none;
+  padding:8px 18px;display:flex;align-items:center;gap:8px;}
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
 @media (max-width:1024px){
-  .page{grid-template-columns:1fr;grid-template-areas:
+  html,body{height:auto;}
+  body{height:auto;overflow:auto;display:block;}
+  .page{grid-template-columns:1fr;grid-template-rows:none;overflow:visible;padding:8px 14px 40px;gap:14px;
+    grid-template-areas:
     "secrow" "team" "pulse" "news" "heat" "comm";}
   .area-secrow{grid-template-columns:1fr 1fr 1fr;}
+  .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
+  .area-comm .kv-list{overflow:visible;column-count:1;}
   .news-feed{grid-template-columns:1fr 1fr;}
-  .area-comm .kv-list{column-count:1;}
+  .hero{display:block;}
 }
 @media (max-width:768px){
   .header{padding:0 16px;height:54px;gap:10px;}
@@ -532,6 +549,10 @@ img.team-avatar{object-fit:cover;background:none;}
     </div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
+    </div>
+    <div class="comm-foot" id="comm-foot" style="display:none;">
+      <div class="comm-dots" id="comm-dots"></div>
+      <div class="comm-prog-track"><div class="comm-prog" id="comm-prog"></div></div>
     </div>
   </div>
 
@@ -1188,6 +1209,9 @@ function _kvRow(c){
   </div>`;
 }
 
+let _commRanked=[], _commPage=0;
+const COMM_PAGE_SIZE=8, COMM_ROTATE_MS=10000;   // 3 páginas (8/8/6) girando a cada 10s
+
 async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
@@ -1198,8 +1222,7 @@ async function loadCommodities(){
     const rows = await r.json();
     const list = document.getElementById('comm-list');
     if(!rows.length){list.innerHTML='<div class="kv-loading">No data.</div>';return;}
-    // Mostra TODAS as commodities: as conhecidas primeiro (ordem fixa), depois as
-    // novas (ex.: novos indicadores da watchlist Platts) em ordem alfabética.
+    // Ordem fixa (conhecidas primeiro), depois novas em ordem alfabética.
     const ORDER=['IRON_ORE','IOPRM00','IODFE00','IOMGD00',
                  'IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00',
                  'IOBFC04','IOFBC00','IOFAC00',
@@ -1207,10 +1230,41 @@ async function loadCommodities(){
                  'HRC_CHINA','REBAR_TURKEY','MET_COAL','HCCAU00',
                  'COPPER','GOLD'];
     const rk=c=>{const i=ORDER.indexOf(c.code);return i===-1?999:i;};
-    const ranked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
-    list.innerHTML = ranked.map(c => _kvRow(c)).join('');
-    _updateMeta('comm-meta', ranked[0]?.updated_at);
+    _commRanked=rows.slice().sort((a,b)=> rk(a)-rk(b) || (a.name||'').localeCompare(b.name||''));
+    if(_commPage >= _commPageCount()) _commPage=0;
+    _renderCommPage();
+    _updateMeta('comm-meta', _commRanked[0]?.updated_at);
   } catch(e){console.warn('commodities error:', e);}
+}
+
+function _commPageCount(){ return Math.max(1, Math.ceil(_commRanked.length / COMM_PAGE_SIZE)); }
+
+// Renderiza a página atual + dots + reinicia a barra de progresso (que dispara a virada via animationend).
+function _renderCommPage(){
+  const list=document.getElementById('comm-list'); if(!list) return;
+  const s=_commPage*COMM_PAGE_SIZE;
+  list.innerHTML=_commRanked.slice(s, s+COMM_PAGE_SIZE).map(c=>_kvRow(c)).join('');
+  const n=_commPageCount();
+  const foot=document.getElementById('comm-foot'); if(foot) foot.style.display = n>1 ? 'flex' : 'none';
+  const dots=document.getElementById('comm-dots');
+  if(dots) dots.innerHTML=Array.from({length:n},(_,i)=>
+    `<button class="comm-dot ${i===_commPage?'on':''}" data-p="${i}" aria-label="Página ${i+1}"></button>`).join('');
+  const bar=document.getElementById('comm-prog');
+  if(bar){
+    if(n>1){ bar.style.animation='none'; void bar.offsetWidth;            // reflow p/ reiniciar a animação
+             bar.style.animation=`commfill ${COMM_ROTATE_MS}ms linear forwards`; bar.onanimationend=_commNext; }
+    else { bar.style.animation='none'; }
+  }
+}
+function _commNext(){ if(_commPageCount()>1){ _commPage=(_commPage+1)%_commPageCount(); _renderCommPage(); } }
+function _commGoto(p){ const n=_commPageCount(); _commPage=((p%n)+n)%n; _renderCommPage(); }
+
+// Liga os controles do carrossel (clique no dot + pausa ao passar o mouse). Chamar 1x.
+function _initCommCarousel(){
+  const box=document.querySelector('.area-comm'); if(!box) return;
+  box.addEventListener('click', e=>{ const d=e.target.closest('.comm-dot'); if(d) _commGoto(+d.dataset.p); });
+  box.addEventListener('mouseenter', ()=>{ const b=document.getElementById('comm-prog'); if(b) b.style.animationPlayState='paused'; });
+  box.addEventListener('mouseleave', ()=>{ const b=document.getElementById('comm-prog'); if(b) b.style.animationPlayState='running'; });
 }
 
 function _updateMeta(elId, iso){
@@ -1228,6 +1282,7 @@ loadNews();
 loadPulse();
 loadQuotes();
 loadQuotesDaily();
+_initCommCarousel();
 loadCommodities();
 
 setInterval(loadNews, NEWS_INTERVAL);
