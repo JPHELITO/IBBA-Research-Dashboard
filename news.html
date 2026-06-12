@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>ITAÚ BBA — News History</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
+const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:window.sessionStorage}})
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+;(async()=>{
+  const{data:{session}}=await sbAuth.auth.getSession()
+  if(!session){window.location.replace('/login.html');return}
+  _setAuthCookie(session)
+  sbAuth.auth.onAuthStateChange((ev,s)=>{
+    if(s?.access_token)_setAuthCookie(s)
+    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
+  })
+})()
+async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#27AE60;
+  --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
+}
+html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
+  min-height:100%;-webkit-font-smoothing:antialiased;}
+
+/* HEADER (igual ao home) */
+.header{background:var(--black);display:flex;align-items:center;
+  padding:0 40px;height:62px;gap:14px;}
+.logout-btn{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:600;
+  letter-spacing:.03em;color:rgba(255,255,255,.45);background:none;
+  border:1px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:5px 13px;cursor:pointer;font-family:var(--font);
+  transition:color .2s,border-color .2s;}
+.logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.4);}
+.brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
+.brand-team{font-size:8.5px;color:rgba(255,255,255,.28);font-weight:400;
+  letter-spacing:.02em;margin-top:2px;}
+.orange-rule{height:2px;background:var(--orange);}
+
+/* PAGE */
+.page{max-width:1100px;margin:0 auto;padding:24px 32px 64px;
+  display:flex;flex-direction:column;gap:18px;}
+
+.crumb{display:flex;align-items:center;gap:8px;}
+.crumb a{font-size:11px;color:var(--gray-mid);text-decoration:none;
+  display:flex;align-items:center;gap:5px;transition:color .15s;}
+.crumb a:hover{color:var(--orange);}
+.crumb-sep{color:rgba(0,0,0,.2);}
+.page-title{font-size:24px;font-weight:700;color:var(--black);letter-spacing:-.025em;}
+
+/* FILTERS */
+.filters{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;
+  box-shadow:var(--shadow);}
+.filter-group{display:flex;align-items:center;gap:10px;}
+.filter-label{font-size:10px;font-weight:700;color:var(--gray-mid);
+  text-transform:uppercase;letter-spacing:.08em;}
+.filter-chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{
+  font-size:11px;font-weight:600;letter-spacing:.02em;
+  padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);
+  background:transparent;color:var(--gray-mid);cursor:pointer;
+  font-family:var(--font);transition:all .15s;
+}
+.chip:hover{border-color:#aaa;color:var(--gray-dark);}
+.chip.active{background:var(--black);color:#fff;border-color:var(--black);}
+.search-input{
+  font-size:12px;font-family:var(--font);
+  padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;
+  outline:none;width:180px;color:var(--gray-dark);
+  transition:border-color .15s;
+}
+.search-input:focus{border-color:var(--orange);}
+
+/* RESULTS */
+.results-meta{font-size:11px;color:var(--gray-mid);padding:0 4px;}
+.results-meta strong{color:var(--gray-dark);font-weight:600;}
+
+.feed{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;}
+.empty{padding:60px 20px;text-align:center;color:var(--gray-mid);font-size:13px;}
+.item{
+  display:block;padding:14px 20px;border-bottom:1px solid var(--border);
+  text-decoration:none;color:inherit;transition:background .15s;
+}
+.item:last-child{border-bottom:none;}
+.item:hover{background:#FBFAF7;}
+.item:hover .item-title{color:var(--orange);}
+.item-title{font-size:13.5px;font-weight:600;color:var(--black);
+  letter-spacing:-.01em;line-height:1.45;margin-bottom:5px;transition:color .15s;}
+/* ── Take badge (+/−/=/~) por notícia — mesmo padrão do index ─────────── */
+.item-titlerow{display:flex;align-items:flex-start;gap:7px;margin-bottom:5px;}
+.item-titlerow .item-title{margin-bottom:0;}
+.news-take{display:inline-flex;align-items:center;justify-content:center;
+  min-width:17px;height:17px;border-radius:4px;font-size:11px;font-weight:800;
+  flex-shrink:0;line-height:1;padding:0 4px;margin-top:1px;}
+.news-take.pos{background:rgba(22,163,74,.15);color:#15803d;}
+.news-take.neg{background:rgba(192,57,43,.15);color:#c0392b;}
+.news-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
+.news-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
+.item-meta{font-size:10.5px;font-weight:500;color:var(--orange);
+  display:flex;align-items:center;gap:8px;}
+.item-meta .sep{color:rgba(255,80,0,.4);}
+.item-source{font-weight:600;}
+.item-age{color:rgba(255,80,0,.7);}
+.item-snippet{font-size:11px;color:var(--gray-mid);line-height:1.5;
+  margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;}
+
+/* DAY DIVIDER */
+.day-divider{padding:12px 20px;background:#FBFAF7;
+  font-size:10px;font-weight:700;color:var(--gray-dark);
+  letter-spacing:.1em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:5;}
+
+/* LOAD MORE */
+.load-more{
+  margin:18px auto 0;display:block;
+  padding:10px 22px;font-size:12px;font-weight:600;
+  background:var(--black);color:#fff;border:none;border-radius:8px;
+  cursor:pointer;font-family:var(--font);
+  transition:background .15s;
+}
+.load-more:hover{background:var(--orange);}
+.load-more:disabled{opacity:.4;cursor:default;}
+
+/* FOOTER */
+.footer{background:var(--white);border-top:1px solid var(--border);
+  padding:14px 40px;display:flex;align-items:center;gap:8px;}
+.footer-text{font-size:10px;color:rgba(0,0,0,.3);}
+.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
+
+@media(max-width:768px){
+  .header{padding:0 16px;height:54px;}
+  .brand-name{font-size:12.5px;}
+  .page{padding:16px 14px 40px;}
+  .filters{padding:12px 14px;gap:12px;}
+  .search-input{width:100%;}
+  .page-title{font-size:20px;}
+  .item{padding:12px 14px;}
+  .footer{padding:14px 18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/" style="display:flex;align-items:center;gap:14px;text-decoration:none;">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    </svg>
+    <div>
+      <div class="brand-name">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="brand-team">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
+    </div>
+  </a>
+  <button class="logout-btn" onclick="logout()">Sign out</button>
+</div>
+<div class="orange-rule"></div>
+
+<div class="page">
+
+  <div class="crumb">
+    <a href="/">← Home</a>
+    <span class="crumb-sep">/</span>
+    <span style="font-size:11px;color:var(--gray-dark);font-weight:600;">News History</span>
+  </div>
+
+  <div class="page-title">News Hunter — History</div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Period</span>
+      <div class="filter-chips" id="period-chips">
+        <button class="chip" data-period="24">Last 24h</button>
+        <button class="chip active" data-period="48">48h</button>
+        <button class="chip" data-period="168">7 days</button>
+        <button class="chip" data-period="all">All</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Source</span>
+      <select class="search-input" id="source-select">
+        <option value="">All sources</option>
+      </select>
+    </div>
+    <div class="filter-group" style="margin-left:auto;">
+      <input type="search" class="search-input" id="search-input"
+             placeholder="Search title…"/>
+    </div>
+  </div>
+
+  <div class="results-meta" id="results-meta">Loading…</div>
+
+  <div class="feed" id="feed">
+    <div class="empty">Loading…</div>
+  </div>
+
+  <button class="load-more" id="load-more" style="display:none;">Load more</button>
+
+</div>
+
+<div class="footer">
+  <span class="footer-text">Itaú BBA · Equity Research</span>
+  <div class="footer-dot"></div>
+  <span class="footer-text">Restricted use</span>
+</div>
+
+<script>
+// ─── Aliases & helpers ──────────────────────────────────────────────────
+const _LABEL_ALIAS = {
+  'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
+  'Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish',
+  'Shanghai Metals Market':'SMM','World Steel Association':'World Steel',
+  'O Estado de S. Paulo':'Estadão','Folha de São Paulo':'Folha de S.Paulo',
+  'IBRAM - Mineração do Brasil':'IBRAM',
+  'S&P Global':'S&P Platts','S&P Global Commodity Insights':'S&P Platts',
+};
+function _label(a){
+  const sn=a.source_name||'';
+  if(_LABEL_ALIAS[sn])return _LABEL_ALIAS[sn];
+  if(sn==='Google News'||sn==='Google Notícias'||sn===''){
+    const d=(a.domain||'').replace('www.','').split('.')[0];
+    return d?d.charAt(0).toUpperCase()+d.slice(1):'—';
+  }
+  return sn;
+}
+function _age(iso){
+  if(!iso)return '—';
+  const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));
+  if(s<60)return 'agora';
+  if(s<3600)return `${Math.floor(s/60)}m`;
+  if(s<86400)return `${Math.floor(s/3600)}h`;
+  return `${Math.floor(s/86400)}d`;
+}
+function _dayLabel(iso){
+  const d=new Date(iso);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
+  const articleDay=new Date(d); articleDay.setHours(0,0,0,0);
+  if(articleDay.getTime()===today.getTime())return 'TODAY';
+  if(articleDay.getTime()===yesterday.getTime())return 'YESTERDAY';
+  return d.toLocaleDateString('en-US',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase();
+}
+
+// ─── State ─────────────────────────────────────────────────────────────
+let _periodHours = 48;   // default 48h = mesma janela da home (NEWS_MAX_AGE_HOURS)
+let _sourceFilter = '';
+let _searchText = '';
+let _allArticles = [];
+let _displayLimit = 50;
+const PAGE_SIZE = 50;
+
+// ─── Fetch ─────────────────────────────────────────────────────────────
+// Timestamp efetivo: publicação real, found_at como fallback (igual à home).
+function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
+
+async function fetchArticles(){
+  const {data:{session}}=await sbAuth.auth.getSession();
+  if(!session)return [];
+  const q='url,domain,source_name,title,snippet,published_at,found_at,take';
+  // MESMO filtro da home: só notícias relevantes (include_in_report=true).
+  let url=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc&limit=1000`;
+  if(_periodHours!=='all'){
+    const cutoff=new Date(Date.now()-_periodHours*3600*1000).toISOString();
+    // Janela por data de publicação (fontes sem published_at também passam).
+    url+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
+  }
+  const res=await fetch(url,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+  if(!res.ok)return [];
+  const rows=await res.json();
+  // Ordena por timestamp efetivo (mais nova primeiro) + remove duplicatas de título.
+  const seen=new Set(), out=[];
+  for(const a of rows.sort((x,y)=>_effTs(y)-_effTs(x))){
+    const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
+    if(!key||seen.has(key)) continue;
+    seen.add(key); out.push(a);
+  }
+  return out;
+}
+
+// ─── Render ────────────────────────────────────────────────────────────
+function _takeBadge(t){
+  if(t==='+')     return '<span class="news-take pos" title="Positive">+</span>';
+  if(t==='-')     return '<span class="news-take neg" title="Negative">−</span>';
+  if(t==='=')     return '<span class="news-take neu" title="Neutral">=</span>';
+  if(t==='review')return '<span class="news-take rev" title="Review">~</span>';
+  return '';
+}
+
+function _filterArticles(){
+  return _allArticles.filter(a=>{
+    if(_sourceFilter && _label(a)!==_sourceFilter)return false;
+    if(_searchText && !a.title.toLowerCase().includes(_searchText.toLowerCase()))return false;
+    return true;
+  });
+}
+
+function _renderFeed(){
+  const feed=document.getElementById('feed');
+  const meta=document.getElementById('results-meta');
+  const loadMore=document.getElementById('load-more');
+  const filtered=_filterArticles();
+
+  meta.innerHTML=`<strong>${filtered.length}</strong> article${filtered.length!==1?'s':''} found`;
+
+  if(!filtered.length){
+    feed.innerHTML='<div class="empty">No articles found with these filters.</div>';
+    loadMore.style.display='none';
+    return;
+  }
+
+  const slice=filtered.slice(0,_displayLimit);
+  let lastDay='';
+  let html='';
+  for(const a of slice){
+    const date=a.published_at||a.found_at;   // idade/dia pela publicação real
+    const day=_dayLabel(date);
+    if(day!==lastDay){
+      html+=`<div class="day-divider">${day}</div>`;
+      lastDay=day;
+    }
+    const lbl=_label(a);
+    const snip=a.snippet?`<div class="item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
+    html+=`<a class="item" href="${a.url}" target="_blank" rel="noopener">
+      <div class="item-titlerow">${_takeBadge(a.take)}<div class="item-title">${a.title}</div></div>
+      <div class="item-meta">
+        <span class="item-source">${lbl}</span>
+        <span class="sep">·</span>
+        <span class="item-age">${_age(date)}</span>
+      </div>
+      ${snip}
+    </a>`;
+  }
+  feed.innerHTML=html;
+  loadMore.style.display=filtered.length>_displayLimit?'block':'none';
+}
+
+function _buildSourceFilter(){
+  const sel=document.getElementById('source-select');
+  const sources=new Set();
+  _allArticles.forEach(a=>sources.add(_label(a)));
+  const sorted=Array.from(sources).sort();
+  const current=sel.value;
+  sel.innerHTML='<option value="">Todas as fontes</option>'+
+    sorted.map(s=>`<option value="${s}">${s}</option>`).join('');
+  sel.value=current;
+}
+
+async function refresh(){
+  document.getElementById('feed').innerHTML='<div class="empty">Loading…</div>';
+  _allArticles=await fetchArticles();
+  _buildSourceFilter();
+  _renderFeed();
+}
+
+// ─── Event listeners ────────────────────────────────────────────────────
+document.getElementById('period-chips').addEventListener('click',e=>{
+  const btn=e.target.closest('.chip');
+  if(!btn)return;
+  document.querySelectorAll('#period-chips .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  _periodHours=btn.dataset.period==='all'?'all':parseInt(btn.dataset.period);
+  _displayLimit=PAGE_SIZE;
+  refresh();
+});
+document.getElementById('source-select').addEventListener('change',e=>{
+  _sourceFilter=e.target.value;
+  _displayLimit=PAGE_SIZE;
+  _renderFeed();
+});
+let _searchTimer=null;
+document.getElementById('search-input').addEventListener('input',e=>{
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(()=>{
+    _searchText=e.target.value.trim();
+    _displayLimit=PAGE_SIZE;
+    _renderFeed();
+  },200);
+});
+document.getElementById('load-more').addEventListener('click',()=>{
+  _displayLimit+=PAGE_SIZE;
+  _renderFeed();
+});
+
+refresh();
+setInterval(refresh, 60 * 1000);  // atualiza a cada minuto
+</script>
+
+<!-- STAGING BADGE -->
+<script>
+(function(){
+  const h=window.location.hostname;
+  if(h==='localhost'||h==='127.0.0.1'||h.includes('git-staging')||h.includes('-staging.')){
+    const b=document.createElement('div');
+    b.style.cssText='position:fixed;bottom:16px;right:16px;background:#D97706;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:20px;z-index:9999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+    b.textContent='⚠ STAGING';
+    document.body.appendChild(b);
+  }
+})();
+</script>
+</body>
+</html>

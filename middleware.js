@@ -7,7 +7,6 @@ export const config = {
   matcher: ['/((?!login\\.html|favicon\\.ico).*)']
 }
 
-// Parse cookie do header (request.cookies não existe em sites estáticos — só no Next.js)
 function getCookie(request, name) {
   const header = request.headers.get('cookie') || ''
   for (const part of header.split(';')) {
@@ -17,20 +16,32 @@ function getCookie(request, name) {
   return null
 }
 
-// Cache de chaves públicas (reutilizado entre requests no mesmo edge node)
+// Cache de chaves com TTL de 1h para sobreviver a rotações de chave
 let _keys = null
+let _keysFetchedAt = 0
+const KEYS_TTL_MS = 60 * 60 * 1000
+
 async function getKeys() {
-  if (_keys) return _keys
-  const res = await fetch(JWKS_URL)
-  const { keys } = await res.json()
-  _keys = await Promise.all(keys.map(k =>
-    crypto.subtle.importKey(
-      'jwk', k,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false, ['verify']
-    )
-  ))
-  return _keys
+  const now = Date.now()
+  if (_keys && (now - _keysFetchedAt) < KEYS_TTL_MS) return _keys
+  try {
+    const res = await fetch(JWKS_URL, { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) throw new Error(`JWKS fetch ${res.status}`)
+    const { keys } = await res.json()
+    _keys = await Promise.all(keys.map(k =>
+      crypto.subtle.importKey(
+        'jwk', k,
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        false, ['verify']
+      )
+    ))
+    _keysFetchedAt = now
+    return _keys
+  } catch (e) {
+    // Se o fetch falhou mas já temos chaves em cache, usa o cache antigo
+    if (_keys) return _keys
+    throw e
+  }
 }
 
 function b64url(s) {
@@ -41,11 +52,9 @@ async function verifyJWT(token) {
   const [h, p, sig] = token.split('.')
   if (!h || !p || !sig) return false
 
-  // Verifica expiração
   const payload = JSON.parse(new TextDecoder().decode(b64url(p)))
   if (payload.exp < Date.now() / 1000) return false
 
-  // Verifica assinatura ECC
   const msg = new TextEncoder().encode(`${h}.${p}`)
   const keys = await getKeys()
   for (const key of keys) {
@@ -59,22 +68,34 @@ async function verifyJWT(token) {
   return false
 }
 
+function redirectToLogin(requestUrl) {
+  return Response.redirect(new URL('/login.html', requestUrl), 302)
+}
+
 export default async function middleware(request) {
-  const token = getCookie(request, 'sb-access-token')
-
-  // Sem token → redireciona para login
-  if (!token) {
-    return Response.redirect(new URL('/login.html', request.url), 302)
-  }
-
+  // Wrapper global — qualquer erro não tratado redireciona para login
+  // em vez de retornar 500 MIDDLEWARE_INVOCATION_FAILED
   try {
-    const valid = await verifyJWT(token)
-    if (!valid) throw new Error('invalid')
-    // Token válido → deixa passar (Vercel serve o arquivo estático)
+    const token = getCookie(request, 'sb-access-token')
+
+    if (!token) {
+      return redirectToLogin(request.url)
+    }
+
+    try {
+      const valid = await verifyJWT(token)
+      if (!valid) throw new Error('invalid')
+      // Token válido → deixa passar
+    } catch {
+      const res = redirectToLogin(request.url)
+      res.headers.append(
+        'Set-Cookie',
+        'sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure'
+      )
+      return res
+    }
   } catch {
-    // Token inválido ou expirado → limpa cookie e redireciona
-    const res = Response.redirect(new URL('/login.html', request.url), 302)
-    res.headers.append('Set-Cookie', 'sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure')
-    return res
+    // Fallback seguro: qualquer crash inesperado vai para login, não para 500
+    return redirectToLogin(request.url)
   }
 }
