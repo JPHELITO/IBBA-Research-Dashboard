@@ -1231,7 +1231,13 @@ async function loadCommodities(){
     const rows = await r.json();
     if(!rows.length){ const l=document.getElementById('comm-list'); if(l) l.innerHTML='<div class="kv-loading">No data.</div>'; return; }
     _commByCode={}; let latest='';
-    rows.forEach(c=>{ _commByCode[c.code]=c; if((c.updated_at||'')>latest) latest=c.updated_at; });
+    // O "updated Xm ago" do painel reflete SÓ os dados Platts (maioria da informação).
+    // Copper/Gold vêm do Yahoo (ao vivo, ~5min) e, se entrassem na conta, mascarariam
+    // a cadência real do Platts (~30min) — o painel diria "updated now" o tempo todo.
+    rows.forEach(c=>{
+      _commByCode[c.code]=c;
+      if(_freqOf(c)!=='Live' && (c.updated_at||'')>latest) latest=c.updated_at;
+    });
     _commUpdated=latest;
     _renderCommPage();
   } catch(e){console.warn('commodities error:', e);}
