@@ -281,6 +281,32 @@ img.team-avatar{object-fit:cover;background:none;}
   border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;transition:all .12s;}
 .hm-range button:hover{color:var(--black);border-color:var(--gray-mid);}
 .hm-range button.active{background:var(--black);color:var(--white);border-color:var(--black);}
+/* filtro de empresas (▾) + presets do heatmap */
+.hm-filter{position:relative;}
+.hm-filter-btn{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 7px;
+  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
+.hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
+.hm-filter-btn .hm-count{font-weight:600;opacity:.7;}
+.hm-pop{position:fixed;z-index:4000;width:min(330px,86vw);
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-hover);
+  padding:10px 11px;max-height:min(72vh,470px);overflow:auto;text-align:left;}
+.hm-pop[hidden]{display:none;}
+.hm-pop-presets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding-bottom:9px;border-bottom:1px solid var(--border);}
+.hm-pop-preset{font:inherit;font-size:10px;font-weight:700;padding:3px 9px;border:1px solid var(--border);
+  background:var(--white);color:var(--gray-dark);border-radius:12px;cursor:pointer;transition:all .12s;}
+.hm-pop-preset:hover{border-color:var(--orange);color:var(--orange);}
+.hm-pop-preset.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.hm-pop-hint{font-size:10px;color:var(--gray-mid);margin:0 2px 7px;}
+.hm-pop-hint b{color:var(--gray-dark);}
+.hm-pop-group{margin-bottom:7px;}
+.hm-pop-glabel{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);margin:3px 2px 4px;}
+.hm-pop-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.hm-pop-chip{font:inherit;font-size:10.5px;font-weight:600;padding:3px 8px;border:1px solid var(--border);
+  background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;transition:all .12s;}
+.hm-pop-chip:hover{border-color:var(--gray-mid);color:var(--black);}
+.hm-pop-chip.on{background:var(--black);border-color:var(--black);color:#fff;}
+.hm-pop-chip:disabled{opacity:.36;cursor:not-allowed;}
 /* ── MODAL — histórico + comparação ─────────────────────────────────── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(17,17,17,.42);z-index:5000;
   display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -312,6 +338,18 @@ img.team-avatar{object-fit:cover;background:none;}
 .mc-chip{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border:1px solid var(--border);
   background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;transition:all .12s;}
 .mc-chip:hover{border-color:var(--gray-mid);color:var(--black);}
+.mc-chip.on{color:#fff;}
+/* faixa "Recomendadas" (pares do setor + índice aderente) */
+.mc-reco{margin-top:12px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
+.mc-reco-label{font-size:11px;color:var(--orange);font-weight:700;padding-top:4px;white-space:nowrap;}
+.mc-reco-chips{display:flex;gap:5px;flex-wrap:wrap;flex:1;}
+.mc-reco-chip{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border:1px solid var(--orange);
+  background:#fff7f3;color:var(--orange);border-radius:6px;cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:4px;}
+.mc-reco-chip::before{content:'+';font-weight:800;opacity:.8;}
+.mc-reco-chip:hover{background:var(--orange);color:#fff;}
+.mc-reco-chip.on{background:var(--orange);color:#fff;}
+.mc-reco-chip.on::before{content:'✓';}
+.mc-reco-sub{font-size:10px;color:var(--gray-mid);font-weight:600;align-self:center;}
 
 /* ── COMMODITIES + MACRO TABLES ─────────────────────────────────────── */
 .kv-list{padding:2px 0;}
@@ -541,6 +579,12 @@ img.team-avatar{object-fit:cover;background:none;}
     <div class="sec-head">
       <span class="sec-title">Heatmap — Quotes</span>
       <div class="hm-head-right">
+        <div class="hm-filter">
+          <button class="hm-filter-btn" id="hm-filter-btn" aria-haspopup="true" aria-expanded="false">
+            Empresas <span class="hm-count" id="hm-count">15/15</span> ▾
+          </button>
+          <div class="hm-pop" id="hm-pop" hidden></div>
+        </div>
         <div class="hm-range" id="hm-range">
           <button data-r="D" class="active">D</button>
           <button data-r="W">WoW</button>
@@ -863,6 +907,68 @@ let _range  = 'D';                             // período ativo do heatmap
 const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY'};
 const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (heatmap)
 
+// ── Universo de comparação (filtro + presets + recomendadas) ──────────
+// A tabela `quotes` traz 33 instrumentos; o heatmap mostra só um subconjunto.
+// COVERAGE = nossa cobertura + IBOV (default). Os demais entram pelo filtro.
+const HM_MAX = 15;                              // teto de cartões (evita poluir a visão)
+const COVERAGE = ['IBOV','VALE3.SA','CSNA3.SA','CMIN3.SA','GGBR4.SA','USIM5.SA',
+  'KLBN11.SA','SUZB3.SA','RANI3.SA','AURA33.SA','SCCO','TX','CMPC.SN','COPEC.SN','GMEXICOB.MX'];
+
+// Heatmaps pré-prontos. 'Cobertura' é o default; os setoriais juntam pares + o ETF do setor.
+const HM_PRESETS = {
+  'Cobertura': COVERAGE,
+  'Steel':  ['GGBR4.SA','CSNA3.SA','USIM5.SA','TX','NUE','MT','SLX','IBOV'],
+  'Mining': ['VALE3.SA','CMIN3.SA','BHP','RIO','AAL.L','FMG.AX','GLEN.L','SCCO','GMEXICOB.MX','AURA33.SA','PICK','IBOV'],
+  'P&P':    ['SUZB3.SA','KLBN11.SA','RANI3.SA','DXCO3.SA','CMPC.SN','COPEC.SN','IP','UPM.HE','VALMT.HE','WOOD','IBOV'],
+};
+
+// Comparações recomendadas no modal: pares do mesmo (sub)setor + o índice mais aderente.
+// Pesquisa: SLX=aço · PICK=mineração diversificada · COPX=cobre · GDX=ouro · WOOD=papel/celulose;
+// IBOV=mercado BR · SPX=mercado EUA/global.
+const HM_RECO = {
+  // Aço
+  'GGBR4.SA':{peers:['CSNA3.SA','USIM5.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
+  'CSNA3.SA':{peers:['GGBR4.SA','USIM5.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
+  'USIM5.SA':{peers:['GGBR4.SA','CSNA3.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
+  'TX':      {peers:['GGBR4.SA','CSNA3.SA','USIM5.SA','NUE','MT'],idx:['SLX','SPX']},
+  'NUE':     {peers:['MT','TX','GGBR4.SA','CSNA3.SA'],idx:['SLX','SPX']},
+  'MT':      {peers:['NUE','TX','GGBR4.SA','CSNA3.SA','USIM5.SA'],idx:['SLX','SPX']},
+  // Mineração — minério / diversificadas
+  'VALE3.SA':{peers:['CMIN3.SA','BHP','RIO','AAL.L','FMG.AX'],idx:['PICK','IBOV']},
+  'CMIN3.SA':{peers:['VALE3.SA','BHP','RIO','FMG.AX'],idx:['PICK','IBOV']},
+  'BHP':     {peers:['RIO','VALE3.SA','AAL.L','GLEN.L','FMG.AX'],idx:['PICK','SPX']},
+  'RIO':     {peers:['BHP','VALE3.SA','AAL.L','GLEN.L','FMG.AX'],idx:['PICK','SPX']},
+  'AAL.L':   {peers:['BHP','RIO','GLEN.L','VALE3.SA'],idx:['PICK','SPX']},
+  'FMG.AX':  {peers:['VALE3.SA','BHP','RIO','CMIN3.SA'],idx:['PICK','SPX']},
+  'GLEN.L':  {peers:['BHP','RIO','AAL.L'],idx:['PICK','SPX']},
+  // Mineração — cobre
+  'SCCO':       {peers:['GMEXICOB.MX','BHP','GLEN.L'],idx:['COPX','SPX']},
+  'GMEXICOB.MX':{peers:['SCCO','BHP'],idx:['COPX','SPX']},
+  // Mineração — ouro
+  'AURA33.SA':{peers:[],idx:['GDX','IBOV']},
+  // Papel & Celulose
+  'SUZB3.SA':{peers:['KLBN11.SA','RANI3.SA','DXCO3.SA','CMPC.SN','IP','UPM.HE'],idx:['WOOD','IBOV']},
+  'KLBN11.SA':{peers:['SUZB3.SA','RANI3.SA','DXCO3.SA','CMPC.SN','IP'],idx:['WOOD','IBOV']},
+  'RANI3.SA':{peers:['KLBN11.SA','SUZB3.SA','DXCO3.SA'],idx:['WOOD','IBOV']},
+  'DXCO3.SA':{peers:['KLBN11.SA','SUZB3.SA','RANI3.SA'],idx:['WOOD','IBOV']},
+  'CMPC.SN': {peers:['SUZB3.SA','COPEC.SN','KLBN11.SA','UPM.HE','IP'],idx:['WOOD','SPX']},
+  'COPEC.SN':{peers:['CMPC.SN','SUZB3.SA','UPM.HE'],idx:['WOOD','SPX']},
+  'IP':      {peers:['SUZB3.SA','KLBN11.SA','UPM.HE','CMPC.SN'],idx:['WOOD','SPX']},
+  'UPM.HE':  {peers:['SUZB3.SA','CMPC.SN','IP','VALMT.HE'],idx:['WOOD','SPX']},
+  'VALMT.HE':{peers:['UPM.HE','IP'],idx:['WOOD','SPX']},
+};
+
+const SECTOR_LABEL = {steel:'Aço', mining:'Mineração', pp:'Papel & Celulose', index:'Índices / ETFs'};
+
+// Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
+let _hmDisplayed = _loadDisplayed();
+function _loadDisplayed(){
+  try{ const s=JSON.parse(localStorage.getItem('hm_displayed'));
+       if(Array.isArray(s) && s.length) return s.slice(0,HM_MAX); }catch(e){}
+  return COVERAGE.slice();
+}
+function _saveDisplayed(){ try{ localStorage.setItem('hm_displayed', JSON.stringify(_hmDisplayed)); }catch(e){} }
+
 async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
@@ -911,7 +1017,7 @@ function _fmtPrice(value, exchange){
   return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-const _short = t => t.replace(/\.(SA|SN|MX)$/,'');
+const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F)$/,'');
 
 // Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
 function _seriesFor(q, range){
@@ -947,10 +1053,14 @@ function _sparkline(closes){
 
 function _renderHeatmap(){
   const grid = document.getElementById('heatmap-grid');
+  _updateFilterCount();
   if(!grid) return;
-  if(!_quotes.length){ grid.innerHTML = '<div class="kv-loading">No quotes available.</div>'; return; }
-  const cards = _quotes.map(q => ({ q, ..._seriesFor(q, _range) }))
+  if(!_quotes.length){ grid.innerHTML = '<div class="kv-loading">Loading quotes…</div>'; return; }
+  const show = new Set(_hmDisplayed);
+  const cards = _quotes.filter(q => show.has(q.ticker))
+                       .map(q => ({ q, ..._seriesFor(q, _range) }))
                        .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
+  if(!cards.length){ grid.innerHTML = '<div class="kv-loading">Nenhuma empresa selecionada — clique em “Empresas ▾”.</div>'; return; }
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
@@ -980,10 +1090,72 @@ document.getElementById('heatmap-grid')?.addEventListener('click', e=>{
   openCompanyModal(card.dataset.ticker);
 });
 
+// ── Filtro de empresas + presets (popover do heatmap) ─────────────────
+function _updateFilterCount(){
+  const c=document.getElementById('hm-count');
+  if(c) c.textContent = `${_hmDisplayed.length}/${HM_MAX}`;
+}
+function _activePreset(){
+  const cur=JSON.stringify([..._hmDisplayed].sort());
+  for(const [name,list] of Object.entries(HM_PRESETS))
+    if(JSON.stringify([...list].sort())===cur) return name;
+  return null;
+}
+function _buildFilterPop(){
+  const pop=document.getElementById('hm-pop'); if(!pop) return;
+  const shown=new Set(_hmDisplayed), atCap=_hmDisplayed.length>=HM_MAX, active=_activePreset();
+  let html='<div class="hm-pop-presets">'+Object.keys(HM_PRESETS).map(n=>
+    `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n==='Cobertura'?'Nossa cobertura':n}</button>`
+  ).join('')+'</div>';
+  html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selecionados — marque/desmarque empresas e índices.</div>`;
+  const bySector={}; _quotes.forEach(q=>{ (bySector[q.sector]=bySector[q.sector]||[]).push(q); });
+  ['steel','mining','pp','index'].forEach(sec=>{
+    const items=(bySector[sec]||[]).slice().sort((a,b)=>_short(a.ticker).localeCompare(_short(b.ticker)));
+    if(!items.length) return;
+    html+=`<div class="hm-pop-group"><div class="hm-pop-glabel">${SECTOR_LABEL[sec]||sec}</div><div class="hm-pop-chips">`+
+      items.map(q=>{
+        const on=shown.has(q.ticker), dis=(!on&&atCap)?'disabled':'';
+        return `<button class="hm-pop-chip ${on?'on':''}" data-t="${q.ticker}" ${dis} title="${q.name}">${_short(q.ticker)}</button>`;
+      }).join('')+'</div></div>';
+  });
+  pop.innerHTML=html;
+}
+function _positionPop(){
+  const pop=document.getElementById('hm-pop'), btn=document.getElementById('hm-filter-btn');
+  if(!pop||!btn) return;
+  const r=btn.getBoundingClientRect();
+  pop.style.top=(r.bottom+6)+'px';
+  pop.style.right=Math.max(8,(window.innerWidth-r.right))+'px';
+  pop.style.left='auto';
+}
+function _toggleFilterPop(open){
+  const pop=document.getElementById('hm-pop'), btn=document.getElementById('hm-filter-btn');
+  if(!pop) return;
+  const willShow = (open===undefined) ? pop.hidden : open;
+  if(willShow){ _buildFilterPop(); _positionPop(); pop.hidden=false; btn?.setAttribute('aria-expanded','true'); }
+  else { pop.hidden=true; btn?.setAttribute('aria-expanded','false'); }
+}
+document.getElementById('hm-filter-btn')?.addEventListener('click', e=>{ e.stopPropagation(); _toggleFilterPop(); });
+document.getElementById('hm-pop')?.addEventListener('click', e=>{
+  e.stopPropagation();
+  const preset=e.target.closest('.hm-pop-preset');
+  if(preset){ _hmDisplayed=HM_PRESETS[preset.dataset.preset].slice(0,HM_MAX); _saveDisplayed(); _renderHeatmap(); _buildFilterPop(); return; }
+  const chip=e.target.closest('.hm-pop-chip');
+  if(chip && !chip.disabled){
+    const t=chip.dataset.t, i=_hmDisplayed.indexOf(t);
+    if(i>=0) _hmDisplayed.splice(i,1);
+    else if(_hmDisplayed.length<HM_MAX) _hmDisplayed.push(t);
+    _saveDisplayed(); _renderHeatmap(); _buildFilterPop();
+  }
+});
+document.addEventListener('click', e=>{ if(!e.target.closest('.hm-filter')) _toggleFilterPop(false); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') _toggleFilterPop(false); });
+window.addEventListener('resize', ()=>{ const p=document.getElementById('hm-pop'); if(p&&!p.hidden) _positionPop(); });
+
 // ─── MODAL — histórico + comparação (SVG à mão) ───────────────────────
 const _MC_COLORS = ['#FF5000','#111111','#2563eb','#16a34a','#9333ea','#0891b2','#c0392b','#b45309'];
 const _MC_RANGE_DAYS = {'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
-let _mcPrimary=null, _mcSel=[], _mcRange='3M', _mcFrom=null, _mcTo=null;
+let _mcPrimary=null, _mcAnchor=null, _mcSel=[], _mcRange='3M', _mcFrom=null, _mcTo=null;
 
 // epoch(seg) <-> 'YYYY-MM-DD' (UTC) p/ os <input type=date>
 function _toDateInput(epoch){ return new Date(epoch*1000).toISOString().slice(0,10); }
@@ -1019,6 +1191,7 @@ function _ensureModal(){
       <input type="date" id="co-to" aria-label="Até">
     </div>
     <div class="modal-chart" id="co-chart"></div>
+    <div class="mc-reco" id="co-reco" hidden></div>
     <div class="modal-compare"><span class="mc-label">Comparar:</span><div class="mc-chips" id="co-compare"></div></div>
   </div>`;
   document.body.appendChild(el);
@@ -1046,17 +1219,25 @@ function _ensureModal(){
     // toggle livre de qualquer empresa (sem travar a inicial)
     _mcSel = _mcSel.includes(t) ? _mcSel.filter(x=>x!==t) : [..._mcSel, t];
     _mcPrimary = _mcSel[0] || null;                  // foco = 1ª selecionada (título/datas)
-    _renderCompareChips(); _updateModalTitle(); _renderModalChart();
+    _renderCompareChips(); _renderReco(); _updateModalTitle(); _renderModalChart();
+  });
+  el.querySelector('#co-reco').addEventListener('click', ev=>{
+    const b=ev.target.closest('.mc-reco-chip'); if(!b) return;
+    const t=b.dataset.t;
+    _mcSel = _mcSel.includes(t) ? _mcSel.filter(x=>x!==t) : [..._mcSel, t];
+    _mcPrimary = _mcSel[0] || null;
+    _renderCompareChips(); _renderReco(); _updateModalTitle(); _renderModalChart();
   });
 }
 
 function openCompanyModal(ticker){
   _ensureModal();
-  _mcPrimary=ticker; _mcSel=[ticker]; _mcRange='3M'; _mcFrom=null; _mcTo=null;
+  _mcPrimary=ticker; _mcAnchor=ticker; _mcSel=[ticker]; _mcRange='3M'; _mcFrom=null; _mcTo=null;
   document.querySelectorAll('#co-ranges button').forEach(b=>b.classList.toggle('active',b.dataset.r===_mcRange));
   _updateModalTitle();
   _syncDatesToPreset();
   _renderCompareChips();
+  _renderReco();
   _renderModalChart();
   document.getElementById('co-modal').hidden=false;
 }
@@ -1092,6 +1273,21 @@ function _renderCompareChips(){
     const style=on ? `style="background:${color};border-color:${color};color:#fff;"` : '';
     return `<button class="mc-chip ${on?'on':''}" data-t="${q.ticker}" ${style}>${_short(q.ticker)}</button>`;
   }).join('');
+}
+
+// Recomendadas (pares do setor + índice aderente), ancoradas na empresa aberta.
+function _renderReco(){
+  const box=document.getElementById('co-reco'); if(!box) return;
+  const reco=_mcAnchor && HM_RECO[_mcAnchor];
+  const have=new Set(_quotes.map(q=>q.ticker));
+  const items = reco ? [...reco.peers, ...reco.idx].filter(t=>have.has(t)) : [];
+  if(!items.length){ box.hidden=true; box.innerHTML=''; return; }
+  const chips=items.map(t=>{
+    const on=_mcSel.includes(t), q=_quotes.find(x=>x.ticker===t);
+    return `<button class="mc-reco-chip ${on?'on':''}" data-t="${t}" title="${q?q.name:''}">${_short(t)}</button>`;
+  }).join('');
+  box.hidden=false;
+  box.innerHTML=`<span class="mc-reco-label">Recomendadas</span><div class="mc-reco-chips">${chips}</div>`;
 }
 
 // Série diária normalizada a 0% no início do range → [[epoch, %], ...]
