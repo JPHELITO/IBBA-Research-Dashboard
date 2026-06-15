@@ -581,7 +581,7 @@ img.team-avatar{object-fit:cover;background:none;}
       <div class="hm-head-right">
         <div class="hm-filter">
           <button class="hm-filter-btn" id="hm-filter-btn" aria-haspopup="true" aria-expanded="false">
-            Empresas <span class="hm-count" id="hm-count">15/15</span> ▾
+            Selected <span class="hm-count" id="hm-count">15/15</span> ▾
           </button>
           <div class="hm-pop" id="hm-pop" hidden></div>
         </div>
@@ -916,7 +916,7 @@ const COVERAGE = ['IBOV','VALE3.SA','CSNA3.SA','CMIN3.SA','GGBR4.SA','USIM5.SA',
 
 // Heatmaps pré-prontos. 'Cobertura' é o default; os setoriais juntam pares + o ETF do setor.
 const HM_PRESETS = {
-  'Cobertura': COVERAGE,
+  'Our coverage': COVERAGE,
   'Steel':  ['GGBR4.SA','CSNA3.SA','USIM5.SA','TX','NUE','MT','SLX','IBOV'],
   'Mining': ['VALE3.SA','CMIN3.SA','BHP','RIO','AAL.L','FMG.AX','GLEN.L','SCCO','GMEXICOB.MX','AURA33.SA','PICK','IBOV'],
   'P&P':    ['SUZB3.SA','KLBN11.SA','RANI3.SA','DXCO3.SA','CMPC.SN','COPEC.SN','IP','UPM.HE','VALMT.HE','WOOD','IBOV'],
@@ -958,7 +958,7 @@ const HM_RECO = {
   'VALMT.HE':{peers:['UPM.HE','IP'],idx:['WOOD','SPX']},
 };
 
-const SECTOR_LABEL = {steel:'Aço', mining:'Mineração', pp:'Papel & Celulose', index:'Índices / ETFs'};
+const SECTOR_LABEL = {steel:'Steel', mining:'Mining', pp:'Pulp & Paper', index:'Indices / ETFs'};
 
 // Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
 let _hmDisplayed = _loadDisplayed();
@@ -1060,11 +1060,11 @@ function _renderHeatmap(){
   const cards = _quotes.filter(q => show.has(q.ticker))
                        .map(q => ({ q, ..._seriesFor(q, _range) }))
                        .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
-  if(!cards.length){ grid.innerHTML = '<div class="kv-loading">Nenhuma empresa selecionada — clique em “Empresas ▾”.</div>'; return; }
+  if(!cards.length){ grid.innerHTML = '<div class="kv-loading">No companies selected — click “Selected ▾”.</div>'; return; }
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
-        title="${q.name} (${q.exchange}) — ver histórico">
+        title="${q.name} (${q.exchange}) — view history">
       <div class="hm-card-top">
         <div class="hm-ticker">${_short(q.ticker)}</div>
         <div class="hm-change">${pctStr}</div>
@@ -1105,9 +1105,9 @@ function _buildFilterPop(){
   const pop=document.getElementById('hm-pop'); if(!pop) return;
   const shown=new Set(_hmDisplayed), atCap=_hmDisplayed.length>=HM_MAX, active=_activePreset();
   let html='<div class="hm-pop-presets">'+Object.keys(HM_PRESETS).map(n=>
-    `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n==='Cobertura'?'Nossa cobertura':n}</button>`
+    `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n}</button>`
   ).join('')+'</div>';
-  html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selecionados — marque/desmarque empresas e índices.</div>`;
+  html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selected — check/uncheck companies and indices.</div>`;
   const bySector={}; _quotes.forEach(q=>{ (bySector[q.sector]=bySector[q.sector]||[]).push(q); });
   ['steel','mining','pp','index'].forEach(sec=>{
     const items=(bySector[sec]||[]).slice().sort((a,b)=>_short(a.ticker).localeCompare(_short(b.ticker)));
@@ -1178,7 +1178,7 @@ function _ensureModal(){
   el.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="co-title">
     <div class="modal-head">
       <div><div class="modal-title" id="co-title">—</div><div class="modal-sub" id="co-sub">—</div></div>
-      <button class="modal-close" id="co-close" aria-label="Fechar">&times;</button>
+      <button class="modal-close" id="co-close" aria-label="Close">&times;</button>
     </div>
     <div class="modal-ranges" id="co-ranges">
       <button data-r="1W">1W</button><button data-r="1M">1M</button>
@@ -1186,13 +1186,13 @@ function _ensureModal(){
       <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button>
     </div>
     <div class="modal-dates">
-      <span class="md-label">Período:</span>
-      <input type="date" id="co-from" aria-label="De"><span class="md-sep">→</span>
-      <input type="date" id="co-to" aria-label="Até">
+      <span class="md-label">Period:</span>
+      <input type="date" id="co-from" aria-label="From"><span class="md-sep">→</span>
+      <input type="date" id="co-to" aria-label="To">
     </div>
     <div class="modal-chart" id="co-chart"></div>
     <div class="mc-reco" id="co-reco" hidden></div>
-    <div class="modal-compare"><span class="mc-label">Comparar:</span><div class="mc-chips" id="co-compare"></div></div>
+    <div class="modal-compare"><span class="mc-label">Compare:</span><div class="mc-chips" id="co-compare"></div></div>
   </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', ev=>{ if(ev.target===el) closeCompanyModal(); });
@@ -1251,11 +1251,11 @@ function _updateModalTitle(){
     title.textContent = q?.name || _mcSel[0];
     sub.textContent = `${_short(_mcSel[0])} · ${q?.exchange||''} · ${_fmtPrice(q?.price,q?.exchange)}`;
   } else if(_mcSel.length>1){
-    title.textContent = 'Comparação';
-    sub.textContent = `${_mcSel.length} empresas · ${_mcSel.map(_short).join(', ')}`;
+    title.textContent = 'Comparison';
+    sub.textContent = `${_mcSel.length} companies · ${_mcSel.map(_short).join(', ')}`;
   } else {
-    title.textContent = 'Cotações';
-    sub.textContent = 'Selecione uma ou mais empresas abaixo';
+    title.textContent = 'Quotes';
+    sub.textContent = 'Select one or more companies below';
   }
   // limites das datas a partir do histórico da empresa em foco
   const q=_quotes.find(x=>x.ticker===(_mcSel[0]||_mcPrimary));
@@ -1287,7 +1287,7 @@ function _renderReco(){
     return `<button class="mc-reco-chip ${on?'on':''}" data-t="${t}" title="${q?q.name:''}">${_short(t)}</button>`;
   }).join('');
   box.hidden=false;
-  box.innerHTML=`<span class="mc-reco-label">Recomendadas</span><div class="mc-reco-chips">${chips}</div>`;
+  box.innerHTML=`<span class="mc-reco-label">Recommended</span><div class="mc-reco-chips">${chips}</div>`;
 }
 
 // Série diária normalizada a 0% no início do range → [[epoch, %], ...]
@@ -1311,8 +1311,8 @@ function _renderModalChart(){
                     .filter(l=>l.pts);
   if(!lines.length){
     host.innerHTML = _mcSel.length
-      ? '<div class="kv-loading">Sem histórico diário ainda (aguarde a 1ª coleta diária).</div>'
-      : '<div class="kv-loading">Selecione uma ou mais empresas nos chips abaixo.</div>';
+      ? '<div class="kv-loading">No daily history yet (wait for the first daily collection).</div>'
+      : '<div class="kv-loading">Select one or more companies from the chips below.</div>';
     return;
   }
   let tMin=Infinity,tMax=-Infinity,vMin=Infinity,vMax=-Infinity;
