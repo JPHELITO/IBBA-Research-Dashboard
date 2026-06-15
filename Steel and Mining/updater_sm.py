@@ -187,6 +187,83 @@ def classify_ncm(ncm: str) -> list[str]:
     return cats
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PREVISÃO — Coreia/China HRC/CRC por SH6 (alimenta import_prediction = a linha
+# laranja "SECEX" do Modelo Preditivo). MESMOS códigos SH6 do histórico
+# (extractor_sm.py) p/ manter a comparação maçã-com-maçã com a linha de exportação.
+# A linha laranja passa a atualizar SOZINHA com o MDIC; a linha preta (exportação
+# registrada na origem, Coreia/China) continua vindo de planilha (pred_exports).
+# ══════════════════════════════════════════════════════════════════════════════
+HRC_SH6 = {
+    720890, 720826, 720827, 720837, 720838, 720839, 720853, 720854,
+    722540, 722691, 720825, 721190, 722530, 720810, 720836, 721113,
+    721114, 721119, 720840,
+}
+CRC_SH6 = {
+    720916, 720917, 720926, 720927, 720915, 720918, 722550, 721129,
+    722692, 720990, 721123, 722519, 722619, 720925, 720928,
+}
+PRED_SH6_PREFIXES = {str(c) for c in (HRC_SH6 | CRC_SH6)}
+
+
+def _classify_sh6(ncm) -> str:
+    """HRC / CRC / OTHER pelo prefixo SH6 (6 dígitos) do NCM (8 dígitos)."""
+    try:
+        code = int(str(ncm).strip().zfill(8)[:6])
+    except (ValueError, TypeError):
+        return "OTHER"
+    if code in HRC_SH6:
+        return "HRC"
+    if code in CRC_SH6:
+        return "CRC"
+    return "OTHER"
+
+
+def _classify_pred_country(country) -> str:
+    """Coreia / China / Other (mesma regra do extractor_sm.py p/ manter o histórico)."""
+    c = str(country).lower()
+    if "coreia" in c or "korea" in c:
+        return "Korea"
+    if "china" in c or "chin" in c:
+        return "China"
+    return "Other"
+
+
+def _aggregate_import_prediction(df_raw, only_after=None):
+    """Agrega o df MDIC de IMPORTAÇÃO (period,ncm,country,kg,usd) em linhas de
+    import_prediction (period,product,country,value_usd,volume_kg) — só Coreia/China,
+    só HRC/CRC pelos códigos SH6. value_usd/volume_kg em unidade BRUTA (USD/kg), igual
+    ao extractor (o front converte kg→kt na hora de plotar)."""
+    agg = {}
+    for _, row in df_raw.iterrows():
+        period = str(row["period"]).strip()
+        if only_after and period <= only_after:
+            continue
+        product = _classify_sh6(row["ncm"])
+        if product == "OTHER":
+            continue
+        country = _classify_pred_country(row.get("country", ""))
+        if country == "Other":
+            continue
+        usd = float(row.get("usd", 0) or 0)
+        kg  = float(row.get("kg", 0) or 0)
+        key = (period, product, country)
+        if key not in agg:
+            agg[key] = [0.0, 0.0]
+        agg[key][0] += usd
+        agg[key][1] += kg
+    return [(p, prod, ctry, v[0], v[1], NOW) for (p, prod, ctry), v in agg.items()]
+
+
+def upsert_import_prediction(conn, rows):
+    conn.executemany(
+        "INSERT OR REPLACE INTO import_prediction "
+        "(period,product,country,value_usd,volume_kg,updated_at) VALUES (?,?,?,?,?,?)",
+        rows,
+    )
+    conn.commit()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # BANCO DE DADOS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -227,6 +304,15 @@ def init_tables(conn):
     CREATE TABLE IF NOT EXISTS secex_meta (
         key   TEXT PRIMARY KEY,
         value TEXT
+    );
+    CREATE TABLE IF NOT EXISTS import_prediction (
+        period    TEXT,
+        product   TEXT,
+        country   TEXT,
+        value_usd REAL,
+        volume_kg REAL,
+        updated_at TEXT,
+        PRIMARY KEY (period, product, country)
     );
     """)
     conn.commit()
@@ -410,7 +496,10 @@ def _download_mdic_year(year: int, direction: str, pais_map: dict) -> pd.DataFra
             chunksize=150_000, low_memory=False,
         ):
             chunk["CO_NCM"] = chunk["CO_NCM"].str.strip().str.zfill(8)
-            filtered = chunk[chunk["CO_NCM"].isin(ALL_NCM)]
+            # NCMs de aço (secex) + os SH6 da previsão (Coreia/China HRC/CRC), mesmo que
+            # fora do universo de aço (ex.: inox 722519/722619), p/ casar 100% o histórico.
+            mask = chunk["CO_NCM"].isin(ALL_NCM) | chunk["CO_NCM"].str[:6].isin(PRED_SH6_PREFIXES)
+            filtered = chunk[mask]
             if len(filtered):
                 chunks.append(filtered)
     except Exception as e:
@@ -443,7 +532,8 @@ def update_from_mdic(conn, force_reload=False):
     print("\n[MDIC] Verificando novos dados SECEX...")
 
     latest_in_db = get_latest_period(conn, "imp") or "2009-12"
-    print(f"  Último período no DB: {latest_in_db}")
+    pred_latest = (conn.execute("SELECT MAX(period) FROM import_prediction").fetchone()[0]) or "1996-01"
+    print(f"  Último período no DB: secex={latest_in_db} | import_prediction={pred_latest}")
 
     pais_map = fetch_pais_lookup()
 
@@ -452,6 +542,7 @@ def update_from_mdic(conn, force_reload=False):
                      if datetime.utcnow().month <= 2 else [current_year]
 
     found_periods = set()
+    pred_periods  = set()
 
     for direction in ("imp", "exp"):
         for year in years_to_check:
@@ -462,22 +553,37 @@ def update_from_mdic(conn, force_reload=False):
             max_period_csv = df["period"].max()
             print(f"  {direction.upper()} {year}: último período disponível = {max_period_csv}")
 
-            if not force_reload and max_period_csv <= latest_in_db:
-                print(f"  → Sem novidades (DB já tem até {latest_in_db})")
-                continue
+            # ── secex_country (gated pelo último período do secex) ──────────────
+            if force_reload or max_period_csv > latest_in_db:
+                threshold = latest_in_db if not force_reload else "1996-01"
+                c_rows = _aggregate_df(df, direction, pais_map, only_after=threshold)
+                upsert_country(conn, c_rows)
+                new_ps = {r[0] for r in c_rows}
+                found_periods.update(new_ps)
+                print(f"  → secex: {len(new_ps)} períodos | {len(c_rows):,} linhas país")
+            else:
+                print(f"  → secex sem novidades (DB já tem até {latest_in_db})")
 
-            threshold = latest_in_db if not force_reload else "1996-01"
-            c_rows = _aggregate_df(df, direction, pais_map, only_after=threshold)
-            upsert_country(conn, c_rows)
-
-            new_ps = {r[0] for r in c_rows}
-            found_periods.update(new_ps)
-            print(f"  → {len(new_ps)} períodos | {len(c_rows):,} linhas país")
+            # ── import_prediction (Coreia/China HRC/CRC) — INDEPENDENTE do secex:
+            #    gated pelo PRÓPRIO último período da tabela, p/ auto-recuperar quando
+            #    o secex já avançou mas a previsão ficou pra trás (e seguir junto daí). ─
+            if direction == "imp" and (force_reload or max_period_csv > pred_latest):
+                p_thr = "1996-01" if force_reload else pred_latest
+                p_rows = _aggregate_import_prediction(df, only_after=p_thr)
+                if p_rows:
+                    upsert_import_prediction(conn, p_rows)
+                    pp = sorted({r[0] for r in p_rows})
+                    pred_periods.update(pp)
+                    print(f"  → import_prediction: {len(p_rows)} linhas | períodos {pp}")
 
     if found_periods:
-        latest_new = sorted(found_periods)[-1]
         derive_aggregates(conn)
-        print(f"\n  ✅ NOVO DADO: {latest_new}")
+
+    all_new = found_periods | pred_periods
+    if all_new:
+        latest_new = sorted(all_new)[-1]
+        print(f"\n  ✅ NOVO DADO: secex={sorted(found_periods)[-1] if found_periods else '—'}"
+              f" | import_prediction={sorted(pred_periods)[-1] if pred_periods else '—'}")
         _write_gh_env("true", latest_new)
         return True, latest_new
     else:
