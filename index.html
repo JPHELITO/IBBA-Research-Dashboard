@@ -655,7 +655,7 @@ function _age(iso){
 async function loadNews(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return;
-  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_sector,take_reason';
+  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,take_sector,take_reason';
   // Janela de recência por DATA DE PUBLICAÇÃO (não por found_at): impede que
   // notícia antiga (re-descoberta por algum scraper) apareça como recente.
   const ageCutoff=new Date(Date.now()-NEWS_MAX_AGE_HOURS*3600*1000).toISOString();
@@ -667,7 +667,8 @@ async function loadNews(){
     +`&include_in_report=eq.true`
     +`&or=(published_at.gte.${ageCutoff},published_at.is.null)`
     +`&order=found_at.desc&limit=60`;
-  if(_newsTakeFilter!=='all') newsUrl+=`&take=eq.${encodeURIComponent(_newsTakeFilter)}`;
+  // Filtro pela IA (take_llm); cobertura da janela é ~total, robô só cobre o recém-chegado.
+  if(_newsTakeFilter!=='all') newsUrl+=`&take_llm=eq.${encodeURIComponent(_newsTakeFilter)}`;
   try{
     const [newsRes,runRes]=await Promise.all([
       fetch(newsUrl,
@@ -737,7 +738,7 @@ function _renderNews(articles){
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
     return`<a class="news-item ${isNew?'is-new':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
-      <div class="news-item-titlerow">${_takeBadge(a.take)}<div class="news-item-title">${a.title}</div></div>
+      <div class="news-item-titlerow">${_takeBadge(a.take_llm ?? a.take)}<div class="news-item-title">${a.title}</div></div>
       <div class="news-item-meta">
         <span class="news-item-source">${lbl}</span>
         <span class="sep">·</span>
@@ -791,7 +792,7 @@ async function loadPulse(){
   // descoberta há pouco (found_at recente), entre no pulse.
   // Conta só relevantes (include_in_report=true): exclui cripto/política/esporte
   // e artigos sem take de mercado que o classificador descartou.
-  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,sentiment,published_at,found_at`
+  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,take_llm,sentiment,published_at,found_at`
     +`&or=(published_at.gte.${cutoff},and(published_at.is.null,found_at.gte.${cutoff}))`
     +`&include_in_report=eq.true&limit=2000`;
   if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
@@ -804,10 +805,11 @@ async function loadPulse(){
     const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= cutoffMs);
     let pos = 0, neg = 0, neu = 0;
     for(const a of recent){
-      if(a.take != null){
-        // Novo classificador: "+"/"-"/"="/"review"
-        if(a.take === '+') pos++;
-        else if(a.take === '-') neg++;
+      const t = a.take_llm ?? a.take;   // IA primeiro; robô como fallback (recém-chegado sem IA ainda)
+      if(t != null){
+        // "+"/"-"/"="/"review"
+        if(t === '+') pos++;
+        else if(t === '-') neg++;
         else neu++;  // "=" e "review" → neutro
       } else if(a.sentiment != null){
         // Fallback: sentiment float [-1, 1] para artigos sem take ainda

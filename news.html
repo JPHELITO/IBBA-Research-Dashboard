@@ -278,7 +278,7 @@ function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
 async function fetchArticles(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return [];
-  const q='url,domain,source_name,title,snippet,published_at,found_at,take';
+  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm';
   // MESMO filtro da home: só notícias relevantes (include_in_report=true).
   let url=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc&limit=1000`;
   if(_periodHours!=='all'){
@@ -343,7 +343,7 @@ function _renderFeed(){
     const lbl=_label(a);
     const snip=a.snippet?`<div class="item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
     html+=`<a class="item" href="${a.url}" target="_blank" rel="noopener">
-      <div class="item-titlerow">${_takeBadge(a.take)}<div class="item-title">${a.title}</div></div>
+      <div class="item-titlerow">${_takeBadge(a.take_llm ?? a.take)}<div class="item-title">${a.title}</div></div>
       <div class="item-meta">
         <span class="item-source">${lbl}</span>
         <span class="sep">·</span>
