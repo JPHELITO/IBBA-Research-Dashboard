@@ -255,6 +255,7 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-take.neg{background:rgba(192,57,43,.15);color:#c0392b;}
 .news-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
 .news-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
+.news-take.nt{background:rgba(140,140,140,.10);color:#9ca3af;}
 .news-filter{display:flex;gap:4px;}
 .news-filter-chip{font-size:10px;font-weight:700;min-width:26px;padding:3px 8px;
   border-radius:14px;border:1.5px solid var(--border);background:transparent;
@@ -764,6 +765,7 @@ function _takeBadge(t){
   if(t==='-')     return '<span class="news-take neg" title="Negative">−</span>';
   if(t==='=')     return '<span class="news-take neu" title="Neutral">=</span>';
   if(t==='review')return '<span class="news-take rev" title="Review">~</span>';
+  if(t==='no take')return '<span class="news-take nt" title="No take — not scored">○</span>';
   return '';
 }
 
@@ -863,14 +865,15 @@ async function loadPulse(){
     // Guarda client-side: garante a janela de 24h pelo timestamp efetivo.
     const cutoffMs = Date.now() - 24*3600*1000;
     const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= cutoffMs);
-    let pos = 0, neg = 0, neu = 0;
+    let pos = 0, neg = 0, neu = 0, notake = 0;
     for(const a of recent){
       const t = a.take_llm ?? a.take;   // IA primeiro; robô como fallback (recém-chegado sem IA ainda)
       if(t != null){
-        // "+"/"-"/"="/"review"
+        // "+"/"-"/"="/"no take"/"review"
         if(t === '+') pos++;
         else if(t === '-') neg++;
-        else neu++;  // "=" e "review" → neutro
+        else if(t === '=') neu++;        // neutral take: leitura de mercado que deu flat → ANCORA o meio
+        else notake++;                   // "no take"/"review": sem leitura de mercado → fora do ponteiro
       } else if(a.sentiment != null){
         // Fallback: sentiment float [-1, 1] para artigos sem take ainda
         if(a.sentiment > 0.2) pos++;
@@ -878,16 +881,17 @@ async function loadPulse(){
         else neu++;
       }
     }
-    const tot = pos + neg + neu;
-    // Ponteiro mede o BALANÇO DIRECIONAL (pos vs neg). Neutros não puxam a
-    // agulha pro meio — só os artigos com take +/- definem a inclinação.
-    const dir = pos + neg;
-    const gaugeVal = dir > 0 ? Math.round(50 + (pos - neg) / dir * 50) : 50;
+    const tot = pos + neg + neu;   // itens PONTUADOS (no-take não entra)
+    // Ponteiro com NEUTRO ANCORANDO: + e - puxam; "=" (o mercado está calmo)
+    // dilui pro meio (entra no denominador); "no take" não baliza (fica de fora).
+    const denom = pos + neg + neu;
+    const gaugeVal = denom > 0 ? Math.round(50 + (pos - neg) / denom * 50) : 50;
     _renderGauge(gaugeVal);
     document.getElementById('stat-pos').textContent = pos;
     document.getElementById('stat-neg').textContent = neg;
     document.getElementById('stat-neu').textContent = neu;
     document.getElementById('stat-tot').textContent = tot;
+    document.getElementById('stat-tot').title = notake > 0 ? `+ ${notake} no-take (in feed, not scored)` : '';
     document.getElementById('bar-pos').style.flex = pos;
     document.getElementById('bar-neu').style.flex = neu;
     document.getElementById('bar-neg').style.flex = neg;
