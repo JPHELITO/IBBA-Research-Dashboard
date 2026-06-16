@@ -908,63 +908,41 @@ const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY'};
 const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (heatmap)
 
 // ── Universo de comparação (filtro + presets + recomendadas) ──────────
-// A tabela `quotes` traz 33 instrumentos; o heatmap mostra só um subconjunto.
-// COVERAGE = nossa cobertura + IBOV (default). Os demais entram pelo filtro.
+// Grupos do "painel de cotações" (presets do heatmap) — listas explícitas do usuário.
+// As recomendadas no modal derivam do SETOR (grupo) da empresa aberta + índice aderente.
 const HM_MAX = 15;                              // teto de cartões (evita poluir a visão)
-const COVERAGE = ['IBOV','VALE3.SA','CSNA3.SA','CMIN3.SA','GGBR4.SA','USIM5.SA',
-  'KLBN11.SA','SUZB3.SA','RANI3.SA','AURA33.SA','SCCO','TX','CMPC.SN','COPEC.SN','GMEXICOB.MX'];
+const G_COVERAGE = ['AURA33.SA','SUZB3.SA','VALE3.SA','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
+const G_STEEL    = ['CSNA3.SA','GGBR4.SA','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];
+const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
+const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
+const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
+const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
+const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
+const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ'];
+const COVERAGE   = G_COVERAGE;                  // default do heatmap
 
-// Heatmaps pré-prontos. 'Cobertura' é o default; os setoriais juntam pares + o ETF do setor.
 const HM_PRESETS = {
-  'Our coverage': COVERAGE,
-  'Steel':  ['GGBR4.SA','CSNA3.SA','USIM5.SA','TX','NUE','MT','SLX','IBOV'],
-  'Mining': ['VALE3.SA','CMIN3.SA','BHP','RIO','AAL.L','FMG.AX','GLEN.L','SCCO','GMEXICOB.MX','AURA33.SA','PICK','IBOV'],
-  'P&P':    ['SUZB3.SA','KLBN11.SA','RANI3.SA','DXCO3.SA','CMPC.SN','COPEC.SN','IP','UPM.HE','VALMT.HE','WOOD','IBOV'],
+  'Our coverage': G_COVERAGE, 'Steel': G_STEEL, 'Iron Ore': G_IRON, 'Gold': G_GOLD,
+  'Copper': G_COPPER, 'Rare Earths': G_RARE, 'P&P': G_PP, 'Index': G_INDEX,
 };
 
-// Comparações recomendadas no modal: pares do mesmo (sub)setor + o índice mais aderente.
-// Pesquisa: SLX=aço · PICK=mineração diversificada · COPX=cobre · GDX=ouro · WOOD=papel/celulose;
-// IBOV=mercado BR · SPX=mercado EUA/global.
-const HM_RECO = {
-  // Aço
-  'GGBR4.SA':{peers:['CSNA3.SA','USIM5.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
-  'CSNA3.SA':{peers:['GGBR4.SA','USIM5.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
-  'USIM5.SA':{peers:['GGBR4.SA','CSNA3.SA','TX','NUE','MT'],idx:['SLX','IBOV']},
-  'TX':      {peers:['GGBR4.SA','CSNA3.SA','USIM5.SA','NUE','MT'],idx:['SLX','SPX']},
-  'NUE':     {peers:['MT','TX','GGBR4.SA','CSNA3.SA'],idx:['SLX','SPX']},
-  'MT':      {peers:['NUE','TX','GGBR4.SA','CSNA3.SA','USIM5.SA'],idx:['SLX','SPX']},
-  // Mineração — minério / diversificadas
-  'VALE3.SA':{peers:['CMIN3.SA','BHP','RIO','AAL.L','FMG.AX'],idx:['PICK','IBOV']},
-  'CMIN3.SA':{peers:['VALE3.SA','BHP','RIO','FMG.AX'],idx:['PICK','IBOV']},
-  'BHP':     {peers:['RIO','VALE3.SA','AAL.L','GLEN.L','FMG.AX'],idx:['PICK','SPX']},
-  'RIO':     {peers:['BHP','VALE3.SA','AAL.L','GLEN.L','FMG.AX'],idx:['PICK','SPX']},
-  'AAL.L':   {peers:['BHP','RIO','GLEN.L','VALE3.SA'],idx:['PICK','SPX']},
-  'FMG.AX':  {peers:['VALE3.SA','BHP','RIO','CMIN3.SA'],idx:['PICK','SPX']},
-  'GLEN.L':  {peers:['BHP','RIO','AAL.L'],idx:['PICK','SPX']},
-  // Mineração — cobre
-  'SCCO':       {peers:['GMEXICOB.MX','BHP','GLEN.L'],idx:['COPX','SPX']},
-  'GMEXICOB.MX':{peers:['SCCO','BHP'],idx:['COPX','SPX']},
-  // Mineração — ouro
-  'AURA33.SA':{peers:[],idx:['GDX','IBOV']},
-  // Papel & Celulose
-  'SUZB3.SA':{peers:['KLBN11.SA','RANI3.SA','DXCO3.SA','CMPC.SN','IP','UPM.HE'],idx:['WOOD','IBOV']},
-  'KLBN11.SA':{peers:['SUZB3.SA','RANI3.SA','DXCO3.SA','CMPC.SN','IP'],idx:['WOOD','IBOV']},
-  'RANI3.SA':{peers:['KLBN11.SA','SUZB3.SA','DXCO3.SA'],idx:['WOOD','IBOV']},
-  'DXCO3.SA':{peers:['KLBN11.SA','SUZB3.SA','RANI3.SA'],idx:['WOOD','IBOV']},
-  'CMPC.SN': {peers:['SUZB3.SA','COPEC.SN','KLBN11.SA','UPM.HE','IP'],idx:['WOOD','SPX']},
-  'COPEC.SN':{peers:['CMPC.SN','SUZB3.SA','UPM.HE'],idx:['WOOD','SPX']},
-  'IP':      {peers:['SUZB3.SA','KLBN11.SA','UPM.HE','CMPC.SN'],idx:['WOOD','SPX']},
-  'UPM.HE':  {peers:['SUZB3.SA','CMPC.SN','IP','VALMT.HE'],idx:['WOOD','SPX']},
-  'VALMT.HE':{peers:['UPM.HE','IP'],idx:['WOOD','SPX']},
-};
+// Recomendadas (modal) = pares do MESMO setor (grupo) + índice mais aderente.
+// gold→GDX · materiais BR→MATB11 · mercado global→SPX · rare earths→SPX/NASDAQ.
+const SECTOR_GROUPS = {steel:G_STEEL, iron_ore:G_IRON, gold:G_GOLD, copper:G_COPPER, rare_earths:G_RARE, pp:G_PP};
+const SECTOR_INDEX  = {steel:['MATB11.SA','SPX'], iron_ore:['MATB11.SA','SPX'], gold:['GDX','SPX'],
+                       copper:['SPX','MATB11.SA'], rare_earths:['SPX','NASDAQ'], pp:['MATB11.SA','SPX']};
+const SECTOR_LABEL  = {steel:'Steel', iron_ore:'Iron Ore', gold:'Gold', copper:'Copper',
+                       rare_earths:'Rare Earths', pp:'Pulp & Paper', index:'Index'};
+const SECTOR_ORDER  = ['steel','iron_ore','gold','copper','rare_earths','pp','index'];
 
-const SECTOR_LABEL = {steel:'Steel', mining:'Mining', pp:'Pulp & Paper', index:'Indices / ETFs'};
+// Universo conhecido (união dos grupos) — ignora linhas obsoletas que ainda restem no Supabase.
+const KNOWN = new Set([].concat(G_COVERAGE,G_STEEL,G_IRON,G_GOLD,G_COPPER,G_RARE,G_PP,G_INDEX));
 
 // Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
   try{ const s=JSON.parse(localStorage.getItem('hm_displayed'));
-       if(Array.isArray(s) && s.length) return s.slice(0,HM_MAX); }catch(e){}
+       if(Array.isArray(s)){ const f=s.filter(t=>KNOWN.has(t)).slice(0,HM_MAX); if(f.length) return f; } }catch(e){}
   return COVERAGE.slice();
 }
 function _saveDisplayed(){ try{ localStorage.setItem('hm_displayed', JSON.stringify(_hmDisplayed)); }catch(e){} }
@@ -1017,7 +995,7 @@ function _fmtPrice(value, exchange){
   return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F)$/,'');
+const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 
 // Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
 function _seriesFor(q, range){
@@ -1108,8 +1086,8 @@ function _buildFilterPop(){
     `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n}</button>`
   ).join('')+'</div>';
   html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selected — check/uncheck companies and indices.</div>`;
-  const bySector={}; _quotes.forEach(q=>{ (bySector[q.sector]=bySector[q.sector]||[]).push(q); });
-  ['steel','mining','pp','index'].forEach(sec=>{
+  const bySector={}; _quotes.forEach(q=>{ if(KNOWN.has(q.ticker)) (bySector[q.sector]=bySector[q.sector]||[]).push(q); });
+  SECTOR_ORDER.forEach(sec=>{
     const items=(bySector[sec]||[]).slice().sort((a,b)=>_short(a.ticker).localeCompare(_short(b.ticker)));
     if(!items.length) return;
     html+=`<div class="hm-pop-group"><div class="hm-pop-glabel">${SECTOR_LABEL[sec]||sec}</div><div class="hm-pop-chips">`+
@@ -1124,9 +1102,16 @@ function _positionPop(){
   const pop=document.getElementById('hm-pop'), btn=document.getElementById('hm-filter-btn');
   if(!pop||!btn) return;
   const r=btn.getBoundingClientRect();
-  pop.style.top=(r.bottom+6)+'px';
+  const spaceBelow=window.innerHeight-r.bottom-12, spaceAbove=r.top-12;
   pop.style.right=Math.max(8,(window.innerWidth-r.right))+'px';
   pop.style.left='auto';
+  if(spaceBelow>=spaceAbove){               // abre p/ baixo
+    pop.style.top=(r.bottom+6)+'px'; pop.style.bottom='auto';
+    pop.style.maxHeight=Math.max(160,spaceBelow)+'px';
+  } else {                                   // sem espaço abaixo → abre p/ cima
+    pop.style.bottom=(window.innerHeight-r.top+6)+'px'; pop.style.top='auto';
+    pop.style.maxHeight=Math.max(160,spaceAbove)+'px';
+  }
 }
 function _toggleFilterPop(open){
   const pop=document.getElementById('hm-pop'), btn=document.getElementById('hm-filter-btn');
@@ -1155,7 +1140,7 @@ window.addEventListener('resize', ()=>{ const p=document.getElementById('hm-pop'
 // ─── MODAL — histórico + comparação (SVG à mão) ───────────────────────
 const _MC_COLORS = ['#FF5000','#111111','#2563eb','#16a34a','#9333ea','#0891b2','#c0392b','#b45309'];
 const _MC_RANGE_DAYS = {'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
-let _mcPrimary=null, _mcAnchor=null, _mcSel=[], _mcRange='3M', _mcFrom=null, _mcTo=null;
+let _mcPrimary=null, _mcSel=[], _mcRange='3M', _mcFrom=null, _mcTo=null;
 
 // epoch(seg) <-> 'YYYY-MM-DD' (UTC) p/ os <input type=date>
 function _toDateInput(epoch){ return new Date(epoch*1000).toISOString().slice(0,10); }
@@ -1232,7 +1217,7 @@ function _ensureModal(){
 
 function openCompanyModal(ticker){
   _ensureModal();
-  _mcPrimary=ticker; _mcAnchor=ticker; _mcSel=[ticker]; _mcRange='3M'; _mcFrom=null; _mcTo=null;
+  _mcPrimary=ticker; _mcSel=[ticker]; _mcRange='3M'; _mcFrom=null; _mcTo=null;
   document.querySelectorAll('#co-ranges button').forEach(b=>b.classList.toggle('active',b.dataset.r===_mcRange));
   _updateModalTitle();
   _syncDatesToPreset();
@@ -1267,7 +1252,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeCompanyModal
 
 function _renderCompareChips(){
   const box=document.getElementById('co-compare'); if(!box) return;
-  box.innerHTML=_quotes.map(q=>{
+  box.innerHTML=_quotes.filter(q=>KNOWN.has(q.ticker)).map(q=>{
     const idx=_mcSel.indexOf(q.ticker), on=idx>=0;
     const color=on ? _MC_COLORS[idx%_MC_COLORS.length] : '';
     const style=on ? `style="background:${color};border-color:${color};color:#fff;"` : '';
@@ -1275,12 +1260,20 @@ function _renderCompareChips(){
   }).join('');
 }
 
-// Recomendadas (pares do setor + índice aderente), ancoradas na empresa aberta.
+// Recomendadas = pares do MESMO setor + índice aderente. Ancora na 1ª selecionada
+// (_mcSel[0]): ao limpar tudo e clicar numa nova, mostra as recomendadas DELA.
 function _renderReco(){
   const box=document.getElementById('co-reco'); if(!box) return;
-  const reco=_mcAnchor && HM_RECO[_mcAnchor];
+  const anchor=_mcSel[0];
+  const aq=anchor && _quotes.find(x=>x.ticker===anchor);
+  const sec=aq && aq.sector;
   const have=new Set(_quotes.map(q=>q.ticker));
-  const items = reco ? [...reco.peers, ...reco.idx].filter(t=>have.has(t)) : [];
+  let items=[];
+  if(sec && SECTOR_GROUPS[sec]){
+    const peers=SECTOR_GROUPS[sec].filter(t=>t!==anchor && have.has(t));
+    const idx=(SECTOR_INDEX[sec]||[]).filter(t=>have.has(t));
+    items=[...peers, ...idx];
+  }
   if(!items.length){ box.hidden=true; box.innerHTML=''; return; }
   const chips=items.map(t=>{
     const on=_mcSel.includes(t), q=_quotes.find(x=>x.ticker===t);
