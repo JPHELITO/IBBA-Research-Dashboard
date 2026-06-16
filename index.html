@@ -42,14 +42,16 @@ html,body{
   font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
   height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
-body{height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-/* ══ ESCALA PROPORCIONAL (só PC) ══════════════════════════════════════════════
-   O dashboard é desenhado numa referência fixa 1920×1080 (#stage) e ENCOLHE como um
-   todo p/ caber na tela (JS ajusta --app-scale = min(vw/1920, vh/1080)). Em telas
-   menores de PC, fontes/espaços/layout diminuem JUNTOS, proporcionalmente — nada
-   reflui nem quebra de linha. (Mobile ≤1024px reseta isso e usa layout próprio.) */
-#stage{width:1920px;height:1080px;flex:none;display:flex;flex-direction:column;overflow:hidden;
-  background:var(--gray-light);transform:scale(var(--app-scale,1));transform-origin:center center;}
+body{height:100vh;overflow:hidden;}
+/* ══ ESCALA PROPORCIONAL (só PC) — PREENCHE a janela e encolhe o conteúdo junto ══════
+   #stage tem tamanho LÓGICO = viewport ÷ escala e é reduzido por transform:scale(escala) →
+   o resultado VISUAL preenche 100% da janela (SEM bordas/letterbox); o conteúdo é diagramado
+   num espaço maior, então fontes/espaços ficam proporcionalmente menores. A LARGURA é fluida
+   (as colunas esticam p/ preencher qualquer proporção de tela). escala = min(1, vw/1920, vh/1080)
+   via JS (não amplia acima de 1). (Mobile ≤1024px reseta isto e usa layout próprio.) */
+#stage{width:calc(100vw / var(--app-scale,1));height:calc(100vh / var(--app-scale,1));flex:none;
+  display:flex;flex-direction:column;overflow:hidden;
+  transform:scale(var(--app-scale,1));transform-origin:top left;}
 
 /* ══ HEADER ════════════════════════════════════════════════════════════════ */
 .header{background:var(--black);flex:none;display:flex;align-items:center;
@@ -632,7 +634,7 @@ img.team-avatar{object-fit:cover;background:none;}
 <script>
 /* Escala proporcional: aplica já no load (evita "pulo") e recalcula no resize.
    Só PC (>1024px); no mobile o layout próprio assume (--app-scale fica 1). */
-(function(){function f(){var s=Math.min(window.innerWidth/1920, window.innerHeight/1080, 1.6);
+(function(){function f(){var s=Math.min(1, window.innerWidth/1920, window.innerHeight/1080);
   document.documentElement.style.setProperty('--app-scale', window.innerWidth>1024 ? s : 1);}
   f(); window.addEventListener('resize', f);})();
 </script>
