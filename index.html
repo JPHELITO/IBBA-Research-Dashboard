@@ -43,13 +43,14 @@ html,body{
   height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
 body{height:100vh;overflow:hidden;}
-/* ══ ESCALA PROPORCIONAL (só PC) — PREENCHE a janela e encolhe o conteúdo junto ══════
-   #stage tem tamanho LÓGICO = viewport ÷ escala e é reduzido por transform:scale(escala) →
-   o resultado VISUAL preenche 100% da janela (SEM bordas/letterbox); o conteúdo é diagramado
-   num espaço maior, então fontes/espaços ficam proporcionalmente menores. A LARGURA é fluida
-   (as colunas esticam p/ preencher qualquer proporção de tela). escala = min(1, vw/1920, vh/1080)
-   via JS (não amplia acima de 1). (Mobile ≤1024px reseta isto e usa layout próprio.) */
-#stage{width:calc(100vw / var(--app-scale,1));height:calc(100vh / var(--app-scale,1));flex:none;
+/* ══ ESCALA PROPORCIONAL (só PC) — PREENCHE sem esticar (âncora na LARGURA) ══════════
+   O conteúdo é SEMPRE diagramado numa largura de referência fixa (1920px) → as colunas ficam
+   na proporção do projeto e NUNCA esticam. Reduz-se por transform:scale(vw/1920), então o
+   VISUAL preenche 100% da largura da janela (sem faixa lateral); a ALTURA (=100vh/escala) é
+   preenchida pelo layout FLUIDO, exatamente como a produção já faz. Resultado: mesma formatação/
+   proporção das colunas em qualquer tela, fontes proporcionais à largura, SEM faixas e SEM esticar.
+   (Mobile ≤1024px reseta isto e usa layout próprio.) */
+#stage{width:1920px;height:calc(100vh / var(--app-scale,1));flex:none;
   display:flex;flex-direction:column;overflow:hidden;
   transform:scale(var(--app-scale,1));transform-origin:top left;}
 
@@ -634,7 +635,7 @@ img.team-avatar{object-fit:cover;background:none;}
 <script>
 /* Escala proporcional: aplica já no load (evita "pulo") e recalcula no resize.
    Só PC (>1024px); no mobile o layout próprio assume (--app-scale fica 1). */
-(function(){function f(){var s=Math.min(1, window.innerWidth/1920, window.innerHeight/1080);
+(function(){function f(){var s=window.innerWidth/1920;   /* âncora na largura: colunas não esticam */
   document.documentElement.style.setProperty('--app-scale', window.innerWidth>1024 ? s : 1);}
   f(); window.addEventListener('resize', f);})();
 </script>
