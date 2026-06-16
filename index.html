@@ -938,6 +938,17 @@ const SECTOR_ORDER  = ['steel','iron_ore','gold','copper','rare_earths','pp','in
 // Universo conhecido (união dos grupos) — ignora linhas obsoletas que ainda restem no Supabase.
 const KNOWN = new Set([].concat(G_COVERAGE,G_STEEL,G_IRON,G_GOLD,G_COPPER,G_RARE,G_PP,G_INDEX));
 
+// Setor de cada ticker definido NO FRONTEND (autoritativo) — o filtro/recomendadas não
+// dependem do campo `sector` do Supabase (que fica defasado logo após mudar a QUOTES_LIST).
+const TICKER_SECTOR = {};
+[['steel',G_STEEL],['iron_ore',G_IRON],['gold',G_GOLD],['copper',G_COPPER],['rare_earths',G_RARE],['pp',G_PP],['index',G_INDEX]]
+  .forEach(([sec,arr])=>arr.forEach(t=>{ if(!(t in TICKER_SECTOR)) TICKER_SECTOR[t]=sec; }));
+// cobertura cujos tickers não estão num grupo setorial (usam outro listing no grupo):
+Object.assign(TICKER_SECTOR, {'VALE3.SA':'iron_ore','AURA33.SA':'gold','RANI3.SA':'pp','IBOV':'index'});
+// setor → tickers (ordem dos grupos), p/ montar o checklist do filtro independente do Supabase
+const SECTOR_TICKERS = {}; SECTOR_ORDER.forEach(s=>SECTOR_TICKERS[s]=[]);
+Object.keys(TICKER_SECTOR).forEach(t=>{ if(SECTOR_TICKERS[TICKER_SECTOR[t]]) SECTOR_TICKERS[TICKER_SECTOR[t]].push(t); });
+
 // Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
@@ -1086,14 +1097,14 @@ function _buildFilterPop(){
     `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n}</button>`
   ).join('')+'</div>';
   html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selected — check/uncheck companies and indices.</div>`;
-  const bySector={}; _quotes.forEach(q=>{ if(KNOWN.has(q.ticker)) (bySector[q.sector]=bySector[q.sector]||[]).push(q); });
+  const nameOf=t=>{ const q=_quotes.find(x=>x.ticker===t); return q?q.name:''; };
   SECTOR_ORDER.forEach(sec=>{
-    const items=(bySector[sec]||[]).slice().sort((a,b)=>_short(a.ticker).localeCompare(_short(b.ticker)));
+    const items=SECTOR_TICKERS[sec]||[];
     if(!items.length) return;
     html+=`<div class="hm-pop-group"><div class="hm-pop-glabel">${SECTOR_LABEL[sec]||sec}</div><div class="hm-pop-chips">`+
-      items.map(q=>{
-        const on=shown.has(q.ticker), dis=(!on&&atCap)?'disabled':'';
-        return `<button class="hm-pop-chip ${on?'on':''}" data-t="${q.ticker}" ${dis} title="${q.name}">${_short(q.ticker)}</button>`;
+      items.map(t=>{
+        const on=shown.has(t), dis=(!on&&atCap)?'disabled':'';
+        return `<button class="hm-pop-chip ${on?'on':''}" data-t="${t}" ${dis} title="${nameOf(t)}">${_short(t)}</button>`;
       }).join('')+'</div></div>';
   });
   pop.innerHTML=html;
@@ -1265,8 +1276,7 @@ function _renderCompareChips(){
 function _renderReco(){
   const box=document.getElementById('co-reco'); if(!box) return;
   const anchor=_mcSel[0];
-  const aq=anchor && _quotes.find(x=>x.ticker===anchor);
-  const sec=aq && aq.sector;
+  const sec=anchor && TICKER_SECTOR[anchor];
   const have=new Set(_quotes.map(q=>q.ticker));
   let items=[];
   if(sec && SECTOR_GROUPS[sec]){
