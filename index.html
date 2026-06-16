@@ -42,7 +42,17 @@ html,body{
   font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
   height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
-body{height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body{height:100vh;overflow:hidden;}
+/* ══ ESCALA PROPORCIONAL (só PC) — PREENCHE sem esticar (âncora na LARGURA) ══════════
+   O conteúdo é SEMPRE diagramado numa largura de referência fixa (1920px) → as colunas ficam
+   na proporção do projeto e NUNCA esticam. Reduz-se por transform:scale(vw/1920), então o
+   VISUAL preenche 100% da largura da janela (sem faixa lateral); a ALTURA (=100vh/escala) é
+   preenchida pelo layout FLUIDO, exatamente como a produção já faz. Resultado: mesma formatação/
+   proporção das colunas em qualquer tela, fontes proporcionais à largura, SEM faixas e SEM esticar.
+   (Mobile ≤1024px reseta isto e usa layout próprio.) */
+#stage{width:1920px;height:calc(100vh / var(--app-scale,1));flex:none;
+  display:flex;flex-direction:column;overflow:hidden;
+  transform:scale(var(--app-scale,1));transform-origin:top left;}
 
 /* ══ HEADER ════════════════════════════════════════════════════════════════ */
 .header{background:var(--black);flex:none;display:flex;align-items:center;
@@ -394,18 +404,14 @@ img.team-avatar{object-fit:cover;background:none;}
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
 .footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
 
-/* ── DESKTOP ESTREITO (1025-1199px): mantém a tela única, mas compacta o que espreme ── */
-@media (min-width:1025px) and (max-width:1199px){
-  .pulse-chip{padding:3px 8px;font-size:9.5px;}
-  .sec-head{padding:8px 12px 7px;}
-  .wip-badge{font-size:7px;padding:2px 5px;}
-  .heatmap-grid{grid-template-columns:1fr 1fr;}  /* 2 colunas: cartão legível; rolagem vertical assume */
-}
+/* DESKTOP estreito: NÃO reflui mais — a escala proporcional (#stage) cuida das telas
+   menores de PC, encolhendo tudo junto em vez de quebrar o layout. */
 
 /* ── MOBILE ─────────────────────────────────────────────────────────────── */
 @media (max-width:1024px){
   html,body{height:auto;}
   body{height:auto;overflow:auto;display:block;}
+  #stage{width:auto;height:auto;transform:none;display:block;overflow:visible;}  /* mobile: sem escala, layout próprio */
   .page{grid-template-columns:1fr;grid-template-rows:none;overflow:visible;padding:8px 14px 40px;gap:14px;
     grid-template-areas:
     "secrow" "team" "pulse" "news" "heat" "comm";}
@@ -441,6 +447,7 @@ img.team-avatar{object-fit:cover;background:none;}
 </head>
 <body>
 
+<div id="stage">
 <!-- HEADER -->
 <div class="header">
   <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -623,6 +630,15 @@ img.team-avatar{object-fit:cover;background:none;}
   <div class="footer-dot"></div>
   <span class="footer-text">Restricted use</span>
 </div>
+
+</div><!-- /#stage -->
+<script>
+/* Escala proporcional: aplica já no load (evita "pulo") e recalcula no resize.
+   Só PC (>1024px); no mobile o layout próprio assume (--app-scale fica 1). */
+(function(){function f(){var s=window.innerWidth/1920;   /* âncora na largura: colunas não esticam */
+  document.documentElement.style.setProperty('--app-scale', window.innerWidth>1024 ? s : 1);}
+  f(); window.addEventListener('resize', f);})();
+</script>
 
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <!--                              JAVASCRIPT                                -->
@@ -1144,7 +1160,9 @@ document.getElementById('hm-pop')?.addEventListener('click', e=>{
     _saveDisplayed(); _renderHeatmap(); _buildFilterPop();
   }
 });
-document.addEventListener('click', e=>{ if(!e.target.closest('.hm-filter')) _toggleFilterPop(false); });
+// popover vive no <body> (fora do #stage escalado) → posiciona em coords de viewport, sem corte
+document.body.appendChild(document.getElementById('hm-pop'));
+document.addEventListener('click', e=>{ if(!e.target.closest('.hm-filter') && !e.target.closest('#hm-pop')) _toggleFilterPop(false); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') _toggleFilterPop(false); });
 window.addEventListener('resize', ()=>{ const p=document.getElementById('hm-pop'); if(p&&!p.hidden) _positionPop(); });
 
