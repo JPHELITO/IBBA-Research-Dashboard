@@ -1529,7 +1529,7 @@ _initCommCarousel();
 loadCommodities();
 
 setInterval(loadNews, NEWS_INTERVAL);
-setInterval(loadPulse, 5 * 60 * 1000);
+setInterval(loadPulse, NEWS_INTERVAL);   // pulse acompanha o feed (60s); antes 5min → numeros defasavam do feed
 setInterval(loadQuotes, 60 * 1000);
 setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 setInterval(loadCommodities, 5 * 60 * 1000);
