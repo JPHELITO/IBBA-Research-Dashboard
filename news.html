@@ -345,7 +345,7 @@ function _renderFeed(){
     const lbl=_label(a);
     const snip=a.snippet?`<div class="item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
     html+=`<a class="item" href="${a.url}" target="_blank" rel="noopener">
-      <div class="item-titlerow">${_takeBadge(a.take_llm ?? a.take)}<div class="item-title">${a.title}</div></div>
+      <div class="item-titlerow">${_takeBadge(a.take_llm)}<div class="item-title">${a.title}</div></div>
       <div class="item-meta">
         <span class="item-source">${lbl}</span>
         <span class="sep">·</span>

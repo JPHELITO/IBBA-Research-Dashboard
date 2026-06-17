@@ -256,6 +256,10 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
 .news-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
 .news-take.nt{background:rgba(140,140,140,.10);color:#9ca3af;}
+.news-take.loading{background:transparent;padding:0;}
+.news-take.loading::after{content:'';width:11px;height:11px;border:2px solid var(--border);
+  border-top-color:var(--gray-mid);border-radius:50%;animation:nt-spin .7s linear infinite;}
+@keyframes nt-spin{to{transform:rotate(360deg);}}
 .news-filter{display:flex;gap:4px;}
 .news-filter-chip{font-size:10px;font-weight:700;min-width:26px;padding:3px 8px;
   border-radius:14px;border:1.5px solid var(--border);background:transparent;
@@ -679,6 +683,10 @@ function renderTeam(){
 const NEWS_LIMIT = 20;
 const NEWS_INTERVAL = 60 * 1000;
 const NEW_HIGHLIGHT_WINDOW = 15 * 60 * 1000;
+// O robô NAO publica take: a noticia so aparece com o take da IA (take_llm). Valvula de
+// seguranca: se a IA nao classificar em IA_PENDING_GRACE (IA caida/sobrecarregada), a
+// noticia passa mesmo assim com badge de LOADING — nao trava o feed. Antes disso, fica oculta.
+const IA_PENDING_GRACE = 30 * 60 * 1000;
 // Proteção contra notícia antiga aparecendo como recente: o feed só mostra
 // matérias publicadas nas últimas N horas (independe de quando descobrimos).
 const NEWS_MAX_AGE_HOURS = 48;
@@ -768,6 +776,10 @@ function _takeBadge(t){
   if(t==='no take')return '<span class="news-take nt" title="No take — not scored">○</span>';
   return '';
 }
+// IA ainda não classificou (notícia passou da folga de pendência): spinner — NUNCA "?" nem take do robô.
+function _loadingBadge(){
+  return '<span class="news-take loading" title="Awaiting AI classification"></span>';
+}
 
 // Timestamp efetivo p/ ordenar e exibir idade: publicação real, found_at como
 // fallback (fontes sem published_at não caem pro fim com idade enganosa).
@@ -782,8 +794,13 @@ function _renderNews(articles){
   // Ordena por ENTRADA na dashboard (found_at desc = recém-coletada primeiro) e remove
   // duplicatas de título. SEM cap por fonte: as 20 que entraram mais recentemente.
   const _foundMs=a=>Date.parse(a.found_at||'')||0;
+  const _now=Date.now();
   const seenTitle=new Set(), picked=[];
   for(const a of [...articles].sort((x,y)=>_foundMs(y)-_foundMs(x))){
+    // Robô não publica: só entra com take da IA. Se a IA ainda não classificou E a notícia é
+    // recente (< IA_PENDING_GRACE), oculta (dá tempo à IA). Passada a folga (IA atrasada/caída),
+    // deixa passar como PENDENTE (loading) — não trava o feed.
+    if(a.take_llm == null && (_now - _foundMs(a)) < IA_PENDING_GRACE) continue;
     const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
     if(!key||seenTitle.has(key)) continue;
     seenTitle.add(key);
@@ -800,7 +817,7 @@ function _renderNews(articles){
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
     return`<a class="news-item ${isNew?'is-new':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
-      <div class="news-item-titlerow">${_takeBadge(a.take_llm ?? a.take)}<div class="news-item-title">${a.title}</div></div>
+      <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div></div>
       <div class="news-item-meta">
         <span class="news-item-source">${lbl}</span>
         <span class="sep">·</span>
@@ -867,19 +884,13 @@ async function loadPulse(){
     const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= cutoffMs);
     let pos = 0, neg = 0, neu = 0, notake = 0;
     for(const a of recent){
-      const t = a.take_llm ?? a.take;   // IA primeiro; robô como fallback (recém-chegado sem IA ainda)
-      if(t != null){
-        // "+"/"-"/"="/"no take"/"review"
-        if(t === '+') pos++;
-        else if(t === '-') neg++;
-        else if(t === '=') neu++;        // neutral take: leitura de mercado que deu flat → ANCORA o meio
-        else notake++;                   // "no take"/"review": sem leitura de mercado → fora do ponteiro
-      } else if(a.sentiment != null){
-        // Fallback: sentiment float [-1, 1] para artigos sem take ainda
-        if(a.sentiment > 0.2) pos++;
-        else if(a.sentiment < -0.2) neg++;
-        else neu++;
-      }
+      const t = a.take_llm;   // SÓ a IA — o robô não publica take (decisão do usuário 2026-06-17)
+      if(t == null) continue; // ainda não classificada pela IA → fica pendente, não pontua o pulse
+      // "+"/"-"/"="/"no take"/"review"
+      if(t === '+') pos++;
+      else if(t === '-') neg++;
+      else if(t === '=') neu++;        // neutral take: leitura de mercado que deu flat → ANCORA o meio
+      else notake++;                   // "no take"/"review": sem leitura de mercado → fora do ponteiro
     }
     const tot = pos + neg + neu;   // itens PONTUADOS (no-take não entra)
     // Ponteiro com NEUTRO ANCORANDO: + e - puxam; "=" (o mercado está calmo)
