@@ -47,6 +47,7 @@ function showDenied(msg){
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}   /* o atributo hidden PRECISA vencer regras de display (ex.: #gate/#denied usam display:flex) — sem isto, as telas vazavam empilhadas */
 :root{--orange:#FF5000;--black:#111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;--gray-light:#F4F3F0;
   --border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;--font:'Inter','Segoe UI',Arial,sans-serif;--radius:10px}
 html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);-webkit-font-smoothing:antialiased}
