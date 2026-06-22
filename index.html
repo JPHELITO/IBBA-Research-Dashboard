@@ -20,6 +20,7 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
   const{data:{session}}=await sbAuth.auth.getSession()
   if(!session){window.location.replace('/login.html');return}
   _setAuthCookie(session)
+  sbAuth.rpc('log_visit',{p_path:location.pathname}).catch(()=>{})   // contador de acessos (painel admin)
   // Mostra a aba "Admin" no cabeçalho só para o papel admin (falha silenciosa p/ não-admin)
   sbAuth.rpc('get_my_role').then(r=>{ if(r&&r.data==='admin'){ const a=document.getElementById('admin-link'); if(a) a.style.display='inline-block' } }).catch(()=>{})
   sbAuth.auth.onAuthStateChange((ev,s)=>{
