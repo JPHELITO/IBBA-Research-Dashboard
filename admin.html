@@ -32,7 +32,7 @@ async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-t
     const {data:role, error} = await sbAuth.rpc('get_my_role')
     if(error) throw error
     if(role === 'admin'){ document.getElementById('gate').hidden=true; document.getElementById('panel').hidden=false; initAdmin() }
-    else { showDenied(`Sua conta não tem acesso de administrador (papel atual: ${role||'—'}).`) }
+    else { showDenied(`Você está logado numa conta sem permissão de admin (papel: ${role||'—'}). Clique em "Entrar com outra conta" e use seu login de administrador (smpp@gmail.com).`) }
   }catch(e){
     console.error('get_my_role falhou:', e)
     showDenied('Não consegui verificar seu acesso. O SQL de admin (admin/supabase_admin_schema.sql) já foi rodado no Supabase?')
@@ -56,8 +56,14 @@ header .brand{font-weight:700;letter-spacing:.5px}
 header .brand b{color:var(--orange)}
 header button{background:transparent;border:1px solid #555;color:#ddd;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
 header button:hover{border-color:var(--orange);color:#fff}
-#gate,#denied{display:flex;flex-direction:column;align-items:center;justify-content:center;height:80vh;gap:10px;text-align:center;padding:20px}
+#gate,#denied{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.splash{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:440px;text-align:center;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:40px 34px;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.splash-brand{font-size:18px;font-weight:700;letter-spacing:.5px}
+.splash-brand span{color:var(--orange)}
+.splash h2{font-size:18px;font-weight:600}
 #denied .lock{font-size:34px}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .wrap{max-width:1200px;margin:0 auto;padding:22px}
 nav.tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
 nav.tabs button{background:var(--white);border:1px solid var(--border);border-radius:999px;padding:8px 16px;cursor:pointer;font:inherit;color:var(--gray-dark)}
@@ -96,13 +102,25 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
 </head>
 <body>
 
-<div id="gate">Carregando…</div>
+<div id="gate">
+  <div class="splash">
+    <div class="splash-brand">ITAÚ BBA <span>· Admin</span></div>
+    <div class="spinner"></div>
+    <p class="muted">Verificando seu acesso…</p>
+  </div>
+</div>
 
 <div id="denied" hidden>
-  <div class="lock">🔒</div>
-  <h2>Acesso restrito</h2>
-  <p id="denied-msg" class="muted"></p>
-  <button class="btn sec" onclick="logout()">Sair</button>
+  <div class="splash">
+    <div class="splash-brand">ITAÚ BBA <span>· Admin</span></div>
+    <div class="lock">🔒</div>
+    <h2>Acesso restrito</h2>
+    <p id="denied-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:4px">
+      <button class="btn" onclick="location.href='/index.html'">Voltar à dashboard</button>
+      <button class="btn sec" onclick="logout()">Entrar com outra conta</button>
+    </div>
+  </div>
 </div>
 
 <div id="panel" hidden>
