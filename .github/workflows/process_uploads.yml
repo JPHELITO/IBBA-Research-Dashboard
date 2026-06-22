@@ -1,0 +1,40 @@
+name: Process Admin Uploads
+
+# Processa os arquivos que o admin sobe pelo painel (fila upload_jobs no Supabase):
+# baixa do Storage -> roda o processador (ex.: reload_pred_exports) -> commita o .db.
+on:
+  workflow_dispatch:            # "Run workflow" = processa na hora
+  schedule:
+    - cron: '*/15 * * * *'      # rede de segurança: a cada 15 min varre a fila
+
+concurrency:
+  group: process-uploads
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install requests pandas openpyxl
+
+      - name: Process pending uploads
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python _shared/process_uploads.py
+
+      - name: Commit DB if changed
+        if: env.UPLOADS_CHANGED == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "Steel and Mining/steel_sm.db"
+          git diff --staged --quiet || git commit -m "data: upload do admin processado (linha preta via reload_pred_exports)"
+          git push
