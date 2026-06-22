@@ -138,7 +138,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
       <button data-tab="flags" onclick="showTab('flags')">Funcionalidades</button>
       <button data-tab="team" onclick="showTab('team')">Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">Commodities</button>
-      <button disabled title="Em breve (A4.3)">Heatmap</button>
+      <button data-tab="heatmap" onclick="showTab('heatmap')">Heatmap</button>
       <button data-tab="upload" onclick="showTab('upload')">Atualizar dados</button>
     </nav>
 
@@ -234,6 +234,26 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
         <div id="jobs-list" class="status">—</div>
       </div>
     </section>
+
+    <!-- ── Heatmap (esconder tickers + cobertura padrão) ─────────────────── -->
+    <section id="tab-heatmap" hidden>
+      <div class="card">
+        <h2>Heatmap — tickers</h2>
+        <p class="sub"><b>Esconder</b> tickers do heatmap e definir a <b>cobertura padrão</b> (o que aparece por default). Digite o símbolo (ex.: <code>TX</code>, <code>VALE3.SA</code>). Reflete na home. <span class="muted">Sem regras, o heatmap usa o padrão atual. Adicionar um ticker NOVO ainda precisa do back-end (fase futura).</span></p>
+        <div id="hm-list" class="status">Carregando…</div>
+        <div class="row" style="margin-top:12px"><button class="btn" onclick="hmEdit(null)">+ Adicionar regra de ticker</button></div>
+      </div>
+      <div class="card" id="hm-form-card" hidden>
+        <h2 id="hm-form-title">Nova regra</h2>
+        <div class="field">
+          <input class="in" id="hf-symbol" placeholder="Símbolo (ex.: TX, VALE3.SA, GGBR4.SA)">
+          <label class="chk"><input type="checkbox" id="hf-hidden"> Esconder do heatmap</label>
+          <label class="chk"><input type="checkbox" id="hf-coverage"> Entra na cobertura padrão</label>
+          <input class="in" id="hf-sort" type="number" placeholder="Ordem na cobertura (menor primeiro)">
+          <div class="row"><button class="btn" onclick="hmSave()">Salvar</button><button class="btn sec" onclick="hmCancel()">Cancelar</button></div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -304,7 +324,7 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['db','flags','team','comm','upload']
+const TABS=['db','flags','team','comm','upload','heatmap']
 function showTab(name){
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
@@ -312,6 +332,7 @@ function showTab(name){
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
   if(name==='upload') loadJobs()
+  if(name==='heatmap') loadHeatmap()
 }
 
 // ── Funcionalidades (flags) ──────────────────────────────────────────────
@@ -450,6 +471,47 @@ async function loadJobs(){
   if(!data.length){ host.textContent='Nenhum envio ainda.'; return }
   const ICON={pending:'⏳',processing:'⚙️',done:'✅',error:'❌'}
   host.innerHTML=data.map(j=>`<div class="team-row"><span>${ICON[j.status]||''} <b>${esc(j.filename||j.kind)}</b> <span class="muted">${esc(j.kind)} · ${esc(j.status)}${j.message?' · '+esc(j.message):''}</span></span><span class="muted">${esc((j.created_at||'').replace('T',' ').slice(0,16))}</span></div>`).join('')
+}
+
+// ── Heatmap (esconder + cobertura padrão) ────────────────────────────────
+let _hm=[]
+async function loadHeatmap(){
+  const host=document.getElementById('hm-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_heatmap_tickers')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_config_heatmap.sql?)'; return }
+  _hm=data; host.innerHTML=''
+  if(!data.length){ host.textContent='Nenhuma regra. Sem regras, o heatmap usa o padrão atual.'; return }
+  for(const t of data){
+    const tags=[t.is_hidden?'escondido':'', t.in_coverage?'cobertura':''].filter(Boolean).join(' · ')
+    const row=document.createElement('div'); row.className='team-row'
+    const info=document.createElement('span'); info.innerHTML=`<b>${esc(t.symbol)}</b> ${tags?'<span class="muted">· '+esc(tags)+'</span>':''}`
+    const acts=document.createElement('span'); acts.className='acts'
+    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>hmEdit(t.symbol)
+    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>hmDelete(t.symbol)
+    acts.append(ed,dl); row.append(info,acts); host.appendChild(row)
+  }
+}
+function hmEdit(sym){
+  const t = sym ? _hm.find(x=>x.symbol===sym) : {symbol:'',is_hidden:false,in_coverage:false,sort_order:0}
+  _v('hm-form-title').textContent = sym ? 'Editar regra' : 'Nova regra'
+  _v('hf-symbol').value=t.symbol||''; _v('hf-symbol').disabled=!!sym
+  _v('hf-hidden').checked=!!t.is_hidden; _v('hf-coverage').checked=!!t.in_coverage; _v('hf-sort').value=t.sort_order||0
+  _v('hm-form-card').hidden=false
+}
+function hmCancel(){ _v('hm-form-card').hidden=true }
+async function hmSave(){
+  const sym=_v('hf-symbol').value.trim().toUpperCase()
+  if(!sym){ alert('Símbolo é obrigatório.'); return }
+  const args={ p_symbol:sym, p_is_hidden:_v('hf-hidden').checked, p_in_coverage:_v('hf-coverage').checked, p_sort_order:parseInt(_v('hf-sort').value)||0 }
+  const {error}=await sbAuth.rpc('admin_upsert_heatmap_ticker',args)
+  if(error){ alert('Erro ao salvar: '+error.message); return }
+  hmCancel(); loadHeatmap()
+}
+async function hmDelete(sym){
+  if(!confirm('Excluir a regra de '+sym+'?')) return
+  const {error}=await sbAuth.rpc('admin_delete_heatmap_ticker',{p_symbol:sym})
+  if(error){ alert('Erro ao excluir: '+error.message); return }
+  loadHeatmap()
 }
 </script>
 </body>

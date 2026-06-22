@@ -699,7 +699,7 @@ function applyFlags(flags){
 }
 async function applyDashboardConfig(){
   try{
-    const [fl, tm, cg] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups') ]);
+    const [fl, tm, cg, ht] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers') ]);
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data);
     if(tm && !tm.error && Array.isArray(tm.data) && tm.data.length){
       _teamData = tm.data.map(m => ({ ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo, email:m.email||'', wa:m.whatsapp||'' }));
@@ -709,6 +709,7 @@ async function applyDashboardConfig(){
       COMM_GROUPS = cg.data.map(g => ({ title:g.title, codes: Array.isArray(g.codes) ? g.codes : [] }));
       _commPage = 0; if(typeof _renderCommPage === 'function') _renderCommPage();
     }
+    if(ht && !ht.error && Array.isArray(ht.data) && ht.data.length) applyHeatmapConfig(ht.data);
   }catch(e){ /* fail-safe: mantém o padrão atual da home */ }
 }
 
@@ -983,7 +984,7 @@ const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ'];
-const COVERAGE   = G_COVERAGE;                  // default do heatmap
+let COVERAGE     = G_COVERAGE;                  // default do heatmap (admin pode sobrescrever)
 
 const HM_PRESETS = {
   'Our coverage': G_COVERAGE, 'Steel': G_STEEL, 'Iron Ore': G_IRON, 'Gold': G_GOLD,
@@ -1014,13 +1015,34 @@ const SECTOR_TICKERS = {}; SECTOR_ORDER.forEach(s=>SECTOR_TICKERS[s]=[]);
 Object.keys(TICKER_SECTOR).forEach(t=>{ if(SECTOR_TICKERS[TICKER_SECTOR[t]]) SECTOR_TICKERS[TICKER_SECTOR[t]].push(t); });
 
 // Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
+let _hmFromDefault = false;   // true se _hmDisplayed veio do default (sem localStorage do usuário)
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
   try{ const s=JSON.parse(localStorage.getItem('hm_displayed'));
        if(Array.isArray(s)){ const f=s.filter(t=>KNOWN.has(t)).slice(0,HM_MAX); if(f.length) return f; } }catch(e){}
+  _hmFromDefault = true;
   return COVERAGE.slice();
 }
 function _saveDisplayed(){ try{ localStorage.setItem('hm_displayed', JSON.stringify(_hmDisplayed)); }catch(e){} }
+
+// ── HEATMAP CONFIG do admin (esconder tickers + cobertura padrão) — fail-safe ──
+function applyHeatmapConfig(rows){
+  try{
+    const hidden = new Set(rows.filter(r=>r.is_hidden).map(r=>r.symbol));
+    if(hidden.size){
+      hidden.forEach(t=>KNOWN.delete(t));
+      for(const s in SECTOR_TICKERS) SECTOR_TICKERS[s]=SECTOR_TICKERS[s].filter(t=>!hidden.has(t));
+      for(const s in SECTOR_GROUPS)  SECTOR_GROUPS[s] =SECTOR_GROUPS[s].filter(t=>!hidden.has(t));
+      for(const n in HM_PRESETS)     HM_PRESETS[n]    =HM_PRESETS[n].filter(t=>!hidden.has(t));
+      _hmDisplayed=_hmDisplayed.filter(t=>!hidden.has(t));
+    }
+    const cov = rows.filter(r=>r.in_coverage).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0))
+                    .map(r=>r.symbol).filter(t=>KNOWN.has(t));
+    if(cov.length){ COVERAGE = cov; if(_hmFromDefault) _hmDisplayed = cov.slice(0,HM_MAX); }
+    if(typeof _renderHeatmap==='function') _renderHeatmap();
+    if(typeof _buildFilterPop==='function') _buildFilterPop();
+  }catch(e){ /* fail-safe: heatmap segue com o padrão atual */ }
+}
 
 async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
