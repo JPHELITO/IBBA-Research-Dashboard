@@ -1,0 +1,1090 @@
+{
+"72061000": [
+"semi",
+"ingot_billet"
+],
+"72069000": [
+"semi",
+"ingot_billet"
+],
+"72071110": [
+"semi",
+"ingot_billet"
+],
+"72071190": [
+"semi",
+"ingot_billet"
+],
+"72071200": [
+"semi",
+"placa"
+],
+"72071900": [
+"semi",
+"ingot_billet"
+],
+"72072000": [
+"semi",
+"ingot_billet"
+],
+"72081000": [
+"flat",
+"hrc"
+],
+"72082500": [
+"flat",
+"hrc"
+],
+"72082610": [
+"flat",
+"hrc"
+],
+"72082690": [
+"flat",
+"hrc"
+],
+"72082710": [
+"flat",
+"hrc"
+],
+"72082790": [
+"flat",
+"hrc"
+],
+"72083610": [
+"flat",
+"hrc"
+],
+"72083690": [
+"flat",
+"hrc"
+],
+"72083700": [
+"flat",
+"hrc"
+],
+"72083810": [
+"flat",
+"hrc"
+],
+"72083890": [
+"flat",
+"hrc"
+],
+"72083910": [
+"flat",
+"hrc"
+],
+"72083990": [
+"flat",
+"hrc"
+],
+"72084000": [
+"flat",
+"hrc"
+],
+"72085100": [
+"flat",
+"heavy_plate"
+],
+"72085200": [
+"flat",
+"heavy_plate"
+],
+"72085300": [
+"flat",
+"hrc"
+],
+"72085400": [
+"flat",
+"hrc"
+],
+"72089000": [
+"flat",
+"hrc"
+],
+"72091500": [
+"flat",
+"crc"
+],
+"72091600": [
+"flat",
+"crc"
+],
+"72091700": [
+"flat",
+"crc"
+],
+"72091800": [
+"flat",
+"crc"
+],
+"72092500": [
+"flat",
+"crc"
+],
+"72092600": [
+"flat",
+"crc"
+],
+"72092700": [
+"flat",
+"crc"
+],
+"72092800": [
+"flat",
+"crc"
+],
+"72099000": [
+"flat",
+"crc"
+],
+"72101100": [
+"flat",
+"coated"
+],
+"72101200": [
+"flat",
+"coated"
+],
+"72102000": [
+"flat",
+"coated"
+],
+"72103010": [
+"flat",
+"coated"
+],
+"72103090": [
+"flat",
+"coated"
+],
+"72104110": [
+"flat",
+"coated"
+],
+"72104190": [
+"flat",
+"coated"
+],
+"72104910": [
+"flat",
+"coated"
+],
+"72104990": [
+"flat",
+"coated"
+],
+"72105000": [
+"flat",
+"coated"
+],
+"72106100": [
+"flat",
+"coated"
+],
+"72106900": [
+"flat",
+"coated"
+],
+"72106911": [
+"flat",
+"coated"
+],
+"72106919": [
+"flat",
+"coated"
+],
+"72106990": [
+"flat",
+"coated"
+],
+"72107010": [
+"flat",
+"coated"
+],
+"72107020": [
+"flat",
+"coated"
+],
+"72109000": [
+"flat",
+"coated"
+],
+"72111300": [
+"flat",
+"hrc"
+],
+"72111400": [
+"flat",
+"hrc"
+],
+"72111900": [
+"flat",
+"hrc"
+],
+"72112300": [
+"flat",
+"crc"
+],
+"72112910": [
+"flat",
+"crc"
+],
+"72112920": [
+"flat",
+"crc"
+],
+"72119010": [
+"flat",
+"hrc"
+],
+"72119090": [
+"flat",
+"hrc"
+],
+"72121000": [
+"flat",
+"coated"
+],
+"72122010": [
+"flat",
+"coated"
+],
+"72122090": [
+"flat",
+"coated"
+],
+"72123000": [
+"flat",
+"coated"
+],
+"72124010": [
+"flat",
+"coated"
+],
+"72124020": [
+"flat",
+"flat_others"
+],
+"72124021": [
+"flat",
+"coated"
+],
+"72124029": [
+"flat",
+"coated"
+],
+"72125000": [
+"flat",
+"flat_others"
+],
+"72125010": [
+"flat",
+"flat_others"
+],
+"72125090": [
+"flat",
+"coated"
+],
+"72126000": [
+"flat",
+"flat_others"
+],
+"72131000": [
+"long",
+"rebar"
+],
+"72132000": [
+"long",
+"wire_rod"
+],
+"72139100": [
+"long",
+"wire_rod"
+],
+"72139190": [
+"long",
+"wire_rod"
+],
+"72139910": [
+"long",
+"wire_rod"
+],
+"72139990": [
+"long",
+"wire_rod"
+],
+"72141010": [
+"long",
+"bar"
+],
+"72141090": [
+"long",
+"bar"
+],
+"72142000": [
+"long",
+"rebar"
+],
+"72143000": [
+"long",
+"bar"
+],
+"72149100": [
+"long",
+"bar"
+],
+"72149910": [
+"long",
+"bar"
+],
+"72149990": [
+"long",
+"bar"
+],
+"72151000": [
+"long",
+"bar"
+],
+"72155000": [
+"long",
+"bar"
+],
+"72159010": [
+"long",
+"bar"
+],
+"72159090": [
+"long",
+"bar"
+],
+"72161000": [
+"long",
+"shapes"
+],
+"72162100": [
+"long",
+"shapes"
+],
+"72162200": [
+"long",
+"shapes"
+],
+"72163100": [
+"long",
+"shapes"
+],
+"72163200": [
+"long",
+"shapes"
+],
+"72163300": [
+"long",
+"shapes"
+],
+"72164010": [
+"long",
+"shapes"
+],
+"72164090": [
+"long",
+"shapes"
+],
+"72165000": [
+"long",
+"shapes"
+],
+"72166100": [
+"long",
+"shapes"
+],
+"72166190": [
+"long",
+"shapes"
+],
+"72166910": [
+"long",
+"shapes"
+],
+"72166990": [
+"long",
+"shapes"
+],
+"72169100": [
+"long",
+"shapes"
+],
+"72169900": [
+"long",
+"shapes"
+],
+"72171011": [
+"long",
+"long_others"
+],
+"72171019": [
+"long",
+"long_others"
+],
+"72171090": [
+"long",
+"long_others"
+],
+"72172010": [
+"long",
+"long_others"
+],
+"72172090": [
+"long",
+"long_others"
+],
+"72173010": [
+"long",
+"long_others"
+],
+"72173090": [
+"long",
+"long_others"
+],
+"72179000": [
+"long",
+"long_others"
+],
+"72181000": [
+"semi",
+"ingot_billet"
+],
+"72189100": [
+"semi",
+"placa"
+],
+"72189900": [
+"semi",
+"ingot_billet"
+],
+"72191100": [
+"flat",
+"flat_others"
+],
+"72191200": [
+"flat",
+"flat_others"
+],
+"72191300": [
+"flat",
+"flat_others"
+],
+"72191400": [
+"flat",
+"flat_others"
+],
+"72192100": [
+"flat",
+"flat_others"
+],
+"72192200": [
+"flat",
+"flat_others"
+],
+"72192300": [
+"flat",
+"flat_others"
+],
+"72192400": [
+"flat",
+"flat_others"
+],
+"72193100": [
+"flat",
+"flat_others"
+],
+"72193200": [
+"flat",
+"flat_others"
+],
+"72193300": [
+"flat",
+"flat_others"
+],
+"72193400": [
+"flat",
+"flat_others"
+],
+"72193500": [
+"flat",
+"flat_others"
+],
+"72199010": [
+"flat",
+"flat_others"
+],
+"72199090": [
+"flat",
+"flat_others"
+],
+"72201100": [
+"flat",
+"flat_others"
+],
+"72201210": [
+"flat",
+"flat_others"
+],
+"72201220": [
+"flat",
+"flat_others"
+],
+"72201290": [
+"flat",
+"flat_others"
+],
+"72202010": [
+"flat",
+"flat_others"
+],
+"72202090": [
+"flat",
+"flat_others"
+],
+"72209000": [
+"flat",
+"flat_others"
+],
+"72210000": [
+"long",
+"wire_rod"
+],
+"72221100": [
+"long",
+"bar"
+],
+"72221910": [
+"long",
+"bar"
+],
+"72221990": [
+"long",
+"bar"
+],
+"72222000": [
+"long",
+"bar"
+],
+"72223000": [
+"long",
+"bar"
+],
+"72224010": [
+"long",
+"shapes"
+],
+"72224090": [
+"long",
+"shapes"
+],
+"72230000": [
+"long",
+"long_others"
+],
+"72241000": [
+"semi",
+"ingot_billet"
+],
+"72249000": [
+"semi",
+"placa"
+],
+"72251100": [
+"flat",
+"flat_others"
+],
+"72252000": [
+"flat",
+"flat_others"
+],
+"72253000": [
+"flat",
+"hrc"
+],
+"72254010": [
+"flat",
+"flat_others"
+],
+"72254020": [
+"flat",
+"flat_others"
+],
+"72254090": [
+"flat",
+"hrc"
+],
+"72255000": [
+"flat",
+"flat_others"
+],
+"72255010": [
+"flat",
+"flat_others"
+],
+"72255090": [
+"flat",
+"crc"
+],
+"72259100": [
+"flat",
+"coated"
+],
+"72259200": [
+"flat",
+"coated"
+],
+"72259900": [
+"flat",
+"flat_others"
+],
+"72259910": [
+"flat",
+"flat_others"
+],
+"72259990": [
+"flat",
+"coated"
+],
+"72261100": [
+"flat",
+"flat_others"
+],
+"72261900": [
+"flat",
+"flat_others"
+],
+"72262010": [
+"flat",
+"flat_others"
+],
+"72262090": [
+"flat",
+"flat_others"
+],
+"72269100": [
+"flat",
+"hrc"
+],
+"72269200": [
+"flat",
+"crc"
+],
+"72269300": [
+"flat",
+"flat_others"
+],
+"72269400": [
+"flat",
+"flat_others"
+],
+"72269900": [
+"flat",
+"coated"
+],
+"72271000": [
+"long",
+"wire_rod"
+],
+"72272000": [
+"long",
+"wire_rod"
+],
+"72279000": [
+"long",
+"wire_rod"
+],
+"72281010": [
+"long",
+"bar"
+],
+"72281090": [
+"long",
+"bar"
+],
+"72282000": [
+"long",
+"bar"
+],
+"72283000": [
+"long",
+"bar"
+],
+"72284000": [
+"long",
+"bar"
+],
+"72285000": [
+"long",
+"bar"
+],
+"72286000": [
+"long",
+"bar"
+],
+"72287000": [
+"long",
+"shapes"
+],
+"72288000": [
+"long",
+"bar"
+],
+"72291000": [
+"long",
+"long_others"
+],
+"72292000": [
+"long",
+"long_others"
+],
+"72299000": [
+"long",
+"long_others"
+],
+"73011000": [
+"long",
+"shapes"
+],
+"73012000": [
+"long",
+"shapes"
+],
+"73021010": [
+"long",
+"long_others"
+],
+"73021020": [
+"long",
+"long_others"
+],
+"73021090": [
+"long",
+"long_others"
+],
+"73022000": [
+"long",
+"long_others"
+],
+"73023000": [
+"long",
+"long_others"
+],
+"73024000": [
+"long",
+"long_others"
+],
+"73029000": [
+"long",
+"long_others"
+],
+"73041010": [
+"long",
+"long_others"
+],
+"73041090": [
+"long",
+"long_others"
+],
+"73041100": [
+"long",
+"long_others"
+],
+"73041900": [
+"long",
+"long_others"
+],
+"73042110": [
+"long",
+"long_others"
+],
+"73042190": [
+"long",
+"long_others"
+],
+"73042200": [
+"long",
+"long_others"
+],
+"73042310": [
+"long",
+"long_others"
+],
+"73042390": [
+"long",
+"long_others"
+],
+"73042400": [
+"long",
+"long_others"
+],
+"73042910": [
+"long",
+"long_others"
+],
+"73042920": [
+"long",
+"long_others"
+],
+"73042931": [
+"long",
+"long_others"
+],
+"73042939": [
+"long",
+"long_others"
+],
+"73042990": [
+"long",
+"long_others"
+],
+"73043110": [
+"long",
+"long_others"
+],
+"73043190": [
+"long",
+"long_others"
+],
+"73043910": [
+"long",
+"long_others"
+],
+"73043920": [
+"long",
+"long_others"
+],
+"73043990": [
+"long",
+"long_others"
+],
+"73044100": [
+"long",
+"long_others"
+],
+"73044110": [
+"long",
+"long_others"
+],
+"73044190": [
+"long",
+"long_others"
+],
+"73044900": [
+"long",
+"long_others"
+],
+"73045110": [
+"long",
+"long_others"
+],
+"73045111": [
+"long",
+"long_others"
+],
+"73045119": [
+"long",
+"long_others"
+],
+"73045190": [
+"long",
+"long_others"
+],
+"73045910": [
+"long",
+"long_others"
+],
+"73045911": [
+"long",
+"long_others"
+],
+"73045919": [
+"long",
+"long_others"
+],
+"73045990": [
+"long",
+"long_others"
+],
+"73049011": [
+"long",
+"long_others"
+],
+"73049019": [
+"long",
+"long_others"
+],
+"73049090": [
+"long",
+"long_others"
+],
+"73051100": [
+"flat",
+"flat_others"
+],
+"73051200": [
+"flat",
+"flat_others"
+],
+"73051900": [
+"flat",
+"flat_others"
+],
+"73052000": [
+"flat",
+"flat_others"
+],
+"73053100": [
+"flat",
+"flat_others"
+],
+"73053900": [
+"flat",
+"flat_others"
+],
+"73059000": [
+"flat",
+"flat_others"
+],
+"73061000": [
+"flat",
+"flat_others"
+],
+"73061100": [
+"flat",
+"flat_others"
+],
+"73061900": [
+"flat",
+"flat_others"
+],
+"73062000": [
+"flat",
+"flat_others"
+],
+"73062100": [
+"flat",
+"flat_others"
+],
+"73062900": [
+"flat",
+"flat_others"
+],
+"73063000": [
+"flat",
+"flat_others"
+],
+"73064000": [
+"flat",
+"flat_others"
+],
+"73065000": [
+"flat",
+"flat_others"
+],
+"73066000": [
+"flat",
+"flat_others"
+],
+"73066100": [
+"flat",
+"flat_others"
+],
+"73066900": [
+"flat",
+"flat_others"
+],
+"73069010": [
+"flat",
+"flat_others"
+],
+"73069020": [
+"flat",
+"flat_others"
+],
+"73069090": [
+"flat",
+"flat_others"
+],
+"73089010": [
+"flat",
+"heavy_plate"
+],
+"73121010": [
+"long",
+"long_others"
+],
+"73121090": [
+"long",
+"long_others"
+],
+"73129000": [
+"long",
+"long_others"
+],
+"73130000": [
+"long",
+"long_others"
+],
+"73141200": [
+"long",
+"long_others"
+],
+"73141400": [
+"long",
+"long_others"
+],
+"73141900": [
+"long",
+"long_others"
+],
+"73142000": [
+"long",
+"long_others"
+],
+"73143100": [
+"long",
+"long_others"
+],
+"73143900": [
+"long",
+"long_others"
+],
+"73144100": [
+"long",
+"long_others"
+],
+"73144200": [
+"long",
+"long_others"
+],
+"73144900": [
+"long",
+"long_others"
+],
+"73145000": [
+"flat",
+"flat_others"
+],
+"73170010": [
+"long",
+"long_others"
+],
+"73170020": [
+"long",
+"long_others"
+],
+"73170030": [
+"long",
+"long_others"
+],
+"73170090": [
+"long",
+"long_others"
+]
+}

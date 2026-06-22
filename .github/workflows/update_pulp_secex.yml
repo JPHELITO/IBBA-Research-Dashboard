@@ -1,0 +1,77 @@
+name: 🔄 Auto-Update Celulose por Porto (SECEX ao vivo) — MDIC
+
+# SECEX publica ~4º dia útil → checa dias 1–12. Também manual.
+on:
+  schedule:
+    - cron: "0 13 1-12 * *"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Recarregar celulose de --start-year (2015) até hoje (rodar 1x)"
+        required: false
+        default: "false"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: "Pulp and Paper/requirements.txt"
+
+      - name: Install dependencies
+        run: pip install -r "Pulp and Paper/requirements.txt"
+
+      - name: Update celulose por porto (MDIC ao vivo)
+        run: |
+          if [ "${{ github.event.inputs.backfill }}" = "true" ]; then
+            python "Pulp and Paper/update_pulp_secex.py" --backfill
+          else
+            python "Pulp and Paper/update_pulp_secex.py" --update
+          fi
+
+      - name: DB size gate (<50 MB p/ sql.js)
+        run: python _shared/check_db_size.py "Pulp and Paper/pulp_paper.db"
+
+      - name: Send email notification
+        if: env.PULP_NEW_DATA == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port:    587
+          secure:         false
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          to:             jphelito@gmail.com,joao.helito@itaubba.com
+          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
+          subject:        "🔔 Celulose por porto (SECEX) — novo dado: ${{ env.PULP_LATEST }}"
+          body: |
+            A exportação de celulose por porto (SECEX/MDIC ao vivo) foi atualizada
+            automaticamente no dashboard de Pulp & Paper.
+
+            📅 Novo período: ${{ env.PULP_LATEST }}
+            ---
+            Itaú BBA — Equity Research | Pulp & Paper (mensagem automática)
+
+      - name: Commit & push updated DB
+        if: env.PULP_NEW_DATA == 'true' || github.event.inputs.backfill == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Pulp and Paper/pulp_paper.db"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no .db — nada a commitar."
+          else
+            git commit -m "data: celulose por porto (secex_pulp_port) -> ${PULP_LATEST}"
+            git pull --rebase --autostash || true
+            git push
+            echo "✅ secex_pulp_port commitado -> ${PULP_LATEST}"
+          fi
