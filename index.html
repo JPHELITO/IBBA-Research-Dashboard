@@ -699,11 +699,15 @@ function applyFlags(flags){
 }
 async function applyDashboardConfig(){
   try{
-    const [fl, tm] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team') ]);
+    const [fl, tm, cg] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups') ]);
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data);
     if(tm && !tm.error && Array.isArray(tm.data) && tm.data.length){
       _teamData = tm.data.map(m => ({ ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo, email:m.email||'', wa:m.whatsapp||'' }));
       renderTeam();
+    }
+    if(cg && !cg.error && Array.isArray(cg.data) && cg.data.length){
+      COMM_GROUPS = cg.data.map(g => ({ title:g.title, codes: Array.isArray(g.codes) ? g.codes : [] }));
+      _commPage = 0; if(typeof _renderCommPage === 'function') _renderCommPage();
     }
   }catch(e){ /* fail-safe: mantém o padrão atual da home */ }
 }
@@ -1485,7 +1489,7 @@ function _kvRow(c){
 // Grupos do carrossel: cada "página" tem um TÍTULO (dinâmico no cabeçalho) e uma
 // ORDEM FIXA de códigos. Os 4 core usam o code amigável (IODBZ00→IRON_ORE,
 // PLVHA00→MET_COAL, STHRZ02→HRC_CHINA, STCBM00→REBAR_TURKEY).
-const COMM_GROUPS = [
+let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyDashboardConfig)
   {title:'Iron Ore + Pellet',  codes:['IRON_ORE','IOPRM00','IODFE00','IOMGD00','IOBFC04']},
   {title:'Brand assessments',  codes:['IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00']},
   {title:'Freight + HCC',      codes:['IOFBC00','IOFAC00','MET_COAL','HCCAU00']},
