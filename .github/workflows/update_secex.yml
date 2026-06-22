@@ -11,6 +11,10 @@ on:
         description: "Forçar recarga mesmo sem novidades"
         required: false
         default: "false"
+      backfill_sh6:
+        description: "Reconstruir quebras SH6×País/URF + linha laranja antidumping (rodar 1x; ~6 anos)"
+        required: false
+        default: "false"
 
 jobs:
   update:
@@ -34,9 +38,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r "Steel and Mining/requirements.txt"
 
-      # ── 3. Verificar e atualizar dados ───────────────────────────────────────
+      # ── 3. Verificar e atualizar dados (incremental; também atualiza SH6×País/URF) ─
       - name: Check & update SECEX data
         id: update
+        if: github.event.inputs.backfill_sh6 != 'true'
         run: |
           FORCE_FLAG=""
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
@@ -49,13 +54,27 @@ jobs:
           SMTP_USER:   ${{ secrets.SMTP_USER }}
           SMTP_PASS:   ${{ secrets.SMTP_PASS }}
 
-      # ── 4. Rodar extractor principal (atualiza DB com novos dados) ───────────
-      - name: Run main extractor (se houver novidades)
-        if: env.NEW_DATA == 'true'
+      # ── 3a. Minério de ferro (mesma janela do SECEX → tabela secex_iron_ore) ──
+      - name: Update iron ore (Fines/Pellets)
+        if: github.event.inputs.backfill_sh6 != 'true'
+        run: python "Steel and Mining/update_iron_ore.py" --update
+
+      # ── 3a2. IABr (Aço Brasil) — Excel do site → tabelas iabr_* ───────────────
+      - name: Update IABr (estatística mensal)
+        if: github.event.inputs.backfill_sh6 != 'true'
+        run: python "Steel and Mining/update_iabr.py" --update
+
+      # ── 3b. (Manual, 1x) Histórico: SH6×País/URF + laranja + minério + IABr ───
+      - name: Backfill (manual)
+        if: github.event.inputs.backfill_sh6 == 'true'
         run: |
-          echo "Novo período detectado: $LATEST_PERIOD"
-          # O updater já atualizou secex_country e secex_port.
-          # Se houver arquivos IABr/INDA novos, rodar extractor_sm.py aqui também.
+          python "Steel and Mining/updater_sm.py" --backfill-sh6
+          python "Steel and Mining/update_iron_ore.py" --backfill
+          python "Steel and Mining/update_iabr.py" --backfill
+
+      # ── 4. Portão de tamanho: barra o commit se o .db estourar o limite do navegador ─
+      - name: DB size gate (<50 MB p/ sql.js)
+        run: python _shared/check_db_size.py "Steel and Mining/steel_sm.db"
 
       # ── 5. Enviar e-mail de notificação ─────────────────────────────────────
       - name: Send email notification
@@ -91,17 +110,22 @@ jobs:
       # "Working tree clean. Nothing to commit." (bug histórico). Commit manual
       # com o caminho entre aspas resolve.
       - name: Commit & push updated DB
-        if: env.NEW_DATA == 'true'
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || env.IABR_NEW_DATA == 'true' || github.event.inputs.backfill_sh6 == 'true'
         run: |
           git config user.name  "IBBA Bot"
           git config user.email "bot@itaubba.com"
           git add "Steel and Mining/steel_sm.db"
           if git diff --staged --quiet; then
-            echo "::warning::NEW_DATA=true mas o .db não mudou — verificar updater."
+            echo "::warning::sem mudança no .db — nada a commitar."
           else
-            git commit -m "data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
+            if [ "${{ github.event.inputs.backfill_sh6 }}" = "true" ]; then
+              MSG="data: popula secex_sh6_country/urf (quebras SH6xPais/URF) + dropa secex_port"
+            else
+              MSG="data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
+            fi
+            git commit -m "$MSG"
             git push
-            echo "✅ steel_sm.db commitado e pushado → ${LATEST_PERIOD}"
+            echo "✅ steel_sm.db commitado e pushado"
           fi
 
       # ── 7. Log final ────────────────────────────────────────────────────────

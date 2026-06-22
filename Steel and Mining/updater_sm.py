@@ -36,7 +36,23 @@ warnings.filterwarnings("ignore")  # ignora avisos SSL
 
 # ── Caminhos ───────────────────────────────────────────────────────────────────
 HERE    = Path(__file__).parent
-DB_PATH = HERE / "steel_sm.db"
+DB_PATH = Path(os.environ.get("SECEX_DB") or (HERE / "steel_sm.db"))  # SECEX_DB p/ testar em cópia
+
+# ── Dicionário de códigos (FONTE ÚNICA) ──────────────────────────────────────────
+# A classificação NCM/SH6 (aço/celulose/minério) + a flag Antidumping vêm do
+# dicionário _shared/dictionary_codes.csv (gerado por build_dictionary.py a partir
+# de Standard_NCM_SH6_clmd.xlsx). Antes eram sets chumbados neste arquivo.
+sys.path.insert(0, str(HERE.parent / "_shared"))
+import dictionary as _dict
+from ports import norm_port
+
+# Conjunto de SH6 de aço (do dicionário) p/ as quebras SH6×País e SH6×URF.
+STEEL_SH6 = _dict.sh6_set("steel")
+# As quebras finas (SH6×País / SH6×URF) usam uma JANELA ROLANTE de ~6 anos p/ caber no
+# limite do navegador (sql.js); períodos mais antigos são podados a cada --update.
+RECENT_FROM = f"{datetime.utcnow().year - 6}-01"
+# Quantos países "principais" manter por direção nas quebras SH6×País (resto = "Outros").
+TOP_COUNTRIES_N = 15
 
 # ── E-mail ─────────────────────────────────────────────────────────────────────
 EMAIL_RECIPIENTS = ["jphelito@gmail.com", "joao.helito@itaubba.com"]
@@ -47,176 +63,39 @@ MDIC_BASE = "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm"
 MDIC_TABS = "https://balanca.economia.gov.br/balanca/bd/tabelas"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CLASSIFICAÇÃO NCM — baseada no DICIONÁRIO NCM fornecido
-# Cada NCM pertence a EXATAMENTE UMA subcategoria dentro de seu segmento
+# CLASSIFICAÇÃO NCM/SH6 — FONTE ÚNICA = dicionário (_shared/dictionary_codes.csv)
+# Os sets chumbados (272 NCM) foram REMOVIDOS em 2026-06-19. A classificação agora
+# vem do dicionário do analista (build_dictionary.py a partir de
+# Standard_NCM_SH6_clmd.xlsx) — editar o .xlsx + rodar build_dictionary.py.
+# Equivalência provada por _shared/test_dictionary_equivalence.py.
 # ─────────────────────────────────────────────────────────────────────────────
-
-# ── SEMI (12 NCMs) ────────────────────────────────────────────────────────────
-INGOT_BILLET_NCM = {
-    "72072000", "72061000", "72241000", "72189900", "72071190",
-    "72071900", "72069000", "72071110", "72181000",
-}
-PLACA_NCM = {
-    "72071200", "72249000", "72189100",
-}
-SEMI_NCM = INGOT_BILLET_NCM | PLACA_NCM
-
-# ── FLAT (147 NCMs) ───────────────────────────────────────────────────────────
-HRC_NCM = {
-    "72081000", "72082500", "72082610", "72082690", "72082710",
-    "72082790", "72083610", "72083690", "72083700", "72083810",
-    "72083990", "72084000", "72085300", "72085400", "72089000",
-    "72111300", "72111400", "72111900", "72119010", "72119090",
-    "72253000", "72254090", "72269100", "72083890", "72083910",
-}
-HEAVY_PLATE_NCM = {
-    "72085100", "72085200", "73089010",
-}
-CRC_NCM = {
-    "72091500", "72091600", "72091700", "72091800", "72092500",
-    "72092600", "72092700", "72092800", "72099000", "72112300",
-    "72112910", "72112920", "72255090", "72269200",
-}
-COATED_NCM = {
-    "72101100", "72101200", "72105000", "72121000", "72125090",
-    "72107010", "72107020", "72124010", "72124021", "72124029",
-    "72103010", "72103090", "72104910", "72104990", "72106100",
-    "72106911", "72106919", "72122010", "72122090", "72123000",
-    "72259100", "72259200", "72259990", "72269900", "72106990",
-    "72102000", "72109000", "72106900", "72104110", "72104190",
-}
-FLAT_OTHERS_NCM = {
-    "72191100", "72191200", "72191300", "72191400", "72192100",
-    "72192200", "72192300", "72192400", "72193100", "72193200",
-    "72193300", "72193400", "72193500", "72199010", "72199090",
-    "72251100", "72252000", "72254010", "72254020", "72255000",
-    "72255010", "72259900", "72259910", "73051100", "73051200",
-    "73051900", "73052000", "73061000", "73062000", "73063000",
-    "73069010", "73053100", "73053900", "73059000", "73061100",
-    "73061900", "73062100", "73062900", "73064000", "73065000",
-    "73066000", "73066100", "73066900", "73069020", "73069090",
-    "72124020", "72125000", "72125010", "72126000", "73145000",
-    "72201100", "72201210", "72201220", "72201290", "72202010",
-    "72202090", "72209000", "72261100", "72261900", "72262010",
-    "72262090", "72269300", "72269400",
-}
-FLAT_NCM = HRC_NCM | HEAVY_PLATE_NCM | CRC_NCM | COATED_NCM | FLAT_OTHERS_NCM
-
-# ── LONG (113 NCMs) ───────────────────────────────────────────────────────────
-WIRE_ROD_NCM = {
-    "72139100", "72139190", "72139990", "72279000", "72132000",
-    "72272000", "72139910", "72271000", "72210000",
-}
-REBAR_NCM = {
-    "72131000", "72142000",
-}
-BAR_NCM = {
-    "72141010", "72141090", "72143000", "72149100", "72149910",
-    "72149990", "72151000", "72155000", "72159010", "72159090",
-    "72282000", "72283000", "72284000", "72285000", "72286000",
-    "72288000", "72281010", "72281090", "72221100", "72221910",
-    "72221990", "72222000", "72223000",
-}
-SHAPES_NCM = {
-    "72161000", "72162100", "72162200", "72165000", "72166100",
-    "72166910", "72169100", "72169900", "72163100", "72163200",
-    "72163300", "72164010", "72164090", "72166190", "72166990",
-    "73011000", "73012000", "72224090", "72287000", "72224010",
-}
-LONG_OTHERS_NCM = {
-    "73041090", "73041900", "73042110", "73042310", "73042910",
-    "73043110", "73043190", "73043910", "73043920", "73043990",
-    "73049090", "73041010", "73041100", "73042190", "73042200",
-    "73042390", "73042400", "73042920", "73042931", "73042939",
-    "73042990", "73044100", "73044110", "73044190", "73044900",
-    "73045110", "73045111", "73045119", "73045190", "73045910",
-    "73045911", "73045919", "73045990", "73049011", "73049019",
-    "73021010", "73021020", "73021090", "73022000", "73023000",
-    "73024000", "73029000", "72171011", "72171019", "72171090",
-    "72172010", "72172090", "72173010", "72173090", "72179000",
-    "73121010", "73121090", "73129000", "73130000", "73142000",
-    "73143100", "73143900", "73144100", "73144200", "73144900",
-    "73170010", "73170020", "73170030", "73170090", "72230000",
-    "72291000", "72292000", "72299000", "73141200", "73141400",
-    "73141900",
-}
-LONG_NCM = WIRE_ROD_NCM | REBAR_NCM | BAR_NCM | SHAPES_NCM | LONG_OTHERS_NCM
-
-ALL_NCM = FLAT_NCM | LONG_NCM | SEMI_NCM
+ALL_NCM = _dict.all_ncm_set()
 
 
-def classify_ncm(ncm: str) -> list[str]:
-    """
-    Retorna lista de categorias para o NCM informado.
-    Cada NCM pertence a no máximo 2 categorias: o segmento pai + a subcategoria.
-    Ex: '72131000' → ['long', 'rebar']
-    """
-    c = str(ncm).strip().zfill(8)
-    cats = []
-
-    # SEMI
-    if c in INGOT_BILLET_NCM:
-        cats += ["semi", "ingot_billet"]
-    elif c in PLACA_NCM:
-        cats += ["semi", "placa"]
-
-    # FLAT
-    if c in HRC_NCM:
-        cats += ["flat", "hrc"]
-    elif c in HEAVY_PLATE_NCM:
-        cats += ["flat", "heavy_plate"]
-    elif c in CRC_NCM:
-        cats += ["flat", "crc"]
-    elif c in COATED_NCM:
-        cats += ["flat", "coated"]
-    elif c in FLAT_OTHERS_NCM:
-        cats += ["flat", "flat_others"]
-
-    # LONG
-    if c in REBAR_NCM:
-        cats += ["long", "rebar"]
-    elif c in WIRE_ROD_NCM:
-        cats += ["long", "wire_rod"]
-    elif c in BAR_NCM:
-        cats += ["long", "bar"]
-    elif c in SHAPES_NCM:
-        cats += ["long", "shapes"]
-    elif c in LONG_OTHERS_NCM:
-        cats += ["long", "long_others"]
-
-    return cats
+def classify_ncm(ncm: str) -> list:
+    """['segment', 'subcategory'] do NCM, via DICIONÁRIO (_shared/dictionary.py).
+    Ex.: '72131000' → ['long', 'rebar']. (Antes eram sets chumbados; migrado 2026-06-19.)"""
+    return _dict.classify_ncm(ncm)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PREVISÃO — Coreia/China HRC/CRC por SH6 (alimenta import_prediction = a linha
-# laranja "SECEX" do Modelo Preditivo). MESMOS códigos SH6 do histórico
-# (extractor_sm.py) p/ manter a comparação maçã-com-maçã com a linha de exportação.
-# A linha laranja passa a atualizar SOZINHA com o MDIC; a linha preta (exportação
-# registrada na origem, Coreia/China) continua vindo de planilha (pred_exports).
+# PREVISÃO — importações Brasil ← Coreia/China dos SH6 ANTIDUMPING (linha laranja
+# "SECEX" do Modelo Preditivo). REBASEADO 2026-06-19 (decisão do usuário): saiu de
+# HRC/CRC (34 SH6 chumbados) p/ os 55 SH6 marcados "Antidumping" no dicionário;
+# product = subcategoria do dicionário (HRC/CRC/Coated/...). MESMO conjunto da linha
+# PRETA (pred_exports via update_korea.py + robô China) → comparação maçã-com-maçã.
+# A previsão é em nível SH6 (consolida NCMs repetidos sob cada SH6).
 # ══════════════════════════════════════════════════════════════════════════════
-HRC_SH6 = {
-    720890, 720826, 720827, 720837, 720838, 720839, 720853, 720854,
-    722540, 722691, 720825, 721190, 722530, 720810, 720836, 721113,
-    721114, 721119, 720840,
-}
-CRC_SH6 = {
-    720916, 720917, 720926, 720927, 720915, 720918, 722550, 721129,
-    722692, 720990, 721123, 722519, 722619, 720925, 720928,
-}
-PRED_SH6_PREFIXES = {str(c) for c in (HRC_SH6 | CRC_SH6)}
+_AD_SH6 = _dict.antidumping_sh6_set()   # 55 SH6 (strings, 6 dígitos)
 
 
-def _classify_sh6(ncm) -> str:
-    """HRC / CRC / OTHER pelo prefixo SH6 (6 dígitos) do NCM (8 dígitos)."""
-    try:
-        code = int(str(ncm).strip().zfill(8)[:6])
-    except (ValueError, TypeError):
-        return "OTHER"
-    if code in HRC_SH6:
-        return "HRC"
-    if code in CRC_SH6:
-        return "CRC"
-    return "OTHER"
+def _classify_sh6(ncm):
+    """Subcategoria do dicionário (HRC/CRC/Coated/...) SE o SH6 do NCM for ANTIDUMPING;
+    None caso contrário. (Antes: HRC/CRC/OTHER por 34 SH6 chumbados.)"""
+    sh6 = str(ncm).strip().zfill(8)[:6]
+    if sh6 not in _AD_SH6:
+        return None
+    return _dict.sh6_subcategory(sh6, "steel") or "other"
 
 
 def _classify_pred_country(country) -> str:
@@ -232,15 +111,15 @@ def _classify_pred_country(country) -> str:
 def _aggregate_import_prediction(df_raw, only_after=None):
     """Agrega o df MDIC de IMPORTAÇÃO (period,ncm,country,kg,usd) em linhas de
     import_prediction (period,product,country,value_usd,volume_kg) — só Coreia/China,
-    só HRC/CRC pelos códigos SH6. value_usd/volume_kg em unidade BRUTA (USD/kg), igual
-    ao extractor (o front converte kg→kt na hora de plotar)."""
+    só os SH6 ANTIDUMPING; product = subcategoria do dicionário. value_usd/volume_kg em
+    unidade BRUTA (USD/kg), igual ao extractor (o front converte kg→kt ao plotar)."""
     agg = {}
     for _, row in df_raw.iterrows():
         period = str(row["period"]).strip()
         if only_after and period <= only_after:
             continue
         product = _classify_sh6(row["ncm"])
-        if product == "OTHER":
+        if not product:
             continue
         country = _classify_pred_country(row.get("country", ""))
         if country == "Other":
@@ -314,7 +193,28 @@ def init_tables(conn):
         updated_at TEXT,
         PRIMARY KEY (period, product, country)
     );
+    CREATE TABLE IF NOT EXISTS secex_sh6_country (
+        period         TEXT,
+        direction      TEXT,
+        sh6            TEXT,
+        country        TEXT,
+        volume_ktons   REAL,
+        revenue_usd_mn REAL,
+        PRIMARY KEY (period, direction, sh6, country)
+    ) WITHOUT ROWID;
+    CREATE TABLE IF NOT EXISTS secex_sh6_urf (
+        period         TEXT,
+        direction      TEXT,
+        sh6            TEXT,
+        port           TEXT,
+        volume_ktons   REAL,
+        revenue_usd_mn REAL,
+        PRIMARY KEY (period, direction, sh6, port)
+    ) WITHOUT ROWID;
     """)
+    # Limpeza: secex_port é tabela MORTA (deprecated; NÃO lida pelo frontend — só citada
+    # em comentários). Removê-la poupa ~42k linhas no .db servido ao navegador.
+    conn.execute("DROP TABLE IF EXISTS secex_port")
     conn.commit()
 
 
@@ -432,6 +332,92 @@ def fetch_pais_lookup() -> dict:
     return mapping
 
 
+def fetch_urf_lookup() -> dict:
+    """Retorna {CO_URF: NO_URF} (ex.: {'0817800': '0817800 - PORTO DE SANTOS'})."""
+    df = _download_csv(f"{MDIC_TABS}/URF.csv")
+    df.columns = [c.strip().strip('"') for c in df.columns]
+    mapping = {}
+    for _, r in df.iterrows():
+        code = str(r.get("CO_URF", "")).strip().strip('"').zfill(7)
+        name = str(r.get("NO_URF", "")).strip().strip('"')
+        mapping[code] = name
+    print(f"  [URF] {len(mapping)} unidades aduaneiras carregadas.")
+    return mapping
+
+
+def build_port_map(urf_map: dict) -> dict:
+    """{CO_URF → nome de porto canônico} via norm_port (funde URFs do mesmo porto)."""
+    return {code: norm_port(name) for code, name in urf_map.items()}
+
+
+def _top_countries(conn, direction, n=TOP_COUNTRIES_N, recent_from=RECENT_FROM) -> set:
+    """Top-N países por volume em secex_country (janela recente) p/ a direção dada."""
+    rows = conn.execute(
+        "SELECT country, SUM(volume_ktons) v FROM secex_country "
+        "WHERE direction=? AND period>=? GROUP BY country ORDER BY v DESC LIMIT ?",
+        (direction, recent_from, n),
+    ).fetchall()
+    return {r[0] for r in rows if r[0]}
+
+
+def upsert_sh6_country(conn, rows):
+    conn.executemany(
+        "INSERT OR REPLACE INTO secex_sh6_country "
+        "(period,direction,sh6,country,volume_ktons,revenue_usd_mn) "
+        "VALUES (?,?,?,?,?,?)", rows,
+    )
+    conn.commit()
+
+
+def upsert_sh6_urf(conn, rows):
+    conn.executemany(
+        "INSERT OR REPLACE INTO secex_sh6_urf "
+        "(period,direction,sh6,port,volume_ktons,revenue_usd_mn) "
+        "VALUES (?,?,?,?,?,?)", rows,
+    )
+    conn.commit()
+
+
+def _accumulate_sh6(df, direction, acc_country, acc_urf, only_after=None):
+    """Acumula df MDIC (com colunas sh6/port) em dois dicts (kg/usd brutos):
+       acc_country[(period,dir,sh6,country)] e acc_urf[(period,dir,sh6,port)].
+    Só SH6 de aço e período >= RECENT_FROM (e > only_after, se informado)."""
+    for _, row in df.iterrows():
+        period = str(row["period"]).strip()
+        if period < RECENT_FROM:
+            continue
+        if only_after and period <= only_after:
+            continue
+        ncm = str(row["ncm"]).strip().zfill(8)
+        if ncm not in ALL_NCM:          # mesmo universo do secex_country (NCMs do dicionário)
+            continue
+        sh6 = str(row["sh6"]).strip()
+        country = str(row.get("country", "")).strip() or "Outros"
+        port    = str(row.get("port", "")).strip() or "Outros"
+        kg  = float(row.get("kg", 0) or 0)
+        usd = float(row.get("usd", 0) or 0)
+        ck = (period, direction, sh6, country)
+        uk = (period, direction, sh6, port)
+        acc_country.setdefault(ck, [0.0, 0.0]); acc_country[ck][0] += kg; acc_country[ck][1] += usd
+        acc_urf.setdefault(uk, [0.0, 0.0]);     acc_urf[uk][0] += kg;     acc_urf[uk][1] += usd
+
+
+def _sh6_country_rows(acc_country, keep_by_dir):
+    """Fold país p/ top-N (resto='Outros') e gera linhas (kt, US$ mn)."""
+    folded = {}
+    for (p, d, sh6, country), v in acc_country.items():
+        c = country if country in keep_by_dir.get(d, set()) else "Outros"
+        k = (p, d, sh6, c)
+        folded.setdefault(k, [0.0, 0.0]); folded[k][0] += v[0]; folded[k][1] += v[1]
+    return [(p, d, sh6, c, round(v[0] / 1e6, 6), round(v[1] / 1e6, 6))
+            for (p, d, sh6, c), v in folded.items()]
+
+
+def _sh6_urf_rows(acc_urf):
+    return [(p, d, sh6, port, round(v[0] / 1e6, 6), round(v[1] / 1e6, 6))
+            for (p, d, sh6, port), v in acc_urf.items()]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PROCESSAMENTO DO CSV MDIC → secex_country
 # ─────────────────────────────────────────────────────────────────────────────
@@ -469,7 +455,8 @@ def _aggregate_df(df_raw, direction, pais_map, only_after=None):
     return rows
 
 
-def _download_mdic_year(year: int, direction: str, pais_map: dict) -> pd.DataFrame | None:
+def _download_mdic_year(year: int, direction: str, pais_map: dict,
+                        port_map: dict | None = None) -> pd.DataFrame | None:
     """
     Baixa EXP_{year}.csv ou IMP_{year}.csv do MDIC bulk (latin-1, separador ;),
     filtra pelos NCMs de interesse e retorna DataFrame normalizado:
@@ -487,7 +474,7 @@ def _download_mdic_year(year: int, direction: str, pais_map: dict) -> pd.DataFra
         print(f"    ERRO ao baixar {url}: {e}")
         return None
 
-    usecols = ["CO_ANO", "CO_MES", "CO_NCM", "CO_PAIS", "KG_LIQUIDO", "VL_FOB"]
+    usecols = ["CO_ANO", "CO_MES", "CO_NCM", "CO_PAIS", "CO_URF", "KG_LIQUIDO", "VL_FOB"]
     chunks  = []
     try:
         for chunk in pd.read_csv(
@@ -496,9 +483,9 @@ def _download_mdic_year(year: int, direction: str, pais_map: dict) -> pd.DataFra
             chunksize=150_000, low_memory=False,
         ):
             chunk["CO_NCM"] = chunk["CO_NCM"].str.strip().str.zfill(8)
-            # NCMs de aço (secex) + os SH6 da previsão (Coreia/China HRC/CRC), mesmo que
-            # fora do universo de aço (ex.: inox 722519/722619), p/ casar 100% o histórico.
-            mask = chunk["CO_NCM"].isin(ALL_NCM) | chunk["CO_NCM"].str[:6].isin(PRED_SH6_PREFIXES)
+            # NCMs de aço do dicionário (secex/sh6) + TODOS os NCMs sob os SH6 ANTIDUMPING
+            # (previsão em nível SH6 — consolida códigos repetidos), mesmo fora do dicionário.
+            mask = chunk["CO_NCM"].isin(ALL_NCM) | chunk["CO_NCM"].str[:6].isin(_AD_SH6)
             filtered = chunk[mask]
             if len(filtered):
                 chunks.append(filtered)
@@ -516,9 +503,12 @@ def _download_mdic_year(year: int, direction: str, pais_map: dict) -> pd.DataFra
     df["kg"]      = pd.to_numeric(df["KG_LIQUIDO"], errors="coerce").fillna(0)
     df["usd"]     = pd.to_numeric(df["VL_FOB"],     errors="coerce").fillna(0)
     df["ncm"]     = df["CO_NCM"]
+    df["sh6"]     = df["CO_NCM"].str[:6]
+    df["port"]    = (df["CO_URF"].str.strip().str.zfill(7).map(port_map).fillna("Outros")
+                     if port_map is not None else "Outros")
 
     print(f"    {len(df):,} linhas | periodos: {df['period'].min()} a {df['period'].max()}")
-    return df[["period", "ncm", "country", "kg", "usd"]]
+    return df[["period", "ncm", "sh6", "country", "port", "kg", "usd"]]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -536,6 +526,10 @@ def update_from_mdic(conn, force_reload=False):
     print(f"  Último período no DB: secex={latest_in_db} | import_prediction={pred_latest}")
 
     pais_map = fetch_pais_lookup()
+    urf_map  = fetch_urf_lookup()
+    port_map = build_port_map(urf_map)
+    sh6_latest = conn.execute("SELECT MAX(period) FROM secex_sh6_country").fetchone()[0]
+    print(f"  Último período SH6 (país/urf): {sh6_latest or '—'}")
 
     current_year = datetime.utcnow().year
     years_to_check = [current_year - 1, current_year] \
@@ -543,10 +537,11 @@ def update_from_mdic(conn, force_reload=False):
 
     found_periods = set()
     pred_periods  = set()
+    acc_country, acc_urf = {}, {}
 
     for direction in ("imp", "exp"):
         for year in years_to_check:
-            df = _download_mdic_year(year, direction, pais_map)
+            df = _download_mdic_year(year, direction, pais_map, port_map)
             if df is None:
                 continue
 
@@ -576,8 +571,25 @@ def update_from_mdic(conn, force_reload=False):
                     pred_periods.update(pp)
                     print(f"  → import_prediction: {len(p_rows)} linhas | períodos {pp}")
 
+            # ── secex_sh6_country / secex_sh6_urf (quebra fina; gated pelo próprio máx.) ─
+            if force_reload or max_period_csv > (sh6_latest or "0000-00"):
+                _accumulate_sh6(df, direction, acc_country, acc_urf,
+                                only_after=(None if force_reload else sh6_latest))
+
     if found_periods:
         derive_aggregates(conn)
+
+    if acc_country:
+        keep_by_dir = {"imp": _top_countries(conn, "imp"), "exp": _top_countries(conn, "exp")}
+        upsert_sh6_country(conn, _sh6_country_rows(acc_country, keep_by_dir))
+        upsert_sh6_urf(conn, _sh6_urf_rows(acc_urf))
+        # janela rolante: poda períodos que saíram dos ~6 anos (mantém o .db sob controle)
+        conn.execute("DELETE FROM secex_sh6_country WHERE period < ?", (RECENT_FROM,))
+        conn.execute("DELETE FROM secex_sh6_urf     WHERE period < ?", (RECENT_FROM,))
+        conn.commit()
+        sh6_ps = sorted({k[0] for k in acc_country})
+        print(f"  → secex_sh6: {len(sh6_ps)} períodos | sh6×país(pré-fold)={len(acc_country):,} "
+              f"| sh6×urf={len(acc_urf):,}")
 
     all_new = found_periods | pred_periods
     if all_new:
@@ -601,25 +613,80 @@ def backfill(conn, start_year=2015):
     Apaga e recria secex_country para garantir classificação atualizada.
     """
     print(f"\n[BACKFILL] Reprocessando histórico a partir de {start_year}...")
-    print("  Limpando secex_country...")
+    print("  Limpando secex_country / secex_sh6_country / secex_sh6_urf...")
     conn.execute("DELETE FROM secex_country")
+    conn.execute("DELETE FROM secex_sh6_country")
+    conn.execute("DELETE FROM secex_sh6_urf")
     conn.commit()
 
     pais_map = fetch_pais_lookup()
+    urf_map  = fetch_urf_lookup()
+    port_map = build_port_map(urf_map)
     current_year = datetime.utcnow().year
 
+    acc_country, acc_urf = {}, {}
     for year in range(start_year, current_year + 1):
         for direction in ("exp", "imp"):
-            df = _download_mdic_year(year, direction, pais_map)
+            df = _download_mdic_year(year, direction, pais_map, port_map)
             if df is None:
                 continue
             c_rows = _aggregate_df(df, direction, pais_map)
             upsert_country(conn, c_rows)
+            _accumulate_sh6(df, direction, acc_country, acc_urf)
             print(f"  {direction.upper()} {year}: {len(c_rows):,} linhas inseridas")
 
     print("\n  Derivando agregados (secex_exports / secex_imports)...")
     derive_aggregates(conn)
+
+    print("  Gravando quebras SH6×País / SH6×URF...")
+    keep_by_dir = {"imp": _top_countries(conn, "imp"), "exp": _top_countries(conn, "exp")}
+    upsert_sh6_country(conn, _sh6_country_rows(acc_country, keep_by_dir))
+    upsert_sh6_urf(conn, _sh6_urf_rows(acc_urf))
+    print(f"    sh6×país={len(acc_country):,} (pré-fold) | sh6×urf={len(acc_urf):,}")
+    conn.commit()
+    print("  Compactando o banco (VACUUM)...")
+    conn.execute("VACUUM")
     print("[BACKFILL] Concluído.")
+
+
+def backfill_sh6(conn, start_year=2015):
+    """(Re)constrói as tabelas DERIVADAS sem tocar em secex_country: as quebras
+    secex_sh6_country/secex_sh6_urf E a linha laranja import_prediction (rebaseada p/ os
+    SH6 ANTIDUMPING), na janela rolante (~6 anos). O DELETE limpa produtos/países antigos
+    (ex.: OTHER/Other que o --update incremental não remove)."""
+    sy = max(start_year, datetime.utcnow().year - 6)  # não antes da janela rolante (~6 anos)
+    print(f"\n[BACKFILL-SH6] Reconstruindo SH6×País/URF + import_prediction a partir de {sy}...")
+    conn.execute("DELETE FROM secex_sh6_country")
+    conn.execute("DELETE FROM secex_sh6_urf")
+    conn.execute("DELETE FROM import_prediction")
+    conn.commit()
+
+    pais_map = fetch_pais_lookup()
+    port_map = build_port_map(fetch_urf_lookup())
+    current_year = datetime.utcnow().year
+
+    acc_country, acc_urf, pred_rows = {}, {}, []
+    for year in range(sy, current_year + 1):
+        for direction in ("exp", "imp"):
+            df = _download_mdic_year(year, direction, pais_map, port_map)
+            if df is None:
+                continue
+            _accumulate_sh6(df, direction, acc_country, acc_urf)
+            if direction == "imp":                        # linha laranja = Brasil IMPORTA
+                pred_rows.extend(_aggregate_import_prediction(df))
+            print(f"  {direction.upper()} {year}: acumulado ({len(acc_country):,} sh6×país)")
+
+    keep_by_dir = {"imp": _top_countries(conn, "imp"), "exp": _top_countries(conn, "exp")}
+    upsert_sh6_country(conn, _sh6_country_rows(acc_country, keep_by_dir))
+    upsert_sh6_urf(conn, _sh6_urf_rows(acc_urf))
+    if pred_rows:
+        upsert_import_prediction(conn, pred_rows)
+    print(f"  sh6×país={len(acc_country):,} (pré-fold) | sh6×urf={len(acc_urf):,} "
+          f"| import_prediction={len(pred_rows)}")
+    conn.commit()
+    print("  Compactando o banco (VACUUM) p/ reclamar espaço de secex_port/old...")
+    conn.execute("VACUUM")
+    print("[BACKFILL-SH6] Concluído.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -686,11 +753,17 @@ def _write_gh_env(new_data: str, period: str | None):
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
+    try:  # evita UnicodeEncodeError no console cp1252 do Windows (→/emoji nos prints)
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="Steel & Mining SECEX Auto-Updater")
     parser.add_argument("--update",     action="store_true",
                         help="Baixa CSVs MDIC e aplica novos meses")
     parser.add_argument("--backfill",   action="store_true",
                         help="Reprocessa histórico completo com nova classificação NCM")
+    parser.add_argument("--backfill-sh6", action="store_true",
+                        help="(Re)constroi quebras SH6xPais/URF + linha laranja antidumping (2015+), sem tocar no resto")
     parser.add_argument("--check",      action="store_true",
                         help="Apenas verifica o último mês disponível no MDIC (sem baixar)")
     parser.add_argument("--derive",     action="store_true",
@@ -731,6 +804,9 @@ def main():
     if args.backfill:
         backfill(conn, start_year=args.start_year)
         new_data, new_period = True, get_latest_period(conn)
+
+    elif args.backfill_sh6:
+        backfill_sh6(conn, start_year=args.start_year)
 
     elif args.update:
         new_data, new_period = update_from_mdic(conn, force_reload=args.force)

@@ -1,0 +1,48 @@
+name: 🔔 Vigia IBÁ (papel) — alerta de mês novo
+
+# IBÁ publica ~1-2 semanas após o fim do mês → checa dias 8-25. Só alerta (não grava dado:
+# o PDF do IBÁ é imagem; a entrada segue manual via update_iba.py).
+on:
+  schedule:
+    - cron: "0 13 8-25 * *"
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Detectar mês novo do IBÁ
+        run: python "Pulp and Paper/update_iba_detector.py" --notify
+
+      - name: Avisar por e-mail (se houver mês novo não-atualizado)
+        if: env.IBA_NEW == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port:    587
+          secure:         false
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          to:             jphelito@gmail.com,joao.helito@itaubba.com
+          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
+          subject:        "🔔 IBÁ publicou novo DadosPapel: ${{ env.IBA_SITE }} (dash em ${{ env.IBA_DASH }})"
+          body: |
+            O IBÁ publicou um novo boletim DadosPapel (papel).
+
+            📅 No site: ${{ env.IBA_SITE }}  |  na dashboard (iba_paper): ${{ env.IBA_DASH }}
+            👉 Como o PDF do IBÁ é imagem (não dá p/ ler automático), atualize manualmente:
+               rode  python "Pulp and Paper/update_iba.py"  com o Excel curado.
+            Página: https://iba.org/publicacoes/dados-papel/
+            ---
+            Itaú BBA — Equity Research | Pulp & Paper (alerta automático)
