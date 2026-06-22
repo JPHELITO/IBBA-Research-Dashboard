@@ -161,13 +161,25 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
     <section id="tab-overview">
       <div class="card">
         <h2>Visão geral</h2>
-        <p class="sub">Estado da dashboard de relance. <span class="muted">(Acessos e uso das IAs do news hunter entram na próxima fase.)</span></p>
+        <p class="sub">Estado da dashboard de relance.</p>
         <div id="ov-config" class="ov-grid">Carregando…</div>
+      </div>
+      <div class="card">
+        <h2>Acessos à dashboard</h2>
+        <div id="ov-visits" class="ov-grid"><span class="muted">Carregando…</span></div>
+      </div>
+      <div class="card">
+        <h2>IAs do news hunter <span class="muted" style="font-weight:400">— classificações por modelo</span></h2>
+        <div id="ov-ai" class="ov-grid"><span class="muted">Carregando…</span></div>
       </div>
       <div class="card">
         <h2>Bases de dados — última data do dado</h2>
         <p class="sub">Lido na hora dos arquivos <code>.db</code> publicados (o de aço tem ~46MB, leva alguns segundos).</p>
         <div id="ov-bases" class="ov-grid"><span class="muted">Carregando…</span></div>
+      </div>
+      <div class="card">
+        <h2>Últimas atualizações <span class="muted" style="font-weight:400">— manual × automático</span></h2>
+        <div id="ov-updates" class="status"><span class="muted">Carregando…</span></div>
       </div>
     </section>
 
@@ -313,7 +325,18 @@ async function loadOverview(){
     const flags=fl.data||[], on=flags.filter(f=>f.enabled).length
     cfg.innerHTML=[ovCard('Painéis ligados',`${on}/${flags.length}`),ovCard('Analistas',(tm.data||[]).length),ovCard('Grupos de commodities',(cg.data||[]).length),ovCard('Regras de heatmap',(ht.data||[]).length)].join('')
   }catch(e){ cfg.textContent='Erro ao ler config: '+(e.message||e)+'  (rodou os SQLs do admin?)' }
-  loadBaseStatus()
+  loadBaseStatus(); loadMetrics()
+}
+async function loadMetrics(){
+  try{ const {data}=await sbAuth.rpc('get_visit_stats'); const v=(data&&data[0])||{}
+    document.getElementById('ov-visits').innerHTML=[ovCard('Hoje',v.today??'—'),ovCard('7 dias',v.last7??'—'),ovCard('30 dias',v.last30??'—'),ovCard('Total',v.total??'—')].join('') }
+  catch(e){ document.getElementById('ov-visits').textContent='Erro: '+(e.message||e)+'  (rodou o supabase_metrics.sql?)' }
+  try{ const {data}=await sbAuth.rpc('get_ai_usage')
+    document.getElementById('ov-ai').innerHTML=(data&&data.length)?data.map(r=>ovCard(r.model,r.last24,`7d: ${r.last7} · total: ${r.total}`)).join(''):'<span class="muted">Sem classificações registradas.</span>' }
+  catch(e){ document.getElementById('ov-ai').textContent='Erro: '+(e.message||e) }
+  try{ const {data}=await sbAuth.rpc('get_update_log'); const host=document.getElementById('ov-updates')
+    host.innerHTML=(data&&data.length)?data.map(u=>`<div class="team-row"><span><b>${esc(u.source||'?')}</b> <span class="muted">${esc(u.method||'')}${u.detail?' · '+esc(u.detail):''}</span></span><span class="muted">${esc((u.created_at||'').replace('T',' ').slice(0,16))}</span></div>`).join(''):'<span class="muted">Sem registros ainda (uploads e robôs vão preenchendo).</span>' }
+  catch(e){ document.getElementById('ov-updates').textContent='Erro: '+(e.message||e) }
 }
 const BASE_SOURCES=[
   {db:'steel',label:'SECEX (aço)',      sql:"SELECT MAX(period) FROM secex_country"},

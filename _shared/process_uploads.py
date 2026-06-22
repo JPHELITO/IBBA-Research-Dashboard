@@ -60,6 +60,18 @@ def run_reload_pred(xlsx):
 PROCESSORS = {
     "pred_exports": run_reload_pred,
 }
+SOURCE_LABEL = {"pred_exports": "Linha preta (modelo)"}
+
+
+def log_update(kind, fn):
+    """Registra no update_log do Supabase (método 'manual' = upload do admin)."""
+    try:
+        requests.post(f"{SUPA_URL}/rest/v1/update_log",
+                      headers={**H, "Content-Type": "application/json", "Prefer": "return=minimal"},
+                      data=json.dumps({"source": SOURCE_LABEL.get(kind, kind),
+                                       "method": "manual", "detail": fn}), timeout=30)
+    except Exception:
+        pass
 
 
 def main():
@@ -87,6 +99,7 @@ def main():
             proc(dest)
             patch_job(jid, status="done", message="processado",
                       processed_at=datetime.utcnow().isoformat())
+            log_update(kind, fn)
             changed = True
             print("   OK")
         except Exception as e:
