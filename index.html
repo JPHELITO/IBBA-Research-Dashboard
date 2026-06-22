@@ -20,6 +20,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
   const{data:{session}}=await sbAuth.auth.getSession()
   if(!session){window.location.replace('/login.html');return}
   _setAuthCookie(session)
+  // Mostra a aba "Admin" no cabeçalho só para o papel admin (falha silenciosa p/ não-admin)
+  sbAuth.rpc('get_my_role').then(r=>{ if(r&&r.data==='admin'){ const a=document.getElementById('admin-link'); if(a) a.style.display='inline-block' } }).catch(()=>{})
   sbAuth.auth.onAuthStateChange((ev,s)=>{
     if(s?.access_token)_setAuthCookie(s)
     else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
@@ -464,6 +466,7 @@ img.team-avatar{object-fit:cover;background:none;}
     <div class="brand-name">ITAÚ BBA S&amp;M | P&amp;P</div>
     <div class="brand-team">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
   </div>
+  <a id="admin-link" class="logout-btn" href="/admin.html" style="display:none;text-decoration:none">⚙ Admin</a>
   <button class="logout-btn" onclick="logout()">Sign out</button>
 </div>
 <div class="orange-rule"></div>

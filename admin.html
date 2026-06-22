@@ -81,6 +81,17 @@ table.data th{position:sticky;top:0;background:var(--gray-light);font-weight:600
 table.data tr:hover td{background:#fafafa}
 .muted{color:var(--gray-mid)}
 code{background:var(--gray-light);padding:1px 5px;border-radius:4px;font-size:12px}
+.field{display:flex;flex-direction:column;gap:10px;max-width:480px}
+input.in{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font:inherit;font-size:13px}
+.flag-row{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.flag-row:last-child{border-bottom:none}
+.flag-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+.flag-row .fk{font-size:11px;color:var(--gray-mid);margin-left:6px}
+.team-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.team-row:last-child{border-bottom:none}
+.team-row .acts{display:flex;gap:6px;flex-shrink:0}
+label.chk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+label.chk input{width:17px;height:17px;accent-color:var(--orange)}
 </style>
 </head>
 <body>
@@ -101,9 +112,11 @@ code{background:var(--gray-light);padding:1px 5px;border-radius:4px;font-size:12
   </header>
   <div class="wrap">
     <nav class="tabs">
-      <button class="active" data-tab="db">Bancos de dados</button>
-      <button disabled title="Em breve (Fase A4)">Atualizar dados (upload)</button>
-      <button disabled title="Em breve (Fase B)">Stock Guide</button>
+      <button class="active" data-tab="db" onclick="showTab('db')">Bancos de dados</button>
+      <button data-tab="flags" onclick="showTab('flags')">Funcionalidades</button>
+      <button data-tab="team" onclick="showTab('team')">Analistas</button>
+      <button disabled title="Em breve (A4.3+)">Heatmap / Commodities</button>
+      <button disabled title="Em breve (A4.5)">Atualizar dados (upload)</button>
     </nav>
 
     <!-- ── Visualizador de DBs ──────────────────────────────────────────── -->
@@ -128,6 +141,38 @@ code{background:var(--gray-light);padding:1px 5px;border-radius:4px;font-size:12
 
       <div id="result-caption" class="status"></div>
       <div id="result" class="tbl-wrap" hidden></div>
+    </section>
+
+    <!-- ── Funcionalidades (liga/desliga) ───────────────────────────────── -->
+    <section id="tab-flags" hidden>
+      <div class="card">
+        <h2>Funcionalidades da dashboard</h2>
+        <p class="sub">Ligue/desligue abas, setores e painéis. A mudança vale para os clientes no próximo refresh deles.</p>
+        <div id="flags-list" class="status">Carregando…</div>
+      </div>
+    </section>
+
+    <!-- ── Analistas (Research Team) ────────────────────────────────────── -->
+    <section id="tab-team" hidden>
+      <div class="card">
+        <h2>Analistas (Research Team)</h2>
+        <p class="sub">Adicione, edite, esconda ou remova analistas. Reflete na home dos clientes.</p>
+        <div id="team-list" class="status">Carregando…</div>
+        <div class="row" style="margin-top:12px"><button class="btn" onclick="teamEdit(null)">+ Adicionar analista</button></div>
+      </div>
+      <div class="card" id="team-form-card" hidden>
+        <h2 id="team-form-title">Novo analista</h2>
+        <div class="field">
+          <input class="in" id="tf-name" placeholder="Nome">
+          <input class="in" id="tf-role" placeholder="Cargo (ex.: Head / Analyst)">
+          <input class="in" id="tf-photo" placeholder="Foto (ex.: assets/team-nome.jpg)">
+          <input class="in" id="tf-email" placeholder="E-mail (opcional)">
+          <input class="in" id="tf-wa" placeholder="WhatsApp só números (ex.: 5511999999999)">
+          <input class="in" id="tf-sort" type="number" placeholder="Ordem (menor aparece primeiro)">
+          <label class="chk"><input type="checkbox" id="tf-visible" checked> Visível para os clientes</label>
+          <div class="row"><button class="btn" onclick="teamSave()">Salvar</button><button class="btn sec" onclick="teamCancel()">Cancelar</button></div>
+        </div>
+      </div>
     </section>
   </div>
 </div>
@@ -197,6 +242,81 @@ function renderResult(res, caption){
   host.innerHTML=html+'</tbody></table>'; host.hidden=false
 }
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
+
+// ── Navegação por abas ───────────────────────────────────────────────────
+const TABS=['db','flags','team']
+function showTab(name){
+  document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
+  TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
+  if(name==='flags') loadFlags()
+  if(name==='team') loadTeam()
+}
+
+// ── Funcionalidades (flags) ──────────────────────────────────────────────
+async function loadFlags(){
+  const host=document.getElementById('flags-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_dashboard_flags')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_config_schema.sql?)'; return }
+  host.innerHTML=''
+  for(const f of data){
+    const row=document.createElement('label'); row.className='flag-row'
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!f.enabled
+    const txt=document.createElement('span'); txt.innerHTML=`${esc(f.label||f.key)}<span class="fk">${esc(f.key)}</span>`
+    cb.onchange=async()=>{ cb.disabled=true
+      const {error}=await sbAuth.rpc('admin_set_flag',{p_key:f.key,p_enabled:cb.checked})
+      cb.disabled=false
+      if(error){ alert('Erro ao salvar: '+error.message); cb.checked=!cb.checked }
+    }
+    row.append(cb,txt); host.appendChild(row)
+  }
+}
+
+// ── Analistas (team) ─────────────────────────────────────────────────────
+let _team=[]
+async function loadTeam(){
+  const host=document.getElementById('team-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_team')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_config_schema.sql?)'; return }
+  _team=data; host.innerHTML=''
+  if(!data.length){ host.textContent='Nenhum analista cadastrado.'; return }
+  for(const m of data){
+    const row=document.createElement('div'); row.className='team-row'
+    const info=document.createElement('span'); info.innerHTML=`<b>${esc(m.name)}</b> — ${esc(m.role)} ${m.is_visible?'':'<span class="muted">(oculto)</span>'}`
+    const acts=document.createElement('span'); acts.className='acts'
+    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>teamEdit(m.id)
+    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>teamDelete(m.id,m.name)
+    acts.append(ed,dl); row.append(info,acts); host.appendChild(row)
+  }
+}
+function _v(id){ return document.getElementById(id) }
+function teamEdit(id){
+  const m = id ? _team.find(x=>x.id===id) : {name:'',role:'Analyst',photo:'',email:'',whatsapp:'',sort_order:(_team.length+1)*10,is_visible:true}
+  _v('team-form-title').textContent = id ? 'Editar analista' : 'Novo analista'
+  _v('tf-name').value=m.name||''; _v('tf-role').value=m.role||''; _v('tf-photo').value=m.photo||''
+  _v('tf-email').value=m.email||''; _v('tf-wa').value=m.whatsapp||''; _v('tf-sort').value=m.sort_order||0
+  _v('tf-visible').checked = m.is_visible!==false
+  _v('team-form-card').dataset.id = id||''
+  _v('team-form-card').hidden=false
+}
+function teamCancel(){ _v('team-form-card').hidden=true }
+async function teamSave(){
+  const id=_v('team-form-card').dataset.id||null
+  const name=_v('tf-name').value.trim()
+  if(!name){ alert('Nome é obrigatório.'); return }
+  const args={ p_id:id||null, p_name:name, p_role:_v('tf-role').value.trim()||'Analyst',
+    p_photo:_v('tf-photo').value.trim()||null, p_email:_v('tf-email').value.trim()||null,
+    p_whatsapp:_v('tf-wa').value.trim()||null, p_sort_order:parseInt(_v('tf-sort').value)||0,
+    p_is_visible:_v('tf-visible').checked }
+  const {error}=await sbAuth.rpc('admin_upsert_team_member',args)
+  if(error){ alert('Erro ao salvar: '+error.message); return }
+  teamCancel(); loadTeam()
+}
+async function teamDelete(id,name){
+  if(!confirm('Excluir '+name+'?')) return
+  const {error}=await sbAuth.rpc('admin_delete_team_member',{p_id:id})
+  if(error){ alert('Erro ao excluir: '+error.message); return }
+  loadTeam()
+}
 </script>
 </body>
 </html>
