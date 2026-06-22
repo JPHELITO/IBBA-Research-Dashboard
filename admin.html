@@ -99,6 +99,19 @@ input.in{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px
 .team-row .acts{display:flex;gap:6px;flex-shrink:0}
 label.chk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
 label.chk input{width:17px;height:17px;accent-color:var(--orange)}
+/* ── Layout do painel (menu lateral) ── */
+.shell{display:flex;gap:18px;max-width:1180px;margin:0 auto;padding:20px;align-items:flex-start}
+.side{flex:0 0 208px;position:sticky;top:18px;display:flex;flex-direction:column;gap:3px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:8px}
+.side button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;border-radius:8px;padding:10px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--gray-dark)}
+.side button:hover{background:var(--gray-light)}
+.side button.active{background:var(--black);color:#fff}
+.content{flex:1;min-width:0}
+.ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+.ov-card{background:var(--gray-light);border:1px solid var(--border);border-radius:10px;padding:14px}
+.ov-val{font-size:19px;font-weight:700;color:var(--black);line-height:1.1}
+.ov-lab{font-size:12px;color:var(--gray-dark);margin-top:4px}
+.ov-sub{font-size:9.5px;color:var(--gray-mid);margin-top:5px;text-transform:uppercase;letter-spacing:.05em}
+@media(max-width:720px){.shell{flex-direction:column}.side{flex-basis:auto;position:static;flex-direction:row;overflow-x:auto}.side button{white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -132,18 +145,34 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
       <button onclick="logout()">Sair</button>
     </div>
   </header>
-  <div class="wrap">
-    <nav class="tabs">
-      <button class="active" data-tab="db" onclick="showTab('db')">Bancos de dados</button>
-      <button data-tab="flags" onclick="showTab('flags')">Funcionalidades</button>
-      <button data-tab="team" onclick="showTab('team')">Analistas</button>
-      <button data-tab="comm" onclick="showTab('comm')">Commodities</button>
-      <button data-tab="heatmap" onclick="showTab('heatmap')">Heatmap</button>
-      <button data-tab="upload" onclick="showTab('upload')">Atualizar dados</button>
-    </nav>
+  <div class="shell">
+    <aside class="side">
+      <button class="active" data-tab="overview" onclick="showTab('overview')">📊 Visão geral</button>
+      <button data-tab="flags" onclick="showTab('flags')">🎛️ Funcionalidades</button>
+      <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
+      <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
+      <button data-tab="heatmap" onclick="showTab('heatmap')">🗺️ Heatmap</button>
+      <button data-tab="upload" onclick="showTab('upload')">⬆️ Atualizar dados</button>
+      <button data-tab="db" onclick="showTab('db')">🗄️ Bancos de dados</button>
+    </aside>
+    <main class="content">
+
+    <!-- ── Visão geral ──────────────────────────────────────────────────── -->
+    <section id="tab-overview">
+      <div class="card">
+        <h2>Visão geral</h2>
+        <p class="sub">Estado da dashboard de relance. <span class="muted">(Acessos e uso das IAs do news hunter entram na próxima fase.)</span></p>
+        <div id="ov-config" class="ov-grid">Carregando…</div>
+      </div>
+      <div class="card">
+        <h2>Bases de dados — última data do dado</h2>
+        <p class="sub">Lido na hora dos arquivos <code>.db</code> publicados (o de aço tem ~46MB, leva alguns segundos).</p>
+        <div id="ov-bases" class="ov-grid"><span class="muted">Carregando…</span></div>
+      </div>
+    </section>
 
     <!-- ── Visualizador de DBs ──────────────────────────────────────────── -->
-    <section id="tab-db">
+    <section id="tab-db" hidden>
       <div class="card">
         <h2>Visualizar bancos de dados</h2>
         <p class="sub">Lê os arquivos <code>.db</code> publicados no navegador (somente leitura — não altera nada).</p>
@@ -254,6 +283,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
         </div>
       </div>
     </section>
+    </main>
   </div>
 </div>
 
@@ -264,7 +294,46 @@ const DBS = {
 }
 let SQLLIB=null, _db=null, _dbKey=null
 function setStatus(m){ document.getElementById('db-status').textContent=m }
-function initAdmin(){ /* hooks já ligados via onclick; reservado p/ futuras abas */ }
+function initAdmin(){ showTab('overview') }
+
+// ── Visão geral (overview) ───────────────────────────────────────────────
+function ovCard(label,val,sub){ return `<div class="ov-card"><div class="ov-val">${esc(val)}</div><div class="ov-lab">${esc(label)}</div>${sub?`<div class="ov-sub">${esc(sub)}</div>`:''}</div>` }
+async function loadOverview(){
+  const cfg=document.getElementById('ov-config')
+  try{
+    const [fl,tm,cg,ht]=await Promise.all([sbAuth.rpc('get_dashboard_flags'),sbAuth.rpc('get_team'),sbAuth.rpc('get_commodity_groups'),sbAuth.rpc('get_heatmap_tickers')])
+    const flags=fl.data||[], on=flags.filter(f=>f.enabled).length
+    cfg.innerHTML=[ovCard('Painéis ligados',`${on}/${flags.length}`),ovCard('Analistas',(tm.data||[]).length),ovCard('Grupos de commodities',(cg.data||[]).length),ovCard('Regras de heatmap',(ht.data||[]).length)].join('')
+  }catch(e){ cfg.textContent='Erro ao ler config: '+(e.message||e)+'  (rodou os SQLs do admin?)' }
+  loadBaseStatus()
+}
+const BASE_SOURCES=[
+  {db:'steel',label:'SECEX (aço)',      sql:"SELECT MAX(period) FROM secex_country"},
+  {db:'steel',label:'IABr',             sql:"SELECT MAX(period) FROM iabr_production"},
+  {db:'steel',label:'Minério',          sql:"SELECT MAX(period) FROM secex_iron_ore"},
+  {db:'steel',label:'Modelo · laranja', sql:"SELECT MAX(period) FROM import_prediction"},
+  {db:'steel',label:'Modelo · preta',   sql:"SELECT MAX(period) FROM pred_exports"},
+  {db:'pulp', label:'Celulose (SECEX)', sql:"SELECT MAX(period) FROM secex_pulp_port"},
+  {db:'pulp', label:'Papel (IBÁ)',      sql:"SELECT MAX(period) FROM iba_paper"},
+]
+let _ovBasesHtml=null
+async function loadBaseStatus(force){
+  const host=document.getElementById('ov-bases')
+  if(_ovBasesHtml && !force){ host.innerHTML=_ovBasesHtml; return }
+  host.innerHTML='<span class="muted">Carregando os bancos (o de aço tem ~46MB)…</span>'
+  try{
+    const SQL=await ensureSql(), dbs={}
+    for(const key of ['steel','pulp']){
+      const c=DBS[key], resp=await fetch(encodeURI(c.path)+'?v='+Date.now())
+      if(!resp.ok) throw new Error(c.label+' HTTP '+resp.status)
+      dbs[key]=new SQL.Database(new Uint8Array(await resp.arrayBuffer()))
+    }
+    _ovBasesHtml=BASE_SOURCES.map(b=>{ let v='—'; try{ const r=dbs[b.db].exec(b.sql); v=(r[0]&&r[0].values[0][0])||'—' }catch(e){ v='—' } return ovCard(b.label,v,'última data') }).join('')
+      +`<div class="ov-card" style="background:transparent;border:none;display:flex;align-items:center"><button class="btn sec" onclick="loadBaseStatus(true)">🔄 Recarregar</button></div>`
+    for(const k in dbs) dbs[k].close()
+    host.innerHTML=_ovBasesHtml
+  }catch(e){ host.textContent='Erro ao ler bases: '+(e.message||e) }
+}
 
 async function ensureSql(){
   if(!SQLLIB) SQLLIB = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` })
@@ -324,10 +393,11 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['db','flags','team','comm','upload','heatmap']
+const TABS=['overview','db','flags','team','comm','upload','heatmap']
 function showTab(name){
-  document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
+  document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
+  if(name==='overview') loadOverview()
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
