@@ -137,7 +137,8 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
       <button class="active" data-tab="db" onclick="showTab('db')">Bancos de dados</button>
       <button data-tab="flags" onclick="showTab('flags')">Funcionalidades</button>
       <button data-tab="team" onclick="showTab('team')">Analistas</button>
-      <button disabled title="Em breve (A4.3+)">Heatmap / Commodities</button>
+      <button data-tab="comm" onclick="showTab('comm')">Commodities</button>
+      <button disabled title="Em breve (A4.3)">Heatmap</button>
       <button disabled title="Em breve (A4.5)">Atualizar dados (upload)</button>
     </nav>
 
@@ -193,6 +194,26 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
           <input class="in" id="tf-sort" type="number" placeholder="Ordem (menor aparece primeiro)">
           <label class="chk"><input type="checkbox" id="tf-visible" checked> Visível para os clientes</label>
           <div class="row"><button class="btn" onclick="teamSave()">Salvar</button><button class="btn sec" onclick="teamCancel()">Cancelar</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Commodities (grupos do carrossel) ────────────────────────────── -->
+    <section id="tab-comm" hidden>
+      <div class="card">
+        <h2>Commodities — grupos do carrossel</h2>
+        <p class="sub">Cada grupo é uma "página" do carrossel da home. Edite título, ordem dos códigos, posição e visibilidade. Reflete na home dos clientes.</p>
+        <div id="comm-list" class="status">Carregando…</div>
+        <div class="row" style="margin-top:12px"><button class="btn" onclick="commEdit(null)">+ Adicionar grupo</button></div>
+      </div>
+      <div class="card" id="comm-form-card" hidden>
+        <h2 id="comm-form-title">Novo grupo</h2>
+        <div class="field">
+          <input class="in" id="cf-title" placeholder="Título do grupo (ex.: Iron Ore + Pellet)">
+          <input class="in" id="cf-codes" placeholder="Códigos separados por vírgula (ex.: IRON_ORE, IOPRM00, IODFE00)">
+          <input class="in" id="cf-sort" type="number" placeholder="Ordem (menor aparece primeiro)">
+          <label class="chk"><input type="checkbox" id="cf-visible" checked> Visível no carrossel</label>
+          <div class="row"><button class="btn" onclick="commSave()">Salvar</button><button class="btn sec" onclick="commCancel()">Cancelar</button></div>
         </div>
       </div>
     </section>
@@ -266,12 +287,13 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['db','flags','team']
+const TABS=['db','flags','team','comm']
 function showTab(name){
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
+  if(name==='comm') loadCommGroups()
 }
 
 // ── Funcionalidades (flags) ──────────────────────────────────────────────
@@ -338,6 +360,51 @@ async function teamDelete(id,name){
   const {error}=await sbAuth.rpc('admin_delete_team_member',{p_id:id})
   if(error){ alert('Erro ao excluir: '+error.message); return }
   loadTeam()
+}
+
+// ── Commodities (grupos do carrossel) ────────────────────────────────────
+let _comm=[]
+async function loadCommGroups(){
+  const host=document.getElementById('comm-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_commodity_groups')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_config_commodities.sql?)'; return }
+  _comm=data; host.innerHTML=''
+  if(!data.length){ host.textContent='Nenhum grupo cadastrado.'; return }
+  for(const g of data){
+    const codes=Array.isArray(g.codes)?g.codes:[]
+    const row=document.createElement('div'); row.className='team-row'
+    const info=document.createElement('span'); info.innerHTML=`<b>${esc(g.title)}</b> <span class="muted">${esc(codes.join(', '))}</span> ${g.is_visible?'':'<span class="muted">(oculto)</span>'}`
+    const acts=document.createElement('span'); acts.className='acts'
+    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>commEdit(g.id)
+    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>commDelete(g.id,g.title)
+    acts.append(ed,dl); row.append(info,acts); host.appendChild(row)
+  }
+}
+function commEdit(id){
+  const g = id ? _comm.find(x=>x.id===id) : {title:'',codes:[],sort_order:(_comm.length+1)*10,is_visible:true}
+  const codes=Array.isArray(g.codes)?g.codes:[]
+  _v('comm-form-title').textContent = id ? 'Editar grupo' : 'Novo grupo'
+  _v('cf-title').value=g.title||''; _v('cf-codes').value=codes.join(', '); _v('cf-sort').value=g.sort_order||0
+  _v('cf-visible').checked = g.is_visible!==false
+  _v('comm-form-card').dataset.id = id||''
+  _v('comm-form-card').hidden=false
+}
+function commCancel(){ _v('comm-form-card').hidden=true }
+async function commSave(){
+  const id=_v('comm-form-card').dataset.id||null
+  const title=_v('cf-title').value.trim()
+  if(!title){ alert('Título é obrigatório.'); return }
+  const codes=_v('cf-codes').value.split(',').map(s=>s.trim()).filter(Boolean)
+  const args={ p_id:id||null, p_title:title, p_codes:codes, p_sort_order:parseInt(_v('cf-sort').value)||0, p_is_visible:_v('cf-visible').checked }
+  const {error}=await sbAuth.rpc('admin_upsert_commodity_group',args)
+  if(error){ alert('Erro ao salvar: '+error.message); return }
+  commCancel(); loadCommGroups()
+}
+async function commDelete(id,title){
+  if(!confirm('Excluir grupo "'+title+'"?')) return
+  const {error}=await sbAuth.rpc('admin_delete_commodity_group',{p_id:id})
+  if(error){ alert('Erro ao excluir: '+error.message); return }
+  loadCommGroups()
 }
 </script>
 </body>
