@@ -206,6 +206,11 @@ def main():
         selftest()
         return
 
+    if not SERVICE_KEY:
+        print("KOREA_SERVICE_KEY ausente — Coreia segue MANUAL (decisão 2026-06-19). Pulando sem erro.")
+        _write_gh_env("false", None)
+        return
+
     now = datetime.utcnow()
     cur_ym = f"{now.year}-{now.month:02d}"
     print(f"DB: {DB_PATH} | chave: {'sim' if SERVICE_KEY else 'NÃO'} | {len(AD_SH6)} SH6 antidumping")

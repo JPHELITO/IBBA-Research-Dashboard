@@ -1,15 +1,18 @@
 name: 🔄 Auto-Update Korea (linha preta) — data.go.kr
 
 # Coreia consolida o mês ~dia 15 → checa nos dias 13–25. Também manual.
+# DORMENTE: Coreia segue MANUAL por ora (sem contato coreano p/ criar a chave grátis
+# data.go.kr). Este workflow só roda no DISPARO MANUAL. Quando houver a chave: adicionar
+# o secret KOREA_SERVICE_KEY e descomentar o cron abaixo p/ ligar o automático.
 on:
-  schedule:
-    - cron: "0 12 13-25 * *"
   workflow_dispatch:
     inputs:
       backfill:
-        description: "Recarregar histórico da Coreia (rodar 1x)"
+        description: "Recarregar histórico da Coreia (rodar 1x; requer KOREA_SERVICE_KEY)"
         required: false
         default: "false"
+  # schedule:
+  #   - cron: "0 12 13-25 * *"
 
 jobs:
   update:
