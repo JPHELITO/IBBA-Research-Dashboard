@@ -250,12 +250,20 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
     <!-- ── Atualizar dados (upload → robô) ───────────────────────────────── -->
     <section id="tab-upload" hidden>
       <div class="card">
-        <h2>Atualizar dados (upload)</h2>
-        <p class="sub">Suba a planilha → o robô do GitHub processa e publica a base (em até ~15 min, ou rode a Action na hora). Hoje: a <b>linha preta</b> — <code>SECEX - Prediction Analysis.xlsx</code>.</p>
+        <h2>Atualizar dados</h2>
+        <p class="sub">Escolha a planilha e clique — o robô processa e publica a base <b>na hora</b>, sem sair daqui (precisa do token configurado abaixo). Hoje: a <b>linha preta</b> — <code>SECEX - Prediction Analysis.xlsx</code>.</p>
         <div class="field">
           <input class="in" id="up-file" type="file" accept=".xlsx,.xls">
-          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar para processamento</button></div>
+          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar e atualizar agora</button></div>
           <div id="up-status" class="status"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Configuração do robô <span class="muted" style="font-weight:400">(1x)</span></h2>
+        <p class="sub">Cole um <b>token do GitHub</b> (fine-grained → repo IBBA-Research-Dashboard → permissão <b>Actions: Read and write</b>). Fica guardado seguro no Supabase; é o que permite atualizar na hora sem abrir o GitHub.</p>
+        <div class="field" style="max-width:540px">
+          <input class="in" id="gh-pat" type="password" placeholder="github_pat_… (cole aqui)" autocomplete="off">
+          <div class="row"><button class="btn sec" onclick="savePat()">Salvar token</button><span id="pat-status" class="muted"></span></div>
         </div>
       </div>
       <div class="card">
@@ -401,7 +409,7 @@ function showTab(name){
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
-  if(name==='upload') loadJobs()
+  if(name==='upload'){ loadJobs(); checkPat() }
   if(name==='heatmap') loadHeatmap()
 }
 
@@ -529,10 +537,27 @@ async function uploadFile(){
     if(upErr) throw upErr
     const {error:jErr}=await sbAuth.rpc('admin_enqueue_upload',{p_kind:kind,p_storage_path:path,p_filename:f.name})
     if(jErr) throw jErr
-    st.textContent='✓ Enviado! O robô processa em até ~15 min (ou rode a Action "Process Admin Uploads" no GitHub p/ ser na hora).'
     inp.value=''; loadJobs()
+    st.textContent='✓ Enviado. Disparando o robô…'
+    const {error:tErr}=await sbAuth.rpc('admin_trigger_processing')
+    if(tErr){ st.textContent='✓ Enviado — mas não disparei na hora ('+tErr.message+'). Configure o token abaixo; ou ele roda sozinho em ~15 min.' }
+    else { st.textContent='✓ Enviado e robô disparado! O status abaixo atualiza em alguns segundos (⏳ → ⚙️ → ✅).'; pollJobs() }
   }catch(e){ st.textContent='Erro: '+(e.message||e)+'  (o bucket admin-uploads + o SQL de uploads já existem?)' }
   finally{ btn.disabled=false }
+}
+function pollJobs(){ let n=0; const iv=setInterval(()=>{ loadJobs(); if(++n>=8) clearInterval(iv) }, 8000) }
+async function savePat(){
+  const el=document.getElementById('gh-pat'), pat=el.value.trim()
+  if(!pat){ alert('Cole o token primeiro.'); return }
+  const {error}=await sbAuth.rpc('admin_set_config',{p_key:'github_pat',p_value:pat})
+  if(error){ alert('Erro ao salvar: '+error.message+'  (rodou o admin/supabase_trigger.sql?)'); return }
+  el.value=''; checkPat()
+}
+async function checkPat(){
+  const st=document.getElementById('pat-status'); if(!st) return
+  try{ const {data}=await sbAuth.rpc('admin_config_isset',{p_key:'github_pat'})
+    st.textContent = data ? '✓ token configurado' : '⚠ sem token — o "atualizar na hora" só funciona depois de salvar' }
+  catch(e){ st.textContent='' }
 }
 async function loadJobs(){
   const host=document.getElementById('jobs-list'); host.textContent='Carregando…'
