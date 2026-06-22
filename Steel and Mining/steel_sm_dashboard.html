@@ -1650,6 +1650,7 @@ function renderImportsSECEX(){
 
 function renderPrediction(){
   const pp=predProduct;
+  const PRED_MIN='2022-01';  // recorta o eixo: a linha preta (export) so tem acumulados (3M/12M) cheios a partir de 2022
 
   // SECEX import data — Brazilian customs records by country of origin (unshifted baseline)
   const koreaSec=PRED?.[pp]?.Korea||[];
@@ -1680,7 +1681,7 @@ function renderPrediction(){
       if(sxRoll[i]!=null) sxMap[r.period]=kg2kt(sxRoll[i]);
     });
 
-    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].filter(p=>p>=PRED_MIN).sort();
     return{
       labels:      allP.map(fmtPeriod),
       secexSeries: allP.map(p=>sxMap[p] ??null),
@@ -1705,7 +1706,7 @@ function renderPrediction(){
     Object.entries(expByP).forEach(([p,kg])=>{expMap[shiftPeriod(p,predDelay)]=kg2kt(kg);});
     Object.entries(sxByP).forEach(([p,kg])=>{sxMap[p]=kg2kt(kg);});
 
-    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].sort();
+    const allP=[...new Set([...Object.keys(expMap),...Object.keys(sxMap)])].filter(p=>p>=PRED_MIN).sort();
     return{
       labels:      allP.map(fmtPeriod),
       secexSeries: allP.map(p=>sxMap[p] ??null),
