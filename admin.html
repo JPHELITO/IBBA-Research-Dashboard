@@ -139,7 +139,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
       <button data-tab="team" onclick="showTab('team')">Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">Commodities</button>
       <button disabled title="Em breve (A4.3)">Heatmap</button>
-      <button disabled title="Em breve (A4.5)">Atualizar dados (upload)</button>
+      <button data-tab="upload" onclick="showTab('upload')">Atualizar dados</button>
     </nav>
 
     <!-- ── Visualizador de DBs ──────────────────────────────────────────── -->
@@ -217,6 +217,23 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
         </div>
       </div>
     </section>
+
+    <!-- ── Atualizar dados (upload → robô) ───────────────────────────────── -->
+    <section id="tab-upload" hidden>
+      <div class="card">
+        <h2>Atualizar dados (upload)</h2>
+        <p class="sub">Suba a planilha → o robô do GitHub processa e publica a base (em até ~15 min, ou rode a Action na hora). Hoje: a <b>linha preta</b> — <code>SECEX - Prediction Analysis.xlsx</code>.</p>
+        <div class="field">
+          <input class="in" id="up-file" type="file" accept=".xlsx,.xls">
+          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar para processamento</button></div>
+          <div id="up-status" class="status"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Histórico de envios</h2>
+        <div id="jobs-list" class="status">—</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -287,13 +304,14 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['db','flags','team','comm']
+const TABS=['db','flags','team','comm','upload']
 function showTab(name){
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
+  if(name==='upload') loadJobs()
 }
 
 // ── Funcionalidades (flags) ──────────────────────────────────────────────
@@ -405,6 +423,33 @@ async function commDelete(id,title){
   const {error}=await sbAuth.rpc('admin_delete_commodity_group',{p_id:id})
   if(error){ alert('Erro ao excluir: '+error.message); return }
   loadCommGroups()
+}
+
+// ── Atualizar dados (upload → Storage → fila → robô) ─────────────────────
+async function uploadFile(){
+  const inp=document.getElementById('up-file'), st=document.getElementById('up-status'), btn=document.getElementById('up-btn')
+  const f=inp.files[0]
+  if(!f){ st.textContent='Escolha um arquivo primeiro.'; return }
+  const kind='pred_exports'   // único tipo por enquanto (linha preta); novos tipos depois
+  const path=`${kind}/${Date.now()}_${f.name.replace(/[^A-Za-z0-9._-]/g,'_')}`
+  btn.disabled=true; st.textContent='Enviando…'
+  try{
+    const {error:upErr}=await sbAuth.storage.from('admin-uploads').upload(path, f, {upsert:true})
+    if(upErr) throw upErr
+    const {error:jErr}=await sbAuth.rpc('admin_enqueue_upload',{p_kind:kind,p_storage_path:path,p_filename:f.name})
+    if(jErr) throw jErr
+    st.textContent='✓ Enviado! O robô processa em até ~15 min (ou rode a Action "Process Admin Uploads" no GitHub p/ ser na hora).'
+    inp.value=''; loadJobs()
+  }catch(e){ st.textContent='Erro: '+(e.message||e)+'  (o bucket admin-uploads + o SQL de uploads já existem?)' }
+  finally{ btn.disabled=false }
+}
+async function loadJobs(){
+  const host=document.getElementById('jobs-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_upload_jobs')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_uploads_schema.sql?)'; return }
+  if(!data.length){ host.textContent='Nenhum envio ainda.'; return }
+  const ICON={pending:'⏳',processing:'⚙️',done:'✅',error:'❌'}
+  host.innerHTML=data.map(j=>`<div class="team-row"><span>${ICON[j.status]||''} <b>${esc(j.filename||j.kind)}</b> <span class="muted">${esc(j.kind)} · ${esc(j.status)}${j.message?' · '+esc(j.message):''}</span></span><span class="muted">${esc((j.created_at||'').replace('T',' ').slice(0,16))}</span></div>`).join('')
 }
 </script>
 </body>
