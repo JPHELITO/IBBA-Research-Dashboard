@@ -565,6 +565,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   <div class="pred-btns">
     <button class="fbtn active" data-pp="HRC" onclick="setPredProd('HRC')">HRC</button>
     <button class="fbtn"        data-pp="CRC" onclick="setPredProd('CRC')">CRC</button>
+    <button class="fbtn"        data-pp="Coated" onclick="setPredProd('Coated')">Coated</button>
   </div>
   <div class="filter-sep"></div>
   <span class="pred-label">Lag:</span>
@@ -883,7 +884,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 <div class="note-bar">
   Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
   <em>SECEX/MDIC</em> (foreign trade by NCM/category) · <em>INDA</em> (flat distributors) ·
-  <em>SECEX Prediction</em> (Korea+China exports for HRC/CRC NCMs) ·
+  <em>SECEX Prediction</em> (Korea+China exports for HRC/CRC/Coated NCMs) ·
   Penetration = Imports ÷ Apparent Consumption · Volumes in kton
 </div>
 
@@ -913,7 +914,7 @@ let currentWin    = 'ytd';          // 'all' | 'ytd' | '5y' | '3y' | '1y' | '6m'
 let customRange   = {from:null, to:null};  // 'YYYY-MM' strings quando currentWin==='custom'
 let predMode      = 'korea-china';  // 'korea'|'china'|'korea-china'
 let predDelay     = 3;
-let predProduct   = 'HRC';          // 'HRC'|'CRC'
+let predProduct   = 'HRC';          // 'HRC'|'CRC'|'Coated'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 let PROD=[], CONS=[], EXPI=[], IMPI=[], DOM=[];
