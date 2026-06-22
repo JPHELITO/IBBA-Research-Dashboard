@@ -1,0 +1,293 @@
+commodity,ncm,sh6,segment,subcategory,attr1,attr2,antidumping
+steel,72072000,720720,Semi,"Ingot, Billet",,,0
+steel,72061000,720610,Semi,"Ingot, Billet",,,0
+steel,72241000,722410,Semi,"Ingot, Billet",,,0
+steel,72189900,721899,Semi,"Ingot, Billet",,,0
+steel,72071190,720711,Semi,"Ingot, Billet",,,0
+steel,72071900,720719,Semi,"Ingot, Billet",,,0
+steel,72071200,720712,Semi,Placa,,,0
+steel,72249000,722490,Semi,Placa,,,0
+steel,72189100,721891,Semi,Placa,,,0
+steel,72069000,720690,Semi,"Ingot, Billet",,,0
+steel,72071110,720711,Semi,"Ingot, Billet",,,0
+steel,72181000,721810,Semi,"Ingot, Billet",,,0
+steel,72081000,720810,Flat,HRC,,,1
+steel,72082500,720825,Flat,HRC,,,1
+steel,72082610,720826,Flat,HRC,,,1
+steel,72082690,720826,Flat,HRC,,,1
+steel,72082710,720827,Flat,HRC,,,1
+steel,72082790,720827,Flat,HRC,,,1
+steel,72083610,720836,Flat,HRC,,,1
+steel,72083690,720836,Flat,HRC,,,1
+steel,72083700,720837,Flat,HRC,,,1
+steel,72083810,720838,Flat,HRC,,,1
+steel,72083990,720839,Flat,HRC,,,1
+steel,72084000,720840,Flat,HRC,,,1
+steel,72085300,720853,Flat,HRC,,,1
+steel,72085400,720854,Flat,HRC,,,1
+steel,72089000,720890,Flat,HRC,,,1
+steel,72111300,721113,Flat,HRC,,,1
+steel,72111400,721114,Flat,HRC,,,1
+steel,72111900,721119,Flat,HRC,,,1
+steel,72119010,721190,Flat,HRC,,,1
+steel,72119090,721190,Flat,HRC,,,1
+steel,72253000,722530,Flat,HRC,,,1
+steel,72254090,722540,Flat,HRC,,,1
+steel,72269100,722691,Flat,HRC,,,1
+steel,72083890,720838,Flat,HRC,,,1
+steel,72083910,720839,Flat,HRC,,,1
+steel,72085100,720851,Flat,Heavy Plate,,,0
+steel,72085200,720852,Flat,Heavy Plate,,,0
+steel,73089010,730890,Flat,Heavy Plate,,,0
+steel,72251900,722519,Flat,CRC,,,1
+steel,72091500,720915,Flat,CRC,,,1
+steel,72091600,720916,Flat,CRC,,,1
+steel,72091700,720917,Flat,CRC,,,1
+steel,72091800,720918,Flat,CRC,,,1
+steel,72092500,720925,Flat,CRC,,,1
+steel,72092600,720926,Flat,CRC,,,1
+steel,72092700,720927,Flat,CRC,,,1
+steel,72092800,720928,Flat,CRC,,,1
+steel,72099000,720990,Flat,CRC,,,1
+steel,72112300,721123,Flat,CRC,,,1
+steel,72112910,721129,Flat,CRC,,,1
+steel,72112920,721129,Flat,CRC,,,1
+steel,72255090,722550,Flat,CRC,,,1
+steel,72261900,722619,Flat,CRC,,,1
+steel,72269200,722692,Flat,CRC,,,1
+steel,72101100,721011,Flat,Coated,,,0
+steel,72101200,721012,Flat,Coated,,,1
+steel,72105000,721050,Flat,Coated,,,1
+steel,72121000,721210,Flat,Coated,,,1
+steel,72125090,721250,Flat,Coated,,,1
+steel,72107010,721070,Flat,Coated,,,1
+steel,72107020,721070,Flat,Coated,,,1
+steel,72124010,721240,Flat,Coated,,,1
+steel,72124021,721240,Flat,Coated,,,1
+steel,72124029,721240,Flat,Coated,,,1
+steel,72103010,721030,Flat,Coated,,,1
+steel,72103090,721030,Flat,Coated,,,1
+steel,72104910,721049,Flat,Coated,,,1
+steel,72104990,721049,Flat,Coated,,,1
+steel,72106100,721061,Flat,Coated,,,1
+steel,72106911,721069,Flat,Coated,,,1
+steel,72106919,721069,Flat,Coated,,,1
+steel,72122010,721220,Flat,Coated,,,1
+steel,72122090,721220,Flat,Coated,,,1
+steel,72123000,721230,Flat,Coated,,,1
+steel,72259100,722591,Flat,Coated,,,1
+steel,72259200,722592,Flat,Coated,,,1
+steel,72259990,722599,Flat,Coated,,,1
+steel,72269900,722699,Flat,Coated,,,1
+steel,72106990,721069,Flat,Coated,,,1
+steel,72102000,721020,Flat,Coated,,,0
+steel,72109000,721090,Flat,Coated,,,0
+steel,72106900,721069,Flat,Coated,,,1
+steel,72104110,721041,Flat,Coated,,,0
+steel,72104190,721041,Flat,Coated,,,0
+steel,72191100,721911,Flat,Others,,,0
+steel,72191200,721912,Flat,Others,,,0
+steel,72191300,721913,Flat,Others,,,0
+steel,72191400,721914,Flat,Others,,,0
+steel,72192100,721921,Flat,Others,,,0
+steel,72192200,721922,Flat,Others,,,0
+steel,72192300,721923,Flat,Others,,,0
+steel,72192400,721924,Flat,Others,,,0
+steel,72193100,721931,Flat,Others,,,0
+steel,72193200,721932,Flat,Others,,,0
+steel,72193300,721933,Flat,Others,,,0
+steel,72193400,721934,Flat,Others,,,0
+steel,72193500,721935,Flat,Others,,,0
+steel,72199010,721990,Flat,Others,,,0
+steel,72199090,721990,Flat,Others,,,0
+steel,72251100,722511,Flat,Others,,,0
+steel,72252000,722520,Flat,Others,,,0
+steel,72254010,722540,Flat,Others,,,1
+steel,72254020,722540,Flat,Others,,,1
+steel,72255000,722550,Flat,Others,,,1
+steel,72255010,722550,Flat,Others,,,1
+steel,72259900,722599,Flat,Others,,,1
+steel,72259910,722599,Flat,Others,,,1
+steel,73051100,730511,Flat,Others,,,0
+steel,73051200,730512,Flat,Others,,,0
+steel,73051900,730519,Flat,Others,,,0
+steel,73052000,730520,Flat,Others,,,0
+steel,73061000,730610,Flat,Others,,,0
+steel,73062000,730620,Flat,Others,,,0
+steel,73063000,730630,Flat,Others,,,0
+steel,73069010,730690,Flat,Others,,,0
+steel,73053100,730531,Flat,Others,,,0
+steel,73053900,730539,Flat,Others,,,0
+steel,73059000,730590,Flat,Others,,,0
+steel,73061100,730611,Flat,Others,,,0
+steel,73061900,730619,Flat,Others,,,0
+steel,73062100,730621,Flat,Others,,,0
+steel,73062900,730629,Flat,Others,,,0
+steel,73064000,730640,Flat,Others,,,0
+steel,73065000,730650,Flat,Others,,,0
+steel,73066000,730660,Flat,Others,,,0
+steel,73066100,730661,Flat,Others,,,0
+steel,73066900,730669,Flat,Others,,,0
+steel,73069020,730690,Flat,Others,,,0
+steel,73069090,730690,Flat,Others,,,0
+steel,72124020,721240,Flat,Others,,,1
+steel,72125000,721250,Flat,Others,,,1
+steel,72125010,721250,Flat,Others,,,1
+steel,72126000,721260,Flat,Others,,,0
+steel,73145000,731450,Flat,Others,,,0
+steel,72201100,722011,Flat,Others,,,0
+steel,72201210,722012,Flat,Others,,,0
+steel,72201220,722012,Flat,Others,,,0
+steel,72201290,722012,Flat,Others,,,0
+steel,72202010,722020,Flat,Others,,,0
+steel,72202090,722020,Flat,Others,,,0
+steel,72209000,722090,Flat,Others,,,0
+steel,72261100,722611,Flat,Others,,,0
+steel,72262010,722620,Flat,Others,,,0
+steel,72262090,722620,Flat,Others,,,0
+steel,72269300,722693,Flat,Others,,,0
+steel,72269400,722694,Flat,Others,,,0
+steel,72139100,721391,Long,Wire Rod,,,1
+steel,72139190,721391,Long,Wire Rod,,,1
+steel,72139990,721399,Long,Wire Rod,,,1
+steel,72279000,722790,Long,Wire Rod,,,1
+steel,72132000,721320,Long,Wire Rod,,,1
+steel,72272000,722720,Long,Wire Rod,,,1
+steel,72139910,721399,Long,Wire Rod,,,1
+steel,72271000,722710,Long,Wire Rod,,,0
+steel,72210000,722100,Long,Wire Rod,,,0
+steel,72131000,721310,Long,Rebar,,,0
+steel,72142000,721420,Long,Rebar,,,0
+steel,72141010,721410,Long,Bar,,,0
+steel,72141090,721410,Long,Bar,,,0
+steel,72143000,721430,Long,Bar,,,0
+steel,72149100,721491,Long,Bar,,,0
+steel,72149910,721499,Long,Bar,,,0
+steel,72149990,721499,Long,Bar,,,0
+steel,72151000,721510,Long,Bar,,,0
+steel,72155000,721550,Long,Bar,,,0
+steel,72159010,721590,Long,Bar,,,0
+steel,72159090,721590,Long,Bar,,,0
+steel,72282000,722820,Long,Bar,,,0
+steel,72283000,722830,Long,Bar,,,0
+steel,72284000,722840,Long,Bar,,,0
+steel,72285000,722850,Long,Bar,,,0
+steel,72286000,722860,Long,Bar,,,0
+steel,72288000,722880,Long,Bar,,,0
+steel,72281010,722810,Long,Bar,,,0
+steel,72281090,722810,Long,Bar,,,0
+steel,72221100,722211,Long,Bar,,,0
+steel,72221910,722219,Long,Bar,,,0
+steel,72221990,722219,Long,Bar,,,0
+steel,72222000,722220,Long,Bar,,,0
+steel,72223000,722230,Long,Bar,,,0
+steel,72161000,721610,Long,Shapes,,,0
+steel,72162100,721621,Long,Shapes,,,0
+steel,72162200,721622,Long,Shapes,,,0
+steel,72165000,721650,Long,Shapes,,,0
+steel,72166100,721661,Long,Shapes,,,0
+steel,72166910,721669,Long,Shapes,,,0
+steel,72169100,721691,Long,Shapes,,,0
+steel,72169900,721699,Long,Shapes,,,0
+steel,72163100,721631,Long,Shapes,,,0
+steel,72163200,721632,Long,Shapes,,,0
+steel,72163300,721633,Long,Shapes,,,0
+steel,72164010,721640,Long,Shapes,,,0
+steel,72164090,721640,Long,Shapes,,,0
+steel,72166190,721661,Long,Shapes,,,0
+steel,72166990,721669,Long,Shapes,,,0
+steel,73011000,730110,Long,Shapes,,,0
+steel,73012000,730120,Long,Shapes,,,0
+steel,72224090,722240,Long,Shapes,,,0
+steel,72287000,722870,Long,Shapes,,,0
+steel,72224010,722240,Long,Shapes,,,0
+steel,73041090,730410,Long,Others,,,0
+steel,73041900,730419,Long,Others,,,0
+steel,73042110,730421,Long,Others,,,0
+steel,73042310,730423,Long,Others,,,0
+steel,73042910,730429,Long,Others,,,0
+steel,73043110,730431,Long,Others,,,0
+steel,73043190,730431,Long,Others,,,0
+steel,73043910,730439,Long,Others,,,0
+steel,73043920,730439,Long,Others,,,0
+steel,73043990,730439,Long,Others,,,0
+steel,73049090,730490,Long,Others,,,0
+steel,73041010,730410,Long,Others,,,0
+steel,73041100,730411,Long,Others,,,0
+steel,73042190,730421,Long,Others,,,0
+steel,73042200,730422,Long,Others,,,0
+steel,73042390,730423,Long,Others,,,0
+steel,73042400,730424,Long,Others,,,0
+steel,73042920,730429,Long,Others,,,0
+steel,73042931,730429,Long,Others,,,0
+steel,73042939,730429,Long,Others,,,0
+steel,73042990,730429,Long,Others,,,0
+steel,73044100,730441,Long,Others,,,0
+steel,73044110,730441,Long,Others,,,0
+steel,73044190,730441,Long,Others,,,0
+steel,73044900,730449,Long,Others,,,0
+steel,73045110,730451,Long,Others,,,0
+steel,73045111,730451,Long,Others,,,0
+steel,73045119,730451,Long,Others,,,0
+steel,73045190,730451,Long,Others,,,0
+steel,73045910,730459,Long,Others,,,0
+steel,73045911,730459,Long,Others,,,0
+steel,73045919,730459,Long,Others,,,0
+steel,73045990,730459,Long,Others,,,0
+steel,73049011,730490,Long,Others,,,0
+steel,73049019,730490,Long,Others,,,0
+steel,73021010,730210,Long,Others,,,0
+steel,73021020,730210,Long,Others,,,0
+steel,73021090,730210,Long,Others,,,0
+steel,73022000,730220,Long,Others,,,0
+steel,73023000,730230,Long,Others,,,0
+steel,73024000,730240,Long,Others,,,0
+steel,73029000,730290,Long,Others,,,0
+steel,72171011,721710,Long,Others,,,0
+steel,72171019,721710,Long,Others,,,0
+steel,72171090,721710,Long,Others,,,0
+steel,72172010,721720,Long,Others,,,0
+steel,72172090,721720,Long,Others,,,0
+steel,72173010,721730,Long,Others,,,0
+steel,72173090,721730,Long,Others,,,0
+steel,72179000,721790,Long,Others,,,0
+steel,73121010,731210,Long,Others,,,0
+steel,73121090,731210,Long,Others,,,0
+steel,73129000,731290,Long,Others,,,0
+steel,73130000,731300,Long,Others,,,0
+steel,73142000,731420,Long,Others,,,0
+steel,73143100,731431,Long,Others,,,0
+steel,73143900,731439,Long,Others,,,0
+steel,73144100,731441,Long,Others,,,0
+steel,73144200,731442,Long,Others,,,0
+steel,73144900,731449,Long,Others,,,0
+steel,73170010,731700,Long,Others,,,0
+steel,73170020,731700,Long,Others,,,0
+steel,73170030,731700,Long,Others,,,0
+steel,73170090,731700,Long,Others,,,0
+steel,72230000,722300,Long,Others,,,0
+steel,72291000,722910,Long,Others,,,0
+steel,72292000,722920,Long,Others,,,0
+steel,72299000,722990,Long,Others,,,0
+steel,73141200,731412,Long,Others,,,0
+steel,73141400,731414,Long,Others,,,0
+steel,73141900,731419,Long,Others,,,0
+pulp,,470311,Virgin Fiber,UKP,Softwood,Sulphate,0
+pulp,,470319,Virgin Fiber,UKP,Hardwood,Sulphate,0
+pulp,,470321,Virgin Fiber,BKP,Softwood,Sulphate,0
+pulp,,470329,Virgin Fiber,BKP,Hardwood,Sulphate,0
+pulp,,470411,Virgin Fiber,UKP,Softwood,Sulphite,0
+pulp,,470419,Virgin Fiber,UKP,Hardwood,Sulphite,0
+pulp,,470421,Virgin Fiber,BKP,Softwood,Sulphite,0
+pulp,,470429,Virgin Fiber,BKP,Hardwood,Sulphite,0
+pulp,,470500,Virgin Fiber,BCTMP,,,0
+pulp,,470100,Other,Mechanical,,,0
+pulp,,470200,Other,Dissolving,,,0
+pulp,,470610,Non Wood,,,,0
+pulp,,470620,Waste,,,,0
+pulp,,470630,Non Wood,,,,0
+pulp,,470691,Non Wood,,,,0
+pulp,,470692,Non Wood,,,,0
+pulp,,470693,Non Wood,,,,0
+iron_ore,,260111,,Fines,,,0
+iron_ore,,260112,,Pellets,,,0

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>ITAÚ BBA — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- ── Supabase Auth (mesmo padrão do index.html) ──────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- ── sql.js p/ ler os .db no navegador ───────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script>
+const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
+const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
+const sbAuth = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:window.sessionStorage}})
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';location.replace('/login.html')}
+
+;(async()=>{
+  const {data:{session}} = await sbAuth.auth.getSession()
+  if(!session){ location.replace('/login.html'); return }
+  _setAuthCookie(session)
+  sbAuth.auth.onAuthStateChange((ev,s)=>{
+    if(s?.access_token)_setAuthCookie(s)
+    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';location.replace('/login.html')}
+  })
+  // ── Portão de ADMIN: só o papel 'admin' vê o painel ──
+  try{
+    const {data:role, error} = await sbAuth.rpc('get_my_role')
+    if(error) throw error
+    if(role === 'admin'){ document.getElementById('gate').hidden=true; document.getElementById('panel').hidden=false; initAdmin() }
+    else { showDenied(`Sua conta não tem acesso de administrador (papel atual: ${role||'—'}).`) }
+  }catch(e){
+    console.error('get_my_role falhou:', e)
+    showDenied('Não consegui verificar seu acesso. O SQL de admin (admin/supabase_admin_schema.sql) já foi rodado no Supabase?')
+  }
+})()
+function showDenied(msg){
+  document.getElementById('gate').hidden=true
+  const d=document.getElementById('denied'); d.hidden=false
+  document.getElementById('denied-msg').textContent=msg
+}
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--orange:#FF5000;--black:#111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;--gray-light:#F4F3F0;
+  --border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;--font:'Inter','Segoe UI',Arial,sans-serif;--radius:10px}
+html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+header{background:var(--black);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 22px}
+header .brand{font-weight:700;letter-spacing:.5px}
+header .brand b{color:var(--orange)}
+header button{background:transparent;border:1px solid #555;color:#ddd;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
+header button:hover{border-color:var(--orange);color:#fff}
+#gate,#denied{display:flex;flex-direction:column;align-items:center;justify-content:center;height:80vh;gap:10px;text-align:center;padding:20px}
+#denied .lock{font-size:34px}
+.wrap{max-width:1200px;margin:0 auto;padding:22px}
+nav.tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+nav.tabs button{background:var(--white);border:1px solid var(--border);border-radius:999px;padding:8px 16px;cursor:pointer;font:inherit;color:var(--gray-dark)}
+nav.tabs button.active{background:var(--black);color:#fff;border-color:var(--black)}
+nav.tabs button:disabled{opacity:.45;cursor:not-allowed}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:4px}
+.card p.sub{font-size:12px;color:var(--gray-mid);margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font:inherit;font-weight:500}
+.btn.sec{background:var(--white);color:var(--gray-dark);border:1px solid var(--border)}
+.btn:hover{filter:brightness(1.05)}
+.chip{background:var(--gray-light);border:1px solid var(--border);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:12px}
+.chip.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+.status{font-size:12px;color:var(--gray-mid);margin:10px 0}
+textarea#sql{width:100%;min-height:64px;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical}
+.tbl-wrap{overflow:auto;max-height:520px;border:1px solid var(--border);border-radius:8px;margin-top:12px}
+table.data{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+table.data th,table.data td{border-bottom:1px solid var(--border);padding:6px 10px;text-align:left}
+table.data th{position:sticky;top:0;background:var(--gray-light);font-weight:600}
+table.data tr:hover td{background:#fafafa}
+.muted{color:var(--gray-mid)}
+code{background:var(--gray-light);padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="gate">Carregando…</div>
+
+<div id="denied" hidden>
+  <div class="lock">🔒</div>
+  <h2>Acesso restrito</h2>
+  <p id="denied-msg" class="muted"></p>
+  <button class="btn sec" onclick="logout()">Sair</button>
+</div>
+
+<div id="panel" hidden>
+  <header>
+    <span class="brand">ITAÚ BBA — <b>Admin</b></span>
+    <button onclick="logout()">Sair</button>
+  </header>
+  <div class="wrap">
+    <nav class="tabs">
+      <button class="active" data-tab="db">Bancos de dados</button>
+      <button disabled title="Em breve (Fase A4)">Atualizar dados (upload)</button>
+      <button disabled title="Em breve (Fase B)">Stock Guide</button>
+    </nav>
+
+    <!-- ── Visualizador de DBs ──────────────────────────────────────────── -->
+    <section id="tab-db">
+      <div class="card">
+        <h2>Visualizar bancos de dados</h2>
+        <p class="sub">Lê os arquivos <code>.db</code> publicados no navegador (somente leitura — não altera nada).</p>
+        <div class="row">
+          <button class="btn sec" onclick="loadDb('steel')">Steel &amp; Mining <span class="muted">(steel_sm.db)</span></button>
+          <button class="btn sec" onclick="loadDb('pulp')">Pulp &amp; Paper <span class="muted">(pulp_paper.db)</span></button>
+        </div>
+        <div id="db-status" class="status"></div>
+        <div id="tables" class="row"></div>
+      </div>
+
+      <div class="card" id="query-card" hidden>
+        <h2>Consulta (somente leitura)</h2>
+        <p class="sub">SELECT / WITH / PRAGMA. Roda no navegador, sobre a cópia carregada — não escreve no arquivo real.</p>
+        <textarea id="sql" placeholder="SELECT * FROM secex_sh6_country WHERE direction='imp' ORDER BY period DESC LIMIT 50"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="runQuery()">Rodar</button></div>
+      </div>
+
+      <div id="result-caption" class="status"></div>
+      <div id="result" class="tbl-wrap" hidden></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const DBS = {
+  steel: { label:'Steel & Mining', path:'Steel and Mining/steel_sm.db' },
+  pulp:  { label:'Pulp & Paper',   path:'Pulp and Paper/pulp_paper.db' },
+}
+let SQLLIB=null, _db=null, _dbKey=null
+function setStatus(m){ document.getElementById('db-status').textContent=m }
+function initAdmin(){ /* hooks já ligados via onclick; reservado p/ futuras abas */ }
+
+async function ensureSql(){
+  if(!SQLLIB) SQLLIB = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` })
+  return SQLLIB
+}
+async function loadDb(key){
+  const cfg=DBS[key]
+  if(_dbKey===key && _db){ setStatus(`${cfg.label} já carregado.`); renderTables(); return }
+  try{
+    setStatus(`Carregando ${cfg.label}… (pode levar alguns segundos)`)
+    const SQL=await ensureSql()
+    const resp=await fetch(encodeURI(cfg.path)+'?v='+Date.now())
+    if(!resp.ok) throw new Error('HTTP '+resp.status)
+    const buf=new Uint8Array(await resp.arrayBuffer())
+    if(_db) _db.close()
+    _db=new SQL.Database(buf); _dbKey=key
+    setStatus(`${cfg.label} carregado (${(buf.length/1e6).toFixed(1)} MB).`)
+    document.getElementById('query-card').hidden=false
+    renderTables()
+  }catch(e){ setStatus('Erro ao carregar: '+e.message) }
+}
+function listTables(){
+  const r=_db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+  return r[0] ? r[0].values.map(v=>v[0]) : []
+}
+function renderTables(){
+  const host=document.getElementById('tables'); host.innerHTML=''
+  for(const t of listTables()){
+    const c=document.createElement('span'); c.className='chip'; c.textContent=t
+    c.onclick=()=>{ document.querySelectorAll('#tables .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); viewTable(t) }
+    host.appendChild(c)
+  }
+}
+function viewTable(t){
+  try{
+    const cnt=_db.exec(`SELECT COUNT(*) FROM "${t}"`)[0].values[0][0]
+    const res=_db.exec(`SELECT * FROM "${t}" LIMIT 100`)[0]
+    renderResult(res, `${t} — ${cnt.toLocaleString('pt-BR')} linhas (mostrando até 100)`)
+  }catch(e){ document.getElementById('result-caption').textContent='Erro: '+e.message }
+}
+function runQuery(){
+  const q=document.getElementById('sql').value.trim()
+  if(!/^\s*(select|with|pragma)\b/i.test(q)){ document.getElementById('result-caption').textContent='Somente leitura: comece com SELECT, WITH ou PRAGMA.'; return }
+  try{
+    const res=_db.exec(q)[0]
+    renderResult(res, res ? `${res.values.length} linha(s)` : 'Sem resultado')
+  }catch(e){ document.getElementById('result-caption').textContent='Erro: '+e.message }
+}
+function renderResult(res, caption){
+  document.getElementById('result-caption').textContent=caption
+  const host=document.getElementById('result')
+  if(!res){ host.hidden=true; return }
+  let html='<table class="data"><thead><tr>'+res.columns.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr></thead><tbody>'
+  for(const row of res.values) html+='<tr>'+row.map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>'
+  host.innerHTML=html+'</tbody></table>'; host.hidden=false
+}
+function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
+</script>
+</body>
+</html>
