@@ -127,7 +127,10 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
 <div id="panel" hidden>
   <header>
     <span class="brand">ITAÚ BBA — <b>Admin</b></span>
-    <button onclick="logout()">Sair</button>
+    <div class="row" style="gap:8px">
+      <button onclick="location.href='/index.html'">↩ Voltar à dashboard</button>
+      <button onclick="logout()">Sair</button>
+    </div>
   </header>
   <div class="wrap">
     <nav class="tabs">
