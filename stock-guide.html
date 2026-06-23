@@ -122,6 +122,7 @@ async function sgLogout(){await sbAuth.auth.signOut();document.cookie='sb-access
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function n(v){return SG.toNumOrNull(v)}
+function _short(t){return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'')}  // tolera 'VALE3' vs 'VALE3.SA'
 function fmt(v,d){if(v==null||!isFinite(v))return '—';d=d==null?0:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})}
 function fmtPct(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
 function fmtX(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'×'}
@@ -140,9 +141,12 @@ async function sgLoadData(){
   // preços ao vivo (só dos VISÍVEIS — ocultos têm yahoo_symbol NULL e não entram na consulta)
   const priceByKey={}; let marketValues={};
   try{
-    const syms=[...new Set(comps.map(c=>c.yahoo_symbol).filter(Boolean))];
+    // só VISÍVEIS entram (oculto→yahoo_symbol NULL→não vaza); tolera 'VALE3' ou 'VALE3.SA' (B3 → tenta +'.SA')
+    const cand=new Set();
+    comps.forEach(c=>{ const s=c.yahoo_symbol||(c.is_visible?c.ticker:null); if(!s)return; cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); });
+    const syms=[...cand];
     if(syms.length){ const q=await restGet('quotes?select=ticker,price&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
-      q.forEach(r=>{priceByKey[r.ticker]=n(r.price)}); }
+      q.forEach(r=>{ const p=n(r.price); priceByKey[r.ticker]=p; priceByKey[_short(r.ticker)]=p; }); }   // chaveia bruto + sem-sufixo
   }catch(e){console.warn('quotes',e)}
   try{ const cm=await restGet('commodities?select=code,price'); const mp={}; cm.forEach(r=>mp[r.code]=n(r.price));
     const mac=await restGet('macro?select=code,value').catch(()=>[]); mac.forEach(r=>mp['MACRO_'+r.code]=n(r.value));
@@ -169,8 +173,11 @@ function deriveMultiples(r,bY1,bY2){
     divYieldY1:r.dividends_y1!=null&&bY1>0?r.dividends_y1/bY1*100:null, divYieldY2:r.dividends_y2!=null&&bY2>0?r.dividends_y2/bY2*100:null}}
 function deriveComps(comps,priceByKey){
   const rows=[];
+  const lp=(r)=>{ const cands=[r.yahoo_symbol, r.is_visible?r.ticker:null].filter(Boolean);
+    for(const c of cands){ const tries=[c,_short(c)]; if(!/\./.test(c))tries.push(c+'.SA');
+      for(const t of tries){ if(priceByKey[t]!=null)return priceByKey[t]; } } return null; };
   comps.map(mapComp).forEach(r=>{
-    const live=r.yahoo_symbol?priceByKey[r.yahoo_symbol]:null;
+    const live=lp(r);
     const mcap=r.shares_outstanding!=null&&live!=null?r.shares_outstanding*live/1e6:null;
     const upside=r.target_price!=null&&live!=null&&live>0?r.target_price/live-1:null;
     const m=deriveMultiples(r,mcap,mcap);
@@ -358,7 +365,9 @@ async function fetchMesh(sensId){
     out=out.concat(page);
     if(page.length<PAGE)break;
     const last=page[page.length-1];
-    after={ticker:last.ticker,metric:last.metric,x:last.x_value,y:last.y_value,z:last.z_value};
+    const nx={ticker:last.ticker,metric:last.metric,x:last.x_value,y:last.y_value,z:last.z_value};
+    if(after&&nx.ticker===after.ticker&&nx.metric===after.metric&&nx.x===after.x&&nx.y===after.y&&nx.z===after.z)break; // cursor não avançou → para
+    after=nx;
   }
   return out;
 }
