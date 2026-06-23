@@ -504,6 +504,18 @@ img.team-avatar{object-fit:cover;background:none;}
       </div>
     </a>
 
+    <a class="sector-card live has-bg" href="stock-guide.html">
+      <div class="sector-bg" style="background:linear-gradient(135deg,#3a2c1f 0%,#1a1a1a 70%)"></div>
+      <span class="sector-card-eyebrow">● Live</span>
+      <span class="sector-card-title">Stock Guide</span>
+      <span class="sector-card-desc">Comparáveis &amp; análise de sensibilidade — S&amp;M + P&amp;P</span>
+      <div class="sector-tabs">
+        <span class="sector-tab">Comps</span>
+        <span class="sector-tab">Sensibilidade</span>
+        <span class="sector-tab">Peers</span>
+      </div>
+    </a>
+
   </div>
 
   <!-- RESEARCH TEAM (top-right) -->
@@ -691,6 +703,7 @@ const FLAG_SEL = {
   news_feed:     '.area-news',
   research_team: '.area-team',
   heatmap:       '.area-heat',
+  stock_guide:   'a.sector-card[href^="stock-guide"]',
 };
 function applyFlags(flags, isAdmin){
   // injeta 1x o estilo do selo "desativado" (visível só pro admin)
