@@ -43,7 +43,7 @@ create or replace function public.get_ai_usage()
          count(*)
   from public.news_articles
   where take_llm_model is not null and public.is_admin()
-  group by take_llm_model order by total desc;
+  group by take_llm_model order by count(*) desc;
 $$;
 revoke all on function public.get_ai_usage() from public, anon;
 grant execute on function public.get_ai_usage() to authenticated;
