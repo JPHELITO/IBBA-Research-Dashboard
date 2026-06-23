@@ -56,11 +56,18 @@ def run_reload_pred(xlsx):
                     "--pred", str(xlsx)], check=True)
 
 
+def run_iba(xlsx):
+    """IBÁ papel: reroda update_iba.py com o Excel enviado (atualiza pulp_paper.db)."""
+    subprocess.run([sys.executable, str(REPO / "Pulp and Paper" / "update_iba.py"),
+                    str(xlsx)], check=True)
+
+
 # kind -> função processadora (novos tipos de upload entram aqui)
 PROCESSORS = {
     "pred_exports": run_reload_pred,
+    "iba": run_iba,
 }
-SOURCE_LABEL = {"pred_exports": "Linha preta (modelo)"}
+SOURCE_LABEL = {"pred_exports": "Linha preta (modelo)", "iba": "IBÁ papel"}
 
 
 def log_update(kind, fn):
