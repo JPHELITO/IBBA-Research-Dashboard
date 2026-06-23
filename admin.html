@@ -556,7 +556,7 @@ async function uploadFile(){
   const path=`${kind}/${Date.now()}_${f.name.replace(/[^A-Za-z0-9._-]/g,'_')}`
   btn.disabled=true; st.textContent='Enviando…'
   try{
-    const {error:upErr}=await sbAuth.storage.from('admin-uploads').upload(path, f, {upsert:true})
+    const {error:upErr}=await sbAuth.storage.from('admin-uploads').upload(path, f)
     if(upErr) throw upErr
     const {error:jErr}=await sbAuth.rpc('admin_enqueue_upload',{p_kind:kind,p_storage_path:path,p_filename:f.name})
     if(jErr) throw jErr
