@@ -693,6 +693,13 @@ VALUES
   ('Vale (live)', NULL, NULL, NULL, NULL, NULL, NULL, false, true, 4)
 ON CONFLICT (company) DO NOTHING;
 
+-- flag da home p/ o Stock Guide — DESLIGADA por padrão (rollout seguro: você liga no admin
+-- quando os dados reais estiverem prontos). Admin SEMPRE vê (preview-as-admin). Requer
+-- dashboard_flags (admin/supabase_config_schema.sql). on conflict do nothing = não mexe se já existir.
+insert into public.dashboard_flags (key, label, sort_order, enabled)
+values ('stock_guide', 'Setor: Stock Guide (card na home + página)', 90, false)
+on conflict (key) do nothing;
+
 -- =============================================================================
 -- VERIFICAÇÃO (rode como ANON no SQL editor / via REST sem login):
 --   select * from get_stock_guide_comps();
