@@ -224,12 +224,11 @@ img.team-avatar{object-fit:cover;background:none;}
   flex-direction:row;align-items:center;gap:24px;}
 .pulse-body > .gauge{flex:none;}
 .pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
-.gauge{width:200px;height:122px;position:relative;}
-.gauge svg{width:100%;height:100%;}
-.gauge-val{position:absolute;bottom:38px;left:0;right:0;text-align:center;
-  font-size:29px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;bottom:20px;left:0;right:0;text-align:center;
-  font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.gauge{width:200px;height:118px;position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;padding-bottom:22px;}
+.gauge svg{position:absolute;inset:0;width:100%;height:100%;}
+.gauge-val{position:relative;z-index:1;font-size:28px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:relative;z-index:1;margin-top:2px;font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
@@ -569,6 +568,7 @@ img.team-avatar{object-fit:cover;background:none;}
             <line x1="398" y1="112" x2="398" y2="136" stroke="#22c55e"/><rect x="394" y="116" width="8" height="13" fill="#22c55e"/>
           </g>
         </svg>
+        <div style="position:absolute;inset:0;background:url('assets/sector-stockguide.jpg') center/cover no-repeat"></div>
       </div>
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
       <div class="sector-tabs">
