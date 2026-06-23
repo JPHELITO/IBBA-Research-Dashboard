@@ -224,11 +224,12 @@ img.team-avatar{object-fit:cover;background:none;}
   flex-direction:row;align-items:center;gap:24px;}
 .pulse-body > .gauge{flex:none;}
 .pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
-.gauge{width:200px;height:118px;position:relative;display:flex;flex-direction:column;
-  align-items:center;justify-content:flex-end;padding-bottom:22px;}
-.gauge svg{position:absolute;inset:0;width:100%;height:100%;}
-.gauge-val{position:relative;z-index:1;font-size:28px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:relative;z-index:1;margin-top:2px;font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.gauge{width:200px;height:104px;position:relative;}
+.gauge svg{position:absolute;top:0;left:0;right:0;width:100%;height:128px;}
+.gauge-val{position:absolute;left:0;right:0;text-align:center;bottom:18px;
+  font-size:27px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;left:0;right:0;text-align:center;bottom:3px;
+  font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
