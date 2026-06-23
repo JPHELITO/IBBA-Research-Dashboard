@@ -658,7 +658,8 @@ SELECT 'Target price × minério (exemplo estático)', 'absolute', 'Target price
     'row_axis', jsonb_build_object('kind','driver','driver_id',(SELECT id FROM public.stock_guide_drivers WHERE name='Iron ore 62% Fe (premissa 2026)' LIMIT 1),'scenarios', jsonb_build_array(80,100,120)),
     'col_axis', jsonb_build_object('kind','company','companies', jsonb_build_array('VALE3','GGBR4')),
     'cells', jsonb_build_array(jsonb_build_array(60,18), jsonb_build_array(75,22), jsonb_build_array(92,27)),
-    'decimal_places', 1)
+    'decimal_places', 1),
+  1
 WHERE NOT EXISTS (SELECT 1 FROM public.stock_guide_sensitivities WHERE title = 'Target price × minério (exemplo estático)');
 
 -- sensibilidade de exemplo 2: SCENARIO GRID 1-D (target_price → upside) p/ VALE3 + mesh de 3 pontos
@@ -673,7 +674,8 @@ SELECT 'Upside × minério (exemplo interpolado)', 'upside', 'Upside', '%',
         'label','Iron ore 62% Fe','unit','USD/t','tmin',80,'tmax',120,'tstep',20)),
       'outputs', jsonb_build_array(jsonb_build_object('key','target_price','metric','target_price','mode','upside','label','Target price'))),
     'row_axis', jsonb_build_object('kind','company','companies', jsonb_build_array('VALE3')),
-    'col_axis', jsonb_build_object('kind','year','years', jsonb_build_array('y1')))
+    'col_axis', jsonb_build_object('kind','year','years', jsonb_build_array('y1'))),
+  2
 WHERE NOT EXISTS (SELECT 1 FROM public.stock_guide_sensitivities WHERE title = 'Upside × minério (exemplo interpolado)');
 
 -- mesh do exemplo 2: 3 nós (x=80→TP60, x=100→TP75, x=120→TP92) p/ VALE3
