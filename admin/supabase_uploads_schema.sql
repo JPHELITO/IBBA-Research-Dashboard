@@ -13,8 +13,10 @@ insert into storage.buckets (id, name, public)
 -- 2) Política: só admin (authenticated + is_admin) pode SUBIR no bucket.
 --    (A Action lê com a service key, que ignora RLS — não precisa de policy de leitura.)
 drop policy if exists "admin upload to admin-uploads" on storage.objects;
-create policy "admin upload to admin-uploads" on storage.objects
-  for insert to authenticated
+drop policy if exists "admin rw admin-uploads" on storage.objects;
+create policy "admin rw admin-uploads" on storage.objects
+  for all to authenticated
+  using (bucket_id = 'admin-uploads' and public.is_admin())
   with check (bucket_id = 'admin-uploads' and public.is_admin());
 
 -- 3) Fila de jobs de processamento
