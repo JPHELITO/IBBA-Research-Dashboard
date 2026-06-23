@@ -45,7 +45,8 @@
 .gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:14px;}\
 .gnav-out:hover{color:#fff;border-color:rgba(255,255,255,.4);}\
 .gnav-rule{height:2px;background:#FF5000;}\
-@media(max-width:900px){.gnav-menu,.gnt-name{display:none;}}';
+@media(max-width:900px){.gnav,.gnav-rule{display:none!important;}}\
+@media(min-width:901px){.header,.top-bar,.orange-rule,#app>.sticky-header{display:none!important;}}';
 
   var NAV = '\
 <div class="gnav">\
