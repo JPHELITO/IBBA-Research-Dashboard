@@ -184,7 +184,7 @@ body{height:100vh;overflow:hidden;}
 .sector-tab{font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 .sc-main{flex:1;display:flex;align-items:flex-start;text-decoration:none;color:inherit;position:relative;z-index:1;}
-.sector-card .sector-card-title{font-size:23px;letter-spacing:-.02em;line-height:1.1;}
+.sector-card .sector-card-title{font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.15;}
 .sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;}
 a.sector-tab{text-decoration:none;cursor:pointer;transition:background .15s,color .15s;}
 .sector-card.has-bg a.sector-tab:hover{background:rgba(255,255,255,.42);color:#fff;border-color:transparent;}
@@ -224,12 +224,12 @@ img.team-avatar{object-fit:cover;background:none;}
   flex-direction:row;align-items:center;gap:24px;}
 .pulse-body > .gauge{flex:none;}
 .pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
-.gauge{width:200px;height:116px;position:relative;}
+.gauge{width:200px;height:122px;position:relative;}
 .gauge svg{width:100%;height:100%;}
-.gauge-val{position:absolute;bottom:4px;left:0;right:0;text-align:center;
-  font-size:38px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;bottom:-9px;left:0;right:0;text-align:center;
-  font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+.gauge-val{position:absolute;bottom:38px;left:0;right:0;text-align:center;
+  font-size:29px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;bottom:20px;left:0;right:0;text-align:center;
+  font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
@@ -549,7 +549,27 @@ img.team-avatar{object-fit:cover;background:none;}
     </div>
 
     <div class="sector-card live has-bg sc-card" data-flag="stock_guide">
-      <div class="sector-bg sector-bg-sg"></div>
+      <div class="sector-bg" style="background:linear-gradient(180deg,#0a0e15,#05070a)">
+        <svg viewBox="0 0 420 150" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;opacity:.95">
+          <g stroke="#1b2430" stroke-width="1"><line x1="0" y1="40" x2="420" y2="40"/><line x1="0" y1="78" x2="420" y2="78"/><line x1="0" y1="116" x2="420" y2="116"/></g>
+          <polyline fill="none" stroke="#3b82f6" stroke-width="2.2" opacity=".85" points="0,40 70,47 140,61 210,80 280,99 350,116 420,129"/>
+          <polyline fill="none" stroke="#eab308" stroke-width="2.2" opacity=".8" points="0,47 70,52 140,67 210,87 280,105 350,121 420,135"/>
+          <g stroke-width="1.4">
+            <line x1="24" y1="26" x2="24" y2="52" stroke="#22c55e"/><rect x="20" y="31" width="8" height="16" fill="#22c55e"/>
+            <line x1="58" y1="34" x2="58" y2="62" stroke="#ef4444"/><rect x="54" y="39" width="8" height="18" fill="#ef4444"/>
+            <line x1="92" y1="40" x2="92" y2="64" stroke="#22c55e"/><rect x="88" y="44" width="8" height="13" fill="#22c55e"/>
+            <line x1="126" y1="48" x2="126" y2="78" stroke="#ef4444"/><rect x="122" y="52" width="8" height="20" fill="#ef4444"/>
+            <line x1="160" y1="58" x2="160" y2="82" stroke="#ef4444"/><rect x="156" y="62" width="8" height="14" fill="#ef4444"/>
+            <line x1="194" y1="64" x2="194" y2="88" stroke="#22c55e"/><rect x="190" y="68" width="8" height="13" fill="#22c55e"/>
+            <line x1="228" y1="72" x2="228" y2="100" stroke="#ef4444"/><rect x="224" y="76" width="8" height="19" fill="#ef4444"/>
+            <line x1="262" y1="82" x2="262" y2="106" stroke="#ef4444"/><rect x="258" y="86" width="8" height="14" fill="#ef4444"/>
+            <line x1="296" y1="88" x2="296" y2="112" stroke="#22c55e"/><rect x="292" y="92" width="8" height="13" fill="#22c55e"/>
+            <line x1="330" y1="96" x2="330" y2="124" stroke="#ef4444"/><rect x="326" y="100" width="8" height="19" fill="#ef4444"/>
+            <line x1="364" y1="106" x2="364" y2="130" stroke="#ef4444"/><rect x="360" y="110" width="8" height="14" fill="#ef4444"/>
+            <line x1="398" y1="112" x2="398" y2="136" stroke="#22c55e"/><rect x="394" y="116" width="8" height="13" fill="#22c55e"/>
+          </g>
+        </svg>
+      </div>
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
       <div class="sector-tabs">
         <a class="sector-tab" href="stock-guide.html">Comps</a>
