@@ -692,16 +692,31 @@ const FLAG_SEL = {
   research_team: '.area-team',
   heatmap:       '.area-heat',
 };
-function applyFlags(flags){
+function applyFlags(flags, isAdmin){
+  // injeta 1x o estilo do selo "desativado" (visível só pro admin)
+  if(!document.getElementById('admin-off-css')){
+    const s=document.createElement('style'); s.id='admin-off-css';
+    s.textContent='.admin-off{position:relative!important;opacity:.5;outline:2px dashed #FF5000;outline-offset:-3px}'
+      +'.admin-off::after{content:"OFF · só admin";position:absolute;top:8px;right:8px;background:#FF5000;color:#fff;'
+      +'font:700 10px/1 Inter,sans-serif;letter-spacing:.03em;padding:4px 8px;border-radius:6px;z-index:50;pointer-events:none}';
+    document.head.appendChild(s);
+  }
   const on = {}; flags.forEach(f => { on[f.key] = f.enabled; });
   for(const key in FLAG_SEL){
-    if(on[key] === false) document.querySelectorAll(FLAG_SEL[key]).forEach(el => { el.style.display = 'none'; });
+    document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
+      el.classList.remove('admin-off');
+      if(on[key] === false){
+        if(isAdmin){ el.style.display=''; el.classList.add('admin-off'); }  // admin VÊ (com selo)
+        else { el.style.display='none'; }                                   // cliente NÃO vê
+      } else { el.style.display=''; }                                       // ligado: visível
+    });
   }
 }
 async function applyDashboardConfig(){
   try{
-    const [fl, tm, cg, ht] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers') ]);
-    if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data);
+    const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
+    const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
+    if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
     if(tm && !tm.error && Array.isArray(tm.data) && tm.data.length){
       _teamData = tm.data.map(m => ({ ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo, email:m.email||'', wa:m.whatsapp||'' }));
       renderTeam();
