@@ -115,13 +115,12 @@ body{height:100vh;overflow:hidden;}
   grid-template-columns:repeat(12,1fr);
   grid-template-rows:minmax(0,180px) minmax(0,190px) minmax(0,1fr);
   grid-template-areas:
-    "secrow secrow secrow secrow secrow pulse pulse pulse team team team team"
+    "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
     "news news news news news news news news comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
-.area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0;}
-.area-pulse {grid-area:team;}    /* Market Pulse → slot da direita (4 col) */
-.area-sgcard{grid-area:pulse;}   /* card Stock Guide → slot do meio (3 col) */
+.area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;min-height:0;}
+.area-pulse {grid-area:pulse;}   /* Market Pulse → 4 col à direita dos 3 cards */
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
 .area-comm  {grid-area:comm;}
@@ -184,6 +183,11 @@ body{height:100vh;overflow:hidden;}
 .sector-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:8px;}
 .sector-tab{font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
+.sc-main{flex:1;display:flex;align-items:flex-start;text-decoration:none;color:inherit;position:relative;z-index:1;}
+.sector-card .sector-card-title{font-size:23px;letter-spacing:-.02em;line-height:1.1;}
+.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;}
+a.sector-tab{text-decoration:none;cursor:pointer;transition:background .15s,color .15s;}
+.sector-card.has-bg a.sector-tab:hover{background:rgba(255,255,255,.42);color:#fff;border-color:transparent;}
 
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
 .team-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:2px 0;}
@@ -215,15 +219,17 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
 
-.pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 14px;display:grid;
-  grid-template-columns:1fr;gap:6px;justify-items:center;align-content:center;}
-.pulse-body > div{width:100%;}
-.gauge{width:120px;height:68px;position:relative;}
+/* layout HORIZONTAL: gauge grande à esquerda + números à direita (preenche o painel largo) */
+.pulse-body{flex:1;min-height:0;overflow:hidden;padding:10px 24px;display:flex;
+  flex-direction:row;align-items:center;gap:24px;}
+.pulse-body > .gauge{flex:none;}
+.pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+.gauge{width:200px;height:116px;position:relative;}
 .gauge svg{width:100%;height:100%;}
-.gauge-val{position:absolute;bottom:3px;left:0;right:0;text-align:center;
-  font-size:20px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;bottom:-12px;left:0;right:0;text-align:center;
-  font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.gauge-val{position:absolute;bottom:4px;left:0;right:0;text-align:center;
+  font-size:38px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;bottom:-9px;left:0;right:0;text-align:center;
+  font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
@@ -450,8 +456,8 @@ img.team-avatar{object-fit:cover;background:none;}
   #stage{width:auto;height:auto;transform:none;display:block;overflow:visible;}  /* mobile: sem escala, layout próprio */
   .page{grid-template-columns:1fr;grid-template-rows:none;overflow:visible;padding:8px 14px 40px;gap:14px;
     grid-template-areas:
-    "secrow" "pulse" "team" "news" "heat" "comm";}
-  .area-secrow{grid-template-columns:1fr 1fr;}
+    "secrow" "pulse" "news" "heat" "comm";}
+  .area-secrow{grid-template-columns:1fr 1fr 1fr;}
   .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
   .heatmap-grid{grid-auto-rows:auto;}
   .team-row{flex:none;padding:8px 16px;}
@@ -467,7 +473,7 @@ img.team-avatar{object-fit:cover;background:none;}
   .hero-title{font-size:20px;}
   .page{padding:8px 14px 40px;gap:14px;}
   .area-secrow{grid-template-columns:1fr;}
-  .pulse-body{grid-template-columns:1fr;gap:14px;padding:14px;}
+  .pulse-body{flex-direction:column;gap:14px;padding:14px;}
   .gauge{margin:0 auto;}
   .news-feed{grid-template-columns:1fr;grid-auto-flow:row;
     grid-template-rows:none;}
@@ -522,45 +528,38 @@ img.team-avatar{object-fit:cover;background:none;}
   <!-- TOP ROW — sector cards (Steel + Pulp & Paper), com imagem de fundo -->
   <div class="area-secrow">
 
-    <a class="sector-card live has-bg" href="Steel and Mining/steel_sm_dashboard.html#prices">
+    <div class="sector-card live has-bg sc-card" data-flag="sector_steel">
       <div class="sector-bg sector-bg-steel"></div>
-      <span class="sector-card-eyebrow">● Live</span>
-      <span class="sector-card-title">Steel</span>
-      <span class="sector-card-desc">Pricing, domestic market, imports &amp; exports</span>
+      <a class="sc-main" href="Steel and Mining/steel_sm_dashboard.html#prices"><span class="sector-card-title">Metals &amp; Mining</span></a>
       <div class="sector-tabs">
-        <span class="sector-tab">Prices</span>
-        <span class="sector-tab">Domestic</span>
-        <span class="sector-tab">Imports</span>
-        <span class="sector-tab">Exports</span>
+        <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>
+        <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#domestic">Domestic</a>
+        <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>
+        <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>
       </div>
-    </a>
+    </div>
 
-    <a class="sector-card live has-bg" href="Pulp and Paper/pp_dashboard.html#pulp">
+    <div class="sector-card live has-bg sc-card" data-flag="sector_pp">
       <div class="sector-bg sector-bg-pp"></div>
-      <span class="sector-card-eyebrow">● Live</span>
-      <span class="sector-card-title">Pulp &amp; Paper</span>
-      <span class="sector-card-desc">Pulp exports (SECEX) &amp; paper demand by grade</span>
+      <a class="sc-main" href="Pulp and Paper/pp_dashboard.html#pulp"><span class="sector-card-title">Pulp &amp; Paper</span></a>
       <div class="sector-tabs">
-        <span class="sector-tab">Pulp</span>
-        <span class="sector-tab">Paper</span>
+        <a class="sector-tab" href="Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>
+        <a class="sector-tab" href="Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>
       </div>
-    </a>
+    </div>
+
+    <div class="sector-card live has-bg sc-card" data-flag="stock_guide">
+      <div class="sector-bg sector-bg-sg"></div>
+      <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
+      <div class="sector-tabs">
+        <a class="sector-tab" href="stock-guide.html">Comps</a>
+        <a class="sector-tab" href="stock-guide.html">Sensibilidade</a>
+        <a class="sector-tab" href="stock-guide.html">Peers</a>
+      </div>
+    </div>
 
   </div>
-
-  <!-- STOCK GUIDE — card no slot do meio (grid-area:pulse) -->
-  <a class="sector-card live has-bg area-sgcard" href="stock-guide.html">
-    <div class="sector-bg" style="background:linear-gradient(135deg,#3a2c1f 0%,#1a1a1a 70%)"></div>
-    <span class="sector-card-eyebrow">● Live</span>
-    <span class="sector-card-title">Stock Guide</span>
-    <span class="sector-card-desc">Comparáveis &amp; análise de sensibilidade — M&amp;M + P&amp;P</span>
-    <div class="sector-tabs">
-      <span class="sector-tab">Comps</span>
-      <span class="sector-tab">Sensibilidade</span>
-      <span class="sector-tab">Peers</span>
-    </div>
-  </a>
-  <!-- Research Team movido p/ a barra superior (header) -->
+  <!-- Research Team na barra superior; Stock Guide é o 3º card -->
 
   <!-- MARKET PULSE (full width) -->
   <div class="sec area-pulse">
@@ -701,7 +700,6 @@ img.team-avatar{object-fit:cover;background:none;}
 // ─── TEAM ──────────────────────────────────────────────────────────────
 const TEAM = [
   {ini:'DS', name:'Daniel Sasson',      role:'Head',     photo:'assets/team-daniel.jpg',  email:'daniel.sasson@itaubba.com',   wa:'5511996741242'},
-  {ini:'EP', name:'Edgard Pinto Souza', role:'Analyst',  photo:'assets/team-edgard.jpg',  email:'edgard.souza@itaubba.com',    wa:'5511950628972'},
   {ini:'MF', name:'Marcelo Furlan',     role:'Analyst',  photo:'assets/team-marcelo.jpg', email:'marcelo.palhares@itaubba.com',wa:'5511974642801'},
   {ini:'JH', name:'João Paulo Helito',  role:'Analyst',  photo:'assets/team-joao.jpg',    email:'joao.helito@itaubba.com',     wa:'5511934527535'},
 ];
@@ -716,7 +714,7 @@ function renderTeam(){
       ${p.photo
         ? `<img class="th-av" src="${p.photo}" alt="${p.name}" onerror="this.outerHTML='<div class=&quot;th-av&quot;>${p.ini}</div>'">`
         : `<div class="th-av">${p.ini}</div>`}
-      <span class="th-name">${(p.name||'').split(' ')[0]}</span>
+      <span class="th-name">${p.name}</span>
       <span class="th-acts">
         ${p.email ? `<a class="th-btn" href="mailto:${p.email}" title="${p.email}">${SVG_EMAIL}</a>` : ''}
         ${p.wa ? `<a class="th-btn wa" href="https://wa.me/${p.wa}" target="_blank" rel="noopener" title="WhatsApp ${p.name}">${SVG_WA}</a>` : ''}
@@ -729,14 +727,14 @@ function renderTeam(){
 // À prova de falha: se a leitura falhar, mantém o padrão atual (tudo visível, TEAM fixo).
 function _ini(name){ return (name||'').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase() || '–'; }
 const FLAG_SEL = {
-  sector_steel:  'a.sector-card[href^="Steel and Mining"]',
-  sector_pp:     'a.sector-card[href^="Pulp and Paper"]',
+  sector_steel:  '[data-flag="sector_steel"]',
+  sector_pp:     '[data-flag="sector_pp"]',
   market_pulse:  '.area-pulse',
   commodities:   '.area-comm',
   news_feed:     '.area-news',
   research_team: '.team-head',
   heatmap:       '.area-heat',
-  stock_guide:   'a.sector-card[href^="stock-guide"]',
+  stock_guide:   '[data-flag="stock_guide"]',
 };
 function applyFlags(flags, isAdmin){
   // injeta 1x o estilo do selo "desativado" (visível só pro admin)
