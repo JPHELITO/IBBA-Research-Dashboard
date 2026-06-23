@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>ITAÚ BBA — Stock Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="stock-guide-lib.js"></script>
+<style>
+:root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#F4F3F0;--border:#E3E3E3;
+  --white:#fff;--green:#1E8E4E;--red:#C0392B;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.06)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);color:var(--black);background:var(--g-light);font-size:13px;line-height:1.4}
+[hidden]{display:none!important}
+.sticky-header{position:sticky;top:0;z-index:30;background:var(--white);border-bottom:1px solid var(--border)}
+.top-bar{display:flex;align-items:center;gap:14px;padding:12px 22px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:7px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px}
+.top-title{font-weight:700;font-size:15px;letter-spacing:.2px}
+.top-sub{font-size:10.5px;color:var(--g-mid)}
+.spacer{flex:1}
+.hbtn{font:600 12px var(--font);padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--black);text-decoration:none;cursor:pointer}
+.hbtn:hover{border-color:var(--orange)}
+.orange-rule{height:3px;background:var(--orange)}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 22px 60px}
+.section{margin-bottom:30px}
+.sec-title{font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.sec-sub{font-size:11px;color:var(--g-mid);margin-bottom:12px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:16px}
+.card h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.card .csub{font-size:10.5px;color:var(--g-mid);margin-bottom:10px}
+.tbl-scroll{overflow-x:auto}
+table.data{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+table.data th,table.data td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border)}
+table.data th{font-weight:600;color:var(--g-dark);background:var(--g-light);position:sticky;top:0;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+table.data th.l,table.data td.l{text-align:left}
+table.data tbody tr:hover{background:#FAFAF8}
+table.data td.num{font-variant-numeric:tabular-nums}
+.pos{color:var(--green)} .neg{color:var(--red)} .muted{color:var(--g-mid)}
+.rec{display:inline-block;font-weight:700;font-size:10px;padding:2px 6px;border-radius:5px}
+.rec.OP{background:#E3F4E9;color:var(--green)} .rec.MP{background:#F1EFEA;color:var(--g-dark)} .rec.UP{background:#FBE6E3;color:var(--red)}
+tr.ex td{background:#FAF8F4;color:var(--g-dark);font-style:italic}
+tr.offrow td{background:#FFF6F2}
+.offtag{display:inline-block;background:var(--orange);color:#fff;font:700 9px var(--font);padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-style:normal}
+.grp-th{border-left:2px solid var(--border)}
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+.band{margin-top:8px}
+.band-lbl{font-weight:600;font-size:11px;color:var(--g-dark);background:var(--g-light);padding:4px 8px;border-radius:6px;margin-bottom:6px}
+.steppers{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 12px}
+.stepper{display:flex;flex-direction:column;gap:3px}
+.stepper label{font-size:10px;color:var(--g-mid);font-weight:600}
+.stepper .ctl{display:flex;align-items:center;gap:4px}
+.stepper button{width:24px;height:24px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;font-weight:700;color:var(--g-dark)}
+.stepper button:hover{border-color:var(--orange)}
+.stepper input{width:78px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font:600 12px var(--font);text-align:right}
+.snap{display:flex;gap:4px;margin-top:2px}
+.snap span{font-size:9.5px;padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border)}
+.snap .base{color:var(--g-dark)} .snap .live{color:var(--orange);border-color:var(--orange)}
+.foot{font-size:10.5px;color:var(--g-mid);margin-top:8px}
+.splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--g-light);z-index:50;text-align:center;padding:30px}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:760px){.wrap{padding:14px 12px 50px}.panels{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Carregando o Stock Guide…</div></div>
+<div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Indisponível</b></div>
+  <div class="muted" style="max-width:380px">Esta seção não está liberada para a sua conta.</div>
+  <a class="hbtn" href="/index.html">← Voltar para a home</a></div>
+
+<div id="app" hidden>
+  <div class="sticky-header">
+    <div class="top-bar">
+      <div class="brand"><div class="brand-mark">i</div>
+        <div><div class="top-title">ITAÚ BBA — Stock Guide</div>
+          <div class="top-sub">Comparáveis &amp; análise de sensibilidade · Equity Research</div></div></div>
+      <div class="spacer"></div>
+      <span id="admin-badge" class="offtag" hidden>modo admin (vendo dados restritos)</span>
+      <a class="hbtn" href="/index.html">← Home</a>
+      <button class="hbtn" onclick="sgLogout()">Sign out</button>
+    </div>
+    <div class="orange-rule"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="section">
+      <div class="sec-title">Comparáveis</div>
+      <div class="sec-sub" id="comps-sub">Múltiplos derivados ao vivo do preço de mercado.</div>
+      <div class="card"><div class="tbl-scroll"><table class="data" id="comps-table"><tbody><tr><td class="muted">Carregando…</td></tr></tbody></table></div>
+        <div class="foot" id="comps-foot"></div></div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">Sensibilidade</div>
+      <div class="sec-sub">Premissas (drivers) → tabelas; grids interpolam multilinearmente contra os níveis ao vivo.</div>
+      <div id="sens-host"><div class="card"><span class="muted">Carregando…</span></div></div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">Global Peers</div>
+      <div class="sec-sub">Múltiplos de majors globais (referência).</div>
+      <div class="card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase + auth ───────────────────────────────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+let _session=null;
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function sgLogout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function n(v){return SG.toNumOrNull(v)}
+function fmt(v,d){if(v==null||!isFinite(v))return '—';d=d==null?0:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function fmtPct(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
+function fmtX(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'×'}
+function signCls(v){return v==null?'':(v>0?'pos':(v<0?'neg':''))}
+
+// ── data layer ──────────────────────────────────────────────────────────────
+async function rpc(name,args){const{data,error}=await sbAuth.rpc(name,args||{});if(error)throw new Error(name+': '+error.message);return data}
+async function restGet(path){const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_session?_session.access_token:SUPA_KEY}`}});if(!r.ok)throw new Error('REST '+path+' '+r.status);return r.json()}
+
+async function sgLoadData(){
+  const [comps,cfgArr,drivers,tables]=await Promise.all([
+    rpc('get_stock_guide_comps'), rpc('get_stock_guide_config'),
+    rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables')]);
+  const role=await rpc('get_my_role').catch(()=>null);
+  const isAdmin=!!(role&&role==='admin');
+  // preços ao vivo (só dos VISÍVEIS — ocultos têm yahoo_symbol NULL e não entram na consulta)
+  const priceByKey={}; let marketValues={};
+  try{
+    const syms=[...new Set(comps.map(c=>c.yahoo_symbol).filter(Boolean))];
+    if(syms.length){ const q=await restGet('quotes?select=ticker,price&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
+      q.forEach(r=>{priceByKey[r.ticker]=n(r.price)}); }
+  }catch(e){console.warn('quotes',e)}
+  try{ const cm=await restGet('commodities?select=code,price'); const mp={}; cm.forEach(r=>mp[r.code]=n(r.price));
+    const mac=await restGet('macro?select=code,value').catch(()=>[]); mac.forEach(r=>mp['MACRO_'+r.code]=n(r.value));
+    SG.MARKET_DRIVER_CATALOG.forEach(d=>{ const key=d.src.table==='macro'?('MACRO_'+d.src.code):d.src.code;
+      if(mp[key]!=null) marketValues[d.key]=mp[key]; });
+  }catch(e){console.warn('drivers live',e)}
+  return {comps,config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,priceByKey,marketValues,isAdmin};
+}
+
+// ── comps derivation (§7.2/7.3) ───────────────────────────────────────────
+function mapComp(c){return{ticker:c.ticker,company_name:c.company_name,is_visible:c.is_visible,display_order:c.display_order,
+  sector:c.sector,volume_unit:c.volume_unit,yahoo_symbol:c.yahoo_symbol,shares_outstanding:n(c.shares_outstanding),
+  last_update:c.last_update,target_price:n(c.target_price),recommendation:c.recommendation,
+  net_debt_y1:n(c.net_debt_y1),net_debt_y2:n(c.net_debt_y2),ebitda_y1:n(c.ebitda_y1),ebitda_y2:n(c.ebitda_y2),
+  net_income_y1:n(c.net_income_y1),net_income_y2:n(c.net_income_y2),net_income_ex_y1:n(c.net_income_ex_y1),net_income_ex_y2:n(c.net_income_ex_y2),
+  npv_tax_credit_y1:n(c.npv_tax_credit_y1),npv_tax_credit_y2:n(c.npv_tax_credit_y2),
+  fcfe_y1:n(c.fcfe_y1),fcfe_y2:n(c.fcfe_y2),dividends_y1:n(c.dividends_y1),dividends_y2:n(c.dividends_y2),
+  volumes_y1:n(c.volumes_y1),volumes_y2:n(c.volumes_y2),model_url:c.model_url}}
+function deriveMultiples(r,bY1,bY2){
+  const ev1=bY1!=null&&r.net_debt_y1!=null?bY1+r.net_debt_y1:null, ev2=bY2!=null&&r.net_debt_y2!=null?bY2+r.net_debt_y2:null;
+  return{evEbitdaY1:ev1!=null&&r.ebitda_y1>0?ev1/r.ebitda_y1:null, evEbitdaY2:ev2!=null&&r.ebitda_y2>0?ev2/r.ebitda_y2:null,
+    peY1:bY1!=null&&r.net_income_y1>0?bY1/r.net_income_y1:null, peY2:bY2!=null&&r.net_income_y2>0?bY2/r.net_income_y2:null,
+    fcfeYieldY1:r.fcfe_y1!=null&&bY1>0?r.fcfe_y1/bY1*100:null, fcfeYieldY2:r.fcfe_y2!=null&&bY2>0?r.fcfe_y2/bY2*100:null,
+    divYieldY1:r.dividends_y1!=null&&bY1>0?r.dividends_y1/bY1*100:null, divYieldY2:r.dividends_y2!=null&&bY2>0?r.dividends_y2/bY2*100:null}}
+function deriveComps(comps,priceByKey){
+  const rows=[];
+  comps.map(mapComp).forEach(r=>{
+    const live=r.yahoo_symbol?priceByKey[r.yahoo_symbol]:null;
+    const mcap=r.shares_outstanding!=null&&live!=null?r.shares_outstanding*live/1e6:null;
+    const upside=r.target_price!=null&&live!=null&&live>0?r.target_price/live-1:null;
+    const m=deriveMultiples(r,mcap,mcap);
+    rows.push(Object.assign({},r,{displayName:r.company_name,livePrice:live,marketCapBrlMn:mcap,upsidePct:upside},m));
+    const npv1=r.npv_tax_credit_y1||0, npv2=r.npv_tax_credit_y2||0;
+    if((npv1>0||npv2>0)&&mcap!=null){
+      const bY1=mcap-npv1,bY2=mcap-npv2;
+      const exR=Object.assign({},r,{net_income_y1:r.net_income_ex_y1!=null?r.net_income_ex_y1:r.net_income_y1,
+        net_income_y2:r.net_income_ex_y2!=null?r.net_income_ex_y2:r.net_income_y2});
+      const mEx=deriveMultiples(exR,bY1,bY2);
+      rows.push(Object.assign({},exR,{isExTaxCredit:true,displayName:r.company_name+' adj. tax credit',
+        livePrice:live,marketCapBrlMn:bY1,upsidePct:upside},mEx));
+    }
+  });
+  return rows;
+}
+
+// ── render: comps ─────────────────────────────────────────────────────────
+function sgRenderComps(comps,config,priceByKey,isAdmin){
+  const y1=config.y1_label||'26E', y2=config.y2_label||'27E';
+  const rows=deriveComps(comps,priceByKey);
+  const visibleForClient=r=>r.is_visible||isAdmin;
+  const head=`<thead>
+    <tr><th class="l" rowspan="2">Ticker</th><th class="l" rowspan="2">Empresa</th><th rowspan="2">Rec</th>
+      <th rowspan="2">TP</th><th rowspan="2">Preço</th><th rowspan="2">Upside</th><th rowspan="2">Mkt cap<br><span class="muted">BRL mn</span></th>
+      <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">P/E</th><th class="grp-th" colspan="2">FCFE yield</th>
+      <th class="grp-th" colspan="2">Div yield</th><th class="grp-th" colspan="2">EBITDA</th><th class="grp-th" colspan="2">Net income</th>
+      <th class="grp-th" colspan="2">Volumes</th><th rowspan="2">Atual.</th><th rowspan="2">Modelo</th></tr>
+    <tr>${[ '','','','','','','' ].join('')}${['EV/EBITDA','P/E','FCFE','Div','EBITDA','NI','Vol'].map(()=>`<th class="grp-th">${y1}</th><th>${y2}</th>`).join('')}</tr></thead>`;
+  let body='';
+  const restricted=[];
+  rows.forEach(r=>{
+    if(!visibleForClient(r)){ restricted.push(r.company_name); return; }
+    const ex=r.isExTaxCredit, off=(!r.is_visible&&isAdmin);
+    const cls=(ex?'ex':'')+(off?' offrow':'');
+    const rec=r.recommendation?`<span class="rec ${esc(r.recommendation)}">${esc(r.recommendation)}</span>`:'';
+    const single=(html)=>ex?'<td></td>':html;  // ex-row blanqueia os single cols
+    const pair=(a,b,f)=>`<td class="num">${f(a)}</td><td class="num">${f(b)}</td>`;
+    body+=`<tr class="${cls}">
+      <td class="l">${single(esc(r.ticker))}${off?'<span class="offtag">OFF · só admin</span>':''}</td>
+      <td class="l">${esc(r.displayName)}</td>
+      <td>${single(rec)}</td>
+      <td class="num">${single(fmt(r.target_price,2))}</td>
+      <td class="num">${single(fmt(r.livePrice,2))}</td>
+      <td class="num ${ex?'':signCls(r.upsidePct)}">${single(r.upsidePct==null?'—':fmtPct(r.upsidePct*100,1))}</td>
+      <td class="num">${single(fmt(r.marketCapBrlMn,0))}</td>
+      ${pair(r.evEbitdaY1,r.evEbitdaY2,v=>fmtX(v,1))}
+      ${pair(r.peY1,r.peY2,v=>fmtX(v,1))}
+      ${pair(r.fcfeYieldY1,r.fcfeYieldY2,v=>fmtPct(v,1))}
+      ${pair(r.divYieldY1,r.divYieldY2,v=>fmtPct(v,1))}
+      ${pair(r.ebitda_y1,r.ebitda_y2,v=>fmt(v,0))}
+      ${pair(r.net_income_y1,r.net_income_y2,v=>fmt(v,0))}
+      ${pair(r.volumes_y1,r.volumes_y2,v=>fmt(v,1))}
+      <td>${single(esc(r.last_update||''))}</td>
+      <td>${single(r.model_url?`<a href="${esc(r.model_url)}" target="_blank" rel="noopener">link</a>`:'')}</td></tr>`;
+  });
+  document.getElementById('comps-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">Sem empresas.</td></tr>')+'</tbody>';
+  const foot=document.getElementById('comps-foot');
+  let f=config.comps_footnote||'EV/EBITDA, P/E, FCFE yield e Div yield são derivados ao vivo do preço — não armazenados. Anos: '+y1+' / '+y2+'.';
+  if(restricted.length) f+=' · Em cobertura restrita: '+restricted.map(esc).join(', ')+'.';
+  foot.textContent=f;
+  return {rowsRendered:rows.length,restricted:restricted.length, computed:rows};
+}
+
+// ── render: global peers ────────────────────────────────────────────────────
+function sgRenderPeers(peers,computedComps){
+  const liveSrc=(computedComps||[]).find(r=>!r.isExTaxCredit&&r.ticker==='VALE3')||null;
+  const head=`<thead><tr><th class="l">Empresa</th><th>P/E ${''}26E</th><th>P/E 27E</th><th>EV/EBITDA 26E</th><th>EV/EBITDA 27E</th><th>Div yld 26E</th><th>Div yld 27E</th></tr></thead>`;
+  let body='';
+  (peers||[]).forEach(p=>{
+    let pe1=n(p.pe_y1),pe2=n(p.pe_y2),ev1=n(p.ev_ebitda_y1),ev2=n(p.ev_ebitda_y2),dy1=n(p.div_yield_y1),dy2=n(p.div_yield_y2);
+    if(p.is_live&&liveSrc){ pe1=liveSrc.peY1;pe2=liveSrc.peY2;ev1=liveSrc.evEbitdaY1;ev2=liveSrc.evEbitdaY2;
+      dy1=liveSrc.divYieldY1!=null?liveSrc.divYieldY1/100:null;dy2=liveSrc.divYieldY2!=null?liveSrc.divYieldY2/100:null; }
+    body+=`<tr${p.is_aggregate?' style="font-weight:600;background:#FAFAF8"':''}>
+      <td class="l">${esc(p.company)}</td><td class="num">${fmtX(pe1,1)}</td><td class="num">${fmtX(pe2,1)}</td>
+      <td class="num">${fmtX(ev1,1)}</td><td class="num">${fmtX(ev2,1)}</td>
+      <td class="num">${dy1==null?'—':fmtPct(dy1*100,1)}</td><td class="num">${dy2==null?'—':fmtPct(dy2*100,1)}</td></tr>`;
+  });
+  document.getElementById('peers-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">Sem peers.</td></tr>')+'</tbody>';
+}
+
+// ── render: sensitivity (estático + grid interpolado) ──────────────────────
+const _gridMeshCache={};   // tableId -> {ticker -> {metric -> GridMesh}}
+const _gridState={};       // tableId -> {axisVals:[], loading, error}
+let _SENS_CTX=null;        // {drivers, marketValues, comps(computed), config}
+
+function driverById(id){return (_SENS_CTX.drivers||[]).find(d=>String(d.id)===String(id))||null}
+function compByTicker(t){return (_SENS_CTX.comps||[]).find(r=>!r.isExTaxCredit&&r.ticker===t)||null}
+
+function sgRenderSensitivity(tables,drivers,marketValues,computedComps,config){
+  _SENS_CTX={drivers:drivers||[],marketValues:marketValues||{},comps:computedComps||[],config:config||{}};
+  const host=document.getElementById('sens-host'); host.innerHTML='';
+  if(!tables||!tables.length){host.innerHTML='<div class="card"><span class="muted">Nenhuma tabela de sensibilidade configurada.</span></div>';return}
+  // agrupa por painel (definition.panel); cada painel é um card
+  const panels={}; const order=[];
+  tables.forEach(t=>{const p=(t.definition&&t.definition.panel)||'_';if(!panels[p]){panels[p]=[];order.push(p)}panels[p].push(t)});
+  const grid=document.createElement('div'); grid.className='panels'; host.appendChild(grid);
+  order.forEach(pk=>{
+    const card=document.createElement('div'); card.className='card';
+    const label=pk==='_'?'Tabelas':(pk.charAt(0).toUpperCase()+pk.slice(1));
+    card.innerHTML=`<h3>${esc(label)}</h3><div class="csub">${panels[pk].length} tabela(s)</div>`;
+    panels[pk].forEach(t=>{
+      const band=document.createElement('div'); band.className='band';
+      const lbl=(t.definition&&t.definition.row_label)||t.title;
+      band.innerHTML=`<div class="band-lbl">${esc(lbl)}</div>`;
+      const slot=document.createElement('div'); slot.id='sens-slot-'+t.id; band.appendChild(slot);
+      card.appendChild(band);
+      if(t.definition&&t.definition.grid){ _setupGrid(t,slot); }
+      else { slot.innerHTML=renderStaticTable(t); }
+    });
+    grid.appendChild(card);
+  });
+}
+
+function renderStaticTable(t){
+  const def=t.definition||{}; const cells=def.cells||[];
+  const rowAx=def.row_axis||{}, colAx=def.col_axis||{};
+  const colLabels=axisLabels(colAx), rowLabels=axisLabels(rowAx);
+  const dec=def.decimal_places;
+  let h='<div class="tbl-scroll"><table class="data"><thead><tr><th class="l"></th>'+colLabels.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr></thead><tbody>';
+  rowLabels.forEach((rl,ri)=>{
+    h+=`<tr><td class="l">${esc(rl)}</td>`;
+    colLabels.forEach((cl,ci)=>{
+      const prim=n((cells[ri]||[])[ci]);
+      // empresa do eixo (se houver) p/ derivar mcap/price
+      const comp=colAx.kind==='company'?compByTicker((colAx.companies||[])[ci]):(rowAx.kind==='company'?compByTicker((rowAx.companies||[])[ri]):null);
+      const sec=def.cells_secondary?n((def.cells_secondary[ri]||[])[ci]):null;
+      const val=SG.computeSensitivityCellValue({valueMode:t.value_mode,primary:prim,secondary:sec,marketCapBrlMn:comp?comp.marketCapBrlMn:null,livePrice:comp?comp.livePrice:null});
+      h+=`<td class="num">${SG.formatSensitivityValue(val,t.value_mode,t.unit,dec)}</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  if(def.footnote)h+=`<div class="foot">${esc(def.footnote)}</div>`;
+  return h;
+}
+function axisLabels(ax){
+  if(!ax)return[];
+  if(ax.kind==='company')return (ax.companies||[]).slice();
+  if(ax.kind==='year')return (ax.years||[]).map(y=>y==='y1'?(_SENS_CTX.config.y1_label||'26E'):(y==='y2'?(_SENS_CTX.config.y2_label||'27E'):y));
+  if(ax.kind==='driver')return (ax.scenarios||[]).map(s=>String(s));
+  return [];
+}
+
+// grid: lazy fetch + steppers + interpolação
+function _setupGrid(t,slot){
+  const axes=(t.definition.grid.axes)||[];
+  const st={axisVals:axes.map(ax=>_anchorFor(ax)),loading:false,error:false,loaded:false};
+  _gridState[t.id]=st;
+  slot.innerHTML='<div class="muted" style="font-size:11px">Role até aqui para carregar a malha…</div>';
+  const io=new IntersectionObserver((ents)=>{ents.forEach(e=>{if(e.isIntersecting){io.disconnect();ensureGridLoaded(t,slot);}})},{rootMargin:'200px'});
+  io.observe(slot);
+}
+function _anchorFor(ax){
+  const d=ax.driver_id?driverById(ax.driver_id):null;
+  if(d&&d.current_value!=null)return n(d.current_value);
+  if(ax.tmin!=null&&ax.tmax!=null)return (n(ax.tmin)+n(ax.tmax))/2;
+  return 0;
+}
+async function ensureGridLoaded(t,slot){
+  const st=_gridState[t.id]; if(st.loaded||st.loading)return; st.loading=true;
+  slot.innerHTML='<div class="muted" style="font-size:11px">Carregando malha…</div>';
+  try{
+    const dim=((t.definition.grid.axes)||[]).length||1;
+    const pts=await fetchMesh(t.id);
+    // agrupa por ticker -> metric -> points
+    const byTM={};
+    pts.forEach(p=>{const tk=p.ticker,mt=p.metric;(byTM[tk]=byTM[tk]||{});(byTM[tk][mt]=byTM[tk][mt]||[]).push({coords:[n(p.x_value),n(p.y_value),n(p.z_value)].slice(0,dim),value:n(p.primary_value)})});
+    const meshes={};
+    Object.keys(byTM).forEach(tk=>{meshes[tk]={};Object.keys(byTM[tk]).forEach(mt=>{meshes[tk][mt]=SG.buildGridMesh(byTM[tk][mt],dim)})});
+    _gridMeshCache[t.id]=meshes; st.loaded=true; st.loading=false;
+    renderGridUI(t,slot);
+  }catch(e){st.loading=false;st.error=true;console.warn('mesh',e);
+    slot.innerHTML=`<div class="foot">Falha ao carregar a malha. <button class="hbtn" onclick="(function(){_gridState[${t.id}].error=false;ensureGridLoaded(window.__T_${t.id},document.getElementById('sens-slot-${t.id}'))})()">Tentar de novo</button></div>`;
+    window['__T_'+t.id]=t;
+  }
+}
+async function fetchMesh(sensId){
+  const PAGE=40000; let out=[]; let after=null; let guard=0;
+  while(guard++<1000){
+    const args=after?{p_sensitivity_id:sensId,p_limit:PAGE,p_after_ticker:after.ticker,p_after_metric:after.metric,p_after_x:after.x,p_after_y:after.y,p_after_z:after.z}
+                    :{p_sensitivity_id:sensId,p_limit:PAGE};
+    const page=await rpc('get_stock_guide_scenario_grid',args);
+    if(!page||!page.length)break;
+    out=out.concat(page);
+    if(page.length<PAGE)break;
+    const last=page[page.length-1];
+    after={ticker:last.ticker,metric:last.metric,x:last.x_value,y:last.y_value,z:last.z_value};
+  }
+  return out;
+}
+function renderGridUI(t,slot){
+  const axes=(t.definition.grid.axes)||[]; const st=_gridState[t.id];
+  let h='<div class="steppers">';
+  axes.forEach((ax,i)=>{
+    const d=ax.driver_id?driverById(ax.driver_id):null;
+    const live=d?SG.resolveDriverValue(d,_SENS_CTX.marketValues):null;
+    const base=d&&d.current_value!=null?n(d.current_value):null;
+    h+=`<div class="stepper"><label>${esc(ax.label||(d?d.name:'eixo '+(i+1)))}${ax.unit?(' ('+esc(ax.unit)+')'):''}</label>
+      <div class="ctl"><button onclick="_stepAxis(${t.id},${i},-1)">−</button>
+      <input id="ax-${t.id}-${i}" type="number" step="${ax.tstep||1}" value="${st.axisVals[i]}" onchange="_setAxis(${t.id},${i},this.value)"/>
+      <button onclick="_stepAxis(${t.id},${i},1)">+</button></div>
+      <div class="snap">${base!=null?`<span class="base" onclick="_setAxis(${t.id},${i},${base})">Base ${fmt(base,0)}</span>`:''}${live!=null?`<span class="live" onclick="_setAxis(${t.id},${i},${live})">Live ${fmt(live,0)}</span>`:''}</div></div>`;
+  });
+  h+='</div><div id="grid-body-'+t.id+'"></div>';
+  slot.innerHTML=h;
+  renderGridBody(t);
+}
+function _axStep(t){return ((t.definition.grid.axes[0]||{}).tstep)||1}
+function _stepAxis(id,i,dir){const t=window['__T_'+id]||_findTable(id);const ax=t.definition.grid.axes[i];const step=n(ax.tstep)||1;const st=_gridState[id];st.axisVals[i]=Math.round((st.axisVals[i]+dir*step)*1e6)/1e6;document.getElementById('ax-'+id+'-'+i).value=st.axisVals[i];renderGridBody(t)}
+function _setAxis(id,i,v){const t=window['__T_'+id]||_findTable(id);const st=_gridState[id];const num=n(v);if(num==null)return;st.axisVals[i]=num;document.getElementById('ax-'+id+'-'+i).value=num;renderGridBody(t)}
+let _ALL_TABLES=[];
+function _findTable(id){return _ALL_TABLES.find(t=>String(t.id)===String(id))}
+function renderGridBody(t){
+  const meshes=_gridMeshCache[t.id]||{}; const st=_gridState[t.id]; const at=st.axisVals;
+  const outs=(t.definition.grid.outputs)||[];
+  const companies=((t.definition.row_axis||{}).companies)||Object.keys(meshes);
+  let h='<div class="tbl-scroll"><table class="data"><thead><tr><th class="l">Empresa</th>';
+  outs.forEach(o=>{h+=`<th>${esc(o.label||o.key)}</th>`; if(o.mode==='upside')h+=`<th>Upside</th>`;});
+  h+='</tr></thead><tbody>';
+  companies.forEach(tk=>{
+    const comp=compByTicker(tk); const tm=meshes[tk]||{};
+    h+=`<tr><td class="l">${esc(tk)}</td>`;
+    outs.forEach(o=>{
+      const storeKey=o.metric||SG.storageKeyForColumnKey(o.key);
+      const raw=tm[storeKey]?SG.interpolateMesh(tm[storeKey],at):null;
+      let sec=null; if(o.mode==='ev_ebitda'){const sk=SG.secondaryStorageKeyForColumnKey(o.key);sec=sk&&tm[sk]?SG.interpolateMesh(tm[sk],at):null}
+      const val=SG.computeSensitivityCellValue({valueMode:o.mode,primary:raw,secondary:sec,marketCapBrlMn:comp?comp.marketCapBrlMn:null,livePrice:comp?comp.livePrice:null});
+      if(o.mode==='upside'){ h+=`<td class="num">${fmt(raw,2)}</td><td class="num ${signCls(val)}">${val==null?'—':fmtPct(val,1)}</td>`; }
+      else { h+=`<td class="num">${SG.formatSensitivityValue(val,o.mode,o.unit,t.definition.decimal_places)}</td>`; }
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('grid-body-'+t.id).innerHTML=h;
+}
+
+// ── boot ────────────────────────────────────────────────────────────────────
+async function sgInit(data){
+  document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+  if(data.isAdmin)document.getElementById('admin-badge').hidden=false;
+  _ALL_TABLES=data.tables||[];
+  data.tables.forEach(t=>{window['__T_'+t.id]=t});
+  const res=sgRenderComps(data.comps,data.config,data.priceByKey,data.isAdmin);
+  sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config);
+  sgRenderPeers(await rpc('get_stock_guide_global_peers').catch(()=>[]),res.computed);
+}
+;(async()=>{
+  if(window.__SG_TEST__){ return; }  // harness injeta dados e chama sgInit manualmente
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _session=session; _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // gate por flag stock_guide (admin SEMPRE vê; flag AUSENTE = fechado p/ cliente — rollout seguro)
+    let flagOn=false, isAdmin=false;
+    try{ const role=await rpc('get_my_role'); isAdmin=(role==='admin');
+      const flags=await rpc('get_dashboard_flags'); const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
+    }catch(e){}
+    if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
+    const data=await sgLoadData();
+    await sgInit(data);
+  }catch(e){ console.error(e); document.getElementById('gate').innerHTML='<div style="text-align:center"><div style="font-size:30px">⚠️</div><div>Erro ao carregar.</div><div class="muted" style="max-width:400px">'+esc(e.message||e)+'</div></div>'; }
+})();
+</script>
+</body>
+</html>
