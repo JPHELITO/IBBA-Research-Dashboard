@@ -149,6 +149,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
     <aside class="side">
       <button class="active" data-tab="overview" onclick="showTab('overview')">📊 Visão geral</button>
       <button data-tab="status" onclick="showTab('status')">📅 Status das bases</button>
+      <button data-tab="github" onclick="showTab('github')">🔧 GitHub</button>
       <button data-tab="flags" onclick="showTab('flags')">🎛️ Funcionalidades</button>
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
@@ -340,6 +341,19 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
         <div class="row" style="margin-top:10px"><button class="btn sec" onclick="loadStatus()">🔄 Recarregar</button></div>
       </div>
     </section>
+
+    <!-- ── GitHub — execuções (Actions) ao vivo ──────────────────────────── -->
+    <section id="tab-github" hidden>
+      <div class="card">
+        <h2>GitHub — execuções (Actions)</h2>
+        <p class="sub">Runs recentes dos robôs (dashboard + news-hunter), ao vivo. Precisa do token configurado (Atualizar dados → Configuração) e da função <code>github-runs</code> publicada.</p>
+        <div id="gh-runs" class="status">Carregando…</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sec" onclick="loadGithubRuns()">🔄 Recarregar</button>
+          <a class="btn sec" href="https://github.com/JPHELITO/IBBA-Research-Dashboard/actions" target="_blank" rel="noopener" style="text-decoration:none">↗ Abrir no GitHub</a>
+        </div>
+      </div>
+    </section>
     </main>
   </div>
 </div>
@@ -461,12 +475,13 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','status','db','flags','team','comm','upload','heatmap','users']
+const TABS=['overview','status','github','db','flags','team','comm','upload','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='overview') loadOverview()
   if(name==='status') loadStatus()
+  if(name==='github') loadGithubRuns()
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
@@ -726,6 +741,32 @@ async function loadStatus(){
     host.innerHTML=html+'</tbody></table></div>'
     for(const k in dbs) dbs[k].close()
   }catch(e){ host.textContent='Erro ao ler bases: '+(e.message||e) }
+}
+
+// ── GitHub — execuções (Actions) ao vivo, via Edge Function github-runs ──
+async function loadGithubRuns(){
+  const host=document.getElementById('gh-runs'); host.innerHTML='<span class="muted">Consultando o GitHub…</span>'
+  try{
+    const { data, error } = await sbAuth.functions.invoke('github-runs')
+    if(error) throw error
+    if(data && data.error){
+      if(data.error==='no_token'){ host.innerHTML='<span class="muted">Token do GitHub não configurado — vá em <b>Atualizar dados → Configuração do robô</b>.</span>'; return }
+      if(data.error==='forbidden'){ host.innerHTML='<span class="muted">Acesso negado (só admin).</span>'; return }
+      throw new Error(data.error)
+    }
+    const runs=(data&&data.runs)||[]
+    if(!runs.length){ host.innerHTML='<span class="muted">Nenhuma execução recente.</span>'; return }
+    const ico=r=> r.status!=='completed' ? '⏳' : (r.conclusion==='success'?'✅':(r.conclusion==='failure'?'❌':(r.conclusion==='cancelled'?'⚪':'⚠️')))
+    let html='<div class="tbl-wrap"><table class="data"><thead><tr><th></th><th>Repo</th><th>Workflow</th><th>Quando</th><th>Evento</th><th></th></tr></thead><tbody>'
+    for(const r of runs){
+      const when=String(r.created_at).replace('T',' ').slice(0,16)
+      html+=`<tr><td style="font-size:15px">${ico(r)}</td><td class="muted">${esc(r.repo)}</td><td><b>${esc(r.name||'—')}</b></td><td>${esc(when)}</td><td class="muted">${esc(r.event||'')}</td><td><a href="${esc(r.url)}" target="_blank" rel="noopener">ver ↗</a></td></tr>`
+    }
+    host.innerHTML=html+'</tbody></table></div>'
+  }catch(e){
+    const m=(e&&e.message)||String(e)
+    host.innerHTML='<span class="muted">Não consegui consultar — a função <code>github-runs</code> está publicada no Supabase? Detalhe: '+esc(m)+'<br>Enquanto isso, use o <b>↗ Abrir no GitHub</b> abaixo.</span>'
+  }
 }
 </script>
 </body>
