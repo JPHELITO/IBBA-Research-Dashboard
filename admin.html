@@ -1001,6 +1001,152 @@ async function sgPeerSaveAll(){
   const {error}=await sbAuth.rpc('admin_replace_stock_guide_global_peers',{p_rows:rows});
   if(error){alert('Erro: '+error.message);return} alert('Peers salvos ('+rows.length+').'); loadSGPeers();
 }
+
+// ════════════ STOCK GUIDE — Sensibilidades + Excel do mesh (P5b) ════════════
+let _sgSens=[], _sgBuilder=null;
+const SG_GRID_BASES=[['target_price','Target price → upside'],['fcfe','FCFE → yield'],['dividends','Dividends → yield'],['net_income','Net income → P/E'],['net_income_abs','Net income (absoluto)'],['ebitda','EBITDA (absoluto)'],['ev_ebitda','EV/EBITDA']];
+
+async function loadSGSens(){
+  const host=_v('sg-sens-host'); host.textContent='Carregando…';
+  if(!_sgDrivers.length){ const r=await sbAuth.rpc('get_stock_guide_drivers'); _sgDrivers=r.data||[]; }
+  const {data,error}=await sbAuth.rpc('admin_get_stock_guide_sensitivity_tables');
+  if(error){host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_stock_guide.sql?)';return}
+  _sgSens=data||[]; renderSensList();
+}
+function renderSensList(){
+  const host=_v('sg-sens-host');
+  let h='<div class="row" style="margin-bottom:10px"><button class="btn" onclick="sgSensNewGrid()">+ Novo grid (interpolado)</button><button class="btn sec" onclick="sgSensNewStatic()">+ Matriz estática (JSON)</button></div>';
+  if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade.</span>';
+  _sgSens.forEach(t=>{ const isGrid=!!(t.definition&&t.definition.grid);
+    h+=`<div class="team-row"><span><b>${esc(t.title)}</b> <span class="muted">[${isGrid?'grid':'estática'} · ${esc(t.value_mode)}]</span> <span class="muted" id="sgcnt-${t.id}"></span></span>
+      <span class="acts">${isGrid?`<button class="chip" onclick="sgTemplate(${t.id})">⬇ Template</button><label class="chip" style="cursor:pointer">⬆ Mesh<input type="file" accept=".xlsx" style="display:none" onchange="sgUploadMesh(${t.id},this.files[0])"></label>`:''}<button class="chip" onclick="sgSensEdit(${t.id})">Editar</button><button class="chip" onclick="sgSensDelete(${t.id})">Excluir</button></span></div>`; });
+  h+='<div id="sg-builder"></div><div id="sg-upload-status" class="foot" style="margin-top:8px"></div>';
+  host.innerHTML=h;
+  _sgSens.forEach(t=>{ if(t.definition&&t.definition.grid) sgMeshCount(t.id); });
+}
+async function sgMeshCount(id){ const {data}=await sbAuth.rpc('admin_count_stock_guide_scenario_grid',{p_sensitivity_id:id});
+  const el=_v('sgcnt-'+id); if(el&&data&&data[0]) el.textContent='· '+(data[0].total||0)+' pts'; }
+
+// ── builder de GRID ──
+function sgSensNewGrid(){ _sgBuilder={mode:'grid',id:null,title:'',companies:'',panel:'',axes:[{driver_id:'',label:'',unit:'',tmin:'',tmax:'',tstep:''}],outputs:[{base:'target_price',year:'',label:''}]}; renderBuilder(); }
+function _parseOut(o){ const key=o.key||o.metric||'target_price';
+  for(const b of ['target_price','net_income_abs','net_income','ev_ebitda','ebitda','fcfe','dividends']){ if(key===b)return{base:b,year:''}; if(key.indexOf(b+'_')===0)return{base:b,year:key.slice(b.length+1)}; }
+  return {base:'target_price',year:''}; }
+function sgSensEdit(id){ const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t)return;
+  if(t.definition&&t.definition.grid){ _sgBuilder={mode:'grid',id:t.id,title:t.title,companies:(t.companies||[]).join(', '),panel:t.definition.panel||'',
+    axes:(t.definition.grid.axes||[]).map(a=>({driver_id:a.driver_id||'',label:a.label||'',unit:a.unit||'',tmin:a.tmin,tmax:a.tmax,tstep:a.tstep})),
+    outputs:(t.definition.grid.outputs||[]).map(o=>{const p=_parseOut(o);return{base:p.base,year:p.year,label:o.label||''}})}; renderBuilder(); }
+  else { sgSensNewStatic(t); } }
+function renderBuilder(){ const b=_sgBuilder, host=_v('sg-builder'); if(!b){host.innerHTML='';return}
+  host.innerHTML=`<div class="card"><h2>${b.id?'Editar':'Novo'} grid interpolado</h2>
+    <div class="field"><input class="in" id="sgb-title" placeholder="Título" value="${esc(b.title)}" oninput="_sgBuilder.title=this.value">
+    <input class="in" id="sgb-companies" placeholder="Tickers (vírgula, ex.: VALE3, GGBR4)" value="${esc(b.companies)}" oninput="_sgBuilder.companies=this.value">
+    <input class="in" id="sgb-panel" placeholder="Painel (ex.: commodity / margin) — opcional" value="${esc(b.panel)}" oninput="_sgBuilder.panel=this.value"></div>
+    <h3 style="margin-top:10px">Eixos (1–3)</h3><div id="sgb-axes"></div><button class="btn sec" onclick="sgbAddAxis()">+ Eixo</button>
+    <h3 style="margin-top:10px">Outputs (colunas)</h3><div id="sgb-outs"></div><button class="btn sec" onclick="sgbAddOut()">+ Output</button>
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="sgbSaveGrid()">Salvar grid</button><button class="btn sec" onclick="sgbCancel()">Cancelar</button></div>
+    <p class="foot">Após salvar: baixe o template, preencha no seu modelo e suba o mesh.</p></div>`;
+  renderAxes(); renderOuts(); }
+function renderAxes(){ const b=_sgBuilder; const drvOpts=id=>_sgDrivers.map(d=>`<option value="${d.id}" ${String(d.id)===String(id)?'selected':''}>${esc(d.name)}</option>`).join('');
+  _v('sgb-axes').innerHTML=b.axes.map((a,i)=>`<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .8fr .8fr .8fr auto;gap:5px;margin-bottom:5px;align-items:center">
+    <select class="in" onchange="_sgBuilder.axes[${i}].driver_id=this.value"><option value="">— driver —</option>${drvOpts(a.driver_id)}</select>
+    <input class="in" placeholder="rótulo" value="${esc(a.label)}" oninput="_sgBuilder.axes[${i}].label=this.value">
+    <input class="in" placeholder="unidade" value="${esc(a.unit)}" oninput="_sgBuilder.axes[${i}].unit=this.value">
+    <input class="in" type="number" placeholder="min" value="${a.tmin}" oninput="_sgBuilder.axes[${i}].tmin=this.value">
+    <input class="in" type="number" placeholder="max" value="${a.tmax}" oninput="_sgBuilder.axes[${i}].tmax=this.value">
+    <input class="in" type="number" placeholder="passo" value="${a.tstep}" oninput="_sgBuilder.axes[${i}].tstep=this.value">
+    <button class="chip" onclick="_sgBuilder.axes.splice(${i},1);renderAxes()">✕</button></div>`).join(''); }
+function renderOuts(){ const b=_sgBuilder; const baseOpts=base=>SG_GRID_BASES.map(x=>`<option value="${x[0]}" ${x[0]===base?'selected':''}>${esc(x[1])}</option>`).join('');
+  _v('sgb-outs').innerHTML=b.outputs.map((o,i)=>`<div style="display:grid;grid-template-columns:2fr 1fr 1.5fr auto;gap:5px;margin-bottom:5px;align-items:center">
+    <select class="in" onchange="_sgBuilder.outputs[${i}].base=this.value">${baseOpts(o.base)}</select>
+    <input class="in" placeholder="ano (ex.: 2026 / vazio)" value="${esc(o.year)}" oninput="_sgBuilder.outputs[${i}].year=this.value">
+    <input class="in" placeholder="rótulo da coluna" value="${esc(o.label)}" oninput="_sgBuilder.outputs[${i}].label=this.value">
+    <button class="chip" onclick="_sgBuilder.outputs.splice(${i},1);renderOuts()">✕</button></div>`).join(''); }
+function sgbAddAxis(){ if(_sgBuilder.axes.length>=3){alert('Máximo 3 eixos.');return} _sgBuilder.axes.push({driver_id:'',label:'',unit:'',tmin:'',tmax:'',tstep:''}); renderAxes(); }
+function sgbAddOut(){ _sgBuilder.outputs.push({base:'target_price',year:'',label:''}); renderOuts(); }
+function sgbCancel(){ _sgBuilder=null; _v('sg-builder').innerHTML=''; }
+function sgbBuildDef(){ const b=_sgBuilder; const companies=b.companies.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!b.title.trim()) throw 'Título obrigatório.'; if(!companies.length) throw 'Informe ≥1 ticker.'; if(!b.axes.length) throw 'Informe ≥1 eixo.';
+  const axes=b.axes.map(a=>{ if(!a.driver_id) throw 'Cada eixo precisa de um driver.'; const tmin=Number(a.tmin),tmax=Number(a.tmax),tstep=Number(a.tstep);
+    if(!(tmin<tmax)) throw 'Em cada eixo, min < max.'; if(!(tstep>0)) throw 'passo > 0.';
+    return {driver_id:Number(a.driver_id),label:a.label||'',unit:a.unit||'',tmin:tmin,tmax:tmax,tstep:tstep}; });
+  const seen={}; const outputs=b.outputs.map(o=>{ const year=String(o.year||'').trim();
+    const key=SG.sgGridOutputKey({base:o.base,year:year||null}); if(seen[key]) throw 'Output duplicado: '+key; seen[key]=1;
+    return {key:key,metric:SG.sgGridStorageKey({base:o.base,year:year||null}),mode:(SG.GRID_OUTPUT_CATALOG[o.base]||{}).mode||'upside',label:o.label||key}; });
+  if(!outputs.length) throw 'Informe ≥1 output.';
+  const def={grid:{axes:axes,outputs:outputs},row_axis:{kind:'company',companies:companies},col_axis:{kind:'year',years:['y1']}};
+  if(b.panel.trim()) def.panel=b.panel.trim();
+  return {title:b.title.trim(),value_mode:outputs[0].mode,companies:companies,definition:def}; }
+async function sgbSaveGrid(){ let payload; try{payload=sgbBuildDef()}catch(e){alert(e);return}
+  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:_sgBuilder.id?Number(_sgBuilder.id):null,p_data:payload});
+  if(error){alert('Erro: '+error.message);return} _sgBuilder=null; loadSGSens(); }
+async function sgSensDelete(id){ if(!confirm('Excluir sensibilidade? (remove o mesh também)'))return;
+  const {error}=await sbAuth.rpc('admin_delete_stock_guide_sensitivity_table',{p_id:Number(id)});
+  if(error){alert('Erro: '+error.message);return} loadSGSens(); }
+// ── matriz estática (JSON) ──
+function sgSensNewStatic(t){ const ex=t?t.definition:{panel:'commodity',row_axis:{kind:'driver',driver_id:0,scenarios:[80,100,120]},col_axis:{kind:'company',companies:['VALE3']},cells:[[60],[75],[92]],decimal_places:1};
+  _v('sg-builder').innerHTML=`<div class="card"><h2>${t?'Editar':'Nova'} matriz estática</h2>
+    <div class="field"><input class="in" id="sgs-title" placeholder="Título" value="${t?esc(t.title):''}">
+    <input class="in" id="sgs-mode" placeholder="value_mode (absolute/yield/pe/ev_ebitda/upside)" value="${t?esc(t.value_mode):'absolute'}">
+    <input class="in" id="sgs-companies" placeholder="Tickers (vírgula)" value="${t?esc((t.companies||[]).join(', ')):''}">
+    <textarea class="in" id="sgs-def" rows="10" style="font-family:monospace;font-size:11px">${esc(JSON.stringify(ex,null,2))}</textarea>
+    <div class="row"><button class="btn" onclick="sgsSaveStatic(${t?t.id:'null'})">Salvar</button><button class="btn sec" onclick="sgbCancel()">Cancelar</button></div></div>
+    <p class="foot">cells[linha][coluna]; row_axis/col_axis kind = company|driver|year.</p></div>`; }
+async function sgsSaveStatic(id){ let def; try{def=JSON.parse(_v('sgs-def').value)}catch(e){alert('JSON inválido: '+e);return}
+  const companies=_v('sgs-companies').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const payload={title:_v('sgs-title').value.trim(),value_mode:_v('sgs-mode').value.trim()||'absolute',companies:companies,definition:def};
+  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:id?Number(id):null,p_data:payload});
+  if(error){alert('Erro: '+error.message);return} _v('sg-builder').innerHTML=''; loadSGSens(); }
+
+// ── Excel: template + parse/validar/upload (§8.4) ──
+function _axisLevels(ax){ const min=Number(ax.tmin),max=Number(ax.tmax),st=Number(ax.tstep); const lv=[]; const nsteps=Math.round((max-min)/st);
+  for(let i=0;i<=nsteps;i++) lv.push(Math.round((min+i*st)*1e6)/1e6); return lv; }
+function _cartesian(axes){ let rows=[[]]; axes.forEach(ax=>{ const lv=_axisLevels(ax); const next=[]; rows.forEach(r=>lv.forEach(v=>next.push(r.concat([v])))); rows=next; }); return rows; }
+function _gridSheets(grid){ const seen=new Set(),sheets=[];
+  (grid.outputs||[]).forEach(o=>{ const sk=o.metric||SG.storageKeyForColumnKey(o.key); if(!seen.has(sk)){seen.add(sk);sheets.push(sk)}
+    if(o.mode==='ev_ebitda'){ const s2=SG.secondaryStorageKeyForColumnKey(o.key); if(s2&&!seen.has(s2)){seen.add(s2);sheets.push(s2)} } }); return sheets; }
+function sgTemplate(id){ const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t||!t.definition.grid){alert('Só grids têm template.');return}
+  const grid=t.definition.grid, axes=grid.axes||[], combos=_cartesian(axes);
+  const tickers=(t.definition.row_axis&&t.definition.row_axis.companies)||t.companies||[];
+  const wb=XLSX.utils.book_new();
+  _gridSheets(grid).forEach(sk=>{ const header=axes.map(a=>a.label||'eixo').concat(tickers);
+    const body=combos.map(c=>c.concat(tickers.map(()=>'')));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header].concat(body)),sk.slice(0,31)); });
+  XLSX.writeFile(wb,'mesh_'+(t.title||'grid').replace(/[^a-z0-9]+/gi,'_').slice(0,28)+'.xlsx'); }
+// parse PURO (testável): recebe um workbook XLSX + a grid → {rows, errors, warnings}
+function sgParseMesh(wb,grid){
+  const axes=grid.axes||[], dim=axes.length, sheets=_gridSheets(grid);
+  const expect=_cartesian(axes).map(c=>c.map(v=>Math.round(v*1e6)/1e6).join('|'));
+  const rows=[], errors=[], warnings=[];
+  sheets.forEach(sk=>{ const nm=wb.SheetNames.find(x=>x.toLowerCase()===sk.toLowerCase());
+    if(!nm){ warnings.push('aba ausente: '+sk); return; }
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1}); if(!aoa.length){warnings.push('aba vazia: '+sk);return}
+    const header=aoa[0], tcols=[]; for(let c=dim;c<header.length;c++){ const hh=String(header[c]==null?'':header[c]).trim(); if(hh&&!/^unnamed/i.test(hh)) tcols.push({c:c,ticker:hh}); }
+    const seen={}, present=new Set();
+    for(let r=1;r<aoa.length;r++){ const row=aoa[r]||[]; if(row.every(x=>x===''||x==null))continue;
+      const coords=[]; let bad=false; for(let a=0;a<dim;a++){ const v=Number(row[a]); if(!Number.isFinite(v)){bad=true;break} coords.push(Math.round(v*1e6)/1e6); }
+      if(bad){ if(errors.length<10)errors.push(sk+' linha '+(r+1)+': coordenada não-numérica'); continue; }
+      const ck=coords.join('|'); present.add(ck); if(seen[ck]){errors.push(sk+': combo duplicado '+ck);continue} seen[ck]=1;
+      tcols.forEach(tc=>{ const raw=row[tc.c]; if(raw===''||raw==null)return; const v=Number(raw);
+        if(!Number.isFinite(v)){ if(errors.length<10)errors.push(sk+' '+tc.ticker+' l'+(r+1)+': valor não-numérico'); return; }
+        rows.push({ticker:tc.ticker,metric:sk,x:coords[0],y:dim>=2?coords[1]:0,z:dim>=3?coords[2]:0,v:Math.round(v*1e6)/1e6}); }); }
+    const missing=expect.filter(c=>!present.has(c)).length; if(missing>0)errors.push(sk+': malha incompleta ('+missing+' combos faltando)'); });
+  if(!rows.length)errors.push('0 pontos — recuso gravar vazio.');
+  return {rows:rows,errors:errors,warnings:warnings}; }
+async function sgUploadMesh(id,file){ if(!file)return; const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t)return;
+  const stat=_v('sg-upload-status'); stat.textContent='Lendo arquivo…';
+  try{ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+    const res=sgParseMesh(wb,t.definition.grid);
+    if(res.errors.length){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+res.errors.slice(0,8).map(esc).join(' · '); return; }
+    stat.textContent='Subindo '+res.rows.length+' pontos…';
+    const CH=2000; for(let i=0;i<res.rows.length;i+=CH){ const chunk=res.rows.slice(i,i+CH);
+      const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_grid',{p_sensitivity_id:id,p_rows:chunk,p_first_chunk:i===0});
+      if(error){ stat.innerHTML='<b style="color:#C0392B">Erro no upload:</b> '+esc(error.message)+' (re-subir refaz tudo — idempotente)'; return; } }
+    const {data:cnt}=await sbAuth.rpc('admin_count_stock_guide_scenario_grid',{p_sensitivity_id:id});
+    const total=cnt&&cnt[0]?cnt[0].total:res.rows.length;
+    stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+total+' pontos gravados.'+(res.warnings.length?' Avisos: '+res.warnings.map(esc).join(', '):'');
+    sgMeshCount(id);
+  }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha:</b> '+esc(e.message||e); } }
 </script>
 </body>
 </html>
