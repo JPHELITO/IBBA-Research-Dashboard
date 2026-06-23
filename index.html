@@ -71,6 +71,34 @@ body{height:100vh;overflow:hidden;}
 .brand-team{font-size:8.5px;color:rgba(255,255,255,.28);font-weight:400;
   letter-spacing:.02em;margin-top:2px;}
 .orange-rule{height:2px;background:var(--orange);flex:none;margin-bottom:12px;}
+/* ── TOP NAV (barra interativa) ─────────────────────────────────────────── */
+.topnav{display:flex;align-items:center;gap:1px;margin-left:20px;}
+.tn-item{font-size:11.5px;font-weight:600;letter-spacing:.03em;color:rgba(255,255,255,.72);
+  text-decoration:none;padding:7px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;transition:color .15s,background .15s;font-family:var(--font);}
+.tn-item:hover{color:#fff;background:rgba(255,255,255,.08);}
+.tn-group{position:relative;}
+.tn-menu{position:absolute;top:100%;left:0;min-width:210px;background:#fff;border:1px solid var(--border);
+  border-radius:9px;box-shadow:0 12px 34px rgba(0,0,0,.20);padding:6px;display:none;z-index:200;}
+.tn-group:hover .tn-menu{display:block;}
+.tn-menu a{display:block;font-size:11.5px;color:var(--gray-dark);text-decoration:none;
+  padding:8px 12px;border-radius:6px;font-weight:500;white-space:nowrap;}
+.tn-menu a:hover{background:var(--gray-light);color:var(--orange);}
+.tn-cat{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--gray-mid);padding:5px 12px 3px;}
+.tn-admin{color:#ff7a45!important;border:1px solid rgba(255,80,0,.45);margin-left:4px;}
+/* ── TEAM compacto no header (canto sup. direito) ───────────────────────── */
+.team-head{display:flex;align-items:center;gap:13px;margin-left:auto;}
+.th-person{display:flex;align-items:center;gap:5px;}
+.th-av{width:24px;height:24px;border-radius:50%;object-fit:cover;background:var(--orange);
+  color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.th-name{font-size:10px;color:rgba(255,255,255,.78);font-weight:500;white-space:nowrap;}
+.th-acts{display:flex;gap:3px;}
+.th-btn{width:19px;height:19px;border-radius:5px;border:1px solid rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;}
+.th-btn:hover{color:#fff;border-color:rgba(255,255,255,.45);}
+.th-btn svg{width:11px;height:11px;}
+.th-btn.wa:hover{color:#25D366;border-color:#25D366;}
+@media(max-width:1024px){ .topnav{display:none;} .team-head{gap:8px;} .th-name{display:none;} }
 
 /* ── HERO ────────────────────────────────────────────────────────────── */
 .hero{flex:none;padding:8px 18px 6px;display:flex;align-items:baseline;gap:12px;}
@@ -92,8 +120,8 @@ body{height:100vh;overflow:hidden;}
     "news news news news news news news news heat heat heat heat";
 }
 .area-secrow{grid-area:secrow;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0;}
-.area-team  {grid-area:team;}
-.area-pulse {grid-area:pulse;}
+.area-pulse {grid-area:team;}    /* Market Pulse → slot da direita (4 col) */
+.area-sgcard{grid-area:pulse;}   /* card Stock Guide → slot do meio (3 col) */
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
 .area-comm  {grid-area:comm;}
@@ -422,8 +450,8 @@ img.team-avatar{object-fit:cover;background:none;}
   #stage{width:auto;height:auto;transform:none;display:block;overflow:visible;}  /* mobile: sem escala, layout próprio */
   .page{grid-template-columns:1fr;grid-template-rows:none;overflow:visible;padding:8px 14px 40px;gap:14px;
     grid-template-areas:
-    "secrow" "team" "pulse" "news" "heat" "comm";}
-  .area-secrow{grid-template-columns:1fr 1fr 1fr;}
+    "secrow" "pulse" "team" "news" "heat" "comm";}
+  .area-secrow{grid-template-columns:1fr 1fr;}
   .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
   .heatmap-grid{grid-auto-rows:auto;}
   .team-row{flex:none;padding:8px 16px;}
@@ -463,12 +491,26 @@ img.team-avatar{object-fit:cover;background:none;}
     <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
     <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
   </svg>
-  <div>
-    <div class="brand-name">ITAÚ BBA S&amp;M | P&amp;P</div>
-    <div class="brand-team">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
-  </div>
-  <a id="admin-link" class="logout-btn" href="/admin.html" style="display:none;text-decoration:none">⚙ Admin</a>
-  <button class="logout-btn" onclick="logout()">Sign out</button>
+  <div class="brand-name">ITAÚ BBA M&amp;M | P&amp;P</div>
+  <nav class="topnav">
+    <a class="tn-item" href="/index.html">Home</a>
+    <div class="tn-group"><span class="tn-item">M&amp;M ▾</span>
+      <div class="tn-menu"><div class="tn-cat">Steel &amp; Mining</div>
+        <a href="Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>
+        <a href="Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>
+        <a href="Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>
+        <a href="Steel and Mining/steel_sm_dashboard.html#exports">Exports</a></div></div>
+    <div class="tn-group"><span class="tn-item">P&amp;P ▾</span>
+      <div class="tn-menu"><div class="tn-cat">Pulp &amp; Paper</div>
+        <a href="Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>
+        <a href="Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>
+    <a class="tn-item" href="news.html">News Hunter</a>
+    <a class="tn-item" href="stock-guide.html">Stock Guide</a>
+    <a class="tn-item" href="/index.html">Market</a>
+    <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
+  </nav>
+  <div class="team-head" id="team-head"></div>
+  <button class="logout-btn" onclick="logout()" style="margin-left:14px">Sign out</button>
 </div>
 <div class="orange-rule"></div>
 
@@ -504,27 +546,21 @@ img.team-avatar{object-fit:cover;background:none;}
       </div>
     </a>
 
-    <a class="sector-card live has-bg" href="stock-guide.html">
-      <div class="sector-bg" style="background:linear-gradient(135deg,#3a2c1f 0%,#1a1a1a 70%)"></div>
-      <span class="sector-card-eyebrow">● Live</span>
-      <span class="sector-card-title">Stock Guide</span>
-      <span class="sector-card-desc">Comparáveis &amp; análise de sensibilidade — S&amp;M + P&amp;P</span>
-      <div class="sector-tabs">
-        <span class="sector-tab">Comps</span>
-        <span class="sector-tab">Sensibilidade</span>
-        <span class="sector-tab">Peers</span>
-      </div>
-    </a>
-
   </div>
 
-  <!-- RESEARCH TEAM (top-right) -->
-  <div class="sec area-team">
-    <div class="sec-head">
-      <span class="sec-title">Research Team</span>
+  <!-- STOCK GUIDE — card no slot do meio (grid-area:pulse) -->
+  <a class="sector-card live has-bg area-sgcard" href="stock-guide.html">
+    <div class="sector-bg" style="background:linear-gradient(135deg,#3a2c1f 0%,#1a1a1a 70%)"></div>
+    <span class="sector-card-eyebrow">● Live</span>
+    <span class="sector-card-title">Stock Guide</span>
+    <span class="sector-card-desc">Comparáveis &amp; análise de sensibilidade — M&amp;M + P&amp;P</span>
+    <div class="sector-tabs">
+      <span class="sector-tab">Comps</span>
+      <span class="sector-tab">Sensibilidade</span>
+      <span class="sector-tab">Peers</span>
     </div>
-    <div class="team-list" id="team-list"></div>
-  </div>
+  </a>
+  <!-- Research Team movido p/ a barra superior (header) -->
 
   <!-- MARKET PULSE (full width) -->
   <div class="sec area-pulse">
@@ -674,20 +710,17 @@ const SVG_EMAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const SVG_WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.94 11.94 0 0 0 12.07.13C5.5.13.18 5.46.18 12.03c0 2.12.55 4.18 1.6 6L0 24l6.18-1.62a11.93 11.93 0 0 0 5.89 1.5h.01c6.57 0 11.9-5.33 11.9-11.89 0-3.18-1.24-6.16-3.46-8.51zM12.07 21.78h-.01a9.84 9.84 0 0 1-5.02-1.38l-.36-.21-3.67.96.98-3.57-.24-.37a9.83 9.83 0 0 1-1.51-5.18c0-5.45 4.43-9.88 9.88-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.43 9.74-9.93 9.74zm5.42-7.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>';
 
 function renderTeam(){
-  const el = document.getElementById('team-list');
+  const el = document.getElementById('team-head'); if(!el) return;
   el.innerHTML = _teamData.map(p => `
-    <div class="team-row">
+    <div class="th-person" title="${p.name} — ${p.role}">
       ${p.photo
-        ? `<img class="team-avatar" src="${p.photo}" alt="${p.name}" onerror="this.outerHTML='<div class=&quot;team-avatar&quot;>${p.ini}</div>'">`
-        : `<div class="team-avatar">${p.ini}</div>`}
-      <div class="team-info">
-        <div class="team-name">${p.name}</div>
-        <div class="team-role">${p.role}</div>
-      </div>
-      <div class="team-actions">
-        ${p.email ? `<a class="ti-btn ti-email" href="mailto:${p.email}" title="Email">${SVG_EMAIL}</a>` : ''}
-        ${p.wa ? `<a class="ti-btn ti-wa" href="https://wa.me/${p.wa}" target="_blank" rel="noopener" title="WhatsApp">${SVG_WA}</a>` : ''}
-      </div>
+        ? `<img class="th-av" src="${p.photo}" alt="${p.name}" onerror="this.outerHTML='<div class=&quot;th-av&quot;>${p.ini}</div>'">`
+        : `<div class="th-av">${p.ini}</div>`}
+      <span class="th-name">${(p.name||'').split(' ')[0]}</span>
+      <span class="th-acts">
+        ${p.email ? `<a class="th-btn" href="mailto:${p.email}" title="${p.email}">${SVG_EMAIL}</a>` : ''}
+        ${p.wa ? `<a class="th-btn wa" href="https://wa.me/${p.wa}" target="_blank" rel="noopener" title="WhatsApp ${p.name}">${SVG_WA}</a>` : ''}
+      </span>
     </div>
   `).join('');
 }
@@ -701,7 +734,7 @@ const FLAG_SEL = {
   market_pulse:  '.area-pulse',
   commodities:   '.area-comm',
   news_feed:     '.area-news',
-  research_team: '.area-team',
+  research_team: '.team-head',
   heatmap:       '.area-heat',
   stock_guide:   'a.sector-card[href^="stock-guide"]',
 };
@@ -731,7 +764,8 @@ async function applyDashboardConfig(){
     const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
     if(tm && !tm.error && Array.isArray(tm.data) && tm.data.length){
-      _teamData = tm.data.map(m => ({ ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo, email:m.email||'', wa:m.whatsapp||'' }));
+      _teamData = tm.data.map(m => { const fb = TEAM.find(t => t.name === m.name) || {};
+        return { ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo||fb.photo, email:m.email||fb.email||'', wa:m.whatsapp||fb.wa||'' }; });
       renderTeam();
     }
     if(cg && !cg.error && Array.isArray(cg.data) && cg.data.length){
