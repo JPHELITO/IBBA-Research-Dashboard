@@ -89,7 +89,7 @@ table.data tr:hover td{background:#fafafa}
 .muted{color:var(--gray-mid)}
 code{background:var(--gray-light);padding:1px 5px;border-radius:4px;font-size:12px}
 .field{display:flex;flex-direction:column;gap:10px;max-width:480px}
-input.in{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font:inherit;font-size:13px}
+input.in,select.in{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font:inherit;font-size:13px;background:var(--white)}
 .flag-row{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border)}
 .flag-row:last-child{border-bottom:none}
 .flag-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
@@ -152,6 +152,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
       <button data-tab="heatmap" onclick="showTab('heatmap')">🗺️ Heatmap</button>
+      <button data-tab="users" onclick="showTab('users')">👤 Usuários</button>
       <button data-tab="upload" onclick="showTab('upload')">⬆️ Atualizar dados</button>
       <button data-tab="db" onclick="showTab('db')">🗄️ Bancos de dados</button>
     </aside>
@@ -263,8 +264,14 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
     <section id="tab-upload" hidden>
       <div class="card">
         <h2>Atualizar dados</h2>
-        <p class="sub">Escolha a planilha e clique — o robô processa e publica a base <b>na hora</b>, sem sair daqui (precisa do token configurado abaixo). Hoje: a <b>linha preta</b> — <code>SECEX - Prediction Analysis.xlsx</code>.</p>
+        <p class="sub">Escolha a <b>base</b>, suba a planilha e clique — o robô processa e publica <b>na hora</b>, sem sair daqui (precisa do token configurado abaixo). <span class="muted">SECEX/IABr/minério/celulose atualizam sozinhos (cron); aqui ficam as bases manuais.</span></p>
         <div class="field">
+          <label class="chk" style="gap:8px">Base:
+            <select class="in" id="up-kind" style="max-width:400px">
+              <option value="pred_exports">Linha preta — SECEX Prediction Analysis (.xlsx)</option>
+              <option value="iba">IBÁ papel — IBÁ Brazilian Pulp &amp; Paper (.xlsx)</option>
+            </select>
+          </label>
           <input class="in" id="up-file" type="file" accept=".xlsx,.xls">
           <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar e atualizar agora</button></div>
           <div id="up-status" class="status"></div>
@@ -301,6 +308,15 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
           <input class="in" id="hf-sort" type="number" placeholder="Ordem na cobertura (menor primeiro)">
           <div class="row"><button class="btn" onclick="hmSave()">Salvar</button><button class="btn sec" onclick="hmCancel()">Cancelar</button></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ── Usuários ──────────────────────────────────────────────────────── -->
+    <section id="tab-users" hidden>
+      <div class="card">
+        <h2>Usuários</h2>
+        <p class="sub">Quem tem acesso, papel, último acesso e nº de acessos. Promova/rebaixe admin↔cliente.</p>
+        <div id="users-list" class="status">Carregando…</div>
       </div>
     </section>
     </main>
@@ -424,7 +440,7 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','db','flags','team','comm','upload','heatmap']
+const TABS=['overview','db','flags','team','comm','upload','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
@@ -434,6 +450,7 @@ function showTab(name){
   if(name==='comm') loadCommGroups()
   if(name==='upload'){ loadJobs(); checkPat() }
   if(name==='heatmap') loadHeatmap()
+  if(name==='users') loadUsers()
 }
 
 // ── Funcionalidades (flags) ──────────────────────────────────────────────
@@ -552,7 +569,7 @@ async function uploadFile(){
   const inp=document.getElementById('up-file'), st=document.getElementById('up-status'), btn=document.getElementById('up-btn')
   const f=inp.files[0]
   if(!f){ st.textContent='Escolha um arquivo primeiro.'; return }
-  const kind='pred_exports'   // único tipo por enquanto (linha preta); novos tipos depois
+  const kind=document.getElementById('up-kind').value   // base escolhida no seletor
   const path=`${kind}/${Date.now()}_${f.name.replace(/[^A-Za-z0-9._-]/g,'_')}`
   btn.disabled=true; st.textContent='Enviando…'
   try{
@@ -630,6 +647,32 @@ async function hmDelete(sym){
   const {error}=await sbAuth.rpc('admin_delete_heatmap_ticker',{p_symbol:sym})
   if(error){ alert('Erro ao excluir: '+error.message); return }
   loadHeatmap()
+}
+
+// ── Usuários (gestão de acesso) ──────────────────────────────────────────
+let _users=[]
+async function loadUsers(){
+  const host=document.getElementById('users-list'); host.textContent='Carregando…'
+  const {data,error}=await sbAuth.rpc('get_users_list')
+  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_users.sql?)'; return }
+  _users=data; host.innerHTML=''
+  if(!data.length){ host.textContent='Nenhum usuário.'; return }
+  for(const u of data){
+    const last=u.last_sign_in_at?String(u.last_sign_in_at).replace('T',' ').slice(0,16):'nunca'
+    const isA=u.role==='admin'
+    const row=document.createElement('div'); row.className='team-row'
+    const info=document.createElement('span'); info.innerHTML=`<b>${esc(u.email)}</b> ${isA?'<span style="color:var(--orange);font-weight:700">[admin]</span>':''} <span class="muted">· último acesso ${esc(last)} · ${esc(u.visits)} acessos</span>`
+    const acts=document.createElement('span'); acts.className='acts'
+    const btn=document.createElement('button'); btn.className='chip'; btn.textContent=isA?'Tornar cliente':'Tornar admin'
+    btn.onclick=()=>setUserRole(u.id, isA?'client':'admin', u.email)
+    acts.append(btn); row.append(info,acts); host.appendChild(row)
+  }
+}
+async function setUserRole(id, role, email){
+  if(!confirm('Mudar '+email+' para '+role+'?')) return
+  const {error}=await sbAuth.rpc('admin_set_user_role',{p_user_id:id,p_role:role})
+  if(error){ alert('Erro: '+error.message); return }
+  loadUsers()
 }
 </script>
 </body>
