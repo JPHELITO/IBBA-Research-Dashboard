@@ -128,6 +128,17 @@ jobs:
             echo "✅ steel_sm.db commitado e pushado"
           fi
 
+      # ── 6b. Registra no painel admin (update_log) que rodou AUTOMÁTICO ────────
+      - name: Log auto-update (painel admin)
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || env.IABR_NEW_DATA == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ "$NEW_DATA" = "true" ]; then python _shared/log_update.py "SECEX" auto "cron MDIC ${LATEST_PERIOD}"; fi
+          if [ "$IRON_NEW_DATA" = "true" ]; then python _shared/log_update.py "Minério" auto "cron MDIC"; fi
+          if [ "$IABR_NEW_DATA" = "true" ]; then python _shared/log_update.py "IABr" auto "cron acobrasil"; fi
+
       # ── 7. Log final ────────────────────────────────────────────────────────
       - name: Summary
         run: |

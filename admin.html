@@ -148,6 +148,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
   <div class="shell">
     <aside class="side">
       <button class="active" data-tab="overview" onclick="showTab('overview')">📊 Visão geral</button>
+      <button data-tab="status" onclick="showTab('status')">📅 Status das bases</button>
       <button data-tab="flags" onclick="showTab('flags')">🎛️ Funcionalidades</button>
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
@@ -319,6 +320,16 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
         <div id="users-list" class="status">Carregando…</div>
       </div>
     </section>
+
+    <!-- ── Status das bases ──────────────────────────────────────────────── -->
+    <section id="tab-status" hidden>
+      <div class="card">
+        <h2>Status das bases</h2>
+        <p class="sub">Última data do dado (lida dos <code>.db</code>) + última atualização registrada (manual × automático). O <code>.db</code> de aço (~46MB) leva alguns segundos.</p>
+        <div id="status-list" class="status">Carregando…</div>
+        <div class="row" style="margin-top:10px"><button class="btn sec" onclick="loadStatus()">🔄 Recarregar</button></div>
+      </div>
+    </section>
     </main>
   </div>
 </div>
@@ -440,11 +451,12 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','db','flags','team','comm','upload','heatmap','users']
+const TABS=['overview','status','db','flags','team','comm','upload','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='overview') loadOverview()
+  if(name==='status') loadStatus()
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
@@ -673,6 +685,37 @@ async function setUserRole(id, role, email){
   const {error}=await sbAuth.rpc('admin_set_user_role',{p_user_id:id,p_role:role})
   if(error){ alert('Erro: '+error.message); return }
   loadUsers()
+}
+
+// ── Status das bases (último dado + última atualização manual×auto) ──────
+const STATUS_BASES=[
+  {label:'SECEX (aço)',      db:'steel', sql:"SELECT MAX(period) FROM secex_country",     src:'SECEX',                auto:true},
+  {label:'IABr',             db:'steel', sql:"SELECT MAX(period) FROM iabr_production",    src:'IABr',                 auto:true},
+  {label:'Minério',          db:'steel', sql:"SELECT MAX(period) FROM secex_iron_ore",     src:'Minério',              auto:true},
+  {label:'Celulose',         db:'pulp',  sql:"SELECT MAX(period) FROM secex_pulp_port",    src:'Celulose',             auto:true},
+  {label:'IBÁ papel',        db:'pulp',  sql:"SELECT MAX(period) FROM iba_paper",          src:'IBÁ papel',            auto:false},
+  {label:'Modelo · laranja', db:'steel', sql:"SELECT MAX(period) FROM import_prediction",  src:null,                   auto:true},
+  {label:'Modelo · preta',   db:'steel', sql:"SELECT MAX(period) FROM pred_exports",       src:'Linha preta (modelo)', auto:false},
+]
+async function loadStatus(){
+  const host=document.getElementById('status-list'); host.innerHTML='<span class="muted">Carregando bancos (~46MB) + eventos…</span>'
+  let events={}
+  try{ const {data}=await sbAuth.rpc('get_base_status'); (data||[]).forEach(e=>{ events[e.source]=e }) }catch(e){}
+  try{
+    const SQL=await ensureSql(), dbs={}
+    for(const k of ['steel','pulp']){ const c=DBS[k], r=await fetch(encodeURI(c.path)+'?v='+Date.now()); if(!r.ok) throw new Error(c.label+' HTTP '+r.status); dbs[k]=new SQL.Database(new Uint8Array(await r.arrayBuffer())) }
+    let html='<div class="tbl-wrap"><table class="data"><thead><tr><th>Base</th><th>Último dado</th><th>Última atualização</th><th>Forma</th><th>Detalhe</th></tr></thead><tbody>'
+    for(const b of STATUS_BASES){
+      let dado='—'; try{ const r=dbs[b.db].exec(b.sql); dado=(r[0]&&r[0].values[0][0])||'—' }catch(e){}
+      const ev = b.src ? events[b.src] : null
+      const when = ev ? String(ev.last_update).replace('T',' ').slice(0,16) : (b.auto?'(cron — ainda sem registro)':'—')
+      const forma = ev ? (ev.method==='auto'?'🤖 automático':'✋ manual') : (b.auto?'🤖 automático':'✋ manual')
+      const det = (ev && ev.detail) ? esc(ev.detail) : '—'
+      html+=`<tr><td><b>${esc(b.label)}</b></td><td>${esc(dado)}</td><td>${esc(when)}</td><td>${forma}</td><td class="muted">${det}</td></tr>`
+    }
+    host.innerHTML=html+'</tbody></table></div>'
+    for(const k in dbs) dbs[k].close()
+  }catch(e){ host.textContent='Erro ao ler bases: '+(e.message||e) }
 }
 </script>
 </body>

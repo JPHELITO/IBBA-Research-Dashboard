@@ -75,3 +75,10 @@ jobs:
             git push
             echo "✅ secex_pulp_port commitado -> ${PULP_LATEST}"
           fi
+
+      - name: Log auto-update (painel admin)
+        if: env.PULP_NEW_DATA == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python _shared/log_update.py "Celulose" auto "cron MDIC ${PULP_LATEST}"
