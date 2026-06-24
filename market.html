@@ -86,7 +86,7 @@ a{color:inherit;text-decoration:none}
 .card-body{padding:13px}
 
 /* ===== P1 Asset header ===== */
-.ah{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.ah{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
 .ah-id{min-width:140px}
 .ah-id .ah-nm{font-size:21px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
 .ah-id .ah-tk{font-family:var(--mono);color:var(--dim);font-size:12px;margin-top:2px}
@@ -95,7 +95,7 @@ a{color:inherit;text-decoration:none}
 .ah-px .px{font-family:var(--mono);font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1}
 .ah-chg{font-family:var(--mono);font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
 .ah-spark-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
-.ah-spark{width:160px;height:40px}
+.ah-spark{width:112px;height:40px}
 .ah-cap{font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
 .ah-rets{display:flex;flex-direction:column;gap:4px}
 .ah-rets-lbl{font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
@@ -109,11 +109,26 @@ a{color:inherit;text-decoration:none}
 .ah-empty{color:var(--mute);font-size:13px;padding:6px 0}
 .ah-card{position:relative}
 .ah-corner{position:absolute;top:11px;right:13px;display:flex;align-items:center;gap:8px;z-index:4}
-.ah-fx{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px dashed var(--border)}
-.fx{display:flex;flex-direction:column;gap:1px;min-width:72px}
-.fx .fl{font-size:8.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
-.fx .fv{font-family:var(--mono);font-size:13px;font-weight:600}
-.fx .fc{font-family:var(--mono);font-size:10.5px;font-weight:600}
+.ah-card .card-body{padding-right:292px}   /* reserva o canto direito p/ search/tema + carrossel */
+.car-next{position:absolute;top:49px;right:13px;width:280px;display:flex;flex-direction:column;gap:5px;z-index:3}
+.car-next .cn-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:1px}
+.cn-item{display:flex;align-items:center;gap:7px;border-radius:7px;padding:4px 9px;cursor:pointer;
+  background:linear-gradient(100deg,rgba(255,80,0,.22),rgba(255,80,0,.04) 60%,rgba(255,80,0,.22));
+  background-size:220% 100%;animation:cnShim 2.8s linear infinite}
+.cn-item:nth-child(3){animation-delay:.5s;opacity:.84} .cn-item:nth-child(4){animation-delay:1s;opacity:.66}
+@keyframes cnShim{0%{background-position:120% 0}100%{background-position:-120% 0}}
+.cn-tag{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cn-tk{font-family:var(--mono);font-weight:600;font-size:11px;color:var(--text)}
+.cn-nm{font-size:9.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-dots{display:flex;gap:4px;justify-content:center;margin-top:3px}
+.cn-dots i{width:5px;height:5px;border-radius:50%;background:var(--orange);opacity:.45}
+.ah-fx{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.ah-tag{display:inline-block;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:5px;margin-right:6px;vertical-align:middle}
+.tag-mining{background:rgba(255,80,0,.16);color:var(--orange)} .tag-steel{background:rgba(59,130,246,.18);color:#7ab0ff} .tag-pp{background:rgba(34,197,94,.16);color:var(--up)}
+.fx{display:flex;flex-direction:column;gap:1px;min-width:56px}
+.fx .fl{font-size:8px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.fx .fv{font-family:var(--mono);font-size:12px;font-weight:600}
+.fx .fc{font-family:var(--mono);font-size:9.5px;font-weight:600}
 .ah-mkts{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .mkt-m{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:4px 9px}
 .mkt-m .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -270,6 +285,9 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
   .col-8,.col-4,.col-12,.col-5,.col-7{grid-column:span 12}
   .ah-corner{position:static;justify-content:flex-end;margin-bottom:8px}
   .ah-fx{gap:12px}
+  .ah-card .card-body{padding-right:14px}
+  .car-next{position:static;width:auto;margin-top:10px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:7px}
+  .car-next .cn-lbl{width:100%}
   .wl-card{grid-row:auto;position:static}
   .wl-card > .card-head,.wl-card > .wl-scroll,.wl-card > .wl-foot{position:static;height:auto}
   .wl-scroll{max-height:62vh}
@@ -305,9 +323,9 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
         </div>
         <div class="card-body">
           <div class="ah" id="ah"></div>
-          <div class="ah-fx" id="ah-fx"></div>
           <div class="ah-mkts" id="ah-mkts"></div>
         </div>
+        <div class="car-next" id="car-next"></div>
       </div>
 
       <!-- Single main chart (price / % change / spread + range + dates + compare) -->
@@ -662,14 +680,16 @@ function _attachHover(host, lines, dom){
 }
 
 /* ====================== SELEÇÃO (livre) ====================== */
+let _carOrder=[], _carIdx=0, _carHover=false, _carPauseUntil=0;   // carrossel do header (tour das empresas)
 function colorOf(t){ const i=_sel.indexOf(t); return i>=0?_MC_COLORS[i%_MC_COLORS.length]:''; }
-function toggleSel(t){ if(!t)return; _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
-function setFocus(t){ if(!t)return; _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
+function _carPause(){ _carPauseUntil=Date.now()+20000; }          // seleção manual pausa o tour ~20s
+function toggleSel(t){ if(!t)return; _carPause(); _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
+function setFocus(t){ if(!t)return; _carPause(); _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
 function clearSel(){ _sel=[]; afterSel(); }
 function afterSel(){
   _anchor=_sel[0]||null;
   if(_sel.length>1 && _chartMode==='price') _chartMode='pct';   // preço = 1 ativo por vez
-  if(_anchor){ try{history.replaceState(null,'',`?t=${encodeURIComponent(_anchor)}`)}catch(e){} }
+  if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; try{history.replaceState(null,'',`?t=${encodeURIComponent(_anchor)}`)}catch(e){} }
   renderAll();
 }
 
@@ -677,7 +697,7 @@ function afterSel(){
 function _qa(){ return _anchor?byT(_anchor):null; }
 
 function renderAll(){
-  renderHeader(); renderChart(); renderWatchlist(); renderThesis();
+  renderHeader(); renderCarNext(); renderChart(); renderWatchlist(); renderThesis();
   renderCorr(); renderPortfolio();
 }
 
@@ -690,7 +710,7 @@ function renderHeader(){
   box.innerHTML=`
     <div class="ah-id">
       <div class="ah-nm">${esc(q.name||_short(q.ticker))}</div>
-      <div class="ah-tk"><b>${_short(q.ticker)}</b> · ${esc(q.exchange||'')} · ${SECTOR_LABEL[TICKER_SECTOR[q.ticker]]||''}</div>
+      <div class="ah-tk">${_carTag(q.ticker)}<b>${_short(q.ticker)}</b> · ${esc(q.exchange||'')} · ${SECTOR_LABEL[TICKER_SECTOR[q.ticker]]||''}</div>
     </div>
     <div class="ah-px">
       <span class="px mono">${_fmtPrice(q.price,q.exchange)}</span>
@@ -704,6 +724,8 @@ function renderHeader(){
       <div class="ah-rets-lbl">Returns</div>
       <div class="ah-rets-row">${rets.map(r=>{const v=_ret(q,r);return `<div class="ah-ret"><div class="rl">${r}</div><div class="rv ${_signCls(v)}">${_pctStr(v,1)}</div></div>`;}).join('')}</div>
     </div>
+    <div class="ah-vsep"></div>
+    <div class="ah-fx">${_fxCells()}</div>
     <div class="ah-story">${_dayStory(q)}</div>`;
 }
 function _dayStory(q){
@@ -816,7 +838,7 @@ function renderWatchlist(){
     const cell=(k)=>{ const x=v[k]; return `<td class="num ${_signCls(x)}">${_pctStr(x,1)}</td>`; };
     return `<tr class="${on?'sel':''}" data-t="${q.ticker}">
       <td class="l"><span class="wl-tk"><span class="wl-dot ${on?'':'off'}" style="${on?`background:${col};border-color:${col}`:''}"></span>${_short(q.ticker)}</span></td>
-      <td class="${_signCls(v['1M'])}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
+      <td class="${_signCls(_ret(q,_range==='1D'?'1M':_range))}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
       <td class="num">${_fmtPrice(q.price,q.exchange)}</td>
       ${cell('1D')}${cell('1W')}${cell('1M')}${cell('YTD')}${cell('1Y')}
     </tr>`;
@@ -962,12 +984,34 @@ function _exStatus(ex){ const h=EX_HOURS[ex]||EX_HOURS['B3']; const now=new Date
 /* ── câmbio (faixa no header) ── */
 let _macro={};
 async function loadMacro(){ try{ const rows=await restGet('macro_indicators?select=code,value,change_pct'); _macro={}; rows.forEach(r=>_macro[r.code]=r); }catch(e){console.warn('macro',e);} }
-const FX=[{code:'USD_BRL',l:'USD/BRL'},{code:'USD_CAD',l:'USD/CAD'},{code:'USD_AUD',l:'USD/AUD'},{code:'USD_EUR',l:'USD/EUR'}];
-function renderFX(){
-  const host=document.getElementById('ah-fx'); if(!host)return;
-  const cells=FX.map(f=>{ const m=_macro[f.code]; if(!m||m.value==null)return ''; const p=m.change_pct;
+const FX=[{code:'USD_BRL',l:'USD/BRL'},{code:'USD_CAD',l:'USD/CAD'},{code:'USD_AUD',l:'USD/AUD'},{code:'USD_EUR',l:'USD/EUR'},{code:'USD_CNY',l:'USD/CNY'}];
+function _fxCells(){
+  return FX.map(f=>{ const m=_macro[f.code]; if(!m||m.value==null)return ''; const p=m.change_pct;
     return `<div class="fx"><span class="fl">${f.l}</span><span class="fv">${(+m.value).toFixed(4)}</span><span class="fc ${_signCls(p)}">${_pctStr(p,2)}</span></div>`; }).filter(Boolean).join('');
-  host.innerHTML=cells||'<span class="mute" style="font-size:11px">FX —</span>';
+}
+// setor grosso (p/ a tag Mining/Steel/Pulp & Paper no header)
+const CARSECT={iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',steel:'steel',pp:'pp'};
+const CARSECT_LABEL={mining:'Mining',steel:'Steel',pp:'Pulp & Paper'};
+function _carTag(t){ const c=CARSECT[TICKER_SECTOR[t]]; return c?`<span class="ah-tag tag-${c}">${CARSECT_LABEL[c]}</span>`:''; }
+/* ── carrossel do header: tour por TODAS as empresas (mining→steel→pp, alfabético dentro), 10s cada ── */
+const CARDOT={mining:'var(--orange)',steel:'#7ab0ff',pp:'var(--up)'};
+function _carBuildOrder(){
+  const ord=['mining','steel','pp'];
+  const comps=_quotes.filter(q=>CARSECT[TICKER_SECTOR[q.ticker]]);   // só empresas (exclui índices)
+  comps.sort((a,b)=>{ const d=ord.indexOf(CARSECT[TICKER_SECTOR[a.ticker]])-ord.indexOf(CARSECT[TICKER_SECTOR[b.ticker]]); return d||_short(a.ticker).localeCompare(_short(b.ticker)); });
+  _carOrder=comps.map(q=>q.ticker);
+}
+function carShow(t){ _sel=[t]; _chartMode='price'; afterSel(); }   // foco limpo (carShow NÃO pausa: é o próprio tour)
+function _carTick(){ if(_carHover||Date.now()<_carPauseUntil||_carOrder.length<2||_sel.length>1)return;
+  _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
+function renderCarNext(){
+  const host=document.getElementById('car-next'); if(!host)return;
+  if(_carOrder.length<2){ host.innerHTML=''; return; }
+  const nxt=[1,2,3].map(k=>_carOrder[(_carIdx+k)%_carOrder.length]);
+  host.innerHTML='<div class="cn-lbl">Up next</div>'+nxt.map(t=>{ const q=byT(t), c=CARSECT[TICKER_SECTOR[t]];
+    return `<div class="cn-item" data-t="${t}"><span class="cn-tag" style="background:${CARDOT[c]||'var(--mute)'}"></span><span class="cn-tk">${_short(t)}</span><span class="cn-nm">${esc(q&&q.name||'')}</span></div>`; }).join('')
+    +'<div class="cn-dots"><i></i><i></i><i></i></div>';
+  host.querySelectorAll('.cn-item').forEach(el=>el.onclick=()=>{ const t=el.dataset.t, i=_carOrder.indexOf(t); if(i>=0)_carIdx=i; _carPause(); carShow(t); });
 }
 /* ── mercados que analisamos: nome + aberto/fechado + HORÁRIO LOCAL (base da abertura). offset ignora DST (aprox). ── */
 const MARKETS=[
@@ -1049,9 +1093,13 @@ async function init(){
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
   document.getElementById('wl-manage').onclick=()=>openPicker('custom');
   _initSearch();
-  loadMacro().then(renderFX);
+  loadMacro().then(renderHeader);
   renderMarkets(); setInterval(renderMarkets, 1000);   // relógio local de cada mercado + "updated"
-  setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); }); loadMacro().then(renderFX); }, 60000);
+  _carBuildOrder(); { const i=_carOrder.indexOf(_anchor); if(i>=0)_carIdx=i; } renderCarNext();   // carrossel: ordem + posição inicial
+  _carPauseUntil=Date.now()+30000;   // empresa de entrada (clique do heatmap) fica ~30s antes do tour começar
+  { const ahc=document.querySelector('.ah-card'); if(ahc){ ahc.addEventListener('mouseenter',()=>_carHover=true); ahc.addEventListener('mouseleave',()=>_carHover=false); } }
+  setInterval(_carTick, 10000);   // troca o destaque a cada 10s (só em modo 1-ativo; pausa no hover/seleção)
+  setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); }); loadMacro().then(renderHeader); }, 60000);
 }
 function showApp(){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 function showDenied(){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; }
