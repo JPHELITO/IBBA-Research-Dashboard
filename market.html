@@ -167,8 +167,8 @@ body.theme-light .chart-dates input{color-scheme:light}
 .wl-card > .card-head{position:absolute;top:0;left:0;right:0;height:43px;z-index:2;flex-wrap:nowrap;overflow:hidden}
 .wl-card > .wl-scroll{position:absolute;top:43px;bottom:33px;left:0;right:0;overflow:auto}
 .wl-card > .wl-foot{position:absolute;bottom:0;left:0;right:0;height:33px}
-table.wl{border-collapse:collapse;width:100%;font-size:11.5px}
-table.wl th,table.wl td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border)}
+table.wl{border-collapse:collapse;width:100%;font-size:10.5px}
+table.wl th,table.wl td{padding:4px 5px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border)}
 table.wl th{position:sticky;top:0;background:var(--panel);color:var(--mute);font-weight:600;font-size:9.5px;
   text-transform:uppercase;letter-spacing:.05em;cursor:pointer;user-select:none;z-index:1}
 table.wl th.l,table.wl td.l{text-align:left}
@@ -180,10 +180,10 @@ table.wl tbody tr:hover{background:var(--panel-2)}
 table.wl tbody tr.sel{background:rgba(255,80,0,.10)}
 table.wl tbody tr.sel:hover{background:rgba(255,80,0,.15)}
 table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
-.wl-tk{font-family:var(--mono);font-weight:600;display:inline-flex;align-items:center;gap:6px}
-.wl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;border:1px solid var(--border-2)}
+.wl-tk{font-family:var(--mono);font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.wl-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0;border:1px solid var(--border-2)}
 .wl-dot.off{background:transparent}
-.wl-spark{width:60px;height:18px;display:inline-block;vertical-align:middle}
+.wl-spark{width:40px;height:15px;display:inline-block;vertical-align:middle}
 .wl-foot{padding:8px 13px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--mute);flex-wrap:wrap}
 .linklike{color:var(--orange);cursor:pointer;font-weight:600}
 
@@ -331,13 +331,13 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
         <div class="card-head">
           <span class="card-title">Watchlist</span>
           <div class="card-tools">
-            <div class="seg" id="wl-mode"><button data-m="list" class="active">List</button><button data-m="movers">Movers</button></div>
+            <div class="seg" id="wl-mode"><button data-m="coverage" class="active">Coverage</button><button data-m="all">All</button><button data-m="peers">Peers</button><button data-m="custom">Custom</button></div>
           </div>
         </div>
         <div class="wl-scroll"><table class="wl" id="wl-table"></table></div>
         <div class="wl-foot">
           <span id="wl-count"></span>
-          <span><span class="linklike" id="wl-all">show all 47</span></span>
+          <span class="linklike" id="wl-manage" hidden>+ manage list</span>
         </div>
       </div>
 
@@ -498,7 +498,10 @@ let _sel=[];                      // ativos selecionados (chart + watchlist lara
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
 let _range='3M', _cFrom=null, _cTo=null;
 let _chartMode='price';
-let _wlMode='list', _wlSort={key:'1D',dir:-1}, _wlAll=true;   // default: TODOS os 47, ranqueados por 1D↓
+let _wlMode='coverage', _wlSort={key:'1D',dir:-1};   // 4 modos: coverage|all|peers|custom; ranqueado por 1D↓
+let _wlCustom=[]; try{ _wlCustom=JSON.parse(localStorage.getItem('mkt_wl_custom'))||[]; }catch(e){_wlCustom=[];}
+if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
+function _wlCustomSave(){ try{localStorage.setItem('mkt_wl_custom',JSON.stringify(_wlCustom));}catch(e){} }
 let _newsFilter='all', _news=[], _pulse={pos:0,neg:0,neu:0,tot:0};
 let _updatedAt='';
 
@@ -748,25 +751,37 @@ function renderChips(){
 function renderReco(){ /* recommended já integrado em renderChips */ }
 
 /* ── "Other" modal ── */
-function openOther(){ const m=document.getElementById('other-modal'); m.hidden=false; document.getElementById('other-q').value=''; renderOther(''); setTimeout(()=>document.getElementById('other-q').focus(),0); }
+let _pickTarget='sel';   // 'sel' = compare do gráfico; 'custom' = watchlist custom do cliente
+function openPicker(target){ _pickTarget=target||'sel'; const m=document.getElementById('other-modal'); m.hidden=false;
+  const tt=document.querySelector('#other-modal .mdl-head b'); if(tt) tt.textContent=_pickTarget==='custom'?'Build your watchlist':'Add assets to compare';
+  document.getElementById('other-q').value=''; renderPicker(''); setTimeout(()=>document.getElementById('other-q').focus(),0); }
 function closeOther(){ document.getElementById('other-modal').hidden=true; }
-function renderOther(q){
+function _pickHas(t){ return _pickTarget==='custom'?_wlCustom.includes(t):_sel.includes(t); }
+function _pickToggle(t){
+  if(_pickTarget==='custom'){ _wlCustom=_wlCustom.includes(t)?_wlCustom.filter(x=>x!==t):[..._wlCustom,t]; _wlCustomSave(); renderWatchlist(); }
+  else toggleSel(t);
+}
+function renderPicker(q){
   const host=document.getElementById('other-list'); const f=(q||'').trim().toLowerCase();
   host.innerHTML=SECTOR_ORDER.map(sec=>{
     const tickers=(SECTOR_TICKERS[sec]||[]).filter(t=>{ if(!f)return true; const qq=byT(t); return _short(t).toLowerCase().includes(f)||(qq.name||'').toLowerCase().includes(f); });
     if(!tickers.length)return '';
-    return `<div class="mdl-grp">${SECTOR_LABEL[sec]}</div><div class="mdl-tiles">${tickers.map(t=>{ const qq=byT(t), on=_sel.includes(t);
+    return `<div class="mdl-grp">${SECTOR_LABEL[sec]}</div><div class="mdl-tiles">${tickers.map(t=>{ const qq=byT(t), on=_pickHas(t);
       return `<button class="mdl-tile ${on?'on':''}" data-t="${t}">${_short(t)}<span class="nm">${esc(qq.name||'')}</span></button>`; }).join('')}</div>`;
   }).join('') || '<div class="mute" style="padding:14px">No match.</div>';
-  host.querySelectorAll('.mdl-tile').forEach(b=>b.onclick=()=>{ toggleSel(b.dataset.t); renderOther(document.getElementById('other-q').value); });
+  host.querySelectorAll('.mdl-tile').forEach(b=>b.onclick=()=>{ _pickToggle(b.dataset.t); renderPicker(document.getElementById('other-q').value); });
 }
 
 /* ── P3 — Watchlist / movers (superfície de seleção) ── */
-const WL_COLS=[{k:'tk',l:'Ticker',cls:'l'},{k:'px',l:'Price'},{k:'1D',l:'1D'},{k:'1W',l:'1W'},{k:'1M',l:'1M'},{k:'YTD',l:'YTD'},{k:'1Y',l:'1Y'},{k:'vol',l:'Vol 1y'},{k:'dd',l:'MaxDD'},{k:'spark',l:''}];
+const WL_COLS=[{k:'tk',l:'Ticker',cls:'l'},{k:'spark',l:''},{k:'px',l:'Price'},{k:'1D',l:'1D'},{k:'1W',l:'1W'},{k:'1M',l:'1M'},{k:'YTD',l:'YTD'},{k:'1Y',l:'1Y'}];
 function _wlUniverse(){
-  let disp; try{ const s=JSON.parse(localStorage.getItem('hm_displayed')); disp=Array.isArray(s)?s.filter(t=>KNOWN.has(t)):null; }catch(e){}
-  if(!disp||!disp.length) disp=COVERAGE.slice();
-  const set=new Set(_wlAll?_quotes.map(q=>q.ticker):disp);
+  let base;
+  if(_wlMode==='all') base=_quotes.map(q=>q.ticker);
+  else if(_wlMode==='peers'){ const sec=_anchor?TICKER_SECTOR[_anchor]:null;
+    base=sec?[_anchor,...(SECTOR_GROUPS[sec]||[]),...(SECTOR_INDEX[sec]||[])]:COVERAGE.slice(); }
+  else if(_wlMode==='custom') base=_wlCustom.slice();
+  else base=COVERAGE.slice();   // coverage (default)
+  const set=new Set(base.filter(t=>KNOWN.has(t)));
   _sel.forEach(t=>set.add(t));        // selecionados sempre aparecem (p/ ver/remover)
   return _quotes.filter(q=>set.has(q.ticker));
 }
@@ -776,25 +791,22 @@ function renderWatchlist(){
   let rows=_wlUniverse().map(q=>({q, v:Object.fromEntries(WL_COLS.filter(c=>!['tk','spark'].includes(c.k)).map(c=>[c.k,_wlVal(q,c.k)]))}));
   const sk=_wlSort.key, dir=_wlSort.dir;
   rows.sort((a,b)=>{ let av,bv; if(sk==='tk'){av=_short(a.q.ticker);bv=_short(b.q.ticker);return dir*av.localeCompare(bv);} av=a.v[sk];bv=b.v[sk]; av=av==null?-Infinity:av; bv=bv==null?-Infinity:bv; return dir*(av-bv); });
-  if(_wlMode==='movers'){ const sorted=[...rows].sort((a,b)=>(b.v['1D']??-Infinity)-(a.v['1D']??-Infinity)); rows=[...sorted.slice(0,6),...sorted.slice(-6)].filter((v,i,arr)=>arr.indexOf(v)===i); }
   const head=`<thead><tr>${WL_COLS.map(c=>`<th class="${c.cls||''}" data-k="${c.k}">${c.l}${_wlSort.key===c.k?` <span class="ar">${dir<0?'▾':'▴'}</span>`:''}</th>`).join('')}</tr></thead>`;
   const body='<tbody>'+rows.map(({q,v})=>{
     const on=_sel.includes(q.ticker), col=colorOf(q.ticker);
     const cell=(k)=>{ const x=v[k]; return `<td class="num ${_signCls(x)}">${_pctStr(x,1)}</td>`; };
     return `<tr class="${on?'sel':''}" data-t="${q.ticker}">
       <td class="l"><span class="wl-tk"><span class="wl-dot ${on?'':'off'}" style="${on?`background:${col};border-color:${col}`:''}"></span>${_short(q.ticker)}</span></td>
+      <td class="${_signCls(v['1M'])}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
       <td class="num">${_fmtPrice(q.price,q.exchange)}</td>
       ${cell('1D')}${cell('1W')}${cell('1M')}${cell('YTD')}${cell('1Y')}
-      <td class="num dim">${v.vol==null?'—':v.vol.toFixed(0)+'%'}</td>
-      <td class="num down">${v.dd==null?'—':v.dd.toFixed(1)+'%'}</td>
-      <td class="${_signCls(v['1M'])}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
     </tr>`;
   }).join('')+'</tbody>';
   t.innerHTML=head+body;
   t.querySelectorAll('th').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(k==='spark')return; if(_wlSort.key===k)_wlSort.dir*=-1; else _wlSort={key:k,dir:k==='tk'?1:-1}; renderWatchlist(); });
   t.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>toggleSel(tr.dataset.t));   // clique = selecionar/desselecionar
-  document.getElementById('wl-count').textContent=`${rows.length} assets · ${_sel.length} selected · vol/MaxDD = 1y`;
-  document.getElementById('wl-all').textContent=_wlAll?'show my selection':'show all 47';
+  document.getElementById('wl-count').textContent=`${rows.length} assets · ${_sel.length} selected`;
+  const mng=document.getElementById('wl-manage'); if(mng) mng.hidden=_wlMode!=='custom';
 }
 
 /* ── P4 — Thesis strip ── */
@@ -991,15 +1003,15 @@ async function init(){
   document.getElementById('c-from').onchange=onDates;
   document.getElementById('c-to').onchange=onDates;
   document.getElementById('c-clear').onclick=()=>setRange('3M');
-  document.getElementById('cmp-other').onclick=openOther;
+  document.getElementById('cmp-other').onclick=()=>openPicker('sel');
   document.getElementById('cmp-clear').onclick=clearSel;
   document.getElementById('pf-equal').onclick=()=>{ _sel.forEach(t=>_pfW[t]=100/Math.max(1,_sel.length)); _pfSave(); renderPortfolio(); };
   document.getElementById('other-close').onclick=closeOther;
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
-  document.getElementById('other-q').oninput=e=>renderOther(e.target.value);
+  document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
-  document.getElementById('wl-all').onclick=()=>{ _wlAll=!_wlAll; renderWatchlist(); };
+  document.getElementById('wl-manage').onclick=()=>openPicker('custom');
   _initSearch();
   setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); renderStatus(); }); }, 60000);
   setInterval(renderStatus, 30000);
