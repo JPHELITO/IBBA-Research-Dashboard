@@ -63,7 +63,7 @@
       <a href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>\
     <a class="gn-item" href="/news.html">News Hunter</a>\
     <a class="gn-item" href="/stock-guide.html">Stock Guide</a>\
-    <a class="gn-item" href="/index.html">Market</a>\
+    <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\

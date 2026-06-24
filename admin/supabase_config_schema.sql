@@ -20,6 +20,7 @@ alter table public.dashboard_flags enable row level security;
 insert into public.dashboard_flags (key, label, sort_order, enabled) values
   ('sector_steel',  'Setor: Steel & Mining (card na home)',   10, true),
   ('sector_pp',     'Setor: Pulp & Paper (card na home)',      20, true),
+  ('market',        'Aba: Market (terminal de ações)',         25, false),
   ('market_pulse',  'Painel: Market Pulse',                    30, true),
   ('commodities',   'Painel: Commodities (carrossel)',         40, true),
   ('news_feed',     'Painel: News Hunter (feed de notícias)',  50, true),

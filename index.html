@@ -512,7 +512,7 @@ img.team-avatar{object-fit:cover;background:none;}
         <a href="Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>
     <a class="tn-item" href="news.html">News Hunter</a>
     <a class="tn-item" href="stock-guide.html">Stock Guide</a>
-    <a class="tn-item" href="/index.html">Market</a>
+    <a class="tn-item" href="/market.html">Market</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
   <div class="team-head" id="team-head"></div>
@@ -782,6 +782,8 @@ async function applyDashboardConfig(){
     const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
     const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
+    // Habilita a navegação p/ a aba Market (terminal de ações): admin SEMPRE; cliente só com a flag 'market' on.
+    window._marketEnabled = isAdmin || (fl && !fl.error && Array.isArray(fl.data) && fl.data.some(f=>f.key==='market' && f.enabled));
     if(tm && !tm.error && Array.isArray(tm.data) && tm.data.length){
       _teamData = tm.data.map(m => { const fb = TEAM.find(t => t.name === m.name) || {};
         return { ini:_ini(m.name), name:m.name, role:m.role, photo:m.photo||fb.photo, email:m.email||fb.email||'', wa:m.whatsapp||fb.wa||'' }; });
@@ -1240,11 +1242,13 @@ document.getElementById('hm-range')?.addEventListener('click', e=>{
   document.querySelectorAll('#hm-range button').forEach(x=> x.classList.toggle('active', x===b));
   _renderHeatmap();
 });
-// Clique num card → modal de histórico/comparação
+// Clique num card → abre o terminal de ações (aba Market) com o ticker.
+// Fallback: enquanto a flag 'market' não estiver ligada p/ o cliente, mantém o modal (sem regressão).
 document.getElementById('heatmap-grid')?.addEventListener('click', e=>{
   const card = e.target.closest('.hm-card'); if(!card) return;
   e.preventDefault();
-  openCompanyModal(card.dataset.ticker);
+  if(window._marketEnabled) location.href='/market.html?t='+encodeURIComponent(card.dataset.ticker);
+  else openCompanyModal(card.dataset.ticker);
 });
 
 // ── Filtro de empresas + presets (popover do heatmap) ─────────────────
