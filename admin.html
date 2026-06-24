@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — Admin</title>
+<script>
+try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}
+function toggleTheme(){var d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('ibba_theme',d?'dark':'light')}catch(e){}_syncThemeIcon();}
+function _syncThemeIcon(){var on=document.documentElement.classList.contains('dark');var ic=document.getElementById('theme-ic');if(!ic)return;
+  ic.innerHTML=on?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>':'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  var b=document.getElementById('theme-btn');if(b)b.title=on?'Switch to light':'Switch to dark';}
+document.addEventListener('DOMContentLoaded',_syncThemeIcon);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 
@@ -115,6 +123,18 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
 .ov-lab{font-size:12px;color:var(--gray-dark);margin-top:4px}
 .ov-sub{font-size:9.5px;color:var(--gray-mid);margin-top:5px;text-transform:uppercase;letter-spacing:.05em}
 @media(max-width:720px){.shell{flex-direction:column}.side{flex-basis:auto;position:static;flex-direction:row;overflow-x:auto}.side button{white-space:nowrap}}
+#theme-btn svg{width:15px;height:15px;display:block}
+/* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (Admin) ═══════════ */
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;
+  --gray-light:#15171b;--white:#1c2026;--border:#2b3038;
+  --green:#22c55e;--red:#ef4444;
+}
+html.dark header{background:#0d0e11}
+html.dark nav.tabs button.active{background:var(--orange);border-color:var(--orange)}
+html.dark .side button.active{background:var(--orange)}
+html.dark table.data tr:hover td{background:rgba(255,255,255,.05)}
+html.dark .ov-card{background:#20242b}
 </style>
 </head>
 <body>
@@ -144,6 +164,7 @@ label.chk input{width:17px;height:17px;accent-color:var(--orange)}
   <header>
     <span class="brand">ITAÚ BBA — <b>Admin</b></span>
     <div class="row" style="gap:8px">
+      <button id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <button onclick="location.href='/index.html'">↩ Voltar à dashboard</button>
       <button onclick="logout()">Sair</button>
     </div>
