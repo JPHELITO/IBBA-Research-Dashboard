@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>ITAÚ BBA — Steel Research Dashboard</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -476,6 +477,19 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .cs-item label{font-size:11.5px;color:var(--gray-dark);cursor:pointer;flex:1;}
 .cs-item.outros label{color:var(--gray-mid);font-style:italic;}
 
+/* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (Steel & Mining) ═══════════ */
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;
+  --gray-light:#15171b;--white:#1c2026;--border:#2b3038;
+  --green:#22c55e;--red:#ef4444;
+  --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.5);
+  --shadow-hover:0 2px 8px rgba(0,0,0,.5),0 12px 28px rgba(0,0,0,.6);
+}
+html.dark .top-bar{background:#0d0e11}
+html.dark .info-box{background:#241a16;border-color:#5a3a2c}
+html.dark .itab.active{background:var(--orange);border-color:var(--orange)}
+html.dark .snav-btn::before{background:var(--orange)}
+html.dark .mob-sec-item:not(.disabled):hover{background:rgba(255,255,255,.05)}
 </style>
 </head>
 <body>
@@ -1122,7 +1136,8 @@ function baseOpts(ov={}){
   const{tooltip,scales,plugins:pOvr,...rest}=ov;
   const mobile=IS_MOBILE();
   const tickSize=mobile?8:9;
-  const TICK={color:'#ADADAD',font:{size:tickSize,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
+  const _dark=document.documentElement.classList.contains('dark');
+  const TICK={color:_dark?'#9aa1ab':'#ADADAD',font:{size:tickSize,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
   return{
     responsive:true,maintainAspectRatio:false,
     interaction:{mode:'index',intersect:false},
@@ -1141,13 +1156,18 @@ function baseOpts(ov={}){
       ...(pOvr||{})
     },
     scales:{
-      x:{ticks:{...TICK,maxTicksLimit:mobile?7:14},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},
-      y:{ticks:{...TICK,maxTicksLimit:mobile?6:8},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
+      x:{ticks:{...TICK,maxTicksLimit:mobile?7:14},grid:{color:_dark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.03)'},border:{display:false}},
+      y:{ticks:{...TICK,maxTicksLimit:mobile?6:8},grid:{color:_dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.04)'},border:{display:false}},
       ...(scales||{})
     },
     ...rest
   };
 }
+// tema dos gráficos (Chart.js) segue o night mode global (ibba_theme / classe html.dark)
+function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
+  Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)'; }
+_applyChartTheme();
+window.addEventListener('ibba:theme',()=>{ _applyChartTheme(); if(typeof render==='function') render(); });
 // Re-render only when WIDTH changes (mobile scroll hides address bar → height-only resize → ignore)
 let _resizeT, _lastW=window.innerWidth;
 window.addEventListener('resize',()=>{
