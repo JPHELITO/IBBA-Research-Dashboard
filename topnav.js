@@ -8,6 +8,24 @@
 ;(function () {
   if (window.__TOPNAV_LOADED__) return; window.__TOPNAV_LOADED__ = true;
 
+  // ── NIGHT MODE (tema global: mesma chave localStorage 'ibba_theme' + classe html.dark de todas as páginas) ──
+  function applyTheme(){ try{ if(localStorage.getItem('ibba_theme')==='dark') document.documentElement.classList.add('dark'); }catch(e){} }
+  applyTheme();
+  var SVG_MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  var SVG_SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  window.__toggleTheme = function(){
+    var dark = !document.documentElement.classList.contains('dark');
+    document.documentElement.classList.toggle('dark', dark);
+    if(document.body) document.body.classList.toggle('theme-light', !dark);   // a Market usa body.theme-light p/ o claro; inócuo nas demais páginas
+    try{ localStorage.setItem('ibba_theme', dark?'dark':'light'); }catch(e){}
+    if(window.__syncThemeIcon) window.__syncThemeIcon();
+  };
+  window.__syncThemeIcon = function(){
+    var on=document.documentElement.classList.contains('dark');
+    var ic=document.getElementById('gnav-theme-ic'); if(ic) ic.innerHTML = on?SVG_SUN:SVG_MOON;
+    var b=document.getElementById('gnav-theme'); if(b) b.title = on?'Switch to light':'Switch to dark';
+  };
+
   var TEAM = [
     { ini:'DS', name:'Daniel Sasson',     photo:'/assets/team-daniel.jpg',  email:'daniel.sasson@itaubba.com',    wa:'5511996741242' },
     { ini:'MF', name:'Marcelo Furlan',    photo:'/assets/team-marcelo.jpg', email:'marcelo.palhares@itaubba.com', wa:'5511974642801' },
@@ -44,6 +62,9 @@
 .gnt-b.wa:hover{color:#25D366;border-color:#25D366;}\
 .gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:14px;}\
 .gnav-out:hover{color:#fff;border-color:rgba(255,255,255,.4);}\
+.gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s;}\
+.gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);}\
+.gnav-theme svg{width:15px;height:15px;display:block;}\
 .gnav-rule{height:2px;background:#FF5000;}\
 @media(max-width:900px){.gnav,.gnav-rule{display:none!important;}}\
 @media(min-width:901px){.header,.top-bar,.orange-rule,#app>.sticky-header{display:none!important;}}';
@@ -67,6 +88,7 @@
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
+  <button class="gnav-theme" id="gnav-theme" onclick="__toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="gnav-theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>\
   <button class="gnav-out" onclick="(window.sbAuth?sbAuth.auth.signOut():0); document.cookie=\'sb-access-token=; Max-Age=0; Path=/\'; location.replace(\'/login.html\');">Sign out</button>\
 </div><div class="gnav-rule"></div>';
 
@@ -93,7 +115,7 @@
     var orig=document.body.firstChild;
     var wrap=document.createElement('div'); wrap.innerHTML=NAV;
     [].slice.call(wrap.childNodes).forEach(function(n){ document.body.insertBefore(n, orig); });  // barra + régua no topo, em ordem
-    renderTeam(); revealAdmin();
+    renderTeam(); revealAdmin(); if(window.__syncThemeIcon) window.__syncThemeIcon();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
   else inject();

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#0E1116"/>
 <title>ITAÚ BBA — Market</title>
+<!-- night mode: Market é ESCURA por padrão; segue o toggle GLOBAL (localStorage ibba_theme + classe html.dark) -->
+<script>try{if(localStorage.getItem('ibba_theme')!=='light')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -110,18 +112,26 @@ a{color:inherit;text-decoration:none}
 .ah-card{position:relative}
 .ah-corner{position:absolute;top:11px;right:13px;display:flex;align-items:center;gap:8px;z-index:4}
 .ah-card .card-body{padding-right:292px}   /* reserva o canto direito p/ search/tema + carrossel */
-.car-next{position:absolute;top:49px;right:13px;width:280px;display:flex;flex-direction:column;gap:5px;z-index:3}
-.car-next .cn-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:1px}
+.car-next{position:absolute;top:46px;right:13px;width:284px;display:flex;flex-direction:column;gap:5px;z-index:3}
+.cn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
+.cn-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.cn-auto{display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--mute);background:var(--panel-2);border:1px solid var(--border);border-radius:20px;padding:2px 8px 2px 6px;cursor:pointer;transition:all .15s}
+.cn-auto:hover{color:var(--text);border-color:var(--border-2)}
+.cn-auto.on{color:var(--orange);border-color:rgba(255,80,0,.4);background:rgba(255,80,0,.08)}
+.cn-auto svg{width:9px;height:9px;display:block}
 .cn-item{display:flex;align-items:center;gap:7px;border-radius:7px;padding:4px 9px;cursor:pointer;
-  background:linear-gradient(100deg,rgba(255,80,0,.22),rgba(255,80,0,.04) 60%,rgba(255,80,0,.22));
-  background-size:220% 100%;animation:cnShim 2.8s linear infinite}
-.cn-item:nth-child(3){animation-delay:.5s;opacity:.84} .cn-item:nth-child(4){animation-delay:1s;opacity:.66}
-@keyframes cnShim{0%{background-position:120% 0}100%{background-position:-120% 0}}
+  background:var(--panel-2);border:1px solid transparent;transition:border-color .15s,background .15s}
+.cn-item:hover{border-color:var(--border-2)}
+.cn-item.next1{background:rgba(255,80,0,.1);border-color:rgba(255,80,0,.28)}
+.car-next.paused .cn-item{opacity:.5}
 .cn-tag{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .cn-tk{font-family:var(--mono);font-weight:600;font-size:11px;color:var(--text)}
 .cn-nm{font-size:9.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cn-dots{display:flex;gap:4px;justify-content:center;margin-top:3px}
-.cn-dots i{width:5px;height:5px;border-radius:50%;background:var(--orange);opacity:.45}
+.car-prog{height:2px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:2px}
+.car-prog>i{display:block;height:100%;width:0;background:var(--orange);border-radius:2px}
+.car-prog.run>i{animation:carFill 10s linear forwards}
+@keyframes carFill{from{width:0}to{width:100%}}
 .ah-fx{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .ah-tag{display:inline-block;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:5px;margin-right:6px;vertical-align:middle}
 .tag-mining{background:rgba(255,80,0,.16);color:var(--orange)} .tag-steel{background:rgba(59,130,246,.18);color:#7ab0ff} .tag-pp{background:rgba(34,197,94,.16);color:var(--up)}
@@ -241,14 +251,26 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .corr-lbl{display:flex;align-items:center;font-family:var(--mono);font-weight:600;font-size:9.5px;color:var(--dim);overflow:hidden;white-space:nowrap}
 .corr-lbl.col{justify-content:center}
 .corr-empty{color:var(--mute);font-size:12px;padding:24px 14px;text-align:center}
+.corr-cell.diag{opacity:.4;font-weight:400}
+.corr-cap{font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:9px}
+.corr-cap b{color:var(--text);font-weight:600}
+.corr-legend{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:9px;color:var(--mute)}
+.corr-legend .bar{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(59,130,246,.85),rgba(110,118,129,.22) 50%,rgba(255,80,0,.85))}
+.corr-legend b{font-weight:700;color:var(--dim)}
 .pf-rows{display:flex;flex-direction:column}
 .pf-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--border)}
 .pf-tk{font-family:var(--mono);font-weight:600;font-size:11px;width:70px;display:flex;align-items:center;gap:6px;flex-shrink:0}
 .pf-tk .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.pf-slider{flex:1;accent-color:var(--orange);height:4px;min-width:60px}
-.pf-w{font-family:var(--mono);width:38px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0}
+.pf-hint{font-size:9.5px;color:var(--mute);margin-bottom:7px}
+.pf-inbox{display:inline-flex;align-items:center;gap:1px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;flex-shrink:0}
+.pf-inbox:focus-within{border-color:var(--orange)}
+.pf-inbox input{width:34px;background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11.5px;font-weight:600;text-align:right;-moz-appearance:textfield}
+.pf-inbox input::-webkit-outer-spin-button,.pf-inbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pf-inbox i{font-size:10px;color:var(--mute);font-style:normal}
+.pf-w{font-family:var(--mono);min-width:42px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0;margin-left:auto}
 .pf-ret{font-family:var(--mono);width:54px;text-align:right;font-size:11px;flex-shrink:0}
-.pf-chart{height:120px;position:relative;margin-top:10px}
+.pf-chart{height:148px;position:relative;margin-top:10px;overflow:hidden}
+.pf-chart svg{width:100%;height:100%;display:block}
 .pf-stats{display:flex;gap:22px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap}
 .pf-stat .pl{font-size:9px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
 .pf-stat .pv{font-family:var(--mono);font-size:16px;font-weight:700;margin-top:2px}
@@ -287,7 +309,8 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
   .ah-fx{gap:12px}
   .ah-card .card-body{padding-right:14px}
   .car-next{position:static;width:auto;margin-top:10px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:7px}
-  .car-next .cn-lbl{width:100%}
+  .car-next .cn-head{width:100%}
+  .car-next .car-prog{width:100%;order:9}
   .wl-card{grid-row:auto;position:static}
   .wl-card > .card-head,.wl-card > .wl-scroll,.wl-card > .wl-foot{position:static;height:auto}
   .wl-scroll{max-height:62vh}
@@ -317,9 +340,6 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
             <input id="mkt-q" placeholder="Search asset…" autocomplete="off"/>
             <div class="mkt-sug" id="mkt-sug" hidden></div>
           </div>
-          <button class="mkt-icbtn" id="theme-btn" title="Toggle theme">
-            <svg id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-          </button>
         </div>
         <div class="card-body">
           <div class="ah" id="ah"></div>
@@ -680,11 +700,11 @@ function _attachHover(host, lines, dom){
 }
 
 /* ====================== SELEÇÃO (livre) ====================== */
-let _carOrder=[], _carIdx=0, _carHover=false, _carPauseUntil=0;   // carrossel do header (tour das empresas)
+let _carOrder=[], _carIdx=0, _carAuto=false, _lastInteract=0;   // carrossel do header (auto-play / trava por interação)
 function colorOf(t){ const i=_sel.indexOf(t); return i>=0?_MC_COLORS[i%_MC_COLORS.length]:''; }
-function _carPause(){ _carPauseUntil=Date.now()+20000; }          // seleção manual pausa o tour ~20s
-function toggleSel(t){ if(!t)return; _carPause(); _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
-function setFocus(t){ if(!t)return; _carPause(); _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
+function _noteInteract(){ _lastInteract=Date.now(); if(_carAuto){ _carAuto=false; renderCarNext(); } }   // qualquer clique/tecla TRAVA o tour
+function toggleSel(t){ if(!t)return; _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
+function setFocus(t){ if(!t)return; _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
 function clearSel(){ _sel=[]; afterSel(); }
 function afterSel(){
   _anchor=_sel[0]||null;
@@ -928,12 +948,14 @@ function renderCorr(){
   const {rets,nobs}=_alignedReturns(tk,range);
   if(sub)sub.textContent=`daily returns · ${_rangeLabel(range)} · ${nobs} obs${nobs<10?' (few)':''}`;
   const n=tk.length;
-  let h=`<div class="corr-grid" style="grid-template-columns:50px repeat(${n},minmax(0,1fr))"><div></div>`;
+  let h='<div class="corr-cap"><b>How their daily returns move together.</b> +1.00 = move in lockstep · 0 = unrelated · −1.00 = opposite. Stronger color = stronger link.</div>';
+  h+=`<div class="corr-grid" style="grid-template-columns:54px repeat(${n},minmax(0,1fr))"><div></div>`;
   h+=tk.map(t=>`<div class="corr-lbl col">${_short(t)}</div>`).join('');
   for(let i=0;i<n;i++){ h+=`<div class="corr-lbl">${_short(tk[i])}</div>`;
     for(let j=0;j<n;j++){ const c=i===j?1:_corr(rets[i],rets[j]);
-      h+=`<div class="corr-cell" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)}">${c==null?'—':c.toFixed(2)}</div>`; } }
-  host.innerHTML=h+'</div>';
+      h+=`<div class="corr-cell${i===j?' diag':''}" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)}">${c==null?'—':c.toFixed(2)}</div>`; } }
+  h+='</div><div class="corr-legend"><b>−1</b><span>opposite</span><div class="bar"></div><span>same way</span><b>+1</b></div>';
+  host.innerHTML=h;
 }
 
 // ── portfolio simulator (pesos estáticos; salvo no localStorage do navegador) ──
@@ -957,11 +979,11 @@ function renderPortfolio(){
   const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
   const rows=_sel.map((t,i)=>{ const r=_ret(byT(t),range);
     return `<div class="pf-row"><span class="pf-tk"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</span>
-      <input class="pf-slider" type="range" min="0" max="100" step="1" value="${Math.round(+_pfW[t]||0)}" data-t="${t}">
-      <span class="pf-w" data-t="${t}">${((+_pfW[t]||0)/total*100).toFixed(0)}%</span>
+      <span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+_pfW[t]||0)}" data-t="${t}" aria-label="weight ${_short(t)}"/><i>%</i></span>
+      <span class="pf-w" data-t="${t}" title="share of the book after normalizing to 100%">${((+_pfW[t]||0)/total*100).toFixed(0)}%</span>
       <span class="pf-ret ${_signCls(r)}">${_pctStr(r,1)}</span></div>`; }).join('');
-  host.innerHTML=`<div class="pf-rows">${rows}</div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
-  host.querySelectorAll('.pf-slider').forEach(s=>s.oninput=()=>{ _pfW[s.dataset.t]=+s.value; _pfSave(); _pfRecompute(); });
+  host.innerHTML=`<div class="pf-hint">Type each weight — we normalize the book to 100%.</div><div class="pf-rows">${rows}</div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
+  host.querySelectorAll('.pf-inbox input').forEach(inp=>inp.oninput=()=>{ let v=+inp.value; if(!isFinite(v))v=0; _pfW[inp.dataset.t]=Math.max(0,Math.min(100,v)); _pfSave(); _pfRecompute(); });
   _pfRecompute();
 }
 function _pfRecompute(){
@@ -993,25 +1015,32 @@ function _fxCells(){
 const CARSECT={iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',steel:'steel',pp:'pp'};
 const CARSECT_LABEL={mining:'Mining',steel:'Steel',pp:'Pulp & Paper'};
 function _carTag(t){ const c=CARSECT[TICKER_SECTOR[t]]; return c?`<span class="ah-tag tag-${c}">${CARSECT_LABEL[c]}</span>`:''; }
-/* ── carrossel do header: tour por TODAS as empresas (mining→steel→pp, alfabético dentro), 10s cada ── */
+/* ── carrossel do header: tour por TODAS as empresas em ORDEM ALFABÉTICA (10s cada) ── */
 const CARDOT={mining:'var(--orange)',steel:'#7ab0ff',pp:'var(--up)'};
 function _carBuildOrder(){
-  const ord=['mining','steel','pp'];
   const comps=_quotes.filter(q=>CARSECT[TICKER_SECTOR[q.ticker]]);   // só empresas (exclui índices)
-  comps.sort((a,b)=>{ const d=ord.indexOf(CARSECT[TICKER_SECTOR[a.ticker]])-ord.indexOf(CARSECT[TICKER_SECTOR[b.ticker]]); return d||_short(a.ticker).localeCompare(_short(b.ticker)); });
+  comps.sort((a,b)=>_short(a.ticker).localeCompare(_short(b.ticker)));   // alfabética
   _carOrder=comps.map(q=>q.ticker);
 }
-function carShow(t){ _sel=[t]; _chartMode='price'; afterSel(); }   // foco limpo (carShow NÃO pausa: é o próprio tour)
-function _carTick(){ if(_carHover||Date.now()<_carPauseUntil||_carOrder.length<2||_sel.length>1)return;
-  _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
+function carShow(t){ _sel=[t]; _chartMode='price'; afterSel(); }   // foco limpo (é o próprio tour; não conta como interação)
+function _carAdvance(){ if(!_carAuto||_carOrder.length<2||_sel.length>1)return; _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
+function _carIdleCheck(){ if(!_carAuto && Date.now()-_lastInteract>300000){ _carAuto=true; renderCarNext(); } }   // 5 min ocioso → retoma
+function setCarAuto(on){ _carAuto=on; if(on)_lastInteract=0; renderCarNext(); }
 function renderCarNext(){
   const host=document.getElementById('car-next'); if(!host)return;
   if(_carOrder.length<2){ host.innerHTML=''; return; }
   const nxt=[1,2,3].map(k=>_carOrder[(_carIdx+k)%_carOrder.length]);
-  host.innerHTML='<div class="cn-lbl">Up next</div>'+nxt.map(t=>{ const q=byT(t), c=CARSECT[TICKER_SECTOR[t]];
-    return `<div class="cn-item" data-t="${t}"><span class="cn-tag" style="background:${CARDOT[c]||'var(--mute)'}"></span><span class="cn-tk">${_short(t)}</span><span class="cn-nm">${esc(q&&q.name||'')}</span></div>`; }).join('')
-    +'<div class="cn-dots"><i></i><i></i><i></i></div>';
-  host.querySelectorAll('.cn-item').forEach(el=>el.onclick=()=>{ const t=el.dataset.t, i=_carOrder.indexOf(t); if(i>=0)_carIdx=i; _carPause(); carShow(t); });
+  const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  host.classList.toggle('paused', !_carAuto);
+  host.innerHTML='<div class="cn-head"><span class="cn-lbl">Up next</span>'
+    +`<button class="cn-auto${_carAuto?' on':''}" id="car-auto" title="${_carAuto?'Pause auto-rotation':'Auto-rotate the carousel'}">${_carAuto?PAUSE:PLAY}Auto</button></div>`
+    +nxt.map((t,j)=>{ const q=byT(t), c=CARSECT[TICKER_SECTOR[t]];
+      return `<div class="cn-item${j===0?' next1':''}" data-t="${t}"><span class="cn-tag" style="background:${CARDOT[c]||'var(--mute)'}"></span><span class="cn-tk">${_short(t)}</span><span class="cn-nm">${esc(q&&q.name||'')}</span></div>`; }).join('')
+    +`<div class="car-prog${_carAuto?' run':''}"><i></i></div>`;
+  host.querySelectorAll('.cn-item').forEach(el=>el.onclick=()=>{ const t=el.dataset.t, i=_carOrder.indexOf(t); if(i>=0)_carIdx=i; carShow(t); });   // clicar foca + trava (listener global)
+  document.getElementById('car-auto').onclick=e=>{ e.stopPropagation(); setCarAuto(!_carAuto); };
+  if(_carAuto){ const bar=host.querySelector('.car-prog>i'); if(bar) bar.addEventListener('animationend', _carAdvance, {once:true}); }
 }
 /* ── mercados que analisamos: nome + aberto/fechado + HORÁRIO LOCAL (base da abertura). offset ignora DST (aprox). ── */
 const MARKETS=[
@@ -1060,10 +1089,12 @@ function _initSearch(){
   document.addEventListener('click',e=>{ if(!e.target.closest('.mkt-search'))close(); });
 }
 
-/* ── tema ── */
-function _applyTheme(){ const light=localStorage.getItem('mkt_theme')==='light'; document.body.classList.toggle('theme-light',light);
-  document.getElementById('ic-moon').innerHTML=light?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>':'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'; }
-document.getElementById('theme-btn').onclick=()=>{ localStorage.setItem('mkt_theme', localStorage.getItem('mkt_theme')==='light'?'dark':'light'); _applyTheme(); };
+/* ── tema: segue o toggle GLOBAL (topnav.js → classe html.dark + body.theme-light). Market = ESCURA por padrão. ── */
+function _applyTheme(){ var light = localStorage.getItem('ibba_theme')==='light';
+  document.documentElement.classList.toggle('dark', !light);
+  document.body.classList.toggle('theme-light', light);
+  if(window.__syncThemeIcon) window.__syncThemeIcon();
+}
 
 /* ── boot ── */
 function _qparam(k){ try{return new URLSearchParams(location.search).get(k);}catch(e){return null;} }
@@ -1095,10 +1126,13 @@ async function init(){
   _initSearch();
   loadMacro().then(renderHeader);
   renderMarkets(); setInterval(renderMarkets, 1000);   // relógio local de cada mercado + "updated"
-  _carBuildOrder(); { const i=_carOrder.indexOf(_anchor); if(i>=0)_carIdx=i; } renderCarNext();   // carrossel: ordem + posição inicial
-  _carPauseUntil=Date.now()+30000;   // empresa de entrada (clique do heatmap) fica ~30s antes do tour começar
-  { const ahc=document.querySelector('.ah-card'); if(ahc){ ahc.addEventListener('mouseenter',()=>_carHover=true); ahc.addEventListener('mouseleave',()=>_carHover=false); } }
-  setInterval(_carTick, 10000);   // troca o destaque a cada 10s (só em modo 1-ativo; pausa no hover/seleção)
+  _carBuildOrder();
+  _carAuto = !_qparam('t'); _lastInteract = Date.now();   // aba Market (sem ?t=) → tour ON; heatmap (?t=) → travado naquela ação
+  if(_carAuto && _carOrder.length){ _carIdx=0; carShow(_carOrder[0]); }   // aba Market: começa pela ordem alfabética
+  else { const i=_carOrder.indexOf(_anchor); if(i>=0)_carIdx=i; renderCarNext(); }
+  document.addEventListener('click', e=>{ if(!e.target.closest('#car-auto')) _noteInteract(); }, true);   // qualquer clique TRAVA o tour (botão Auto isento)
+  document.addEventListener('keydown', _noteInteract, true);
+  setInterval(_carIdleCheck, 20000);   // 5 min sem interação → retoma o tour
   setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); }); loadMacro().then(renderHeader); }, 60000);
 }
 function showApp(){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
