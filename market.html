@@ -267,6 +267,10 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .pf-inbox input{width:34px;background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11.5px;font-weight:600;text-align:right;-moz-appearance:textfield}
 .pf-inbox input::-webkit-outer-spin-button,.pf-inbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .pf-inbox i{font-size:10px;color:var(--mute);font-style:normal}
+.pf-total{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute);margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
+.pf-total b{font-family:var(--mono);font-size:13px}
+.pf-total b.ok{color:var(--up)} .pf-total b.under{color:var(--text)} .pf-total b.over{color:var(--down)}
+.pf-cash{color:var(--mute)}
 .pf-w{font-family:var(--mono);min-width:42px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0;margin-left:auto}
 .pf-ret{font-family:var(--mono);width:54px;text-align:right;font-size:11px;flex-shrink:0}
 .pf-chart{height:148px;position:relative;margin-top:10px;overflow:hidden}
@@ -908,36 +912,35 @@ function _renderForward(){
   const pts=[]; if(front&&front.price!=null)pts.push({l:'Spot',v:front.price});
   FWD_CURVE.forEach(f=>{ const c=_commByCode[f.code]; if(c&&c.price!=null)pts.push({l:f.label,v:c.price}); });
   if(pts.length<2){ host.innerHTML='<div class="c-empty">Forward curve unavailable.</div>'; return; }
-  const W=320,H=110,P={l:34,r:10,t:10,b:20};
-  let lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)); if(hi===lo){hi+=1;lo-=1;} const pad=(hi-lo)*0.15;lo-=pad;hi+=pad;
+  // viewBox = tamanho REAL do host (mede após o reflow) → escala 1:1, sem distorcer ("puxado")
+  const W=Math.max(240,Math.round(host.clientWidth||320)), H=Math.round(host.clientHeight||120), P={l:36,r:14,t:14,b:22};
+  let lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)); if(hi===lo){hi+=1;lo-=1;} const pad=(hi-lo)*0.2;lo-=pad;hi+=pad;
   const X=i=>P.l+i/(pts.length-1)*(W-P.l-P.r), Y=v=>P.t+(1-(v-lo)/(hi-lo))*(H-P.t-P.b);
   const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
-  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="2.6" fill="#FF5000"/><text class="c-axis" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${p.l}</text>`).join('');
+  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="3" fill="var(--orange)"/><text class="c-axis" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${p.l}</text>`).join('');
   const area=`M${X(0).toFixed(1)} ${(H-P.b)} `+pts.map((p,i)=>`L${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ')+` L${X(pts.length-1).toFixed(1)} ${(H-P.b)} Z`;
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
     <text class="c-axis" x="${P.l-6}" y="${(Y(hi)+8).toFixed(1)}" text-anchor="end">${hi.toFixed(0)}</text>
     <text class="c-axis" x="${P.l-6}" y="${(Y(lo)).toFixed(1)}" text-anchor="end">${lo.toFixed(0)}</text>
-    <path d="${area}" fill="#FF5000" opacity="0.10"/><path d="${line}" fill="none" stroke="#FF5000" stroke-width="1.8"/>${dots}</svg>`;
+    <path d="${area}" fill="var(--orange)" opacity="0.10"/><path d="${line}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round"/>${dots}</svg>`;
 }
 
 /* ====================== ANALYTICS (fast-follow): correlation + portfolio ====================== */
-// log-retornos diários alinhados por data (interseção) p/ um conjunto de tickers
-function _alignedReturns(tickers, range){
-  const ser=tickers.map(t=>_series(byT(t),range,'price'));
-  if(ser.some(s=>!s||s.length<3)) return {rets:tickers.map(()=>[]), nobs:0};
-  const maps=ser.map(s=>new Map(s.map(p=>[p[0],p[1]])));
-  let common=ser[0].map(p=>p[0]);
-  for(let i=1;i<maps.length;i++) common=common.filter(e=>maps[i].has(e));
-  common.sort((a,b)=>a-b);
-  const rets=maps.map(m=>{ const r=[]; for(let i=1;i<common.length;i++){ const a=m.get(common[i-1]),b=m.get(common[i]); r.push((a>0&&b>0)?Math.log(b/a):null);} return r; });
-  return {rets, nobs:Math.max(0,common.length-1)};
+// retorno log diário por DATA (YYYY-MM-DD) — robusto a timestamps/calendários diferentes entre bolsas
+function _retMap(ticker, range){
+  const s=_series(byT(ticker),range,'price'); const m=new Map();
+  if(!s||s.length<2) return m;
+  const byDay=new Map(); for(const p of s){ if(p[1]>0) byDay.set(new Date(p[0]*1000).toISOString().slice(0,10), p[1]); }  // 1 preço/dia (último)
+  const days=[...byDay.keys()].sort();
+  for(let i=1;i<days.length;i++){ const a=byDay.get(days[i-1]), b=byDay.get(days[i]); if(a>0&&b>0) m.set(days[i], Math.log(b/a)); }
+  return m;
 }
-function _corr(a,b){
-  const xs=[],ys=[]; for(let i=0;i<a.length;i++){ if(a[i]!=null&&b[i]!=null){xs.push(a[i]);ys.push(b[i]);} }
-  if(xs.length<3) return null;
+function _corrPair(ma, mb){   // Pearson sobre as datas em COMUM (par-a-par: um ativo sem histórico não zera os outros)
+  const xs=[],ys=[]; for(const [d,x] of ma){ const y=mb.get(d); if(y!=null){ xs.push(x); ys.push(y); } }
+  if(xs.length<3) return {c:null,n:xs.length};
   const n=xs.length, mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n;
   let sxy=0,sxx=0,syy=0; for(let i=0;i<n;i++){ const dx=xs[i]-mx,dy=ys[i]-my; sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy; }
-  return (sxx>0&&syy>0)?sxy/Math.sqrt(sxx*syy):null;
+  return {c:(sxx>0&&syy>0)?sxy/Math.sqrt(sxx*syy):null, n};
 }
 function _corrColor(c){ if(c==null)return 'rgba(110,118,129,.18)'; const a=Math.min(1,Math.abs(c));
   return c>=0?`rgba(255,80,0,${(0.12+a*0.72).toFixed(2)})`:`rgba(59,130,246,${(0.12+a*0.72).toFixed(2)})`; }
@@ -945,15 +948,18 @@ function renderCorr(){
   const host=document.getElementById('corr-host'), sub=document.getElementById('corr-sub'); if(!host)return;
   const tk=_sel.slice(0,8), range=_range==='1D'?'1M':_range;
   if(tk.length<2){ host.innerHTML='<div class="corr-empty">Select 2+ assets (watchlist or Recommended) to see how their daily returns move together.</div>'; if(sub)sub.textContent=''; return; }
-  const {rets,nobs}=_alignedReturns(tk,range);
-  if(sub)sub.textContent=`daily returns · ${_rangeLabel(range)} · ${nobs} obs${nobs<10?' (few)':''}`;
-  const n=tk.length;
-  let h='<div class="corr-cap"><b>How their daily returns move together.</b> +1.00 = move in lockstep · 0 = unrelated · −1.00 = opposite. Stronger color = stronger link.</div>';
+  const maps=tk.map(t=>_retMap(t,range)), n=tk.length, C=[]; let maxN=0;
+  for(let i=0;i<n;i++){ C[i]=[]; for(let j=0;j<n;j++){
+    if(i===j) C[i][j]={c:1,n:maps[i].size};
+    else if(j<i) C[i][j]=C[j][i];
+    else { C[i][j]=_corrPair(maps[i],maps[j]); if(C[i][j].n>maxN)maxN=C[i][j].n; } } }
+  if(sub)sub.textContent=`daily returns · ${_rangeLabel(range)} · up to ${maxN} overlapping obs${maxN<10?' (few)':''}`;
+  let h='<div class="corr-cap"><b>How their daily returns move together.</b> +1.00 = move in lockstep · 0 = unrelated · −1.00 = opposite. Stronger color = stronger link. “—” = not enough overlapping history.</div>';
   h+=`<div class="corr-grid" style="grid-template-columns:54px repeat(${n},minmax(0,1fr))"><div></div>`;
   h+=tk.map(t=>`<div class="corr-lbl col">${_short(t)}</div>`).join('');
   for(let i=0;i<n;i++){ h+=`<div class="corr-lbl">${_short(tk[i])}</div>`;
-    for(let j=0;j<n;j++){ const c=i===j?1:_corr(rets[i],rets[j]);
-      h+=`<div class="corr-cell${i===j?' diag':''}" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)}">${c==null?'—':c.toFixed(2)}</div>`; } }
+    for(let j=0;j<n;j++){ const c=C[i][j].c, nn=C[i][j].n;
+      h+=`<div class="corr-cell${i===j?' diag':''}" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)} (${nn} obs)">${c==null?'—':c.toFixed(2)}</div>`; } }
   h+='</div><div class="corr-legend"><b>−1</b><span>opposite</span><div class="bar"></div><span>same way</span><b>+1</b></div>';
   host.innerHTML=h;
 }
@@ -963,32 +969,39 @@ let _pfW={}; try{ _pfW=JSON.parse(localStorage.getItem('mkt_pf'))||{}; }catch(e)
 function _pfSave(){ try{localStorage.setItem('mkt_pf',JSON.stringify(_pfW));}catch(e){} }
 function _pfPort(range){
   if(!_sel.length) return null;
-  const total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
-  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); return s?new Map(s.map(p=>[p[0],p[1]])):null; });
-  if(maps.some(m=>!m)) return null;
-  let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(e=>maps[i].has(e)); common.sort((a,b)=>a-b);
+  // série % por DATA (dia) — alinhada por interseção de dias (robusto a bolsas diferentes); resto do book = cash (0%)
+  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); const m=new Map(); if(s)for(const p of s){ m.set(new Date(p[0]*1000).toISOString().slice(0,10), p[1]); } return m; });
+  if(maps.some(m=>m.size<2)) return null;
+  let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(d=>maps[i].has(d)); common.sort();
   if(common.length<2) return null;
-  return common.map(e=>{ let v=0; _sel.forEach((t,i)=>{ v+=((+_pfW[t]||0)/total)*(maps[i].get(e)||0); }); return [e,v]; });
+  return common.map(d=>{ let v=0; _sel.forEach((t,i)=>{ v+=((+_pfW[t]||0)/100)*(maps[i].get(d)||0); }); return [Math.floor(Date.parse(d)/1000), v]; });
 }
 function _pfVol(p){ if(!p||p.length<20)return null; const r=[]; for(let i=1;i<p.length;i++){ const a=1+p[i-1][1]/100,b=1+p[i][1]/100; if(a>0&&b>0)r.push(Math.log(b/a)); } if(r.length<10)return null; const m=r.reduce((s,v)=>s+v,0)/r.length; const v=r.reduce((s,x)=>s+(x-m)*(x-m),0)/(r.length-1); return Math.sqrt(v)*Math.sqrt(252)*100; }
 function _pfDD(p){ if(!p||p.length<5)return null; let peak=-Infinity,dd=0; for(const x of p){ const lvl=1+x[1]/100; if(lvl>peak)peak=lvl; if(peak>0){const c=lvl/peak-1; if(c<dd)dd=c;} } return dd*100; }
 function renderPortfolio(){
   const host=document.getElementById('pf-host'); if(!host)return;
   if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; return; }
-  _sel.forEach(t=>{ if(_pfW[t]==null)_pfW[t]=100/_sel.length; });
-  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
+  _sel.forEach(t=>{ if(_pfW[t]==null)_pfW[t]=Math.round(100/_sel.length); });
+  { const tot=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0); if(tot>100){ _sel.forEach(t=>{ _pfW[t]=Math.round((+_pfW[t]||0)*100/tot); }); _pfSave(); } }   // nunca começa acima de 100%
+  const range=_range==='1D'?'1M':_range;
   const rows=_sel.map((t,i)=>{ const r=_ret(byT(t),range);
     return `<div class="pf-row"><span class="pf-tk"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</span>
       <span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+_pfW[t]||0)}" data-t="${t}" aria-label="weight ${_short(t)}"/><i>%</i></span>
-      <span class="pf-w" data-t="${t}" title="share of the book after normalizing to 100%">${((+_pfW[t]||0)/total*100).toFixed(0)}%</span>
-      <span class="pf-ret ${_signCls(r)}">${_pctStr(r,1)}</span></div>`; }).join('');
-  host.innerHTML=`<div class="pf-hint">Type each weight — we normalize the book to 100%.</div><div class="pf-rows">${rows}</div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
-  host.querySelectorAll('.pf-inbox input').forEach(inp=>inp.oninput=()=>{ let v=+inp.value; if(!isFinite(v))v=0; _pfW[inp.dataset.t]=Math.max(0,Math.min(100,v)); _pfSave(); _pfRecompute(); });
+      <span class="pf-ret ${_signCls(r)}" style="margin-left:auto">${_pctStr(r,1)}</span></div>`; }).join('');
+  host.innerHTML=`<div class="pf-hint">Type each weight (%). The total is capped at 100% — anything left over is treated as cash.</div><div class="pf-rows">${rows}</div><div class="pf-total" id="pf-total"></div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
+  host.querySelectorAll('.pf-inbox input').forEach(inp=>inp.oninput=()=>{
+    let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
+    const others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+_pfW[t]||0)),0);
+    v=Math.min(v,Math.max(0,100-others));   // a soma nunca passa de 100%
+    _pfW[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v;
+    _pfSave(); _pfRecompute();
+  });
   _pfRecompute();
 }
 function _pfRecompute(){
-  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
-  document.querySelectorAll('.pf-w').forEach(el=>{ el.textContent=((+_pfW[el.dataset.t]||0)/total*100).toFixed(0)+'%'; });
+  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0);
+  const tEl=document.getElementById('pf-total');
+  if(tEl) tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':'');
   const port=_pfPort(range);
   const ret=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port);
   const st=document.getElementById('pf-stats');
