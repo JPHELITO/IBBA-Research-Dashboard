@@ -19,6 +19,7 @@
     if(document.body) document.body.classList.toggle('theme-light', !dark);   // a Market usa body.theme-light p/ o claro; inócuo nas demais páginas
     try{ localStorage.setItem('ibba_theme', dark?'dark':'light'); }catch(e){}
     if(window.__syncThemeIcon) window.__syncThemeIcon();
+    try{ window.dispatchEvent(new Event('ibba:theme')); }catch(e){}   // páginas com Chart.js (M&M/P&P) re-renderizam os gráficos
   };
   window.__syncThemeIcon = function(){
     var on=document.documentElement.classList.contains('dark');
