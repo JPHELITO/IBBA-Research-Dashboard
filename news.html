@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — News History</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -159,6 +160,27 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .item{padding:12px 14px;}
   .footer{padding:14px 18px;}
 }
+/* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (News) ═══════════ */
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;
+  --gray-light:#15171b;--white:#1c2026;--border:#2b3038;--green:#22c55e;
+  --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.5);
+}
+html.dark .header{background:#0d0e11;}
+html.dark .crumb-sep{color:rgba(255,255,255,.25);}
+html.dark .chip:hover{border-color:#4a5059;}
+html.dark .chip.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+html.dark .item:hover{background:rgba(255,255,255,.05);}
+html.dark .day-divider{background:#23272e;}
+html.dark .load-more{background:#2b3038;color:#e8eaed;}
+html.dark .load-more:hover{background:var(--orange);color:#fff;}
+html.dark .footer-text{color:rgba(255,255,255,.4);}
+html.dark .footer-dot{background:rgba(255,255,255,.22);}
+html.dark .news-take.pos{color:#4ade80;background:rgba(34,197,94,.18);}
+html.dark .news-take.neg{color:#f87171;background:rgba(239,68,68,.18);}
+html.dark .news-take.neu{color:#9ca3af;background:rgba(140,140,140,.2);}
+html.dark .news-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
+html.dark .news-take.nt{color:#9ca3af;}
 </style>
 </head>
 <body>

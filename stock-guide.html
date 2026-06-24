@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
 <title>ITAÚ BBA — Stock Guide</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -67,6 +68,23 @@ tr.offrow td{background:#FFF6F2}
 .spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(max-width:760px){.wrap{padding:14px 12px 50px}.panels{grid-template-columns:1fr}}
+/* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (Stock Guide) ═══════════ */
+html.dark{
+  --black:#e8eaed;--g-dark:#c3c7cd;--g-mid:#828892;
+  --g-light:#15171b;--white:#1c2026;--border:#2b3038;
+  --green:#22c55e;--red:#ef4444;
+  --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.5);
+}
+html.dark .hbtn{background:#1c2026}
+html.dark .card{background:#1c2026}
+html.dark .stepper button{background:#1c2026}
+html.dark .stepper input{background:#1c2026;color:var(--black)}
+html.dark table.data tbody tr:hover{background:rgba(255,255,255,.05)}
+html.dark tr.ex td{background:#20242b}
+html.dark tr.offrow td{background:#2a1d18}
+html.dark .rec.OP{background:rgba(34,197,94,.18)}
+html.dark .rec.MP{background:rgba(140,140,140,.2)}
+html.dark .rec.UP{background:rgba(239,68,68,.18)}
 </style>
 </head>
 <body>
