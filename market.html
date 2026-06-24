@@ -660,7 +660,8 @@ function _renderChart(hostId, lines, mode, emptyMsg){
   lines.forEach(l=>l.pts.forEach(([t,v])=>{tMin=Math.min(tMin,t);tMax=Math.max(tMax,t);vMin=Math.min(vMin,v);vMax=Math.max(vMax,v);}));
   if(vMin===vMax){vMin-=1;vMax+=1;}
   const pad=(vMax-vMin)*0.08; vMin-=pad; vMax+=pad;
-  const W=720,H=300,P={l:52,r:14,t:12,b:24};
+  // viewBox = tamanho REAL do host (mede após reflow) → escala 1:1, sem distorcer ("puxado")
+  const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)), P={l:52,r:14,t:12,b:24};
   const X=t=>P.l+(t-tMin)/((tMax-tMin)||1)*(W-P.l-P.r);
   const Y=v=>P.t+(1-(v-vMin)/((vMax-vMin)||1))*(H-P.t-P.b);
   const fmtV=v=> mode==='pct' ? ((v>=0?'+':'')+v.toFixed(1)+'%') : v.toLocaleString('en-US',{maximumFractionDigits:2});
@@ -685,7 +686,7 @@ function _attachHover(host, lines, dom){
   const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%'):v.toLocaleString('en-US',{maximumFractionDigits:2});
   host.onmousemove=ev=>{
     const rect=svg.getBoundingClientRect();
-    let frac=(ev.clientX-rect.left)/rect.width; frac=Math.max(0,Math.min(1,frac));
+    let frac=((ev.clientX-rect.left)/rect.width*W - P.l)/((W-P.l-P.r)||1); frac=Math.max(0,Math.min(1,frac));   // desconta a margem do eixo Y → cruz alinha com o dia certo
     const t=tMin+frac*(tMax-tMin), xv=P.l+frac*(W-P.l-P.r);
     cross.setAttribute('x1',xv);cross.setAttribute('x2',xv);cross.style.display='';
     const cursorY=ev.clientY-rect.top;
