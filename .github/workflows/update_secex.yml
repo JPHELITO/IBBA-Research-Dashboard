@@ -95,7 +95,7 @@ jobs:
             O SECEX (MDIC) publicou novos dados de comércio exterior de aço.
 
             📅 Novo período disponível: ${{ env.LATEST_PERIOD }}
-            📊 Dashboard atualizado: https://ibba-research-dashboard.vercel.app/Steel%20and%20Mining/
+            📊 Dashboard atualizado: https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/
 
             Os dados de importação e exportação por país e porto foram
             atualizados automaticamente no Steel & Mining Dashboard.
