@@ -944,9 +944,9 @@ const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
 let charts={};
 
 // ─── COLORS ──────────────────────────────────────────────────────────────────
-const C_OR='#FF5000', C_BK='#1A1A1A', C_GR='#888888';
+const C_OR='#FF5000'; let C_BK='#1A1A1A'; const C_GR='#888888';   // C_BK vira BRANCO no dark mode (_applyChartTheme)
 const C_OR_A=v=>`rgba(255,80,0,${v})`;
-const C_BK_A=v=>`rgba(26,26,26,${v})`;
+let C_BK_RGB='26,26,26'; const C_BK_A=v=>`rgba(${C_BK_RGB},${v})`;
 const C_GR_A=v=>`rgba(136,136,136,${v})`;
 const C_GN='#27AE60', C_RD='#C0392B';
 
@@ -1165,7 +1165,8 @@ function baseOpts(ov={}){
 }
 // tema dos gráficos (Chart.js) segue o night mode global (ibba_theme / classe html.dark)
 function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
-  Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)'; }
+  Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)';
+  C_BK=d?'#e6e6e6':'#1A1A1A'; C_BK_RGB=d?'230,230,230':'26,26,26'; }   // série "preta" -> branca no dark (distinta do cinza C_GR)
 _applyChartTheme();
 window.addEventListener('ibba:theme',()=>{ _applyChartTheme(); if(typeof render==='function') render(); });
 // Re-render only when WIDTH changes (mobile scroll hides address bar → height-only resize → ignore)
