@@ -161,7 +161,12 @@ body.theme-light .chart-dates input{color-scheme:light}
 .mdl-tile.on .nm{color:rgba(255,255,255,.85)}
 
 /* ===== P3 Watchlist table ===== */
-.wl-scroll{overflow:auto;max-height:560px}
+/* esticada: ocupa a coluna direita inteira (chart+thesis). Conteúdo ABSOLUTO → o scroll de 47
+   linhas NÃO força a altura das linhas do grid (senão chart/thesis esticavam). Robusto p/ qualquer ativo. */
+.wl-card{grid-row:span 2;position:relative}
+.wl-card > .card-head{position:absolute;top:0;left:0;right:0;height:43px;z-index:2;flex-wrap:nowrap;overflow:hidden}
+.wl-card > .wl-scroll{position:absolute;top:43px;bottom:33px;left:0;right:0;overflow:auto}
+.wl-card > .wl-foot{position:absolute;bottom:0;left:0;right:0;height:33px}
 table.wl{border-collapse:collapse;width:100%;font-size:11.5px}
 table.wl th,table.wl td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border)}
 table.wl th{position:sticky;top:0;background:var(--panel);color:var(--mute);font-weight:600;font-size:9.5px;
@@ -228,6 +233,9 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 
 @media(max-width:1024px){
   .col-8,.col-4,.col-12{grid-column:span 12}
+  .wl-card{grid-row:auto;position:static}
+  .wl-card > .card-head,.wl-card > .wl-scroll,.wl-card > .wl-foot{position:static;height:auto}
+  .wl-scroll{max-height:62vh}
   .mkt-topbar{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
   .mkt-status{margin-left:0}
   .chart-host{height:280px}
@@ -299,11 +307,10 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
         </div>
       </div>
 
-      <!-- P3 Watchlist / movers (selection surface) -->
-      <div class="card col-4">
+      <!-- P3 Watchlist / movers (selection surface) — tall, spans 2 rows -->
+      <div class="card col-4 wl-card">
         <div class="card-head">
           <span class="card-title">Watchlist</span>
-          <span class="card-sub">click rows to compare</span>
           <div class="card-tools">
             <div class="seg" id="wl-mode"><button data-m="list" class="active">List</button><button data-m="movers">Movers</button></div>
           </div>
@@ -320,20 +327,6 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
         <div class="card-head"><span class="card-title"><span class="accent">Thesis</span> Strip</span>
           <span class="card-sub">the asset next to its commodity driver, peers and index</span></div>
         <div class="card-body"><div class="thesis" id="thesis"></div></div>
-      </div>
-
-      <!-- P6 News & take -->
-      <div class="card col-4">
-        <div class="card-head"><span class="card-title">News &amp; <span class="accent">Take</span></span>
-          <div class="news-filter" id="news-filter">
-            <button class="nf-chip active" data-take="all" title="All">·</button>
-            <button class="nf-chip" data-take="+" title="Positive">+</button>
-            <button class="nf-chip" data-take="-" title="Negative">−</button>
-            <button class="nf-chip" data-take="=" title="Neutral">=</button>
-          </div>
-        </div>
-        <div class="np-pulse" id="np-pulse"></div>
-        <div class="news-feed" id="news-feed"></div>
       </div>
     </div>
     <div style="text-align:center;margin-top:20px;font-size:10.5px;color:var(--mute)">
@@ -462,7 +455,7 @@ let _sel=[];                      // ativos selecionados (chart + watchlist lara
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
 let _range='3M', _cFrom=null, _cTo=null;
 let _chartMode='price';
-let _wlMode='list', _wlSort={key:'1D',dir:-1}, _wlAll=false;
+let _wlMode='list', _wlSort={key:'1D',dir:-1}, _wlAll=true;   // default: TODOS os 47, ranqueados por 1D↓
 let _newsFilter='all', _news=[], _pulse={pos:0,neg:0,neu:0,tot:0};
 let _updatedAt='';
 
@@ -620,7 +613,6 @@ function _qa(){ return _anchor?byT(_anchor):null; }
 function renderAll(){
   document.getElementById('bc-ticker').textContent=_anchor?_short(_anchor):'—';
   renderHeader(); renderChart(); renderWatchlist(); renderThesis(); renderStatus();
-  loadNews();
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
@@ -882,7 +874,6 @@ async function init(){
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
   document.getElementById('wl-all').onclick=()=>{ _wlAll=!_wlAll; renderWatchlist(); };
-  document.getElementById('news-filter').onclick=e=>{ const b=e.target.closest('.nf-chip'); if(!b)return; document.querySelectorAll('.nf-chip').forEach(c=>c.classList.remove('active')); b.classList.add('active'); _newsFilter=b.dataset.take; loadNews(); };
   _initSearch();
   setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); renderStatus(); }); }, 60000);
   setInterval(renderStatus, 30000);
