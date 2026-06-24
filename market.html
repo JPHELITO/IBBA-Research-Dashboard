@@ -71,7 +71,7 @@ a{color:inherit;text-decoration:none}
 /* ===== layout ===== */
 .mkt-wrap{padding:14px 18px 60px;max-width:1640px;margin:0 auto}
 .mkt-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.col-8{grid-column:span 8} .col-4{grid-column:span 4} .col-12{grid-column:span 12}
+.col-8{grid-column:span 8} .col-4{grid-column:span 4} .col-12{grid-column:span 12} .col-5{grid-column:span 5} .col-7{grid-column:span 7}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
 .card-head{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .card-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
@@ -203,6 +203,25 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .fwd-host{height:120px;position:relative}
 .fwd-host svg{width:100%;height:100%}
 
+/* ===== Analytics: correlation matrix + portfolio ===== */
+.corr-grid{display:grid;gap:2px}
+.corr-cell{aspect-ratio:1;min-height:24px;display:flex;align-items:center;justify-content:center;border-radius:3px;
+  font-family:var(--mono);font-weight:600;font-size:9.5px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.corr-lbl{display:flex;align-items:center;font-family:var(--mono);font-weight:600;font-size:9.5px;color:var(--dim);overflow:hidden;white-space:nowrap}
+.corr-lbl.col{justify-content:center}
+.corr-empty{color:var(--mute);font-size:12px;padding:24px 14px;text-align:center}
+.pf-rows{display:flex;flex-direction:column}
+.pf-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--border)}
+.pf-tk{font-family:var(--mono);font-weight:600;font-size:11px;width:70px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pf-tk .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pf-slider{flex:1;accent-color:var(--orange);height:4px;min-width:60px}
+.pf-w{font-family:var(--mono);width:38px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0}
+.pf-ret{font-family:var(--mono);width:54px;text-align:right;font-size:11px;flex-shrink:0}
+.pf-chart{height:120px;position:relative;margin-top:10px}
+.pf-stats{display:flex;gap:22px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap}
+.pf-stat .pl{font-size:9px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.pf-stat .pv{font-family:var(--mono);font-size:16px;font-weight:700;margin-top:2px}
+
 /* ===== P6 News ===== */
 .np-pulse{display:flex;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid var(--border)}
 .np-gauge{position:relative;width:90px;height:50px;flex-shrink:0}
@@ -232,7 +251,7 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 @media(max-width:1024px){
-  .col-8,.col-4,.col-12{grid-column:span 12}
+  .col-8,.col-4,.col-12,.col-5,.col-7{grid-column:span 12}
   .wl-card{grid-row:auto;position:static}
   .wl-card > .card-head,.wl-card > .wl-scroll,.wl-card > .wl-foot{position:static;height:auto}
   .wl-scroll{max-height:62vh}
@@ -327,6 +346,18 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
         <div class="card-head"><span class="card-title"><span class="accent">Thesis</span> Strip</span>
           <span class="card-sub">the asset next to its commodity driver, peers and index</span></div>
         <div class="card-body"><div class="thesis" id="thesis"></div></div>
+      </div>
+
+      <!-- Analytics (fast-follow): correlation matrix + portfolio simulator -->
+      <div class="card col-5">
+        <div class="card-head"><span class="card-title">Correlation</span><span class="card-sub" id="corr-sub"></span></div>
+        <div class="card-body"><div id="corr-host"></div></div>
+      </div>
+      <div class="card col-7">
+        <div class="card-head"><span class="card-title">Portfolio <span class="dim" style="font-weight:600;text-transform:none;letter-spacing:0">simulator</span></span>
+          <span class="card-sub">static-weight blend of the selected assets</span>
+          <button class="cmp-other" id="pf-equal" style="margin-left:auto;padding:3px 9px">Equal weight</button></div>
+        <div class="card-body"><div id="pf-host"></div></div>
       </div>
     </div>
     <div style="text-align:center;margin-top:20px;font-size:10.5px;color:var(--mute)">
@@ -613,6 +644,7 @@ function _qa(){ return _anchor?byT(_anchor):null; }
 function renderAll(){
   document.getElementById('bc-ticker').textContent=_anchor?_short(_anchor):'—';
   renderHeader(); renderChart(); renderWatchlist(); renderThesis(); renderStatus();
+  renderCorr(); renderPortfolio();
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
@@ -799,6 +831,83 @@ function _renderForward(){
     <path d="${area}" fill="#FF5000" opacity="0.10"/><path d="${line}" fill="none" stroke="#FF5000" stroke-width="1.8"/>${dots}</svg>`;
 }
 
+/* ====================== ANALYTICS (fast-follow): correlation + portfolio ====================== */
+// log-retornos diários alinhados por data (interseção) p/ um conjunto de tickers
+function _alignedReturns(tickers, range){
+  const ser=tickers.map(t=>_series(byT(t),range,'price'));
+  if(ser.some(s=>!s||s.length<3)) return {rets:tickers.map(()=>[]), nobs:0};
+  const maps=ser.map(s=>new Map(s.map(p=>[p[0],p[1]])));
+  let common=ser[0].map(p=>p[0]);
+  for(let i=1;i<maps.length;i++) common=common.filter(e=>maps[i].has(e));
+  common.sort((a,b)=>a-b);
+  const rets=maps.map(m=>{ const r=[]; for(let i=1;i<common.length;i++){ const a=m.get(common[i-1]),b=m.get(common[i]); r.push((a>0&&b>0)?Math.log(b/a):null);} return r; });
+  return {rets, nobs:Math.max(0,common.length-1)};
+}
+function _corr(a,b){
+  const xs=[],ys=[]; for(let i=0;i<a.length;i++){ if(a[i]!=null&&b[i]!=null){xs.push(a[i]);ys.push(b[i]);} }
+  if(xs.length<3) return null;
+  const n=xs.length, mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n;
+  let sxy=0,sxx=0,syy=0; for(let i=0;i<n;i++){ const dx=xs[i]-mx,dy=ys[i]-my; sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy; }
+  return (sxx>0&&syy>0)?sxy/Math.sqrt(sxx*syy):null;
+}
+function _corrColor(c){ if(c==null)return 'rgba(110,118,129,.18)'; const a=Math.min(1,Math.abs(c));
+  return c>=0?`rgba(255,80,0,${(0.12+a*0.72).toFixed(2)})`:`rgba(59,130,246,${(0.12+a*0.72).toFixed(2)})`; }
+function renderCorr(){
+  const host=document.getElementById('corr-host'), sub=document.getElementById('corr-sub'); if(!host)return;
+  const tk=_sel.slice(0,8), range=_range==='1D'?'1M':_range;
+  if(tk.length<2){ host.innerHTML='<div class="corr-empty">Select 2+ assets (watchlist or Recommended) to see how their daily returns move together.</div>'; if(sub)sub.textContent=''; return; }
+  const {rets,nobs}=_alignedReturns(tk,range);
+  if(sub)sub.textContent=`daily returns · ${_rangeLabel(range)} · ${nobs} obs${nobs<10?' (few)':''}`;
+  const n=tk.length;
+  let h=`<div class="corr-grid" style="grid-template-columns:50px repeat(${n},minmax(0,1fr))"><div></div>`;
+  h+=tk.map(t=>`<div class="corr-lbl col">${_short(t)}</div>`).join('');
+  for(let i=0;i<n;i++){ h+=`<div class="corr-lbl">${_short(tk[i])}</div>`;
+    for(let j=0;j<n;j++){ const c=i===j?1:_corr(rets[i],rets[j]);
+      h+=`<div class="corr-cell" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)}">${c==null?'—':c.toFixed(2)}</div>`; } }
+  host.innerHTML=h+'</div>';
+}
+
+// ── portfolio simulator (pesos estáticos; salvo no localStorage do navegador) ──
+let _pfW={}; try{ _pfW=JSON.parse(localStorage.getItem('mkt_pf'))||{}; }catch(e){_pfW={};}
+function _pfSave(){ try{localStorage.setItem('mkt_pf',JSON.stringify(_pfW));}catch(e){} }
+function _pfPort(range){
+  if(!_sel.length) return null;
+  const total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
+  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); return s?new Map(s.map(p=>[p[0],p[1]])):null; });
+  if(maps.some(m=>!m)) return null;
+  let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(e=>maps[i].has(e)); common.sort((a,b)=>a-b);
+  if(common.length<2) return null;
+  return common.map(e=>{ let v=0; _sel.forEach((t,i)=>{ v+=((+_pfW[t]||0)/total)*(maps[i].get(e)||0); }); return [e,v]; });
+}
+function _pfVol(p){ if(!p||p.length<20)return null; const r=[]; for(let i=1;i<p.length;i++){ const a=1+p[i-1][1]/100,b=1+p[i][1]/100; if(a>0&&b>0)r.push(Math.log(b/a)); } if(r.length<10)return null; const m=r.reduce((s,v)=>s+v,0)/r.length; const v=r.reduce((s,x)=>s+(x-m)*(x-m),0)/(r.length-1); return Math.sqrt(v)*Math.sqrt(252)*100; }
+function _pfDD(p){ if(!p||p.length<5)return null; let peak=-Infinity,dd=0; for(const x of p){ const lvl=1+x[1]/100; if(lvl>peak)peak=lvl; if(peak>0){const c=lvl/peak-1; if(c<dd)dd=c;} } return dd*100; }
+function renderPortfolio(){
+  const host=document.getElementById('pf-host'); if(!host)return;
+  if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; return; }
+  _sel.forEach(t=>{ if(_pfW[t]==null)_pfW[t]=100/_sel.length; });
+  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
+  const rows=_sel.map((t,i)=>{ const r=_ret(byT(t),range);
+    return `<div class="pf-row"><span class="pf-tk"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</span>
+      <input class="pf-slider" type="range" min="0" max="100" step="1" value="${Math.round(+_pfW[t]||0)}" data-t="${t}">
+      <span class="pf-w" data-t="${t}">${((+_pfW[t]||0)/total*100).toFixed(0)}%</span>
+      <span class="pf-ret ${_signCls(r)}">${_pctStr(r,1)}</span></div>`; }).join('');
+  host.innerHTML=`<div class="pf-rows">${rows}</div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
+  host.querySelectorAll('.pf-slider').forEach(s=>s.oninput=()=>{ _pfW[s.dataset.t]=+s.value; _pfSave(); _pfRecompute(); });
+  _pfRecompute();
+}
+function _pfRecompute(){
+  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0)||1;
+  document.querySelectorAll('.pf-w').forEach(el=>{ el.textContent=((+_pfW[el.dataset.t]||0)/total*100).toFixed(0)+'%'; });
+  const port=_pfPort(range);
+  const ret=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port);
+  const st=document.getElementById('pf-stats');
+  if(st) st.innerHTML=`
+    <div class="pf-stat"><div class="pl">Return (${_rangeLabel(range)})</div><div class="pv ${_signCls(ret)}">${_pctStr(ret,1)}</div></div>
+    <div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
+    <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div>`;
+  _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
+}
+
 /* ── topbar: status, clock, theme ── */
 const EX_HOURS={'B3':{o:-3,s:10,e:17,n:'B3'},'NYSE':{o:-5,s:9.5,e:16,n:'NYSE'},'Nasdaq':{o:-5,s:9.5,e:16,n:'Nasdaq'},'NASDAQ':{o:-5,s:9.5,e:16,n:'Nasdaq'},'LSE':{o:0,s:8,e:16.5,n:'LSE'},'ASX':{o:11,s:10,e:16,n:'ASX'},'TSX':{o:-5,s:9.5,e:16,n:'TSX'},'BCS':{o:-4,s:9.5,e:16,n:'Santiago'}};
 function _exStatus(ex){ const h=EX_HOURS[ex]||EX_HOURS['B3']; const now=new Date(); const utc=now.getUTCHours()+now.getUTCMinutes()/60; let loc=utc+h.o; let dshift=0; if(loc<0){loc+=24;dshift=-1;} if(loc>=24){loc-=24;dshift=1;}
@@ -821,13 +930,13 @@ function _syncDates(){
 }
 function setRange(r){ _range=r; _cFrom=null; _cTo=null;
   document.querySelectorAll('#chart-range button').forEach(b=>b.classList.toggle('active',b.dataset.r===r));
-  _syncDates(); renderChart(); renderWatchlist(); }
+  _syncDates(); renderChart(); renderWatchlist(); renderCorr(); renderPortfolio(); }
 function onDates(){
   const f=_fromDateInput(document.getElementById('c-from').value), tt=_fromDateInput(document.getElementById('c-to').value);
   if(f==null && tt==null) return;
   _cFrom=f; _cTo=tt; _range='custom';
   document.querySelectorAll('#chart-range button').forEach(b=>b.classList.remove('active'));
-  renderChart(); renderWatchlist();
+  renderChart(); renderWatchlist(); renderCorr(); renderPortfolio();
 }
 
 /* ── busca ── */
@@ -858,7 +967,7 @@ async function init(){
   _sel = start?[start]:[]; _anchor=_sel[0]||null;
   _syncDates();
   renderAll();
-  loadDaily().then(()=>{ renderChart(); renderWatchlist(); renderHeader(); });
+  loadDaily().then(()=>{ renderChart(); renderWatchlist(); renderHeader(); renderCorr(); renderPortfolio(); });
   loadCommodities().then(()=>{ renderThesis(); renderHeader(); });
   // listeners
   document.getElementById('chart-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled)return; _chartMode=b.dataset.m; renderChart(); };
@@ -868,6 +977,7 @@ async function init(){
   document.getElementById('c-clear').onclick=()=>setRange('3M');
   document.getElementById('cmp-other').onclick=openOther;
   document.getElementById('cmp-clear').onclick=clearSel;
+  document.getElementById('pf-equal').onclick=()=>{ _sel.forEach(t=>_pfW[t]=100/Math.max(1,_sel.length)); _pfSave(); renderPortfolio(); };
   document.getElementById('other-close').onclick=closeOther;
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderOther(e.target.value);
