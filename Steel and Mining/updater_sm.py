@@ -715,7 +715,7 @@ def send_email(period: str):
 O SECEX (MDIC) publicou novos dados de comércio exterior de aço.
 
 📅 Novo período disponível: {mes_nome} / {year}
-📊 Dashboard atualizado: https://ibba-research-dashboard.vercel.app/
+📊 Dashboard atualizado: https://metals-mining-pulp-paper-dashboard.vercel.app/
 
 Dados de importação e exportação por país foram atualizados automaticamente.
 
