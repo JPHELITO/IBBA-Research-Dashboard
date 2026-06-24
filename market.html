@@ -451,6 +451,18 @@ function _series(q,range,mode){
   return arr.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]);
 }
 function _ret(q,range){ if(range==='1D') return q.change_pct; const s=_series(q,range,'pct'); if(!s||s.length<2) return null; return s[s.length-1][1]; }
+// série diária de uma COMMODITY normalizada a 0% (p/ o spread ação×commodity)
+function _commSeries(c, range){
+  const d=c&&c.daily; if(!Array.isArray(d)||d.length<2) return null;
+  let arr;
+  if(range==='custom' && _cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=d.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
+  else if(range==='1D'){ arr=d.slice(-2); }   // commodity não tem intraday → últimos 2 diários
+  else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
+  else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
+  if(!arr||arr.length<2) arr=d.slice(-2);
+  const base=arr[0][1];
+  return arr.map(p=>[p[0],(base?(p[1]/base-1)*100:0)]);
+}
 function _annVol(q){
   const d=q.daily; if(!d||d.length<20) return null;
   const w=d.slice(-252).map(p=>p[1]); const r=[];
@@ -703,13 +715,17 @@ function renderChart(){
   }
   const q=_qa();
   if(_chartMode==='spread'){
-    const sec=TICKER_SECTOR[q.ticker]; const idxT=(SECTOR_INDEX[sec]||['IBOV'])[0]||'IBOV';
-    document.getElementById('chart-sub').textContent=`${_short(q.ticker)} vs ${_short(idxT)} · ${_rangeLabel(_range)}`;
-    const a=_series(q,_range,'pct'), b=_series(byT(idxT),_range,'pct');
-    if(!a||!b){ _renderChart('main-chart',[],'pct'); }
+    const sec=TICKER_SECTOR[q.ticker];
+    // prefere o DRIVER de commodity do setor SE tiver histórico (≥5 pts); senão, o índice do setor.
+    const drv=(SECTOR_DRIVER[sec]||[]).map(d=>_commByCode[d.code]).find(c=>c&&Array.isArray(c.daily)&&c.daily.length>=5);
+    const idxT=(SECTOR_INDEX[sec]||['IBOV'])[0]||'IBOV';
+    const bName=drv?(drv.name||'driver'):_short(idxT);
+    const a=_series(q,_range,'pct'), b=drv?_commSeries(drv,_range):_series(byT(idxT),_range,'pct');
+    document.getElementById('chart-sub').textContent=`${_short(q.ticker)} vs ${bName} · ${_rangeLabel(_range)}`;
+    if(!a||!b){ _renderChart('main-chart',[],'pct',`No history yet for ${esc(bName)} — building up.`); }
     else{ const bm=new Map(b.map(p=>[p[0],p[1]]));
-      const sp=a.map(([t,v])=>{ let bv=bm.get(t); if(bv==null){ let bd=Infinity,bb=0; for(const p of b){const d=Math.abs(p[0]-t);if(d<bd){bd=d;bb=p[1];}} bv=bb; } return [t, v-bv]; });
-      _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+_short(idxT),color:'#FF5000',pts:sp}],'pct'); }
+      const sp=a.map(([t,v])=>{ let bv=bm.get(t); if(bv==null){ let bd=Infinity,bb=null; for(const p of b){const dd=Math.abs(p[0]-t);if(dd<bd){bd=dd;bb=p[1];}} bv=bb; } return bv==null?[t,0]:[t, v-bv]; });
+      _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}],'pct'); }
   } else {
     document.getElementById('chart-sub').textContent=(multi?`${_sel.length} assets · `:'')+_rangeLabel(_range);
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
