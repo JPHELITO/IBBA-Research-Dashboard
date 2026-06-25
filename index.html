@@ -631,7 +631,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       </span>
       <div class="pulse-controls" id="pulse-controls">
         <button class="pulse-chip active" data-sector="all">All</button>
-        <button class="pulse-chip" data-sector="steel">Steel</button>
+        <button class="pulse-chip" data-sector="sm">Steel &amp; Mining</button>
         <button class="pulse-chip" data-sector="pp">Pulp &amp; Paper</button>
       </div>
     </div>
@@ -1049,7 +1049,8 @@ async function loadPulse(){
   let url = `${SUPA_URL}/rest/v1/news_articles?select=take,take_llm,sentiment,published_at,found_at`
     +`&or=(published_at.gte.${cutoff},and(published_at.is.null,found_at.gte.${cutoff}))`
     +`&include_in_report=eq.true&limit=2000`;
-  if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
+  if(_pulseSector==='sm') url += `&sector=in.(steel,mining)`;   // S&M = aço + mineração (Vale/minério/cobre/ouro contam)
+  else if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
   try {
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('pulse fetch');
