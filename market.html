@@ -253,7 +253,7 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .corr-lbl{display:flex;align-items:center;font-family:var(--mono);font-weight:600;font-size:9.5px;color:var(--dim);overflow:hidden;white-space:nowrap}
 .corr-lbl.col{justify-content:center}
 .corr-empty{color:var(--mute);font-size:12px;padding:24px 14px;text-align:center}
-.corr-cell.diag{opacity:.4;font-weight:400}
+.corr-cell.diag{opacity:1;font-weight:400;color:var(--mute);text-shadow:none}
 .corr-cap{font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:9px}
 .corr-cap b{color:var(--text);font-weight:600}
 .corr-legend{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:9px;color:var(--mute)}
@@ -300,6 +300,14 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .pf-band{height:26px;margin:4px 0 6px;border-radius:4px;overflow:hidden;border:1px solid var(--border)}
 .pf-band svg{width:100%;height:100%;display:block}
 .pf-invalid{color:var(--down);font-size:11px;padding:8px 2px}
+.pf-dates{display:inline-flex;align-items:center;gap:4px}
+.pf-dsep{color:var(--mute);font-size:11px}
+#pf-stats{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.pf-rib{display:flex;flex-wrap:wrap;gap:16px}
+.pf-risk{display:flex;gap:22px;margin-top:9px}
+.pf-stat .pv.sm{font-size:13px}
+.pf-stat.hl .pl{color:var(--orange)}
+.pf-stat.hl .pv.sm{font-weight:700}
 .pf-w{font-family:var(--mono);min-width:42px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0;margin-left:auto}
 .pf-ret{font-family:var(--mono);width:54px;text-align:right;font-size:11px;flex-shrink:0}
 .pf-chart{height:148px;position:relative;margin-top:10px;overflow:hidden}
@@ -448,7 +456,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
       <div class="card col-7">
         <div class="card-head"><span class="card-title">Portfolio <span class="dim" style="font-weight:600;text-transform:none;letter-spacing:0">simulator</span></span>
           <span class="card-sub">static-weight blend of the selected assets</span>
-          <button class="cmp-other" id="pf-equal" style="margin-left:auto;padding:3px 9px">Equal weight</button></div>
+          <button class="cmp-other" id="pf-equal" style="margin-left:auto;padding:3px 9px">Equal weight</button><button class="cmp-other" id="pf-reset" style="padding:3px 9px;margin-left:6px">Reset</button></div>
         <div class="card-body"><div id="pf-host"></div></div>
       </div>
     </div>
@@ -519,6 +527,9 @@ const SECTOR_NEWS={steel:'steel',iron_ore:'mining',gold:'mining',copper:'mining'
 /* ── helpers ── */
 const _short=t=>String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 function _fmtPrice(v,ex){if(v==null||!isFinite(v))return '—';const c=ex==='B3'||ex==='BCS';return v.toLocaleString(c?'pt-BR':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+const EX_CCY={B3:'R$',NYSE:'US$',NASDAQ:'US$',US:'US$',LSE:'GBp',ASX:'A$',TSX:'C$',BCS:'CLP$',BMV:'MX$',HEL:'€',HE:'€'};
+function _ccy(q){ return (q&&q.sector==='index')?'':((q&&EX_CCY[q.exchange])||''); }   // moeda do preço (índices = sem moeda)
+function _px(q){ if(!q)return '—'; const c=_ccy(q); return (c?c+' ':'')+_fmtPrice(q.price,q.exchange); }
 function _pctStr(p,d){if(p==null||!isFinite(p))return '—';d=d==null?2:d;return (p>=0?'+':'')+p.toFixed(d)+'%';}
 function _signCls(v){return v==null?'':(v>0?'up':(v<0?'down':'flat'));}
 const _RANGE_DAYS={'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
@@ -768,7 +779,7 @@ function renderHeader(){
       <div class="ah-tk">${_carTag(q.ticker)}<b>${_short(q.ticker)}</b> · ${esc(q.exchange||'')} · ${SECTOR_LABEL[TICKER_SECTOR[q.ticker]]||''}</div>
     </div>
     <div class="ah-px">
-      <span class="px mono">${_fmtPrice(q.price,q.exchange)}</span>
+      <span class="px mono">${_px(q)}</span>
       <span class="ah-chg ${_signCls(q.change_pct)}">${q.change_pct>=0?'▲':'▼'} ${_pctStr(q.change_pct)} <span class="mute" style="font-weight:500">today</span></span>
     </div>
     <div class="ah-vsep"></div>
@@ -894,7 +905,7 @@ function renderWatchlist(){
     return `<tr class="${on?'sel':''}" data-t="${q.ticker}">
       <td class="l"><span class="wl-tk"><span class="wl-dot ${on?'':'off'}" style="${on?`background:${col};border-color:${col}`:''}"></span>${_short(q.ticker)}</span></td>
       <td class="${_signCls(_ret(q,_range==='1D'?'1M':_range))}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
-      <td class="num">${_fmtPrice(q.price,q.exchange)}</td>
+      <td class="num">${_px(q)}</td>
       ${cell('custom')}${cell('1D')}${cell('1W')}${cell('1M')}${cell('YTD')}
     </tr>`;
   }).join('')+'</tbody>';
@@ -909,7 +920,7 @@ function renderWatchlist(){
 function _tile(q,clk){ if(!q)return ''; const c=_signCls(q.change_pct);
   return `<div class="tile ${clk?'clk':''}" ${clk?`data-t="${q.ticker}"`:''}>
     <div class="t-nm">${esc(q.name||_short(q.ticker))}</div>
-    <div class="t-rw"><span class="t-px mono">${_fmtPrice(q.price,q.exchange)}</span><span class="t-ch ${c} mono">${_pctStr(q.change_pct,1)}</span></div>
+    <div class="t-rw"><span class="t-px mono">${_px(q)}</span><span class="t-ch ${c} mono">${_pctStr(q.change_pct,1)}</span></div>
     <div class="t-meta">${_short(q.ticker)}</div></div>`; }
 function _commTile(code){ const c=_commByCode[code]; if(!c)return ''; const cls=_signCls(c.change_pct), freq=_freqOf(c);
   return `<div class="tile"><div class="t-nm">${esc(c.name||code)}</div>
@@ -989,40 +1000,44 @@ function renderCorr(){
   h+=`<div class="corr-grid" style="grid-template-columns:54px repeat(${n},minmax(0,1fr))"><div></div>`;
   h+=tk.map(t=>`<div class="corr-lbl col">${_short(t)}</div>`).join('');
   for(let i=0;i<n;i++){ h+=`<div class="corr-lbl">${_short(tk[i])}</div>`;
-    for(let j=0;j<n;j++){ const c=C[i][j].c, nn=C[i][j].n;
-      h+=`<div class="corr-cell${i===j?' diag':''}" style="background:${_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${c==null?'n/a':c.toFixed(2)} (${nn} obs)">${c==null?'—':c.toFixed(2)}</div>`; } }
+    for(let j=0;j<n;j++){ const c=C[i][j].c, nn=C[i][j].n, diag=i===j;
+      h+=`<div class="corr-cell${diag?' diag':''}" style="background:${diag?'var(--panel-2)':_corrColor(c)}" title="${_short(tk[i])} vs ${_short(tk[j])}: ${diag?'(self)':(c==null?'n/a':c.toFixed(2))+' ('+nn+' obs)'}">${diag?'—':(c==null?'—':c.toFixed(2))}</div>`; } }
   h+='</div><div class="corr-legend"><b>−1</b><span>opposite</span><div class="bar"></div><span>same way</span><b>+1</b></div>';
   host.innerHTML=h;
 }
 
-// ── portfolio simulator: SCHEDULE de pesos no tempo (Simple = 1 linha; Advanced = rebalances) ──
-let _pfSched={mode:'simple',rows:[]}, _pfId=2;
-(function(){ try{ const v2=JSON.parse(localStorage.getItem('mkt_pf2')); if(v2&&Array.isArray(v2.rows)){_pfSched=v2;return;}
-  const lg=JSON.parse(localStorage.getItem('mkt_pf'))||{}; _pfSched={mode:'simple',rows:[{id:1,date:0,label:'',w:lg}]}; }catch(e){_pfSched={mode:'simple',rows:[{id:1,date:0,label:'',w:{}}]};} })();
+// ── portfolio simulator: PERÍODOS de pesos no tempo (Simple = 1 período; Advanced = vários [start→end]) ──
+let _pfSched={mode:'simple',touched:false,rows:[]}, _pfId=2;
+(function(){ try{ const v2=JSON.parse(localStorage.getItem('mkt_pf2')); if(v2&&Array.isArray(v2.rows)){ _pfSched=v2; if(_pfSched.touched==null)_pfSched.touched=true; return; }
+  const lg=JSON.parse(localStorage.getItem('mkt_pf'))||{}; _pfSched={mode:'simple',touched:Object.keys(lg).length>0,rows:[{id:1,start:0,end:0,label:'',w:lg}]}; }catch(e){_pfSched={mode:'simple',touched:false,rows:[{id:1,start:0,end:0,label:'',w:{}}]};} })();
 function _pfSave(){ try{localStorage.setItem('mkt_pf2',JSON.stringify(_pfSched));}catch(e){} }
+function _pfTouch(){ _pfSched.touched=true; }
 function _rangeBounds(range){ const now=Date.now()/1000;
   if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
   if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
   return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
+function _pfReset(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range); _pfSched={mode:'simple',touched:false,rows:[{id:_pfId++,start:s,end:e,label:'',w:{}}]}; _pfSave(); }
 function _cashOf(row){ return 100-_sel.reduce((s,t)=>s+(+(row.w&&row.w[t])||0),0); }
-function _wAt(rows,daySec){ let r=rows[0]; for(let i=1;i<rows.length;i++){ if(rows[i].date<=daySec)r=rows[i]; else break; } return r; }
+function _wAt(rows,daySec){ for(let i=0;i<rows.length;i++){ if(daySec>=rows[i].start&&daySec<=rows[i].end)return rows[i]; }
+  if(rows.length&&daySec<rows[0].start)return rows[0]; return null; }   // antes do 1º período → usa o 1º; gaps/após o último → cash
 function _schedReconcile(){ const range=_range==='1D'?'1M':_range, [s,e]=_rangeBounds(range);
-  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,date:s,label:'',w:{}}];
-  rows.sort((a,b)=>a.date-b.date);
-  rows=rows.filter((r,i)=>i===0||(r.date>s+43200&&r.date<=e));   // só a 1ª pode estar no início; demais dentro do range
-  rows[0].date=s;
+  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,start:s,end:e,label:'',w:{}}];
+  rows.sort((a,b)=>a.start-b.start); let prevEnd=s;
+  rows.forEach((r,i)=>{ if(r.start==null||r.start<s)r.start=Math.max(s,prevEnd); if(i>0&&r.start<prevEnd)r.start=prevEnd; if(r.start>e)r.start=e;
+    if(r.end==null||r.end<=0||r.end>e)r.end=e; if(r.end<r.start)r.end=r.start; prevEnd=r.end; });
+  if(rows.length>1) rows=rows.filter((r,i)=>i===0||r.end>r.start+43200);   // descarta períodos degenerados
   rows.forEach(r=>{ if(!r.w)r.w={}; _sel.forEach(t=>{ if(r.w[t]==null)r.w[t]=0; }); Object.keys(r.w).forEach(t=>{ if(!_sel.includes(t))delete r.w[t]; }); });
-  if(rows.length===1 && _sel.length && _sel.every(t=>!(+rows[0].w[t]))){ const eq=Math.round(100/_sel.length); _sel.forEach(t=>rows[0].w[t]=eq); }
+  if(!_pfSched.touched && _sel.length){ const eq=Math.floor(100/_sel.length); rows.forEach(r=>_sel.forEach(t=>r.w[t]=eq)); }   // default = equal weight (floor, ≤100)
   _pfSched.rows=rows; }
-function _pfPort(range){   // engine: retornos diários por ativo * pesos da linha ativa, compostos (vale p/ Simple e Advanced)
+function _pfPort(range){   // engine: retorno diário por ativo × pesos do período ativo no dia, composto (vale p/ Simple e Advanced)
   if(!_sel.length||!_pfSched.rows.length||_pfSched.rows.some(r=>_cashOf(r)<-0.5)) return null;
-  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); const m=new Map(); if(s)for(const p of s){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
+  const maps=_sel.map(t=>{ const ser=_series(byT(t),range,'pct'); const m=new Map(); if(ser)for(const p of ser){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
   if(maps.some(m=>m.size<2)) return null;
   let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(d=>maps[i].has(d)); common.sort();
   if(common.length<2) return null;
   const rows=_pfSched.rows, out=[]; let idx=1;
   for(let d=0;d<common.length;d++){ const daySec=Math.floor(Date.parse(common[d])/1000), row=_wAt(rows,daySec); let rp=0;
-    if(d>0)_sel.forEach((t,i)=>{ const a=1+maps[i].get(common[d-1])/100, b=1+maps[i].get(common[d])/100; rp+=((+row.w[t]||0)/100)*((a>0&&b>0)?(b/a-1):0); });
+    if(d>0&&row)_sel.forEach((t,i)=>{ const a=1+maps[i].get(common[d-1])/100, b=1+maps[i].get(common[d])/100; rp+=((+row.w[t]||0)/100)*((a>0&&b>0)?(b/a-1):0); });
     idx*=(1+rp); out.push([daySec,(idx-1)*100]); }
   return out; }
 function _pfVol(p){ if(!p||p.length<20)return null; const r=[]; for(let i=1;i<p.length;i++){ const a=1+p[i-1][1]/100,b=1+p[i][1]/100; if(a>0&&b>0)r.push(Math.log(b/a)); } if(r.length<10)return null; const m=r.reduce((s,v)=>s+v,0)/r.length; const v=r.reduce((s,x)=>s+(x-m)*(x-m),0)/(r.length-1); return Math.sqrt(v)*Math.sqrt(252)*100; }
@@ -1036,56 +1051,59 @@ function _pfSimpleHTML(){ const range=_range==='1D'?'1M':_range, w=_pfSched.rows
 function _pfWireSimple(){ document.querySelectorAll('.pf-rows .pf-inbox input').forEach(inp=>inp.oninput=()=>{
   let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
   const w=_pfSched.rows[0].w, others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+w[t]||0)),0);
-  v=Math.min(v,Math.max(0,100-others)); w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfSave(); _pfRecompute(); }); }
-function _pfAdvancedHTML(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range);
+  v=Math.min(v,Math.max(0,100-others)); w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfTouch(); _pfSave(); _pfRecompute(); }); }
+function _pfAdvancedHTML(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), rows=_pfSched.rows;
   const heads=_sel.map((t,i)=>`<th class="num"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</th>`).join('');
-  const body=_pfSched.rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5;
+  const body=rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5, prevEnd=ri>0?rows[ri-1].end:s, nextStart=ri+1<rows.length?rows[ri+1].start:e;
     const cells=_sel.map(t=>`<td class="num"><span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+r.w[t]||0)}" data-row="${r.id}" data-t="${t}"/></span></td>`).join('');
     return `<tr class="pf-srow${inv?' invalid':''}" data-row="${r.id}">
-      <td class="pf-when">${ri===0?'<span class="pf-dlock">Range start</span>':`<input type="date" value="${_toDateInput(r.date)}" min="${_toDateInput(s)}" max="${_toDateInput(e)}" data-row="${r.id}">`}<input class="pf-lbl" type="text" placeholder="label…" value="${esc(r.label||'')}" data-row="${r.id}" maxlength="14"></td>
+      <td class="pf-when"><span class="pf-dates"><input type="date" class="pf-d0" value="${_toDateInput(r.start)}" min="${_toDateInput(prevEnd)}" max="${_toDateInput(r.end)}" data-row="${r.id}"><span class="pf-dsep">→</span><input type="date" class="pf-d1" value="${_toDateInput(r.end)}" min="${_toDateInput(r.start)}" max="${_toDateInput(nextStart)}" data-row="${r.id}"></span><input class="pf-lbl" type="text" placeholder="label…" value="${esc(r.label||'')}" data-row="${r.id}" maxlength="14"></td>
       ${cells}<td class="num pf-cashc${inv?' over':''}">${cash.toFixed(0)}%</td>
-      <td>${ri===0?'':`<span class="pf-del" data-row="${r.id}" title="Remove">×</span>`}</td></tr>`; }).join('');
-  return `<div class="pf-hint">Each row = the weights in force from its date until the next. Anything under 100% is cash.</div>
-    <div class="pf-sched-wrap"><table class="pf-sched"><thead><tr><th class="l">When</th>${heads}<th class="num">Cash</th><th></th></tr></thead><tbody>${body}</tbody></table></div>
-    <div class="pf-addrow"><span class="pf-addr" id="pf-add">+ Add rebalance</span></div>`; }
+      <td>${rows.length>1?`<span class="pf-del" data-row="${r.id}" title="Remove">×</span>`:''}</td></tr>`; }).join('');
+  return `<div class="pf-hint">Each row is a period — set its <b>start → end</b> and the weights for it (periods can't overlap; under 100% = cash).</div>
+    <div class="pf-sched-wrap"><table class="pf-sched"><thead><tr><th class="l">Period (from → to)</th>${heads}<th class="num">Cash</th><th></th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="pf-addrow"><span class="pf-addr" id="pf-add">+ Add period</span></div>`; }
 function _pfWireAdvanced(){ const findRow=id=>_pfSched.rows.find(r=>String(r.id)===id);
   document.querySelectorAll('.pf-sched .pf-inbox input').forEach(inp=>inp.oninput=()=>{ const row=findRow(inp.dataset.row); if(!row)return;
     let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
     const others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+row.w[t]||0)),0); v=Math.min(v,Math.max(0,100-others));
-    row.w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfSave();
+    row.w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfTouch(); _pfSave();
     const cash=_cashOf(row), tr=inp.closest('tr'), cc=tr&&tr.querySelector('.pf-cashc'); if(cc){cc.textContent=cash.toFixed(0)+'%';cc.classList.toggle('over',cash<-0.5);} if(tr)tr.classList.toggle('invalid',cash<-0.5);
     _pfRecompute(); });
-  document.querySelectorAll('.pf-sched input[type=date]').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.date=d; _pfSave(); renderPortfolio(); });
+  document.querySelectorAll('.pf-sched .pf-d0').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.start=d; _pfTouch(); _pfSave(); renderPortfolio(); });
+  document.querySelectorAll('.pf-sched .pf-d1').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.end=d; _pfTouch(); _pfSave(); renderPortfolio(); });
   document.querySelectorAll('.pf-sched .pf-lbl').forEach(inp=>inp.oninput=()=>{ const row=findRow(inp.dataset.row); if(row){row.label=inp.value; _pfSave(); _renderBand();} });
-  document.querySelectorAll('.pf-sched .pf-del').forEach(x=>x.onclick=()=>{ _pfSched.rows=_pfSched.rows.filter(r=>String(r.id)!==x.dataset.row); _pfSave(); renderPortfolio(); });
-  const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), mid=Math.floor((s+e)/2), prev=_wAt(_pfSched.rows,mid), w={}; _sel.forEach(t=>w[t]=+(prev.w[t])||0); _pfSched.rows.push({id:_pfId++,date:mid,label:'',w}); _pfSave(); renderPortfolio(); }; }
+  document.querySelectorAll('.pf-sched .pf-del').forEach(x=>x.onclick=()=>{ _pfSched.rows=_pfSched.rows.filter(r=>String(r.id)!==x.dataset.row); _pfTouch(); _pfSave(); renderPortfolio(); });
+  const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const rows=_pfSched.rows, last=rows[rows.length-1], mid=Math.floor((last.start+last.end)/2), ne=last.end, w={}; _sel.forEach(t=>w[t]=+(last.w[t])||0); last.end=mid; rows.push({id:_pfId++,start:mid,end:ne,label:'',w}); _pfTouch(); _pfSave(); renderPortfolio(); }; }
 function _renderBand(){ const host=document.getElementById('pf-band'); if(!host)return;
   const rows=_pfSched.rows; if(_pfSched.mode!=='advanced'||!rows.length){ host.innerHTML=''; return; }
   const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), span=(e-s)||1, W=Math.max(280,Math.round(host.clientWidth||776)), H=Math.round(host.clientHeight||26);
   const X=ds=>((Math.max(s,Math.min(e,ds))-s)/span)*W; let svg='';
-  rows.forEach((r,ri)=>{ const x0=X(r.date), x1=ri+1<rows.length?X(rows[ri+1].date):W, w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
+  rows.forEach((r,ri)=>{ const x0=X(r.start), x1=X(r.end), w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
     _sel.forEach((t,i)=>{ const wt=(+r.w[t]||0)/100*H; if(wt<=0)return; y-=wt; svg+=`<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${wt.toFixed(1)}" fill="${_MC_COLORS[i%8]}"/>`; });
     if(y>0.5) svg+=`<rect x="${x0.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${y.toFixed(1)}" fill="url(#pfhatch)"/>`;
     if(r.label && w>40) svg+=`<text x="${(x0+w/2).toFixed(1)}" y="${(H/2+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#fff" opacity="0.85">${esc(r.label)}</text>`;
-    if(ri>0) svg+=`<line x1="${x0.toFixed(1)}" y1="0" x2="${x0.toFixed(1)}" y2="${H}" stroke="rgba(255,255,255,.35)" stroke-width="1"/>`; });
+    svg+=`<line x1="${x0.toFixed(1)}" y1="0" x2="${x0.toFixed(1)}" y2="${H}" stroke="rgba(255,255,255,.3)" stroke-width="1"/>`; });
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><pattern id="pfhatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--panel-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--mute)" stroke-width="1.4" opacity="0.5"/></pattern></defs>${svg}</svg>`; }
-function renderPortfolio(){ const host=document.getElementById('pf-host'); if(!host)return; const eq=document.getElementById('pf-equal');
-  if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; if(eq)eq.style.display='none'; return; }
-  _schedReconcile(); const adv=_pfSched.mode==='advanced'; if(eq)eq.style.display=adv?'none':'';
+function renderPortfolio(){ const host=document.getElementById('pf-host'); if(!host)return; const eq=document.getElementById('pf-equal'), rs=document.getElementById('pf-reset');
+  if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; if(eq)eq.style.display='none'; if(rs)rs.style.display='none'; return; }
+  _schedReconcile(); const adv=_pfSched.mode==='advanced'; if(eq)eq.style.display=adv?'none':''; if(rs)rs.style.display='';
   const toggle=`<div class="seg pf-seg" id="pf-seg"><button data-m="simple" class="${adv?'':'active'}">Simple</button><button data-m="advanced" class="${adv?'active':''}">Advanced</button></div>`;
-  host.innerHTML=toggle+(adv?_pfAdvancedHTML():_pfSimpleHTML())+(adv?'<div class="pf-band" id="pf-band"></div>':'')+'<div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>';
+  host.innerHTML=toggle+(adv?_pfAdvancedHTML():_pfSimpleHTML())+(adv?'<div class="pf-band" id="pf-band"></div>':'')+'<div class="pf-chart" id="pf-chart"></div><div id="pf-stats"></div>';
   document.getElementById('pf-seg').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.dataset.m===_pfSched.mode)return; _pfSched.mode=b.dataset.m; _pfSave(); renderPortfolio(); };
   if(adv)_pfWireAdvanced(); else _pfWireSimple(); _pfRecompute(); }
 function _pfRecompute(){ const range=_range==='1D'?'1M':_range, tEl=document.getElementById('pf-total');
   if(tEl){ const total=_sel.reduce((s,t)=>s+(+_pfSched.rows[0].w[t]||0),0);
     tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':''); }
-  const invalid=_pfSched.rows.some(r=>_cashOf(r)<-0.5), port=invalid?null:_pfPort(range), st=document.getElementById('pf-stats');
-  if(st){ if(invalid) st.innerHTML='<div class="pf-invalid">A rebalance row is over 100% — trim it to ≤100%.</div>';
-    else { const ret=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port);
-      st.innerHTML=`<div class="pf-stat"><div class="pl">Return (${_rangeLabel(range)})</div><div class="pv ${_signCls(ret)}">${_pctStr(ret,1)}</div></div>
-        <div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
-        <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div>`; } }
-  if(!invalid && document.getElementById('pf-chart')) _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
+  const st=document.getElementById('pf-stats'), invalid=_pfSched.rows.some(r=>_cashOf(r)<-0.5);
+  if(invalid){ if(st)st.innerHTML='<div class="pf-invalid">A period is over 100% — trim it to ≤100%.</div>'; if(document.getElementById('pf-chart'))_renderChart('pf-chart',[],'pct','Fix the over-100% period to see the curve.'); _renderBand(); return; }
+  const port=_pfPort(range);
+  const ribbon=[['1W','1W'],['1M','1M'],['YTD','YTD'],['1Y','1Y']].map(([p,lbl])=>{ const pp=_pfPort(p), rv=pp&&pp.length?pp[pp.length-1][1]:null; return `<div class="pf-stat"><div class="pl">${lbl}</div><div class="pv sm ${_signCls(rv)}">${_pctStr(rv,1)}</div></div>`; }).join('');
+  const rangeRet=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port), rl=_range==='custom'?'Custom':range;
+  if(st) st.innerHTML=`<div class="pf-rib">${ribbon}<div class="pf-stat hl"><div class="pl">${rl}</div><div class="pv sm ${_signCls(rangeRet)}">${_pctStr(rangeRet,1)}</div></div></div>
+    <div class="pf-risk"><div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
+    <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div></div>`;
+  if(document.getElementById('pf-chart')) _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
   _renderBand(); }
 
 /* ── topbar: status, clock, theme ── */
@@ -1205,7 +1223,8 @@ async function init(){
   document.getElementById('c-clear').onclick=()=>setRange('3M');
   document.getElementById('cmp-other').onclick=()=>openPicker('sel');
   document.getElementById('cmp-clear').onclick=clearSel;
-  document.getElementById('pf-equal').onclick=()=>{ const eq=Math.round(100/Math.max(1,_sel.length)); _schedReconcile(); _sel.forEach(t=>_pfSched.rows[0].w[t]=eq); _pfSave(); renderPortfolio(); };
+  document.getElementById('pf-equal').onclick=()=>{ _schedReconcile(); const eq=Math.floor(100/Math.max(1,_sel.length)); _pfSched.rows.forEach(r=>{r.w={}; _sel.forEach(t=>r.w[t]=eq);}); _pfTouch(); _pfSave(); renderPortfolio(); };
+  document.getElementById('pf-reset').onclick=()=>{ _pfReset(); renderPortfolio(); };
   document.getElementById('other-close').onclick=closeOther;
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
