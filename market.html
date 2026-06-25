@@ -273,6 +273,33 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .pf-total b{font-family:var(--mono);font-size:13px}
 .pf-total b.ok{color:var(--up)} .pf-total b.under{color:var(--text)} .pf-total b.over{color:var(--down)}
 .pf-cash{color:var(--mute)}
+.pf-seg{margin-bottom:9px}
+.pf-sched-wrap{overflow-x:auto;margin-bottom:2px}
+.pf-sched{border-collapse:collapse;width:100%;font-size:11px}
+.pf-sched th{font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);font-weight:700;padding:2px 6px;text-align:right;white-space:nowrap}
+.pf-sched th.l{text-align:left}
+.pf-sched th .sw{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:3px;vertical-align:middle}
+.pf-sched td{padding:4px 6px;border-top:1px solid var(--border);vertical-align:top}
+.pf-sched td.num{text-align:right}
+.pf-sched .pf-inbox{padding:1px 5px}
+.pf-sched .pf-inbox input{width:30px}
+.pf-when{white-space:nowrap}
+.pf-when input[type=date]{background:var(--panel-2);border:1px solid var(--border);border-radius:5px;color:var(--text);font:inherit;font-size:10.5px;padding:2px 5px;color-scheme:dark}
+body.theme-light .pf-when input[type=date]{color-scheme:light}
+.pf-dlock{font-size:10px;color:var(--mute);font-style:italic}
+.pf-lbl{display:block;margin-top:3px;width:92px;background:none;border:none;border-bottom:1px dashed var(--border);color:var(--dim);font:inherit;font-size:9.5px;padding:1px 0;outline:none}
+.pf-lbl:focus{border-bottom-color:var(--orange)}
+.pf-cashc{font-family:var(--mono);color:var(--mute)}
+.pf-cashc.over{color:var(--down);font-weight:700}
+.pf-srow.invalid{outline:1px solid var(--down);outline-offset:-1px}
+.pf-del{cursor:pointer;color:var(--mute);font-size:15px;line-height:1;padding:0 4px}
+.pf-del:hover{color:var(--down)}
+.pf-addrow{margin:5px 0 8px}
+.pf-addr{color:var(--orange);cursor:pointer;font-weight:600;font-size:11px}
+.pf-addr:hover{text-decoration:underline}
+.pf-band{height:26px;margin:4px 0 6px;border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.pf-band svg{width:100%;height:100%;display:block}
+.pf-invalid{color:var(--down);font-size:11px;padding:8px 2px}
 .pf-w{font-family:var(--mono);min-width:42px;text-align:right;font-size:11px;color:var(--dim);flex-shrink:0;margin-left:auto}
 .pf-ret{font-family:var(--mono);width:54px;text-align:right;font-size:11px;flex-shrink:0}
 .pf-chart{height:148px;position:relative;margin-top:10px;overflow:hidden}
@@ -968,53 +995,98 @@ function renderCorr(){
   host.innerHTML=h;
 }
 
-// ── portfolio simulator (pesos estáticos; salvo no localStorage do navegador) ──
-let _pfW={}; try{ _pfW=JSON.parse(localStorage.getItem('mkt_pf'))||{}; }catch(e){_pfW={};}
-function _pfSave(){ try{localStorage.setItem('mkt_pf',JSON.stringify(_pfW));}catch(e){} }
-function _pfPort(range){
-  if(!_sel.length) return null;
-  // série % por DATA (dia) — alinhada por interseção de dias (robusto a bolsas diferentes); resto do book = cash (0%)
-  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); const m=new Map(); if(s)for(const p of s){ m.set(new Date(p[0]*1000).toISOString().slice(0,10), p[1]); } return m; });
+// ── portfolio simulator: SCHEDULE de pesos no tempo (Simple = 1 linha; Advanced = rebalances) ──
+let _pfSched={mode:'simple',rows:[]}, _pfId=2;
+(function(){ try{ const v2=JSON.parse(localStorage.getItem('mkt_pf2')); if(v2&&Array.isArray(v2.rows)){_pfSched=v2;return;}
+  const lg=JSON.parse(localStorage.getItem('mkt_pf'))||{}; _pfSched={mode:'simple',rows:[{id:1,date:0,label:'',w:lg}]}; }catch(e){_pfSched={mode:'simple',rows:[{id:1,date:0,label:'',w:{}}]};} })();
+function _pfSave(){ try{localStorage.setItem('mkt_pf2',JSON.stringify(_pfSched));}catch(e){} }
+function _rangeBounds(range){ const now=Date.now()/1000;
+  if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
+  if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
+  return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
+function _cashOf(row){ return 100-_sel.reduce((s,t)=>s+(+(row.w&&row.w[t])||0),0); }
+function _wAt(rows,daySec){ let r=rows[0]; for(let i=1;i<rows.length;i++){ if(rows[i].date<=daySec)r=rows[i]; else break; } return r; }
+function _schedReconcile(){ const range=_range==='1D'?'1M':_range, [s,e]=_rangeBounds(range);
+  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,date:s,label:'',w:{}}];
+  rows.sort((a,b)=>a.date-b.date);
+  rows=rows.filter((r,i)=>i===0||(r.date>s+43200&&r.date<=e));   // só a 1ª pode estar no início; demais dentro do range
+  rows[0].date=s;
+  rows.forEach(r=>{ if(!r.w)r.w={}; _sel.forEach(t=>{ if(r.w[t]==null)r.w[t]=0; }); Object.keys(r.w).forEach(t=>{ if(!_sel.includes(t))delete r.w[t]; }); });
+  if(rows.length===1 && _sel.length && _sel.every(t=>!(+rows[0].w[t]))){ const eq=Math.round(100/_sel.length); _sel.forEach(t=>rows[0].w[t]=eq); }
+  _pfSched.rows=rows; }
+function _pfPort(range){   // engine: retornos diários por ativo * pesos da linha ativa, compostos (vale p/ Simple e Advanced)
+  if(!_sel.length||!_pfSched.rows.length||_pfSched.rows.some(r=>_cashOf(r)<-0.5)) return null;
+  const maps=_sel.map(t=>{ const s=_series(byT(t),range,'pct'); const m=new Map(); if(s)for(const p of s){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
   if(maps.some(m=>m.size<2)) return null;
   let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(d=>maps[i].has(d)); common.sort();
   if(common.length<2) return null;
-  return common.map(d=>{ let v=0; _sel.forEach((t,i)=>{ v+=((+_pfW[t]||0)/100)*(maps[i].get(d)||0); }); return [Math.floor(Date.parse(d)/1000), v]; });
-}
+  const rows=_pfSched.rows, out=[]; let idx=1;
+  for(let d=0;d<common.length;d++){ const daySec=Math.floor(Date.parse(common[d])/1000), row=_wAt(rows,daySec); let rp=0;
+    if(d>0)_sel.forEach((t,i)=>{ const a=1+maps[i].get(common[d-1])/100, b=1+maps[i].get(common[d])/100; rp+=((+row.w[t]||0)/100)*((a>0&&b>0)?(b/a-1):0); });
+    idx*=(1+rp); out.push([daySec,(idx-1)*100]); }
+  return out; }
 function _pfVol(p){ if(!p||p.length<20)return null; const r=[]; for(let i=1;i<p.length;i++){ const a=1+p[i-1][1]/100,b=1+p[i][1]/100; if(a>0&&b>0)r.push(Math.log(b/a)); } if(r.length<10)return null; const m=r.reduce((s,v)=>s+v,0)/r.length; const v=r.reduce((s,x)=>s+(x-m)*(x-m),0)/(r.length-1); return Math.sqrt(v)*Math.sqrt(252)*100; }
 function _pfDD(p){ if(!p||p.length<5)return null; let peak=-Infinity,dd=0; for(const x of p){ const lvl=1+x[1]/100; if(lvl>peak)peak=lvl; if(peak>0){const c=lvl/peak-1; if(c<dd)dd=c;} } return dd*100; }
-function renderPortfolio(){
-  const host=document.getElementById('pf-host'); if(!host)return;
-  if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; return; }
-  _sel.forEach(t=>{ if(_pfW[t]==null)_pfW[t]=Math.round(100/_sel.length); });
-  { const tot=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0); if(tot>100){ _sel.forEach(t=>{ _pfW[t]=Math.round((+_pfW[t]||0)*100/tot); }); _pfSave(); } }   // nunca começa acima de 100%
-  const range=_range==='1D'?'1M':_range;
+function _pfSimpleHTML(){ const range=_range==='1D'?'1M':_range, w=_pfSched.rows[0].w;
   const rows=_sel.map((t,i)=>{ const r=_ret(byT(t),range);
     return `<div class="pf-row"><span class="pf-tk"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</span>
-      <span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+_pfW[t]||0)}" data-t="${t}" aria-label="weight ${_short(t)}"/><i>%</i></span>
+      <span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+w[t]||0)}" data-t="${t}"/><i>%</i></span>
       <span class="pf-ret ${_signCls(r)}" style="margin-left:auto">${_pctStr(r,1)}</span></div>`; }).join('');
-  host.innerHTML=`<div class="pf-hint">Type each weight (%). The total is capped at 100% — anything left over is treated as cash.</div><div class="pf-rows">${rows}</div><div class="pf-total" id="pf-total"></div><div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>`;
-  host.querySelectorAll('.pf-inbox input').forEach(inp=>inp.oninput=()=>{
+  return `<div class="pf-hint">Type each weight (%). Anything under 100% is cash. Switch to <b>Advanced</b> to vary weights over time.</div><div class="pf-rows">${rows}</div><div class="pf-total" id="pf-total"></div>`; }
+function _pfWireSimple(){ document.querySelectorAll('.pf-rows .pf-inbox input').forEach(inp=>inp.oninput=()=>{
+  let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
+  const w=_pfSched.rows[0].w, others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+w[t]||0)),0);
+  v=Math.min(v,Math.max(0,100-others)); w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfSave(); _pfRecompute(); }); }
+function _pfAdvancedHTML(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range);
+  const heads=_sel.map((t,i)=>`<th class="num"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</th>`).join('');
+  const body=_pfSched.rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5;
+    const cells=_sel.map(t=>`<td class="num"><span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+r.w[t]||0)}" data-row="${r.id}" data-t="${t}"/></span></td>`).join('');
+    return `<tr class="pf-srow${inv?' invalid':''}" data-row="${r.id}">
+      <td class="pf-when">${ri===0?'<span class="pf-dlock">Range start</span>':`<input type="date" value="${_toDateInput(r.date)}" min="${_toDateInput(s)}" max="${_toDateInput(e)}" data-row="${r.id}">`}<input class="pf-lbl" type="text" placeholder="label…" value="${esc(r.label||'')}" data-row="${r.id}" maxlength="14"></td>
+      ${cells}<td class="num pf-cashc${inv?' over':''}">${cash.toFixed(0)}%</td>
+      <td>${ri===0?'':`<span class="pf-del" data-row="${r.id}" title="Remove">×</span>`}</td></tr>`; }).join('');
+  return `<div class="pf-hint">Each row = the weights in force from its date until the next. Anything under 100% is cash.</div>
+    <div class="pf-sched-wrap"><table class="pf-sched"><thead><tr><th class="l">When</th>${heads}<th class="num">Cash</th><th></th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="pf-addrow"><span class="pf-addr" id="pf-add">+ Add rebalance</span></div>`; }
+function _pfWireAdvanced(){ const findRow=id=>_pfSched.rows.find(r=>String(r.id)===id);
+  document.querySelectorAll('.pf-sched .pf-inbox input').forEach(inp=>inp.oninput=()=>{ const row=findRow(inp.dataset.row); if(!row)return;
     let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
-    const others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+_pfW[t]||0)),0);
-    v=Math.min(v,Math.max(0,100-others));   // a soma nunca passa de 100%
-    _pfW[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v;
-    _pfSave(); _pfRecompute();
-  });
-  _pfRecompute();
-}
-function _pfRecompute(){
-  const range=_range==='1D'?'1M':_range, total=_sel.reduce((s,t)=>s+(+_pfW[t]||0),0);
-  const tEl=document.getElementById('pf-total');
-  if(tEl) tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':'');
-  const port=_pfPort(range);
-  const ret=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port);
-  const st=document.getElementById('pf-stats');
-  if(st) st.innerHTML=`
-    <div class="pf-stat"><div class="pl">Return (${_rangeLabel(range)})</div><div class="pv ${_signCls(ret)}">${_pctStr(ret,1)}</div></div>
-    <div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
-    <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div>`;
-  _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
-}
+    const others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+row.w[t]||0)),0); v=Math.min(v,Math.max(0,100-others));
+    row.w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfSave();
+    const cash=_cashOf(row), tr=inp.closest('tr'), cc=tr&&tr.querySelector('.pf-cashc'); if(cc){cc.textContent=cash.toFixed(0)+'%';cc.classList.toggle('over',cash<-0.5);} if(tr)tr.classList.toggle('invalid',cash<-0.5);
+    _pfRecompute(); });
+  document.querySelectorAll('.pf-sched input[type=date]').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.date=d; _pfSave(); renderPortfolio(); });
+  document.querySelectorAll('.pf-sched .pf-lbl').forEach(inp=>inp.oninput=()=>{ const row=findRow(inp.dataset.row); if(row){row.label=inp.value; _pfSave(); _renderBand();} });
+  document.querySelectorAll('.pf-sched .pf-del').forEach(x=>x.onclick=()=>{ _pfSched.rows=_pfSched.rows.filter(r=>String(r.id)!==x.dataset.row); _pfSave(); renderPortfolio(); });
+  const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), mid=Math.floor((s+e)/2), prev=_wAt(_pfSched.rows,mid), w={}; _sel.forEach(t=>w[t]=+(prev.w[t])||0); _pfSched.rows.push({id:_pfId++,date:mid,label:'',w}); _pfSave(); renderPortfolio(); }; }
+function _renderBand(){ const host=document.getElementById('pf-band'); if(!host)return;
+  const rows=_pfSched.rows; if(_pfSched.mode!=='advanced'||!rows.length){ host.innerHTML=''; return; }
+  const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), span=(e-s)||1, W=Math.max(280,Math.round(host.clientWidth||776)), H=Math.round(host.clientHeight||26);
+  const X=ds=>((Math.max(s,Math.min(e,ds))-s)/span)*W; let svg='';
+  rows.forEach((r,ri)=>{ const x0=X(r.date), x1=ri+1<rows.length?X(rows[ri+1].date):W, w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
+    _sel.forEach((t,i)=>{ const wt=(+r.w[t]||0)/100*H; if(wt<=0)return; y-=wt; svg+=`<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${wt.toFixed(1)}" fill="${_MC_COLORS[i%8]}"/>`; });
+    if(y>0.5) svg+=`<rect x="${x0.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${y.toFixed(1)}" fill="url(#pfhatch)"/>`;
+    if(r.label && w>40) svg+=`<text x="${(x0+w/2).toFixed(1)}" y="${(H/2+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#fff" opacity="0.85">${esc(r.label)}</text>`;
+    if(ri>0) svg+=`<line x1="${x0.toFixed(1)}" y1="0" x2="${x0.toFixed(1)}" y2="${H}" stroke="rgba(255,255,255,.35)" stroke-width="1"/>`; });
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><pattern id="pfhatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--panel-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--mute)" stroke-width="1.4" opacity="0.5"/></pattern></defs>${svg}</svg>`; }
+function renderPortfolio(){ const host=document.getElementById('pf-host'); if(!host)return; const eq=document.getElementById('pf-equal');
+  if(!_sel.length){ host.innerHTML='<div class="corr-empty">Select assets to build a portfolio (weights are saved on this browser).</div>'; if(eq)eq.style.display='none'; return; }
+  _schedReconcile(); const adv=_pfSched.mode==='advanced'; if(eq)eq.style.display=adv?'none':'';
+  const toggle=`<div class="seg pf-seg" id="pf-seg"><button data-m="simple" class="${adv?'':'active'}">Simple</button><button data-m="advanced" class="${adv?'active':''}">Advanced</button></div>`;
+  host.innerHTML=toggle+(adv?_pfAdvancedHTML():_pfSimpleHTML())+(adv?'<div class="pf-band" id="pf-band"></div>':'')+'<div class="pf-chart" id="pf-chart"></div><div class="pf-stats" id="pf-stats"></div>';
+  document.getElementById('pf-seg').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.dataset.m===_pfSched.mode)return; _pfSched.mode=b.dataset.m; _pfSave(); renderPortfolio(); };
+  if(adv)_pfWireAdvanced(); else _pfWireSimple(); _pfRecompute(); }
+function _pfRecompute(){ const range=_range==='1D'?'1M':_range, tEl=document.getElementById('pf-total');
+  if(tEl){ const total=_sel.reduce((s,t)=>s+(+_pfSched.rows[0].w[t]||0),0);
+    tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':''); }
+  const invalid=_pfSched.rows.some(r=>_cashOf(r)<-0.5), port=invalid?null:_pfPort(range), st=document.getElementById('pf-stats');
+  if(st){ if(invalid) st.innerHTML='<div class="pf-invalid">A rebalance row is over 100% — trim it to ≤100%.</div>';
+    else { const ret=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port);
+      st.innerHTML=`<div class="pf-stat"><div class="pl">Return (${_rangeLabel(range)})</div><div class="pv ${_signCls(ret)}">${_pctStr(ret,1)}</div></div>
+        <div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
+        <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div>`; } }
+  if(!invalid && document.getElementById('pf-chart')) _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
+  _renderBand(); }
 
 /* ── topbar: status, clock, theme ── */
 const EX_HOURS={'B3':{o:-3,s:10,e:17,n:'B3'},'NYSE':{o:-5,s:9.5,e:16,n:'NYSE'},'Nasdaq':{o:-5,s:9.5,e:16,n:'Nasdaq'},'NASDAQ':{o:-5,s:9.5,e:16,n:'Nasdaq'},'LSE':{o:0,s:8,e:16.5,n:'LSE'},'ASX':{o:11,s:10,e:16,n:'ASX'},'TSX':{o:-5,s:9.5,e:16,n:'TSX'},'BCS':{o:-4,s:9.5,e:16,n:'Santiago'}};
@@ -1133,7 +1205,7 @@ async function init(){
   document.getElementById('c-clear').onclick=()=>setRange('3M');
   document.getElementById('cmp-other').onclick=()=>openPicker('sel');
   document.getElementById('cmp-clear').onclick=clearSel;
-  document.getElementById('pf-equal').onclick=()=>{ _sel.forEach(t=>_pfW[t]=100/Math.max(1,_sel.length)); _pfSave(); renderPortfolio(); };
+  document.getElementById('pf-equal').onclick=()=>{ const eq=Math.round(100/Math.max(1,_sel.length)); _schedReconcile(); _sel.forEach(t=>_pfSched.rows[0].w[t]=eq); _pfSave(); renderPortfolio(); };
   document.getElementById('other-close').onclick=closeOther;
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
