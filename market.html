@@ -79,6 +79,7 @@ a{color:inherit;text-decoration:none}
 .card-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
 .card-title .accent{color:var(--orange)}
 .card-sub{font-size:10px;color:var(--mute)}
+.rng-badge{font-size:9px;font-weight:700;letter-spacing:.03em;color:var(--orange);background:rgba(255,80,0,.1);border:1px solid rgba(255,80,0,.3);border-radius:20px;padding:1px 7px;white-space:nowrap;flex-shrink:0}
 .card-tools{display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap}
 .seg{display:flex;gap:2px;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;padding:2px}
 .seg button{background:none;border:none;color:var(--dim);font:600 10.5px var(--font);padding:4px 8px;border-radius:5px;cursor:pointer;white-space:nowrap}
@@ -406,6 +407,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
       <div class="card col-8">
         <div class="card-head">
           <span class="card-title" id="chart-title">Price</span>
+          <span class="rng-badge" id="rb-chart"></span>
           <span class="card-sub" id="chart-sub"></span>
           <div class="card-tools">
             <div class="seg" id="chart-mode">
@@ -430,6 +432,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
       <div class="card col-4 wl-card">
         <div class="card-head">
           <span class="card-title">Watchlist</span>
+          <span class="rng-badge" id="rb-wl"></span>
           <div class="card-tools">
             <div class="seg" id="wl-mode"><button data-m="coverage" class="active">Coverage</button><button data-m="all">All</button><button data-m="peers">Peers</button><button data-m="custom">Custom</button></div>
           </div>
@@ -444,18 +447,20 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
       <!-- P4 Thesis strip -->
       <div class="card col-8">
         <div class="card-head"><span class="card-title"><span class="accent">Thesis</span> Strip</span>
-          <span class="card-sub">the asset next to its commodity driver, peers and index</span></div>
+          <span class="rng-badge" id="rb-thesis">Today</span>
+          <span class="card-sub">the asset next to its commodity driver, peers and index · live, as of today</span></div>
         <div class="card-body"><div class="thesis" id="thesis"></div></div>
       </div>
 
       <!-- Analytics (fast-follow): correlation matrix + portfolio simulator -->
       <div class="card col-5">
-        <div class="card-head"><span class="card-title">Correlation</span><span class="card-sub" id="corr-sub"></span></div>
+        <div class="card-head"><span class="card-title">Correlation</span><span class="rng-badge" id="rb-corr"></span><span class="card-sub" id="corr-sub"></span></div>
         <div class="card-body"><div id="corr-host"></div></div>
       </div>
       <div class="card col-7">
         <div class="card-head"><span class="card-title">Portfolio <span class="dim" style="font-weight:600;text-transform:none;letter-spacing:0">simulator</span></span>
-          <span class="card-sub">static-weight blend of the selected assets</span>
+          <span class="rng-badge" id="rb-pf"></span>
+          <span class="card-sub">Simple = the bar range · Advanced = your own dates</span>
           <button class="cmp-other" id="pf-equal" style="margin-left:auto;padding:3px 9px">Equal weight</button><button class="cmp-other" id="pf-reset" style="padding:3px 9px;margin-left:6px">Reset</button></div>
         <div class="card-body"><div id="pf-host"></div></div>
       </div>
@@ -593,6 +598,8 @@ function _rangeLabel(r){
   if(r==='custom'){ const o={day:'2-digit',month:'short',timeZone:'UTC'}; const f=_cFrom?new Date(_cFrom*1000).toLocaleDateString('en-US',o):'…'; const t=_cTo?new Date(_cTo*1000).toLocaleDateString('en-US',o):'today'; return `${f} – ${t}`; }
   return {'1D':'Today','1W':'1 week','1M':'1 month','3M':'3 months','6M':'6 months','YTD':'Year to date','1Y':'1 year'}[r]||r;
 }
+function _rngBadgeText(){ return _range==='custom'?_rangeLabel('custom'):_range; }   // etiqueta compacta do range por bloco
+function _setRngBadges(){ const t=_rngBadgeText(); ['rb-chart','rb-wl','rb-corr'].forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=t; }); }   // rb-thesis = "Today" fixo; rb-pf é setado no _pfRecompute
 
 /* ── estado central ── */
 const _MC_COLORS=['#FF5000','#3B82F6','#22C55E','#A855F7','#06B6D4','#EAB308','#EC4899','#F97316'];
@@ -764,7 +771,7 @@ function _qa(){ return _anchor?byT(_anchor):null; }
 
 function renderAll(){
   renderHeader(); renderCarNext(); renderChart(); renderWatchlist(); renderThesis();
-  renderCorr(); renderPortfolio();
+  renderCorr(); renderPortfolio(); _setRngBadges();
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
@@ -1016,22 +1023,27 @@ function _rangeBounds(range){ const now=Date.now()/1000;
   if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
   if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
   return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
+function _dataFloor(){ let f=Infinity; _sel.forEach(t=>{ const q=byT(t), d=q&&q.daily; if(d&&d.length)f=Math.min(f,d[0][0]); }); return isFinite(f)?f:(Date.now()/1000-6*372*86400); }   // 1ª data com dado (limite p/ trás no Advanced)
+function _seriesSpan(q,sSec,eSec){ const arr=(q&&q.daily||[]).filter(p=>p[0]>=sSec&&p[0]<=eSec); if(arr.length<2)return null; const base=arr[0][1]; return arr.map(p=>[p[0], base?(p[1]/base-1)*100:0]); }
+function _schedSpan(){ const r=_pfSched.rows; if(!r||!r.length)return _rangeBounds(_range==='1D'?'1M':_range); return [Math.min(...r.map(x=>x.start)), Math.max(...r.map(x=>x.end))]; }
+function _pfSpanLabel(sp){ const o={day:'2-digit',month:'short',timeZone:'UTC'}, f=d=>new Date(d*1000).toLocaleDateString('en-US',o); return `${f(sp[0])} – ${f(sp[1])}`; }
 function _pfReset(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range); _pfSched={mode:'simple',touched:false,rows:[{id:_pfId++,start:s,end:e,label:'',w:{}}]}; _pfSave(); }
 function _cashOf(row){ return 100-_sel.reduce((s,t)=>s+(+(row.w&&row.w[t])||0),0); }
 function _wAt(rows,daySec){ for(let i=0;i<rows.length;i++){ if(daySec>=rows[i].start&&daySec<=rows[i].end)return rows[i]; }
   if(rows.length&&daySec<rows[0].start)return rows[0]; return null; }   // antes do 1º período → usa o 1º; gaps/após o último → cash
-function _schedReconcile(){ const range=_range==='1D'?'1M':_range, [s,e]=_rangeBounds(range);
-  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,start:s,end:e,label:'',w:{}}];
-  rows.sort((a,b)=>a.start-b.start); let prevEnd=s;
-  rows.forEach((r,i)=>{ if(r.start==null||r.start<s)r.start=Math.max(s,prevEnd); if(i>0&&r.start<prevEnd)r.start=prevEnd; if(r.start>e)r.start=e;
+function _schedReconcile(){ const adv=_pfSched.mode==='advanced', gs=_rangeBounds(_range==='1D'?'1M':_range)[0], e=Date.now()/1000, floor=adv?_dataFloor():gs;
+  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,start:gs,end:e,label:'',w:{}}];
+  rows.sort((a,b)=>a.start-b.start); let prevEnd=floor;
+  rows.forEach((r,i)=>{ if(r.start==null||r.start<=0)r.start=(i===0?gs:prevEnd); if(r.start<floor)r.start=floor; if(i>0&&r.start<prevEnd)r.start=prevEnd; if(r.start>e)r.start=e;
     if(r.end==null||r.end<=0||r.end>e)r.end=e; if(r.end<r.start)r.end=r.start; prevEnd=r.end; });
   if(rows.length>1) rows=rows.filter((r,i)=>i===0||r.end>r.start+43200);   // descarta períodos degenerados
   rows.forEach(r=>{ if(!r.w)r.w={}; _sel.forEach(t=>{ if(r.w[t]==null)r.w[t]=0; }); Object.keys(r.w).forEach(t=>{ if(!_sel.includes(t))delete r.w[t]; }); });
   if(!_pfSched.touched && _sel.length){ const eq=Math.floor(100/_sel.length); rows.forEach(r=>_sel.forEach(t=>r.w[t]=eq)); }   // default = equal weight (floor, ≤100)
   _pfSched.rows=rows; }
-function _pfPort(range){   // engine: retorno diário por ativo × pesos do período ativo no dia, composto (vale p/ Simple e Advanced)
+function _pfPort(win){   // win = range string OU [startSec,endSec] (Advanced usa o span do schedule = range livre)
   if(!_sel.length||!_pfSched.rows.length||_pfSched.rows.some(r=>_cashOf(r)<-0.5)) return null;
-  const maps=_sel.map(t=>{ const ser=_series(byT(t),range,'pct'); const m=new Map(); if(ser)for(const p of ser){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
+  const isSpan=Array.isArray(win);
+  const maps=_sel.map(t=>{ const ser=isSpan?_seriesSpan(byT(t),win[0],win[1]):_series(byT(t),win,'pct'); const m=new Map(); if(ser)for(const p of ser){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
   if(maps.some(m=>m.size<2)) return null;
   let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(d=>maps[i].has(d)); common.sort();
   if(common.length<2) return null;
@@ -1052,7 +1064,7 @@ function _pfWireSimple(){ document.querySelectorAll('.pf-rows .pf-inbox input').
   let v=Math.round(+inp.value); if(!isFinite(v))v=0; v=Math.max(0,v);
   const w=_pfSched.rows[0].w, others=_sel.reduce((s,t)=>s+(t===inp.dataset.t?0:(+w[t]||0)),0);
   v=Math.min(v,Math.max(0,100-others)); w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfTouch(); _pfSave(); _pfRecompute(); }); }
-function _pfAdvancedHTML(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), rows=_pfSched.rows;
+function _pfAdvancedHTML(){ const s=_dataFloor(), e=Date.now()/1000, rows=_pfSched.rows;   // datas livres: do início dos dados até hoje
   const heads=_sel.map((t,i)=>`<th class="num"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</th>`).join('');
   const body=rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5, prevEnd=ri>0?rows[ri-1].end:s, nextStart=ri+1<rows.length?rows[ri+1].start:e;
     const cells=_sel.map(t=>`<td class="num"><span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+r.w[t]||0)}" data-row="${r.id}" data-t="${t}"/></span></td>`).join('');
@@ -1077,7 +1089,7 @@ function _pfWireAdvanced(){ const findRow=id=>_pfSched.rows.find(r=>String(r.id)
   const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const rows=_pfSched.rows, last=rows[rows.length-1], mid=Math.floor((last.start+last.end)/2), ne=last.end, w={}; _sel.forEach(t=>w[t]=+(last.w[t])||0); last.end=mid; rows.push({id:_pfId++,start:mid,end:ne,label:'',w}); _pfTouch(); _pfSave(); renderPortfolio(); }; }
 function _renderBand(){ const host=document.getElementById('pf-band'); if(!host)return;
   const rows=_pfSched.rows; if(_pfSched.mode!=='advanced'||!rows.length){ host.innerHTML=''; return; }
-  const [s,e]=_rangeBounds(_range==='1D'?'1M':_range), span=(e-s)||1, W=Math.max(280,Math.round(host.clientWidth||776)), H=Math.round(host.clientHeight||26);
+  const [s,e]=_schedSpan(), span=(e-s)||1, W=Math.max(280,Math.round(host.clientWidth||776)), H=Math.round(host.clientHeight||26);
   const X=ds=>((Math.max(s,Math.min(e,ds))-s)/span)*W; let svg='';
   rows.forEach((r,ri)=>{ const x0=X(r.start), x1=X(r.end), w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
     _sel.forEach((t,i)=>{ const wt=(+r.w[t]||0)/100*H; if(wt<=0)return; y-=wt; svg+=`<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${wt.toFixed(1)}" fill="${_MC_COLORS[i%8]}"/>`; });
@@ -1092,14 +1104,15 @@ function renderPortfolio(){ const host=document.getElementById('pf-host'); if(!h
   host.innerHTML=toggle+(adv?_pfAdvancedHTML():_pfSimpleHTML())+(adv?'<div class="pf-band" id="pf-band"></div>':'')+'<div class="pf-chart" id="pf-chart"></div><div id="pf-stats"></div>';
   document.getElementById('pf-seg').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.dataset.m===_pfSched.mode)return; _pfSched.mode=b.dataset.m; _pfSave(); renderPortfolio(); };
   if(adv)_pfWireAdvanced(); else _pfWireSimple(); _pfRecompute(); }
-function _pfRecompute(){ const range=_range==='1D'?'1M':_range, tEl=document.getElementById('pf-total');
+function _pfRecompute(){ const range=_range==='1D'?'1M':_range, adv=_pfSched.mode==='advanced', tEl=document.getElementById('pf-total');
   if(tEl){ const total=_sel.reduce((s,t)=>s+(+_pfSched.rows[0].w[t]||0),0);
     tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':''); }
+  const span=_schedSpan(), rbpf=document.getElementById('rb-pf'); if(rbpf)rbpf.textContent=adv?_pfSpanLabel(span):(_range==='custom'?_rangeLabel('custom'):_range);
   const st=document.getElementById('pf-stats'), invalid=_pfSched.rows.some(r=>_cashOf(r)<-0.5);
   if(invalid){ if(st)st.innerHTML='<div class="pf-invalid">A period is over 100% — trim it to ≤100%.</div>'; if(document.getElementById('pf-chart'))_renderChart('pf-chart',[],'pct','Fix the over-100% period to see the curve.'); _renderBand(); return; }
-  const port=_pfPort(range);
+  const port=_pfPort(adv?span:range);
   const ribbon=[['1W','1W'],['1M','1M'],['YTD','YTD'],['1Y','1Y']].map(([p,lbl])=>{ const pp=_pfPort(p), rv=pp&&pp.length?pp[pp.length-1][1]:null; return `<div class="pf-stat"><div class="pl">${lbl}</div><div class="pv sm ${_signCls(rv)}">${_pctStr(rv,1)}</div></div>`; }).join('');
-  const rangeRet=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port), rl=_range==='custom'?'Custom':range;
+  const rangeRet=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port), rl=adv?_pfSpanLabel(span):(_range==='custom'?'Custom':range);
   if(st) st.innerHTML=`<div class="pf-rib">${ribbon}<div class="pf-stat hl"><div class="pl">${rl}</div><div class="pv sm ${_signCls(rangeRet)}">${_pctStr(rangeRet,1)}</div></div></div>
     <div class="pf-risk"><div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
     <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div></div>`;
@@ -1174,13 +1187,13 @@ function _syncDates(){
 }
 function setRange(r){ _range=r; _cFrom=null; _cTo=null;
   document.querySelectorAll('#chart-range button').forEach(b=>b.classList.toggle('active',b.dataset.r===r));
-  _syncDates(); renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio(); }
+  _syncDates(); renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio(); _setRngBadges(); }
 function onDates(){
   const f=_fromDateInput(document.getElementById('c-from').value), tt=_fromDateInput(document.getElementById('c-to').value);
   if(f==null && tt==null) return;
   _cFrom=f; _cTo=tt; _range='custom';
   document.querySelectorAll('#chart-range button').forEach(b=>b.classList.remove('active'));
-  renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio();
+  renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio(); _setRngBadges();
 }
 
 /* ── busca ── */
