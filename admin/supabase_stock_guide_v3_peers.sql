@@ -47,7 +47,7 @@ CREATE OR REPLACE FUNCTION public.admin_replace_stock_guide_global_peers(p_rows 
   BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'forbidden' USING ERRCODE='42501'; END IF;
     IF jsonb_typeof(p_rows) <> 'array' THEN RAISE EXCEPTION 'rows_must_be_array' USING ERRCODE='22023'; END IF;
-    DELETE FROM public.stock_guide_global_peers;
+    DELETE FROM public.stock_guide_global_peers WHERE true;  -- WHERE true: satisfaz o guard "safe update" do Supabase (DELETE sem WHERE é bloqueado)
     FOR v_elem IN SELECT * FROM jsonb_array_elements(p_rows) LOOP
       v_elem := public._sg_blanks_to_null(v_elem);
       v_company := nullif(trim(v_elem->>'company'), '');
