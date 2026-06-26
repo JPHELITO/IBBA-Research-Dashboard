@@ -434,7 +434,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
           <span class="card-title">Watchlist</span>
           <span class="rng-badge" id="rb-wl"></span>
           <div class="card-tools">
-            <div class="seg" id="wl-mode"><button data-m="coverage" class="active">Coverage</button><button data-m="all">All</button><button data-m="peers">Peers</button><button data-m="custom">Custom</button></div>
+            <div class="seg" id="wl-mode"><button data-m="all" class="active">All</button><button data-m="coverage">Coverage</button><button data-m="peers">Peers</button></div>
           </div>
         </div>
         <div class="wl-scroll"><table class="wl" id="wl-table"></table></div>
@@ -608,7 +608,7 @@ let _sel=[];                      // ativos selecionados (chart + watchlist lara
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
 let _range='3M', _cFrom=null, _cTo=null;
 let _chartMode='price';
-let _wlMode='coverage', _wlSort={key:'1D',dir:-1};   // 4 modos: coverage|all|peers|custom; ranqueado por 1D↓
+let _wlMode='all', _wlSort={key:'tk',dir:1};   // modos: all(default)|coverage|peers; default alfabético por ticker
 let _wlCustom=[]; try{ _wlCustom=JSON.parse(localStorage.getItem('mkt_wl_custom'))||[]; }catch(e){_wlCustom=[];}
 if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
 function _wlCustomSave(){ try{localStorage.setItem('mkt_wl_custom',JSON.stringify(_wlCustom));}catch(e){} }
@@ -893,8 +893,7 @@ function _wlUniverse(){
   if(_wlMode==='all') base=_quotes.map(q=>q.ticker);
   else if(_wlMode==='peers'){ const sec=_anchor?TICKER_SECTOR[_anchor]:null;
     base=sec?[_anchor,...(SECTOR_GROUPS[sec]||[]),...(SECTOR_INDEX[sec]||[])]:COVERAGE.slice(); }
-  else if(_wlMode==='custom') base=_wlCustom.slice();
-  else base=COVERAGE.slice();   // coverage (default)
+  else base=COVERAGE.slice();   // coverage (modo 'custom' removido)
   const set=new Set(base.filter(t=>KNOWN.has(t)));
   _sel.forEach(t=>set.add(t));        // selecionados sempre aparecem (p/ ver/remover)
   return _quotes.filter(q=>set.has(q.ticker));

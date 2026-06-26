@@ -52,6 +52,13 @@ tr.grp-row td{background:var(--g-light);font-weight:700;text-transform:uppercase
 tr.agg-row td{background:#FAFAF8;font-weight:600}
 html.dark tr.grp-row td{background:#20242b}
 html.dark tr.agg-row td{background:rgba(255,255,255,.04)}
+.sg-tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+.sg-tab{font:600 13px var(--font);padding:9px 16px;border:none;background:none;color:var(--g-mid);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.sg-tab:hover{color:var(--black)}
+.sg-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+a.model-dl{display:inline-flex;align-items:center;justify-content:center;color:var(--g-mid);text-decoration:none}
+a.model-dl:hover{color:var(--orange)}
+a.model-dl svg{width:15px;height:15px;display:block}
 .offtag{display:inline-block;background:var(--orange);color:#fff;font:700 9px var(--font);padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-style:normal}
 .grp-th{border-left:2px solid var(--border)}
 .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
@@ -113,24 +120,33 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
   </div>
 
   <div class="wrap">
-    <div class="section">
-      <div class="sec-title">Stock Guide</div>
-      <div class="sec-sub" id="comps-sub">EV/EBITDA · Net Debt/EBITDA · P/CE · Div yield · OCF yield · EPS — recomputed live from price (Market tab). Grouped by sector.</div>
-      <div id="px-fresh" class="muted" style="font-size:11px;margin-bottom:8px"></div>
-      <div class="card"><div class="tbl-scroll"><table class="data" id="comps-table"><tbody><tr><td class="muted">Loading…</td></tr></tbody></table></div>
-        <div class="foot" id="comps-foot"></div></div>
+    <div class="sg-tabs">
+      <button id="sgtab-comp" class="sg-tab active" onclick="sgShowTab('comp')">Comp Table</button>
+      <button id="sgtab-sens" class="sg-tab" onclick="sgShowTab('sens')">Sensitivity</button>
     </div>
 
-    <div class="section">
-      <div class="sec-title">Sensitivity</div>
-      <div class="sec-sub">Assumptions (drivers) → tables; grids interpolate multilinearly against live levels.</div>
-      <div id="sens-host"><div class="card"><span class="muted">Loading…</span></div></div>
+    <div id="sg-tab-comp">
+      <div class="section">
+        <div class="sec-title">Stock Guide</div>
+        <div class="sec-sub" id="comps-sub">EV/EBITDA · Net Debt/EBITDA · P/CE · Div yield · OCF yield · EPS — recomputed live from price (Market tab). Grouped by sector.</div>
+        <div id="px-fresh" class="muted" style="font-size:11px;margin-bottom:8px"></div>
+        <div class="card"><div class="tbl-scroll"><table class="data" id="comps-table"><tbody><tr><td class="muted">Loading…</td></tr></tbody></table></div>
+          <div class="foot" id="comps-foot"></div></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-title">Global Peers</div>
+        <div class="sec-sub">Global majors with a Market quote · price live, consensus multiples from the model (refresh on upload).</div>
+        <div class="card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
+      </div>
     </div>
 
-    <div class="section">
-      <div class="sec-title">Global Peers</div>
-      <div class="sec-sub">Global majors with a Market quote · price live, consensus multiples from the model (refresh on upload).</div>
-      <div class="card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
+    <div id="sg-tab-sens" hidden>
+      <div class="section">
+        <div class="sec-title">Sensitivity</div>
+        <div class="sec-sub">Assumptions (drivers) → tables; grids interpolate multilinearly against live levels.</div>
+        <div id="sens-host"><div class="card"><span class="muted">Loading…</span></div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -206,6 +222,31 @@ function updatePxFresh(updatedAt,fxRates){
 const GROUP_OF={iron_ore:'mining',copper:'mining',gold:'mining',mining:'mining',steel:'steel',pulp_paper:'pulp_paper',pp:'pulp_paper'};
 const GROUP_ORDER=['mining','steel','pulp_paper'];
 const GROUP_LABEL={mining:'Mining',steel:'Steel',pulp_paper:'Pulp & Paper'};
+// Link do modelo no portal Itaú BBA (por ticker; VALE3→slug 'VALE')
+const MODEL_URL={
+  VALE3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/VALE',
+  CMIN3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CMIN3',
+  GMEXICOB:'https://www.itau.com.br/itaubba-pt/portal/equity/company/GMEXICOB',
+  SCCO:'https://www.itau.com.br/itaubba-pt/portal/equity/company/SCCO',
+  AURA33:'https://www.itau.com.br/itaubba-pt/portal/equity/company/AURA33',
+  CSNA3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CSNA3',
+  GGBR4:'https://www.itau.com.br/itaubba-pt/portal/equity/company/GGBR4',
+  TX:'https://www.itau.com.br/itaubba-pt/portal/equity/company/TX',
+  USIM5:'https://www.itau.com.br/itaubba-pt/portal/equity/company/USIM5',
+  SUZB3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/SUZB3',
+  KLBN11:'https://www.itau.com.br/itaubba-pt/portal/equity/company/KLBN11',
+  RANI3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/RANI3',
+  CMPC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CMPC',
+  COPEC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/COPEC'
+};
+const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open Itaú BBA model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
+function sgShowTab(t){
+  document.getElementById('sg-tab-comp').hidden=(t!=='comp');
+  document.getElementById('sg-tab-sens').hidden=(t!=='sens');
+  document.getElementById('sgtab-comp').classList.toggle('active',t==='comp');
+  document.getElementById('sgtab-sens').classList.toggle('active',t==='sens');
+}
 function mapComp(c){return{ticker:c.ticker,company_name:c.company_name,is_visible:c.is_visible,display_order:c.display_order,
   sector:c.sector,yahoo_symbol:c.yahoo_symbol,shares_outstanding:n(c.shares_outstanding),
   last_update:c.last_update,target_price:n(c.target_price),recommendation:c.recommendation,
@@ -279,9 +320,9 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
   const rows=deriveComps(comps,priceByKey,fxRates);
   const vis=r=>r.is_visible||isAdmin;
   const restricted=rows.filter(r=>!vis(r)).map(r=>r.company_name);
-  const NCOL=19;
+  const NCOL=20;
   const head=`<thead>
-    <tr><th class="l" rowspan="2">Ticker</th><th class="l" rowspan="2">Company</th><th rowspan="2">Rec</th>
+    <tr><th class="l" rowspan="2">Ticker</th><th class="l" rowspan="2">Company</th><th rowspan="2">Model</th><th rowspan="2">Rec</th>
       <th rowspan="2">TP</th><th rowspan="2">Price</th><th rowspan="2">Upside</th><th rowspan="2">Mkt cap<br><span class="muted">US$ mn</span></th>
       <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">Net Debt/EBITDA</th>
       <th class="grp-th" colspan="2">P/CE</th><th class="grp-th" colspan="2">Div yield</th>
@@ -299,6 +340,7 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
       body+=`<tr class="${off?'offrow':''}">
         <td class="l">${esc(r.ticker)}${off?'<span class="offtag">OFF · admin only</span>':''}</td>
         <td class="l">${esc(r.displayName)}</td>
+        <td style="text-align:center">${modelCell(r)}</td>
         <td>${rec}</td>
         <td class="num">${fmt(r.target_price,2)}</td>
         <td class="num">${fmt(r.livePrice,2)}</td>
@@ -313,7 +355,7 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
     });
     const a=aggUsd(shown);
     if(a) body+=`<tr class="agg-row"><td class="l" colspan="2">${esc(GROUP_LABEL[g])} — aggregate <span class="muted">(US$, sum)</span></td>
-      <td></td><td></td><td></td><td></td><td class="num">${fmt(a.mcap,0)}</td>
+      <td></td><td></td><td></td><td></td><td></td><td class="num">${fmt(a.mcap,0)}</td>
       ${pair(a.evEbitdaY1,a.evEbitdaY2,v=>fmtX(v,1))}${pair(a.ndEbitdaY1,a.ndEbitdaY2,v=>fmtX(v,1))}
       ${pair(a.pceY1,a.pceY2,v=>fmtX(v,1))}${pair(a.divYieldY1,a.divYieldY2,v=>fmtPct(v,1))}
       ${pair(a.ocfYieldY1,a.ocfYieldY2,v=>fmtPct(v,1))}<td></td><td></td></tr>`;
