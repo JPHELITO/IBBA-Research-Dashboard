@@ -251,7 +251,7 @@
     if (y1 < 0 || y2 < 0) return { error: meta.tab + ': não encontrei as colunas 2026E/2027E' };
 
     // helpers ligados a este aoa
-    const hNum = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return _isNum(row[c + 1]); }); return f ? _sgCellNum(aoa[f.r][f.c + 1]) : null; };
+    const hNum = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return _sgCellNum(row[c + 1]) != null; }); return f ? _sgCellNum(aoa[f.r][f.c + 1]) : null; };  // aceita número-como-texto ("1,110")
     const hTxt = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return row[c + 1] != null && String(row[c + 1]).trim() !== ''; }); return f ? String(aoa[f.r][f.c + 1]).trim() : null; };
     const est  = function (re) { const f = _sgFindCell(aoa, re); return f ? { y1: _sgCellNum(aoa[f.r][y1]), y2: _sgCellNum(aoa[f.r][y2]) } : { y1: null, y2: null }; };
     // market cap na MOEDA-BASE = linha "Market Capitaliz" do bloco-série (numérica na coluna do ano)
