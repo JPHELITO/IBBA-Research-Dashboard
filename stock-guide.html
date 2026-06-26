@@ -241,12 +241,17 @@ const MODEL_URL={
 };
 const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open Itaú BBA model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
+function _sgTabFromHash(){ return (location.hash==='#sens')?'sens':'comp'; }
 function sgShowTab(t){
+  t=(t==='sens')?'sens':'comp';
   document.getElementById('sg-tab-comp').hidden=(t!=='comp');
   document.getElementById('sg-tab-sens').hidden=(t!=='sens');
   document.getElementById('sgtab-comp').classList.toggle('active',t==='comp');
   document.getElementById('sgtab-sens').classList.toggle('active',t==='sens');
+  try{ history.replaceState(null,'',t==='sens'?'#sens':'#comp'); }catch(e){}
 }
+// dropdown do topnav (Stock Guide ▾ → #comp/#sens) e link externo trocam de aba sem recarregar
+window.addEventListener('hashchange',function(){ sgShowTab(_sgTabFromHash()); });
 function mapComp(c){return{ticker:c.ticker,company_name:c.company_name,is_visible:c.is_visible,display_order:c.display_order,
   sector:c.sector,yahoo_symbol:c.yahoo_symbol,shares_outstanding:n(c.shares_outstanding),
   last_update:c.last_update,target_price:n(c.target_price),recommendation:c.recommendation,
@@ -571,6 +576,7 @@ async function sgInit(data){
   sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config);
   sgRenderPeers(data.peers||[],data.priceByKey);
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],computed:res.computed};
+  sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
   if(_sgTimer)clearInterval(_sgTimer);
   if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
 }

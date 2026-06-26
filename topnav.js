@@ -84,7 +84,9 @@
       <a href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
       <a href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>\
     <a class="gn-item" href="/news.html">News Hunter</a>\
-    <a class="gn-item" href="/stock-guide.html">Stock Guide</a>\
+    <div class="gn-group"><span class="gn-item">Stock Guide ▾</span><div class="gn-drop"><div class="gn-cat">Stock Guide</div>\
+      <a href="/stock-guide.html#comp">Comp Table</a>\
+      <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
