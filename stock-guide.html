@@ -56,6 +56,11 @@ html.dark tr.agg-row td{background:rgba(255,255,255,.04)}
 .sg-tab{font:600 13px var(--font);padding:9px 16px;border:none;background:none;color:var(--g-mid);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
 .sg-tab:hover{color:var(--black)}
 .sg-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+.sg-tab.locked::after{content:'🔒';font-size:10px;margin-left:5px;opacity:.65}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:6px;vertical-align:middle;animation:livepulse 2s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sg-locked{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 20px}
+.sg-locked .lk{font-size:30px}
 a.model-dl{display:inline-flex;align-items:center;justify-content:center;color:var(--g-mid);text-decoration:none}
 a.model-dl:hover{color:var(--orange)}
 a.model-dl svg{width:15px;height:15px;display:block}
@@ -127,7 +132,6 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
 
     <div id="sg-tab-comp">
       <div class="section">
-        <div class="sec-title">Stock Guide</div>
         <div class="sec-sub" id="comps-sub">EV/EBITDA · Net Debt/EBITDA · P/CE · Div yield · OCF yield · EPS — recomputed live from price (Market tab). Grouped by sector.</div>
         <div id="px-fresh" class="muted" style="font-size:11px;margin-bottom:8px"></div>
         <div class="card"><div class="tbl-scroll"><table class="data" id="comps-table"><tbody><tr><td class="muted">Loading…</td></tr></tbody></table></div>
@@ -210,10 +214,10 @@ function fmtAgo(ms){ if(ms==null)return '—'; const s=Math.max(0,Math.floor((Da
   if(s<60)return s+'s ago'; const m=Math.floor(s/60); if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }
 function updatePxFresh(updatedAt,fxRates){
   const el=document.getElementById('px-fresh'); if(!el)return;
-  const parts=['🟢 Live — prices & FX recompute in the browser'];
+  const parts=['Live — prices & FX recompute in the browser'];
   if(updatedAt)parts.push('quotes updated '+fmtAgo(updatedAt));
   const brl=fxRates&&fxRates.BRL; if(brl)parts.push('USD/BRL '+brl.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-  el.textContent=parts.join('  ·  ');
+  el.innerHTML='<span class="live-dot"></span>'+parts.map(esc).join('  ·  ');
 }
 
 // ── comps derivation — múltiplos IGUAIS À SUMMARY, recalculados AO VIVO ─────
@@ -566,6 +570,12 @@ function renderGridBody(t){
 
 // ── boot ────────────────────────────────────────────────────────────────────
 let _SG={}; let _sgTimer=null;
+// aba Sensitivity desligada (cliente, sub-flag off): mostra "indisponível" — não some
+function _sgLockSensitivity(){
+  const host=document.getElementById('sens-host');
+  if(host) host.innerHTML='<div class="card sg-locked"><div class="lk">🔒</div><div><b>Sensitivity — unavailable</b></div><div class="muted" style="max-width:360px">This section isn’t enabled for your account yet.</div></div>';
+  const tab=document.getElementById('sgtab-sens'); if(tab) tab.classList.add('locked');
+}
 async function sgInit(data){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
   if(data.isAdmin)document.getElementById('admin-badge').hidden=false;
@@ -573,7 +583,8 @@ async function sgInit(data){
   data.tables.forEach(t=>{window['__T_'+t.id]=t});
   const res=sgRenderComps(data.comps,data.config,data.priceByKey,data.isAdmin,data.fxRates);
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
-  sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config);
+  if(data.sensEnabled===false){ _sgLockSensitivity(); }
+  else { sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config); }
   sgRenderPeers(data.peers||[],data.priceByKey);
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
@@ -598,12 +609,15 @@ async function sgTickLive(){
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
     // gate por flag stock_guide (admin SEMPRE vê; flag AUSENTE = fechado p/ cliente — rollout seguro)
-    let flagOn=false, isAdmin=false;
+    let flagOn=false, isAdmin=false, sensOn=false;
     try{ const role=await rpc('get_my_role'); isAdmin=(role==='admin');
-      const flags=await rpc('get_dashboard_flags'); const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
+      const flags=await rpc('get_dashboard_flags');
+      const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
+      const fs=(flags||[]).find(x=>x.key==='stock_guide_sensitivity'); sensOn=!!(fs&&fs.enabled);   // sub-flag granular
     }catch(e){}
     if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
     const data=await sgLoadData();
+    data.sensEnabled = isAdmin || sensOn;   // admin sempre vê; cliente só com a sub-flag ligada
     await sgInit(data);
   }catch(e){ console.error(e); document.getElementById('gate').innerHTML='<div style="text-align:center"><div style="font-size:30px">⚠️</div><div>Failed to load.</div><div class="muted" style="max-width:400px">'+esc(e.message||e)+'</div></div>'; }
 })();
