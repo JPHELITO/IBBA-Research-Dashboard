@@ -978,24 +978,35 @@ async function sgModelPreview(file){
     const res=SG.parseStockGuideWorkbook(wb);
     if(res.errors.length){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+res.errors.map(esc).join(' · '); return; }
     _sgParsed=res;
+    try{ const pr=SG.parseStockGuidePeers(wb); _sgParsed.peers=pr.rows||[]; (pr.warnings||[]).forEach(w=>res.warnings.push(w)); }catch(e){ _sgParsed.peers=[]; res.warnings.push('peers: '+(e.message||e)); }
     const fx=res.fxRates||{}; const fxTxt=Object.keys(fx).map(k=>k+'/USD '+(Math.round(fx[k]*100)/100)).join(' · ')||'(câmbio não lido — coluna US$ pode faltar p/ nomes locais)';
     const f=v=>v==null?'<span style="color:#C0392B">—</span>':(Math.round(v*100)/100).toLocaleString('pt-BR');
     let h='<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Ações(mn)</th><th>EBITDA 26E</th><th>NetDebt 26E</th><th>CashE 26E</th><th>Div 26E</th><th>fx→base</th><th>fx→US$</th><th>base</th></tr></thead><tbody>';
     res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b></td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${f(r.fx_to_base)}</td><td>${f(r.fx_to_usd)}</td><td>${esc(r.base_ccy||'')}</td></tr>`; });
     h+='</tbody></table>';
+    const np=(_sgParsed.peers||[]).length;
+    const peerNames=(_sgParsed.peers||[]).map(p=>p.company).join(', ');
     prev.innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
+      `<div class="muted" style="font-size:11px;margin-top:8px"><b>+ ${np} global peers</b> (que têm cotação na Market): ${esc(peerNames)||'—'}</div>`+
       (res.warnings.length?`<div class="status" style="margin-top:8px;color:#B8860B">Avisos (não bloqueiam): ${res.warnings.map(esc).join(' · ')}</div>`:'')+
-      `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
+      `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas + ${np} peers</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
     stat.innerHTML='<b style="color:#1E8E4E">'+res.rows.length+' empresas lidas.</b> Confira o resumo abaixo e confirme para gravar.';
   }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e); }
 }
 function sgModelCancel(){ _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-status').textContent=''; _v('sg-xlsm-file').value=''; }
 async function sgModelCommit(){
   if(!_sgParsed||!_sgParsed.rows.length){alert('Nada para gravar.');return}
-  const stat=_v('sg-xlsm-status'); stat.textContent='Gravando '+_sgParsed.rows.length+' empresas…';
-  const {data,error}=await sbAuth.rpc('admin_bulk_upsert_stock_guide_companies',{p_rows:_sgParsed.rows});
-  if(error){ stat.innerHTML='<b style="color:#C0392B">Erro ao gravar:</b> '+esc(error.message)+' (rodou o admin/supabase_stock_guide_v2_upload.sql?)'; return; }
-  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+data+' empresas gravadas/atualizadas. Preço e múltiplos vão calcular ao vivo na página.';
+  const stat=_v('sg-xlsm-status'); const npe=(_sgParsed.peers||[]).length;
+  stat.textContent='Gravando '+_sgParsed.rows.length+' empresas…';
+  const r=await sbAuth.rpc('admin_bulk_upsert_stock_guide_companies',{p_rows:_sgParsed.rows});
+  if(r.error){ stat.innerHTML='<b style="color:#C0392B">Erro (empresas):</b> '+esc(r.error.message)+' (rodou o supabase_stock_guide_v2_upload.sql?)'; return; }
+  let peerMsg='';
+  if(npe){ stat.textContent='Gravando '+npe+' peers…';
+    const pr=await sbAuth.rpc('admin_replace_stock_guide_global_peers',{p_rows:_sgParsed.peers});
+    if(pr.error){ peerMsg=' · <b style="color:#C0392B">peers falharam ('+esc(pr.error.message)+' — rodou o supabase_stock_guide_v3_peers.sql?)</b>'; }
+    else peerMsg=' + '+pr.data+' peers.';
+  }
+  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+r.data+' empresas gravadas/atualizadas'+peerMsg+' Preço e múltiplos calculam ao vivo na página.';
   _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-file').value=''; loadSGCompanies();
 }
 // drivers
