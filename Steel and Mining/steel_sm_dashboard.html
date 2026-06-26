@@ -921,8 +921,22 @@ html.dark .cr-input{color-scheme:dark}
   // Inicia o dashboard apenas após confirmar autenticação
   Chart.register(ChartDataLabels)
   loadDB()
+  applyPredFlag()
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+// flag 'pred_model' (admin → Funcionalidades): off + cliente → esconde a sub-aba Predictive Model. Admin sempre vê.
+async function applyPredFlag(){
+  try{
+    const [fl, role] = await Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])
+    const isAdmin = !!(role && !role.error && role.data === 'admin')
+    const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='pred_model') : null
+    const on = f ? !!f.enabled : true
+    if(on || isAdmin) return
+    const btn = document.querySelector('.itab[data-itab="prediction"]'); if(btn) btn.style.display='none'
+    const content = document.getElementById('im-tab-prediction'); if(content) content.style.display='none'
+    if(importTab==='prediction') setImportTab('secex')
+  }catch(e){}
+}
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let currentSub    = 'prices';
