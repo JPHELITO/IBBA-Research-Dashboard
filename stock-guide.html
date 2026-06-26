@@ -48,6 +48,10 @@ table.data td.num{font-variant-numeric:tabular-nums}
 .rec.OP{background:#E3F4E9;color:var(--green)} .rec.MP{background:#F1EFEA;color:var(--g-dark)} .rec.UP{background:#FBE6E3;color:var(--red)}
 tr.ex td{background:#FAF8F4;color:var(--g-dark);font-style:italic}
 tr.offrow td{background:#FFF6F2}
+tr.grp-row td{background:var(--g-light);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:10px;color:var(--g-dark);text-align:left}
+tr.agg-row td{background:#FAFAF8;font-weight:600}
+html.dark tr.grp-row td{background:#20242b}
+html.dark tr.agg-row td{background:rgba(255,255,255,.04)}
 .offtag{display:inline-block;background:var(--orange);color:#fff;font:700 9px var(--font);padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-style:normal}
 .grp-th{border-left:2px solid var(--border)}
 .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
@@ -111,7 +115,7 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
   <div class="wrap">
     <div class="section">
       <div class="sec-title">Comparáveis</div>
-      <div class="sec-sub" id="comps-sub">Múltiplos derivados ao vivo do preço de mercado.</div>
+      <div class="sec-sub" id="comps-sub">EV/EBITDA · Net Debt/EBITDA · P/CE · Div yield — derivados ao vivo do preço (aba Market). Agrupado por setor.</div>
       <div class="card"><div class="tbl-scroll"><table class="data" id="comps-table"><tbody><tr><td class="muted">Carregando…</td></tr></tbody></table></div>
         <div class="foot" id="comps-foot"></div></div>
     </div>
@@ -175,21 +179,29 @@ async function sgLoadData(){
   return {comps,config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,priceByKey,marketValues,isAdmin};
 }
 
-// ── comps derivation (§7.2/7.3) ───────────────────────────────────────────
+// ── comps derivation — múltiplos IGUAIS À SUMMARY, recalculados AO VIVO ─────
+// (EV/EBITDA · Net Debt/EBITDA · P/CE · Div yield). Moeda: mktcap_base = preço×ações×fx_to_base
+// (cancela na razão); coluna US$ via fx_to_usd; agregado de setor em US$ (razão de somas).
+const GROUP_OF={iron_ore:'mining',copper:'mining',gold:'mining',mining:'mining',steel:'steel',pulp_paper:'pulp_paper',pp:'pulp_paper'};
+const GROUP_ORDER=['mining','steel','pulp_paper'];
+const GROUP_LABEL={mining:'Mining',steel:'Steel',pulp_paper:'Pulp & Paper'};
 function mapComp(c){return{ticker:c.ticker,company_name:c.company_name,is_visible:c.is_visible,display_order:c.display_order,
-  sector:c.sector,volume_unit:c.volume_unit,yahoo_symbol:c.yahoo_symbol,shares_outstanding:n(c.shares_outstanding),
+  sector:c.sector,yahoo_symbol:c.yahoo_symbol,shares_outstanding:n(c.shares_outstanding),
   last_update:c.last_update,target_price:n(c.target_price),recommendation:c.recommendation,
   net_debt_y1:n(c.net_debt_y1),net_debt_y2:n(c.net_debt_y2),ebitda_y1:n(c.ebitda_y1),ebitda_y2:n(c.ebitda_y2),
-  net_income_y1:n(c.net_income_y1),net_income_y2:n(c.net_income_y2),net_income_ex_y1:n(c.net_income_ex_y1),net_income_ex_y2:n(c.net_income_ex_y2),
-  npv_tax_credit_y1:n(c.npv_tax_credit_y1),npv_tax_credit_y2:n(c.npv_tax_credit_y2),
-  fcfe_y1:n(c.fcfe_y1),fcfe_y2:n(c.fcfe_y2),dividends_y1:n(c.dividends_y1),dividends_y2:n(c.dividends_y2),
-  volumes_y1:n(c.volumes_y1),volumes_y2:n(c.volumes_y2),model_url:c.model_url}}
-function deriveMultiples(r,bY1,bY2){
-  const ev1=bY1!=null&&r.net_debt_y1!=null?bY1+r.net_debt_y1:null, ev2=bY2!=null&&r.net_debt_y2!=null?bY2+r.net_debt_y2:null;
+  net_income_y1:n(c.net_income_y1),net_income_y2:n(c.net_income_y2),
+  dividends_y1:n(c.dividends_y1),dividends_y2:n(c.dividends_y2),
+  cash_earnings_y1:n(c.cash_earnings_y1),cash_earnings_y2:n(c.cash_earnings_y2),
+  ev_adjustment_y1:n(c.ev_adjustment_y1),ev_adjustment_y2:n(c.ev_adjustment_y2),
+  fx_to_base:n(c.fx_to_base),fx_to_usd:n(c.fx_to_usd),base_ccy:c.base_ccy,trade_ccy:c.trade_ccy,model_url:c.model_url}}
+function deriveMultiples(r,mc){  // mc = market cap na MOEDA-BASE
+  const ev1=mc!=null&&r.net_debt_y1!=null?mc+r.net_debt_y1+(r.ev_adjustment_y1||0):null;
+  const ev2=mc!=null&&r.net_debt_y2!=null?mc+r.net_debt_y2+(r.ev_adjustment_y2||0):null;
   return{evEbitdaY1:ev1!=null&&r.ebitda_y1>0?ev1/r.ebitda_y1:null, evEbitdaY2:ev2!=null&&r.ebitda_y2>0?ev2/r.ebitda_y2:null,
-    peY1:bY1!=null&&r.net_income_y1>0?bY1/r.net_income_y1:null, peY2:bY2!=null&&r.net_income_y2>0?bY2/r.net_income_y2:null,
-    fcfeYieldY1:r.fcfe_y1!=null&&bY1>0?r.fcfe_y1/bY1*100:null, fcfeYieldY2:r.fcfe_y2!=null&&bY2>0?r.fcfe_y2/bY2*100:null,
-    divYieldY1:r.dividends_y1!=null&&bY1>0?r.dividends_y1/bY1*100:null, divYieldY2:r.dividends_y2!=null&&bY2>0?r.dividends_y2/bY2*100:null}}
+    ndEbitdaY1:r.net_debt_y1!=null&&r.ebitda_y1>0?r.net_debt_y1/r.ebitda_y1:null, ndEbitdaY2:r.net_debt_y2!=null&&r.ebitda_y2>0?r.net_debt_y2/r.ebitda_y2:null,
+    pceY1:mc!=null&&r.cash_earnings_y1>0?mc/r.cash_earnings_y1:null, pceY2:mc!=null&&r.cash_earnings_y2>0?mc/r.cash_earnings_y2:null,
+    peY1:mc!=null&&r.net_income_y1>0?mc/r.net_income_y1:null, peY2:mc!=null&&r.net_income_y2>0?mc/r.net_income_y2:null,
+    divYieldY1:r.dividends_y1!=null&&mc>0?r.dividends_y1/mc*100:null, divYieldY2:r.dividends_y2!=null&&mc>0?r.dividends_y2/mc*100:null}}
 function deriveComps(comps,priceByKey){
   const rows=[];
   const lp=(r)=>{ const cands=[r.yahoo_symbol, r.is_visible?r.ticker:null].filter(Boolean);
@@ -197,65 +209,79 @@ function deriveComps(comps,priceByKey){
       for(const t of tries){ if(priceByKey[t]!=null)return priceByKey[t]; } } return null; };
   comps.map(mapComp).forEach(r=>{
     const live=lp(r);
-    const mcap=r.shares_outstanding!=null&&live!=null?r.shares_outstanding*live/1e6:null;
+    const fxb=r.fx_to_base!=null?r.fx_to_base:1;
+    const mcBase=r.shares_outstanding!=null&&live!=null?r.shares_outstanding*live*fxb:null;
+    const mcUsd=r.shares_outstanding!=null&&live!=null&&r.fx_to_usd!=null?r.shares_outstanding*live*r.fx_to_usd:null;
     const upside=r.target_price!=null&&live!=null&&live>0?r.target_price/live-1:null;
-    const m=deriveMultiples(r,mcap,mcap);
-    rows.push(Object.assign({},r,{displayName:r.company_name,livePrice:live,marketCapBrlMn:mcap,upsidePct:upside},m));
-    const npv1=r.npv_tax_credit_y1||0, npv2=r.npv_tax_credit_y2||0;
-    if((npv1>0||npv2>0)&&mcap!=null){
-      const bY1=mcap-npv1,bY2=mcap-npv2;
-      const exR=Object.assign({},r,{net_income_y1:r.net_income_ex_y1!=null?r.net_income_ex_y1:r.net_income_y1,
-        net_income_y2:r.net_income_ex_y2!=null?r.net_income_ex_y2:r.net_income_y2});
-      const mEx=deriveMultiples(exR,bY1,bY2);
-      rows.push(Object.assign({},exR,{isExTaxCredit:true,displayName:r.company_name+' adj. tax credit',
-        livePrice:live,marketCapBrlMn:bY1,upsidePct:upside},mEx));
-    }
+    const toUsd=(r.fx_to_usd!=null&&fxb)?r.fx_to_usd/fxb:null;   // moeda-base → US$
+    const m=deriveMultiples(r,mcBase);
+    rows.push(Object.assign({},r,{displayName:r.company_name,group:GROUP_OF[r.sector]||'mining',
+      livePrice:live,marketCapBrlMn:mcBase,marketCapUsd:mcUsd,toUsd:toUsd,upsidePct:upside},m));
   });
   return rows;
 }
+function aggUsd(list){  // agregado em US$ (razão de somas) — só empresas com fx_to_usd
+  let mc=0,nd1=0,nd2=0,aj1=0,aj2=0,eb1=0,eb2=0,ce1=0,ce2=0,dv1=0,dv2=0,used=0;
+  list.forEach(r=>{ const k=r.toUsd; if(k==null||r.marketCapUsd==null)return; used++;
+    mc+=r.marketCapUsd;
+    if(r.ebitda_y1!=null)eb1+=r.ebitda_y1*k; if(r.ebitda_y2!=null)eb2+=r.ebitda_y2*k;
+    if(r.net_debt_y1!=null)nd1+=r.net_debt_y1*k; if(r.net_debt_y2!=null)nd2+=r.net_debt_y2*k;
+    aj1+=(r.ev_adjustment_y1||0)*k; aj2+=(r.ev_adjustment_y2||0)*k;
+    if(r.cash_earnings_y1!=null)ce1+=r.cash_earnings_y1*k; if(r.cash_earnings_y2!=null)ce2+=r.cash_earnings_y2*k;
+    if(r.dividends_y1!=null)dv1+=r.dividends_y1*k; if(r.dividends_y2!=null)dv2+=r.dividends_y2*k; });
+  if(!used||mc<=0)return null;
+  return{mcap:mc,
+    evEbitdaY1:eb1>0?(mc+nd1+aj1)/eb1:null, evEbitdaY2:eb2>0?(mc+nd2+aj2)/eb2:null,
+    ndEbitdaY1:eb1>0?nd1/eb1:null, ndEbitdaY2:eb2>0?nd2/eb2:null,
+    pceY1:ce1>0?mc/ce1:null, pceY2:ce2>0?mc/ce2:null,
+    divYieldY1:dv1/mc*100, divYieldY2:dv2/mc*100};
+}
 
-// ── render: comps ─────────────────────────────────────────────────────────
+// ── render: comps (agrupado por setor + linha de agregado, igual à Summary) ──
 function sgRenderComps(comps,config,priceByKey,isAdmin){
   const y1=config.y1_label||'26E', y2=config.y2_label||'27E';
   const rows=deriveComps(comps,priceByKey);
-  const visibleForClient=r=>r.is_visible||isAdmin;
+  const vis=r=>r.is_visible||isAdmin;
+  const restricted=rows.filter(r=>!vis(r)).map(r=>r.company_name);
+  const NCOL=16;
   const head=`<thead>
     <tr><th class="l" rowspan="2">Ticker</th><th class="l" rowspan="2">Empresa</th><th rowspan="2">Rec</th>
-      <th rowspan="2">TP</th><th rowspan="2">Preço</th><th rowspan="2">Upside</th><th rowspan="2">Mkt cap<br><span class="muted">BRL mn</span></th>
-      <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">P/E</th><th class="grp-th" colspan="2">FCFE yield</th>
-      <th class="grp-th" colspan="2">Div yield</th><th class="grp-th" colspan="2">EBITDA</th><th class="grp-th" colspan="2">Net income</th>
-      <th class="grp-th" colspan="2">Volumes</th><th rowspan="2">Atual.</th><th rowspan="2">Modelo</th></tr>
-    <tr>${[ '','','','','','','' ].join('')}${['EV/EBITDA','P/E','FCFE','Div','EBITDA','NI','Vol'].map(()=>`<th class="grp-th">${y1}</th><th>${y2}</th>`).join('')}</tr></thead>`;
+      <th rowspan="2">TP</th><th rowspan="2">Preço</th><th rowspan="2">Upside</th><th rowspan="2">Mkt cap<br><span class="muted">US$ mn</span></th>
+      <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">Net Debt/EBITDA</th>
+      <th class="grp-th" colspan="2">P/CE</th><th class="grp-th" colspan="2">Div yield</th><th rowspan="2">Atual.</th></tr>
+    <tr>${['EV','ND','PCE','DY'].map(()=>`<th class="grp-th">${y1}</th><th>${y2}</th>`).join('')}</tr></thead>`;
+  const pair=(a,b,f)=>`<td class="num">${f(a)}</td><td class="num">${f(b)}</td>`;
   let body='';
-  const restricted=[];
-  rows.forEach(r=>{
-    if(!visibleForClient(r)){ restricted.push(r.company_name); return; }
-    const ex=r.isExTaxCredit, off=(!r.is_visible&&isAdmin);
-    const cls=(ex?'ex':'')+(off?' offrow':'');
-    const rec=r.recommendation?`<span class="rec ${esc(r.recommendation)}">${esc(r.recommendation)}</span>`:'';
-    const single=(html)=>ex?'<td></td>':html;  // ex-row blanqueia os single cols
-    const pair=(a,b,f)=>`<td class="num">${f(a)}</td><td class="num">${f(b)}</td>`;
-    body+=`<tr class="${cls}">
-      <td class="l">${single(esc(r.ticker))}${off?'<span class="offtag">OFF · só admin</span>':''}</td>
-      <td class="l">${esc(r.displayName)}</td>
-      <td>${single(rec)}</td>
-      <td class="num">${single(fmt(r.target_price,2))}</td>
-      <td class="num">${single(fmt(r.livePrice,2))}</td>
-      <td class="num ${ex?'':signCls(r.upsidePct)}">${single(r.upsidePct==null?'—':fmtPct(r.upsidePct*100,1))}</td>
-      <td class="num">${single(fmt(r.marketCapBrlMn,0))}</td>
-      ${pair(r.evEbitdaY1,r.evEbitdaY2,v=>fmtX(v,1))}
-      ${pair(r.peY1,r.peY2,v=>fmtX(v,1))}
-      ${pair(r.fcfeYieldY1,r.fcfeYieldY2,v=>fmtPct(v,1))}
-      ${pair(r.divYieldY1,r.divYieldY2,v=>fmtPct(v,1))}
-      ${pair(r.ebitda_y1,r.ebitda_y2,v=>fmt(v,0))}
-      ${pair(r.net_income_y1,r.net_income_y2,v=>fmt(v,0))}
-      ${pair(r.volumes_y1,r.volumes_y2,v=>fmt(v,1))}
-      <td>${single(esc(r.last_update||''))}</td>
-      <td>${single(r.model_url?`<a href="${esc(r.model_url)}" target="_blank" rel="noopener">link</a>`:'')}</td></tr>`;
+  GROUP_ORDER.forEach(g=>{
+    const shown=rows.filter(r=>r.group===g&&vis(r));
+    if(!shown.length)return;
+    body+=`<tr class="grp-row"><td class="l" colspan="${NCOL}">${esc(GROUP_LABEL[g]||g)}</td></tr>`;
+    shown.forEach(r=>{
+      const off=(!r.is_visible&&isAdmin);
+      const rec=r.recommendation?`<span class="rec ${esc(r.recommendation)}">${esc(r.recommendation)}</span>`:'';
+      body+=`<tr class="${off?'offrow':''}">
+        <td class="l">${esc(r.ticker)}${off?'<span class="offtag">OFF · só admin</span>':''}</td>
+        <td class="l">${esc(r.displayName)}</td>
+        <td>${rec}</td>
+        <td class="num">${fmt(r.target_price,2)}</td>
+        <td class="num">${fmt(r.livePrice,2)}</td>
+        <td class="num ${signCls(r.upsidePct)}">${r.upsidePct==null?'—':fmtPct(r.upsidePct*100,1)}</td>
+        <td class="num">${fmt(r.marketCapUsd,0)}</td>
+        ${pair(r.evEbitdaY1,r.evEbitdaY2,v=>fmtX(v,1))}
+        ${pair(r.ndEbitdaY1,r.ndEbitdaY2,v=>fmtX(v,1))}
+        ${pair(r.pceY1,r.pceY2,v=>fmtX(v,1))}
+        ${pair(r.divYieldY1,r.divYieldY2,v=>fmtPct(v,1))}
+        <td>${esc(r.last_update||'')}</td></tr>`;
+    });
+    const a=aggUsd(shown);
+    if(a) body+=`<tr class="agg-row"><td class="l" colspan="2">${esc(GROUP_LABEL[g])} — agregado <span class="muted">(US$, soma)</span></td>
+      <td></td><td></td><td></td><td></td><td class="num">${fmt(a.mcap,0)}</td>
+      ${pair(a.evEbitdaY1,a.evEbitdaY2,v=>fmtX(v,1))}${pair(a.ndEbitdaY1,a.ndEbitdaY2,v=>fmtX(v,1))}
+      ${pair(a.pceY1,a.pceY2,v=>fmtX(v,1))}${pair(a.divYieldY1,a.divYieldY2,v=>fmtPct(v,1))}<td></td></tr>`;
   });
   document.getElementById('comps-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">Sem empresas.</td></tr>')+'</tbody>';
   const foot=document.getElementById('comps-foot');
-  let f=config.comps_footnote||'EV/EBITDA, P/E, FCFE yield e Div yield são derivados ao vivo do preço — não armazenados. Anos: '+y1+' / '+y2+'.';
+  let f=config.comps_footnote||('EV/EBITDA, Net Debt/EBITDA, P/CE e Div yield são derivados AO VIVO do preço (aba Market) — não armazenados. Mkt cap em US$; múltiplos na moeda-base de cada modelo. Anos: '+y1+' / '+y2+'.');
   if(restricted.length) f+=' · Em cobertura restrita: '+restricted.map(esc).join(', ')+'.';
   foot.textContent=f;
   return {rowsRendered:rows.length,restricted:restricted.length, computed:rows};

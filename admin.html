@@ -402,8 +402,17 @@ html.dark .ov-card{background:#20242b}
         </div>
 
         <div class="card">
+          <h2>📤 Subir modelo (.xlsm)</h2>
+          <p class="sub">Arraste o arquivo <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as 14 empresas cobertas (CBA/Cement fora), mostra um resumo e grava tudo de uma vez. Preço e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva visibilidade (hide-aware).</p>
+          <style>#sg-xlsm-preview table{border-collapse:collapse;width:100%;font-size:11px}#sg-xlsm-preview th,#sg-xlsm-preview td{border:1px solid var(--border,#E3E3E3);padding:3px 6px;text-align:right;white-space:nowrap}#sg-xlsm-preview th{background:var(--g-light,#F4F3F0)}#sg-xlsm-preview th:nth-child(-n+2),#sg-xlsm-preview td:nth-child(-n+2){text-align:left}</style>
+          <div class="row"><input class="in" id="sg-xlsm-file" type="file" accept=".xlsm,.xlsx" onchange="sgModelPreview(this.files[0])"></div>
+          <div id="sg-xlsm-status" class="status" style="margin-top:8px"></div>
+          <div id="sg-xlsm-preview" style="margin-top:10px"></div>
+        </div>
+
+        <div class="card">
           <h2>Empresas (comps)</h2>
-          <p class="sub">Dados price-INDEPENDENTES (BRL milhão, por ano). Os 4 múltiplos são derivados ao vivo — não digite. Use o botão p/ esconder/mostrar (hide-aware).</p>
+          <p class="sub">Dados price-INDEPENDENTES (por ano, na moeda-base do modelo). Os múltiplos (EV/EBITDA · Net Debt/EBITDA · P/CE · Div Yield) são derivados ao vivo — não digite. Botão p/ esconder/mostrar (hide-aware).</p>
           <div id="sg-co-list" class="status">Carregando…</div>
           <div class="row" style="margin-top:12px"><button class="btn" onclick="sgCoEdit(null)">+ Adicionar empresa</button></div>
         </div>
@@ -955,6 +964,39 @@ async function sgCoToggleVis(ticker,makeVisible){
 async function sgCoDelete(ticker){ if(!confirm('Excluir '+ticker+'? (remove também sensibilidades ligadas)'))return;
   const {error}=await sbAuth.rpc('admin_delete_stock_guide_company',{p_ticker:ticker});
   if(error){alert('Erro: '+error.message);return} loadSGCompanies();
+}
+// ── Upload do modelo .xlsm (parser em stock-guide-lib.js → preview/diff → bulk upsert) ──
+let _sgParsed=null;
+async function sgModelPreview(file){
+  const stat=_v('sg-xlsm-status'), prev=_v('sg-xlsm-preview'); _sgParsed=null; prev.innerHTML='';
+  if(!file){stat.textContent='';return}
+  if(!window.SG||!SG.parseStockGuideWorkbook){stat.innerHTML='<b style="color:#C0392B">stock-guide-lib.js não carregou.</b>';return}
+  stat.textContent='Lendo '+file.name+'…';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const res=SG.parseStockGuideWorkbook(wb);
+    if(res.errors.length){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+res.errors.map(esc).join(' · '); return; }
+    _sgParsed=res;
+    const fx=res.fxRates||{}; const fxTxt=Object.keys(fx).map(k=>k+'/USD '+(Math.round(fx[k]*100)/100)).join(' · ')||'(câmbio não lido — coluna US$ pode faltar p/ nomes locais)';
+    const f=v=>v==null?'<span style="color:#C0392B">—</span>':(Math.round(v*100)/100).toLocaleString('pt-BR');
+    let h='<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Ações(mn)</th><th>EBITDA 26E</th><th>NetDebt 26E</th><th>CashE 26E</th><th>Div 26E</th><th>fx→base</th><th>fx→US$</th><th>base</th></tr></thead><tbody>';
+    res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b></td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${f(r.fx_to_base)}</td><td>${f(r.fx_to_usd)}</td><td>${esc(r.base_ccy||'')}</td></tr>`; });
+    h+='</tbody></table>';
+    prev.innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
+      (res.warnings.length?`<div class="status" style="margin-top:8px;color:#B8860B">Avisos (não bloqueiam): ${res.warnings.map(esc).join(' · ')}</div>`:'')+
+      `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
+    stat.innerHTML='<b style="color:#1E8E4E">'+res.rows.length+' empresas lidas.</b> Confira o resumo abaixo e confirme para gravar.';
+  }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e); }
+}
+function sgModelCancel(){ _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-status').textContent=''; _v('sg-xlsm-file').value=''; }
+async function sgModelCommit(){
+  if(!_sgParsed||!_sgParsed.rows.length){alert('Nada para gravar.');return}
+  const stat=_v('sg-xlsm-status'); stat.textContent='Gravando '+_sgParsed.rows.length+' empresas…';
+  const {data,error}=await sbAuth.rpc('admin_bulk_upsert_stock_guide_companies',{p_rows:_sgParsed.rows});
+  if(error){ stat.innerHTML='<b style="color:#C0392B">Erro ao gravar:</b> '+esc(error.message)+' (rodou o admin/supabase_stock_guide_v2_upload.sql?)'; return; }
+  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+data+' empresas gravadas/atualizadas. Preço e múltiplos vão calcular ao vivo na página.';
+  _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-file').value=''; loadSGCompanies();
 }
 // drivers
 async function loadSGDrivers(){
