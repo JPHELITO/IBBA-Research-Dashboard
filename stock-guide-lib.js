@@ -329,10 +329,78 @@
     return { rows: rows, perCompany: perCompany, warnings: warnings, errors: errors, fxRates: fxRates };
   }
 
+  // ── 9. GLOBAL PEERS das abas "*Peers" (snapshot dos múltiplos; preço fica AO VIVO na página) ──
+  // Só peers que TÊM cotação na aba Market e que NÃO são cobertos (cobertos já estão no comps).
+  const SG_PEER_TABS = [
+    { tab: 'Steel Peers',        sector: 'steel',      group: 'steel' },
+    { tab: 'Mining Peers',       sector: 'mining',     group: 'mining' },
+    { tab: 'Pulp & Paper Peers', sector: 'pulp_paper', group: 'pulp_paper' },
+    { tab: 'Gold Peers',         sector: 'gold',       group: 'mining' },
+  ];
+  // nome (no arquivo) → yahoo_symbol da Market. SÓ peers não-cobertos com cotação.
+  const SG_PEER_SYMBOLS = [
+    { re: /nucor/i, sym: 'NUE' }, { re: /steel dynamics/i, sym: 'STLD' }, { re: /commercial metal/i, sym: 'CMC' },
+    { re: /arcelormittal/i, sym: 'MT' }, { re: /^cap\b/i, sym: 'CAP.SN' },
+    { re: /buenaventura/i, sym: 'BVN' }, { re: /\bbhp\b/i, sym: 'BHP' }, { re: /rio tinto/i, sym: 'RIO' },
+    { re: /anglo american/i, sym: 'AAL.L' }, { re: /fortescue/i, sym: 'FMG.AX' },
+    { re: /international pa/i, sym: 'IP' }, { re: /smurfit/i, sym: 'SW' }, { re: /^upm/i, sym: 'UPM.HE' }, { re: /stora enso/i, sym: 'STERV.HE' },
+    { re: /aris mining/i, sym: 'ARIS' }, { re: /hochschild/i, sym: 'HOC.L' }, { re: /agnico/i, sym: 'AEM' }, { re: /barrick/i, sym: 'B' },
+  ];
+  function _peerSymbol(name) {
+    const s = String(name || '').trim(); if (!s) return null;
+    for (const m of SG_PEER_SYMBOLS) if (m.re.test(s)) return m.sym;
+    return null;
+  }
+
+  function parseStockGuidePeers(wb) {
+    const X = root.XLSX;
+    if (!X || !wb || !wb.SheetNames) return { rows: [], warnings: ['SheetJS/arquivo inválido.'] };
+    const covered = new Set(SG_COVERAGE.map(function (c) { return c.yahoo; }));
+    const rows = [], warnings = [], seen = new Set();
+    SG_PEER_TABS.forEach(function (meta) {
+      const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === meta.tab.toLowerCase(); });
+      if (!nm) { warnings.push('aba ausente: ' + meta.tab); return; }
+      const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
+      // linha-cabeçalho = a que contém "EV/EBITDA"
+      const hdr = _sgFindCell(aoa, /^ev\s*\/\s*ebitda/i);
+      if (!hdr) { warnings.push(meta.tab + ': cabeçalho EV/EBITDA não encontrado'); return; }
+      const hr = hdr.r, yr = hr + 1;                       // rótulos em hr; 26E/27E na linha hr+1
+      const colOf = function (re) { const f = _sgFindCell([aoa[hr]], re); return f ? f.c : -1; };
+      const cCol = colOf(/^company/i), ctryCol = colOf(/^country/i), pxCol = colOf(/^price/i),
+            shCol = colOf(/^shares\s+outstanding/i), mcCol = colOf(/^mkt\s*cap/i);
+      const evbCol = hdr.c, ndeCol = colOf(/^net\s+debt\s*\/\s*ebitda/i),
+            peCol = colOf(/^p\s*\/\s*e\b/i), pceCol = colOf(/^p\s*\/\s*ce/i), dyCol = colOf(/^dividend\s+yield/i);
+      if (cCol < 0) { warnings.push(meta.tab + ': coluna Company não encontrada'); return; }
+      const at = function (row, col) { return col >= 0 ? _sgCellNum(row[col]) : null; };
+      for (let r = yr + 1; r < aoa.length; r++) {
+        const row = aoa[r]; if (!row) continue;
+        const name = row[cCol], country = ctryCol >= 0 ? row[ctryCol] : null;
+        if (name == null || String(name).trim() === '') continue;
+        if (country == null || String(country).trim() === '') continue;   // pula linhas de REGIÃO (sem país)
+        const sym = _peerSymbol(name);
+        if (!sym || covered.has(sym) || seen.has(sym)) continue;            // só Market, não-coberto, sem duplicar
+        seen.add(sym);
+        rows.push({
+          company: String(name).trim(), country: String(country).trim(),
+          sector: meta.sector, group: meta.group, yahoo_symbol: sym,
+          mkt_cap_usd: at(row, mcCol), price_snapshot: at(row, pxCol), shares: at(row, shCol),
+          ev_ebitda_y1: at(row, evbCol), ev_ebitda_y2: evbCol >= 0 ? _sgCellNum(row[evbCol + 1]) : null,
+          net_debt_ebitda_y1: at(row, ndeCol), net_debt_ebitda_y2: ndeCol >= 0 ? _sgCellNum(row[ndeCol + 1]) : null,
+          pe_y1: at(row, peCol), pe_y2: peCol >= 0 ? _sgCellNum(row[peCol + 1]) : null,
+          pce_y1: at(row, pceCol), pce_y2: pceCol >= 0 ? _sgCellNum(row[pceCol + 1]) : null,
+          div_yield_y1: at(row, dyCol), div_yield_y2: dyCol >= 0 ? _sgCellNum(row[dyCol + 1]) : null,
+          display_order: rows.length + 1,
+        });
+      }
+    });
+    return { rows: rows, warnings: warnings };
+  }
+
   const SG = {
     toNumOrNull: toNumOrNull,
     SG_COVERAGE: SG_COVERAGE,
     parseStockGuideWorkbook: parseStockGuideWorkbook,
+    parseStockGuidePeers: parseStockGuidePeers,
     parseSGFXRates: parseSGFXRates,
     MARKET_DRIVER_CATALOG: MARKET_DRIVER_CATALOG,
     MARKET_DRIVER_CATALOG_BY_KEY: MARKET_DRIVER_CATALOG_BY_KEY,

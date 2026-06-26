@@ -129,7 +129,7 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
 
     <div class="section">
       <div class="sec-title">Global Peers</div>
-      <div class="sec-sub">Global majors' multiples (reference).</div>
+      <div class="sec-sub">Global majors with a Market quote · price live, consensus multiples from the model (refresh on upload).</div>
       <div class="card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
     </div>
   </div>
@@ -157,12 +157,13 @@ async function rpc(name,args){const{data,error}=await sbAuth.rpc(name,args||{});
 async function restGet(path){const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_session?_session.access_token:SUPA_KEY}`}});if(!r.ok)throw new Error('REST '+path+' '+r.status);return r.json()}
 
 // SÓ a parte AO VIVO (preço + câmbio + commodities) — re-chamada no auto-refresh.
-async function sgFetchLive(comps){
+async function sgFetchLive(comps,extraSyms){
   const priceByKey={}, marketValues={}, fxRates={}; let pricesUpdatedAt=null;
   try{
     // só VISÍVEIS entram (oculto→yahoo_symbol NULL→não vaza); tolera 'VALE3' ou 'VALE3.SA' (B3 → tenta +'.SA')
     const cand=new Set();
     comps.forEach(c=>{ const s=c.yahoo_symbol||(c.is_visible?c.ticker:null); if(!s)return; cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); });
+    (extraSyms||[]).forEach(s=>{ if(s){ cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); } });   // peers
     const syms=[...cand];
     if(syms.length){ const q=await restGet('quotes?select=ticker,price,updated_at&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
       q.forEach(r=>{ const p=n(r.price); priceByKey[r.ticker]=p; priceByKey[_short(r.ticker)]=p;   // chaveia bruto + sem-sufixo
@@ -178,13 +179,15 @@ async function sgFetchLive(comps){
   return {priceByKey,marketValues,fxRates,pricesUpdatedAt};
 }
 async function sgLoadData(){
-  const [comps,cfgArr,drivers,tables]=await Promise.all([
+  const [comps,cfgArr,drivers,tables,peers]=await Promise.all([
     rpc('get_stock_guide_comps'), rpc('get_stock_guide_config'),
-    rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables')]);
+    rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables'),
+    rpc('get_stock_guide_global_peers').catch(()=>[])]);
   const role=await rpc('get_my_role').catch(()=>null);
   const isAdmin=!!(role&&role==='admin');
-  const live=await sgFetchLive(comps);
-  return Object.assign({comps,config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,isAdmin},live);
+  const peerSyms=(peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
+  const live=await sgFetchLive(comps,peerSyms);
+  return Object.assign({comps,peers:peers||[],config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,isAdmin},live);
 }
 // "há quanto tempo" + linha de freshness do preço/câmbio
 function fmtAgo(ms){ if(ms==null)return '—'; const s=Math.max(0,Math.floor((Date.now()-ms)/1000));
@@ -324,20 +327,36 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
 }
 
 // ── render: global peers ────────────────────────────────────────────────────
-function sgRenderPeers(peers,computedComps){
-  const liveSrc=(computedComps||[]).find(r=>!r.isExTaxCredit&&r.ticker==='VALE3')||null;
-  const head=`<thead><tr><th class="l">Company</th><th>P/E ${''}26E</th><th>P/E 27E</th><th>EV/EBITDA 26E</th><th>EV/EBITDA 27E</th><th>Div yld 26E</th><th>Div yld 27E</th></tr></thead>`;
+// Global Peers: preço AO VIVO (aba Market) + múltiplos SNAPSHOT (consenso do arquivo). Agrupado por setor.
+function sgRenderPeers(peers,priceByKey){
+  peers=peers||[]; priceByKey=priceByKey||{};
+  const lp=(sym)=>{ if(!sym)return null; const tries=[sym,_short(sym)]; if(!/\./.test(sym))tries.push(sym+'.SA');
+    for(const t of tries){ if(priceByKey[t]!=null)return priceByKey[t]; } return null; };
+  const mult=(p,yr)=>{ const pe=n(p['pe_'+yr]), pce=n(p['pce_'+yr]); return pe!=null?pe:(pce!=null?pce:null); };
+  const head=`<thead>
+    <tr><th class="l" rowspan="2">Company</th><th rowspan="2">Ctry</th><th rowspan="2">Price<br><span class="muted">live</span></th>
+      <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">Net Debt/EBITDA</th>
+      <th class="grp-th" colspan="2">P/E · P/CE</th><th class="grp-th" colspan="2">Div yield</th></tr>
+    <tr>${['EV','ND','PE','DY'].map(()=>`<th class="grp-th">26E</th><th>27E</th>`).join('')}</tr></thead>`;
+  const pair=(a,b,f)=>`<td class="num">${f(a)}</td><td class="num">${f(b)}</td>`;
   let body='';
-  (peers||[]).forEach(p=>{
-    let pe1=n(p.pe_y1),pe2=n(p.pe_y2),ev1=n(p.ev_ebitda_y1),ev2=n(p.ev_ebitda_y2),dy1=n(p.div_yield_y1),dy2=n(p.div_yield_y2);
-    if(p.is_live&&liveSrc){ pe1=liveSrc.peY1;pe2=liveSrc.peY2;ev1=liveSrc.evEbitdaY1;ev2=liveSrc.evEbitdaY2;
-      dy1=liveSrc.divYieldY1!=null?liveSrc.divYieldY1/100:null;dy2=liveSrc.divYieldY2!=null?liveSrc.divYieldY2/100:null; }
-    body+=`<tr${p.is_aggregate?' style="font-weight:600;background:#FAFAF8"':''}>
-      <td class="l">${esc(p.company)}</td><td class="num">${fmtX(pe1,1)}</td><td class="num">${fmtX(pe2,1)}</td>
-      <td class="num">${fmtX(ev1,1)}</td><td class="num">${fmtX(ev2,1)}</td>
-      <td class="num">${dy1==null?'—':fmtPct(dy1*100,1)}</td><td class="num">${dy2==null?'—':fmtPct(dy2*100,1)}</td></tr>`;
+  GROUP_ORDER.forEach(g=>{
+    const list=peers.filter(p=>(GROUP_OF[p.sector]||'mining')===g);
+    if(!list.length)return;
+    body+=`<tr class="grp-row"><td class="l" colspan="11">${esc(GROUP_LABEL[g]||g)}</td></tr>`;
+    list.forEach(p=>{
+      const px=lp(p.yahoo_symbol);
+      body+=`<tr>
+        <td class="l">${esc(p.company)}</td>
+        <td class="muted">${esc(p.country||'')}</td>
+        <td class="num" style="color:var(--orange);font-weight:600">${fmt(px,2)}</td>
+        ${pair(n(p.ev_ebitda_y1),n(p.ev_ebitda_y2),v=>fmtX(v,1))}
+        ${pair(n(p.net_debt_ebitda_y1),n(p.net_debt_ebitda_y2),v=>fmtX(v,1))}
+        ${pair(mult(p,'y1'),mult(p,'y2'),v=>fmtX(v,1))}
+        ${pair(n(p.div_yield_y1),n(p.div_yield_y2),v=>v==null?'—':fmtPct(v*100,1))}</tr>`;
+    });
   });
-  document.getElementById('peers-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No peers.</td></tr>')+'</tbody>';
+  document.getElementById('peers-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No peers — upload the model in /admin.</td></tr>')+'</tbody>';
 }
 
 // ── render: sensitivity (estático + grid interpolado) ──────────────────────
@@ -508,18 +527,18 @@ async function sgInit(data){
   const res=sgRenderComps(data.comps,data.config,data.priceByKey,data.isAdmin,data.fxRates);
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
   sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config);
-  const peersData=await rpc('get_stock_guide_global_peers').catch(()=>[]);
-  sgRenderPeers(peersData,res.computed);
-  _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peersData:peersData,computed:res.computed};
+  sgRenderPeers(data.peers||[],data.priceByKey);
+  _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],computed:res.computed};
   if(_sgTimer)clearInterval(_sgTimer);
   if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
 }
 // re-busca SÓ os dados ao vivo e re-renderiza comps+peers+freshness (não mexe na sensibilidade já aberta)
 async function sgTickLive(){
-  try{ const live=await sgFetchLive(_SG.comps);
+  try{ const peerSyms=(_SG.peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
+    const live=await sgFetchLive(_SG.comps,peerSyms);
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
-    sgRenderPeers(_SG.peersData||[],res.computed);
+    sgRenderPeers(_SG.peers||[],live.priceByKey);
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
