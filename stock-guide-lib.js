@@ -163,8 +163,177 @@
     return unit ? (num + ' ' + unit) : num;
   }
 
+  // ── 8. INGESTÃO do modelo de equity research (.xlsm) ──────────────────────
+  // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 14 abas de empresa cobertas
+  // (CBA/Cement FORA) e devolve linhas prontas p/ admin_bulk_upsert_stock_guide_companies.
+  // Detecção DINÂMICA (acha a coluna 2026E/2027E e os rótulos por varredura) → imune a
+  // inserção de linhas/colunas. Múltiplos NÃO são lidos — são recalculados ao vivo na página.
+  const SG_COVERAGE = [
+    { tab:'VALE',            ticker:'VALE3',    yahoo:'VALE3.SA',    name:'Vale',            sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
+    { tab:'CSN MINERACAO',   ticker:'CMIN3',    yahoo:'CMIN3.SA',    name:'CSN Mineração',   sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
+    { tab:'GRUPO MEXICO',    ticker:'GMEXICOB', yahoo:'GMEXICOB.MX', name:'Grupo México',    sector:'copper',     group:'mining',     trade_ccy:'MXN' },
+    { tab:'SOUTHERN COPPER', ticker:'SCCO',     yahoo:'SCCO',        name:'Southern Copper', sector:'copper',     group:'mining',     trade_ccy:'USD' },
+    { tab:'AURA',            ticker:'AURA33',   yahoo:'AURA33.SA',   name:'Aura',            sector:'gold',       group:'mining',     trade_ccy:'BRL' },
+    { tab:'CSN',             ticker:'CSNA3',    yahoo:'CSNA3.SA',    name:'CSN',             sector:'steel',      group:'steel',      trade_ccy:'BRL' },
+    { tab:'GERDAU',          ticker:'GGBR4',    yahoo:'GGBR4.SA',    name:'Gerdau',          sector:'steel',      group:'steel',      trade_ccy:'BRL' },
+    { tab:'TERNIUM',         ticker:'TX',       yahoo:'TX',          name:'Ternium',         sector:'steel',      group:'steel',      trade_ccy:'USD' },
+    { tab:'USIMINAS',        ticker:'USIM5',    yahoo:'USIM5.SA',    name:'Usiminas',        sector:'steel',      group:'steel',      trade_ccy:'BRL' },
+    { tab:'SUZANO',          ticker:'SUZB3',    yahoo:'SUZB3.SA',    name:'Suzano',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
+    { tab:'KLABIN',          ticker:'KLBN11',   yahoo:'KLBN11.SA',   name:'Klabin',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
+    { tab:'IRANI',           ticker:'RANI3',    yahoo:'RANI3.SA',    name:'Irani',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
+    { tab:'CMPC',            ticker:'CMPC',     yahoo:'CMPC.SN',     name:'CMPC',            sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
+    { tab:'COPEC',           ticker:'COPEC',    yahoo:'COPEC.SN',    name:'Copec',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
+  ];
+
+  // limpa célula → número OU null: trata '#REF!'/'#N/A'/'n.a.'/'-'/vazio e número-como-texto en-US ("7,000"→7000)
+  function _sgCellNum(v) {
+    if (v == null) return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (v instanceof Date) return null;
+    let s = String(v).trim();
+    if (s === '' || /^#|^n\.?\s*a\.?$|^-+$/i.test(s)) return null;
+    s = s.replace(/\s/g, '').replace(/,/g, '');     // remove espaço + separador de milhar en-US (decimal é '.')
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  function _isNum(v) { return typeof v === 'number' && Number.isFinite(v); }
+  // 1ª célula (string) que casa `re`; predicado opcional sobre a linha. Devolve {r,c} ou null.
+  function _sgFindCell(aoa, re, pred) {
+    for (let r = 0; r < aoa.length; r++) {
+      const row = aoa[r]; if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const v = row[c];
+        if (typeof v === 'string' && re.test(v.trim())) {
+          if (!pred || pred(row, c)) return { r: r, c: c };
+        }
+      }
+    }
+    return null;
+  }
+
+  // câmbio do modelo (aba "Stock Guide"): rótulos "BRL/USD"/"CLP/USD"/... → taxa (unidades por USD).
+  function parseSGFXRates(wb) {
+    const X = root.XLSX; const rates = {};
+    if (!X || !wb || !wb.SheetNames) return rates;
+    const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === 'stock guide'; });
+    if (!nm) return rates;
+    const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
+    for (let r = 0; r < aoa.length; r++) {
+      const row = aoa[r]; if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const v = row[c];
+        const m = typeof v === 'string' ? v.trim().match(/^(BRL|CLP|MXN|PEN|COP|ARS)\s*\/\s*USD$/i) : null;
+        if (m) {
+          const ccy = m[1].toUpperCase();
+          for (let rr = r + 1; rr < aoa.length; rr++) {        // 1º numérico ABAIXO do rótulo, na mesma coluna
+            const cand = aoa[rr] && aoa[rr][c];
+            if (_isNum(cand) && cand > 0) { rates[ccy] = cand; break; }
+          }
+        }
+      }
+    }
+    return rates;
+  }
+
+  // parse de UMA aba de empresa (aoa) + meta + fx → linha p/ o bulk RPC (ou {error}).
+  function _sgParseCompanyAoa(aoa, meta, fxRates) {
+    const warnings = [];
+    // colunas dos anos-estimativa (2026E / 2027E) — mesma linha
+    let y1 = -1, y2 = -1;
+    for (let r = 0; r < aoa.length && (y1 < 0 || y2 < 0); r++) {
+      const row = aoa[r] || []; let i1 = -1, i2 = -1;
+      for (let c = 0; c < row.length; c++) {
+        const s = (typeof row[c] === 'string') ? row[c].trim() : '';
+        if (/^2026E$/i.test(s)) i1 = c; if (/^2027E$/i.test(s)) i2 = c;
+      }
+      if (i1 >= 0 && i2 >= 0) { y1 = i1; y2 = i2; break; }
+    }
+    if (y1 < 0 || y2 < 0) return { error: meta.tab + ': não encontrei as colunas 2026E/2027E' };
+
+    // helpers ligados a este aoa
+    const hNum = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return _isNum(row[c + 1]); }); return f ? _sgCellNum(aoa[f.r][f.c + 1]) : null; };
+    const hTxt = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return row[c + 1] != null && String(row[c + 1]).trim() !== ''; }); return f ? String(aoa[f.r][f.c + 1]).trim() : null; };
+    const est  = function (re) { const f = _sgFindCell(aoa, re); return f ? { y1: _sgCellNum(aoa[f.r][y1]), y2: _sgCellNum(aoa[f.r][y2]) } : { y1: null, y2: null }; };
+    // market cap na MOEDA-BASE = linha "Market Capitaliz" do bloco-série (numérica na coluna do ano)
+    const mcF = _sgFindCell(aoa, /^market\s+capitaliz/i, function (row) { return _isNum(row[y1]); });
+    const mcBase = mcF ? _sgCellNum(aoa[mcF.r][y1]) : null;
+
+    const shares = hNum(/^shares\s+outstanding/i);
+    const priceLocal = hNum(/^share\s+price/i);            // 1ª = moeda de negociação (col C)
+    const target = hNum(/^target\s+price/i);
+    const rec = (function () { const t = hTxt(/^analyst\s+recommend/i); return /^(OP|MP|UP)$/i.test(t || '') ? t.toUpperCase() : null; })();
+
+    const ebitda = est(/^ebitda\s*\(/i);
+    const netDebt = est(/^net\s+debt\s*\(/i);              // exclui "Net Debt/EBITDA (x)"
+    const netInc = est(/^net\s+income\s*\(/i);
+    const ocf = est(/^ocf\s*\(/i);                          // exclui "OCF Yield (%)"
+    const capex = est(/^capex\s*\(/i);
+    const netRev = est(/^net\s+revenues\s*\(/i);
+    const cashE = est(/^cash\s+earnings/i);
+    const divs = est(/^dividend.*int/i);                    // "Dividends/Int. on Capital" (exclui "Dividend Yield")
+    const adj = est(/^adjustment/i);
+
+    // fx_to_base direto do modelo (validado): mktcap_base / (preço × ações). ≈1 quando base==negociação.
+    let fxBase = (_isNum(mcBase) && _isNum(priceLocal) && _isNum(shares) && priceLocal * shares !== 0)
+      ? mcBase / (priceLocal * shares) : 1;
+    if (!Number.isFinite(fxBase) || fxBase <= 0) { fxBase = 1; warnings.push(meta.tab + ': fx_to_base indeterminado → 1'); }
+    const baseIsUsd = Math.abs(fxBase - 1) > 0.02;          // único base ≠ negociação observado = USD
+    const baseCcy = baseIsUsd ? 'USD' : meta.trade_ccy;
+    // fx_to_usd p/ a coluna "Mkt cap US$": USD-base usa fxBase; local-base usa 1/(taxa por USD)
+    let fxUsd;
+    if (meta.trade_ccy === 'USD') fxUsd = 1;
+    else if (baseIsUsd) fxUsd = fxBase;
+    else { const rt = fxRates[meta.trade_ccy]; fxUsd = (rt && rt > 0) ? 1 / rt : null; if (fxUsd == null) warnings.push(meta.tab + ': sem câmbio ' + meta.trade_ccy + '/USD → Mkt cap US$ indisponível'); }
+
+    if (!_isNum(shares)) warnings.push(meta.tab + ': nº de ações ausente');
+    if (!_isNum(ebitda.y1)) warnings.push(meta.tab + ': EBITDA 2026E ausente');
+
+    return {
+      row: {
+        ticker: meta.ticker, company_name: meta.name, yahoo_symbol: meta.yahoo,
+        sector: meta.sector, trade_ccy: meta.trade_ccy, base_ccy: baseCcy,
+        shares_outstanding: shares, target_price: target, recommendation: rec,
+        net_debt_y1: netDebt.y1, net_debt_y2: netDebt.y2,
+        ebitda_y1: ebitda.y1, ebitda_y2: ebitda.y2,
+        net_income_y1: netInc.y1, net_income_y2: netInc.y2,
+        ocf_y1: ocf.y1, ocf_y2: ocf.y2, capex_y1: capex.y1, capex_y2: capex.y2,
+        net_revenues_y1: netRev.y1, net_revenues_y2: netRev.y2,
+        cash_earnings_y1: cashE.y1, cash_earnings_y2: cashE.y2,
+        dividends_y1: divs.y1, dividends_y2: divs.y2,
+        ev_adjustment_y1: adj.y1, ev_adjustment_y2: adj.y2,
+        fx_to_base: Math.round(fxBase * 1e8) / 1e8, fx_to_usd: fxUsd == null ? null : Math.round(fxUsd * 1e8) / 1e8,
+      },
+      warnings: warnings, priceLocal: priceLocal, mcBase: mcBase,
+    };
+  }
+
+  // workbook inteiro → {rows, perCompany, warnings, errors}
+  function parseStockGuideWorkbook(wb) {
+    const X = root.XLSX;
+    if (!X) return { rows: [], perCompany: [], warnings: [], errors: ['SheetJS (XLSX) não carregado.'] };
+    if (!wb || !wb.SheetNames) return { rows: [], perCompany: [], warnings: [], errors: ['Arquivo inválido.'] };
+    const fxRates = parseSGFXRates(wb);
+    const rows = [], perCompany = [], warnings = [], errors = [];
+    SG_COVERAGE.forEach(function (meta, i) {
+      const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === meta.tab.toLowerCase(); });
+      if (!nm) { errors.push('aba ausente: ' + meta.tab + ' (' + meta.ticker + ')'); return; }
+      const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
+      const res = _sgParseCompanyAoa(aoa, meta, fxRates);
+      if (res.error) { errors.push(res.error); return; }
+      res.row.display_order = i + 1;
+      rows.push(res.row);
+      perCompany.push({ meta: meta, row: res.row, priceLocal: res.priceLocal, mcBase: res.mcBase });
+      res.warnings.forEach(function (w) { warnings.push(w); });
+    });
+    if (!rows.length) errors.push('Nenhuma empresa lida — confira se é o arquivo "Stock Guide ... .xlsm" certo.');
+    return { rows: rows, perCompany: perCompany, warnings: warnings, errors: errors, fxRates: fxRates };
+  }
+
   const SG = {
     toNumOrNull: toNumOrNull,
+    SG_COVERAGE: SG_COVERAGE,
+    parseStockGuideWorkbook: parseStockGuideWorkbook,
+    parseSGFXRates: parseSGFXRates,
     MARKET_DRIVER_CATALOG: MARKET_DRIVER_CATALOG,
     MARKET_DRIVER_CATALOG_BY_KEY: MARKET_DRIVER_CATALOG_BY_KEY,
     isDynamicSource: isDynamicSource,
