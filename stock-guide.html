@@ -39,7 +39,7 @@ body{font-family:var(--font);color:var(--black);background:var(--g-light);font-s
 .tbl-scroll{overflow-x:auto}
 table.data{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
 table.data th,table.data td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border)}
-table.data th{font-weight:600;color:var(--g-dark);background:var(--g-light);position:sticky;top:0;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+table.data th{font-weight:600;color:var(--g-dark);background:var(--g-light);position:sticky;top:0;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;text-align:center}
 table.data th.l,table.data td.l{text-align:left}
 table.data tbody tr:hover{background:#FAFAF8}
 table.data td.num{font-variant-numeric:tabular-nums}
@@ -323,12 +323,22 @@ function aggUsd(list){  // agregado em US$ (razão de somas) — só empresas co
     ocfYieldY1:oc1/mc*100, ocfYieldY2:oc2/mc*100};
 }
 
+// "n.m." (not meaningful): múltiplo de valuation distorcido (denominador ~0). Marca se o valor
+// está acima de um piso absoluto E muito acima (>4×) da mediana da coluna. Mediana é robusta ao outlier.
+function _median(arr){ const f=arr.filter(v=>v!=null&&isFinite(v)&&v>0).sort((a,b)=>a-b); return f.length?f[Math.floor((f.length-1)/2)]:null; }
+function _isNM(v,med,floor){ return v!=null&&isFinite(v)&&med!=null&&v>floor&&v>4*med; }
 // ── render: comps (grouped by sector + aggregate row, Summary-style) ──
 function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
   const y1=config.y1_label||'26E', y2=config.y2_label||'27E';
   const rows=deriveComps(comps,priceByKey,fxRates);
   const vis=r=>r.is_visible||isAdmin;
   const restricted=rows.filter(r=>!vis(r)).map(r=>r.company_name);
+  // medianas p/ o "n.m." (só EV/EBITDA e P/CE — múltiplos de valuation)
+  const sr=rows.filter(vis);
+  const medEv1=_median(sr.map(r=>r.evEbitdaY1)), medEv2=_median(sr.map(r=>r.evEbitdaY2));
+  const medPce1=_median(sr.map(r=>r.pceY1)),     medPce2=_median(sr.map(r=>r.pceY2));
+  const nmX=(v,med)=>_isNM(v,med,25)?'n.m.':fmtX(v,1);
+  const pairNM=(a,b,mA,mB)=>`<td class="num">${nmX(a,mA)}</td><td class="num">${nmX(b,mB)}</td>`;
   const NCOL=20;
   const head=`<thead>
     <tr><th class="l" rowspan="2">Ticker</th><th class="l" rowspan="2">Company</th><th rowspan="2">Model</th><th rowspan="2">Rec</th>
@@ -355,9 +365,9 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
         <td class="num">${fmt(r.livePrice,2)}</td>
         <td class="num ${signCls(r.upsidePct)}">${r.upsidePct==null?'—':fmtPct(r.upsidePct*100,1)}</td>
         <td class="num">${fmt(r.marketCapUsd,0)}</td>
-        ${pair(r.evEbitdaY1,r.evEbitdaY2,v=>fmtX(v,1))}
+        ${pairNM(r.evEbitdaY1,r.evEbitdaY2,medEv1,medEv2)}
         ${pair(r.ndEbitdaY1,r.ndEbitdaY2,v=>fmtX(v,1))}
-        ${pair(r.pceY1,r.pceY2,v=>fmtX(v,1))}
+        ${pairNM(r.pceY1,r.pceY2,medPce1,medPce2)}
         ${pair(r.divYieldY1,r.divYieldY2,v=>fmtPct(v,1))}
         ${pair(r.ocfYieldY1,r.ocfYieldY2,v=>fmtPct(v,1))}
         ${pair(r.epsY1,r.epsY2,v=>fmt(v,2))}</tr>`;
@@ -365,8 +375,8 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
     const a=aggUsd(shown);
     if(a) body+=`<tr class="agg-row"><td class="l" colspan="2">${esc(GROUP_LABEL[g])} — aggregate <span class="muted">(US$, sum)</span></td>
       <td></td><td></td><td></td><td></td><td></td><td class="num">${fmt(a.mcap,0)}</td>
-      ${pair(a.evEbitdaY1,a.evEbitdaY2,v=>fmtX(v,1))}${pair(a.ndEbitdaY1,a.ndEbitdaY2,v=>fmtX(v,1))}
-      ${pair(a.pceY1,a.pceY2,v=>fmtX(v,1))}${pair(a.divYieldY1,a.divYieldY2,v=>fmtPct(v,1))}
+      ${pairNM(a.evEbitdaY1,a.evEbitdaY2,medEv1,medEv2)}${pair(a.ndEbitdaY1,a.ndEbitdaY2,v=>fmtX(v,1))}
+      ${pairNM(a.pceY1,a.pceY2,medPce1,medPce2)}${pair(a.divYieldY1,a.divYieldY2,v=>fmtPct(v,1))}
       ${pair(a.ocfYieldY1,a.ocfYieldY2,v=>fmtPct(v,1))}<td></td><td></td></tr>`;
   });
   document.getElementById('comps-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No companies.</td></tr>')+'</tbody>';
@@ -384,6 +394,11 @@ function sgRenderPeers(peers,priceByKey){
   const lp=(sym)=>{ if(!sym)return null; const tries=[sym,_short(sym)]; if(!/\./.test(sym))tries.push(sym+'.SA');
     for(const t of tries){ if(priceByKey[t]!=null)return priceByKey[t]; } return null; };
   const mult=(p,yr)=>{ const pe=n(p['pe_'+yr]), pce=n(p['pce_'+yr]); return pe!=null?pe:(pce!=null?pce:null); };
+  // medianas p/ o "n.m." (EV/EBITDA e P/E·P/CE)
+  const medEv1=_median(peers.map(p=>n(p.ev_ebitda_y1))), medEv2=_median(peers.map(p=>n(p.ev_ebitda_y2)));
+  const medM1=_median(peers.map(p=>mult(p,'y1'))),        medM2=_median(peers.map(p=>mult(p,'y2')));
+  const nmX=(v,med)=>_isNM(v,med,25)?'n.m.':fmtX(v,1);
+  const pairNM=(a,b,mA,mB)=>`<td class="num">${nmX(a,mA)}</td><td class="num">${nmX(b,mB)}</td>`;
   const head=`<thead>
     <tr><th class="l" rowspan="2">Company</th><th rowspan="2">Ctry</th><th rowspan="2">Price<br><span class="muted">live</span></th>
       <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">Net Debt/EBITDA</th>
@@ -400,10 +415,10 @@ function sgRenderPeers(peers,priceByKey){
       body+=`<tr>
         <td class="l">${esc(p.company)}</td>
         <td class="muted">${esc(p.country||'')}</td>
-        <td class="num" style="color:var(--orange);font-weight:600">${fmt(px,2)}</td>
-        ${pair(n(p.ev_ebitda_y1),n(p.ev_ebitda_y2),v=>fmtX(v,1))}
+        <td class="num">${fmt(px,2)}</td>
+        ${pairNM(n(p.ev_ebitda_y1),n(p.ev_ebitda_y2),medEv1,medEv2)}
         ${pair(n(p.net_debt_ebitda_y1),n(p.net_debt_ebitda_y2),v=>fmtX(v,1))}
-        ${pair(mult(p,'y1'),mult(p,'y2'),v=>fmtX(v,1))}
+        ${pairNM(mult(p,'y1'),mult(p,'y2'),medM1,medM2)}
         ${pair(n(p.div_yield_y1),n(p.div_yield_y2),v=>v==null?'—':fmtPct(v*100,1))}</tr>`;
     });
   });
