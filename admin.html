@@ -105,6 +105,27 @@ input.in,select.in{width:100%;border:1px solid var(--border);border-radius:8px;p
 .flag-row:last-child{border-bottom:none}
 .flag-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
 .flag-row .fk{font-size:11px;color:var(--gray-mid);margin-left:6px}
+/* ── Funcionalidades v2: grupos + toggle switch ── */
+.flag-grp{margin-bottom:22px}
+.flag-grp-h{display:flex;align-items:baseline;gap:9px;margin-bottom:2px}
+.flag-grp-h h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--black);margin:0}
+.flag-grp-h .cnt{font-size:11px;color:var(--gray-mid);font-weight:600}
+.flag-grp .gsub{font-size:11px;color:var(--gray-mid);margin-bottom:7px}
+.flag-item{display:flex;align-items:center;gap:13px;padding:11px 2px;border-bottom:1px solid var(--border)}
+.flag-item:last-child{border-bottom:none}
+.flag-item .fi-txt{flex:1;min-width:0}
+.flag-item .fi-l{font-size:13px;font-weight:600;color:var(--black)}
+.flag-item .fi-d{font-size:11px;color:var(--gray-mid);margin-top:1px}
+.flag-item .fi-k{font-size:9.5px;color:var(--gray-mid);font-family:ui-monospace,Menlo,monospace;background:var(--gray-light);padding:1px 5px;border-radius:4px;margin-left:7px;font-weight:400}
+.flag-item.is-off .fi-l{color:var(--gray-mid)}
+.flag-state{font-size:10px;font-weight:700;letter-spacing:.04em;width:26px;text-align:right;flex-shrink:0}
+.flag-state.on{color:var(--orange)} .flag-state.off{color:var(--gray-mid)}
+.sw{position:relative;width:42px;height:23px;flex-shrink:0}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+.sw .sl{position:absolute;inset:0;background:var(--border);border-radius:23px;transition:.18s}
+.sw .sl::before{content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw input:checked + .sl{background:var(--orange)}
+.sw input:checked + .sl::before{transform:translateX(19px)}
 .team-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border)}
 .team-row:last-child{border-bottom:none}
 .team-row .acts{display:flex;gap:6px;flex-shrink:0}
@@ -383,27 +404,15 @@ html.dark .ov-card{background:#20242b}
     <!-- ── Stock Guide ───────────────────────────────────────────────────── -->
     <section id="tab-stockguide" hidden>
       <div class="row" style="margin-bottom:14px">
-        <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">Empresas + Config</button>
-        <button class="btn sec" id="sgsub-drivers" onclick="sgShowSub('drivers')">Drivers</button>
-        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">Sensibilidades</button>
+        <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">📊 Dados (upload)</button>
+        <button class="btn sec" id="sgsub-drivers" onclick="sgShowSub('drivers')">🚧 Drivers · sensibilidade</button>
+        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">🚧 Tabelas · sensibilidade</button>
       </div>
 
       <div id="sg-companies">
         <div class="card">
-          <h2>Configuração geral</h2>
-          <p class="sub">Rótulos dos anos e notas. Rodapé vazio = texto automático.</p>
-          <div class="field">
-            <input class="in" id="sg-y1" placeholder="Rótulo ano 1 (ex.: 2026E)">
-            <input class="in" id="sg-y2" placeholder="Rótulo ano 2 (ex.: 2027E)">
-            <input class="in" id="sg-note" placeholder="Nota de premissas (opcional)">
-            <input class="in" id="sg-foot" placeholder="Rodapé dos comps (vazio = automático)">
-            <div class="row"><button class="btn" onclick="sgConfigSave()">Salvar config</button></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>📤 Subir modelo (.xlsm)</h2>
-          <p class="sub">Arraste o arquivo <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as 14 empresas cobertas (CBA/Cement fora), mostra um resumo e grava tudo de uma vez. Preço e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva visibilidade (hide-aware).</p>
+          <h2>📤 Subir modelo (.xlsm) <span class="muted" style="font-weight:400;font-size:13px">— fonte única dos dados</span></h2>
+          <p class="sub">Arraste o <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as <b>14 empresas cobertas</b> + os <b>global peers</b> (que têm cotação na Market), mostra um resumo e grava tudo de uma vez. Preço, câmbio e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva a visibilidade (hide-aware).</p>
           <style>#sg-xlsm-preview table{border-collapse:collapse;width:100%;font-size:11px}#sg-xlsm-preview th,#sg-xlsm-preview td{border:1px solid var(--border,#E3E3E3);padding:3px 6px;text-align:right;white-space:nowrap}#sg-xlsm-preview th{background:var(--g-light,#F4F3F0)}#sg-xlsm-preview th:nth-child(-n+2),#sg-xlsm-preview td:nth-child(-n+2){text-align:left}</style>
           <div class="row"><input class="in" id="sg-xlsm-file" type="file" accept=".xlsm,.xlsx" onchange="sgModelPreview(this.files[0])"></div>
           <div id="sg-xlsm-status" class="status" style="margin-top:8px"></div>
@@ -411,50 +420,21 @@ html.dark .ov-card{background:#20242b}
         </div>
 
         <div class="card">
-          <h2>Empresas (comps)</h2>
-          <p class="sub">Dados price-INDEPENDENTES (por ano, na moeda-base do modelo). Os múltiplos (EV/EBITDA · Net Debt/EBITDA · P/CE · Div Yield) são derivados ao vivo — não digite. Botão p/ esconder/mostrar (hide-aware).</p>
+          <h2>Empresas cobertas</h2>
+          <p class="sub">Vêm do upload acima. Aqui você controla a <b>visibilidade</b> por empresa (oculta → o cliente vê só o nome) e pode <b>excluir</b> uma linha obsoleta. Para corrigir números, basta subir o arquivo de novo.</p>
           <div id="sg-co-list" class="status">Carregando…</div>
-          <div class="row" style="margin-top:12px"><button class="btn" onclick="sgCoEdit(null)">+ Adicionar empresa</button></div>
-        </div>
-
-        <div class="card" id="sg-co-form-card" hidden>
-          <h2 id="sg-co-form-title">Nova empresa</h2>
-          <p class="sub" style="color:var(--orange)">EV/EBITDA, P/E, FCFE yield e Div yield são CALCULADOS ao vivo — não há campo p/ eles.</p>
-          <div class="field">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-              <input class="in" id="sgf-ticker" placeholder="Ticker (ex.: VALE3)">
-              <input class="in" id="sgf-name" placeholder="Nome">
-              <input class="in" id="sgf-ysym" placeholder="Símbolo de cotação (ex.: VALE3.SA)">
-              <input class="in" id="sgf-sector" placeholder="Setor (steel/mining/pulp_paper)">
-              <input class="in" id="sgf-vunit" placeholder="Unidade de volume (kt/Mt)">
-              <input class="in" id="sgf-order" type="number" placeholder="Ordem">
-              <input class="in" id="sgf-shares" type="number" placeholder="Ações (contagem absoluta)">
-              <input class="in" id="sgf-tp" type="number" placeholder="Target price (BRL/ação)">
-              <input class="in" id="sgf-rec" placeholder="Rec (OP / MP / UP)">
-              <input class="in" id="sgf-last" type="date">
-              <input class="in" id="sgf-model" placeholder="URL do modelo (opcional)">
-            </div>
-            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:6px;align-items:center;margin-top:12px;font-weight:600;font-size:11px;color:var(--muted,#8C8C8C)">
-              <span>Por ano (BRL mn) →</span><span id="sgf-y1lbl">Ano 1</span><span id="sgf-y2lbl">Ano 2</span></div>
-            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:6px;align-items:center;margin-top:4px">
-              <span class="muted">Net debt (EV = mktcap + net debt)</span><input class="in" id="sgf-net_debt-y1" type="number"><input class="in" id="sgf-net_debt-y2" type="number">
-              <span class="muted">EBITDA</span><input class="in" id="sgf-ebitda-y1" type="number"><input class="in" id="sgf-ebitda-y2" type="number">
-              <span class="muted">Net income (reportado, P/E normal)</span><input class="in" id="sgf-net_income-y1" type="number"><input class="in" id="sgf-net_income-y2" type="number">
-              <span class="muted">Net income ex-credit (P/E da linha ajustada)</span><input class="in" id="sgf-net_income_ex-y1" type="number"><input class="in" id="sgf-net_income_ex-y2" type="number">
-              <span class="muted">NPV tax credit (&gt;0 cria linha companheira)</span><input class="in" id="sgf-npv_tax_credit-y1" type="number"><input class="in" id="sgf-npv_tax_credit-y2" type="number">
-              <span class="muted">FCFE</span><input class="in" id="sgf-fcfe-y1" type="number"><input class="in" id="sgf-fcfe-y2" type="number">
-              <span class="muted">Dividends</span><input class="in" id="sgf-dividends-y1" type="number"><input class="in" id="sgf-dividends-y2" type="number">
-              <span class="muted">Volumes (na unidade acima)</span><input class="in" id="sgf-volumes-y1" type="number"><input class="in" id="sgf-volumes-y2" type="number">
-            </div>
-            <div class="row" style="margin-top:12px"><button class="btn" onclick="sgCoSave()">Salvar</button><button class="btn sec" onclick="sgCoCancel()">Cancelar</button></div>
-          </div>
         </div>
 
         <div class="card">
-          <h2>Global Peers</h2>
-          <p class="sub">Múltiplos de majors (referência, NÃO hide-aware). Div yield em % (ex.: 5,54). Linha "Live" preenche do VALE3 ao vivo.</p>
-          <div id="sg-peer-list" class="status">Carregando…</div>
-          <div class="row" style="margin-top:12px"><button class="btn sec" onclick="sgPeerAdd()">+ Linha</button><button class="btn" onclick="sgPeerSaveAll()">Salvar peers</button></div>
+          <h2>Configuração</h2>
+          <p class="sub">Rótulos dos anos e nota do rodapé do comp table. Vazio = texto automático.</p>
+          <div class="field">
+            <input class="in" id="sg-y1" placeholder="Rótulo ano 1 (ex.: 2026E)">
+            <input class="in" id="sg-y2" placeholder="Rótulo ano 2 (ex.: 2027E)">
+            <input class="in" id="sg-note" placeholder="Nota de premissas (opcional)">
+            <input class="in" id="sg-foot" placeholder="Rodapé dos comps (vazio = automático)">
+            <div class="row"><button class="btn" onclick="sgConfigSave()">Salvar config</button></div>
+          </div>
         </div>
       </div>
 
@@ -621,23 +601,63 @@ function showTab(name){
   if(name==='users') loadUsers()
 }
 
-// ── Funcionalidades (flags) ──────────────────────────────────────────────
+// ── Funcionalidades (flags) — painel agrupado por área ────────────────────
+const FLAG_GROUPS=[
+  {id:'home_panels', label:'Home — Painéis',   sub:'Blocos da página inicial'},
+  {id:'home_sectors',label:'Home — Setores',   sub:'Cards de setor na home'},
+  {id:'pages',       label:'Páginas / Áreas',  sub:'Acesso às áreas completas da dashboard'},
+  {id:'stock_guide', label:'Stock Guide',      sub:'Sub-áreas (desligadas mostram "indisponível", não somem)'},
+  {id:'steel',       label:'Steel & Mining',   sub:''},
+  {id:'other',       label:'Outros',           sub:'Flags sem grupo definido'},
+]
+const FLAG_META={
+  market_pulse:  {g:'home_panels', l:'Market Pulse',     d:'Termômetro de sentimento das notícias do dia'},
+  commodities:   {g:'home_panels', l:'Commodities',      d:'Carrossel de preços (Platts / Yahoo)'},
+  news_feed:     {g:'home_panels', l:'News Hunter',      d:'Feed de notícias classificadas (+ / − / =)'},
+  research_team: {g:'home_panels', l:'Research Team',    d:'Faixa com os analistas'},
+  heatmap:       {g:'home_panels', l:'Heatmap',          d:'Mapa de cotações da home'},
+  sector_steel:  {g:'home_sectors',l:'Card Steel & Mining', d:'Card do setor na home (abre o dashboard)'},
+  sector_pp:     {g:'home_sectors',l:'Card Pulp & Paper',   d:'Card do setor na home (abre o dashboard)'},
+  market:        {g:'pages',       l:'Market',           d:'Terminal de ações + clique do heatmap'},
+  stock_guide:   {g:'pages',       l:'Stock Guide',      d:'Card na home + acesso à página (Comp Table)'},
+  stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
+  stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
+  pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
+}
+function _flagCounts(){
+  document.querySelectorAll('.flag-grp').forEach(g=>{ const its=g.querySelectorAll('.flag-item'),on=[...its].filter(i=>i.querySelector('input').checked).length,c=g.querySelector('.cnt'); if(c)c.textContent=on+'/'+its.length })
+  const its=[...document.querySelectorAll('.flag-item')],on=its.filter(i=>i.querySelector('input').checked).length,h=document.getElementById('flags-head'); if(h)h.innerHTML=`<b>${on}/${its.length}</b> funcionalidades ligadas · o cliente atualiza no próximo refresh.`
+}
 async function loadFlags(){
   const host=document.getElementById('flags-list'); host.textContent='Carregando…'
   const {data,error}=await sbAuth.rpc('get_dashboard_flags')
   if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_config_schema.sql?)'; return }
-  host.innerHTML=''
-  for(const f of data){
-    const row=document.createElement('label'); row.className='flag-row'
-    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!f.enabled
-    const txt=document.createElement('span'); txt.innerHTML=`${esc(f.label||f.key)}<span class="fk">${esc(f.key)}</span>`
-    cb.onchange=async()=>{ cb.disabled=true
-      const {error}=await sbAuth.rpc('admin_set_flag',{p_key:f.key,p_enabled:cb.checked})
-      cb.disabled=false
-      if(error){ alert('Erro ao salvar: '+error.message); cb.checked=!cb.checked }
-    }
-    row.append(cb,txt); host.appendChild(row)
-  }
+  const buckets={}; FLAG_GROUPS.forEach(g=>buckets[g.id]=[])
+  ;(data||[]).forEach(f=>{ const m=FLAG_META[f.key]; (buckets[m&&m.g]||buckets.other).push(f) })
+  host.innerHTML='<p class="sub" id="flags-head" style="margin-top:-6px"></p>'
+  FLAG_GROUPS.forEach(g=>{
+    const list=buckets[g.id]; if(!list.length) return
+    const on=list.filter(f=>f.enabled).length
+    const wrap=document.createElement('div'); wrap.className='flag-grp'
+    wrap.innerHTML=`<div class="flag-grp-h"><h3>${esc(g.label)}</h3><span class="cnt">${on}/${list.length}</span></div>${g.sub?`<div class="gsub">${esc(g.sub)}</div>`:''}`
+    list.forEach(f=>{
+      const m=FLAG_META[f.key]||{}
+      const item=document.createElement('div'); item.className='flag-item'+(f.enabled?'':' is-off')
+      item.innerHTML=`<div class="fi-txt"><div class="fi-l">${esc(m.l||f.label||f.key)}<span class="fi-k">${esc(f.key)}</span></div>${m.d?`<div class="fi-d">${esc(m.d)}</div>`:''}</div>`
+        +`<span class="flag-state ${f.enabled?'on':'off'}">${f.enabled?'ON':'OFF'}</span>`
+        +`<label class="sw"><input type="checkbox" ${f.enabled?'checked':''}><span class="sl"></span></label>`
+      const cb=item.querySelector('input'), st=item.querySelector('.flag-state')
+      cb.onchange=async()=>{ cb.disabled=true
+        const {error}=await sbAuth.rpc('admin_set_flag',{p_key:f.key,p_enabled:cb.checked})
+        cb.disabled=false
+        if(error){ alert('Erro ao salvar: '+error.message); cb.checked=!cb.checked; return }
+        st.textContent=cb.checked?'ON':'OFF'; st.className='flag-state '+(cb.checked?'on':'off'); item.classList.toggle('is-off',!cb.checked); _flagCounts()
+      }
+      wrap.appendChild(item)
+    })
+    host.appendChild(wrap)
+  })
+  _flagCounts()
 }
 
 // ── Analistas (team) ─────────────────────────────────────────────────────
@@ -901,10 +921,9 @@ async function loadGithubRuns(){
 }
 
 // ════════════════════════ STOCK GUIDE (admin) ════════════════════════════
-let _sgCos=[], _sgDrivers=[], _sgPeers=[], _sgCfg={};
-const SG_YF=[['net_debt','Net debt'],['ebitda','EBITDA'],['net_income','Net income'],['net_income_ex','Net income ex'],['npv_tax_credit','NPV tax credit'],['fcfe','FCFE'],['dividends','Dividends'],['volumes','Volumes']];
+let _sgCos=[], _sgDrivers=[], _sgCfg={};
 
-function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); loadSGPeers(); }
+function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); }
 function sgShowSub(s){
   ['companies','drivers','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
     const b=document.getElementById('sgsub-'+k); if(b)b.className='btn'+(k===s?'':' sec'); });
@@ -916,7 +935,6 @@ async function loadSGConfig(){
   const {data,error}=await sbAuth.rpc('get_stock_guide_config'); if(error)return;
   _sgCfg=(data&&data[0])||{}; _v('sg-y1').value=_sgCfg.y1_label||''; _v('sg-y2').value=_sgCfg.y2_label||'';
   _v('sg-note').value=_sgCfg.assumptions_note||''; _v('sg-foot').value=_sgCfg.comps_footnote||'';
-  _v('sgf-y1lbl').textContent=_sgCfg.y1_label||'Ano 1'; _v('sgf-y2lbl').textContent=_sgCfg.y2_label||'Ano 2';
 }
 async function sgConfigSave(){
   const {error}=await sbAuth.rpc('admin_upsert_stock_guide_config',{p_y1:_v('sg-y1').value.trim(),p_y2:_v('sg-y2').value.trim(),p_note:_v('sg-note').value,p_comps_footnote:_v('sg-foot').value});
@@ -932,30 +950,8 @@ async function loadSGCompanies(){
     const info=document.createElement('span'); info.innerHTML=`<b>${esc(c.ticker)}</b> — ${esc(c.company_name)} ${c.is_visible?'':'<span class="muted">(oculta)</span>'}`;
     const acts=document.createElement('span'); acts.className='acts';
     const vis=document.createElement('button'); vis.className='chip'; vis.textContent=c.is_visible?'👁 Esconder':'🚫 Mostrar'; vis.onclick=()=>sgCoToggleVis(c.ticker,!c.is_visible);
-    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>sgCoEdit(c.ticker);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>sgCoDelete(c.ticker);
-    acts.append(vis,ed,dl); row.append(info,acts); host.appendChild(row); });
-}
-function sgCoEdit(ticker){
-  const c = ticker ? (_sgCos.find(x=>x.ticker===ticker)||{}) : {};
-  _v('sg-co-form-title').textContent = ticker?('Editar '+ticker):'Nova empresa';
-  _v('sgf-ticker').value=c.ticker||''; _v('sgf-ticker').disabled=!!ticker;
-  _v('sgf-name').value=c.company_name||''; _v('sgf-ysym').value=c.yahoo_symbol||''; _v('sgf-sector').value=c.sector||'steel';
-  _v('sgf-vunit').value=c.volume_unit||'kt'; _v('sgf-order').value=c.display_order!=null?c.display_order:0;
-  _v('sgf-shares').value=c.shares_outstanding!=null?c.shares_outstanding:''; _v('sgf-tp').value=c.target_price!=null?c.target_price:'';
-  _v('sgf-rec').value=c.recommendation||''; _v('sgf-last').value=c.last_update||''; _v('sgf-model').value=c.model_url||'';
-  SG_YF.forEach(p=>{const k=p[0]; _v('sgf-'+k+'-y1').value=c[k+'_y1']!=null?c[k+'_y1']:''; _v('sgf-'+k+'-y2').value=c[k+'_y2']!=null?c[k+'_y2']:'';});
-  _v('sg-co-form-card').hidden=false;
-}
-function sgCoCancel(){ _v('sg-co-form-card').hidden=true }
-async function sgCoSave(){
-  const ticker=_v('sgf-ticker').value.trim(); if(!ticker){alert('Ticker é obrigatório.');return}
-  const d={company_name:_v('sgf-name').value.trim(),yahoo_symbol:_v('sgf-ysym').value.trim(),sector:_v('sgf-sector').value.trim(),
-    volume_unit:_v('sgf-vunit').value.trim(),display_order:_v('sgf-order').value,shares_outstanding:_v('sgf-shares').value,
-    target_price:_v('sgf-tp').value,recommendation:_v('sgf-rec').value.trim(),last_update:_v('sgf-last').value,model_url:_v('sgf-model').value.trim()};
-  SG_YF.forEach(p=>{const k=p[0]; d[k+'_y1']=_v('sgf-'+k+'-y1').value; d[k+'_y2']=_v('sgf-'+k+'-y2').value;});
-  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_company',{p_ticker:ticker,p_data:d});
-  if(error){alert('Erro ao salvar: '+error.message);return} sgCoCancel(); loadSGCompanies();
+    acts.append(vis,dl); row.append(info,acts); host.appendChild(row); });
 }
 async function sgCoToggleVis(ticker,makeVisible){
   const {error}=await sbAuth.rpc('admin_set_stock_guide_visibility',{p_ticker:ticker,p_is_visible:makeVisible});
@@ -1044,37 +1040,8 @@ async function sgDrvDelete(id){ if(!confirm('Excluir driver?'))return;
   const {error}=await sbAuth.rpc('admin_delete_stock_guide_driver',{p_id:Number(id)});
   if(error){alert('Erro: '+error.message);return} loadSGDrivers();
 }
-// peers (inline-editável; div yield em %)
-async function loadSGPeers(){
-  const {data,error}=await sbAuth.rpc('get_stock_guide_global_peers');
-  _sgPeers=(error||!data)?[]:data.map(p=>({company:p.company,pe_y1:p.pe_y1,pe_y2:p.pe_y2,ev_ebitda_y1:p.ev_ebitda_y1,ev_ebitda_y2:p.ev_ebitda_y2,
-    div_yield_y1:p.div_yield_y1,div_yield_y2:p.div_yield_y2,is_aggregate:p.is_aggregate,is_live:p.is_live}));
-  renderSGPeers();
-}
-function renderSGPeers(){
-  const host=_v('sg-peer-list'); const pct=v=>v==null||v===''?'':(Number(v)*100);
-  let h='<div style="overflow-x:auto"><table class="data"><thead><tr><th>Empresa</th><th>P/E1</th><th>P/E2</th><th>EV/E1</th><th>EV/E2</th><th>DY1 %</th><th>DY2 %</th><th>Agg</th><th>Live</th><th></th></tr></thead><tbody>';
-  _sgPeers.forEach((p,i)=>{ h+=`<tr>
-    <td><input class="in" style="width:130px" value="${esc(p.company||'')}" oninput="_sgPeers[${i}].company=this.value"></td>
-    <td><input class="in" style="width:58px" value="${p.pe_y1!=null?p.pe_y1:''}" oninput="_sgPeers[${i}].pe_y1=this.value"></td>
-    <td><input class="in" style="width:58px" value="${p.pe_y2!=null?p.pe_y2:''}" oninput="_sgPeers[${i}].pe_y2=this.value"></td>
-    <td><input class="in" style="width:58px" value="${p.ev_ebitda_y1!=null?p.ev_ebitda_y1:''}" oninput="_sgPeers[${i}].ev_ebitda_y1=this.value"></td>
-    <td><input class="in" style="width:58px" value="${p.ev_ebitda_y2!=null?p.ev_ebitda_y2:''}" oninput="_sgPeers[${i}].ev_ebitda_y2=this.value"></td>
-    <td><input class="in" style="width:58px" value="${pct(p.div_yield_y1)}" oninput="_sgPeers[${i}].div_yield_y1=this.value===''?null:this.value/100"></td>
-    <td><input class="in" style="width:58px" value="${pct(p.div_yield_y2)}" oninput="_sgPeers[${i}].div_yield_y2=this.value===''?null:this.value/100"></td>
-    <td><input type="checkbox" ${p.is_aggregate?'checked':''} onchange="_sgPeers[${i}].is_aggregate=this.checked"></td>
-    <td><input type="checkbox" ${p.is_live?'checked':''} onchange="_sgPeers[${i}].is_live=this.checked"></td>
-    <td><button class="chip" onclick="_sgPeers.splice(${i},1);renderSGPeers()">✕</button></td></tr>`; });
-  h+='</tbody></table></div>'; host.innerHTML=h;
-}
-function sgPeerAdd(){ _sgPeers.push({company:'',is_aggregate:false,is_live:false}); renderSGPeers(); }
-async function sgPeerSaveAll(){
-  const rows=_sgPeers.filter(p=>p.company&&String(p.company).trim()).map((p,i)=>({company:String(p.company).trim(),
-    pe_y1:p.pe_y1,pe_y2:p.pe_y2,ev_ebitda_y1:p.ev_ebitda_y1,ev_ebitda_y2:p.ev_ebitda_y2,
-    div_yield_y1:p.div_yield_y1,div_yield_y2:p.div_yield_y2,is_aggregate:!!p.is_aggregate,is_live:!!p.is_live,display_order:i}));
-  const {error}=await sbAuth.rpc('admin_replace_stock_guide_global_peers',{p_rows:rows});
-  if(error){alert('Erro: '+error.message);return} alert('Peers salvos ('+rows.length+').'); loadSGPeers();
-}
+// Global Peers: agora vêm do upload do .xlsm (parser SG.parseStockGuidePeers → admin_replace_stock_guide_global_peers).
+// O editor manual antigo foi removido — fonte única é o arquivo.
 
 // ════════════ STOCK GUIDE — Sensibilidades + Excel do mesh (P5b) ════════════
 let _sgSens=[], _sgBuilder=null;

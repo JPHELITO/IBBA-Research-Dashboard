@@ -138,10 +138,10 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
           <div class="foot" id="comps-foot"></div></div>
       </div>
 
-      <div class="section">
+      <div class="section" id="sg-peers-section">
         <div class="sec-title">Global Peers</div>
         <div class="sec-sub">Global majors with a Market quote · price live, consensus multiples from the model (refresh on upload).</div>
-        <div class="card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
+        <div class="card" id="peers-card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
       </div>
     </div>
 
@@ -576,6 +576,11 @@ function _sgLockSensitivity(){
   if(host) host.innerHTML='<div class="card sg-locked"><div class="lk">🔒</div><div><b>Sensitivity — unavailable</b></div><div class="muted" style="max-width:360px">This section isn’t enabled for your account yet.</div></div>';
   const tab=document.getElementById('sgtab-sens'); if(tab) tab.classList.add('locked');
 }
+// Global Peers desligado (cliente, sub-flag off): seção mostra "indisponível" — não some
+function _sgLockPeers(){
+  const card=document.getElementById('peers-card');
+  if(card) card.innerHTML='<div class="sg-locked"><div class="lk">🔒</div><div><b>Global Peers — unavailable</b></div><div class="muted" style="max-width:360px">This section isn’t enabled for your account yet.</div></div>';
+}
 async function sgInit(data){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
   if(data.isAdmin)document.getElementById('admin-badge').hidden=false;
@@ -585,8 +590,9 @@ async function sgInit(data){
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
   if(data.sensEnabled===false){ _sgLockSensitivity(); }
   else { sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config); }
-  sgRenderPeers(data.peers||[],data.priceByKey);
-  _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],computed:res.computed};
+  if(data.peersEnabled===false){ _sgLockPeers(); }
+  else { sgRenderPeers(data.peers||[],data.priceByKey); }
+  _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],peersEnabled:data.peersEnabled,computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
   if(_sgTimer)clearInterval(_sgTimer);
   if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
@@ -597,7 +603,7 @@ async function sgTickLive(){
     const live=await sgFetchLive(_SG.comps,peerSyms);
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
-    sgRenderPeers(_SG.peers||[],live.priceByKey);
+    if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey);
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
@@ -609,15 +615,17 @@ async function sgTickLive(){
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
     // gate por flag stock_guide (admin SEMPRE vê; flag AUSENTE = fechado p/ cliente — rollout seguro)
-    let flagOn=false, isAdmin=false, sensOn=false;
+    let flagOn=false, isAdmin=false, sensOn=false, peersOn=true;
     try{ const role=await rpc('get_my_role'); isAdmin=(role==='admin');
       const flags=await rpc('get_dashboard_flags');
       const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
       const fs=(flags||[]).find(x=>x.key==='stock_guide_sensitivity'); sensOn=!!(fs&&fs.enabled);   // sub-flag granular
+      const fp=(flags||[]).find(x=>x.key==='stock_guide_peers'); peersOn=(fp?!!fp.enabled:true);     // default ON se ausente
     }catch(e){}
     if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
     const data=await sgLoadData();
-    data.sensEnabled = isAdmin || sensOn;   // admin sempre vê; cliente só com a sub-flag ligada
+    data.sensEnabled  = isAdmin || sensOn;    // admin sempre vê; cliente só com a sub-flag ligada
+    data.peersEnabled = isAdmin || peersOn;
     await sgInit(data);
   }catch(e){ console.error(e); document.getElementById('gate').innerHTML='<div style="text-align:center"><div style="font-size:30px">⚠️</div><div>Failed to load.</div><div class="muted" style="max-width:400px">'+esc(e.message||e)+'</div></div>'; }
 })();
