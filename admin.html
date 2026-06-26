@@ -982,8 +982,11 @@ async function sgModelPreview(file){
     h+='</tbody></table>';
     const np=(_sgParsed.peers||[]).length;
     const peerNames=(_sgParsed.peers||[]).map(p=>p.company).join(', ');
+    const peerLine = np
+      ? `<div style="font-size:12px;margin-top:8px;color:#1E8E4E"><b>+ ${np} global peers</b> <span class="muted">(com cotação na Market): ${esc(peerNames)}</span></div>`
+      : `<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ 0 global peers lidos.</b> O arquivo tem as abas <b>Steel Peers / Mining Peers / Pulp &amp; Paper Peers / Gold Peers</b>? Sem peers válidos, a tabela de peers fica com os dados antigos.</div>`;
     prev.innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
-      `<div class="muted" style="font-size:11px;margin-top:8px"><b>+ ${np} global peers</b> (que têm cotação na Market): ${esc(peerNames)||'—'}</div>`+
+      peerLine+
       (res.warnings.length?`<div class="status" style="margin-top:8px;color:#B8860B">Avisos (não bloqueiam): ${res.warnings.map(esc).join(' · ')}</div>`:'')+
       `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas + ${np} peers</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
     stat.innerHTML='<b style="color:#1E8E4E">'+res.rows.length+' empresas lidas.</b> Confira o resumo abaixo e confirme para gravar.';
