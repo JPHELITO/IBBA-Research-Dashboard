@@ -162,7 +162,7 @@ body.theme-light .chart-dates input{color-scheme:light}
 .chart-dates .dl{font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
 .chart-dates .x{cursor:pointer;color:var(--mute);border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:10px}
 .chart-dates .x:hover{color:var(--text);border-color:var(--border-2)}
-.chart-host{position:relative;width:100%;height:360px}
+.chart-host{position:relative;width:100%;height:360px;user-select:none;-webkit-user-select:none}
 .chart-host svg{width:100%;height:100%;display:block}
 .c-grid{stroke:var(--grid);stroke-width:1}
 .c-zero{stroke:var(--mute);stroke-dasharray:3 3;stroke-width:1}
@@ -172,6 +172,15 @@ body.theme-light .chart-dates input{color-scheme:light}
   padding:7px 9px;font:500 11px var(--font);color:var(--text);opacity:0;transition:opacity .08s;box-shadow:0 8px 22px rgba(0,0,0,.5);z-index:5;min-width:120px}
 .c-tip b{font-family:var(--mono)} .c-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 .c-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--mute);font-size:12px;text-align:center;padding:20px}
+/* range selection (arrastar p/ medir o retorno no trecho — estilo Google Finance) */
+.c-sel{fill:rgba(255,80,0,.12)}
+.c-seledge{stroke:var(--orange);stroke-width:1;stroke-dasharray:3 2;opacity:.65}
+.c-selbox{position:absolute;pointer-events:none;background:var(--panel-3);border:1px solid var(--border-2);border-radius:7px;
+  padding:6px 9px;font:600 11.5px var(--font);color:var(--text);opacity:0;transition:opacity .08s;box-shadow:0 8px 22px rgba(0,0,0,.5);
+  z-index:6;white-space:nowrap;transform:translateX(-50%)}
+.c-selbox .rng{display:block;font-weight:500;color:var(--dim);font-size:10px;margin-top:3px}
+.c-selbox i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.c-selbox .row{display:flex;align-items:center;gap:2px}
 
 /* ===== Compare (recommended inline + Other) ===== */
 .cmp-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
@@ -418,7 +427,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
           </div>
         </div>
         <div class="card-body">
-          <div class="chart-host" id="main-chart"></div>
+          <div class="chart-host" id="main-chart" title="Tip: click and drag across the chart to measure the return over that span"></div>
           <div class="cmp-row">
             <span class="cmp-lbl">Compare</span>
             <div class="cmp-chips" id="cmp-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -725,7 +734,7 @@ function _renderMiniPulse(coarse){
 }
 
 /* ====================== CHART ENGINE (SVG, dark) ====================== */
-function _renderChart(hostId, lines, mode, emptyMsg){
+function _renderChart(hostId, lines, mode, emptyMsg, opts){
   const host=document.getElementById(hostId); if(!host) return;
   lines=(lines||[]).filter(l=>l.pts&&l.pts.length>=2);
   if(!lines.length){ host.innerHTML=`<div class="c-empty">${emptyMsg||'No daily history yet for this range.'}</div>`; return; }
@@ -747,17 +756,58 @@ function _renderChart(hostId, lines, mode, emptyMsg){
   g+=`<text class="c-axis" x="${P.l}" y="${H-7}">${fmtD(tMin)}</text><text class="c-axis" x="${W-P.r}" y="${H-7}" text-anchor="end">${fmtD(tMax)}</text>`;
   const paths=lines.map((l,i)=>{ const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
     return `<path data-i="${i}" d="${d}" fill="none" stroke="${l.color}" stroke-width="1.9" stroke-linejoin="round"></path>`; }).join('');
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}${paths}
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}
+    <rect class="c-sel" x="0" y="${P.t}" width="0" height="${(H-P.t-P.b).toFixed(1)}" style="display:none"></rect>
+    <line class="c-seledge c-se0" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
+    <line class="c-seledge c-se1" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
+    ${paths}
     <line class="c-cross" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" style="display:none"></line></svg>
-    <div class="c-tip"></div>`;
-  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode});
+    <div class="c-tip"></div><div class="c-selbox"></div>`;
+  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,spread:!!(opts&&opts.spread)});
 }
 function _attachHover(host, lines, dom){
   const svg=host.querySelector('svg'), tip=host.querySelector('.c-tip'), cross=host.querySelector('.c-cross');
+  const selR=host.querySelector('.c-sel'), se0=host.querySelector('.c-se0'), se1=host.querySelector('.c-se1'), selbox=host.querySelector('.c-selbox');
   const paths=[...host.querySelectorAll('path[data-i]')];
-  const {tMin,tMax,vMin,vMax,W,H,P,mode}=dom;
+  const {tMin,tMax,vMin,vMax,W,H,P,mode,spread}=dom;
+  const dragEnabled = host.id==='main-chart';   // arrastar-p/-medir só no gráfico central
   const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%'):v.toLocaleString('en-US',{maximumFractionDigits:2});
+  const fmtDate=t=>new Date(t*1000).toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'2-digit'});
+  const Xf=frac=>P.l+frac*(W-P.l-P.r);
+  const xToFrac=clientX=>{ const r=svg.getBoundingClientRect(); let f=((clientX-r.left)/r.width*W - P.l)/((W-P.l-P.r)||1); return Math.max(0,Math.min(1,f)); };
+  const valAt=(l,t)=>{ let best=l.pts[0]; for(const p of l.pts){ if(Math.abs(p[0]-t)<Math.abs(best[0]-t)) best=p; } return best[1]; };
+
+  let dragging=false, dragA=null, committed=null;
+  function clearSel(){ committed=null; if(selR)selR.style.display='none'; if(se0)se0.style.display='none'; if(se1)se1.style.display='none'; if(selbox)selbox.style.opacity='0'; }
+  function drawSel(fa, fb){
+    if(!selR) return;
+    const a=Math.min(fa,fb), b=Math.max(fa,fb), x0=Xf(a), x1=Xf(b);
+    selR.setAttribute('x',x0.toFixed(1)); selR.setAttribute('width',Math.max(0,x1-x0).toFixed(1)); selR.style.display='';
+    se0.setAttribute('x1',x0.toFixed(1)); se0.setAttribute('x2',x0.toFixed(1)); se0.style.display='';
+    se1.setAttribute('x1',x1.toFixed(1)); se1.setAttribute('x2',x1.toFixed(1)); se1.style.display='';
+    const tA=tMin+a*(tMax-tMin), tB=tMin+b*(tMax-tMin), r=svg.getBoundingClientRect();
+    const rows=lines.map(l=>{ const vA=valAt(l,tA), vB=valAt(l,tB); let pct, abs=null, pp=null;
+      if(mode!=='pct'){ pct=vA?((vB/vA-1)*100):0; abs=vB-vA; }          // PREÇO: retorno + variação absoluta
+      else if(spread){ pp=vB-vA; pct=null; }                            // SPREAD: variação em pontos percentuais
+      else { const ra=1+vA/100, rb=1+vB/100; pct=ra?((rb/ra-1)*100):0; }// % CHANGE: retorno real no trecho
+      return {tk:_short(l.ticker), color:l.color, pct, abs, pp}; });
+    const arrow=p=>p>0.0001?'▲':p<-0.0001?'▼':'•';
+    selbox.innerHTML=rows.map(r=>{
+      if(r.pp!=null){ const c=r.pp>0?'up':r.pp<0?'down':'flat';
+        return `<div class="row"><i style="background:${r.color}"></i><span class="${c}">${arrow(r.pp)} ${(r.pp>=0?'+':'')+r.pp.toFixed(2)} pp</span> <span class="mute">${r.tk}</span></div>`; }
+      const c=r.pct>0?'up':r.pct<0?'down':'flat';
+      const absTxt=(r.abs!=null)?` ${r.abs>=0?'+':''}${r.abs.toLocaleString('en-US',{maximumFractionDigits:2})}`:'';
+      return `<div class="row"><i style="background:${r.color}"></i><span class="${c}">${arrow(r.pct)}${absTxt} (${(r.pct>=0?'+':'')+r.pct.toFixed(2)}%)</span> <span class="mute">${r.tk}</span></div>`;
+    }).join('')+`<span class="rng">${fmtDate(tA)} – ${fmtDate(tB)}</span>`;
+    selbox.style.opacity='1';
+    const cx=((x0+x1)/2)/W*r.width; selbox.style.left=Math.max(64,Math.min(cx,r.width-64))+'px'; selbox.style.top='6px';
+  }
+  function finishDrag(ev){ if(!dragging)return; dragging=false; const b=xToFrac(ev.clientX);
+    if(Math.abs(b-dragA)<0.012){ clearSel(); } else { committed={a:Math.min(dragA,b),b:Math.max(dragA,b)}; drawSel(committed.a,committed.b); } }
+
+  if(dragEnabled) host.onmousedown=ev=>{ if(ev.button!==0)return; dragging=true; dragA=xToFrac(ev.clientX); clearSel(); tip.style.opacity='0'; cross.style.display='none'; ev.preventDefault(); };
   host.onmousemove=ev=>{
+    if(dragging){ drawSel(dragA, xToFrac(ev.clientX)); return; }   // arrastando: desenha a faixa + retorno do trecho
     const rect=svg.getBoundingClientRect();
     let frac=((ev.clientX-rect.left)/rect.width*W - P.l)/((W-P.l-P.r)||1); frac=Math.max(0,Math.min(1,frac));   // desconta a margem do eixo Y → cruz alinha com o dia certo
     const t=tMin+frac*(tMax-tMin), xv=P.l+frac*(W-P.l-P.r);
@@ -769,12 +819,12 @@ function _attachHover(host, lines, dom){
     let near=-1; if(rows.length>1){ let nd=Infinity; rows.forEach(r=>{ if(r.dy<nd){nd=r.dy;near=r.i;} }); }
     paths.forEach(p=>{ const i=+p.dataset.i; p.style.opacity=(near<0||i===near)?'1':'0.22'; p.style.strokeWidth=(i===near)?'2.6':'1.9'; });
     const dt=lines[0].pts.reduce((a,p)=>Math.abs(p[0]-t)<Math.abs(a[0]-t)?p:a)[0];
-    const date=new Date(dt*1000).toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'2-digit'});
-    tip.innerHTML=`<b>${date}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}`).join('');
+    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}`).join('');
     tip.style.opacity='1';
     const hx=ev.clientX-rect.left; tip.style.left=Math.min(hx+12,rect.width-150)+'px'; tip.style.top='8px';
   };
-  host.onmouseleave=()=>{ tip.style.opacity='0'; cross.style.display='none'; paths.forEach(p=>{p.style.opacity='';p.style.strokeWidth='';}); };
+  if(dragEnabled){ host.onmouseup=finishDrag; }
+  host.onmouseleave=ev=>{ if(dragging) finishDrag(ev); tip.style.opacity='0'; cross.style.display='none'; paths.forEach(p=>{p.style.opacity='';p.style.strokeWidth='';}); };
 }
 
 /* ====================== SELEÇÃO (livre) ====================== */
@@ -867,7 +917,7 @@ function renderChart(){
     if(!a||!b){ _renderChart('main-chart',[],'pct',`No history yet for ${esc(bName)} — building up.`); }
     else{ const bm=new Map(b.map(p=>[p[0],p[1]]));
       const sp=a.map(([t,v])=>{ let bv=bm.get(t); if(bv==null){ let bd=Infinity,bb=null; for(const p of b){const dd=Math.abs(p[0]-t);if(dd<bd){bd=dd;bb=p[1];}} bv=bb; } return bv==null?[t,0]:[t, v-bv]; });
-      _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}],'pct'); }
+      _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}],'pct',null,{spread:true}); }
   } else {
     document.getElementById('chart-sub').textContent=(multi?`${_sel.length} assets · `:'')+_rangeLabel(_range);
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
