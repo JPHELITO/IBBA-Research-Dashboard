@@ -434,7 +434,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
           <span class="card-title">Watchlist</span>
           <span class="rng-badge" id="rb-wl"></span>
           <div class="card-tools">
-            <div class="seg" id="wl-mode"><button data-m="all" class="active">All</button><button data-m="coverage">Coverage</button><button data-m="peers">Peers</button></div>
+            <div class="seg" id="wl-mode"><button data-m="all" class="active">All</button><button data-m="coverage">Coverage</button><button data-m="peers">Peers</button><button data-m="commodities">Commodities</button></div>
           </div>
         </div>
         <div class="wl-scroll"><table class="wl" id="wl-table"></table></div>
@@ -466,7 +466,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
       </div>
     </div>
     <div style="text-align:center;margin-top:20px;font-size:10.5px;color:var(--mute)">
-      Price data: Yahoo Finance (~15-min delay) · Commodities: Platts/Yahoo · Take: house AI.
+      Price data: Yahoo Finance (~15-min delay) · Commodities: Platts &amp; Yahoo · Iron Ore 62% (CFR China): Trading Economics — not Platts · Take: house AI.
       No volume / 52-week / multi-day intraday in the dataset — only what's honest.
     </div>
   </div>
@@ -520,25 +520,48 @@ Object.assign(TICKER_SECTOR,{'VALE3.SA':'iron_ore','AURA33.SA':'gold','RANI3.SA'
 const SECTOR_TICKERS={}; SECTOR_ORDER.forEach(s=>SECTOR_TICKERS[s]=[]);
 Object.keys(TICKER_SECTOR).forEach(t=>{if(SECTOR_TICKERS[TICKER_SECTOR[t]])SECTOR_TICKERS[TICKER_SECTOR[t]].push(t);});
 
+/* ── Commodities como ATIVOS de 1ª classe na aba Market: clicáveis no gráfico, aba na Watchlist e
+   chips de comparação. Ticker sintético '@CODE' (não colide com papéis); preço/série diária vêm de
+   _commByCode[code]. São OURO, COBRE e MINÉRIO 62% (este do Trading Economics, USD/t — NÃO Platts). ── */
+const MKT_COMMS=[
+  {ticker:'@IRON_ORE_62', code:'IRON_ORE_62', name:'Iron Ore 62% (CFR China)', short:'Iron Ore 62%'},
+  {ticker:'@COPPER',      code:'COPPER',      name:'Copper',                    short:'Copper'},
+  {ticker:'@GOLD',        code:'GOLD',        name:'Gold',                      short:'Gold'},
+];
+const COMM_TICKERS=MKT_COMMS.map(c=>c.ticker);
+const COMM_BY_TICKER=Object.fromEntries(MKT_COMMS.map(c=>[c.ticker,c]));
+const COMM_CODE_TO_TICKER=Object.fromEntries(MKT_COMMS.map(c=>[c.code,c.ticker]));
+const _isComm=t=>typeof t==='string'&&t.charCodeAt(0)===64;   // '@...'
+SECTOR_LABEL.commodity='Commodities'; SECTOR_ORDER.push('commodity'); SECTOR_TICKERS.commodity=COMM_TICKERS.slice();
+COMM_TICKERS.forEach(t=>{ KNOWN.add(t); TICKER_SECTOR[t]='commodity'; });
+const COMM_NOTE={IRON_ORE_62:'TE · not Platts'};   // nota no tile do driver (62% do TE, não Platts)
+
 const SECTOR_DRIVER={
-  iron_ore:[{code:'IRON_ORE',label:'Iron Ore 62%'}],
+  // iron_ore aponta p/ o 62% do Trading Economics (IRON_ORE_62, USD/t), NÃO o Platts 61% (IRON_ORE) da home.
+  iron_ore:[{code:'IRON_ORE_62',label:'Iron Ore 62% (CFR China)'}],
   steel:[{code:'HRC_CHINA',label:'HRC China'},{code:'MET_COAL',label:'Met Coal'},{code:'REBAR_TURKEY',label:'Rebar Turkey'}],
   copper:[{code:'COPPER',label:'Copper'}],
   gold:[{code:'GOLD',label:'Gold'}],
 };
-const FWD_CURVE=[{code:'TSIPQ01',label:'Q+1'},{code:'TSIPQ02',label:'Q+2'},{code:'TSIPQ03',label:'Q+3'},{code:'TSIPY01',label:'Y+1'}];
-const SECTOR_NEWS={steel:'steel',iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',pp:'pp',index:null};
+const SECTOR_NEWS={steel:'steel',iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',pp:'pp',index:null,commodity:'mining'};
 
 /* ── helpers ── */
-const _short=t=>String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
+const _short=t=>{ if(_isComm(t)){ const m=COMM_BY_TICKER[t]; return m?m.short:String(t).slice(1); } return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,''); };
 function _fmtPrice(v,ex){if(v==null||!isFinite(v))return '—';const c=ex==='B3'||ex==='BCS';return v.toLocaleString(c?'pt-BR':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 const EX_CCY={B3:'R$',NYSE:'US$',NASDAQ:'US$',US:'US$',LSE:'GBp',ASX:'A$',TSX:'C$',BCS:'CLP$',BMV:'MX$',HEL:'€',HE:'€'};
 function _ccy(q){ return (q&&q.sector==='index')?'':((q&&EX_CCY[q.exchange])||''); }   // moeda do preço (índices = sem moeda)
-function _px(q){ if(!q)return '—'; const c=_ccy(q); return (c?c+' ':'')+_fmtPrice(q.price,q.exchange); }
+function _px(q){ if(!q)return '—';
+  if(q.isComm){ return (q.price!=null&&isFinite(q.price))?q.price.toLocaleString('en-US',{maximumFractionDigits:2}):'—'; }
+  const c=_ccy(q); return (c?c+' ':'')+_fmtPrice(q.price,q.exchange); }
 function _pctStr(p,d){if(p==null||!isFinite(p))return '—';d=d==null?2:d;return (p>=0?'+':'')+p.toFixed(d)+'%';}
 function _signCls(v){return v==null?'':(v>0?'up':(v<0?'down':'flat'));}
 const _RANGE_DAYS={'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
-const byT=t=>_quotes.find(x=>x.ticker===t)||{};
+const byT=t=>{ if(_isComm(t)) return _commAsset(t); return _quotes.find(x=>x.ticker===t)||{}; };
+// objeto "tipo cotação" sintético p/ uma commodity (preço/série vêm de _commByCode) → reaproveita gráfico/watchlist/correlação
+function _commAsset(t){ const m=COMM_BY_TICKER[t], c=(m&&_commByCode[m.code])||null;
+  return {ticker:t, name:(m&&m.name)||String(t).slice(1), sector:'commodity', exchange:'', isComm:true, code:m&&m.code,
+    unit:(c&&c.unit)||'', price:c?c.price:null, change_pct:c?c.change_pct:null, change_abs:null,
+    daily:(c&&c.daily)||null, intraday:null, assessed_at:c&&c.assessed_at}; }
 function _toDateInput(epoch){ return new Date(epoch*1000).toISOString().slice(0,10); }
 function _fromDateInput(s){ return s ? Date.parse(s+'T00:00:00Z')/1000 : null; }
 
@@ -547,9 +570,11 @@ function _series(q,range,mode){
   let arr;
   if(range==='1D'){
     const pts=(q.intraday&&q.intraday.pts)||[];
-    if(pts.length<2) return null;
-    const base=(q.intraday.prev!=null?q.intraday.prev:pts[0][1]);
-    return pts.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]);
+    if(pts.length>=2){ const base=(q.intraday.prev!=null?q.intraday.prev:pts[0][1]);
+      return pts.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]); }
+    if(q.isComm && q.daily && q.daily.length>=2){ const a=q.daily.slice(-2), base=a[0][1];   // commodity não tem intraday → usa os 2 últimos diários
+      return a.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]); }
+    return null;
   }
   if(range==='custom' && _cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=(q.daily||[]).filter(p=>p[0]>=_cFrom&&p[0]<=to); }
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=(q.daily||[]).filter(p=>p[0]>=j); }
@@ -783,7 +808,7 @@ function renderHeader(){
   box.innerHTML=`
     <div class="ah-id">
       <div class="ah-nm">${esc(q.name||_short(q.ticker))}</div>
-      <div class="ah-tk">${_carTag(q.ticker)}<b>${_short(q.ticker)}</b> · ${esc(q.exchange||'')} · ${SECTOR_LABEL[TICKER_SECTOR[q.ticker]]||''}</div>
+      <div class="ah-tk">${_carTag(q.ticker)}<b>${_short(q.ticker)}</b> · ${q.isComm?esc(q.unit||'commodity'):esc(q.exchange||'')} · ${SECTOR_LABEL[TICKER_SECTOR[q.ticker]]||''}</div>
     </div>
     <div class="ah-px">
       <span class="px mono">${_px(q)}</span>
@@ -855,6 +880,9 @@ function renderChips(){
   const box=document.getElementById('cmp-chips'); if(!box)return;
   const sec=_anchor?TICKER_SECTOR[_anchor]:null; const have=new Set(_quotes.map(q=>q.ticker));
   let reco=[]; if(sec&&SECTOR_GROUPS[sec]){ reco=[...SECTOR_GROUPS[sec].filter(t=>have.has(t)),...(SECTOR_INDEX[sec]||[]).filter(t=>have.has(t))]; }
+  // commodity driver do setor (ouro/cobre/minério 62%) entra como recomendação p/ comparar a variação com a ação
+  const drvChips=(SECTOR_DRIVER[sec]||[]).map(d=>COMM_CODE_TO_TICKER[d.code]).filter(t=>t&&_commByCode[COMM_BY_TICKER[t].code]);
+  reco=[...drvChips,...reco];
   // garante que os selecionados (mesmo via Other) apareçam como chips removíveis
   const set=[]; _sel.forEach(t=>{ if(!set.includes(t))set.push(t); }); reco.forEach(t=>{ if(!set.includes(t))set.push(t); });
   if(!set.length){ box.innerHTML='<span class="mute" style="font-size:11px">pick an asset first</span>'; return; }
@@ -889,6 +917,7 @@ function renderPicker(q){
 /* ── P3 — Watchlist / movers (superfície de seleção) ── */
 const WL_COLS=[{k:'tk',l:'Ticker',cls:'l'},{k:'spark',l:''},{k:'px',l:'Price'},{k:'custom',l:'Custom'},{k:'1D',l:'1D'},{k:'1W',l:'1W'},{k:'1M',l:'1M'},{k:'YTD',l:'YTD'}];
 function _wlUniverse(){
+  if(_wlMode==='commodities') return COMM_TICKERS.map(t=>byT(t));   // ouro / cobre / minério 62%
   let base;
   if(_wlMode==='all') base=_quotes.map(q=>q.ticker);
   else if(_wlMode==='peers'){ const sec=_anchor?TICKER_SECTOR[_anchor]:null;
@@ -929,9 +958,10 @@ function _tile(q,clk){ if(!q)return ''; const c=_signCls(q.change_pct);
     <div class="t-rw"><span class="t-px mono">${_px(q)}</span><span class="t-ch ${c} mono">${_pctStr(q.change_pct,1)}</span></div>
     <div class="t-meta">${_short(q.ticker)}</div></div>`; }
 function _commTile(code){ const c=_commByCode[code]; if(!c)return ''; const cls=_signCls(c.change_pct), freq=_freqOf(c);
+  const note=COMM_NOTE[code]?` · ${COMM_NOTE[code]}`:'';
   return `<div class="tile"><div class="t-nm">${esc(c.name||code)}</div>
     <div class="t-rw"><span class="t-px mono">${c.price!=null?c.price.toLocaleString('en-US',{maximumFractionDigits:2}):'—'}</span><span class="t-ch ${cls} mono">${_pctStr(c.change_pct,1)}</span></div>
-    <div class="t-meta">${esc(c.unit||'')} · ${_fmtAssessed(c.assessed_at,freq)}</div></div>`; }
+    <div class="t-meta">${esc(c.unit||'')} · ${_fmtAssessed(c.assessed_at,freq)}${note}</div></div>`; }
 function renderThesis(){
   const host=document.getElementById('thesis'); if(!host)return;
   const q=_qa(); if(!q){host.innerHTML='<span class="mute" style="font-size:12px">Select an asset to see its commodity driver, peers and index.</span>';return;}
@@ -947,30 +977,37 @@ function renderThesis(){
   }
   if(peers.length){ html+=`<div class="th-grp"><div class="gl">Peers (${SECTOR_LABEL[sec]||''})</div><div class="th-tiles">${peers.map(p=>_tile(p,true)).join('')}</div></div><div class="th-div"></div>`; }
   if(idx.length){ html+=`<div class="th-grp"><div class="gl">Index</div><div class="th-tiles">${idx.map(p=>_tile(p,true)).join('')}</div></div>`; }
-  if((sec==='iron_ore'||sec==='steel') && FWD_CURVE.some(f=>_commByCode[f.code])){
-    html+=`<div class="th-div"></div><div class="th-grp" style="flex:1;min-width:220px"><div class="gl">Iron Ore — Forward Curve (snapshot)</div><div class="fwd-host" id="fwd-host"></div></div>`;
+  // Histórico da(s) commodity(ies) que importam p/ a empresa (substitui o antigo forward curve).
+  // Se o próprio ativo for uma commodity, o "driver" é ela mesma → mostra o histórico dela.
+  const histSrc=(sec==='commodity'&&q.isComm&&q.code)?[{code:q.code,label:q.name||_short(q.ticker)}]:drivers;
+  const histDrivers=histSrc.map(d=>({d,c:_commByCode[d.code]})).filter(x=>x.c&&Array.isArray(x.c.daily)&&x.c.daily.length>=5);
+  if(histDrivers.length){
+    const title=histDrivers.length>1?'Drivers — price history':`${esc(histDrivers[0].d.label)} — price history`;
+    html+=`<div class="th-div"></div><div class="th-grp" style="flex:1.4;min-width:280px">
+      <div class="gl">${title} · ${_rangeLabel(_range)}</div><div class="fwd-host" id="th-hist" style="height:150px"></div></div>`;
   }
   host.innerHTML=html;
   host.querySelectorAll('.tile.clk').forEach(el=>el.onclick=()=>toggleSel(el.dataset.t));
-  _renderForward();
+  _renderThesisHistory(histDrivers);
 }
-function _renderForward(){
-  const host=document.getElementById('fwd-host'); if(!host)return;
-  const front=_commByCode['IRON_ORE'];
-  const pts=[]; if(front&&front.price!=null)pts.push({l:'Spot',v:front.price});
-  FWD_CURVE.forEach(f=>{ const c=_commByCode[f.code]; if(c&&c.price!=null)pts.push({l:f.label,v:c.price}); });
-  if(pts.length<2){ host.innerHTML='<div class="c-empty">Forward curve unavailable.</div>'; return; }
-  // viewBox = tamanho REAL do host (mede após o reflow) → escala 1:1, sem distorcer ("puxado")
-  const W=Math.max(240,Math.round(host.clientWidth||320)), H=Math.round(host.clientHeight||120), P={l:36,r:14,t:14,b:22};
-  let lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)); if(hi===lo){hi+=1;lo-=1;} const pad=(hi-lo)*0.2;lo-=pad;hi+=pad;
-  const X=i=>P.l+i/(pts.length-1)*(W-P.l-P.r), Y=v=>P.t+(1-(v-lo)/(hi-lo))*(H-P.t-P.b);
-  const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
-  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="3" fill="var(--orange)"/><text class="c-axis" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${p.l}</text>`).join('');
-  const area=`M${X(0).toFixed(1)} ${(H-P.b)} `+pts.map((p,i)=>`L${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ')+` L${X(pts.length-1).toFixed(1)} ${(H-P.b)} Z`;
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-    <text class="c-axis" x="${P.l-6}" y="${(Y(hi)+8).toFixed(1)}" text-anchor="end">${hi.toFixed(0)}</text>
-    <text class="c-axis" x="${P.l-6}" y="${(Y(lo)).toFixed(1)}" text-anchor="end">${lo.toFixed(0)}</text>
-    <path d="${area}" fill="var(--orange)" opacity="0.10"/><path d="${line}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round"/>${dots}</svg>`;
+// série diária de PREÇO de uma commodity, fatiada pelo range atual (irmã de _commSeries, que dá %)
+function _commPriceSeries(c,range){
+  const d=c&&c.daily; if(!Array.isArray(d)||d.length<2) return null;
+  let arr;
+  if(range==='custom'&&_cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=d.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
+  else if(range==='1D'){ arr=d.slice(-2); }
+  else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
+  else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
+  if(!arr||arr.length<2) arr=d.slice(-2);
+  return arr.map(p=>[p[0],p[1]]);
+}
+// gráfico de histórico da(s) commodity(ies) driver no Thesis Strip. 1 driver = preço; vários = % normalizado.
+function _renderThesisHistory(histDrivers){
+  if(!document.getElementById('th-hist')||!histDrivers||!histDrivers.length) return;
+  const multi=histDrivers.length>1;
+  const lines=histDrivers.map((x,i)=>({ ticker:x.d.label||x.c.name, color:_MC_COLORS[i%_MC_COLORS.length],
+    pts: multi?_commSeries(x.c,_range):_commPriceSeries(x.c,_range) })).filter(l=>l.pts&&l.pts.length>=2);
+  _renderChart('th-hist', lines, multi?'pct':'price', 'Building up commodity history…');
 }
 
 /* ====================== ANALYTICS (fast-follow): correlation + portfolio ====================== */
@@ -1226,7 +1263,7 @@ async function init(){
   _syncDates();
   renderAll();
   loadDaily().then(()=>{ renderChart(); renderWatchlist(); renderHeader(); renderCorr(); renderPortfolio(); });
-  loadCommodities().then(()=>{ renderThesis(); renderHeader(); });
+  loadCommodities().then(()=>{ renderThesis(); renderHeader(); renderChart(); renderWatchlist(); });
   // listeners
   document.getElementById('chart-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled)return; _chartMode=b.dataset.m; renderChart(); };
   document.getElementById('chart-range').onclick=e=>{ const b=e.target.closest('button'); if(b)setRange(b.dataset.r); };
