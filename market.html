@@ -1327,25 +1327,27 @@ function _initExports(){
   const aoaOf=lines=>EX.linesAOA((lines||[]).map(l=>({name:_short(l.ticker),pts:l.pts})),'Date');
   const bgOf=id=>EX.resolveBg(document.getElementById(id)||document.body);
   const tag=()=> (_anchor?_short(_anchor):'chart');
-  const png=(id,base)=>{ const s=svgOf(id); if(!s)return alert('Nothing to export yet.'); EX.pngFromSVG(s,base+'_'+EX.stamp(),{bg:bgOf(id)}); };
+  const png=(id,base,meta)=>{ const s=svgOf(id); if(!s)return alert('Nothing to export yet.'); EX.pngFromSVG(s,base+'_'+EX.stamp(),Object.assign({bg:bgOf(id)},meta||{})); };
+  const legOf=lines=>(lines||[]).map(l=>({name:_short(l.ticker),color:l.color}));
+  const MODE_LBL={price:'Price',pct:'% Change',spread:'Spread vs Index'};
   const xls=(lines,sheet,base)=>{ const aoa=aoaOf(lines); if(!aoa)return alert('No data to export yet.'); EX.xlsxFromAOA([{name:sheet,aoa}],base+'_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
   const head=el=>el&&el.closest('.card')&&el.closest('.card').querySelector('.card-head');
   // gráfico central
   const mTools=document.getElementById('chart-mode')&&document.getElementById('chart-mode').parentElement;
   if(mTools) mTools.appendChild(EX.toolbar([
-    {label:'PNG',title:'Download chart image',onClick:()=>png('main-chart','market_'+tag())},
+    {label:'PNG',title:'Download chart image',onClick:()=>png('main-chart','market_'+tag(),{title:_sel.map(_short).join(', ')+' — '+(MODE_LBL[_chartMode]||''),sub:_rangeLabel(_range),legend:legOf(_mainLines)})},
     {label:'XLS',title:'Download chart data (Excel)',onClick:()=>xls(_mainLines,_chartMode,'market_'+tag())},
   ]));
   // thesis (histórico da commodity)
   const th=head(document.getElementById('thesis'));
   if(th) th.appendChild(EX.toolbar([
-    {label:'PNG',title:'Download commodity history image',onClick:()=>png('th-hist','market_thesis')},
+    {label:'PNG',title:'Download commodity history image',onClick:()=>png('th-hist','market_thesis',{title:(_thesisLines.length>1?'Commodity drivers — price history':((_thesisLines[0]&&_short(_thesisLines[0].ticker))||'Commodity')+' — price history'),sub:_rangeLabel(_range),legend:legOf(_thesisLines)})},
     {label:'XLS',title:'Download commodity history (Excel)',onClick:()=>xls(_thesisLines,'commodity','market_thesis')},
   ]));
   // portfolio
   const pf=head(document.getElementById('pf-host'));
   if(pf) pf.appendChild(EX.toolbar([
-    {label:'PNG',title:'Download portfolio curve image',onClick:()=>png('pf-chart','market_portfolio')},
+    {label:'PNG',title:'Download portfolio curve image',onClick:()=>png('pf-chart','market_portfolio',{title:'Portfolio — '+_rangeLabel(_range),legend:[{name:'Portfolio',color:'#FF5000'}]})},
     {label:'XLS',title:'Download portfolio curve (Excel)',onClick:()=>xls(_pfLines.map(l=>({ticker:'Portfolio',pts:l.pts})),'portfolio','market_portfolio')},
   ]));
   // correlação (dados)
