@@ -46,15 +46,57 @@
     return '#ffffff';
   }
 
-  // ── PNG de um gráfico Chart.js (compõe sobre o fundo p/ não sair transparente) ──
-  function pngFromChart(chart, filename, bg) {
-    const src = chart.canvas;
-    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = bg || resolveBg(src.parentElement || src) || '#ffffff';
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(src, 0, 0);
-    c.toBlob(b => downloadBlob(b, safeName(filename) + '.png'), 'image/png');
+  // ── cor de texto/contraste conforme o fundo (claro vs escuro) ──
+  function _rgb(s) { const m = String(s).match(/(\d+(\.\d+)?)/g); return m ? m.slice(0, 3).map(Number) : [255, 255, 255]; }
+  function _isDark(bg) { const c = _rgb(bg); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) < 128; }
+  function _textColor(bg) { return _isDark(bg) ? '#E6EDF3' : '#111111'; }
+  function _dimColor(bg) { return _isDark(bg) ? '#9DA7B3' : '#5A6573'; }
+  function _dsColor(d) { const c = d.borderColor || d.backgroundColor; return Array.isArray(c) ? c[0] : (typeof c === 'string' ? c : '#888'); }
+
+  // ── compõe o PNG final: faixa de cabeçalho (título + sub + LEGENDA) + o desenho do gráfico ──
+  // opts: {chartW, chartH, bg, title, sub, legend:[{name,color}], scale, filename, paint(ctx,x,y,w,h)}
+  function _exportComposite(opts) {
+    const scale = opts.scale || 2, pad = 14, W = Math.max(40, Math.round(opts.chartW || 480));
+    const bg = opts.bg || '#ffffff', tcol = _textColor(bg), dim = _dimColor(bg);
+    // mede a legenda (com quebra de linha) p/ dimensionar o cabeçalho
+    const meas = document.createElement('canvas').getContext('2d');
+    const legend = (opts.legend || []).filter(l => l && l.name);
+    let legItems = [], legRows = 0;
+    if (legend.length) {
+      meas.font = '600 11px Arial,Helvetica,sans-serif'; let lx = pad, row = 0;
+      legend.forEach(it => { const w = 16 + meas.measureText(it.name).width + 16;
+        if (lx + w > W - pad && lx > pad) { lx = pad; row++; } legItems.push({ name: it.name, color: it.color, x: lx, row }); lx += w; });
+      legRows = row + 1;
+    }
+    let headH = 0;
+    if (opts.title) headH += 20;
+    if (opts.sub) headH += 15;
+    if (legRows) headH += legRows * 16 + 2;
+    if (headH) headH += pad + 6;   // respiro acima/abaixo do cabeçalho
+    const H = Math.round(opts.chartH || 300) + headH;
+    const c = document.createElement('canvas'); c.width = Math.round(W * scale); c.height = Math.round(H * scale);
+    const ctx = c.getContext('2d'); ctx.scale(scale, scale);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H); ctx.textBaseline = 'top';
+    let y = headH ? pad - 2 : 0;
+    if (opts.title) { ctx.fillStyle = tcol; ctx.font = '700 15px Arial,Helvetica,sans-serif'; ctx.fillText(opts.title, pad, y); y += 20; }
+    if (opts.sub) { ctx.fillStyle = dim; ctx.font = '400 11px Arial,Helvetica,sans-serif'; ctx.fillText(opts.sub, pad, y); y += 15; }
+    if (legRows) { const y0 = y + 2; ctx.font = '600 11px Arial,Helvetica,sans-serif';
+      legItems.forEach(it => { const iy = y0 + it.row * 16; ctx.fillStyle = it.color || '#888'; ctx.fillRect(it.x, iy + 1, 11, 11);
+        ctx.fillStyle = tcol; ctx.fillText(it.name, it.x + 16, iy); }); }
+    opts.paint(ctx, 0, headH, W, Math.round(opts.chartH || 300));
+    c.toBlob(b => downloadBlob(b, safeName(opts.filename) + '.png'), 'image/png');
+  }
+
+  // ── PNG de um gráfico Chart.js: título/sub (do card) + LEGENDA (das séries) + o desenho ──
+  function pngFromChart(chart, filename, opts) {
+    opts = opts || {};
+    const src = chart.canvas, dpr = window.devicePixelRatio || 1;
+    const bg = opts.bg || resolveBg(src.parentElement || src) || '#ffffff';
+    const w = src.clientWidth || Math.round(src.width / dpr) || src.width;
+    const h = src.clientHeight || Math.round(src.height / dpr) || src.height;
+    const legend = ((chart.data && chart.data.datasets) || []).filter(d => d.label).map(d => ({ name: d.label, color: _dsColor(d) }));
+    _exportComposite({ chartW: w, chartH: h, bg, title: opts.title, sub: opts.sub, legend, filename,
+      paint: (ctx, x, y, cw, ch) => ctx.drawImage(src, x, y, cw, ch) });
   }
 
   // ── PNG de um SVG inline (Market). Inlina os estilos COMPUTADOS no clone
@@ -83,11 +125,8 @@
     const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
     const img = new Image();
     img.onload = () => {
-      const c = document.createElement('canvas'); c.width = w * scale; c.height = h * scale;
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, c.width, c.height);
-      ctx.setTransform(scale, 0, 0, scale, 0, 0); ctx.drawImage(img, 0, 0, w, h);
-      c.toBlob(b => downloadBlob(b, safeName(filename) + '.png'), 'image/png');
+      _exportComposite({ chartW: w, chartH: h, bg, scale, title: opts.title, sub: opts.sub, legend: opts.legend, filename,
+        paint: (ctx, x, y, cw, ch) => ctx.drawImage(img, x, y, cw, ch) });
     };
     img.onerror = () => alert('Could not render the chart image.');
     img.src = url;
@@ -128,40 +167,59 @@
     X.writeFile(wb, safeName(filename) + '.xlsx');
   }
 
-  // ── "Print"/PDF: abre um iframe oculto com um doc limpo e chama print()
-  //    (o usuário escolhe "Salvar como PDF"). Sem dependência. ──
-  function printHTML(bodyHTML, opts) {
-    opts = opts || {};
-    const title = opts.title || 'IBBA Research — Export';
-    const orient = opts.landscape === false ? 'portrait' : 'landscape';
+  // ── mecanismo de print: iframe oculto → write doc → print() (usuário salva como PDF) ──
+  function _printDoc(html) {
     const ifr = document.createElement('iframe');
     ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(ifr);
     const doc = ifr.contentWindow.document;
-    doc.open();
-    doc.write(
-      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title><style>' +
+    doc.open(); doc.write(html); doc.close();
+    const go = () => { try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) {} setTimeout(() => ifr.remove(), 1500); };
+    if (doc.readyState === 'complete') setTimeout(go, 250); else ifr.onload = () => setTimeout(go, 250);
+  }
+  // Print genérico (estilo próprio, limpo).
+  function printHTML(bodyHTML, opts) {
+    opts = opts || {};
+    const orient = opts.landscape === false ? 'portrait' : 'landscape';
+    _printDoc(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (opts.title || 'IBBA Research — Export') + '</title><style>' +
       '@page{size:A4 ' + orient + ';margin:10mm}' +
       'body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
       'h1{font-size:15px;margin:0 0 2px}.sub{font-size:10px;color:#666;margin:0 0 12px}' +
-      'table{border-collapse:collapse;width:100%;font-size:9.5px;margin:0 0 16px;page-break-inside:auto}' +
+      'table{border-collapse:collapse;width:100%;font-size:9.5px;margin:0 0 16px}' +
       'tr{page-break-inside:avoid}th,td{border:1px solid #ccc;padding:3px 6px;text-align:right;white-space:nowrap}' +
       'th{background:#f0f0f0;font-weight:700}td:first-child,th:first-child{text-align:left}' +
-      '.up{color:#1E8E4E}.down{color:#C0392B}.flat,.mute{color:#777}' +
-      'caption,h2{font-size:12px;font-weight:700;text-align:left;margin:10px 0 5px;padding:0}' +
+      '.up{color:#1E8E4E}.down{color:#C0392B}.flat,.mute{color:#777}h2{font-size:12px;font-weight:700;margin:10px 0 5px}' +
       (opts.css || '') + '</style></head><body>' + bodyHTML + '</body></html>'
     );
-    doc.close();
-    const go = () => { try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) {} setTimeout(() => ifr.remove(), 1500); };
-    if (doc.readyState === 'complete') setTimeout(go, 200); else ifr.onload = () => setTimeout(go, 200);
   }
-  // Print a partir de tabelas HTML existentes (clona o conteúdo, com um título por tabela).
-  function printTables(specs, opts) {   // specs = [{title, el}]
+  function printTables(specs, opts) {   // specs = [{title, el}] — print genérico
     const body = (opts && opts.heading ? '<h1>' + opts.heading + '</h1>' : '') +
       (opts && opts.sub ? '<div class="sub">' + opts.sub + '</div>' : '') +
       specs.map(s => (s.title ? '<h2>' + s.title + '</h2>' : '') + (s.el ? s.el.outerHTML : '')).join('');
     printHTML(body, opts);
+  }
+  // Print que HERDA o CSS da própria página (tabelas saem IGUAIS à dash) + overrides p/ impressão.
+  function printStyledTables(specs, opts) {   // specs = [{title, el}]
+    opts = opts || {};
+    const orient = opts.landscape === false ? 'portrait' : 'landscape';
+    const fonts = [].map.call(document.querySelectorAll('link[rel="stylesheet"]'), l => l.outerHTML).join('');
+    const styles = [].map.call(document.querySelectorAll('style'), s => '<style>' + s.textContent + '</style>').join('');
+    const override = '<style>' +
+      'html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important;height:auto!important;min-height:0!important;width:auto!important;max-width:none!important}' +
+      '#stage,.stage,.page,.wrap{transform:none!important;width:auto!important;max-width:none!important;height:auto!important;overflow:visible!important}' +
+      '.tbl-scroll,.card{overflow:visible!important;max-height:none!important;box-shadow:none!important;border:none!important;background:transparent!important}' +
+      'table.data th{position:static!important}' +
+      'table.data{font-size:8.5px!important}' +
+      'h1.exp{font:700 16px Inter,Arial,sans-serif;margin:0 0 2px;color:#111}.exp-sub{font:400 11px Inter,Arial,sans-serif;color:#666;margin:0 0 12px}h2.exp{font:700 13px Inter,Arial,sans-serif;margin:14px 0 6px;color:#111}' +
+      '@page{size:A4 ' + orient + ';margin:8mm}' +
+      '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
+      (opts.css || '') + '</style>';
+    const body = (opts.heading ? '<h1 class="exp">' + opts.heading + '</h1>' : '') +
+      (opts.sub ? '<div class="exp-sub">' + opts.sub + '</div>' : '') +
+      specs.map(s => (s.title ? '<h2 class="exp">' + s.title + '</h2>' : '') + (s.el ? s.el.outerHTML : '')).join('');
+    _printDoc('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (opts.title || 'IBBA Research') + '</title>' + fonts + styles + override + '</head><body>' + body + '</body></html>');
   }
 
   // ── CSS dos controles (injetado 1x; não precisa editar o CSS de cada página) ──
@@ -201,17 +259,20 @@
       if (!host || host.querySelector(':scope > .ibba-dl')) return;   // já tem
       if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
       host.classList.add('ibba-host');
-      const title = () => (opts.titleOf && opts.titleOf(id)) || id;
-      const name = () => safeName(prefix + '_' + title() + '_' + stamp());
+      const cardText = sel => { const e = host.querySelector(sel); return e ? e.textContent.trim() : ''; };
+      const ttl = () => (opts.titleOf && opts.titleOf(id)) || cardText('.chart-title') || id;
+      const sub = () => cardText('.chart-sub');
+      const name = () => safeName(prefix + '_' + ttl() + '_' + stamp());
       const getChart = () => opts.charts[id];
       const box = document.createElement('div'); box.className = 'ibba-dl';
       const bPng = document.createElement('button'); bPng.textContent = 'PNG'; bPng.title = 'Download image';
       const bXls = document.createElement('button'); bXls.textContent = 'XLS'; bXls.title = 'Download data (Excel)';
       bPng.onclick = e => { e.stopPropagation(); e.preventDefault(); const ch = getChart();
-        if (!ch || !ch.canvas) return alert('Open/refresh this chart first, then download.'); pngFromChart(ch, name(), resolveBg(host)); };
+        if (!ch || !ch.canvas) return alert('Open/refresh this chart first, then download.');
+        pngFromChart(ch, name(), { bg: resolveBg(host), title: ttl(), sub: sub() }); };
       bXls.onclick = e => { e.stopPropagation(); e.preventDefault(); const ch = getChart();
         if (!ch) return alert('Open/refresh this chart first, then download.');
-        xlsxFromAOA([{ name: title(), aoa: chartToAOA(ch) }], name()).catch(() => alert('Could not build the Excel file.')); };
+        xlsxFromAOA([{ name: ttl(), aoa: chartToAOA(ch) }], name()).catch(() => alert('Could not build the Excel file.')); };
       box.appendChild(bPng); box.appendChild(bXls);
       host.appendChild(box);
     });
@@ -268,7 +329,7 @@
   window.IBBAExport = {
     ensureXLSX, downloadCSV, xlsxFromAOA, xlsxFromTables,
     pngFromChart, pngFromSVG, chartToAOA, linesAOA,
-    printHTML, printTables,
+    printHTML, printTables, printStyledTables,
     attachChartjsExports, attachSvgExport,
     makeButton, toolbar, injectCSS, stamp, safeName, resolveBg,
   };
