@@ -14,6 +14,7 @@
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
 <script>
 // ⚠️  Substitua pelos seus valores: Supabase → Settings → API
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
@@ -929,6 +930,7 @@ async function applyPredFlag(){
   try{
     const [fl, role] = await Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])
     const isAdmin = !!(role && !role.error && role.data === 'admin')
+    if(isAdmin && window.IBBAExport) IBBAExport.attachChartjsExports({charts, isAdmin:true, prefix:'steel'})   // download PNG/Excel por gráfico (só admin)
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='pred_model') : null
     const on = f ? !!f.enabled : true
     if(on || isAdmin) return

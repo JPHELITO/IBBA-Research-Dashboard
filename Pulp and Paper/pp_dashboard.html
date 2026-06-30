@@ -14,6 +14,7 @@
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -701,6 +702,10 @@ html.dark .cr-input{color-scheme:dark}
   })
   Chart.register(ChartDataLabels)
   loadDB()
+  // download PNG/Excel por gráfico — SÓ admin (esta página não tinha checagem de role)
+  try{ const role=await sbAuth.rpc('get_my_role')
+    if(role && !role.error && role.data==='admin' && window.IBBAExport)
+      IBBAExport.attachChartjsExports({charts, isAdmin:true, prefix:'pp'}) }catch(e){}
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 

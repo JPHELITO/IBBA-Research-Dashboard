@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="stock-guide-lib.js"></script>
 <script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
 <style>
 :root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#F4F3F0;--border:#E3E3E3;
   --white:#fff;--green:#1E8E4E;--red:#C0392B;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
@@ -609,8 +610,40 @@ async function sgInit(data){
   else { sgRenderPeers(data.peers||[],data.priceByKey); }
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],peersEnabled:data.peersEnabled,computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
+  if(data.isAdmin && window.IBBAExport) _sgInitExport();   // botões Export (PDF/Excel) só p/ admin
   if(_sgTimer)clearInterval(_sgTimer);
   if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
+}
+
+/* ── Export admin-only: PDF (print) + Excel das tabelas do Stock Guide ── */
+function _sgHasRows(t){ if(!t) return false;
+  for(const tr of t.querySelectorAll('tbody tr')){ const td=tr.querySelector('td'); if(td && !td.classList.contains('muted')) return true; }
+  return false; }
+function _sgExportTables(includeSens){
+  const out=[];
+  const c=document.getElementById('comps-table'); if(_sgHasRows(c)) out.push({name:'Comp Table', title:'Comp Table', el:c});
+  const p=document.getElementById('peers-table'); if(_sgHasRows(p)) out.push({name:'Global Peers', title:'Global Peers', el:p});
+  if(includeSens) document.querySelectorAll('#sens-host table').forEach((el,i)=>{
+    if(!el.querySelector('tr')) return;
+    const card=el.closest('.card'), ttlEl=card&&card.querySelector('.sens-title,.sec-title,b,strong,h3');
+    out.push({name:'Sens '+(i+1), title:(ttlEl&&ttlEl.textContent.trim())||('Sensitivity '+(i+1)), el});
+  });
+  return out;
+}
+function _sgInitExport(){
+  if(document.getElementById('sg-export-tb')) return;
+  const bar=document.querySelector('.sticky-header .top-bar'); if(!bar||!window.IBBAExport) return;
+  const EX=IBBAExport;
+  const tb=EX.toolbar([
+    {label:'PDF', title:'Print / Save as PDF (comp table + peers)', onClick:()=>{
+      const specs=_sgExportTables(false); if(!specs.length) return alert('Nothing to print yet.');
+      EX.printTables(specs,{heading:'ITAÚ BBA — Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); }},
+    {label:'Excel', title:'Download tables (Excel)', onClick:()=>{
+      const specs=_sgExportTables(true); if(!specs.length) return alert('Nothing to export yet.');
+      EX.xlsxFromTables(specs,'stock_guide_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); }},
+  ]);
+  tb.id='sg-export-tb';
+  const badge=document.getElementById('admin-badge'); if(badge) bar.insertBefore(tb,badge); else bar.appendChild(tb);
 }
 // re-busca SÓ os dados ao vivo e re-renderiza comps+peers+freshness (não mexe na sensibilidade já aberta)
 async function sgTickLive(){
