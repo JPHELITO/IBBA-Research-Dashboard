@@ -631,19 +631,23 @@ function _sgExportTables(includeSens){
   return out;
 }
 function _sgInitExport(){
-  if(document.getElementById('sg-export-tb')) return;
-  const bar=document.querySelector('.sticky-header .top-bar'); if(!bar||!window.IBBAExport) return;
+  if(document.getElementById('sg-export-bar')||!window.IBBAExport) return;
   const EX=IBBAExport;
-  const tb=EX.toolbar([
-    {label:'PDF', title:'Print / Save as PDF (comp table + peers)', onClick:()=>{
-      const specs=_sgExportTables(false); if(!specs.length) return alert('Nothing to print yet.');
-      EX.printTables(specs,{heading:'ITAÚ BBA — Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); }},
-    {label:'Excel', title:'Download tables (Excel)', onClick:()=>{
-      const specs=_sgExportTables(true); if(!specs.length) return alert('Nothing to export yet.');
-      EX.xlsxFromTables(specs,'stock_guide_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); }},
-  ]);
-  tb.id='sg-export-tb';
-  const badge=document.getElementById('admin-badge'); if(badge) bar.insertBefore(tb,badge); else bar.appendChild(tb);
+  const onPDF=()=>{ const specs=_sgExportTables(false); if(!specs.length) return alert('Nothing to print yet.');
+    EX.printTables(specs,{heading:'ITAÚ BBA — Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); };
+  const onXLS=()=>{ const specs=_sgExportTables(true); if(!specs.length) return alert('Nothing to export yet.');
+    EX.xlsxFromTables(specs,'stock_guide_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
+  // barra VISÍVEL logo acima da comp table (admin)
+  const bar=document.createElement('div'); bar.id='sg-export-bar';
+  bar.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px';
+  const lbl=document.createElement('span'); lbl.className='muted'; lbl.style.cssText='font-size:11px;font-weight:600;letter-spacing:.02em';
+  lbl.textContent='Download (admin) →';
+  const bPDF=EX.makeButton('⤓ PDF', onPDF); bPDF.title='Print / Save as PDF (comp table + peers)';
+  const bXLS=EX.makeButton('⤓ Excel', onXLS); bXLS.title='Download tables (comp + peers + sensitivity)';
+  bar.appendChild(lbl); bar.appendChild(bPDF); bar.appendChild(bXLS);
+  const anchor=document.getElementById('px-fresh')||document.getElementById('comps-sub');
+  if(anchor&&anchor.parentElement) anchor.parentElement.insertBefore(bar, anchor.nextSibling);
+  else { const tbar=document.querySelector('.sticky-header .top-bar'); if(tbar) tbar.appendChild(bar); }
 }
 // re-busca SÓ os dados ao vivo e re-renderiza comps+peers+freshness (não mexe na sensibilidade já aberta)
 async function sgTickLive(){
