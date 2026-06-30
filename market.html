@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
 <style>
 /* ===== DARK THEME (default of the Market tab) — scoped to this page ===== */
 :root{
@@ -638,6 +639,7 @@ function _setRngBadges(){ const t=_rngBadgeText(); ['rb-chart','rb-wl','rb-corr'
 /* ── estado central ── */
 const _MC_COLORS=['#FF5000','#3B82F6','#22C55E','#A855F7','#06B6D4','#EAB308','#EC4899','#F97316'];
 let _quotes=[], _dailyMap={}, _commByCode={};
+let _mainLines=[], _thesisLines=[], _pfLines=[];   // últimas séries renderizadas (p/ export admin)
 let _sel=[];                      // ativos selecionados (chart + watchlist laranja). LIVRE, pode esvaziar.
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
 let _range='3M', _cFrom=null, _cTo=null;
@@ -902,6 +904,7 @@ function renderChart(){
   });
   if(!_sel.length){
     document.getElementById('chart-sub').textContent='';
+    _mainLines=[];
     _renderChart('main-chart',[], 'price', 'No assets selected — click rows in the Watchlist, use Recommended below, or search.');
     renderChips(); renderReco(); return;
   }
@@ -914,13 +917,15 @@ function renderChart(){
     const bName=drv?(drv.name||'driver'):_short(idxT);
     const a=_series(q,_range,'pct'), b=drv?_commSeries(drv,_range):_series(byT(idxT),_range,'pct');
     document.getElementById('chart-sub').textContent=`${_short(q.ticker)} vs ${bName} · ${_rangeLabel(_range)}`;
-    if(!a||!b){ _renderChart('main-chart',[],'pct',`No history yet for ${esc(bName)} — building up.`); }
+    if(!a||!b){ _mainLines=[]; _renderChart('main-chart',[],'pct',`No history yet for ${esc(bName)} — building up.`); }
     else{ const bm=new Map(b.map(p=>[p[0],p[1]]));
       const sp=a.map(([t,v])=>{ let bv=bm.get(t); if(bv==null){ let bd=Infinity,bb=null; for(const p of b){const dd=Math.abs(p[0]-t);if(dd<bd){bd=dd;bb=p[1];}} bv=bb; } return bv==null?[t,0]:[t, v-bv]; });
+      _mainLines=[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}];
       _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}],'pct',null,{spread:true}); }
   } else {
     document.getElementById('chart-sub').textContent=(multi?`${_sel.length} assets · `:'')+_rangeLabel(_range);
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
+    _mainLines=lines;
     _renderChart('main-chart', lines, _chartMode);
   }
   renderChips(); renderReco();
@@ -1057,6 +1062,7 @@ function _renderThesisHistory(histDrivers){
   const multi=histDrivers.length>1;
   const lines=histDrivers.map((x,i)=>({ ticker:x.d.label||x.c.name, color:_MC_COLORS[i%_MC_COLORS.length],
     pts: multi?_commSeries(x.c,_range):_commPriceSeries(x.c,_range) })).filter(l=>l.pts&&l.pts.length>=2);
+  _thesisLines=lines;
   _renderChart('th-hist', lines, multi?'pct':'price', 'Building up commodity history…');
 }
 
@@ -1195,14 +1201,15 @@ function _pfRecompute(){ const range=_range==='1D'?'1M':_range, adv=_pfSched.mod
     tEl.innerHTML=`Allocated <b class="${total>100?'over':total===100?'ok':'under'}">${total}%</b>`+(total<100?` <span class="pf-cash">· ${100-total}% cash</span>`:'')+(total>100?' <span class="pf-cash">· trim to 100%</span>':''); }
   const span=_schedSpan(), rbpf=document.getElementById('rb-pf'); if(rbpf)rbpf.textContent=adv?_pfSpanLabel(span):(_range==='custom'?_rangeLabel('custom'):_range);
   const st=document.getElementById('pf-stats'), invalid=_pfSched.rows.some(r=>_cashOf(r)<-0.5);
-  if(invalid){ if(st)st.innerHTML='<div class="pf-invalid">A period is over 100% — trim it to ≤100%.</div>'; if(document.getElementById('pf-chart'))_renderChart('pf-chart',[],'pct','Fix the over-100% period to see the curve.'); _renderBand(); return; }
+  if(invalid){ _pfLines=[]; if(st)st.innerHTML='<div class="pf-invalid">A period is over 100% — trim it to ≤100%.</div>'; if(document.getElementById('pf-chart'))_renderChart('pf-chart',[],'pct','Fix the over-100% period to see the curve.'); _renderBand(); return; }
   const port=_pfPort(adv?span:range);
   const ribbon=[['1W','1W'],['1M','1M'],['YTD','YTD'],['1Y','1Y']].map(([p,lbl])=>{ const pp=_pfPort(p), rv=pp&&pp.length?pp[pp.length-1][1]:null; return `<div class="pf-stat"><div class="pl">${lbl}</div><div class="pv sm ${_signCls(rv)}">${_pctStr(rv,1)}</div></div>`; }).join('');
   const rangeRet=port&&port.length?port[port.length-1][1]:null, vol=_pfVol(port), dd=_pfDD(port), rl=adv?_pfSpanLabel(span):(_range==='custom'?'Custom':range);
   if(st) st.innerHTML=`<div class="pf-rib">${ribbon}<div class="pf-stat hl"><div class="pl">${rl}</div><div class="pv sm ${_signCls(rangeRet)}">${_pctStr(rangeRet,1)}</div></div></div>
     <div class="pf-risk"><div class="pf-stat"><div class="pl">Ann. vol</div><div class="pv">${vol==null?'—':vol.toFixed(0)+'%'}</div></div>
     <div class="pf-stat"><div class="pl">Max drawdown</div><div class="pv down">${dd==null?'—':dd.toFixed(1)+'%'}</div></div></div>`;
-  if(document.getElementById('pf-chart')) _renderChart('pf-chart', port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[], 'pct', 'Portfolio history needs daily data for all selected assets.');
+  _pfLines = port?[{ticker:'Portfolio',color:'#FF5000',pts:port}]:[];
+  if(document.getElementById('pf-chart')) _renderChart('pf-chart', _pfLines, 'pct', 'Portfolio history needs daily data for all selected assets.');
   _renderBand(); }
 
 /* ── topbar: status, clock, theme ── */
@@ -1302,6 +1309,57 @@ function _applyTheme(){ var light = localStorage.getItem('ibba_theme')==='light'
   if(window.__syncThemeIcon) window.__syncThemeIcon();
 }
 
+/* ── export (SÓ admin): PNG + Excel dos gráficos/tabelas via export-lib.js ── */
+function _corrAOA(){   // lê a matriz de correlação do DOM → array-de-arrays
+  const grid=document.querySelector('#corr-host .corr-grid'); if(!grid) return null;
+  const labels=[...grid.querySelectorAll('.corr-lbl.col')].map(e=>e.textContent.trim());
+  const cells=[...grid.querySelectorAll('.corr-cell')]; const n=labels.length;
+  if(n<2 || cells.length<n*n) return null;
+  const aoa=[[''].concat(labels)];
+  for(let i=0;i<n;i++){ const row=[labels[i]];
+    for(let j=0;j<n;j++){ const t=cells[i*n+j].textContent.trim(); row.push(t==='—'?'':(isFinite(parseFloat(t))?parseFloat(t):'')); }
+    aoa.push(row); }
+  return aoa;
+}
+function _initExports(){
+  if(!window.IBBAExport) return; const EX=IBBAExport;
+  const svgOf=id=>{ const h=document.getElementById(id); return h&&h.querySelector('svg'); };
+  const aoaOf=lines=>EX.linesAOA((lines||[]).map(l=>({name:_short(l.ticker),pts:l.pts})),'Date');
+  const bgOf=id=>EX.resolveBg(document.getElementById(id)||document.body);
+  const tag=()=> (_anchor?_short(_anchor):'chart');
+  const png=(id,base)=>{ const s=svgOf(id); if(!s)return alert('Nothing to export yet.'); EX.pngFromSVG(s,base+'_'+EX.stamp(),{bg:bgOf(id)}); };
+  const xls=(lines,sheet,base)=>{ const aoa=aoaOf(lines); if(!aoa)return alert('No data to export yet.'); EX.xlsxFromAOA([{name:sheet,aoa}],base+'_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
+  const head=el=>el&&el.closest('.card')&&el.closest('.card').querySelector('.card-head');
+  // gráfico central
+  const mTools=document.getElementById('chart-mode')&&document.getElementById('chart-mode').parentElement;
+  if(mTools) mTools.appendChild(EX.toolbar([
+    {label:'PNG',title:'Download chart image',onClick:()=>png('main-chart','market_'+tag())},
+    {label:'XLS',title:'Download chart data (Excel)',onClick:()=>xls(_mainLines,_chartMode,'market_'+tag())},
+  ]));
+  // thesis (histórico da commodity)
+  const th=head(document.getElementById('thesis'));
+  if(th) th.appendChild(EX.toolbar([
+    {label:'PNG',title:'Download commodity history image',onClick:()=>png('th-hist','market_thesis')},
+    {label:'XLS',title:'Download commodity history (Excel)',onClick:()=>xls(_thesisLines,'commodity','market_thesis')},
+  ]));
+  // portfolio
+  const pf=head(document.getElementById('pf-host'));
+  if(pf) pf.appendChild(EX.toolbar([
+    {label:'PNG',title:'Download portfolio curve image',onClick:()=>png('pf-chart','market_portfolio')},
+    {label:'XLS',title:'Download portfolio curve (Excel)',onClick:()=>xls(_pfLines.map(l=>({ticker:'Portfolio',pts:l.pts})),'portfolio','market_portfolio')},
+  ]));
+  // correlação (dados)
+  const co=head(document.getElementById('corr-host'));
+  if(co) co.appendChild(EX.toolbar([
+    {label:'XLS',title:'Download correlation matrix (Excel)',onClick:()=>{ const aoa=_corrAOA(); if(!aoa)return alert('Select 2+ assets first.'); EX.xlsxFromAOA([{name:'correlation',aoa}],'market_correlation_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); }},
+  ]));
+  // watchlist (dados, tabela HTML)
+  const wf=document.querySelector('.wl-foot');
+  if(wf) wf.appendChild(EX.toolbar([
+    {label:'XLS',title:'Download watchlist (Excel)',onClick:()=>{ const t=document.getElementById('wl-table'); if(!t)return; EX.xlsxFromTables([{name:'Watchlist',el:t}],'market_watchlist_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); }},
+  ]));
+}
+
 /* ── boot ── */
 function _qparam(k){ try{return new URLSearchParams(location.search).get(k);}catch(e){return null;} }
 async function init(){
@@ -1341,6 +1399,7 @@ async function init(){
   document.addEventListener('keydown', _noteInteract, true);
   setInterval(_carIdleCheck, 20000);   // 5 min sem interação → retoma o tour
   setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); }); loadMacro().then(renderHeader); }, 60000);
+  if(_isAdmin) _initExports();   // controles de download (PNG/Excel) só p/ admin
 }
 function showApp(){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 function showDenied(){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; }
