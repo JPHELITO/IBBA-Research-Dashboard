@@ -18,19 +18,28 @@
 CREATE TABLE IF NOT EXISTS public.model_central_models (
   ticker      text PRIMARY KEY,
   currency    text NOT NULL DEFAULT 'BRL',
-  fy          text NOT NULL DEFAULT '',                 -- ano exibido, ex. '2026E'
+  fy          text NOT NULL DEFAULT '',                 -- anos exibidos (CSV), ex. '2026E,2027E,2028E'
   model_date  text NOT NULL DEFAULT '',                 -- data do modelo (COVER/nome), ex. 'Apr-22-2026'
-  axes        jsonb NOT NULL DEFAULT '[]'::jsonb,        -- [{id,label,unit,base,min,max,kind,live,source}]
-  base        jsonb NOT NULL DEFAULT '{}'::jsonb,        -- {ebitda,net_debt,fcf,dividends,mktcap,shares,price}
-  mesh        jsonb NOT NULL DEFAULT '{}'::jsonb,        -- {ebitda:[{coords,value}],net_debt,fcf,dividends}
-  published   jsonb NOT NULL DEFAULT '{}'::jsonb,        -- {ev_ebitda,fcf_yield,div_yield} (do modelo)
-  gate        jsonb NOT NULL DEFAULT '{}'::jsonb,        -- {ok,diffs,recomputed}
+  axes        jsonb NOT NULL DEFAULT '[]'::jsonb,        -- drivers: [{id,label,unit,min,max,kind,live,source,baseByYear:[]}]
+  base        jsonb NOT NULL DEFAULT '[]'::jsonb,        -- POR ANO (array): [{ebitda,net_debt,fcf,dividends,mktcap,shares,price}, ...]
+  mesh        jsonb NOT NULL DEFAULT '[]'::jsonb,        -- POR ANO (array): [{ebitda:[{coords,value}],net_debt,fcf,dividends}, ...]
+  published   jsonb NOT NULL DEFAULT '[]'::jsonb,        -- POR ANO (array): [{ev_ebitda,fcf_yield,div_yield}, ...]
+  gate        jsonb NOT NULL DEFAULT '{}'::jsonb,        -- {ok, byYear:[{year,ok,diffs,recomputed}, ...]}
   notes       text NOT NULL DEFAULT '',
   updated_at  timestamptz NOT NULL DEFAULT now(),
   updated_by  uuid REFERENCES auth.users(id),
-  CONSTRAINT model_central_axes_is_array  CHECK (jsonb_typeof(axes) = 'array'),
-  CONSTRAINT model_central_mesh_is_object CHECK (jsonb_typeof(mesh) = 'object')
+  CONSTRAINT model_central_axes_is_array CHECK (jsonb_typeof(axes) = 'array')
+  -- (removido o antigo CHECK model_central_mesh_is_object: mesh/base/published agora são ARRAYS por ano — 1 item por ano)
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MIGRAÇÃO 1-ano → 3-anos (RODE 1× se a tabela foi criada na versão antiga de 1 ano).
+-- A versão antiga exigia CHECK (jsonb_typeof(mesh)='object'). O código agora grava
+-- mesh/base/published como ARRAY (um item por ano) → aquele CHECK bloqueava o upload
+-- com "violates check constraint model_central_mesh_is_object". Idempotente (safe re-run).
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.model_central_models DROP CONSTRAINT IF EXISTS model_central_mesh_is_object;
+
 ALTER TABLE public.model_central_models ENABLE ROW LEVEL SECURITY;   -- sem policy: só RPC SECURITY DEFINER
 
 -- ─────────────────────────────────────────────────────────────────────────────
