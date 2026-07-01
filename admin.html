@@ -1045,19 +1045,21 @@ async function mcAdminPreview(file){
     const rec=MC.parseModel(wb,tk);
     if(rec.error){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+esc(rec.error); return; }
     _mcParsed=rec;
-    const g=rec.gate||{}, p=rec.published||{}, r=(g.recomputed||{});
+    const gy=rec.gateByYear||[], pby=rec.publishedByYear||[], okAll=(rec.gate&&rec.gate.ok);
     const fm=(v,pct)=> v==null||!isFinite(v)?'—':(pct?(Math.round(v*10)/10+'%'):(Math.round(v*100)/100+'×'));
-    const tol=(pct)=>pct?0.1:0.02;
-    const tr=(lbl,rv,mv,pct)=>`<tr><td>${lbl}</td><td>${fm(rv,pct)}</td><td>${fm(mv,pct)}</td><td>${(rv!=null&&mv!=null&&Math.abs(rv-mv)<=tol(pct))?'✓':'<b style="color:#C0392B">✗</b>'}</td></tr>`;
-    let h='<table><thead><tr><th>Indicador</th><th>Recomputado</th><th>Modelo</th><th>OK?</th></tr></thead><tbody>';
-    h+=tr('EV/EBITDA',r.ev_ebitda,p.ev_ebitda,false)+tr('FCF Yield',r.fcf_yield,p.fcf_yield,true)+tr('Div Yield',r.div_yield,p.div_yield,true)+'</tbody></table>';
-    const axesTxt=(rec.axes||[]).map(a=>a.label+(a.live?' (ao vivo)':'')).join(' · ');
+    const tol=(pct)=>pct?0.15:0.02;
+    const cell=(rv,mv,pct)=>{ const ok=(rv!=null&&mv!=null&&Math.abs(rv-mv)<=tol(pct)); return `${fm(rv,pct)} <span style="color:${ok?'#1E8E4E':'#C0392B'}">/ ${fm(mv,pct)} ${ok?'✓':'✗'}</span>`; };
+    let h='<table><thead><tr><th>Ano</th><th>EV/EBITDA</th><th>FCF Yield</th><th>Div Yield</th></tr></thead><tbody>';
+    gy.forEach((g,i)=>{ const r=g.recomputed||{}, p=pby[i]||{};
+      h+=`<tr><td><b>${esc(g.year)}</b></td><td>${cell(r.ev_ebitda,p.ev_ebitda,false)}</td><td>${cell(r.fcf_yield,p.fcf_yield,true)}</td><td>${cell(r.div_yield,p.div_yield,true)}</td></tr>`; });
+    h+='</tbody></table>';
+    const axesTxt=(rec.drivers||[]).map(a=>a.label+(a.live?' (ao vivo)':'')).join(' · ');
     prev.innerHTML=`<div style="overflow-x:auto">${h}</div>`+
-      `<div class="muted" style="font-size:11px;margin-top:6px">Drivers: ${esc(axesTxt)} · ${(rec.mesh&&rec.mesh.ebitda||[]).length} cantos · ${esc(rec.currency||'')} ${esc(rec.year||'')}</div>`+
-      (g.ok
-        ? `<div class="status" style="margin-top:8px;color:#1E8E4E"><b>✓ Gate OK</b> — recomputo bate com o modelo.</div><div class="row" style="margin-top:10px"><button class="btn" onclick="mcAdminCommit()">Publicar ${esc(tk)}</button><button class="btn sec" onclick="mcAdminCancel()">Cancelar</button></div>`
-        : `<div class="status" style="margin-top:8px;color:#C0392B"><b>✗ Gate REPROVADO</b> (fail-closed — não publica): ${(g.diffs||[]).map(esc).join(' · ')||'divergência'}</div>`);
-    stat.innerHTML=g.ok?'<b style="color:#1E8E4E">Lido e validado.</b> Confira e publique.':'<b style="color:#C0392B">Lido, mas o gate reprovou</b> — confira se é o modelo certo / recalculou (F9) antes de salvar.';
+      `<div class="muted" style="font-size:11px;margin-top:6px">Recomputado / Modelo por ano · Drivers: ${esc(axesTxt)} · ${esc(rec.currency||'')}</div>`+
+      (okAll
+        ? `<div class="status" style="margin-top:8px;color:#1E8E4E"><b>✓ Gate OK</b> nos ${gy.length} anos — recomputo bate com o modelo.</div><div class="row" style="margin-top:10px"><button class="btn" onclick="mcAdminCommit()">Publicar ${esc(tk)}</button><button class="btn sec" onclick="mcAdminCancel()">Cancelar</button></div>`
+        : `<div class="status" style="margin-top:8px;color:#C0392B"><b>✗ Gate REPROVADO</b> (fail-closed — não publica): ${(rec.gate&&rec.gate.diffs||[]).map(esc).join(' · ')||'divergência'}</div>`);
+    stat.innerHTML=okAll?'<b style="color:#1E8E4E">Lido e validado nos 3 anos.</b> Confira e publique.':'<b style="color:#C0392B">Gate reprovou</b> — confira o modelo / recalcule (F9) antes de salvar.';
   }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e); }
 }
 function mcAdminCancel(){ _mcParsed=null; _v('mc-preview').innerHTML=''; _v('mc-status').textContent=''; _v('mc-file').value=''; }
@@ -1065,8 +1067,9 @@ async function mcAdminCommit(){
   if(!_mcParsed||!_mcParsed.gate||!_mcParsed.gate.ok){alert('Nada validado para publicar.');return}
   const rec=_mcParsed, stat=_v('mc-status');
   const md=(_mcFile.match(/([A-Z][a-z]{2}-\d{1,2}-\d{4})/)||[])[1]||'';
-  const payload={ ticker:rec.ticker, currency:rec.currency||'BRL', fy:rec.year||'', model_date:md,
-    axes:rec.axes, base:rec.base, mesh:rec.mesh, published:rec.published, gate:rec.gate, notes:rec.notes||'' };
+  const payload={ ticker:rec.ticker, currency:rec.currency||'BRL', fy:(rec.years||[]).join(','), model_date:md,
+    axes:rec.drivers, base:rec.baseByYear, mesh:rec.meshByYear, published:rec.publishedByYear,
+    gate:{ ok:(rec.gate&&rec.gate.ok), byYear:rec.gateByYear }, notes:rec.notes||'' };
   stat.textContent='Publicando '+rec.ticker+'…';
   const r=await sbAuth.rpc('admin_upsert_model_central_model',{p:payload});
   if(r.error){ stat.innerHTML='<b style="color:#C0392B">Erro:</b> '+esc(r.error.message)+' (rodou o <b>supabase_model_central.sql</b>?)'; return; }
