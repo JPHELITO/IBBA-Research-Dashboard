@@ -174,6 +174,21 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
         .mc-livechip{font-size:9px;font-weight:700;color:var(--green);border:1px solid var(--green);border-radius:5px;padding:0 4px}
         .mc-modelchip{font-size:9px;font-weight:600;color:var(--g-mid);border:1px solid var(--border);border-radius:5px;padding:0 4px}
         .mc-note{font-size:11px;color:var(--g-mid);margin-top:12px;font-style:italic}
+        .mc-tbl{width:100%;border-collapse:collapse;font-size:12px;margin:4px 0 14px}
+        .mc-tbl th{font-size:10px;color:var(--g-mid);font-weight:600;text-transform:uppercase;letter-spacing:.03em;text-align:right;padding:4px 10px;border-bottom:1px solid var(--border)}
+        .mc-tbl th:first-child{text-align:left}
+        .mc-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--border);vertical-align:middle}
+        .mc-ilbl{font-weight:600;text-align:left!important;color:var(--g-dark)}
+        .mc-ival{font-size:16px;font-weight:700}
+        .mc-isub{display:block;font-size:10px;color:var(--g-mid);font-weight:500}
+        .mc-dtbl td{padding:4px 10px}
+        .mc-dlbl{text-align:left!important;font-weight:500;white-space:nowrap}
+        .mc-un{font-size:10px;color:var(--g-mid);font-weight:400}
+        .mc-in{width:74px;font:600 12px var(--font);text-align:right;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--black)}
+        .mc-in:focus{border-color:var(--orange);outline:none}
+        .mc-tgl{display:inline-flex;margin-left:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden;vertical-align:middle}
+        .mc-tb{font:600 10px var(--font);padding:2px 8px;border:none;background:var(--white);color:var(--g-mid);cursor:pointer}
+        .mc-tb.on{background:var(--orange);color:#fff}
         @media(max-width:680px){.mc-cards{grid-template-columns:1fr}}
       </style>
       <div class="section">
@@ -636,24 +651,28 @@ function _sgLockPeers(){
 // pelo motor SG), e preço/câmbio ao vivo movem market cap / segmentos em USD. Mesh = cantos
 // (multilinear → interp exato). Gerado/validado no admin (model-central-lib.js) e guardado em
 // model_central_models (hide-aware). Reusa SG.buildGridMesh/interpolateMesh/computeSensitivityCellValue.
-const _mc={ models:{}, order:[], name:{}, sel:null, axisVals:{}, mktcap:{}, price:{}, fxLive:null };
-function _mcFmtMult(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'×'; }
-function _mcFmtPct(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; }
-function _mcFmtAxis(a,v){ if(v==null||!isFinite(v))return '—';
-  if(a.unit==='%')return (v*100).toLocaleString('en-US',{maximumFractionDigits:1})+'%';
-  if(a.unit==='BRL/USD')return v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  return v.toLocaleString('en-US',{maximumFractionDigits:1})+(a.unit?(' '+a.unit):''); }
+const _mc={ models:{}, order:[], name:{}, sel:null, vals:{}, src:{}, mktcap:{}, price:{}, live:{} };
+const _MC_ALIAS={ iron_ore_61:'iron_ore_62' };   // source do driver → chave do catálogo p/ o spot ao vivo
+function _mcLiveVal(source){ if(!source)return null; const k=_MC_ALIAS[source]||source; const v=_mc.live[k]; return (v!=null&&isFinite(v))?v:null; }
+function _mcMult(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'×'; }
+function _mcPct(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; }
+function _mcToDisp(a,v){ if(v==null||!isFinite(v))return ''; return a.unit==='%'?(Math.round(v*1000)/10):(Math.round(v*100)/100); }
+function _mcFromDisp(a,x){ const n=parseFloat(x); if(!isFinite(n))return null; return a.unit==='%'?(n/100):n; }
+function _mcStep(a){ return a.unit==='%'?0.1:(a.unit==='BRL/USD'?0.05:(a.unit==='USD/oz'?25:(a.unit==='USD/lb'?0.05:(a.unit==='USD/t'?1:1)))); }
+function _mcYears(m){ return String(m.fy||'2026E').split(',').map(s=>s.trim()); }
+function _mcArr(x){ return Array.isArray(x)?x:[x]; }
 
-function mcUpdateLive(computed, fxRates){
+function mcUpdateLive(computed, fxRates, marketValues){
   (computed||[]).forEach(r=>{ if(r&&!r.isExTaxCredit){ _mc.mktcap[r.ticker]=r.marketCapBrlMn; _mc.price[r.ticker]=r.livePrice; } });
-  _mc.fxLive=(fxRates&&fxRates.BRL)||null;
+  _mc.live=Object.assign({}, marketValues||{});
+  if(fxRates&&fxRates.BRL) _mc.live.fx_usdbrl=fxRates.BRL;
 }
-function mcRenderSuper(models, comps, computed, fxRates){
+function mcRenderSuper(models, comps, computed, fxRates, marketValues){
   const host=document.getElementById('mc-host'); if(!host)return;
   _mc.models={}; _mc.order=[]; _mc.name={};
   (comps||[]).forEach(c=>{ _mc.name[c.ticker]=c.company_name||c.ticker; });
   (models||[]).forEach(m=>{ if(!m||!m.ticker||!m.mesh)return; _mc.models[m.ticker]=m; _mc.order.push(m.ticker); });
-  mcUpdateLive(computed, fxRates);
+  mcUpdateLive(computed, fxRates, marketValues);
   if(!_mc.order.length){
     host.innerHTML='<div class="card mc-card-wrap"><div class="sec-title">Sensitivity</div><div class="muted" style="margin-top:6px">No models published yet.'+( _SG && _SG.isAdmin ? ' (Admin → Stock Guide → Model Central: upload an official model.)':'')+'</div></div>';
     return;
@@ -661,73 +680,71 @@ function mcRenderSuper(models, comps, computed, fxRates){
   const chips=_mc.order.map(t=>`<button class="mc-pick${t===_mc.sel?' on':''}" onclick="mcSelectCompany('${esc(t)}')">${esc(_mc.name[t]||t)} <span class="mc-tk">${esc(t)}</span></button>`).join('');
   host.innerHTML=`<div class="card mc-card-wrap">
     <div class="mc-head"><div class="sec-title">Sensitivity</div>
-      <div class="sec-sub">Flex the drivers — EV/EBITDA, FCF Yield &amp; Div Yield recompute live against the market price &amp; FX.</div></div>
+      <div class="sec-sub">Set each driver per year (Model = base case · Spot = live · or type your own) — the 3 multiples recompute live against the market price.</div></div>
     <div class="mc-pickrow">${chips}</div>
     <div id="mc-body"></div></div>`;
   mcSelectCompany(_mc.sel && _mc.models[_mc.sel] ? _mc.sel : _mc.order[0]);
 }
-function _mcCard(id,label){ return `<div class="mc-mcard"><div class="mc-mlabel">${esc(label)}</div><div class="mc-mval" id="mc-v-${id}">—</div><div class="mc-mbase" id="mc-b-${id}"></div></div>`; }
-function _mcSlider(t,a){
-  const v=_mc.axisVals[t][a.id];
-  const step=(a.unit==='%')?0.0025:((a.unit==='BRL/USD')?0.05:((a.max-a.min)/40));
-  const chip=a.live?'<span class="mc-livechip">live</span>':'<span class="mc-modelchip">model</span>';
-  return `<div class="mc-srow">
-    <div class="mc-slabel">${esc(a.label)} ${chip}</div>
-    <div class="mc-sline">
-      <span class="mc-sb">${_mcFmtAxis(a,a.min)}</span>
-      <input type="range" class="mc-range" min="${a.min}" max="${a.max}" step="${step}" value="${v}" oninput="mcOnSlide('${esc(t)}','${esc(a.id)}',this.value)">
-      <span class="mc-sb">${_mcFmtAxis(a,a.max)}</span>
-      <span class="mc-sval" id="mc-s-${esc(a.id)}">${_mcFmtAxis(a,v)}</span>
-    </div></div>`;
+function _mcInit(t){
+  const m=_mc.models[t], years=_mcYears(m);
+  _mc.vals[t]=_mc.vals[t]||{}; _mc.src[t]=_mc.src[t]||{};
+  (m.axes||[]).forEach(d=>{ if(!_mc.src[t][d.id]) _mc.src[t][d.id]='model';
+    if(!_mc.vals[t][d.id]) _mc.vals[t][d.id]=(d.baseByYear||years.map(()=>d.base)).slice(0,years.length); });
+}
+function _mcApplySrc(t,id,src){
+  const m=_mc.models[t], years=_mcYears(m), d=(m.axes||[]).find(x=>x.id===id); if(!d)return;
+  _mc.src[t][id]=src;
+  if(src==='model') _mc.vals[t][id]=(d.baseByYear||years.map(()=>d.base)).slice(0,years.length);
+  else if(src==='spot'){ const sp=_mcLiveVal(d.source); if(sp!=null) _mc.vals[t][id]=years.map(()=>sp); }
 }
 function mcSelectCompany(t){
   const m=_mc.models[t]; if(!m)return; _mc.sel=t;
   document.querySelectorAll('.mc-pick').forEach(b=>{ const oc=b.getAttribute('onclick')||''; b.classList.toggle('on', oc.indexOf("'"+t+"'")>=0); });
-  _mc.axisVals[t]=_mc.axisVals[t]||{};
-  (m.axes||[]).forEach(a=>{ if(_mc.axisVals[t][a.id]==null){ _mc.axisVals[t][a.id]=(a.kind==='fx'&&_mc.fxLive)?_mc.fxLive:a.base; } });
+  _mcInit(t);
   const body=document.getElementById('mc-body'); if(!body)return;
-  const price=_mc.price[t], mc=_mc.mktcap[t];
+  const years=_mcYears(m), price=_mc.price[t], mc=_mc.mktcap[t];
   const pxLine = price!=null ? `<span class="live-dot"></span> R$ ${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} · Mkt cap R$ ${mc!=null?Math.round(mc).toLocaleString('en-US'):'—'}mn` : '<span class="muted">no live quote</span>';
-  const cards=`<div class="mc-cards">${_mcCard('ev','EV/EBITDA')}${_mcCard('fcf','FCF Yield')}${_mcCard('div','Div Yield')}</div>`;
-  const sliders=(m.axes||[]).map(a=>_mcSlider(t,a)).join('');
-  body.innerHTML=`<div class="mc-id"><b>${esc(_mc.name[t]||t)}</b> <span class="mc-tk">${esc(t)}</span> <span class="mc-meta">${esc(m.fy||'')} · model ${esc(m.model_date||'—')}</span></div>
-    <div class="mc-px">${pxLine}</div>${cards}
-    <div class="mc-drv"><div class="mc-drv-h">Drivers <button class="mc-reset" onclick="mcReset()">↻ reset</button></div>${sliders}</div>
-    <div class="mc-note">${esc(m.notes||'')}</div>`;
+  const yh=years.map(y=>`<th>${esc(y)}</th>`).join('');
+  const irow=(id,label)=>`<tr><td class="mc-ilbl">${esc(label)}</td>${years.map((y,i)=>`<td class="mc-icell" id="mc-${id}-${i}">—</td>`).join('')}</tr>`;
+  const itable=`<table class="mc-tbl"><thead><tr><th></th>${yh}</tr></thead><tbody>${irow('ev','EV/EBITDA')}${irow('fcf','FCF Yield')}${irow('div','Div Yield')}</tbody></table>`;
+  const drows=(m.axes||[]).map(d=>_mcDrvRow(t,d,years)).join('');
+  const dtable=`<div class="mc-drv"><div class="mc-drv-h">Drivers — value per year <button class="mc-reset" onclick="mcReset()">↻ all to model</button></div>
+    <div class="tbl-scroll"><table class="mc-tbl mc-dtbl"><thead><tr><th></th>${yh}</tr></thead><tbody>${drows}</tbody></table></div></div>`;
+  body.innerHTML=`<div class="mc-id"><b>${esc(_mc.name[t]||t)}</b> <span class="mc-tk">${esc(t)}</span> <span class="mc-meta">model ${esc(m.model_date||'—')}</span></div>
+    <div class="mc-px">${pxLine}</div>${itable}${dtable}<div class="mc-note">${esc(m.notes||'')}</div>`;
   mcRecompute();
 }
-function mcOnSlide(t,axisId,val){ _mc.axisVals[t]=_mc.axisVals[t]||{}; _mc.axisVals[t][axisId]=parseFloat(val);
-  const m=_mc.models[t], a=m&&(m.axes||[]).find(x=>x.id===axisId), el=document.getElementById('mc-s-'+axisId);
-  if(el&&a)el.textContent=_mcFmtAxis(a,parseFloat(val)); mcRecompute(); }
-function mcReset(){ const t=_mc.sel, m=_mc.models[t]; if(!m)return;
-  _mc.axisVals[t]={}; (m.axes||[]).forEach(a=>{ _mc.axisVals[t][a.id]=(a.kind==='fx'&&_mc.fxLive)?_mc.fxLive:a.base; });
-  mcSelectCompany(t); }
+function _mcDrvRow(t,d,years){
+  const src=_mc.src[t][d.id], canSpot=(d.live && _mcLiveVal(d.source)!=null);
+  const cells=years.map((y,i)=>`<td><input type="number" class="mc-in" step="${_mcStep(d)}" value="${_mcToDisp(d,(_mc.vals[t][d.id]||[])[i])}" oninput="mcEdit('${esc(t)}','${esc(d.id)}',${i},this.value)"></td>`).join('');
+  const unit=d.unit?(' <span class="mc-un">'+esc(d.unit)+'</span>'):'';
+  const toggle=canSpot?`<span class="mc-tgl" data-drv="${esc(d.id)}"><button class="mc-tb${src==='model'?' on':''}" onclick="mcSrc('${esc(t)}','${esc(d.id)}','model')">Model</button><button class="mc-tb${src==='spot'?' on':''}" onclick="mcSrc('${esc(t)}','${esc(d.id)}','spot')">Spot</button></span>`:'';
+  return `<tr><td class="mc-dlbl">${esc(d.label)}${unit}${toggle}</td>${cells}</tr>`;
+}
+function mcEdit(t,id,i,val){ const m=_mc.models[t], d=(m.axes||[]).find(x=>x.id===id); _mc.vals[t][id]=_mc.vals[t][id]||[]; _mc.vals[t][id][i]=_mcFromDisp(d,val);
+  _mc.src[t][id]='manual'; const tg=document.querySelector('.mc-tgl[data-drv="'+id+'"]'); if(tg) tg.querySelectorAll('.mc-tb').forEach(b=>b.classList.remove('on')); mcRecompute(); }
+function mcSrc(t,id,src){ _mcApplySrc(t,id,src); mcSelectCompany(t); }
+function mcReset(){ const t=_mc.sel, m=_mc.models[t]; if(!m)return; (m.axes||[]).forEach(d=>_mcApplySrc(t,d.id,'model')); mcSelectCompany(t); }
 function mcRecompute(){
   const t=_mc.sel, m=_mc.models[t]; if(!m)return;
-  const axes=m.axes||[], dim=axes.length, at=axes.map(a=>_mc.axisVals[t][a.id]);
-  const interp=(metric)=>{ const pts=(m.mesh&&m.mesh[metric])||[]; if(!pts.length)return null;
-    const mesh=SG.buildGridMesh(pts,dim); return SG.interpolateMesh(mesh,at); };
-  const ebitda=interp('ebitda'), net_debt=interp('net_debt'), fcf=interp('fcf'), div=interp('dividends');
-  const mc=_mc.mktcap[t];
-  const ev=SG.computeSensitivityCellValue({valueMode:'ev_ebitda',primary:ebitda,secondary:net_debt,marketCapBrlMn:mc});
-  const fy=SG.computeSensitivityCellValue({valueMode:'yield',primary:fcf,marketCapBrlMn:mc});
-  const dy=SG.computeSensitivityCellValue({valueMode:'yield',primary:div,marketCapBrlMn:mc});
-  const p=m.published||{};
-  _mcSetCard('ev',_mcFmtMult(ev),p.ev_ebitda,ev,false);
-  _mcSetCard('fcf',_mcFmtPct(fy),p.fcf_yield,fy,true);
-  _mcSetCard('div',_mcFmtPct(dy),p.div_yield,dy,true);
+  const years=_mcYears(m), meshY=_mcArr(m.mesh), pubY=_mcArr(m.published), drivers=m.axes||[], dim=drivers.length, mc=_mc.mktcap[t];
+  years.forEach((y,i)=>{
+    const mesh=meshY[i]||{}, at=drivers.map(d=>(_mc.vals[t][d.id]||[])[i]);
+    const interp=(metric)=>{ const pts=mesh[metric]||[]; if(!pts.length)return null; return SG.interpolateMesh(SG.buildGridMesh(pts,dim),at); };
+    const ev=SG.computeSensitivityCellValue({valueMode:'ev_ebitda',primary:interp('ebitda'),secondary:interp('net_debt'),marketCapBrlMn:mc});
+    const fy=SG.computeSensitivityCellValue({valueMode:'yield',primary:interp('fcf'),marketCapBrlMn:mc});
+    const dy=SG.computeSensitivityCellValue({valueMode:'yield',primary:interp('dividends'),marketCapBrlMn:mc});
+    const p=pubY[i]||{};
+    _mcCell('ev',i,_mcMult(ev),p.ev_ebitda,ev,false); _mcCell('fcf',i,_mcPct(fy),p.fcf_yield,fy,true); _mcCell('div',i,_mcPct(dy),p.div_yield,dy,true);
+  });
 }
-function _mcSetCard(id,txt,baseVal,liveVal,isPct){
-  const v=document.getElementById('mc-v-'+id), b=document.getElementById('mc-b-'+id); if(!v)return;
-  v.textContent=txt;
-  if(!b)return;
-  if(baseVal==null){ b.textContent=''; return; }
-  const bt=isPct?_mcFmtPct(baseVal):_mcFmtMult(baseVal);
-  let arrow='';
-  if(liveVal!=null&&isFinite(liveVal)){ const d=liveVal-baseVal; arrow=Math.abs(d)<1e-9?'':(d>0?' ▲':' ▼'); }
-  b.textContent='model '+bt+arrow;
+function _mcCell(id,i,txt,baseVal,liveVal,isPct){
+  const el=document.getElementById('mc-'+id+'-'+i); if(!el)return;
+  let sub='';
+  if(baseVal!=null){ const bt=isPct?_mcPct(baseVal):_mcMult(baseVal); let ar=''; if(liveVal!=null&&isFinite(liveVal)){ const dd=liveVal-baseVal; ar=Math.abs(dd)<1e-9?'':(dd>0?' ▲':' ▼'); } sub=`<span class="mc-isub">model ${bt}${ar}</span>`; }
+  el.innerHTML=`<span class="mc-ival">${txt}</span>${sub}`;
 }
-function mcTickLive(computed, fxRates){ mcUpdateLive(computed, fxRates); if(_mc.sel&&_mc.models[_mc.sel]) mcRecompute(); }
+function mcTickLive(computed, fxRates, marketValues){ mcUpdateLive(computed, fxRates, marketValues); if(_mc.sel&&_mc.models[_mc.sel]) mcRecompute(); }
 
 async function sgInit(data){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
@@ -738,7 +755,7 @@ async function sgInit(data){
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
   if(data.sensEnabled===false){ _sgLockSensitivity(); }
   else {
-    mcRenderSuper(data.mcModels||[], data.comps, res.computed, data.fxRates);   // super aba Model Central
+    mcRenderSuper(data.mcModels||[], data.comps, res.computed, data.fxRates, data.marketValues);   // super aba Model Central
     if((data.tables||[]).length){ const ls=document.getElementById('legacy-sens-section'); if(ls)ls.hidden=false;
       sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config); }
   }
@@ -792,7 +809,7 @@ async function sgTickLive(){
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
     if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey);
-    if(typeof mcTickLive==='function') mcTickLive(res.computed,live.fxRates);   // super aba: preço/câmbio ao vivo
+    if(typeof mcTickLive==='function') mcTickLive(res.computed,live.fxRates,live.marketValues);   // super aba: preço/câmbio ao vivo
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
