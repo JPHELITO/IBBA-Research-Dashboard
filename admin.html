@@ -195,7 +195,7 @@ html.dark .ov-card{background:#20242b}
   <div class="shell">
     <aside class="side">
       <button class="active" data-tab="overview" onclick="showTab('overview')">📊 Visão geral</button>
-      <button data-tab="status" onclick="showTab('status')">📅 Status das bases</button>
+      <button data-tab="status" onclick="showTab('status')">🩺 Status das fontes</button>
       <button data-tab="github" onclick="showTab('github')">🔧 GitHub</button>
       <button data-tab="flags" onclick="showTab('flags')">🎛️ Funcionalidades</button>
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
@@ -382,11 +382,25 @@ html.dark .ov-card{background:#20242b}
 
     <!-- ── Status das bases ──────────────────────────────────────────────── -->
     <section id="tab-status" hidden>
+      <style>
+      #tab-status .ss-tbl{border-collapse:collapse;width:100%;font-size:13px}
+      #tab-status .ss-tbl th,#tab-status .ss-tbl td{border:1px solid var(--border,#E3E3E3);padding:6px 9px;text-align:left;vertical-align:top}
+      #tab-status .ss-tbl th{background:var(--g-light,#F4F3F0);font-weight:600}
+      #tab-status .ss-tbl td.ss-when{white-space:nowrap;text-align:right}
+      #tab-status .ss-acao{font-size:12px}
+      #tab-status .ss-tag{font-size:11px;padding:1px 7px;border-radius:10px;white-space:nowrap}
+      #tab-status .ss-auto{background:#DCFCE7;color:#166534}#tab-status .ss-semi{background:#FEF3C7;color:#92400E}#tab-status .ss-manual{background:#E0E7FF;color:#3730A3}
+      </style>
       <div class="card">
-        <h2>Status das bases</h2>
-        <p class="sub">Última data do dado (lida dos <code>.db</code>) + última atualização registrada (manual × automático). O <code>.db</code> de aço (~46MB) leva alguns segundos.</p>
-        <div id="status-list" class="status">Carregando…</div>
-        <div class="row" style="margin-top:10px"><button class="btn sec" onclick="loadStatus()">🔄 Recarregar</button></div>
+        <h2>🩺 Status das fontes <span class="muted" style="font-weight:400;font-size:13px">— o que a dashboard precisa de você</span></h2>
+        <p class="sub">Cada fonte de dado: se <b>roda sozinha</b> (🤖) ou <b>precisa de você</b> (✍️/⚠️), <b>quando atualizou</b> por último e <b>o que fazer</b> se estiver velha. Verde = fresco · laranja = atrasado · cinza = sem sinal ao vivo (confira pela data do dado).</p>
+        <div id="ss-action"></div>
+        <div id="ss-auto" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn sec" onclick="loadStatus()">🔄 Recarregar</button>
+          <button class="btn sec" onclick="loadDbDates()">📅 Ver última data dos dados (.db, ~46MB)</button>
+        </div>
+        <div id="ss-dbdates" style="margin-top:10px"></div>
       </div>
     </section>
 
@@ -916,34 +930,74 @@ async function setUserRole(id, role, email){
 }
 
 // ── Status das bases (último dado + última atualização manual×auto) ──────
-const STATUS_BASES=[
-  {label:'SECEX (aço)',      db:'steel', sql:"SELECT MAX(period) FROM secex_country",     src:'SECEX',                auto:true},
-  {label:'IABr',             db:'steel', sql:"SELECT MAX(period) FROM iabr_production",    src:'IABr',                 auto:true},
-  {label:'Minério',          db:'steel', sql:"SELECT MAX(period) FROM secex_iron_ore",     src:'Minério',              auto:true},
-  {label:'Celulose',         db:'pulp',  sql:"SELECT MAX(period) FROM secex_pulp_port",    src:'Celulose',             auto:true},
-  {label:'IBÁ papel',        db:'pulp',  sql:"SELECT MAX(period) FROM iba_paper",          src:'IBÁ papel',            auto:false},
-  {label:'Modelo · laranja', db:'steel', sql:"SELECT MAX(period) FROM import_prediction",  src:null,                   auto:true},
-  {label:'Modelo · preta',   db:'steel', sql:"SELECT MAX(period) FROM pred_exports",       src:'Linha preta (modelo)', auto:false},
-]
+// ═══════════════ STATUS DAS FONTES — o que a dash precisa de você (Fase 4) ═══════════════
+function _ssAgo(ts){ if(!ts)return '—'; const s=Math.max(0,(Date.now()-new Date(ts).getTime())/1000);
+  if(s<90)return Math.round(s)+'s atrás'; const m=s/60; if(m<90)return Math.round(m)+'min atrás';
+  const h=m/60; if(h<48)return Math.round(h)+'h atrás'; return Math.round(h/24)+'d atrás'; }
+function _ssDot(c){ return `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:7px;vertical-align:middle"></span>`; }
+function _ssBadge(when,staleMin){ if(when==null)return{dot:'#9CA3AF',txt:'—'};
+  const age=(Date.now()-new Date(when).getTime())/60000, txt=_ssAgo(when);
+  if(staleMin==null)return{dot:'#3B82F6',txt}; return{dot:age<=staleMin?'#16A34A':'#F59E0B',txt}; }
+function _ssTag(t){ return t==='auto'?'<span class="ss-tag ss-auto">🤖 automático</span>':(t==='semi'?'<span class="ss-tag ss-semi">⚠️ semi</span>':'<span class="ss-tag ss-manual">✍️ manual</span>'); }
+function _ssRow(label,tipo,b,acao){ return `<tr><td>${_ssDot(b.dot)}<b>${esc(label)}</b></td><td>${_ssTag(tipo)}</td><td class="ss-when">${esc(b.txt)}</td><td class="ss-acao muted">${acao}</td></tr>`; }
+function _ssLog(st,name){ return (st.base_log||[]).find(x=>x.source===name)||null; }
+function _ssHead(){ return '<table class="ss-tbl"><thead><tr><th>Fonte</th><th>Tipo</th><th style="text-align:right">Atualizou</th><th>O que fazer / observação</th></tr></thead><tbody>'; }
+function _ssLogWhen(st,name){ const e=_ssLog(st,name); return e&&e.last_update; }
+
 async function loadStatus(){
-  const host=document.getElementById('status-list'); host.innerHTML='<span class="muted">Carregando bancos (~46MB) + eventos…</span>'
-  let events={}
-  try{ const {data}=await sbAuth.rpc('get_base_status'); (data||[]).forEach(e=>{ events[e.source]=e }) }catch(e){}
-  try{
-    const SQL=await ensureSql(), dbs={}
-    for(const k of ['steel','pulp']){ const c=DBS[k], r=await fetch(encodeURI(c.path)+'?v='+Date.now()); if(!r.ok) throw new Error(c.label+' HTTP '+r.status); dbs[k]=new SQL.Database(new Uint8Array(await r.arrayBuffer())) }
-    let html='<div class="tbl-wrap"><table class="data"><thead><tr><th>Base</th><th>Último dado</th><th>Última atualização</th><th>Forma</th><th>Detalhe</th></tr></thead><tbody>'
-    for(const b of STATUS_BASES){
-      let dado='—'; try{ const r=dbs[b.db].exec(b.sql); dado=(r[0]&&r[0].values[0][0])||'—' }catch(e){}
-      const ev = b.src ? events[b.src] : null
-      const when = ev ? String(ev.last_update).replace('T',' ').slice(0,16) : (b.auto?'(cron — ainda sem registro)':'—')
-      const forma = ev ? (ev.method==='auto'?'🤖 automático':'✋ manual') : (b.auto?'🤖 automático':'✋ manual')
-      const det = (ev && ev.detail) ? esc(ev.detail) : '—'
-      html+=`<tr><td><b>${esc(b.label)}</b></td><td>${esc(dado)}</td><td>${esc(when)}</td><td>${forma}</td><td class="muted">${det}</td></tr>`
-    }
-    host.innerHTML=html+'</tbody></table></div>'
-    for(const k in dbs) dbs[k].close()
-  }catch(e){ host.textContent='Erro ao ler bases: '+(e.message||e) }
+  const A=document.getElementById('ss-action'), B=document.getElementById('ss-auto');
+  A.innerHTML='<span class="muted">Carregando…</span>'; B.innerHTML='';
+  let st={};
+  try{ const {data,error}=await sbAuth.rpc('get_source_status'); if(error)throw error; st=data||{}; }
+  catch(e){ A.innerHTML='<div class="muted">Erro: '+esc(e.message||e)+' — você rodou o <code>admin/supabase_source_status.sql</code>?</div>'; return; }
+  const md=st.model_defs||[]; let mdLast=null; md.forEach(m=>{ if(m.updated_at&&(!mdLast||m.updated_at>mdLast))mdLast=m.updated_at; });
+  const pf=st.platts||{}, plFailed=!!(pf&&pf.login_failed);
+  // ── PRECISA DE VOCÊ ──
+  let a=_ssHead();
+  { const b=_ssBadge(st.platts_last,60); if(plFailed)b.dot='#DC2626';
+    const acao=plFailed?'⚠️ <b>Sessão do Platts caiu</b> — rode o atalho <b>“Atualizar Platts”</b> no seu PC (~1-2 min). O login não passa pelo servidor (IP de datacenter bloqueado pelo Okta).'
+      :'Renova sozinho (~30 min). Se ficar &gt;~1h atrás, rode o atalho <b>“Atualizar Platts”</b> no seu PC.';
+    a+=_ssRow('Commodities Platts (minério 61%, aço, coque, rebar)','semi',b,acao); }
+  a+=_ssRow('Modelo · Sensibilidade ('+md.length+' empresas)','manual',_ssBadge(mdLast,null),'Ao mudar a planilha do modelo: rode <code>extract_models.py</code> + <code>push_model_defs.py</code>, ou edite em <b>Stock Guide → Modelo Vivo</b>.');
+  a+=_ssRow('IBÁ papel','semi',_ssBadge(_ssLogWhen(st,'IBÁ papel'),null),'Mensal, entrada manual (o PDF do IBÁ é imagem). Suba em <b>Atualizar dados</b> ou rode <code>update_iba.py</code>. Você recebe e-mail quando sai mês novo.');
+  a+=_ssRow('Empapel (papelão ondulado)','manual',_ssBadge(_ssLogWhen(st,'Empapel'),null),'Mensal manual — rode <code>update_empapel.py</code> com a planilha nova.');
+  a+=_ssRow('Linha preta — export Coreia/China (modelo preditivo)','manual',_ssBadge(_ssLogWhen(st,'Linha preta (modelo)'),null),'Aduana KR/CN sem API. Suba via <b>Atualizar dados</b> (pred_exports) ou ative a Coreia (secret <code>KOREA_SERVICE_KEY</code> + cron).');
+  a+=_ssRow('INDA (distribuição de aço)','manual',_ssBadge(null,null),'Sem auto-update ainda — entra pelo bootstrap (<code>extractor_sm.py</code>).');
+  a+=_ssRow('GACC woodchips (cavaco China)','manual',_ssBadge(null,null),'Bootstrap manual (<code>extractor_pp.py</code>) — auto-update pendente.');
+  A.innerHTML='<h3 style="margin:2px 0 6px;font-size:14px">✍️ Precisa de você</h3>'+a+'</tbody></table>';
+  // ── RODA SOZINHO ──
+  let g=_ssHead();
+  { const ai=(st.ai_24!=null)?(' · IA classificou '+st.ai_24+' nas últimas 24h'):'';
+    g+=_ssRow('Notícias + Takes (IA)','auto',_ssBadge(st.news_last,45),'news-hunter no GitHub Actions (~5 min).'+ai); }
+  g+=_ssRow('Cotações (ações + ouro/cobre)','auto',_ssBadge(st.quotes_last,45),'Yahoo, no loop (~5 min).');
+  g+=_ssRow('Minério 62% Fe (aba Market)','auto',_ssBadge(st.iron62_last,2880),'Trading Economics, algumas vezes/dia.');
+  g+=_ssRow('SECEX aço (import/export)','auto',_ssBadge(_ssLogWhen(st,'SECEX'),null),'Mensal — MDIC, dias 1-10 (sozinho).');
+  g+=_ssRow('Minério SECEX','auto',_ssBadge(_ssLogWhen(st,'Minério'),null),'Mensal — MDIC, junto do SECEX aço.');
+  g+=_ssRow('IABr (produção)','auto',_ssBadge(_ssLogWhen(st,'IABr'),null),'Mensal — baixa o Excel do Aço Brasil sozinho.');
+  g+=_ssRow('Celulose SECEX por porto','auto',_ssBadge(_ssLogWhen(st,'Celulose'),null),'Mensal — MDIC, dias 1-12 (o “herói” da aba Pulp).');
+  g+=_ssRow('Modelo · linha laranja (import Brasil)','auto',_ssBadge(null,null),'Preenche do MDIC junto do SECEX.');
+  B.innerHTML='<h3 style="margin:2px 0 6px;font-size:14px">🤖 Roda sozinho</h3>'+g+'</tbody></table>';
+}
+// última DATA do dado dos .db (leitura pesada ~46MB, sob demanda)
+const _DBDATE_BASES=[
+  {label:'SECEX (aço)',db:'steel',sql:"SELECT MAX(period) FROM secex_country"},
+  {label:'IABr',db:'steel',sql:"SELECT MAX(period) FROM iabr_production"},
+  {label:'Minério',db:'steel',sql:"SELECT MAX(period) FROM secex_iron_ore"},
+  {label:'Modelo · laranja',db:'steel',sql:"SELECT MAX(period) FROM import_prediction"},
+  {label:'Modelo · preta',db:'steel',sql:"SELECT MAX(period) FROM pred_exports"},
+  {label:'Celulose',db:'pulp',sql:"SELECT MAX(period) FROM secex_pulp_port"},
+  {label:'IBÁ papel',db:'pulp',sql:"SELECT MAX(period) FROM iba_paper"},
+  {label:'Empapel',db:'pulp',sql:"SELECT MAX(period) FROM empapel"},
+];
+async function loadDbDates(){
+  const host=document.getElementById('ss-dbdates'); host.innerHTML='<span class="muted">Lendo bancos (~46MB)…</span>';
+  try{ const SQL=await ensureSql(), dbs={};
+    for(const k of ['steel','pulp']){ const c=DBS[k], r=await fetch(encodeURI(c.path)+'?v='+Date.now()); if(!r.ok)throw new Error(c.label+' HTTP '+r.status); dbs[k]=new SQL.Database(new Uint8Array(await r.arrayBuffer())); }
+    let html='<table class="ss-tbl"><thead><tr><th>Base (.db)</th><th style="text-align:right">Última data do dado</th></tr></thead><tbody>';
+    for(const b of _DBDATE_BASES){ let d='—'; try{ const r=dbs[b.db].exec(b.sql); d=(r[0]&&r[0].values[0][0])||'—'; }catch(e){} html+=`<tr><td>${esc(b.label)}</td><td style="text-align:right">${esc(String(d))}</td></tr>`; }
+    host.innerHTML=html+'</tbody></table>';
+    for(const k in dbs)dbs[k].close();
+  }catch(e){ host.textContent='Erro ao ler bases: '+(e.message||e); }
 }
 
 // ── GitHub — execuções (Actions) ao vivo, via Edge Function github-runs ──
