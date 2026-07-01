@@ -491,6 +491,17 @@ html.dark .ov-card{background:#20242b}
         #sg-modelvivo .mv-params td{background:var(--g-light,#FAFAF8)}
         </style>
         <div class="card">
+          <h2>🎲 Gerador de cenários <span class="muted" style="font-weight:400;font-size:13px">— gera a lista p/ colar na aba Sensitivity do Excel</span></h2>
+          <p class="sub">Defina até 3 variáveis com <b>início · fim · passo</b>. O gerador monta <b>todas as combinações</b> (produto cartesiano) e você <b>cola</b> nas colunas de valores da aba Sensitivity do modelo (a partir de <code>A5</code>). Ex.: Minério 61% de <code>100</code> a <code>150</code> passo <code>0,5</code>.</p>
+          <table class="mv-tbl" style="max-width:680px"><thead><tr><th>Variável</th><th>Início</th><th>Fim</th><th>Passo</th></tr></thead><tbody>
+            <tr><td><input class="in mv-sm" id="gen-n0" placeholder="ex.: Minério 61%"></td><td><input class="in mv-xs" id="gen-a0" type="number"></td><td><input class="in mv-xs" id="gen-b0" type="number"></td><td><input class="in mv-xs" id="gen-s0" type="number"></td></tr>
+            <tr><td><input class="in mv-sm" id="gen-n1" placeholder="ex.: Volume"></td><td><input class="in mv-xs" id="gen-a1" type="number"></td><td><input class="in mv-xs" id="gen-b1" type="number"></td><td><input class="in mv-xs" id="gen-s1" type="number"></td></tr>
+            <tr><td><input class="in mv-sm" id="gen-n2" placeholder="ex.: Câmbio (opcional)"></td><td><input class="in mv-xs" id="gen-a2" type="number"></td><td><input class="in mv-xs" id="gen-b2" type="number"></td><td><input class="in mv-xs" id="gen-s2" type="number"></td></tr>
+          </tbody></table>
+          <div class="row" style="margin-top:8px"><button class="btn" onclick="mvGenerate()">Gerar lista</button><button class="btn sec" onclick="mvGenCopy()">📋 Copiar tudo</button> <span id="gen-info" class="muted"></span></div>
+          <textarea id="gen-out" style="width:100%;height:150px;font-family:ui-monospace,Consolas,monospace;font-size:11px;margin-top:8px;box-sizing:border-box" readonly placeholder="idx  var1  var2  var3 … (gere e cole no Excel a partir de A5)"></textarea>
+        </div>
+        <div class="card">
           <h2>🧮 Modelo Vivo <span class="muted" style="font-weight:400;font-size:13px">— editor da definição (drivers · linhas · indicadores)</span></h2>
           <p class="sub">O modelo como <b>dado editável</b>: edite fórmulas, adicione/remova linhas e drivers, ligue drivers ao vivo, ajuste faixas. <b>Validar</b> recomputa no navegador e confere contra o modelo (portão de sanidade); <b>Salvar</b> publica (hide-aware). As definições nascem do extrator fiel (<code>model-central/extract_models.py</code> → <code>push_model_defs.py</code>); aqui você refina. É exatamente o que a aba <b>Sensitivity</b> do cliente lê.</p>
           <div class="row">
@@ -1043,6 +1054,27 @@ function sgShowSub(s){
 const _mv={ defs:{}, order:[], sel:null, def:null };
 function _mvNum(v){ return (v==null||!isFinite(v))?'—':(Math.round(v*10000)/10000).toLocaleString('en-US'); }
 function _mvV(v){ return (v==null)?'':v; }
+// ── Gerador de cenários: range (início/fim/passo) -> produto cartesiano p/ colar no Excel ──
+function _genArr(a,b,s){ a=parseFloat(a); b=parseFloat(b); s=parseFloat(s);
+  if(!isFinite(a)) return []; if(!isFinite(b)) b=a; if(!isFinite(s)||s<=0) s=1;
+  const out=[]; const n=Math.floor((b-a)/s+1e-9)+1; for(let i=0;i<n&&i<200000;i++) out.push(Math.round((a+i*s)*1e6)/1e6);
+  return out.length?out:[a]; }
+function mvGenerate(){
+  const vars=[]; for(let k=0;k<3;k++){ const nm=(_v('gen-n'+k).value||'').trim(); if(!nm) continue;
+    vars.push({nm:nm, arr:_genArr(_v('gen-a'+k).value,_v('gen-b'+k).value,_v('gen-s'+k).value)}); }
+  const info=document.getElementById('gen-info'), out=document.getElementById('gen-out');
+  if(!vars.length){ out.value=''; info.textContent='defina ao menos 1 variável (nome + início).'; return; }
+  let rows=[[]]; vars.forEach(v=>{ const nr=[]; rows.forEach(r=>v.arr.forEach(x=>nr.push(r.concat(x)))); rows=nr;
+    if(rows.length>300000){ rows=rows.slice(0,300000); } });
+  const total=rows.length;
+  info.innerHTML=total.toLocaleString('pt-BR')+' cenários ('+vars.map(v=>v.nm+'='+v.arr.length).join(' × ')+')'+(total>3000?' — <b style="color:#B42318">grande p/ Data Table; considere passos maiores</b>':'');
+  const header='idx\t'+vars.map(v=>v.nm).join('\t');
+  out.value=header+'\n'+rows.map((r,i)=>(i+1)+'\t'+r.join('\t')).join('\n');
+}
+function mvGenCopy(){ const t=document.getElementById('gen-out'); if(!t.value){ alert('Gere a lista primeiro.'); return; }
+  t.focus(); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+  if(navigator.clipboard) navigator.clipboard.writeText(t.value).catch(()=>{});
+  document.getElementById('gen-info').innerHTML+=' · <b style="color:#166534">copiado ✓</b>'; }
 async function loadModelVivo(keep){
   const host=document.getElementById('mv-editor'), sel=document.getElementById('mv-sel');
   const {data,error}=await sbAuth.rpc('get_model_defs');
