@@ -678,7 +678,7 @@ function mcRenderSuper(defs, comps, computed, fxRates, marketValues){
   const chips=_mc.order.map(t=>`<button class="mc-pick${t===_mc.sel?' on':''}" onclick="mcSelectCompany('${esc(t)}')">${esc(_mc.name[t]||t)} <span class="mc-tk">${esc(t)}</span></button>`).join('');
   host.innerHTML=`<div class="card mc-card-wrap">
     <div class="mc-head"><div class="sec-title">Sensitivity</div>
-      <div class="sec-sub">Edite cada driver por ano (Model = base do modelo · Spot = ao vivo · ou digite). Os indicadores recalculam em duas óticas: <b>Modelo</b> (preço do modelo) × <b>Ao vivo</b> (mercado agora).</div></div>
+      <div class="sec-sub">Edite cada driver por ano (Model = base do modelo · Spot = ao vivo · ou digite). Os indicadores recalculam <b>ao vivo</b> — com o preço e o câmbio de mercado de agora.</div></div>
     <div class="mc-pickrow">${chips}</div>
     <div id="mc-body"></div></div>`;
   mcSelectCompany(_mc.sel && _mc.defs[_mc.sel] ? _mc.sel : _mc.order[0]);
@@ -744,11 +744,8 @@ function mcRecompute(){
 }
 function _mcOutCell(o,i,modelV,liveV){
   const el=document.getElementById('mc-out-'+o.id+'-'+i); if(!el)return;
-  const mtxt=_mcFmt(o,modelV);
-  let live='';
-  if(liveV!=null&&isFinite(liveV)){ let ar=''; if(modelV!=null&&isFinite(modelV)){ const dd=liveV-modelV; ar=Math.abs(dd)<1e-9?'':(dd>0?' ▲':' ▼'); }
-    live=`<span class="mc-isub"><span class="live-dot"></span>ao vivo ${_mcFmt(o,liveV)}${ar}</span>`; }
-  el.innerHTML=`<span class="mc-ival">${mtxt}</span>${live}`;
+  const v=(liveV!=null&&isFinite(liveV))?liveV:modelV;   // só AO VIVO (fallback p/ modelo se não houver cotação)
+  el.innerHTML=`<span class="mc-ival">${_mcFmt(o,v)}</span>`;
 }
 function mcTickLive(computed, fxRates, marketValues){ mcUpdateLive(computed, fxRates, marketValues); if(_mc.sel&&_mc.defs[_mc.sel]) mcRecompute(); }
 
