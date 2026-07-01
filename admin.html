@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="stock-guide-lib.js"></script>
 <script src="model-central-lib.js"></script>
+<script src="model-engine.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -406,8 +407,9 @@ html.dark .ov-card{background:#20242b}
     <section id="tab-stockguide" hidden>
       <div class="row" style="margin-bottom:14px">
         <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">📊 Dados (upload)</button>
-        <button class="btn sec" id="sgsub-drivers" onclick="sgShowSub('drivers')">🚧 Drivers · sensibilidade</button>
-        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">🚧 Tabelas · sensibilidade</button>
+        <button class="btn sec" id="sgsub-modelvivo" onclick="sgShowSub('modelvivo')">🧮 Modelo Vivo · sensibilidade</button>
+        <button class="btn sec" id="sgsub-drivers" onclick="sgShowSub('drivers')">🚧 Drivers (legado)</button>
+        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">🚧 Tabelas (legado)</button>
       </div>
 
       <div id="sg-companies">
@@ -458,6 +460,33 @@ html.dark .ov-card{background:#20242b}
             <input class="in" id="sg-foot" placeholder="Rodapé dos comps (vazio = automático)">
             <div class="row"><button class="btn" onclick="sgConfigSave()">Salvar config</button></div>
           </div>
+        </div>
+      </div>
+
+      <div id="sg-modelvivo" hidden>
+        <style>
+        #sg-modelvivo .mv-tbl{border-collapse:collapse;width:100%;font-size:12px;margin:4px 0}
+        #sg-modelvivo .mv-tbl th,#sg-modelvivo .mv-tbl td{border:1px solid var(--border,#E3E3E3);padding:2px 4px;text-align:left}
+        #sg-modelvivo .mv-tbl th{background:var(--g-light,#F4F3F0);font-weight:600;white-space:nowrap}
+        #sg-modelvivo .mv-tbl input.in,#sg-modelvivo .mv-tbl select.in,#sg-modelvivo .mv-tbl textarea.in{padding:2px 4px;font-size:12px;height:auto;min-height:0;margin:0;width:100%;box-sizing:border-box}
+        #sg-modelvivo .mv-xs{max-width:80px}#sg-modelvivo .mv-sm{max-width:130px}
+        #sg-modelvivo .mv-formula{min-width:300px;font-family:ui-monospace,Consolas,monospace}
+        #sg-modelvivo .mv-json{min-width:320px;font-family:ui-monospace,Consolas,monospace;font-size:11px;resize:vertical}
+        #sg-modelvivo h3{margin:16px 0 4px;font-size:13px}
+        #sg-modelvivo .mv-del{padding:2px 7px;line-height:1}
+        #sg-modelvivo .mv-params td{background:var(--g-light,#FAFAF8)}
+        </style>
+        <div class="card">
+          <h2>🧮 Modelo Vivo <span class="muted" style="font-weight:400;font-size:13px">— editor da definição (drivers · linhas · indicadores)</span></h2>
+          <p class="sub">O modelo como <b>dado editável</b>: edite fórmulas, adicione/remova linhas e drivers, ligue drivers ao vivo, ajuste faixas. <b>Validar</b> recomputa no navegador e confere contra o modelo (portão de sanidade); <b>Salvar</b> publica (hide-aware). As definições nascem do extrator fiel (<code>model-central/extract_models.py</code> → <code>push_model_defs.py</code>); aqui você refina. É exatamente o que a aba <b>Sensitivity</b> do cliente lê.</p>
+          <div class="row">
+            <select class="in" id="mv-sel" style="max-width:280px" onchange="mvSelect(this.value)"><option value="">Empresa…</option></select>
+            <button class="btn sec" onclick="mvValidate()">✓ Validar</button>
+            <button class="btn" onclick="mvSave()">💾 Salvar</button>
+            <button class="btn sec" onclick="mvDelDef()" style="margin-left:auto">🗑 Excluir</button>
+          </div>
+          <div id="mv-gate" class="status" style="margin-top:8px"></div>
+          <div id="mv-editor" style="margin-top:10px"></div>
         </div>
       </div>
 
@@ -948,10 +977,124 @@ let _sgCos=[], _sgDrivers=[], _sgCfg={};
 
 function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); }
 function sgShowSub(s){
-  ['companies','drivers','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
+  ['companies','modelvivo','drivers','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
     const b=document.getElementById('sgsub-'+k); if(b)b.className='btn'+(k===s?'':' sec'); });
+  if(s==='modelvivo') loadModelVivo();
   if(s==='drivers') loadSGDrivers();
   if(s==='sens' && typeof loadSGSens==='function') loadSGSens();
+}
+
+// ═══════════════ MODELO VIVO — editor da definição (admin) ═══════════════
+// Lê/edita/salva model_defs. O motor (model-engine.js) valida ao vivo (portão).
+const _mv={ defs:{}, order:[], sel:null, def:null };
+function _mvNum(v){ return (v==null||!isFinite(v))?'—':(Math.round(v*10000)/10000).toLocaleString('en-US'); }
+function _mvV(v){ return (v==null)?'':v; }
+async function loadModelVivo(keep){
+  const host=document.getElementById('mv-editor'), sel=document.getElementById('mv-sel');
+  const {data,error}=await sbAuth.rpc('get_model_defs');
+  if(error){ host.innerHTML='<div class="muted">Erro: '+esc(error.message)+' — você rodou o <code>admin/supabase_model_defs.sql</code>?</div>'; return; }
+  _mv.defs={}; _mv.order=[];
+  (data||[]).forEach(r=>{ if(r&&r.ticker){ _mv.defs[r.ticker]=r; _mv.order.push(r.ticker); } });
+  sel.innerHTML='<option value="">Empresa…</option>'+_mv.order.map(t=>`<option value="${esc(t)}">${esc((_mv.defs[t].def&&_mv.defs[t].def.name)||t)} (${esc(t)})</option>`).join('');
+  const pick=(keep&&_mv.defs[keep])?keep:_mv.order[0];
+  if(pick){ mvSelect(pick); } else { host.innerHTML='<div class="muted">Nenhuma definição publicada. Rode o extrator: <code>model-central/extract_models.py</code> → <code>push_model_defs.py</code>.</div>'; }
+}
+function mvSelect(tk){
+  if(!tk||!_mv.defs[tk]){ _mv.def=null; document.getElementById('mv-editor').innerHTML=''; return; }
+  _mv.sel=tk; _mv.def=JSON.parse(JSON.stringify(_mv.defs[tk].def||{}));
+  if(!_mv.def.ticker)_mv.def.ticker=tk; if(!_mv.def.years)_mv.def.years=[];
+  const s=document.getElementById('mv-sel'); if(s)s.value=tk;
+  document.getElementById('mv-gate').innerHTML=''; mvRender();
+}
+function mvRender(){
+  const d=_mv.def, host=document.getElementById('mv-editor'); if(!d){host.innerHTML='';return;}
+  const years=d.years||[], yh=years.map(y=>`<th>${esc(y)}</th>`).join('');
+  let h=`<div class="mv-meta" style="font-size:13px;margin-bottom:6px">Empresa <b>${esc(d.ticker)}</b> · moeda-base <input class="in mv-sm" style="display:inline-block;width:70px" value="${esc(_mvV(d.base_ccy))}" onchange="mvMeta('base_ccy',this.value)"> · anos: <b>${years.map(esc).join(' · ')||'—'}</b> <span class="muted">(anos vêm do modelo)</span></div>`;
+  // DRIVERS
+  h+=`<h3>Drivers (inputs — o que a dash precisa)</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th><th>tipo</th><th>fonte ao vivo</th><th>min</th><th>max</th>${yh}<th></th></tr></thead><tbody>`;
+  (d.drivers||[]).forEach((dr,i)=>{ h+=`<tr>
+    <td><input class="in mv-sm" value="${esc(_mvV(dr.id))}" onchange="mvF('drivers',${i},'id',this.value)"></td>
+    <td><input class="in" value="${esc(_mvV(dr.label))}" onchange="mvF('drivers',${i},'label',this.value)"></td>
+    <td><input class="in mv-sm" value="${esc(_mvV(dr.unit))}" onchange="mvF('drivers',${i},'unit',this.value)"></td>
+    <td><select class="in mv-sm" onchange="mvF('drivers',${i},'kind',this.value)"><option value="input"${dr.kind!=='live'?' selected':''}>input</option><option value="live"${dr.kind==='live'?' selected':''}>live</option></select></td>
+    <td><input class="in mv-sm" value="${esc(_mvV(dr.live_source))}" onchange="mvF('drivers',${i},'live_source',this.value)" placeholder="ex.: iron_ore_61"></td>
+    <td><input class="in mv-xs" type="number" value="${_mvV(dr.min)}" onchange="mvFn('drivers',${i},'min',this.value)"></td>
+    <td><input class="in mv-xs" type="number" value="${_mvV(dr.max)}" onchange="mvFn('drivers',${i},'max',this.value)"></td>
+    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((dr.base_by_year||[])[yi])}" onchange="mvA('drivers',${i},'base_by_year',${yi},this.value)"></td>`).join('')}
+    <td><button class="btn sec mv-del" onclick="mvDel('drivers',${i})">✕</button></td></tr>`; });
+  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('drivers')">+ driver</button>`;
+  // LINES
+  h+=`<h3>Linhas (contas) — fórmula contábil editável</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th>${yh}<th>fórmula</th><th></th></tr></thead><tbody>`;
+  (d.lines||[]).forEach((l,i)=>{ h+=`<tr>
+    <td><input class="in mv-sm" value="${esc(_mvV(l.id))}" onchange="mvF('lines',${i},'id',this.value)"></td>
+    <td><input class="in" value="${esc(_mvV(l.label))}" onchange="mvF('lines',${i},'label',this.value)"></td>
+    <td><input class="in mv-sm" value="${esc(_mvV(l.unit))}" onchange="mvF('lines',${i},'unit',this.value)"></td>
+    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((l.base_by_year||[])[yi])}" onchange="mvA('lines',${i},'base_by_year',${yi},this.value)"></td>`).join('')}
+    <td><input class="in mv-formula" value="${esc(_mvV(l.formula))}" onchange="mvF('lines',${i},'formula',this.value)" placeholder="vazio = usa a base; ex.: base + k_x*(x - base_x)"></td>
+    <td><button class="btn sec mv-del" onclick="mvDel('lines',${i})">✕</button></td></tr>`;
+    if(l.params && Object.keys(l.params).length){ h+=`<tr class="mv-params"><td class="muted">coef.</td><td colspan="${years.length+3}"><textarea class="in mv-json" rows="1" onchange="mvParams(${i},this.value)" title="coeficientes por ano (avançado)">${esc(JSON.stringify(l.params))}</textarea></td><td></td></tr>`; }
+  });
+  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('lines')">+ linha</button>`;
+  // OUTPUTS
+  h+=`<h3>Indicadores (saída)</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th><th>fórmula</th>${years.map(y=>`<th>${esc(y)} (modelo)</th>`).join('')}<th></th></tr></thead><tbody>`;
+  (d.outputs||[]).forEach((o,i)=>{ h+=`<tr>
+    <td><input class="in mv-sm" value="${esc(_mvV(o.id))}" onchange="mvF('outputs',${i},'id',this.value)"></td>
+    <td><input class="in" value="${esc(_mvV(o.label))}" onchange="mvF('outputs',${i},'label',this.value)"></td>
+    <td><input class="in mv-sm" value="${esc(_mvV(o.unit))}" onchange="mvF('outputs',${i},'unit',this.value)"></td>
+    <td><input class="in mv-formula" value="${esc(_mvV(o.formula))}" onchange="mvF('outputs',${i},'formula',this.value)" placeholder="ex.: (mktcap + net_debt + ev_adj) / ebitda"></td>
+    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((o.published_by_year||[])[yi])}" onchange="mvA('outputs',${i},'published_by_year',${yi},this.value)"></td>`).join('')}
+    <td><button class="btn sec mv-del" onclick="mvDel('outputs',${i})">✕</button></td></tr>`; });
+  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('outputs')">+ indicador</button>`;
+  // MARKET
+  const mm=(d.market&&d.market.mktcap_model_by_year)||[];
+  h+=`<h3>Mercado</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>valor de mercado do modelo (por ano)</th>${yh}</tr></thead><tbody><tr><td>mktcap_model_by_year</td>${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV(mm[yi])}" onchange="mvMkt(${yi},this.value)"></td>`).join('')}</tr></tbody></table></div>`;
+  h+=`<p class="sub" style="margin-top:10px">Variáveis disponíveis nas fórmulas: cada <b>driver</b> pelo id · <code>base_&lt;driver&gt;</code> · <code>base</code> (base da própria linha) · cada <b>linha</b> pelo id · <code>mktcap</code> · os coeficientes (k_·, c_·). Operadores <code>+ - * / ( )</code> e funções min/max/abs.</p>`;
+  host.innerHTML=h;
+}
+function mvF(sec,i,f,v){ _mv.def[sec][i][f]=v; }
+function mvFn(sec,i,f,v){ const n=parseFloat(v); _mv.def[sec][i][f]=isFinite(n)?n:null; }
+function mvA(sec,i,f,yi,v){ const a=_mv.def[sec][i][f]||(_mv.def[sec][i][f]=[]); const n=parseFloat(v); a[yi]=isFinite(n)?n:null; }
+function mvMeta(f,v){ _mv.def[f]=v; }
+function mvMkt(yi,v){ _mv.def.market=_mv.def.market||{}; const a=_mv.def.market.mktcap_model_by_year||(_mv.def.market.mktcap_model_by_year=[]); const n=parseFloat(v); a[yi]=isFinite(n)?n:null; }
+function mvParams(i,v){ try{ _mv.def.lines[i].params=JSON.parse(v); }catch(e){ alert('JSON inválido nos coeficientes: '+e.message); } }
+function mvAdd(sec){ const years=_mv.def.years||[]; let blank;
+  if(sec==='drivers') blank={id:'novo_driver',label:'Novo driver',unit:'',kind:'input',live_source:'',base_by_year:years.map(()=>0),min:null,max:null,editable_years:years.map(()=>true)};
+  else if(sec==='lines') blank={id:'nova_linha',label:'Nova linha',unit:'',base_by_year:years.map(()=>0),formula:'base'};
+  else blank={id:'novo_ind',label:'Novo indicador',unit:'',formula:'',published_by_year:years.map(()=>null)};
+  (_mv.def[sec]||(_mv.def[sec]=[])).push(blank); mvRender(); }
+function mvDel(sec,i){ if(!confirm('Remover esta linha?'))return; _mv.def[sec].splice(i,1); mvRender(); }
+function mvValidate(){
+  const g=document.getElementById('mv-gate'), d=_mv.def; if(!d){g.textContent='';return;}
+  if(!window.ModelEngine){ g.innerHTML='<span style="color:#B42318">model-engine.js não carregou.</span>'; return; }
+  const problems=ModelEngine.validateDef(d); let html='';
+  if(problems.length) html+='<div style="color:#B42318"><b>⚠ Fórmulas:</b><br>'+problems.map(esc).join('<br>')+'</div>';
+  try{
+    const r=ModelEngine.compute(d,{mktcapModel:(d.market&&d.market.mktcap_model_by_year)});
+    const years=d.years||[]; let rows='', bad=0;
+    (d.outputs||[]).forEach(o=>{ years.forEach((y,i)=>{ const exp=(o.published_by_year||[])[i]; if(exp==null)return;
+      const got=r.model[i]&&r.model[i].outputs[o.id]; const rel=Math.abs(got-exp)/Math.max(1e-9,Math.abs(exp))*100; const ok=rel<0.5; if(!ok)bad++;
+      rows+=`<tr><td>${esc(o.id)} ${esc(y)}</td><td>${_mvNum(got)}</td><td>${_mvNum(exp)}</td><td style="color:${ok?'#1E8E4E':'#B42318'}">${ok?'✓':'✗ '+rel.toFixed(1)+'%'}</td></tr>`; }); });
+    if(rows) html+=`<div style="margin-top:6px"><b>Portão (recalc × modelo, caso-base):</b> ${bad?('<span style="color:#B42318">'+bad+' fora</span>'):'<span style="color:#1E8E4E">tudo bate</span>'}</div><table class="mv-tbl" style="max-width:520px"><thead><tr><th>indicador/ano</th><th>recalc</th><th>modelo</th><th>?</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }catch(e){ html+='<div style="color:#B42318">Erro ao recomputar: '+esc(e.message)+'</div>'; }
+  g.innerHTML=html||'<span style="color:#1E8E4E">✓ Sem problemas.</span>';
+}
+async function mvSave(){
+  const d=_mv.def; if(!d||!d.ticker){alert('Escolha uma empresa.');return;}
+  const problems=window.ModelEngine?ModelEngine.validateDef(d):[];
+  if(problems.length && !confirm('Há avisos nas fórmulas:\n\n'+problems.join('\n')+'\n\nSalvar mesmo assim?'))return;
+  let parity=null; try{ const r=ModelEngine.compute(d,{mktcapModel:(d.market&&d.market.mktcap_model_by_year)}); let w=0;
+    (d.outputs||[]).forEach(o=>(d.years||[]).forEach((y,i)=>{ const e=(o.published_by_year||[])[i]; if(e==null)return; const g=r.model[i]&&r.model[i].outputs[o.id]; w=Math.max(w,Math.abs(g-e)/Math.max(1e-9,Math.abs(e))*100); })); parity=Math.round(w*1e4)/1e4; }catch(e){}
+  const {error}=await sbAuth.rpc('admin_upsert_model_def',{p:{ticker:d.ticker,def:d,parity:parity,source:'admin'}});
+  if(error){ alert('Erro ao salvar: '+error.message); return; }
+  document.getElementById('mv-gate').innerHTML='<span style="color:#1E8E4E">✓ Salvo '+esc(d.ticker)+'. O cliente já lê a versão nova.</span>';
+  await loadModelVivo(d.ticker);
+}
+async function mvDelDef(){
+  const d=_mv.def; if(!d||!d.ticker)return;
+  if(!confirm('Excluir a definição de '+d.ticker+'? (a aba Sensitivity deixa de mostrar esta empresa)'))return;
+  const {error}=await sbAuth.rpc('admin_delete_model_def',{p_ticker:d.ticker});
+  if(error){ alert('Erro: '+error.message); return; }
+  _mv.def=null; await loadModelVivo();
 }
 // config
 async function loadSGConfig(){
