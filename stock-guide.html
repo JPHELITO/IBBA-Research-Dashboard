@@ -254,6 +254,10 @@ async function sgLoadData(){
     rpc('get_stock_guide_global_peers').catch(()=>[]),
     rpc('get_model_defs').catch(()=>[])]);   // Modelo Vivo (super aba de sensibilidade)
   const mcDefs=(mcRows||[]).map(r=>Object.assign({}, r.def, {parity:r.parity})).filter(d=>d&&d.ticker);
+  // Aura: AURA33 é BDR (negocia em R$) de empresa que MODELA em US$; o modelo lista preço/mktcap na
+  // linha AUGO (US$) → a detecção de moeda a rotularia como R$ por engano. Normaliza p/ US$/AUGO (moeda
+  // do modelo) ANTES do fetch e dos múltiplos, p/ EV/EBITDA, yields e upside baterem. Idempotente.
+  (comps||[]).forEach(c=>{ if(c&&c.ticker==='AURA33'){ c.yahoo_symbol='AUGO'; c.trade_ccy='USD'; c.base_ccy='USD'; c.fx_to_base=1; c.fx_to_usd=1; } });
   const role=await rpc('get_my_role').catch(()=>null);
   const isAdmin=!!(role&&role==='admin');
   const peerSyms=(peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
