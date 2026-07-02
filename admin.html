@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 <!-- ── Stock Guide: SheetJS (gera/parseia o Excel do mesh) + lib compartilhada ── -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="stock-guide-lib.js"></script>
-<script src="model-central-lib.js"></script>
-<script src="model-engine.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -421,9 +419,7 @@ html.dark .ov-card{background:#20242b}
     <section id="tab-stockguide" hidden>
       <div class="row" style="margin-bottom:14px">
         <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">📊 Dados (upload)</button>
-        <button class="btn sec" id="sgsub-modelvivo" onclick="sgShowSub('modelvivo')">🧮 Modelo Vivo · sensibilidade</button>
-        <button class="btn sec" id="sgsub-drivers" onclick="sgShowSub('drivers')">🚧 Drivers (legado)</button>
-        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">🚧 Tabelas (legado)</button>
+        <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">📈 Sensibilidade</button>
       </div>
 
       <div id="sg-companies">
@@ -434,28 +430,6 @@ html.dark .ov-card{background:#20242b}
           <div class="row"><input class="in" id="sg-xlsm-file" type="file" accept=".xlsm,.xlsx" onchange="sgModelPreview(this.files[0])"></div>
           <div id="sg-xlsm-status" class="status" style="margin-top:8px"></div>
           <div id="sg-xlsm-preview" style="margin-top:10px"></div>
-        </div>
-
-        <div class="card">
-          <h2>🏛️ Model Central <span class="muted" style="font-weight:400;font-size:13px">— sensibilidade por empresa (modelo oficial)</span></h2>
-          <p class="sub">Suba o <b>modelo oficial</b> (.xlsx) de UMA empresa. Lê os numeradores, gera o grid de sensibilidade e <b>valida contra o próprio modelo</b> (recomputa os 3 indicadores e compara com o que o modelo publica). <b>Só publica se bater</b> — fail-closed. A super aba (Sensitivity) recalcula EV/EBITDA · FCF Yield · Div Yield AO VIVO (preço + câmbio). Links externos do modelo = congelados no valor salvo. <b>Fatia 1:</b> CSN · Usiminas · Gerdau.</p>
-          <style>#mc-preview table{border-collapse:collapse;width:auto;font-size:12px}#mc-preview th,#mc-preview td{border:1px solid var(--border,#E3E3E3);padding:4px 10px;text-align:right}#mc-preview th{background:var(--g-light,#F4F3F0)}#mc-preview td:first-child,#mc-preview th:first-child{text-align:left}</style>
-          <div class="row">
-            <select class="in" id="mc-ticker" style="max-width:220px">
-              <option value="">Empresa…</option>
-              <option value="VALE3">Vale (VALE3)</option>
-              <option value="CMIN3">CSN Mineração (CMIN3)</option>
-              <option value="CSNA3">CSN (CSNA3)</option>
-              <option value="USIM5">Usiminas (USIM5)</option>
-              <option value="GGBR4">Gerdau (GGBR4)</option>
-              <option value="SUZB3">Suzano (SUZB3)</option>
-              <option value="KLBN11">Klabin (KLBN11)</option>
-              <option value="AURA33">Aura (AURA33)</option>
-            </select>
-            <input class="in" id="mc-file" type="file" accept=".xlsx,.xlsm" onchange="mcAdminPreview(this.files[0])">
-          </div>
-          <div id="mc-status" class="status" style="margin-top:8px"></div>
-          <div id="mc-preview" style="margin-top:10px"></div>
         </div>
 
         <div class="card">
@@ -477,67 +451,9 @@ html.dark .ov-card{background:#20242b}
         </div>
       </div>
 
-      <div id="sg-modelvivo" hidden>
-        <style>
-        #sg-modelvivo .mv-tbl{border-collapse:collapse;width:100%;font-size:12px;margin:4px 0}
-        #sg-modelvivo .mv-tbl th,#sg-modelvivo .mv-tbl td{border:1px solid var(--border,#E3E3E3);padding:2px 4px;text-align:left}
-        #sg-modelvivo .mv-tbl th{background:var(--g-light,#F4F3F0);font-weight:600;white-space:nowrap}
-        #sg-modelvivo .mv-tbl input.in,#sg-modelvivo .mv-tbl select.in,#sg-modelvivo .mv-tbl textarea.in{padding:2px 4px;font-size:12px;height:auto;min-height:0;margin:0;width:100%;box-sizing:border-box}
-        #sg-modelvivo .mv-xs{max-width:80px}#sg-modelvivo .mv-sm{max-width:130px}
-        #sg-modelvivo .mv-formula{min-width:300px;font-family:ui-monospace,Consolas,monospace}
-        #sg-modelvivo .mv-json{min-width:320px;font-family:ui-monospace,Consolas,monospace;font-size:11px;resize:vertical}
-        #sg-modelvivo h3{margin:16px 0 4px;font-size:13px}
-        #sg-modelvivo .mv-del{padding:2px 7px;line-height:1}
-        #sg-modelvivo .mv-params td{background:var(--g-light,#FAFAF8)}
-        </style>
-        <div class="card">
-          <h2>🎲 Gerador de cenários <span class="muted" style="font-weight:400;font-size:13px">— gera a lista p/ colar na aba Sensitivity do Excel</span></h2>
-          <p class="sub">Defina até 3 variáveis com <b>início · fim · passo</b>. O gerador monta <b>todas as combinações</b> (produto cartesiano) e você <b>cola</b> nas colunas de valores da aba Sensitivity do modelo (a partir de <code>A5</code>). Ex.: Minério 61% de <code>100</code> a <code>150</code> passo <code>0,5</code>.</p>
-          <table class="mv-tbl" style="max-width:680px"><thead><tr><th>Variável</th><th>Início</th><th>Fim</th><th>Passo</th></tr></thead><tbody>
-            <tr><td><input class="in mv-sm" id="gen-n0" placeholder="ex.: Minério 61%"></td><td><input class="in mv-xs" id="gen-a0" type="number"></td><td><input class="in mv-xs" id="gen-b0" type="number"></td><td><input class="in mv-xs" id="gen-s0" type="number"></td></tr>
-            <tr><td><input class="in mv-sm" id="gen-n1" placeholder="ex.: Volume"></td><td><input class="in mv-xs" id="gen-a1" type="number"></td><td><input class="in mv-xs" id="gen-b1" type="number"></td><td><input class="in mv-xs" id="gen-s1" type="number"></td></tr>
-            <tr><td><input class="in mv-sm" id="gen-n2" placeholder="ex.: Câmbio (opcional)"></td><td><input class="in mv-xs" id="gen-a2" type="number"></td><td><input class="in mv-xs" id="gen-b2" type="number"></td><td><input class="in mv-xs" id="gen-s2" type="number"></td></tr>
-          </tbody></table>
-          <div class="row" style="margin-top:8px"><button class="btn" onclick="mvGenerate()">Gerar lista</button><button class="btn sec" onclick="mvGenCopy()">📋 Copiar tudo</button> <span id="gen-info" class="muted"></span></div>
-          <textarea id="gen-out" style="width:100%;height:150px;font-family:ui-monospace,Consolas,monospace;font-size:11px;margin-top:8px;box-sizing:border-box" readonly placeholder="idx  var1  var2  var3 … (gere e cole no Excel a partir de A5)"></textarea>
-        </div>
-        <div class="card">
-          <h2>🧮 Modelo Vivo <span class="muted" style="font-weight:400;font-size:13px">— editor da definição (drivers · linhas · indicadores)</span></h2>
-          <p class="sub">O modelo como <b>dado editável</b>: edite fórmulas, adicione/remova linhas e drivers, ligue drivers ao vivo, ajuste faixas. <b>Validar</b> recomputa no navegador e confere contra o modelo (portão de sanidade); <b>Salvar</b> publica (hide-aware). As definições nascem do extrator fiel (<code>model-central/extract_models.py</code> → <code>push_model_defs.py</code>); aqui você refina. É exatamente o que a aba <b>Sensitivity</b> do cliente lê.</p>
-          <div class="row">
-            <select class="in" id="mv-sel" style="max-width:280px" onchange="mvSelect(this.value)"><option value="">Empresa…</option></select>
-            <button class="btn sec" onclick="mvValidate()">✓ Validar</button>
-            <button class="btn" onclick="mvSave()">💾 Salvar</button>
-            <button class="btn sec" onclick="mvDelDef()" style="margin-left:auto">🗑 Excluir</button>
-          </div>
-          <div id="mv-gate" class="status" style="margin-top:8px"></div>
-          <div id="mv-editor" style="margin-top:10px"></div>
-        </div>
-      </div>
-
-      <div id="sg-drivers" hidden>
-        <div class="card">
-          <h2>Drivers (premissas macro)</h2>
-          <p class="sub"><b>Estático</b> = você digita o valor. <b>Dinâmico</b> = valor ao vivo (lê minério/HRC/câmbio que já coletamos). <code>current_value</code> é a âncora "base case" do grid.</p>
-          <div id="sg-drv-list" class="status">Carregando…</div>
-          <div class="row" style="margin-top:12px"><button class="btn" onclick="sgDrvEdit(null)">+ Adicionar driver</button></div>
-        </div>
-        <div class="card" id="sg-drv-form-card" hidden>
-          <h2 id="sg-drv-form-title">Novo driver</h2>
-          <div class="field">
-            <input class="in" id="sgd-name" placeholder="Nome (ex.: Iron ore 62% Fe 2026)">
-            <input class="in" id="sgd-unit" placeholder="Unidade (ex.: USD/t)">
-            <input class="in" id="sgd-cv" type="number" placeholder="current_value (base case / valor hoje)">
-            <select class="in" id="sgd-src"></select>
-            <input class="in" id="sgd-order" type="number" placeholder="Ordem">
-            <div class="row"><button class="btn" onclick="sgDrvSave()">Salvar</button><button class="btn sec" onclick="sgDrvCancel()">Cancelar</button></div>
-          </div>
-        </div>
-      </div>
-
       <div id="sg-sens" hidden>
-        <div class="card"><h2>Sensibilidades</h2>
-          <p class="sub">Builder de tabelas (estática / scenario grid) + upload do mesh em Excel + preview ao vivo.</p>
+        <div class="card"><h2>Sensibilidade</h2>
+          <p class="sub">Importe a aba <b>Sensitivity</b> do modelo (o Excel de cenários) — vira a grade que a aba Sensitivity do cliente mostra ao vivo (EV/EBITDA, FCF yield, Div yield, upside). <b>Reimportar a mesma empresa atualiza.</b></p>
           <div id="sg-sens-host" class="status">Carregando…</div></div>
       </div>
     </section>
@@ -1042,146 +958,13 @@ let _sgCos=[], _sgDrivers=[], _sgCfg={};
 
 function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); }
 function sgShowSub(s){
-  ['companies','modelvivo','drivers','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
+  ['companies','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
     const b=document.getElementById('sgsub-'+k); if(b)b.className='btn'+(k===s?'':' sec'); });
-  if(s==='modelvivo') loadModelVivo();
-  if(s==='drivers') loadSGDrivers();
-  if(s==='sens' && typeof loadSGSens==='function') loadSGSens();
+  if(s==='sens') loadSGSens();
 }
 
-// ═══════════════ MODELO VIVO — editor da definição (admin) ═══════════════
-// Lê/edita/salva model_defs. O motor (model-engine.js) valida ao vivo (portão).
-const _mv={ defs:{}, order:[], sel:null, def:null };
-function _mvNum(v){ return (v==null||!isFinite(v))?'—':(Math.round(v*10000)/10000).toLocaleString('en-US'); }
-function _mvV(v){ return (v==null)?'':v; }
-// ── Gerador de cenários: range (início/fim/passo) -> produto cartesiano p/ colar no Excel ──
-function _genArr(a,b,s){ a=parseFloat(a); b=parseFloat(b); s=parseFloat(s);
-  if(!isFinite(a)) return []; if(!isFinite(b)) b=a; if(!isFinite(s)||s<=0) s=1;
-  const out=[]; const n=Math.floor((b-a)/s+1e-9)+1; for(let i=0;i<n&&i<200000;i++) out.push(Math.round((a+i*s)*1e6)/1e6);
-  return out.length?out:[a]; }
-function mvGenerate(){
-  const vars=[]; for(let k=0;k<3;k++){ const nm=(_v('gen-n'+k).value||'').trim(); if(!nm) continue;
-    vars.push({nm:nm, arr:_genArr(_v('gen-a'+k).value,_v('gen-b'+k).value,_v('gen-s'+k).value)}); }
-  const info=document.getElementById('gen-info'), out=document.getElementById('gen-out');
-  if(!vars.length){ out.value=''; info.textContent='defina ao menos 1 variável (nome + início).'; return; }
-  let rows=[[]]; vars.forEach(v=>{ const nr=[]; rows.forEach(r=>v.arr.forEach(x=>nr.push(r.concat(x)))); rows=nr;
-    if(rows.length>300000){ rows=rows.slice(0,300000); } });
-  const total=rows.length;
-  info.innerHTML=total.toLocaleString('pt-BR')+' cenários ('+vars.map(v=>v.nm+'='+v.arr.length).join(' × ')+')'+(total>3000?' — <b style="color:#B42318">grande p/ Data Table; considere passos maiores</b>':'');
-  const header='idx\t'+vars.map(v=>v.nm).join('\t');
-  out.value=header+'\n'+rows.map((r,i)=>(i+1)+'\t'+r.join('\t')).join('\n');
-}
-function mvGenCopy(){ const t=document.getElementById('gen-out'); if(!t.value){ alert('Gere a lista primeiro.'); return; }
-  t.focus(); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
-  if(navigator.clipboard) navigator.clipboard.writeText(t.value).catch(()=>{});
-  document.getElementById('gen-info').innerHTML+=' · <b style="color:#166534">copiado ✓</b>'; }
-async function loadModelVivo(keep){
-  const host=document.getElementById('mv-editor'), sel=document.getElementById('mv-sel');
-  const {data,error}=await sbAuth.rpc('get_model_defs');
-  if(error){ host.innerHTML='<div class="muted">Erro: '+esc(error.message)+' — você rodou o <code>admin/supabase_model_defs.sql</code>?</div>'; return; }
-  _mv.defs={}; _mv.order=[];
-  (data||[]).forEach(r=>{ if(r&&r.ticker){ _mv.defs[r.ticker]=r; _mv.order.push(r.ticker); } });
-  sel.innerHTML='<option value="">Empresa…</option>'+_mv.order.map(t=>`<option value="${esc(t)}">${esc((_mv.defs[t].def&&_mv.defs[t].def.name)||t)} (${esc(t)})</option>`).join('');
-  const pick=(keep&&_mv.defs[keep])?keep:_mv.order[0];
-  if(pick){ mvSelect(pick); } else { host.innerHTML='<div class="muted">Nenhuma definição publicada. Rode o extrator: <code>model-central/extract_models.py</code> → <code>push_model_defs.py</code>.</div>'; }
-}
-function mvSelect(tk){
-  if(!tk||!_mv.defs[tk]){ _mv.def=null; document.getElementById('mv-editor').innerHTML=''; return; }
-  _mv.sel=tk; _mv.def=JSON.parse(JSON.stringify(_mv.defs[tk].def||{}));
-  if(!_mv.def.ticker)_mv.def.ticker=tk; if(!_mv.def.years)_mv.def.years=[];
-  const s=document.getElementById('mv-sel'); if(s)s.value=tk;
-  document.getElementById('mv-gate').innerHTML=''; mvRender();
-}
-function mvRender(){
-  const d=_mv.def, host=document.getElementById('mv-editor'); if(!d){host.innerHTML='';return;}
-  const years=d.years||[], yh=years.map(y=>`<th>${esc(y)}</th>`).join('');
-  let h=`<div class="mv-meta" style="font-size:13px;margin-bottom:6px">Empresa <b>${esc(d.ticker)}</b> · moeda-base <input class="in mv-sm" style="display:inline-block;width:70px" value="${esc(_mvV(d.base_ccy))}" onchange="mvMeta('base_ccy',this.value)"> · anos: <b>${years.map(esc).join(' · ')||'—'}</b> <span class="muted">(anos vêm do modelo)</span></div>`;
-  // DRIVERS
-  h+=`<h3>Drivers (inputs — o que a dash precisa)</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th><th>tipo</th><th>fonte ao vivo</th><th>min</th><th>max</th>${yh}<th></th></tr></thead><tbody>`;
-  (d.drivers||[]).forEach((dr,i)=>{ h+=`<tr>
-    <td><input class="in mv-sm" value="${esc(_mvV(dr.id))}" onchange="mvF('drivers',${i},'id',this.value)"></td>
-    <td><input class="in" value="${esc(_mvV(dr.label))}" onchange="mvF('drivers',${i},'label',this.value)"></td>
-    <td><input class="in mv-sm" value="${esc(_mvV(dr.unit))}" onchange="mvF('drivers',${i},'unit',this.value)"></td>
-    <td><select class="in mv-sm" onchange="mvF('drivers',${i},'kind',this.value)"><option value="input"${dr.kind!=='live'?' selected':''}>input</option><option value="live"${dr.kind==='live'?' selected':''}>live</option></select></td>
-    <td><input class="in mv-sm" value="${esc(_mvV(dr.live_source))}" onchange="mvF('drivers',${i},'live_source',this.value)" placeholder="ex.: iron_ore_61"></td>
-    <td><input class="in mv-xs" type="number" value="${_mvV(dr.min)}" onchange="mvFn('drivers',${i},'min',this.value)"></td>
-    <td><input class="in mv-xs" type="number" value="${_mvV(dr.max)}" onchange="mvFn('drivers',${i},'max',this.value)"></td>
-    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((dr.base_by_year||[])[yi])}" onchange="mvA('drivers',${i},'base_by_year',${yi},this.value)"></td>`).join('')}
-    <td><button class="btn sec mv-del" onclick="mvDel('drivers',${i})">✕</button></td></tr>`; });
-  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('drivers')">+ driver</button>`;
-  // LINES
-  h+=`<h3>Linhas (contas) — fórmula contábil editável</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th>${yh}<th>fórmula</th><th></th></tr></thead><tbody>`;
-  (d.lines||[]).forEach((l,i)=>{ h+=`<tr>
-    <td><input class="in mv-sm" value="${esc(_mvV(l.id))}" onchange="mvF('lines',${i},'id',this.value)"></td>
-    <td><input class="in" value="${esc(_mvV(l.label))}" onchange="mvF('lines',${i},'label',this.value)"></td>
-    <td><input class="in mv-sm" value="${esc(_mvV(l.unit))}" onchange="mvF('lines',${i},'unit',this.value)"></td>
-    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((l.base_by_year||[])[yi])}" onchange="mvA('lines',${i},'base_by_year',${yi},this.value)"></td>`).join('')}
-    <td><input class="in mv-formula" value="${esc(_mvV(l.formula))}" onchange="mvF('lines',${i},'formula',this.value)" placeholder="vazio = usa a base; ex.: base + k_x*(x - base_x)"></td>
-    <td><button class="btn sec mv-del" onclick="mvDel('lines',${i})">✕</button></td></tr>`;
-    if(l.params && Object.keys(l.params).length){ h+=`<tr class="mv-params"><td class="muted">coef.</td><td colspan="${years.length+3}"><textarea class="in mv-json" rows="1" onchange="mvParams(${i},this.value)" title="coeficientes por ano (avançado)">${esc(JSON.stringify(l.params))}</textarea></td><td></td></tr>`; }
-  });
-  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('lines')">+ linha</button>`;
-  // OUTPUTS
-  h+=`<h3>Indicadores (saída)</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>id</th><th>rótulo</th><th>unid.</th><th>fórmula</th>${years.map(y=>`<th>${esc(y)} (modelo)</th>`).join('')}<th></th></tr></thead><tbody>`;
-  (d.outputs||[]).forEach((o,i)=>{ h+=`<tr>
-    <td><input class="in mv-sm" value="${esc(_mvV(o.id))}" onchange="mvF('outputs',${i},'id',this.value)"></td>
-    <td><input class="in" value="${esc(_mvV(o.label))}" onchange="mvF('outputs',${i},'label',this.value)"></td>
-    <td><input class="in mv-sm" value="${esc(_mvV(o.unit))}" onchange="mvF('outputs',${i},'unit',this.value)"></td>
-    <td><input class="in mv-formula" value="${esc(_mvV(o.formula))}" onchange="mvF('outputs',${i},'formula',this.value)" placeholder="ex.: (mktcap + net_debt + ev_adj) / ebitda"></td>
-    ${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV((o.published_by_year||[])[yi])}" onchange="mvA('outputs',${i},'published_by_year',${yi},this.value)"></td>`).join('')}
-    <td><button class="btn sec mv-del" onclick="mvDel('outputs',${i})">✕</button></td></tr>`; });
-  h+=`</tbody></table></div><button class="btn sec" onclick="mvAdd('outputs')">+ indicador</button>`;
-  // MARKET
-  const mm=(d.market&&d.market.mktcap_model_by_year)||[];
-  h+=`<h3>Mercado</h3><div class="tbl-scroll"><table class="mv-tbl"><thead><tr><th>valor de mercado do modelo (por ano)</th>${yh}</tr></thead><tbody><tr><td>mktcap_model_by_year</td>${years.map((y,yi)=>`<td><input class="in mv-xs" type="number" value="${_mvV(mm[yi])}" onchange="mvMkt(${yi},this.value)"></td>`).join('')}</tr></tbody></table></div>`;
-  h+=`<p class="sub" style="margin-top:10px">Variáveis disponíveis nas fórmulas: cada <b>driver</b> pelo id · <code>base_&lt;driver&gt;</code> · <code>base</code> (base da própria linha) · cada <b>linha</b> pelo id · <code>mktcap</code> · os coeficientes (k_·, c_·). Operadores <code>+ - * / ( )</code> e funções min/max/abs.</p>`;
-  host.innerHTML=h;
-}
-function mvF(sec,i,f,v){ _mv.def[sec][i][f]=v; }
-function mvFn(sec,i,f,v){ const n=parseFloat(v); _mv.def[sec][i][f]=isFinite(n)?n:null; }
-function mvA(sec,i,f,yi,v){ const a=_mv.def[sec][i][f]||(_mv.def[sec][i][f]=[]); const n=parseFloat(v); a[yi]=isFinite(n)?n:null; }
-function mvMeta(f,v){ _mv.def[f]=v; }
-function mvMkt(yi,v){ _mv.def.market=_mv.def.market||{}; const a=_mv.def.market.mktcap_model_by_year||(_mv.def.market.mktcap_model_by_year=[]); const n=parseFloat(v); a[yi]=isFinite(n)?n:null; }
-function mvParams(i,v){ try{ _mv.def.lines[i].params=JSON.parse(v); }catch(e){ alert('JSON inválido nos coeficientes: '+e.message); } }
-function mvAdd(sec){ const years=_mv.def.years||[]; let blank;
-  if(sec==='drivers') blank={id:'novo_driver',label:'Novo driver',unit:'',kind:'input',live_source:'',base_by_year:years.map(()=>0),min:null,max:null,editable_years:years.map(()=>true)};
-  else if(sec==='lines') blank={id:'nova_linha',label:'Nova linha',unit:'',base_by_year:years.map(()=>0),formula:'base'};
-  else blank={id:'novo_ind',label:'Novo indicador',unit:'',formula:'',published_by_year:years.map(()=>null)};
-  (_mv.def[sec]||(_mv.def[sec]=[])).push(blank); mvRender(); }
-function mvDel(sec,i){ if(!confirm('Remover esta linha?'))return; _mv.def[sec].splice(i,1); mvRender(); }
-function mvValidate(){
-  const g=document.getElementById('mv-gate'), d=_mv.def; if(!d){g.textContent='';return;}
-  if(!window.ModelEngine){ g.innerHTML='<span style="color:#B42318">model-engine.js não carregou.</span>'; return; }
-  const problems=ModelEngine.validateDef(d); let html='';
-  if(problems.length) html+='<div style="color:#B42318"><b>⚠ Fórmulas:</b><br>'+problems.map(esc).join('<br>')+'</div>';
-  try{
-    const r=ModelEngine.compute(d,{mktcapModel:(d.market&&d.market.mktcap_model_by_year)});
-    const years=d.years||[]; let rows='', bad=0;
-    (d.outputs||[]).forEach(o=>{ years.forEach((y,i)=>{ const exp=(o.published_by_year||[])[i]; if(exp==null)return;
-      const got=r.model[i]&&r.model[i].outputs[o.id]; const rel=Math.abs(got-exp)/Math.max(1e-9,Math.abs(exp))*100; const ok=rel<0.5; if(!ok)bad++;
-      rows+=`<tr><td>${esc(o.id)} ${esc(y)}</td><td>${_mvNum(got)}</td><td>${_mvNum(exp)}</td><td style="color:${ok?'#1E8E4E':'#B42318'}">${ok?'✓':'✗ '+rel.toFixed(1)+'%'}</td></tr>`; }); });
-    if(rows) html+=`<div style="margin-top:6px"><b>Portão (recalc × modelo, caso-base):</b> ${bad?('<span style="color:#B42318">'+bad+' fora</span>'):'<span style="color:#1E8E4E">tudo bate</span>'}</div><table class="mv-tbl" style="max-width:520px"><thead><tr><th>indicador/ano</th><th>recalc</th><th>modelo</th><th>?</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }catch(e){ html+='<div style="color:#B42318">Erro ao recomputar: '+esc(e.message)+'</div>'; }
-  g.innerHTML=html||'<span style="color:#1E8E4E">✓ Sem problemas.</span>';
-}
-async function mvSave(){
-  const d=_mv.def; if(!d||!d.ticker){alert('Escolha uma empresa.');return;}
-  const problems=window.ModelEngine?ModelEngine.validateDef(d):[];
-  if(problems.length && !confirm('Há avisos nas fórmulas:\n\n'+problems.join('\n')+'\n\nSalvar mesmo assim?'))return;
-  let parity=null; try{ const r=ModelEngine.compute(d,{mktcapModel:(d.market&&d.market.mktcap_model_by_year)}); let w=0;
-    (d.outputs||[]).forEach(o=>(d.years||[]).forEach((y,i)=>{ const e=(o.published_by_year||[])[i]; if(e==null)return; const g=r.model[i]&&r.model[i].outputs[o.id]; w=Math.max(w,Math.abs(g-e)/Math.max(1e-9,Math.abs(e))*100); })); parity=Math.round(w*1e4)/1e4; }catch(e){}
-  const {error}=await sbAuth.rpc('admin_upsert_model_def',{p:{ticker:d.ticker,def:d,parity:parity,source:'admin'}});
-  if(error){ alert('Erro ao salvar: '+error.message); return; }
-  document.getElementById('mv-gate').innerHTML='<span style="color:#1E8E4E">✓ Salvo '+esc(d.ticker)+'. O cliente já lê a versão nova.</span>';
-  await loadModelVivo(d.ticker);
-}
-async function mvDelDef(){
-  const d=_mv.def; if(!d||!d.ticker)return;
-  if(!confirm('Excluir a definição de '+d.ticker+'? (a aba Sensitivity deixa de mostrar esta empresa)'))return;
-  const {error}=await sbAuth.rpc('admin_delete_model_def',{p_ticker:d.ticker});
-  if(error){ alert('Erro: '+error.message); return; }
-  _mv.def=null; await loadModelVivo();
-}
+// (Modelo Vivo / Gerador de cenários / editor de coeficientes — REMOVIDOS 2026-07-02:
+//  superseditos pela importação da aba Sensitivity → grade de cenários.)
 // config
 async function loadSGConfig(){
   const {data,error}=await sbAuth.rpc('get_stock_guide_config'); if(error)return;
@@ -1260,236 +1043,36 @@ async function sgModelCommit(){
   stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+r.data+' empresas gravadas/atualizadas'+peerMsg+' Preço e múltiplos calculam ao vivo na página.';
   _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-file').value=''; loadSGCompanies();
 }
-// ── Model Central: 1 modelo oficial → parse + gate + publish (model-central-lib.js) ──
-let _mcParsed=null, _mcFile='';
-async function mcAdminPreview(file){
-  const tk=_v('mc-ticker').value, stat=_v('mc-status'), prev=_v('mc-preview'); _mcParsed=null; prev.innerHTML='';
-  if(!file){stat.textContent='';return}
-  if(!window.MC||!MC.parseModel){stat.innerHTML='<b style="color:#C0392B">model-central-lib.js não carregou.</b>';return}
-  if(!tk){stat.innerHTML='<b style="color:#C0392B">Escolha a empresa primeiro.</b>';return}
-  _mcFile=file.name; stat.textContent='Lendo '+file.name+' como '+tk+'…';
-  try{
-    const buf=await file.arrayBuffer();
-    const wb=XLSX.read(buf,{type:'array',cellDates:true});
-    const rec=MC.parseModel(wb,tk);
-    if(rec.error){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+esc(rec.error); return; }
-    _mcParsed=rec;
-    const gy=rec.gateByYear||[], pby=rec.publishedByYear||[], okAll=(rec.gate&&rec.gate.ok);
-    const fm=(v,pct)=> v==null||!isFinite(v)?'—':(pct?(Math.round(v*10)/10+'%'):(Math.round(v*100)/100+'×'));
-    const tol=(pct)=>pct?0.15:0.02;
-    const cell=(rv,mv,pct)=>{ const ok=(rv!=null&&mv!=null&&Math.abs(rv-mv)<=tol(pct)); return `${fm(rv,pct)} <span style="color:${ok?'#1E8E4E':'#C0392B'}">/ ${fm(mv,pct)} ${ok?'✓':'✗'}</span>`; };
-    let h='<table><thead><tr><th>Ano</th><th>EV/EBITDA</th><th>FCF Yield</th><th>Div Yield</th></tr></thead><tbody>';
-    gy.forEach((g,i)=>{ const r=g.recomputed||{}, p=pby[i]||{};
-      h+=`<tr><td><b>${esc(g.year)}</b></td><td>${cell(r.ev_ebitda,p.ev_ebitda,false)}</td><td>${cell(r.fcf_yield,p.fcf_yield,true)}</td><td>${cell(r.div_yield,p.div_yield,true)}</td></tr>`; });
-    h+='</tbody></table>';
-    const axesTxt=(rec.drivers||[]).map(a=>a.label+(a.live?' (ao vivo)':'')).join(' · ');
-    prev.innerHTML=`<div style="overflow-x:auto">${h}</div>`+
-      `<div class="muted" style="font-size:11px;margin-top:6px">Recomputado / Modelo por ano · Drivers: ${esc(axesTxt)} · ${esc(rec.currency||'')}</div>`+
-      (okAll
-        ? `<div class="status" style="margin-top:8px;color:#1E8E4E"><b>✓ Gate OK</b> nos ${gy.length} anos — recomputo bate com o modelo.</div><div class="row" style="margin-top:10px"><button class="btn" onclick="mcAdminCommit()">Publicar ${esc(tk)}</button><button class="btn sec" onclick="mcAdminCancel()">Cancelar</button></div>`
-        : `<div class="status" style="margin-top:8px;color:#C0392B"><b>✗ Gate REPROVADO</b> (fail-closed — não publica): ${(rec.gate&&rec.gate.diffs||[]).map(esc).join(' · ')||'divergência'}</div>`);
-    stat.innerHTML=okAll?'<b style="color:#1E8E4E">Lido e validado nos 3 anos.</b> Confira e publique.':'<b style="color:#C0392B">Gate reprovou</b> — confira o modelo / recalcule (F9) antes de salvar.';
-  }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e); }
-}
-function mcAdminCancel(){ _mcParsed=null; _v('mc-preview').innerHTML=''; _v('mc-status').textContent=''; _v('mc-file').value=''; }
-async function mcAdminCommit(){
-  if(!_mcParsed||!_mcParsed.gate||!_mcParsed.gate.ok){alert('Nada validado para publicar.');return}
-  const rec=_mcParsed, stat=_v('mc-status');
-  const md=(_mcFile.match(/([A-Z][a-z]{2}-\d{1,2}-\d{4})/)||[])[1]||'';
-  const payload={ ticker:rec.ticker, currency:rec.currency||'BRL', fy:(rec.years||[]).join(','), model_date:md,
-    axes:rec.drivers, base:rec.baseByYear, mesh:rec.meshByYear, published:rec.publishedByYear,
-    gate:{ ok:(rec.gate&&rec.gate.ok), byYear:rec.gateByYear }, notes:rec.notes||'' };
-  stat.textContent='Publicando '+rec.ticker+'…';
-  const r=await sbAuth.rpc('admin_upsert_model_central_model',{p:payload});
-  if(r.error){ stat.innerHTML='<b style="color:#C0392B">Erro:</b> '+esc(r.error.message)+' (rodou o <b>supabase_model_central.sql</b>?)'; return; }
-  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+esc(rec.ticker)+' publicado. A super aba (Sensitivity) já recalcula ao vivo.';
-  mcAdminCancel();
-}
-// drivers
-async function loadSGDrivers(){
-  const host=_v('sg-drv-list'); host.textContent='Carregando…';
-  const {data,error}=await sbAuth.rpc('get_stock_guide_drivers');
-  if(error){host.textContent='Erro: '+error.message;return}
-  _sgDrivers=data; host.innerHTML=''; if(!data.length){host.textContent='Nenhum driver.';return}
-  data.forEach(d=>{ const row=document.createElement('div'); row.className='team-row';
-    const dyn=d.source?(' <span class="muted">[dinâmico: '+esc(d.source)+']</span>'):' <span class="muted">[estático]</span>';
-    const info=document.createElement('span'); info.innerHTML=`<b>${esc(d.name)}</b> — ${esc(d.current_value)} ${esc(d.unit)}${dyn}`;
-    const acts=document.createElement('span'); acts.className='acts';
-    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>sgDrvEdit(d.id);
-    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>sgDrvDelete(d.id);
-    acts.append(ed,dl); row.append(info,acts); host.appendChild(row); });
-}
-function sgDrvFillSrc(){ const sel=_v('sgd-src'); if(!sel)return;
-  sel.innerHTML='<option value="">Estático (você digita)</option>'+(window.SG?SG.MARKET_DRIVER_CATALOG.map(d=>`<option value="${d.key}">Dinâmico: ${esc(d.label)}</option>`).join(''):''); }
-function sgDrvEdit(id){ sgDrvFillSrc();
-  const d= id?(_sgDrivers.find(x=>String(x.id)===String(id))||{}):{};
-  _v('sg-drv-form-title').textContent=id?'Editar driver':'Novo driver';
-  _v('sgd-name').value=d.name||''; _v('sgd-unit').value=d.unit||''; _v('sgd-cv').value=d.current_value!=null?d.current_value:'';
-  _v('sgd-src').value=d.source||''; _v('sgd-order').value=d.display_order!=null?d.display_order:0;
-  _v('sg-drv-form-card').dataset.id=id||''; _v('sg-drv-form-card').hidden=false;
-}
-function sgDrvCancel(){ _v('sg-drv-form-card').hidden=true }
-async function sgDrvSave(){
-  const id=_v('sg-drv-form-card').dataset.id||null; const name=_v('sgd-name').value.trim();
-  if(!name){alert('Nome é obrigatório.');return}
-  const d={name:name,unit:_v('sgd-unit').value.trim(),current_value:_v('sgd-cv').value,source:_v('sgd-src').value,display_order:_v('sgd-order').value};
-  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_driver',{p_id:id?Number(id):null,p_data:d});
-  if(error){alert('Erro: '+error.message);return} sgDrvCancel(); loadSGDrivers();
-}
-async function sgDrvDelete(id){ if(!confirm('Excluir driver?'))return;
-  const {error}=await sbAuth.rpc('admin_delete_stock_guide_driver',{p_id:Number(id)});
-  if(error){alert('Erro: '+error.message);return} loadSGDrivers();
-}
-// Global Peers: agora vêm do upload do .xlsm (parser SG.parseStockGuidePeers → admin_replace_stock_guide_global_peers).
-// O editor manual antigo foi removido — fonte única é o arquivo.
+// (Model Central + editor de Drivers legado — REMOVIDOS 2026-07-02: não usados pelo cliente.
+//  A RPC get_stock_guide_drivers segue existindo p/ o cliente ler; só o editor admin saiu.
+//  Global Peers vêm do upload do .xlsm — fonte única é o arquivo.)
 
 // ════════════ STOCK GUIDE — Sensibilidades + Excel do mesh (P5b) ════════════
-let _sgSens=[], _sgBuilder=null;
-const SG_GRID_BASES=[['target_price','Target price → upside'],['fcfe','FCFE → yield'],['dividends','Dividends → yield'],['net_income','Net income → P/E'],['net_income_abs','Net income (absoluto)'],['ebitda','EBITDA (absoluto)'],['ev_ebitda','EV/EBITDA']];
+let _sgSens=[];
 
 async function loadSGSens(){
   const host=_v('sg-sens-host'); host.textContent='Carregando…';
-  if(!_sgDrivers.length){ const r=await sbAuth.rpc('get_stock_guide_drivers'); _sgDrivers=r.data||[]; }
   const {data,error}=await sbAuth.rpc('admin_get_stock_guide_sensitivity_tables');
   if(error){host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_stock_guide.sql?)';return}
   _sgSens=data||[]; renderSensList();
 }
 function renderSensList(){
   const host=_v('sg-sens-host');
-  let h='<div class="row" style="margin-bottom:10px"><label class="btn" style="cursor:pointer">⬆ Importar modelo (aba Sensitivity)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label><button class="btn sec" onclick="sgSensNewGrid()">+ Novo grid (manual)</button><button class="btn sec" onclick="sgSensNewStatic()">+ Matriz estática (JSON)</button></div>'
+  let h='<div class="row" style="margin-bottom:10px"><label class="btn" style="cursor:pointer">⬆ Importar modelo (aba Sensitivity)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label></div>'
     +'<div id="sg-import-status" class="foot" style="margin-bottom:8px"></div>';
-  if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade.</span>';
-  _sgSens.forEach(t=>{ const isGrid=!!(t.definition&&t.definition.grid);
-    h+=`<div class="team-row"><span><b>${esc(t.title)}</b> <span class="muted">[${isGrid?'grid':'estática'} · ${esc(t.value_mode)}]</span> <span class="muted" id="sgcnt-${t.id}"></span></span>
-      <span class="acts">${isGrid?`<button class="chip" onclick="sgTemplate(${t.id})">⬇ Template</button><label class="chip" style="cursor:pointer">⬆ Mesh<input type="file" accept=".xlsx" style="display:none" onchange="sgUploadMesh(${t.id},this.files[0])"></label>`:''}<button class="chip" onclick="sgSensEdit(${t.id})">Editar</button><button class="chip" onclick="sgSensDelete(${t.id})">Excluir</button></span></div>`; });
-  h+='<div id="sg-builder"></div><div id="sg-upload-status" class="foot" style="margin-top:8px"></div>';
+  if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade importada ainda.</span>';
+  _sgSens.forEach(t=>{
+    h+=`<div class="team-row"><span><b>${esc(t.title)}</b> <span class="muted" id="sgcnt-${t.id}"></span></span>
+      <span class="acts"><button class="chip" onclick="sgSensDelete(${t.id})">Excluir</button></span></div>`; });
   host.innerHTML=h;
   _sgSens.forEach(t=>{ if(t.definition&&t.definition.grid) sgMeshCount(t.id); });
 }
 async function sgMeshCount(id){ const {data}=await sbAuth.rpc('admin_count_stock_guide_scenario_grid',{p_sensitivity_id:id});
   const el=_v('sgcnt-'+id); if(el&&data&&data[0]) el.textContent='· '+(data[0].total||0)+' pts'; }
 
-// ── builder de GRID ──
-function sgSensNewGrid(){ _sgBuilder={mode:'grid',id:null,title:'',companies:'',panel:'',axes:[{driver_id:'',label:'',unit:'',tmin:'',tmax:'',tstep:''}],outputs:[{base:'target_price',year:'',label:''}]}; renderBuilder(); }
-function _parseOut(o){ const key=o.key||o.metric||'target_price';
-  for(const b of ['target_price','net_income_abs','net_income','ev_ebitda','ebitda','fcfe','dividends']){ if(key===b)return{base:b,year:''}; if(key.indexOf(b+'_')===0)return{base:b,year:key.slice(b.length+1)}; }
-  return {base:'target_price',year:''}; }
-function sgSensEdit(id){ const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t)return;
-  if(t.definition&&t.definition.grid){ _sgBuilder={mode:'grid',id:t.id,title:t.title,companies:(t.companies||[]).join(', '),panel:t.definition.panel||'',
-    axes:(t.definition.grid.axes||[]).map(a=>({driver_id:a.driver_id||'',label:a.label||'',unit:a.unit||'',tmin:a.tmin,tmax:a.tmax,tstep:a.tstep})),
-    outputs:(t.definition.grid.outputs||[]).map(o=>{const p=_parseOut(o);return{base:p.base,year:p.year,label:o.label||''}})}; renderBuilder(); }
-  else { sgSensNewStatic(t); } }
-function renderBuilder(){ const b=_sgBuilder, host=_v('sg-builder'); if(!b){host.innerHTML='';return}
-  host.innerHTML=`<div class="card"><h2>${b.id?'Editar':'Novo'} grid interpolado</h2>
-    <div class="field"><input class="in" id="sgb-title" placeholder="Título" value="${esc(b.title)}" oninput="_sgBuilder.title=this.value">
-    <input class="in" id="sgb-companies" placeholder="Tickers (vírgula, ex.: VALE3, GGBR4)" value="${esc(b.companies)}" oninput="_sgBuilder.companies=this.value">
-    <input class="in" id="sgb-panel" placeholder="Painel (ex.: commodity / margin) — opcional" value="${esc(b.panel)}" oninput="_sgBuilder.panel=this.value"></div>
-    <h3 style="margin-top:10px">Eixos (1–3)</h3><div id="sgb-axes"></div><button class="btn sec" onclick="sgbAddAxis()">+ Eixo</button>
-    <h3 style="margin-top:10px">Outputs (colunas)</h3><div id="sgb-outs"></div><button class="btn sec" onclick="sgbAddOut()">+ Output</button>
-    <div class="row" style="margin-top:12px"><button class="btn" onclick="sgbSaveGrid()">Salvar grid</button><button class="btn sec" onclick="sgbCancel()">Cancelar</button></div>
-    <p class="foot">Após salvar: baixe o template, preencha no seu modelo e suba o mesh.</p></div>`;
-  renderAxes(); renderOuts(); }
-function renderAxes(){ const b=_sgBuilder; const drvOpts=id=>_sgDrivers.map(d=>`<option value="${d.id}" ${String(d.id)===String(id)?'selected':''}>${esc(d.name)}</option>`).join('');
-  _v('sgb-axes').innerHTML=b.axes.map((a,i)=>`<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .8fr .8fr .8fr auto;gap:5px;margin-bottom:5px;align-items:center">
-    <select class="in" onchange="_sgBuilder.axes[${i}].driver_id=this.value"><option value="">— driver —</option>${drvOpts(a.driver_id)}</select>
-    <input class="in" placeholder="rótulo" value="${esc(a.label)}" oninput="_sgBuilder.axes[${i}].label=this.value">
-    <input class="in" placeholder="unidade" value="${esc(a.unit)}" oninput="_sgBuilder.axes[${i}].unit=this.value">
-    <input class="in" type="number" placeholder="min" value="${a.tmin}" oninput="_sgBuilder.axes[${i}].tmin=this.value">
-    <input class="in" type="number" placeholder="max" value="${a.tmax}" oninput="_sgBuilder.axes[${i}].tmax=this.value">
-    <input class="in" type="number" placeholder="passo" value="${a.tstep}" oninput="_sgBuilder.axes[${i}].tstep=this.value">
-    <button class="chip" onclick="_sgBuilder.axes.splice(${i},1);renderAxes()">✕</button></div>`).join(''); }
-function renderOuts(){ const b=_sgBuilder; const baseOpts=base=>SG_GRID_BASES.map(x=>`<option value="${x[0]}" ${x[0]===base?'selected':''}>${esc(x[1])}</option>`).join('');
-  _v('sgb-outs').innerHTML=b.outputs.map((o,i)=>`<div style="display:grid;grid-template-columns:2fr 1fr 1.5fr auto;gap:5px;margin-bottom:5px;align-items:center">
-    <select class="in" onchange="_sgBuilder.outputs[${i}].base=this.value">${baseOpts(o.base)}</select>
-    <input class="in" placeholder="ano (ex.: 2026 / vazio)" value="${esc(o.year)}" oninput="_sgBuilder.outputs[${i}].year=this.value">
-    <input class="in" placeholder="rótulo da coluna" value="${esc(o.label)}" oninput="_sgBuilder.outputs[${i}].label=this.value">
-    <button class="chip" onclick="_sgBuilder.outputs.splice(${i},1);renderOuts()">✕</button></div>`).join(''); }
-function sgbAddAxis(){ if(_sgBuilder.axes.length>=3){alert('Máximo 3 eixos.');return} _sgBuilder.axes.push({driver_id:'',label:'',unit:'',tmin:'',tmax:'',tstep:''}); renderAxes(); }
-function sgbAddOut(){ _sgBuilder.outputs.push({base:'target_price',year:'',label:''}); renderOuts(); }
-function sgbCancel(){ _sgBuilder=null; _v('sg-builder').innerHTML=''; }
-function sgbBuildDef(){ const b=_sgBuilder; const companies=b.companies.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!b.title.trim()) throw 'Título obrigatório.'; if(!companies.length) throw 'Informe ≥1 ticker.'; if(!b.axes.length) throw 'Informe ≥1 eixo.';
-  const axes=b.axes.map(a=>{ if(!a.driver_id) throw 'Cada eixo precisa de um driver.'; const tmin=Number(a.tmin),tmax=Number(a.tmax),tstep=Number(a.tstep);
-    if(!(tmin<tmax)) throw 'Em cada eixo, min < max.'; if(!(tstep>0)) throw 'passo > 0.';
-    return {driver_id:Number(a.driver_id),label:a.label||'',unit:a.unit||'',tmin:tmin,tmax:tmax,tstep:tstep}; });
-  const seen={}; const outputs=b.outputs.map(o=>{ const year=String(o.year||'').trim();
-    const key=SG.sgGridOutputKey({base:o.base,year:year||null}); if(seen[key]) throw 'Output duplicado: '+key; seen[key]=1;
-    return {key:key,metric:SG.sgGridStorageKey({base:o.base,year:year||null}),mode:(SG.GRID_OUTPUT_CATALOG[o.base]||{}).mode||'upside',label:o.label||key}; });
-  if(!outputs.length) throw 'Informe ≥1 output.';
-  const def={grid:{axes:axes,outputs:outputs},row_axis:{kind:'company',companies:companies},col_axis:{kind:'year',years:['y1']}};
-  if(b.panel.trim()) def.panel=b.panel.trim();
-  return {title:b.title.trim(),value_mode:outputs[0].mode,companies:companies,definition:def}; }
-async function sgbSaveGrid(){ let payload; try{payload=sgbBuildDef()}catch(e){alert(e);return}
-  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:_sgBuilder.id?Number(_sgBuilder.id):null,p_data:payload});
-  if(error){alert('Erro: '+error.message);return} _sgBuilder=null; loadSGSens(); }
 async function sgSensDelete(id){ if(!confirm('Excluir sensibilidade? (remove o mesh também)'))return;
   const {error}=await sbAuth.rpc('admin_delete_stock_guide_sensitivity_table',{p_id:Number(id)});
   if(error){alert('Erro: '+error.message);return} loadSGSens(); }
-// ── matriz estática (JSON) ──
-function sgSensNewStatic(t){ const ex=t?t.definition:{panel:'commodity',row_axis:{kind:'driver',driver_id:0,scenarios:[80,100,120]},col_axis:{kind:'company',companies:['VALE3']},cells:[[60],[75],[92]],decimal_places:1};
-  _v('sg-builder').innerHTML=`<div class="card"><h2>${t?'Editar':'Nova'} matriz estática</h2>
-    <div class="field"><input class="in" id="sgs-title" placeholder="Título" value="${t?esc(t.title):''}">
-    <input class="in" id="sgs-mode" placeholder="value_mode (absolute/yield/pe/ev_ebitda/upside)" value="${t?esc(t.value_mode):'absolute'}">
-    <input class="in" id="sgs-companies" placeholder="Tickers (vírgula)" value="${t?esc((t.companies||[]).join(', ')):''}">
-    <textarea class="in" id="sgs-def" rows="10" style="font-family:monospace;font-size:11px">${esc(JSON.stringify(ex,null,2))}</textarea>
-    <div class="row"><button class="btn" onclick="sgsSaveStatic(${t?t.id:'null'})">Salvar</button><button class="btn sec" onclick="sgbCancel()">Cancelar</button></div></div>
-    <p class="foot">cells[linha][coluna]; row_axis/col_axis kind = company|driver|year.</p></div>`; }
-async function sgsSaveStatic(id){ let def; try{def=JSON.parse(_v('sgs-def').value)}catch(e){alert('JSON inválido: '+e);return}
-  const companies=_v('sgs-companies').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const payload={title:_v('sgs-title').value.trim(),value_mode:_v('sgs-mode').value.trim()||'absolute',companies:companies,definition:def};
-  const {error}=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:id?Number(id):null,p_data:payload});
-  if(error){alert('Erro: '+error.message);return} _v('sg-builder').innerHTML=''; loadSGSens(); }
-
-// ── Excel: template + parse/validar/upload (§8.4) ──
-function _axisLevels(ax){ const min=Number(ax.tmin),max=Number(ax.tmax),st=Number(ax.tstep); const lv=[]; const nsteps=Math.round((max-min)/st);
-  for(let i=0;i<=nsteps;i++) lv.push(Math.round((min+i*st)*1e6)/1e6); return lv; }
-function _cartesian(axes){ let rows=[[]]; axes.forEach(ax=>{ const lv=_axisLevels(ax); const next=[]; rows.forEach(r=>lv.forEach(v=>next.push(r.concat([v])))); rows=next; }); return rows; }
-function _gridSheets(grid){ const seen=new Set(),sheets=[];
-  (grid.outputs||[]).forEach(o=>{ const sk=o.metric||SG.storageKeyForColumnKey(o.key); if(!seen.has(sk)){seen.add(sk);sheets.push(sk)}
-    if(o.mode==='ev_ebitda'){ const s2=SG.secondaryStorageKeyForColumnKey(o.key); if(s2&&!seen.has(s2)){seen.add(s2);sheets.push(s2)} } }); return sheets; }
-function sgTemplate(id){ const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t||!t.definition.grid){alert('Só grids têm template.');return}
-  const grid=t.definition.grid, axes=grid.axes||[], combos=_cartesian(axes);
-  const tickers=(t.definition.row_axis&&t.definition.row_axis.companies)||t.companies||[];
-  const wb=XLSX.utils.book_new();
-  _gridSheets(grid).forEach(sk=>{ const header=axes.map(a=>a.label||'eixo').concat(tickers);
-    const body=combos.map(c=>c.concat(tickers.map(()=>'')));
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header].concat(body)),sk.slice(0,31)); });
-  XLSX.writeFile(wb,'mesh_'+(t.title||'grid').replace(/[^a-z0-9]+/gi,'_').slice(0,28)+'.xlsx'); }
-// parse PURO (testável): recebe um workbook XLSX + a grid → {rows, errors, warnings}
-function sgParseMesh(wb,grid){
-  const axes=grid.axes||[], dim=axes.length, sheets=_gridSheets(grid);
-  const expect=_cartesian(axes).map(c=>c.map(v=>Math.round(v*1e6)/1e6).join('|'));
-  const rows=[], errors=[], warnings=[];
-  sheets.forEach(sk=>{ const nm=wb.SheetNames.find(x=>x.toLowerCase()===sk.toLowerCase());
-    if(!nm){ warnings.push('aba ausente: '+sk); return; }
-    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1}); if(!aoa.length){warnings.push('aba vazia: '+sk);return}
-    const header=aoa[0], tcols=[]; for(let c=dim;c<header.length;c++){ const hh=String(header[c]==null?'':header[c]).trim(); if(hh&&!/^unnamed/i.test(hh)) tcols.push({c:c,ticker:hh}); }
-    const seen={}, present=new Set();
-    for(let r=1;r<aoa.length;r++){ const row=aoa[r]||[]; if(row.every(x=>x===''||x==null))continue;
-      const coords=[]; let bad=false; for(let a=0;a<dim;a++){ const v=Number(row[a]); if(!Number.isFinite(v)){bad=true;break} coords.push(Math.round(v*1e6)/1e6); }
-      if(bad){ if(errors.length<10)errors.push(sk+' linha '+(r+1)+': coordenada não-numérica'); continue; }
-      const ck=coords.join('|'); present.add(ck); if(seen[ck]){errors.push(sk+': combo duplicado '+ck);continue} seen[ck]=1;
-      tcols.forEach(tc=>{ const raw=row[tc.c]; if(raw===''||raw==null)return; const v=Number(raw);
-        if(!Number.isFinite(v)){ if(errors.length<10)errors.push(sk+' '+tc.ticker+' l'+(r+1)+': valor não-numérico'); return; }
-        rows.push({ticker:tc.ticker,metric:sk,x:coords[0],y:dim>=2?coords[1]:0,z:dim>=3?coords[2]:0,v:Math.round(v*1e6)/1e6}); }); }
-    const missing=expect.filter(c=>!present.has(c)).length; if(missing>0)errors.push(sk+': malha incompleta ('+missing+' combos faltando)'); });
-  if(!rows.length)errors.push('0 pontos — recuso gravar vazio.');
-  return {rows:rows,errors:errors,warnings:warnings}; }
-async function sgUploadMesh(id,file){ if(!file)return; const t=_sgSens.find(x=>String(x.id)===String(id)); if(!t)return;
-  const stat=_v('sg-upload-status'); stat.textContent='Lendo arquivo…';
-  try{ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
-    const res=sgParseMesh(wb,t.definition.grid);
-    if(res.errors.length){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+res.errors.slice(0,8).map(esc).join(' · '); return; }
-    stat.textContent='Subindo '+res.rows.length+' pontos…';
-    const CH=2000; for(let i=0;i<res.rows.length;i+=CH){ const chunk=res.rows.slice(i,i+CH);
-      const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_grid',{p_sensitivity_id:id,p_rows:chunk,p_first_chunk:i===0});
-      if(error){ stat.innerHTML='<b style="color:#C0392B">Erro no upload:</b> '+esc(error.message)+' (re-subir refaz tudo — idempotente)'; return; } }
-    const {data:cnt}=await sbAuth.rpc('admin_count_stock_guide_scenario_grid',{p_sensitivity_id:id});
-    const total=cnt&&cnt[0]?cnt[0].total:res.rows.length;
-    stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+total+' pontos gravados.'+(res.warnings.length?' Avisos: '+res.warnings.map(esc).join(', '):'');
-    sgMeshCount(id);
-  }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha:</b> '+esc(e.message||e); } }
-
 // ── IMPORTA a aba "Sensitivity (cenarios)" gerada no Excel (build_scenario.py) ──
 // Le a aba, monta UM grid sensitivity por empresa (eixos = drivers; outputs = EV/EBITDA·FCF yield·Div yield·
 // Preco-alvo, ao vivo) + o mesh, reutilizando os RPCs existentes. Sem SQL novo, sem mudar o cliente.
