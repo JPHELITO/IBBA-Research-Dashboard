@@ -173,7 +173,7 @@
     { tab:'CSN MINERACAO',   ticker:'CMIN3',    yahoo:'CMIN3.SA',    name:'CSN Mineração',   sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
     { tab:'GRUPO MEXICO',    ticker:'GMEXICOB', yahoo:'GMEXICOB.MX', name:'Grupo México',    sector:'copper',     group:'mining',     trade_ccy:'MXN' },
     { tab:'SOUTHERN COPPER', ticker:'SCCO',     yahoo:'SCCO',        name:'Southern Copper', sector:'copper',     group:'mining',     trade_ccy:'USD' },
-    { tab:'AURA',            ticker:'AURA33',   yahoo:'AURA33.SA',   name:'Aura',            sector:'gold',       group:'mining',     trade_ccy:'BRL' },
+    { tab:'AURA',            ticker:'AURA33',   yahoo:'AUGO',        name:'Aura',            sector:'gold',       group:'mining',     trade_ccy:'USD' },  // BDR: AURA33 negocia em R$, mas o modelo é em US$ (linha AUGO/Nasdaq) → tratada em US$ (moeda do modelo)
     { tab:'CSN',             ticker:'CSNA3',    yahoo:'CSNA3.SA',    name:'CSN',             sector:'steel',      group:'steel',      trade_ccy:'BRL' },
     { tab:'GERDAU',          ticker:'GGBR4',    yahoo:'GGBR4.SA',    name:'Gerdau',          sector:'steel',      group:'steel',      trade_ccy:'BRL' },
     { tab:'TERNIUM',         ticker:'TX',       yahoo:'TX',          name:'Ternium',         sector:'steel',      group:'steel',      trade_ccy:'USD' },
