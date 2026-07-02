@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="stock-guide-lib.js"></script>
-<script src="/model-engine.js"></script>
 <script src="/topnav.js"></script>
 <script src="/export-lib.js"></script>
 <style>
@@ -148,57 +147,10 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
     </div>
 
     <div id="sg-tab-sens" hidden>
-      <style>
-        .mc-card-wrap{padding:16px 18px}
-        .mc-head{margin-bottom:10px}
-        .mc-pickrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-        .mc-pick{font:600 12px var(--font);padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:#fff;color:var(--black);cursor:pointer;display:flex;align-items:center;gap:6px}
-        .mc-pick.on{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange) inset;color:var(--orange)}
-        .mc-tk{font-size:10px;color:var(--g-mid);font-weight:500}
-        .mc-id{font-size:15px;margin-bottom:2px}.mc-id .mc-tk{font-size:11px}
-        .mc-meta{font-size:11px;color:var(--g-mid);font-weight:400;margin-left:6px}
-        .mc-px{font-size:12px;color:var(--g-dark);margin-bottom:14px;display:flex;align-items:center;gap:7px}
-        .mc-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-        .mc-mcard{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--g-light)}
-        .mc-mlabel{font-size:11px;color:var(--g-mid);font-weight:600;letter-spacing:.03em;text-transform:uppercase}
-        .mc-mval{font-size:28px;font-weight:700;margin-top:4px;line-height:1.1}
-        .mc-mbase{font-size:11px;color:var(--g-mid);margin-top:2px}
-        .mc-drv{border-top:1px solid var(--border);padding-top:12px}
-        .mc-drv-h{font-size:12px;font-weight:600;color:var(--g-dark);margin-bottom:8px;display:flex;align-items:center;gap:10px}
-        .mc-reset{font:600 11px var(--font);border:1px solid var(--border);background:#fff;border-radius:7px;padding:3px 8px;cursor:pointer;color:var(--g-dark)}
-        .mc-srow{margin-bottom:12px}
-        .mc-slabel{font-size:12px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
-        .mc-sline{display:flex;align-items:center;gap:8px}
-        .mc-range{flex:1;accent-color:var(--orange);height:4px}
-        .mc-sb{font-size:10px;color:var(--g-mid);min-width:40px}.mc-sb:nth-of-type(2){text-align:right}
-        .mc-sval{font-size:12px;font-weight:700;color:var(--orange);min-width:56px;text-align:right}
-        .mc-livechip{font-size:9px;font-weight:700;color:var(--green);border:1px solid var(--green);border-radius:5px;padding:0 4px}
-        .mc-modelchip{font-size:9px;font-weight:600;color:var(--g-mid);border:1px solid var(--border);border-radius:5px;padding:0 4px}
-        .mc-note{font-size:11px;color:var(--g-mid);margin-top:12px;font-style:italic}
-        .mc-tbl{width:100%;border-collapse:collapse;font-size:12px;margin:4px 0 14px}
-        .mc-tbl th{font-size:10px;color:var(--g-mid);font-weight:600;text-transform:uppercase;letter-spacing:.03em;text-align:right;padding:4px 10px;border-bottom:1px solid var(--border)}
-        .mc-tbl th:first-child{text-align:left}
-        .mc-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--border);vertical-align:middle}
-        .mc-ilbl{font-weight:600;text-align:left!important;color:var(--g-dark)}
-        .mc-ival{font-size:16px;font-weight:700}
-        .mc-isub{display:block;font-size:10px;color:var(--g-mid);font-weight:500}
-        .mc-dtbl td{padding:4px 10px}
-        .mc-dlbl{text-align:left!important;font-weight:500;white-space:nowrap}
-        .mc-un{font-size:10px;color:var(--g-mid);font-weight:400}
-        .mc-in{width:74px;font:600 12px var(--font);text-align:right;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--black)}
-        .mc-in:focus{border-color:var(--orange);outline:none}
-        .mc-tgl{display:inline-flex;margin-left:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden;vertical-align:middle}
-        .mc-tb{font:600 10px var(--font);padding:2px 8px;border:none;background:var(--white);color:var(--g-mid);cursor:pointer}
-        .mc-tb.on{background:var(--orange);color:#fff}
-        @media(max-width:680px){.mc-cards{grid-template-columns:1fr}}
-      </style>
       <div class="section">
         <div class="sec-title">Sensitivity</div>
         <div class="sec-sub">Model scenarios (from the official Excel) · interpolated and recomputed <b>live</b> — EV/EBITDA, FCF yield, dividend yield and upside using the current market price and FX.</div>
         <div id="sens-host"><div class="card"><span class="muted">Loading…</span></div></div>
-      </div>
-      <div class="section" id="mc-legacy-section" hidden>
-        <div id="mc-host"></div>
       </div>
     </div>
   </div>
@@ -248,12 +200,10 @@ async function sgFetchLive(comps,extraSyms){
   return {priceByKey,marketValues,fxRates,pricesUpdatedAt};
 }
 async function sgLoadData(){
-  const [comps,cfgArr,drivers,tables,peers,mcRows]=await Promise.all([
+  const [comps,cfgArr,drivers,tables,peers]=await Promise.all([
     rpc('get_stock_guide_comps'), rpc('get_stock_guide_config'),
     rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables'),
-    rpc('get_stock_guide_global_peers').catch(()=>[]),
-    rpc('get_model_defs').catch(()=>[])]);   // Modelo Vivo (super aba de sensibilidade)
-  const mcDefs=(mcRows||[]).map(r=>Object.assign({}, r.def, {parity:r.parity})).filter(d=>d&&d.ticker);
+    rpc('get_stock_guide_global_peers').catch(()=>[])]);
   // Aura: AURA33 é BDR (negocia em R$) de empresa que MODELA em US$; o modelo lista preço/mktcap na
   // linha AUGO (US$) → a detecção de moeda a rotularia como R$ por engano. Normaliza p/ US$/AUGO (moeda
   // do modelo) ANTES do fetch e dos múltiplos, p/ EV/EBITDA, yields e upside baterem. Idempotente.
@@ -262,7 +212,7 @@ async function sgLoadData(){
   const isAdmin=!!(role&&role==='admin');
   const peerSyms=(peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
   const live=await sgFetchLive(comps,peerSyms);
-  return Object.assign({comps,peers:peers||[],config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,mcDefs:mcDefs,isAdmin},live);
+  return Object.assign({comps,peers:peers||[],config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,isAdmin},live);
 }
 // "há quanto tempo" + linha de freshness do preço/câmbio
 function fmtAgo(ms){ if(ms==null)return '—'; const s=Math.max(0,Math.floor((Date.now()-ms)/1000));
@@ -652,106 +602,8 @@ function _sgLockPeers(){
   if(card) card.innerHTML='<div class="sg-locked"><div class="lk">🔒</div><div><b>Global Peers — unavailable</b></div><div class="muted" style="max-width:360px">This section isn’t enabled for your account yet.</div></div>';
 }
 
-// ═══════════ MODEL CENTRAL v2 — sensibilidade pela "definição viva" (cliente) ═══════════
-// Lê model_defs (get_model_defs) e recalcula AO VIVO com ModelEngine (model-engine.js):
-// drivers editáveis por ano → linhas c/ fórmula contábil → indicadores, mostrando
-// Modelo (preço do modelo) × Ao vivo (mercado agora) lado a lado. Hide-aware (RLS/RPC).
-const _mc={ defs:{}, order:[], name:{}, sel:null, vals:{}, src:{}, mktcap:{}, price:{}, live:{} };
-const _MC_ALIAS={ iron_ore_61:'iron_ore_62' };   // source do driver → chave do catálogo p/ o spot ao vivo
-function _mcLiveVal(source){ if(!source)return null; const k=_MC_ALIAS[source]||source; const v=_mc.live[k]; return (v!=null&&isFinite(v))?v:null; }
-function _mcMult(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'×'; }
-function _mcPct(v){ return v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; }
-function _mcFmt(o,v){ if(v==null||!isFinite(v))return '—'; return o.unit==='%'?_mcPct(v):(o.unit==='x'?_mcMult(v):v.toLocaleString('en-US',{maximumFractionDigits:2})); }
-function _mcStepU(u){ u=u||''; return u==='%'?0.1:(/per USD|BRL\/USD/.test(u)?0.05:(/oz/.test(u)?25:(/lb/.test(u)?0.05:(/USD\/t|ton/.test(u)?1:0.1)))); }
-
-function mcUpdateLive(computed, fxRates, marketValues){
-  (computed||[]).forEach(r=>{ if(r&&!r.isExTaxCredit){ _mc.mktcap[r.ticker]=r.marketCapBrlMn; _mc.price[r.ticker]=r.livePrice; } });
-  _mc.live=Object.assign({}, marketValues||{});
-  if(fxRates&&fxRates.BRL) _mc.live.fx_usdbrl=fxRates.BRL;
-}
-function mcRenderSuper(defs, comps, computed, fxRates, marketValues){
-  const host=document.getElementById('mc-host'); if(!host)return;
-  _mc.defs={}; _mc.order=[]; _mc.name={};
-  (comps||[]).forEach(c=>{ _mc.name[c.ticker]=c.company_name||c.ticker; });
-  (defs||[]).forEach(d=>{ if(!d||!d.ticker||!d.drivers)return; _mc.defs[d.ticker]=d; _mc.order.push(d.ticker); });
-  mcUpdateLive(computed, fxRates, marketValues);
-  if(!_mc.order.length){
-    host.innerHTML='<div class="card mc-card-wrap"><div class="sec-title">Sensitivity</div><div class="muted" style="margin-top:6px">No models published yet.'+( _SG && _SG.isAdmin ? ' (Admin → Stock Guide → Model Central.)':'')+'</div></div>';
-    return;
-  }
-  const chips=_mc.order.map(t=>`<button class="mc-pick${t===_mc.sel?' on':''}" onclick="mcSelectCompany('${esc(t)}')">${esc(_mc.name[t]||t)} <span class="mc-tk">${esc(t)}</span></button>`).join('');
-  host.innerHTML=`<div class="card mc-card-wrap">
-    <div class="mc-head"><div class="sec-title">Sensitivity</div>
-      <div class="sec-sub">Edite cada driver por ano (Model = base do modelo · Spot = ao vivo · ou digite). Os indicadores recalculam <b>ao vivo</b> — com o preço e o câmbio de mercado de agora.</div></div>
-    <div class="mc-pickrow">${chips}</div>
-    <div id="mc-body"></div></div>`;
-  mcSelectCompany(_mc.sel && _mc.defs[_mc.sel] ? _mc.sel : _mc.order[0]);
-}
-function _mcInit(t){
-  const d=_mc.defs[t], years=d.years||[];
-  _mc.vals[t]=_mc.vals[t]||{}; _mc.src[t]=_mc.src[t]||{};
-  (d.drivers||[]).forEach(dr=>{ if(!_mc.src[t][dr.id]) _mc.src[t][dr.id]='model';
-    if(!_mc.vals[t][dr.id]) _mc.vals[t][dr.id]=(dr.base_by_year||[]).slice(0,years.length); });
-}
-function _mcApplySrc(t,id,src){
-  const d=_mc.defs[t], years=d.years||[], dr=(d.drivers||[]).find(x=>x.id===id); if(!dr)return;
-  _mc.src[t][id]=src;
-  if(src==='model') _mc.vals[t][id]=(dr.base_by_year||[]).slice(0,years.length);
-  else if(src==='spot'){ const sp=_mcLiveVal(dr.live_source); if(sp!=null) _mc.vals[t][id]=years.map(()=>sp); }
-}
-function mcSelectCompany(t){
-  const d=_mc.defs[t]; if(!d)return; _mc.sel=t;
-  document.querySelectorAll('.mc-pick').forEach(b=>{ const oc=b.getAttribute('onclick')||''; b.classList.toggle('on', oc.indexOf("'"+t+"'")>=0); });
-  _mcInit(t);
-  const body=document.getElementById('mc-body'); if(!body)return;
-  const years=d.years||[], price=_mc.price[t], mc=_mc.mktcap[t], ccy=d.base_ccy||'BRL';
-  const pxLine = price!=null ? `<span class="live-dot"></span> ${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} · Mkt cap ${esc(ccy)} ${mc!=null?Math.round(mc).toLocaleString('en-US'):'—'}mn <span class="muted">(ao vivo)</span>` : '<span class="muted">no live quote</span>';
-  const yh=years.map(y=>`<th>${esc(y)}</th>`).join('');
-  const orow=(o)=>`<tr><td class="mc-ilbl">${esc(o.label)}</td>${years.map((y,i)=>`<td class="mc-icell" id="mc-out-${esc(o.id)}-${i}">—</td>`).join('')}</tr>`;
-  const itable=`<table class="mc-tbl"><thead><tr><th></th>${yh}</tr></thead><tbody>${(d.outputs||[]).map(orow).join('')}</tbody></table>`;
-  const drows=(d.drivers||[]).map(dr=>_mcDrvRow(t,dr,years)).join('');
-  const dtable=`<div class="mc-drv"><div class="mc-drv-h">Drivers — valor por ano <button class="mc-reset" onclick="mcReset()">↻ tudo p/ modelo</button></div>
-    <div class="tbl-scroll"><table class="mc-tbl mc-dtbl"><thead><tr><th></th>${yh}</tr></thead><tbody>${drows}</tbody></table></div></div>`;
-  body.innerHTML=`<div class="mc-id"><b>${esc(_mc.name[t]||t)}</b> <span class="mc-tk">${esc(t)}</span> <span class="mc-meta">base ${esc(ccy)}${d.parity!=null?' · paridade '+d.parity+'%':''}</span></div>
-    <div class="mc-px">${pxLine}</div>${itable}${dtable}`;
-  mcRecompute();
-}
-function _mcDrvRow(t,dr,years){
-  const src=_mc.src[t][dr.id], canSpot=(dr.kind==='live' && _mcLiveVal(dr.live_source)!=null);
-  const ed=dr.editable_years||years.map(()=>true);
-  const cells=years.map((y,i)=>{ const v=(_mc.vals[t][dr.id]||[])[i];
-    const disp=(v==null||!isFinite(v))?'':(dr.unit==='%'?(Math.round(v*1000)/10):(Math.round(v*1e4)/1e4));
-    if(ed[i]===false) return `<td class="mc-lock" style="opacity:.5" title="ano derivado no modelo (não é input livre)">${disp===''?'—':disp}</td>`;
-    return `<td><input type="number" class="mc-in" step="${_mcStepU(dr.unit)}" value="${disp}" oninput="mcEdit('${esc(t)}','${esc(dr.id)}',${i},this.value)"></td>`; }).join('');
-  const unit=dr.unit?(' <span class="mc-un">'+esc(dr.unit)+'</span>'):'';
-  const toggle=canSpot?`<span class="mc-tgl" data-drv="${esc(dr.id)}"><button class="mc-tb${src==='model'?' on':''}" onclick="mcSrc('${esc(t)}','${esc(dr.id)}','model')">Model</button><button class="mc-tb${src==='spot'?' on':''}" onclick="mcSrc('${esc(t)}','${esc(dr.id)}','spot')">Spot</button></span>`:'';
-  return `<tr><td class="mc-dlbl">${esc(dr.label)}${unit}${toggle}</td>${cells}</tr>`;
-}
-function mcEdit(t,id,i,val){ const dr=(_mc.defs[t].drivers||[]).find(x=>x.id===id); _mc.vals[t][id]=_mc.vals[t][id]||[];
-  const num=parseFloat(val); _mc.vals[t][id][i]=isFinite(num)?(dr&&dr.unit==='%'?num/100:num):null;
-  _mc.src[t][id]='manual'; const tg=document.querySelector('.mc-tgl[data-drv="'+id+'"]'); if(tg) tg.querySelectorAll('.mc-tb').forEach(b=>b.classList.remove('on')); mcRecompute(); }
-function mcSrc(t,id,src){ _mcApplySrc(t,id,src); mcSelectCompany(t); }
-function mcReset(){ const t=_mc.sel, d=_mc.defs[t]; if(!d)return; (d.drivers||[]).forEach(dr=>_mcApplySrc(t,dr.id,'model')); mcSelectCompany(t); }
-function mcRecompute(){
-  const t=_mc.sel, d=_mc.defs[t]; if(!d||!window.ModelEngine)return;
-  const years=d.years||[], driverVals={};
-  (d.drivers||[]).forEach(dr=>{ driverVals[dr.id]=((_mc.vals[t]&&_mc.vals[t][dr.id])||dr.base_by_year||[]).slice(); });
-  const mkModel=(d.market&&d.market.mktcap_model_by_year)||years.map(()=>null);
-  const liveMc=_mc.mktcap[t];
-  const mkLive=(liveMc!=null&&isFinite(liveMc))?years.map(()=>liveMc):null;
-  let r; try{ r=ModelEngine.compute(d,{driverVals:driverVals, mktcapModel:mkModel, mktcapLive:mkLive}); }catch(e){ console.warn('mcRecompute',e); return; }
-  (d.outputs||[]).forEach(o=>{ years.forEach((y,i)=>{
-    const mv=r.model[i]?r.model[i].outputs[o.id]:null;
-    const lv=(r.live&&r.live[i])?r.live[i].outputs[o.id]:null;
-    _mcOutCell(o,i,mv,lv);
-  }); });
-}
-function _mcOutCell(o,i,modelV,liveV){
-  const el=document.getElementById('mc-out-'+o.id+'-'+i); if(!el)return;
-  const v=(liveV!=null&&isFinite(liveV))?liveV:modelV;   // só AO VIVO (fallback p/ modelo se não houver cotação)
-  el.innerHTML=`<span class="mc-ival">${_mcFmt(o,v)}</span>`;
-}
-function mcTickLive(computed, fxRates, marketValues){ mcUpdateLive(computed, fxRates, marketValues); if(_mc.sel&&_mc.defs[_mc.sel]) mcRecompute(); }
+// (Model Central v2 / ModelEngine — REMOVIDO 2026-07-02: superseded pela grade de cenários,
+//  que é a view principal da aba Sensitivity. A grade se recalcula ao vivo em renderGridBody.)
 
 async function sgInit(data){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
@@ -762,8 +614,7 @@ async function sgInit(data){
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
   if(data.sensEnabled===false){ _sgLockSensitivity(); }
   else {
-    // grade de cenários (do Excel oficial) = view principal, recalculada AO VIVO.
-    // (view antiga por-fórmula do ModelEngine aposentada — DOM mantido oculto p/ reversão)
+    // grade de cenários (do Excel oficial) = view da aba Sensitivity, recalculada AO VIVO.
     sgRenderSensitivity(data.tables||[],data.drivers,data.marketValues,res.computed,data.config);
   }
   if(data.peersEnabled===false){ _sgLockPeers(); }
@@ -816,7 +667,6 @@ async function sgTickLive(){
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
     if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey);
-    if(typeof mcTickLive==='function') mcTickLive(res.computed,live.fxRates,live.marketValues);   // super aba: preço/câmbio ao vivo
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
