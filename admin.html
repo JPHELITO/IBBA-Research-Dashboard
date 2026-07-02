@@ -1356,7 +1356,8 @@ async function loadSGSens(){
 }
 function renderSensList(){
   const host=_v('sg-sens-host');
-  let h='<div class="row" style="margin-bottom:10px"><button class="btn" onclick="sgSensNewGrid()">+ Novo grid (interpolado)</button><button class="btn sec" onclick="sgSensNewStatic()">+ Matriz estática (JSON)</button></div>';
+  let h='<div class="row" style="margin-bottom:10px"><label class="btn" style="cursor:pointer">⬆ Importar modelo (aba Sensitivity)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label><button class="btn sec" onclick="sgSensNewGrid()">+ Novo grid (manual)</button><button class="btn sec" onclick="sgSensNewStatic()">+ Matriz estática (JSON)</button></div>'
+    +'<div id="sg-import-status" class="foot" style="margin-bottom:8px"></div>';
   if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade.</span>';
   _sgSens.forEach(t=>{ const isGrid=!!(t.definition&&t.definition.grid);
     h+=`<div class="team-row"><span><b>${esc(t.title)}</b> <span class="muted">[${isGrid?'grid':'estática'} · ${esc(t.value_mode)}]</span> <span class="muted" id="sgcnt-${t.id}"></span></span>
@@ -1488,6 +1489,85 @@ async function sgUploadMesh(id,file){ if(!file)return; const t=_sgSens.find(x=>S
     stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+total+' pontos gravados.'+(res.warnings.length?' Avisos: '+res.warnings.map(esc).join(', '):'');
     sgMeshCount(id);
   }catch(e){ stat.innerHTML='<b style="color:#C0392B">Falha:</b> '+esc(e.message||e); } }
+
+// ── IMPORTA a aba "Sensitivity (cenarios)" gerada no Excel (build_scenario.py) ──
+// Le a aba, monta UM grid sensitivity por empresa (eixos = drivers; outputs = EV/EBITDA·FCF yield·Div yield·
+// Preco-alvo, ao vivo) + o mesh, reutilizando os RPCs existentes. Sem SQL novo, sem mudar o cliente.
+const _SGI_PANEL={VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AURA33:'Gold'};
+function _sgiNum(v){ if(v==null||v==='')return null; if(typeof v==='number')return isFinite(v)?v:null;
+  const n=Number(String(v).replace(/[^0-9eE+\-.,]/g,'').replace(',','.')); return isFinite(n)?n:null; }
+function _sgiNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function _sgiMetric(title,posIdx){ const t=_sgiNorm(title); const ym=t.match(/(20\d{2})/); const year=ym?ym[1]:null; let m=null;
+  if(/dividend/.test(t))m='dividends'; else if(/(net\s*debt|divida|debt)/.test(t))m='net_debt'; else if(/ebitda/.test(t))m='ebitda';
+  else if(/(fcf|free\s*cash|fluxo.*caixa)/.test(t))m='fcf'; else if(/(alvo|target|price)/.test(t))m='target';
+  if(!m&&posIdx!=null){ const ord=['ebitda','net_debt','fcf','dividends']; m=posIdx<12?ord[Math.floor(posIdx/3)]:'target'; }
+  return {metric:m,year:year}; }
+const _sgiRnd=v=>Math.round(v*1e6)/1e6;
+function _sgiLevels(vals){ vals=vals.slice().sort((a,b)=>a-b); const span=(vals[vals.length-1]-vals[0])||1;
+  const tol=Math.abs(span)*1e-3+1e-9; const lv=[]; vals.forEach(v=>{ if(!lv.length||Math.abs(v-lv[lv.length-1])>tol) lv.push(v); }); return lv; }
+function _sgiSnap(lv,v){ let best=lv[0],bd=Infinity; for(const x of lv){ const d=Math.abs(x-v); if(d<bd){bd=d;best=x;} } return best; }
+
+// parse PURO (testavel) -> {ticker, def, rows, summary}
+function sgParseModelSensitivity(wb,tickerHint){
+  const nm=wb.SheetNames.find(x=>/sensitivity/i.test(x)); if(!nm) throw 'Nenhuma aba "Sensitivity" no arquivo.';
+  const aoa=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1}); if(aoa.length<6) throw 'Aba Sensitivity muito curta.';
+  let ticker=tickerHint||null; const a1=String((aoa[0]||[])[0]||''); const mt=a1.match(/-\s*([A-Z0-9]{3,7})\s*\|/);
+  if(!ticker&&mt)ticker=mt[1]; if(!ticker) throw 'Nao identifiquei o ticker (celula A1).';
+  const r4=aoa[3]||[], r5=aoa[4]||[];
+  const drivers=[]; for(let c=1;c<5;c++){ const l=r5[c]; if(l!=null&&String(l).trim()!=='') drivers.push({col:c,label:String(l).trim()}); }
+  if(!drivers.length) throw 'Nenhum driver na linha 5 (B..D).'; if(drivers.length>3) throw 'Mais de 3 drivers (max 3).';
+  const outs=[]; for(let c=6;c<r4.length;c++){ const tt=r4[c]; if(tt==null||String(tt).trim()===''){ if(c>6)break; else continue; } outs.push({col:c,title:String(tt).trim()}); }
+  if(!outs.length) throw 'Nenhum indicador na linha 4 (G..).';
+  outs.forEach((o,i)=>{ const s=_sgiMetric(o.title,i); o.metric=s.metric; o.year=s.year; });
+  const scen=[]; for(let r=5;r<aoa.length;r++){ const row=aoa[r]; if(!row)continue; const idx=_sgiNum(row[0]); if(idx==null)continue;
+    const dv=drivers.map(d=>_sgiNum(row[d.col])); if(dv.some(x=>x==null))continue;
+    scen.push({idx:idx,d:dv,o:outs.map(o=>_sgiNum(row[o.col]))}); }
+  if(!scen.length) throw 'Nenhuma linha de cenario valida (a partir da linha 6).';
+  const nd=drivers.length;
+  const axisLv=[]; for(let a=0;a<nd;a++) axisLv.push(_sgiLevels(scen.map(s=>s.d[a])));
+  const axes=drivers.map((d,a)=>{ const lv=axisLv[a]; const tmin=lv[0],tmax=lv[lv.length-1];
+    const step=lv.length>1?(tmax-tmin)/(lv.length-1):1; return {driver_id:null,label:d.label,unit:'',tmin:_sgiRnd(tmin),tmax:_sgiRnd(tmax),tstep:_sgiRnd(step)||1}; });
+  // mesh: metric = storage key; dedup por PK (metric,x,y,z) — o caso-base (idx1) cai no centro do produto
+  const byPK=new Map(); const years={}; let hasT=false;
+  scen.forEach(s=>{ const x=_sgiRnd(_sgiSnap(axisLv[0],s.d[0])), y=nd>=2?_sgiRnd(_sgiSnap(axisLv[1],s.d[1])):0, z=nd>=3?_sgiRnd(_sgiSnap(axisLv[2],s.d[2])):0;
+    outs.forEach((o,i)=>{ const v=s.o[i]; if(v==null)return; let sk=null;
+      if(o.metric==='ebitda'&&o.year)sk='ebitda_'+o.year; else if(o.metric==='net_debt'&&o.year)sk='net_debt_'+o.year;
+      else if(o.metric==='fcf'&&o.year)sk='fcfe_'+o.year; else if(o.metric==='dividends'&&o.year)sk='dividends_'+o.year;
+      else if(o.metric==='target')sk='target_price';
+      if(!sk)return; if(o.year)years[o.year]=1; if(o.metric==='target')hasT=true;
+      byPK.set(sk+'|'+x+'|'+y+'|'+z,{ticker:ticker,metric:sk,x:x,y:y,z:z,v:_sgiRnd(v)}); }); });
+  const rows=Array.from(byPK.values());
+  const has=(m)=>rows.some(r=>r.metric===m);
+  const ys=Object.keys(years).sort(); const yl=y=>String(y).slice(2)+'E';
+  const outputs=[];
+  ys.forEach(y=>{ if(has('ebitda_'+y)&&has('net_debt_'+y)) outputs.push({key:'ev_ebitda_'+y,metric:'ebitda_'+y,mode:'ev_ebitda',label:'EV/EBITDA '+yl(y)}); });
+  ys.forEach(y=>{ if(has('fcfe_'+y)) outputs.push({key:'fcfe_'+y,metric:'fcfe_'+y,mode:'yield',label:'FCF yield '+yl(y)}); });
+  ys.forEach(y=>{ if(has('dividends_'+y)) outputs.push({key:'dividends_'+y,metric:'dividends_'+y,mode:'yield',label:'Div yield '+yl(y)}); });
+  if(hasT&&has('target_price')) outputs.push({key:'target_price',metric:'target_price',mode:'upside',label:'Preço-alvo'});
+  if(!outputs.length) throw 'Nao consegui montar indicadores (confira os titulos da linha 4).';
+  const def={grid:{axes:axes,outputs:outputs},row_axis:{kind:'company',companies:[ticker]},
+    col_axis:{kind:'year',years:['y1']},panel:(_SGI_PANEL[ticker]||'modelo'),import_ticker:ticker};
+  return {ticker:ticker,def:{title:'Sensibilidade — '+ticker,value_mode:outputs[0].mode,companies:[ticker],definition:def},
+    rows:rows,summary:{scen:scen.length,pts:rows.length,drivers:drivers.map(d=>d.label),outputs:outputs.map(o=>o.label)}}; }
+
+async function sgImportModel(file){ if(!file)return; const setS=h=>{ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
+  setS('Lendo arquivo…');
+  try{
+    const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+    let p; try{ p=sgParseModelSensitivity(wb,null); }catch(e){ setS('<b style="color:#C0392B">Bloqueado:</b> '+esc(String(e))); return; }
+    setS('Salvando definição de '+esc(p.ticker)+'…');
+    const existing=_sgSens.find(t=>t.definition&&(t.definition.import_ticker===p.ticker||t.title==='Sensibilidade — '+p.ticker));
+    const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:existing?Number(existing.id):null,p_data:p.def});
+    if(up.error){ setS('<b style="color:#C0392B">Erro (definição):</b> '+esc(up.error.message)); return; }
+    let sid=up.data; if(sid==null){ await loadSGSens(); const t2=_sgSens.find(t=>t.definition&&t.definition.import_ticker===p.ticker); sid=t2?t2.id:null; }
+    if(sid==null){ setS('<b style="color:#C0392B">Erro:</b> não recebi o id da sensibilidade.'); return; }
+    setS('Subindo '+p.rows.length+' pontos de malha ('+p.ticker+')…');
+    const CH=2000; for(let i=0;i<p.rows.length;i+=CH){ const chunk=p.rows.slice(i,i+CH);
+      const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_grid',{p_sensitivity_id:sid,p_rows:chunk,p_first_chunk:i===0});
+      if(error){ setS('<b style="color:#C0392B">Erro no mesh:</b> '+esc(error.message)+' (re-subir refaz tudo — idempotente).'); return; } }
+    setS('<b style="color:#1E8E4E">OK!</b> '+esc(p.ticker)+' · '+p.summary.scen+' cenários · '+p.rows.length+' pts · eixos: '+p.summary.drivers.map(esc).join(', ')+' · outputs: '+p.summary.outputs.map(esc).join(' · '));
+    loadSGSens();
+  }catch(e){ setS('<b style="color:#C0392B">Falha:</b> '+esc(e.message||e)); } }
 </script>
 </body>
 </html>
