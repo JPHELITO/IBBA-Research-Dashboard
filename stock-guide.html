@@ -193,12 +193,12 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
         @media(max-width:680px){.mc-cards{grid-template-columns:1fr}}
       </style>
       <div class="section">
-        <div id="mc-host"><div class="card"><span class="muted">Loading…</span></div></div>
+        <div class="sec-title">Sensitivity</div>
+        <div class="sec-sub">Model scenarios (from the official Excel) · interpolated and recomputed <b>live</b> — EV/EBITDA, FCF yield, dividend yield and upside using the current market price and FX.</div>
+        <div id="sens-host"><div class="card"><span class="muted">Loading…</span></div></div>
       </div>
-      <div class="section" id="legacy-sens-section" hidden>
-        <div class="sec-title">Custom tables</div>
-        <div class="sec-sub">Analyst-configured grids · interpolated against live levels.</div>
-        <div id="sens-host"></div>
+      <div class="section" id="mc-legacy-section" hidden>
+        <div id="mc-host"></div>
       </div>
     </div>
   </div>
@@ -638,7 +638,7 @@ function renderGridBody(t){
 let _SG={}; let _sgTimer=null;
 // aba Sensitivity desligada (cliente, sub-flag off): mostra "indisponível" — não some
 function _sgLockSensitivity(){
-  const host=document.getElementById('mc-host');
+  const host=document.getElementById('sens-host');
   if(host) host.innerHTML='<div class="card sg-locked"><div class="lk">🔒</div><div><b>Sensitivity — unavailable</b></div><div class="muted" style="max-width:360px">This section isn’t enabled for your account yet.</div></div>';
   const tab=document.getElementById('sgtab-sens'); if(tab) tab.classList.add('locked');
 }
@@ -758,9 +758,9 @@ async function sgInit(data){
   updatePxFresh(data.pricesUpdatedAt,data.fxRates);
   if(data.sensEnabled===false){ _sgLockSensitivity(); }
   else {
-    mcRenderSuper(data.mcDefs||[], data.comps, res.computed, data.fxRates, data.marketValues);   // super aba Modelo Vivo
-    if((data.tables||[]).length){ const ls=document.getElementById('legacy-sens-section'); if(ls)ls.hidden=false;
-      sgRenderSensitivity(data.tables,data.drivers,data.marketValues,res.computed,data.config); }
+    // grade de cenários (do Excel oficial) = view principal, recalculada AO VIVO.
+    // (view antiga por-fórmula do ModelEngine aposentada — DOM mantido oculto p/ reversão)
+    sgRenderSensitivity(data.tables||[],data.drivers,data.marketValues,res.computed,data.config);
   }
   if(data.peersEnabled===false){ _sgLockPeers(); }
   else { sgRenderPeers(data.peers||[],data.priceByKey); }
