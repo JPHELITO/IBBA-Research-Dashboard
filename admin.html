@@ -331,8 +331,10 @@ html.dark .ov-card{background:#20242b}
             </select>
           </label>
           <input class="in" id="up-file" type="file" accept=".xlsx,.xls">
-          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar e atualizar agora</button></div>
+          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar e atualizar agora</button>
+            <button class="btn" onclick="diagUpload()" title="Testa sessão, banco e Storage em separado para achar onde trava">🩺 Testar conexão</button></div>
           <div id="up-status" class="status"></div>
+          <div id="up-diag" class="status" style="line-height:1.7"></div>
         </div>
       </div>
       <div class="card">
@@ -767,9 +769,11 @@ async function uploadFile(){
   const kind=document.getElementById('up-kind').value   // base escolhida no seletor
   const path=`${kind}/${Date.now()}_${f.name.replace(/[^A-Za-z0-9._-]/g,'_')}`
   btn.disabled=true; st.textContent='Enviando…'
+  let etapa='enviar o arquivo (Storage)'
   try{
     const {error:upErr}=await sbAuth.storage.from('admin-uploads').upload(path, f)
     if(upErr) throw upErr
+    etapa='registrar na fila (banco)'
     const {error:jErr}=await sbAuth.rpc('admin_enqueue_upload',{p_kind:kind,p_storage_path:path,p_filename:f.name})
     if(jErr) throw jErr
     inp.value=''; loadJobs()
@@ -777,8 +781,62 @@ async function uploadFile(){
     const {error:tErr}=await sbAuth.rpc('admin_trigger_processing')
     if(tErr){ st.textContent='✓ Enviado — mas não disparei na hora ('+tErr.message+'). Configure o token abaixo; ou ele roda sozinho em ~15 min.' }
     else { st.textContent='✓ Enviado e robô disparado! O status abaixo atualiza em alguns segundos (⏳ → ⚙️ → ✅).'; pollJobs() }
-  }catch(e){ st.textContent='Erro: '+(e.message||e)+'  (o bucket admin-uploads + o SQL de uploads já existem?)' }
+  }catch(e){
+    // "Failed to fetch" é o navegador NÃO conseguindo falar com o Supabase (rede/proxy/extensão).
+    // Não confundir com bucket/SQL faltando — a mensagem antiga culpava isso e mandava p/ o lado errado.
+    const msg=String(e.message||e), rede=/failed to fetch|networkerror|load failed|err_/i.test(msg)
+    st.innerHTML='❌ Erro ao '+etapa+': '+esc(msg)
+      + (rede ? '<br><b>Isso é bloqueio de REDE do navegador</b> (proxy corporativo, antivírus ou extensão), não banco/SQL faltando.'
+              + ' Clique em <b>🩺 Testar conexão</b> para ver onde trava — e teste também por outra rede (4G do celular) para confirmar.' : '')
+  }
   finally{ btn.disabled=false }
+}
+
+/* Diagnóstico do upload — testa cada etapa EM SEPARADO e diz onde parou.
+   Existe porque um "Failed to fetch" genérico não distingue: sem sessão? não é admin?
+   banco fora do ar? Storage bloqueado? arquivo grande demais? Agora distingue. */
+async function diagUpload(){
+  const st=document.getElementById('up-diag'), L=[]
+  const put=()=>{ st.innerHTML=L.join('<br>') }
+  const ok=s=>'✅ '+s, bad=(s,e)=>'❌ '+s+' — <span class="muted">'+esc(e)+'</span>'
+  st.textContent='Testando…'
+
+  try{ const {data:{session}}=await sbAuth.auth.getSession()
+       L.push(session ? ok('Sessão ativa'+(session.user&&session.user.email?' ('+esc(session.user.email)+')':''))
+                      : bad('Sem sessão','faça login de novo (esta página guarda a sessão só nesta aba)')) }
+  catch(e){ L.push(bad('Sessão', e.message||e)) }
+  put()
+
+  try{ const {data,error}=await sbAuth.rpc('get_my_role')
+       L.push(error ? bad('Papel do usuário', error.message)
+                    : (data==='admin' ? ok('Você é admin') : bad('Papel do usuário','é "'+esc(data)+'", não admin — o Storage vai recusar'))) }
+  catch(e){ L.push(bad('Papel do usuário — REDE', e.message||e)) }
+  put()
+
+  try{ const {error}=await sbAuth.rpc('get_upload_jobs')
+       L.push(error ? bad('Banco (REST)', error.message) : ok('Banco (REST) responde')) }
+  catch(e){ L.push(bad('Banco (REST) — REDE', e.message||e)) }
+  put()
+
+  const p='_diag/'+Date.now()+'.txt'
+  try{
+    const {error}=await sbAuth.storage.from('admin-uploads').upload(p, new Blob(['diagnostico'],{type:'text/plain'}))
+    if(error) L.push(bad('Storage — subir arquivo', error.message))
+    else { L.push(ok('Storage aceita upload')); try{ await sbAuth.storage.from('admin-uploads').remove([p]) }catch(e){} }
+  }catch(e){ L.push(bad('Storage — subir arquivo — REDE', e.message||e)) }
+  put()
+
+  const f=document.getElementById('up-file').files[0]
+  if(!f) L.push('<span class="muted">• Nenhum arquivo escolhido (opcional para o teste)</span>')
+  else{
+    L.push(ok('Arquivo: '+esc(f.name)+' — '+(f.size/1e6).toFixed(1)+' MB'))
+    if(f.size>50e6) L.push(bad('Tamanho','acima de 50 MB, o limite padrão do Supabase'))
+  }
+  if(L.some(l=>l.indexOf('REDE')>=0))
+    L.push('<br><b>Conclusão:</b> o navegador não conseguiu falar com o Supabase — é bloqueio de rede (proxy/antivírus/extensão), não falta de SQL nem de bucket. Teste pelo 4G do celular: se funcionar lá, é a rede daqui.')
+  else if(!L.some(l=>l.indexOf('❌')>=0))
+    L.push('<br><b>Conclusão:</b> tudo funcionando — se o envio falhar mesmo assim, o problema é o arquivo em si.')
+  put()
 }
 function pollJobs(){ let n=0; const iv=setInterval(()=>{ loadJobs(); if(++n>=8) clearInterval(iv) }, 8000) }
 async function savePat(){
