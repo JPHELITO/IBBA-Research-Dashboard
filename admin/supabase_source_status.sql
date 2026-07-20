@@ -13,7 +13,7 @@ AS $$
     'now',         now(),
     'news_last',   (SELECT max(ran_at)     FROM public.hunter_runs),                    -- heartbeat do news-hunter
     'quotes_last', (SELECT max(updated_at) FROM public.quotes),                          -- robô de preços (Yahoo)
-    'macro_last',  (SELECT max(updated_at) FROM public.macro),
+    'macro_last',  (SELECT max(updated_at) FROM public.macro_indicators),      -- robô macro (Yahoo + BCB)
     'comm_last',   (SELECT max(updated_at) FROM public.commodities),
     'platts_last', (SELECT max(updated_at) FROM public.commodities
                      WHERE code IS NULL OR code NOT IN ('COPPER','GOLD','IRON_ORE_62')), -- Platts (exclui Yahoo/TE)
