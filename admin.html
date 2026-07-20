@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
-<title>ITAÚ BBA — Admin</title>
+<title>Admin</title>
 <script>
 try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}
 function toggleTheme(){var d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('ibba_theme',d?'dark':'light')}catch(e){}_syncThemeIcon();}
@@ -162,7 +162,7 @@ html.dark .ov-card{background:#20242b}
 
 <div id="gate">
   <div class="splash">
-    <div class="splash-brand">ITAÚ BBA <span>· Admin</span></div>
+    <div class="splash-brand"><span>Admin</span></div>
     <div class="spinner"></div>
     <p class="muted">Verificando seu acesso…</p>
   </div>
@@ -170,7 +170,7 @@ html.dark .ov-card{background:#20242b}
 
 <div id="denied" hidden>
   <div class="splash">
-    <div class="splash-brand">ITAÚ BBA <span>· Admin</span></div>
+    <div class="splash-brand"><span>Admin</span></div>
     <div class="lock">🔒</div>
     <h2>Acesso restrito</h2>
     <p id="denied-msg" class="muted"></p>
@@ -183,7 +183,7 @@ html.dark .ov-card{background:#20242b}
 
 <div id="panel" hidden>
   <header>
-    <span class="brand">ITAÚ BBA — <b>Admin</b></span>
+    <span class="brand"><b>Admin</b></span>
     <div class="row" style="gap:8px">
       <button id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <button onclick="location.href='/index.html'">↩ Voltar à dashboard</button>
@@ -453,7 +453,7 @@ html.dark .ov-card{background:#20242b}
 
       <div id="sg-sens" hidden>
         <div class="card"><h2>Sensibilidade</h2>
-          <p class="sub">Importe a aba <b>Sensitivity</b> do modelo (o Excel de cenários) — vira a grade que a aba Sensitivity do cliente mostra ao vivo (EV/EBITDA, FCF yield, Div yield, upside). <b>Reimportar a mesma empresa atualiza.</b></p>
+          <p class="sub">Importe o Excel de cenários — vira a grade que a aba Sensitivity do cliente mostra ao vivo (EV/EBITDA, FCF yield, Div yield, upside). Aceita <b>um arquivo com várias empresas</b> (uma aba por empresa, nomeada pelo ticker) <b>ou</b> um arquivo por empresa. Cada aba precisa do ticker no <code>A1</code> + drivers na linha 5 + cenários da linha 6. <b>Reimportar a mesma empresa atualiza.</b></p>
           <div id="sg-sens-host" class="status">Carregando…</div></div>
         <div class="card">
           <h2>🎲 Gerador de cenários <span class="muted" style="font-weight:400;font-size:13px">— opcional: monta a lista de combinações p/ colar no Excel</span></h2>
@@ -1072,7 +1072,7 @@ async function loadSGSens(){
 }
 function renderSensList(){
   const host=_v('sg-sens-host');
-  let h='<div class="row" style="margin-bottom:10px"><label class="btn" style="cursor:pointer">⬆ Importar modelo (aba Sensitivity)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label></div>'
+  let h='<div class="row" style="margin-bottom:10px"><label class="btn" style="cursor:pointer">⬆ Importar cenários (1 arquivo, 1+ empresas)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label></div>'
     +'<div id="sg-import-status" class="foot" style="margin-bottom:8px"></div>';
   if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade importada ainda.</span>';
   _sgSens.forEach(t=>{
@@ -1124,12 +1124,12 @@ function _sgiLevels(vals){ vals=vals.slice().sort((a,b)=>a-b); const span=(vals[
   const tol=Math.abs(span)*1e-3+1e-9; const lv=[]; vals.forEach(v=>{ if(!lv.length||Math.abs(v-lv[lv.length-1])>tol) lv.push(v); }); return lv; }
 function _sgiSnap(lv,v){ let best=lv[0],bd=Infinity; for(const x of lv){ const d=Math.abs(x-v); if(d<bd){bd=d;best=x;} } return best; }
 
-// parse PURO (testavel) -> {ticker, def, rows, summary}
-function sgParseModelSensitivity(wb,tickerHint){
-  const nm=wb.SheetNames.find(x=>/sensitivity/i.test(x)); if(!nm) throw 'Nenhuma aba "Sensitivity" no arquivo.';
-  const aoa=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1}); if(aoa.length<6) throw 'Aba Sensitivity muito curta.';
-  let ticker=tickerHint||null; const a1=String((aoa[0]||[])[0]||''); const mt=a1.match(/-\s*([A-Z0-9]{3,7})\s*\|/);
-  if(!ticker&&mt)ticker=mt[1]; if(!ticker) throw 'Nao identifiquei o ticker (celula A1).';
+// parse PURO de UMA aba (testavel) -> {ticker, def, rows, summary} | throw se a aba nao for uma grade de sensibilidade
+function sgParseSensitivitySheet(aoa,tickerHint){
+  if(!aoa||aoa.length<6) throw 'Aba muito curta.';
+  const a1=String((aoa[0]||[])[0]||''); const mt=a1.match(/-\s*([A-Z0-9]{3,7})\s*\|/);
+  let ticker=(mt?mt[1]:null)||tickerHint||null; if(!ticker) throw 'Nao identifiquei o ticker (celula A1 nem nome da aba).';
+  ticker=String(ticker).trim().toUpperCase();
   const r4=aoa[3]||[], r5=aoa[4]||[];
   const drivers=[]; for(let c=1;c<5;c++){ const l=r5[c]; if(l!=null&&String(l).trim()!=='') drivers.push({col:c,label:String(l).trim()}); }
   if(!drivers.length) throw 'Nenhum driver na linha 5 (B..D).'; if(drivers.length>3) throw 'Mais de 3 drivers (max 3).';
@@ -1167,22 +1167,42 @@ function sgParseModelSensitivity(wb,tickerHint){
   return {ticker:ticker,def:{title:'Sensibilidade — '+ticker,value_mode:outputs[0].mode,companies:[ticker],definition:def},
     rows:rows,summary:{scen:scen.length,pts:rows.length,drivers:drivers.map(d=>d.label),outputs:outputs.map(o=>o.label)}}; }
 
+// varre TODAS as abas do arquivo -> {companies:[...], skipped:[...]}. Uma aba por empresa (nomeada pelo ticker);
+// tb. aceita o formato antigo (arquivo com 1 aba). Abas de apoio (COVER/OUTPUT/DCF…) nao casam o layout e sao puladas.
+function sgParseModelSensitivity(wb,tickerHint){
+  const names=(wb&&wb.SheetNames)||[]; const companies=[]; const skipped=[]; const seen=new Set();
+  names.forEach(nm=>{ let aoa; try{ aoa=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1}); }catch(e){ skipped.push(String(nm)); return; }
+    let p; try{ p=sgParseSensitivitySheet(aoa,String(nm).trim().toUpperCase()); }catch(e){ skipped.push(String(nm)); return; }
+    if(seen.has(p.ticker)){ skipped.push(String(nm)+' (ticker repetido: '+p.ticker+')'); return; }
+    seen.add(p.ticker); p.sheet=String(nm); companies.push(p); });
+  if(!companies.length) throw 'Nenhuma aba de sensibilidade válida (preciso de: ticker no A1 + drivers na linha 5 + cenários da linha 6).';
+  return {companies:companies,skipped:skipped}; }
+
 async function sgImportModel(file){ if(!file)return; const setS=h=>{ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
   setS('Lendo arquivo…');
   try{
     const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
-    let p; try{ p=sgParseModelSensitivity(wb,null); }catch(e){ setS('<b style="color:#C0392B">Bloqueado:</b> '+esc(String(e))); return; }
-    setS('Salvando definição de '+esc(p.ticker)+'…');
-    const existing=_sgSens.find(t=>t.definition&&(t.definition.import_ticker===p.ticker||t.title==='Sensibilidade — '+p.ticker));
-    const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:existing?Number(existing.id):null,p_data:p.def});
-    if(up.error){ setS('<b style="color:#C0392B">Erro (definição):</b> '+esc(up.error.message)); return; }
-    let sid=up.data; if(sid==null){ await loadSGSens(); const t2=_sgSens.find(t=>t.definition&&t.definition.import_ticker===p.ticker); sid=t2?t2.id:null; }
-    if(sid==null){ setS('<b style="color:#C0392B">Erro:</b> não recebi o id da sensibilidade.'); return; }
-    setS('Subindo '+p.rows.length+' pontos de malha ('+p.ticker+')…');
-    const CH=2000; for(let i=0;i<p.rows.length;i+=CH){ const chunk=p.rows.slice(i,i+CH);
-      const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_grid',{p_sensitivity_id:sid,p_rows:chunk,p_first_chunk:i===0});
-      if(error){ setS('<b style="color:#C0392B">Erro no mesh:</b> '+esc(error.message)+' (re-subir refaz tudo — idempotente).'); return; } }
-    setS('<b style="color:#1E8E4E">OK!</b> '+esc(p.ticker)+' · '+p.summary.scen+' cenários · '+p.rows.length+' pts · eixos: '+p.summary.drivers.map(esc).join(', ')+' · outputs: '+p.summary.outputs.map(esc).join(' · '));
+    let parsed; try{ parsed=sgParseModelSensitivity(wb,null); }catch(e){ setS('<b style="color:#C0392B">Bloqueado:</b> '+esc(String(e))); return; }
+    const comps=parsed.companies; const done=[]; const fails=[]; const N=comps.length;
+    for(let ci=0;ci<N;ci++){ const p=comps[ci]; const tag='['+(ci+1)+'/'+N+'] '+esc(p.ticker);
+      setS(tag+' — salvando definição…');
+      const existing=_sgSens.find(t=>t.definition&&(t.definition.import_ticker===p.ticker||t.title==='Sensibilidade — '+p.ticker));
+      const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:existing?Number(existing.id):null,p_data:p.def});
+      if(up.error){ fails.push(p.ticker+' (definição: '+up.error.message+')'); continue; }
+      let sid=up.data; if(sid==null){ await loadSGSens(); const t2=_sgSens.find(t=>t.definition&&t.definition.import_ticker===p.ticker); sid=t2?t2.id:null; }
+      if(sid==null){ fails.push(p.ticker+' (não recebi o id)'); continue; }
+      setS(tag+' — subindo '+p.rows.length+' pts de malha…');
+      const CH=2000; let meshErr=null;
+      for(let i=0;i<p.rows.length;i+=CH){ const chunk=p.rows.slice(i,i+CH);
+        const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_grid',{p_sensitivity_id:sid,p_rows:chunk,p_first_chunk:i===0});
+        if(error){ meshErr=error.message; break; } }
+      if(meshErr){ fails.push(p.ticker+' (mesh: '+meshErr+')'); continue; }
+      done.push(p.ticker+' · '+p.summary.scen+' cen./'+p.rows.length+' pts'); }
+    let msg='';
+    if(done.length) msg+='<b style="color:#1E8E4E">OK!</b> '+done.length+' empresa(s): '+done.map(esc).join(' · ');
+    if(fails.length) msg+=(msg?'<br>':'')+'<b style="color:#C0392B">Falhou:</b> '+fails.map(esc).join(' · ')+' (re-subir refaz — idempotente).';
+    if(parsed.skipped&&parsed.skipped.length) msg+=(msg?'<br>':'')+'<span class="muted">Abas ignoradas: '+esc(parsed.skipped.join(', '))+'</span>';
+    setS(msg||'Nada importado.');
     loadSGSens();
   }catch(e){ setS('<b style="color:#C0392B">Falha:</b> '+esc(e.message||e)); } }
 </script>

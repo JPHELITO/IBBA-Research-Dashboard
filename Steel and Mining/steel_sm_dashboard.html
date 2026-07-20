@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111111"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>ITAÚ BBA — Steel Research Dashboard</title>
+<title>Steel Research Dashboard</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -508,12 +508,10 @@ html.dark .cr-input{color-scheme:dark}
   <!-- Brand -->
   <div class="brand-group">
     <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-      <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-      <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect width="22" height="22" rx="6" fill="#FF5000"/>
     </svg>
     <div>
-      <div class="top-title">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="top-title">S&amp;M | P&amp;P</div>
       <div class="top-sub">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
     </div>
   </div>
@@ -1210,15 +1208,54 @@ const LEG={get plugins(){return{legend:{display:true,position:'top',
 const YINT={scales:{y:{ticks:{callback:fmtY}}}};
 const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}};
 
+/* Lê o corpo da resposta em streaming mostrando o progresso. O .db tem dezenas de MB —
+   sem isso a tela de "Loading data…" fica parada e parece travada. Se o servidor não
+   mandar content-length (ou não houver stream), cai no arrayBuffer normal. */
+async function readWithProgress(resp, msg){
+  const total=+(resp.headers.get('content-length')||0);
+  const label=document.querySelector('#loading p');
+  if(!resp.body||!total||!label) return new Uint8Array(await resp.arrayBuffer());
+  const reader=resp.body.getReader(), chunks=[]; let got=0, last=-1;
+  for(;;){
+    const {done,value}=await reader.read(); if(done) break;
+    chunks.push(value); got+=value.length;
+    const pct=Math.floor(got/total*100);
+    if(pct!==last){ last=pct; label.textContent=`${msg} ${pct}%`; }
+  }
+  const out=new Uint8Array(got); let off=0;
+  for(const c of chunks){ out.set(c,off); off+=c.length; }
+  return out;
+}
+
+/* Busca o banco. Prefere a versão WEB (`steel_sm_web.db.gz`, ~10 MB: só as 11 tabelas que
+   esta página lê, comprimida — gerada por `build_web_db.py`) e cai no `.db` completo se ela
+   não existir ou o navegador não tiver DecompressionStream. Motivo: o arquivo completo tem
+   ~47 MB e NÃO CABE no cache do navegador → era rebaixado inteiro toda vez que alguém abria
+   a página. Com ~10 MB ele cabe, então da 2ª visita em diante praticamente não trafega.
+   Também saiu o cache-buster `?v=AAAAMMDD`, que trocava a URL todo dia e jogava fora o cache. */
+async function fetchDB(){
+  if(typeof DecompressionStream==='function'){
+    try{
+      const r=await fetch('steel_sm_web.db.gz');
+      if(r.ok){
+        const gz=await readWithProgress(r,'Loading data…');   // progresso = bytes comprimidos (é o que trafega)
+        const stream=new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+      console.warn('steel_sm_web.db.gz indisponível (HTTP '+r.status+') — usando o banco completo');
+    }catch(e){ console.warn('falha na versão web, usando o banco completo:', e); }
+  }
+  const r=await fetch('steel_sm.db');
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await readWithProgress(r,'Loading data…');
+}
+
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
 async function loadDB(){
   const el=document.getElementById('loading');
   try{
     const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
-    const cb=new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const resp=await fetch(`steel_sm.db?v=${cb}`);
-    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-    const db=new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+    const db=new SQL.Database(await fetchDB());
 
     PROD=toObj(db.exec(`SELECT period,year,month,crude_steel,flat,long_prod,semi FROM iabr_production ORDER BY period`)[0]);
     CONS=toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_consumption ORDER BY period`)[0]);

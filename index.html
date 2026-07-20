@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
-<title>ITAÚ BBA — Research Dashboard</title>
+<title>Research Dashboard</title>
 <!-- ── NIGHT MODE: aplica o tema salvo ANTES de pintar (sem flash) + lógica do toggle ── -->
 <script>
 try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}
@@ -349,19 +349,43 @@ img.team-avatar{object-fit:cover;background:none;}
   display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
 .hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
 .hm-filter-btn .hm-count{font-weight:600;opacity:.7;}
-.hm-pop{position:fixed;z-index:4000;width:min(330px,86vw);
+/* Popover do heatmap = DUAS COLUNAS: grupos à esquerda (rail), empresas do grupo aberto à direita.
+   Antes era uma lista única (presets em cima + TODOS os setores empilhados) → rolagem longa. */
+.hm-pop{position:fixed;z-index:4000;width:min(440px,92vw);
   background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-hover);
-  padding:10px 11px;max-height:min(72vh,470px);overflow:auto;text-align:left;}
+  max-height:min(72vh,470px);display:flex;flex-direction:column;overflow:hidden;text-align:left;}
 .hm-pop[hidden]{display:none;}
-.hm-pop-presets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding-bottom:9px;border-bottom:1px solid var(--border);}
-.hm-pop-preset{font:inherit;font-size:10px;font-weight:700;padding:3px 9px;border:1px solid var(--border);
-  background:var(--white);color:var(--gray-dark);border-radius:12px;cursor:pointer;transition:all .12s;}
-.hm-pop-preset:hover{border-color:var(--orange);color:var(--orange);}
-.hm-pop-preset.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.hm-pop-body{display:flex;flex:1;min-height:0;}
+/* ── coluna ESQUERDA — grupos (só navega; não mexe na seleção) ── */
+.hm-pop-rail{flex:0 0 132px;border-right:1px solid var(--border);overflow:auto;padding:6px 5px;}
+.hm-rail-item{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;
+  font:inherit;font-size:10.5px;font-weight:600;color:var(--gray-mid);background:none;border:0;
+  border-left:2px solid transparent;border-radius:5px;padding:5px 7px;cursor:pointer;text-align:left;transition:all .12s;}
+.hm-rail-item:hover,.hm-rail-item.open{background:var(--gray-light);color:var(--black);}
+.hm-rail-item.exact{border-left-color:var(--orange);color:var(--orange);}
+.hm-rail-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-rail-count{font-size:9px;font-weight:700;opacity:.5;flex-shrink:0;}
+.hm-rail-count.has{opacity:1;color:var(--orange);}
+/* ── coluna DIREITA — empresas do grupo aberto ── */
+.hm-pop-panel{flex:1;min-width:0;overflow:auto;padding:9px 11px 11px;}
+.hm-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.hm-panel-title{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-panel-all{font:inherit;font-size:9px;font-weight:700;padding:3px 8px;border:1px solid var(--border);
+  background:var(--white);color:var(--gray-dark);border-radius:11px;cursor:pointer;white-space:nowrap;
+  flex-shrink:0;transition:all .12s;}
+.hm-panel-all:hover:not(:disabled){border-color:var(--orange);color:var(--orange);}
+.hm-panel-all:disabled{opacity:.4;cursor:default;}
+/* ── rodapé — contador + limpar ── */
+.hm-pop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
+  border-top:1px solid var(--border);padding:7px 11px;font-size:10px;color:var(--gray-mid);}
+.hm-pop-foot b{color:var(--gray-dark);}
+.hm-pop-clear{font:inherit;font-size:9.5px;font-weight:700;color:var(--gray-mid);background:none;
+  border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;transition:all .12s;}
+.hm-pop-clear:hover:not(:disabled){color:var(--red);border-color:var(--red);}
+.hm-pop-clear:disabled{opacity:.4;cursor:default;}
 .hm-pop-hint{font-size:10px;color:var(--gray-mid);margin:0 2px 7px;}
 .hm-pop-hint b{color:var(--gray-dark);}
-.hm-pop-group{margin-bottom:7px;}
-.hm-pop-glabel{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);margin:3px 2px 4px;}
 .hm-pop-chips{display:flex;flex-wrap:wrap;gap:4px;}
 .hm-pop-chip{font:inherit;font-size:10.5px;font-weight:600;padding:3px 8px;border:1px solid var(--border);
   background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;transition:all .12s;}
@@ -521,6 +545,7 @@ html.dark .news-item:hover{background:rgba(255,255,255,.05);}
 html.dark .tn-menu{background:#1c2026;}
 html.dark .tn-menu a:hover{background:rgba(255,255,255,.06);}
 html.dark .mc-reco-chip{background:#2a1d15;}
+html.dark .hm-rail-item:hover,html.dark .hm-rail-item.open{background:rgba(255,255,255,.07);}
 html.dark .hm-card.flat{background:#3a3f47;color:#cfd3d9;}
 html.dark .footer-text{color:rgba(255,255,255,.4);}
 html.dark .footer-dot{background:rgba(255,255,255,.22);}
@@ -532,11 +557,9 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
 <!-- HEADER -->
 <div class="header">
   <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-    <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-    <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+    <rect width="22" height="22" rx="6" fill="#FF5000"/>
   </svg>
-  <div class="brand-name">ITAÚ BBA M&amp;M | P&amp;P</div>
+  <div class="brand-name">M&amp;M | P&amp;P</div>
   <nav class="topnav">
     <a class="tn-item" href="/index.html">Home</a>
     <div class="tn-group"><span class="tn-item">M&amp;M ▾</span>
@@ -742,7 +765,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
 
 <!-- FOOTER -->
 <div class="footer">
-  <span class="footer-text">Itaú BBA · Equity Research</span>
+  <span class="footer-text">Equity Research</span>
   <div class="footer-dot"></div>
   <span class="footer-text">Restricted use</span>
 </div>
@@ -820,6 +843,25 @@ function applyFlags(flags, isAdmin){
     });
   }
 }
+/* ── PRÉ-CARGA das dashboards pesadas (M&M lê um SQLite de ~47 MB no navegador) ─────────
+   Quando o mouse PARA sobre o card do setor (180ms = intenção, não passagem), começamos a
+   baixar o banco em segundo plano. No clique o arquivo já está no cache → a página abre na
+   hora. Custo: no pior caso é o mesmo download que o clique faria; e como o `.db` é
+   revalidado por ETag (sem cache-buster), da 2ª vez em diante trafega só o 304. */
+const _WARM_DB = { sector_steel:'Steel and Mining/steel_sm_web.db.gz', sector_pp:'Pulp and Paper/pulp_paper.db' };
+const _warmed = new Set();
+function _warmDB(url){
+  if(_warmed.has(url)) return; _warmed.add(url);
+  // priority:'low' é ignorado por quem não suporta; o .catch garante que falha de rede não vaza erro
+  try{ fetch(url,{priority:'low'}).then(r=>r.blob()).catch(()=>{}); }catch(e){}
+}
+document.querySelectorAll('.sc-card[data-flag]').forEach(card=>{
+  const url=_WARM_DB[card.dataset.flag]; if(!url) return;
+  let t=null;
+  card.addEventListener('pointerenter', ()=>{ t=setTimeout(()=>_warmDB(url),180); });
+  card.addEventListener('pointerleave', ()=>{ clearTimeout(t); });
+});
+
 async function applyDashboardConfig(){
   try{
     const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
@@ -1126,7 +1168,7 @@ const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRA
 const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
 const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
-const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
+const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ'];
 let COVERAGE     = G_COVERAGE;                  // default do heatmap (admin pode sobrescrever)
 
@@ -1153,10 +1195,11 @@ const TICKER_SECTOR = {};
 [['steel',G_STEEL],['iron_ore',G_IRON],['gold',G_GOLD],['copper',G_COPPER],['rare_earths',G_RARE],['pp',G_PP],['index',G_INDEX]]
   .forEach(([sec,arr])=>arr.forEach(t=>{ if(!(t in TICKER_SECTOR)) TICKER_SECTOR[t]=sec; }));
 // cobertura cujos tickers não estão num grupo setorial (usam outro listing no grupo):
-Object.assign(TICKER_SECTOR, {'VALE3.SA':'iron_ore','AURA33.SA':'gold','RANI3.SA':'pp','IBOV':'index'});
-// setor → tickers (ordem dos grupos), p/ montar o checklist do filtro independente do Supabase
-const SECTOR_TICKERS = {}; SECTOR_ORDER.forEach(s=>SECTOR_TICKERS[s]=[]);
-Object.keys(TICKER_SECTOR).forEach(t=>{ if(SECTOR_TICKERS[TICKER_SECTOR[t]]) SECTOR_TICKERS[TICKER_SECTOR[t]].push(t); });
+// VALE3 (o grupo usa a ADR VALE) e AURA33 (o grupo usa a AUGO da Nasdaq). RANI3 NÃO entra aqui —
+// ela está no G_PP mesmo (2026-07-20: estava só na cobertura → preset/peers de P&P a deixavam de fora).
+Object.assign(TICKER_SECTOR, {'VALE3.SA':'iron_ore','AURA33.SA':'gold','IBOV':'index'});
+// (o antigo SECTOR_TICKERS saiu em 2026-07-20: o painel de filtro virou duas colunas e a coluna
+//  da esquerda lê direto o HM_PRESETS — a união dos grupos é a mesma, nada ficou inalcançável.)
 
 // Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
 let _hmFromDefault = false;   // true se _hmDisplayed veio do default (sem localStorage do usuário)
@@ -1175,7 +1218,6 @@ function applyHeatmapConfig(rows){
     const hidden = new Set(rows.filter(r=>r.is_hidden).map(r=>r.symbol));
     if(hidden.size){
       hidden.forEach(t=>KNOWN.delete(t));
-      for(const s in SECTOR_TICKERS) SECTOR_TICKERS[s]=SECTOR_TICKERS[s].filter(t=>!hidden.has(t));
       for(const s in SECTOR_GROUPS)  SECTOR_GROUPS[s] =SECTOR_GROUPS[s].filter(t=>!hidden.has(t));
       for(const n in HM_PRESETS)     HM_PRESETS[n]    =HM_PRESETS[n].filter(t=>!hidden.has(t));
       _hmDisplayed=_hmDisplayed.filter(t=>!hidden.has(t));
@@ -1322,24 +1364,50 @@ function _activePreset(){
     if(JSON.stringify([...list].sort())===cur) return name;
   return null;
 }
+// Grupo aberto na coluna da esquerda. É só NAVEGAÇÃO — trocar de grupo não mexe na seleção
+// (quem troca a seleção é o botão "Show only this group" e os chips).
+let _hmGroup=null;
+const _esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// quantos tickers do grupo estão no heatmap agora (o "3/9" do rail)
+function _groupCount(list){ const s=new Set(_hmDisplayed); return list.reduce((n,t)=>n+(s.has(t)?1:0),0); }
+
 function _buildFilterPop(){
   const pop=document.getElementById('hm-pop'); if(!pop) return;
   const shown=new Set(_hmDisplayed), atCap=_hmDisplayed.length>=HM_MAX, active=_activePreset();
-  let html='<div class="hm-pop-presets">'+Object.keys(HM_PRESETS).map(n=>
-    `<button class="hm-pop-preset ${active===n?'active':''}" data-preset="${n}">${n}</button>`
-  ).join('')+'</div>';
-  html+=`<div class="hm-pop-hint"><b>${_hmDisplayed.length}/${HM_MAX}</b> selected — check/uncheck companies and indices.</div>`;
+  // grupos vazios somem (o admin pode esconder tickers e zerar um grupo)
+  const names=Object.keys(HM_PRESETS).filter(n=>(HM_PRESETS[n]||[]).length);
+  if(!names.length){ pop.innerHTML='<div class="hm-pop-hint">No instruments available.</div>'; return; }
+  if(!_hmGroup || !(HM_PRESETS[_hmGroup]||[]).length) _hmGroup = (active && names.includes(active)) ? active : names[0];
+  const list=HM_PRESETS[_hmGroup]||[];
   const nameOf=t=>{ const q=_quotes.find(x=>x.ticker===t); return q?q.name:''; };
-  SECTOR_ORDER.forEach(sec=>{
-    const items=SECTOR_TICKERS[sec]||[];
-    if(!items.length) return;
-    html+=`<div class="hm-pop-group"><div class="hm-pop-glabel">${SECTOR_LABEL[sec]||sec}</div><div class="hm-pop-chips">`+
-      items.map(t=>{
-        const on=shown.has(t), dis=(!on&&atCap)?'disabled':'';
-        return `<button class="hm-pop-chip ${on?'on':''}" data-t="${t}" ${dis} title="${nameOf(t)}">${_short(t)}</button>`;
-      }).join('')+'</div></div>';
-  });
-  pop.innerHTML=html;
+
+  const rail=names.map(n=>{
+    const g=HM_PRESETS[n]||[], sel=_groupCount(g);
+    return `<button class="hm-rail-item ${n===_hmGroup?'open':''} ${active===n?'exact':''}" data-group="${_esc(n)}"
+      title="${_esc(n)} — ${sel} of ${g.length} on the heatmap">
+      <span class="hm-rail-name">${_esc(n)}</span>
+      <span class="hm-rail-count ${sel?'has':''}">${sel}/${g.length}</span></button>`;
+  }).join('');
+
+  const chips=list.map(t=>{
+    const on=shown.has(t), dis=(!on&&atCap)?'disabled':'';
+    return `<button class="hm-pop-chip ${on?'on':''}" data-t="${t}" ${dis} title="${_esc(nameOf(t))}">${_short(t)}</button>`;
+  }).join('');
+
+  pop.innerHTML=`<div class="hm-pop-body">
+      <div class="hm-pop-rail">${rail}</div>
+      <div class="hm-pop-panel">
+        <div class="hm-panel-head">
+          <span class="hm-panel-title">${_esc(_hmGroup)} — ${list.length}</span>
+          <button class="hm-panel-all" data-preset="${_esc(_hmGroup)}" ${active===_hmGroup?'disabled':''}>Show only this group</button>
+        </div>
+        <div class="hm-pop-chips">${chips}</div>
+      </div>
+    </div>
+    <div class="hm-pop-foot">
+      <span><b>${_hmDisplayed.length}/${HM_MAX}</b> on the heatmap${atCap?' — limit reached':''}</span>
+      <button class="hm-pop-clear" ${_hmDisplayed.length?'':'disabled'}>Clear</button>
+    </div>`;
 }
 function _positionPop(){
   const pop=document.getElementById('hm-pop'), btn=document.getElementById('hm-filter-btn');
@@ -1366,8 +1434,13 @@ function _toggleFilterPop(open){
 document.getElementById('hm-filter-btn')?.addEventListener('click', e=>{ e.stopPropagation(); _toggleFilterPop(); });
 document.getElementById('hm-pop')?.addEventListener('click', e=>{
   e.stopPropagation();
-  const preset=e.target.closest('.hm-pop-preset');
-  if(preset){ _hmDisplayed=HM_PRESETS[preset.dataset.preset].slice(0,HM_MAX); _saveDisplayed(); _renderHeatmap(); _buildFilterPop(); return; }
+  const rail=e.target.closest('.hm-rail-item');            // troca o grupo VISÍVEL (não mexe na seleção)
+  if(rail){ _hmGroup=rail.dataset.group; _buildFilterPop(); return; }
+  const all=e.target.closest('.hm-panel-all');              // "Show only this group" = o antigo preset
+  if(all && !all.disabled){ _hmDisplayed=(HM_PRESETS[all.dataset.preset]||[]).slice(0,HM_MAX);
+    _saveDisplayed(); _renderHeatmap(); _buildFilterPop(); return; }
+  const clear=e.target.closest('.hm-pop-clear');
+  if(clear && !clear.disabled){ _hmDisplayed=[]; _saveDisplayed(); _renderHeatmap(); _buildFilterPop(); return; }
   const chip=e.target.closest('.hm-pop-chip');
   if(chip && !chip.disabled){
     const t=chip.dataset.t, i=_hmDisplayed.indexOf(t);
