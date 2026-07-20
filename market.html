@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#0E1116"/>
-<title>ITAÚ BBA — Market</title>
+<title>Market</title>
 <!-- night mode: Market é ESCURA por padrão; segue o toggle GLOBAL (localStorage ibba_theme + classe html.dark) -->
 <script>try{if(localStorage.getItem('ibba_theme')!=='light')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -515,7 +515,7 @@ const G_IRON=['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'
 const G_GOLD=['AUGO','ARIS','BVN','AEM','B','HOC.L'];
 const G_COPPER=['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
 const G_RARE=['MEI.AX','VMM.AX','ARA.TO'];
-const G_PP=['SW','IP','SUZB3.SA','KLBN11.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
+const G_PP=['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 const G_INDEX=['GDX','SPX','MATB11.SA','NASDAQ'];
 let COVERAGE=G_COVERAGE.slice();
 const SECTOR_GROUPS={steel:G_STEEL,iron_ore:G_IRON,gold:G_GOLD,copper:G_COPPER,rare_earths:G_RARE,pp:G_PP};
@@ -526,7 +526,7 @@ const KNOWN=new Set([].concat(G_COVERAGE,G_STEEL,G_IRON,G_GOLD,G_COPPER,G_RARE,G
 const TICKER_SECTOR={};
 [['steel',G_STEEL],['iron_ore',G_IRON],['gold',G_GOLD],['copper',G_COPPER],['rare_earths',G_RARE],['pp',G_PP],['index',G_INDEX]]
   .forEach(([sec,arr])=>arr.forEach(t=>{if(!(t in TICKER_SECTOR))TICKER_SECTOR[t]=sec;}));
-Object.assign(TICKER_SECTOR,{'VALE3.SA':'iron_ore','AURA33.SA':'gold','RANI3.SA':'pp','IBOV':'index'});
+Object.assign(TICKER_SECTOR,{'VALE3.SA':'iron_ore','AURA33.SA':'gold','IBOV':'index'});  // RANI3 vive no G_PP (ver index.html)
 const SECTOR_TICKERS={}; SECTOR_ORDER.forEach(s=>SECTOR_TICKERS[s]=[]);
 Object.keys(TICKER_SECTOR).forEach(t=>{if(SECTOR_TICKERS[TICKER_SECTOR[t]])SECTOR_TICKERS[TICKER_SECTOR[t]].push(t);});
 

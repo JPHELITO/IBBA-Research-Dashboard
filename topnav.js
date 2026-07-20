@@ -72,7 +72,7 @@
 
   var NAV = '\
 <div class="gnav">\
-  <a class="gnav-brand" href="/index.html" style="text-decoration:none"><span class="gnav-mark">i</span><b>ITAÚ BBA M&amp;M | P&amp;P</b></a>\
+  <a class="gnav-brand" href="/index.html" style="text-decoration:none"><span class="gnav-mark"></span><b>M&amp;M | P&amp;P</b></a>\
   <nav class="gnav-menu">\
     <a class="gn-item" href="/index.html">Home</a>\
     <div class="gn-group"><span class="gn-item">M&amp;M ▾</span><div class="gn-drop"><div class="gn-cat">Steel &amp; Mining</div>\

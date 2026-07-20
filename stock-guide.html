@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
-<title>ITAÚ BBA — Stock Guide</title>
+<title>Stock Guide</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -114,8 +114,8 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
 <div id="app" hidden>
   <div class="sticky-header">
     <div class="top-bar">
-      <div class="brand"><div class="brand-mark">i</div>
-        <div><div class="top-title">ITAÚ BBA — Stock Guide</div>
+      <div class="brand"><div class="brand-mark"></div>
+        <div><div class="top-title">Stock Guide</div>
           <div class="top-sub">Comparables &amp; sensitivity analysis · Equity Research</div></div></div>
       <div class="spacer"></div>
       <span id="admin-badge" class="offtag" hidden>admin mode (viewing restricted data)</span>
@@ -249,7 +249,7 @@ const MODEL_URL={
   COPEC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/COPEC'
 };
 const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open Itaú BBA model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
+function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
 function _sgTabFromHash(){ return (location.hash==='#sens')?'sens':'comp'; }
 function sgShowTab(t){
   t=(t==='sens')?'sens':'comp';
@@ -645,7 +645,7 @@ function _sgInitExport(){
   if(document.getElementById('sg-export-bar')||!window.IBBAExport) return;
   const EX=IBBAExport;
   const onPDF=()=>{ const specs=_sgExportTables(false); if(!specs.length) return alert('Nothing to print yet.');
-    EX.printStyledTables(specs,{heading:'ITAÚ BBA — Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); };
+    EX.printStyledTables(specs,{heading:'Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); };
   const onXLS=()=>{ const specs=_sgExportTables(true); if(!specs.length) return alert('Nothing to export yet.');
     EX.xlsxFromTables(specs,'stock_guide_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
   // barra VISÍVEL logo acima da comp table (admin)
