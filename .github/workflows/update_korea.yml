@@ -66,12 +66,18 @@ jobs:
             ---
             Itaú BBA — Equity Research | Steel & Mining (mensagem automática)
 
+      # Regera o banco WEB (o que o cliente baixa). SEM isto o steel_sm.db anda e o
+      # steel_sm_web.db.gz fica para trás → cliente vendo dado velho.
+      - name: Build web DB (slim + gzip)
+        if: env.KOREA_NEW_DATA == 'true' || github.event.inputs.backfill == 'true'
+        run: python "Steel and Mining/build_web_db.py"
+
       - name: Commit & push updated DB
         if: env.KOREA_NEW_DATA == 'true' || github.event.inputs.backfill == 'true'
         run: |
           git config user.name  "IBBA Bot"
           git config user.email "bot@itaubba.com"
-          git add "Steel and Mining/steel_sm.db"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
           if git diff --staged --quiet; then
             echo "::warning::sem mudança no .db — nada a commitar."
           else

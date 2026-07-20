@@ -32,12 +32,18 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python _shared/process_uploads.py
 
+      # Regera o banco WEB (o que o cliente baixa). SEM isto o steel_sm.db anda e o
+      # steel_sm_web.db.gz fica para trás → cliente vendo dado velho.
+      - name: Build web DB (slim + gzip)
+        if: env.UPLOADS_CHANGED == 'true'
+        run: python "Steel and Mining/build_web_db.py"
+
       - name: Commit DB if changed
         if: env.UPLOADS_CHANGED == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "Steel and Mining/steel_sm.db" "Pulp and Paper/pulp_paper.db"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz" "Pulp and Paper/pulp_paper.db"
           git diff --staged --quiet || git commit -m "data: upload do admin processado"
           git pull --rebase --autostash || true   # robustez contra corrida de push (igual ao pulp)
           git push
