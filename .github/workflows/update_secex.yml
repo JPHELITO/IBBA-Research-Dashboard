@@ -76,6 +76,12 @@ jobs:
       - name: DB size gate (<50 MB p/ sql.js)
         run: python _shared/check_db_size.py "Steel and Mining/steel_sm.db"
 
+      # ── 4b. Versão WEB do banco (o que o CLIENTE baixa) ──────────────────────
+      # Só as 11 tabelas que a dashboard lê, comprimida: ~47 MB → ~10 MB.
+      # O .db completo continua sendo a fonte da verdade (updater + console do admin).
+      - name: Build web DB (slim + gzip)
+        run: python "Steel and Mining/build_web_db.py"
+
       # ── 5. Enviar e-mail de notificação ─────────────────────────────────────
       - name: Send email notification
         if: env.NEW_DATA == 'true'
@@ -114,7 +120,7 @@ jobs:
         run: |
           git config user.name  "IBBA Bot"
           git config user.email "bot@itaubba.com"
-          git add "Steel and Mining/steel_sm.db"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
           if git diff --staged --quiet; then
             echo "::warning::sem mudança no .db — nada a commitar."
           else

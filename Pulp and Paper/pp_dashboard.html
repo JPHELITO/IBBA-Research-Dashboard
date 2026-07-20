@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111111"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>ITAÚ BBA — Pulp &amp; Paper Research Dashboard</title>
+<title>Pulp &amp; Paper Research Dashboard</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -361,12 +361,10 @@ html.dark .cr-input{color-scheme:dark}
 <div class="top-bar">
   <div class="brand-group">
     <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1.5" y="11.5" width="4.5" height="9" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-      <rect x="8.75" y="7" width="4.5" height="13.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
-      <rect x="16" y="2" width="4.5" height="18.5" rx="0.7" stroke="#FF5000" stroke-width="1.6"/>
+      <rect width="22" height="22" rx="6" fill="#FF5000"/>
     </svg>
     <div>
-      <div class="top-title">ITAÚ BBA S&amp;M | P&amp;P</div>
+      <div class="top-title">S&amp;M | P&amp;P</div>
       <div class="top-sub">Daniel Sasson · Edgard Pinto Souza · Marcelo Furlan · João Paulo Helito</div>
     </div>
   </div>
@@ -951,8 +949,9 @@ async function loadDB(){
   const el=document.getElementById('loading');
   try{
     const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
-    const cb=new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const resp=await fetch(`pulp_paper.db?v=${cb}`);
+    /* SEM cache-buster (era `?v=AAAAMMDD`) — ver a nota no steel_sm_dashboard.html:
+       o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou. */
+    const resp=await fetch('pulp_paper.db');
     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
     const db=new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
 
