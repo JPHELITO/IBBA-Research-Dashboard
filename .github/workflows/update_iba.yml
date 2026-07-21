@@ -10,7 +10,10 @@ name: 🔄 Auto-Update IBÁ (papel) — visão (Gemini)
 
 on:
   schedule:
-    - cron: "0 13 8-25 * *"   # 13:00 UTC, dias 8-25
+    # A cada ~3 dias na janela em que o IBÁ costuma publicar (não diário de propósito):
+    # o Gemini só é chamado quando há MÊS NOVO — nos outros dias é só um GET de texto e
+    # para. Espaçar evita re-tentativa/e-mail diário num mês raro que precise de conferência.
+    - cron: "0 13 8,11,14,17,20,23,26 * *"   # 13:00 UTC
   workflow_dispatch:
 
 concurrency:
