@@ -1,0 +1,73 @@
+name: 🔄 Auto-Update INDA (distribuição) — In Data PDF
+
+# DE HORA EM HORA, dias 15-31 (janela em que o INDA publica o In Data do mês).
+# Acha o PDF pela URL (público) → lê o TEXTO com o Gemini → 2 checksums → grava só os
+# meses novos em inda_distribution (preenche TODOS os faltantes, em ordem, p/ não deixar
+# buraco) → 3 e-mails (detecção/atualizado/erro), 1×/mês. Commita steel_sm.db + web gz.
+#
+# Secrets: GEMINI_API_KEY, SMTP_USER, SMTP_PASS, SUPABASE_URL, SUPABASE_SERVICE_KEY
+#          (INDA_CREDENTIALS é só reserva — o PDF é público, normalmente não precisa).
+
+on:
+  schedule:
+    - cron: "23 * 15-31 * *"   # de hora em hora, dias 15-31
+  workflow_dispatch:
+
+concurrency:
+  group: update-inda
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install requests pypdf
+
+      - name: Achar/ler/gravar (In Data + checksums + e-mails de detecção/erro)
+        env:
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          INDA_CREDENTIALS: ${{ secrets.INDA_CREDENTIALS }}
+        run: python "Steel and Mining/update_inda.py" --update
+
+      # Publicou → regenera o banco WEB (steel_sm.db é o de 47 MB) e commita os dois
+      - name: Build web DB (slim + gzip)
+        if: env.INDA_NEW_DATA == 'true'
+        run: python "Steel and Mining/build_web_db.py"
+
+      - name: Commit steel_sm.db (+ web gz)
+        if: env.INDA_NEW_DATA == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no .db"
+          else
+            git commit -m "data: INDA distribuição -> ${INDA_LATEST}"
+            git pull --rebase --autostash || true
+            git push
+          fi
+
+      - name: E-mail — base atualizada
+        if: env.INDA_NEW_DATA == 'true'
+        run: |
+          python _shared/notify.py --source inda_distribution --period "${INDA_LATEST}" --kind updated \
+            --subject "✅ INDA ${INDA_LATEST} publicado no dashboard" \
+            --body "O In Data foi lido, passou nos checksums e está publicado no dashboard (até ${INDA_LATEST}). https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"
+
+      - name: Log update
+        if: env.INDA_NEW_DATA == 'true'
+        run: python _shared/log_update.py "inda_distribution" auto "In Data PDF ${INDA_LATEST}"
