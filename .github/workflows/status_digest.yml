@@ -1,0 +1,48 @@
+name: 📊 Status Digest — panorama das fontes
+
+# Manda por e-mail o "panorama de tudo": cada fonte com última atualização,
+# próximo esperado e farol 🟢/🟡/🔴. Roda no repo do frontend porque aqui estão
+# os .db committados (lê MAX(period) direto) E os secrets do Supabase/SMTP.
+#   • Segunda  → --digest (panorama completo, sempre envia)
+#   • Quinta   → --alert  (só envia se uma fonte AUTOMÁTICA estiver 🔴 = quebra real)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "digest (panorama) | alert (só se auto 🔴) | print (só terminal)"
+        default: "digest"
+  schedule:
+    - cron: "0 11 * * 1"   # segunda, 11:00 UTC ≈ 08:00 BRT
+    - cron: "0 11 * * 4"   # quinta
+
+concurrency:
+  group: status-digest
+  cancel-in-progress: true
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install requests
+      - name: Enviar panorama / alerta
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SMTP_USER:            ${{ secrets.SMTP_USER }}
+          SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+          PYTHONUTF8: "1"
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "0 11 * * 1" ]; then MODE="digest"; else MODE="alert"; fi
+          fi
+          echo "Modo: $MODE"
+          python _shared/status_digest.py --$MODE

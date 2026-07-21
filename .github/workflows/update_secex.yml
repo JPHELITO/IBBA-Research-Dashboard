@@ -48,11 +48,10 @@ jobs:
             FORCE_FLAG="--force"
           fi
           python "Steel and Mining/updater_sm.py" --update $FORCE_FLAG
-        env:
-          SMTP_SERVER: smtp.gmail.com
-          SMTP_PORT:   587
-          SMTP_USER:   ${{ secrets.SMTP_USER }}
-          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+        # SEM env SMTP aqui de propósito: o updater_sm.py tem send_email() próprio que
+        # dispara quando há SMTP_USER/PASS — isso causava DOIS e-mails de SECEX por mês
+        # (um daqui + o do passo "Send email notification" abaixo). Sem as credenciais,
+        # o send_email() interno cai no guard (linha ~701) e não envia → resta 1 e-mail.
 
       # ── 3a. Minério de ferro (mesma janela do SECEX → tabela secex_iron_ore) ──
       - name: Update iron ore (Fines/Pellets)
