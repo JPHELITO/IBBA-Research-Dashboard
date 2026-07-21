@@ -89,8 +89,9 @@ REGISTRY: list[dict] = [
          note="MDIC Comex Stat, 17 SH6 de celulose."),
     dict(key="iba_paper", label="IBÁ — papel", sector="pulp",
          db="pulp", table="iba_paper", cadence="monthly",
-         how_pulled="vision", confidence="medium", auto=True, overdue_days=55,
-         note="PDF imagem lido por VISÃO (Gemini) + 3 checksums; auto-publica se bater, senão pede conferência (update_iba_auto.py)."),
+         how_pulled="vision", confidence="medium", auto=True, overdue_days=80,
+         note="PDF imagem lido por VISÃO (Gemini, escalona modelo) + 3 checksums; auto-publica se bater. "
+              "Publica o dado ~2 meses após o mês (lag da fonte) → overdue_days folgado (80). update_iba_auto.py."),
     dict(key="empapel", label="Empapel (papelão ondulado)", sector="pulp",
          db="pulp", table="empapel", cadence="monthly",
          how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=55,

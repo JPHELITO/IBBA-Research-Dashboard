@@ -1,19 +1,17 @@
 name: 🔄 Auto-Update IBÁ (papel) — visão (Gemini)
 
-# IBÁ publica ~1-2 semanas após o fim do mês → checa dias 8-25.
-# O DadosPapel é um PDF IMAGEM, mas um modelo de VISÃO lê a tabela. Este workflow:
-# detecta mês novo → o Gemini extrai → 3 checksums (var impressa + somas + identidade)
-# → se BATER, grava iba_paper e publica (e-mail "atualizado"); se NÃO bater, NÃO grava
-# e manda e-mail "precisa de conferência". Substitui o antigo watch_iba (só-alerta).
+# DE HORA EM HORA, todo dia (o IBÁ publica 1×/mês, entre os dias 7-13; checar é barato,
+# só um GET de texto — o Gemini só é chamado quando há mês novo). Fluxo:
+# detecta mês novo → e-mail "saiu o dado" → Gemini lê (escalando modelo se preciso) →
+# 3 checksums → se BATER: grava, commita, e-mail "base atualizada"; se NÃO: e-mail
+# "precisa de conferência". Anti-spam: cada e-mail sai 1×/mês (dedup no update_log).
 #
-# ⚠️ Requer o secret GEMINI_API_KEY neste repositório (o mesmo do news-hunter).
+# ⚠️ Requer os secrets neste repo: GEMINI_API_KEY, SMTP_USER, SMTP_PASS,
+#    SUPABASE_URL, SUPABASE_SERVICE_KEY.
 
 on:
   schedule:
-    # DIÁRIO na janela em que o IBÁ costuma publicar. Checar é BARATO (só um GET de
-    # texto p/ ver se saiu mês novo); o Gemini só é chamado quando há mês novo. Frescor
-    # é prioridade — melhor checar todo dia e pegar no 1º dia do que esperar.
-    - cron: "0 13 6-28 * *"   # 13:00 UTC, todo dia (dias 6-28)
+    - cron: "17 * * * *"   # de hora em hora (offset :17 p/ fugir da congestão de :00)
   workflow_dispatch:
 
 concurrency:
@@ -25,6 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,13 +37,14 @@ jobs:
       - name: Install deps
         run: pip install requests pymupdf
 
-      - name: Ler o DadosPapel novo por visão, conferir e gravar
+      # Detecta, lê por visão, confere e grava. Manda os e-mails "saiu o dado" (detecção),
+      # "precisa de conferência" (checksum falhou) e "não publicou" (atraso da fonte).
+      - name: Ler/conferir/gravar (visão + checksums + e-mails de detecção/erro)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PYTHONUTF8: "1"
         run: python "Pulp and Paper/update_iba_auto.py" --update
 
-      # ── publicou (checksums bateram) → commit + e-mail "atualizado" ──
+      # Publicou (checksums bateram) → commit
       - name: Commit pulp_paper.db
         if: env.IBA_NEW_DATA == 'true'
         run: |
@@ -49,36 +54,19 @@ jobs:
           if git diff --staged --quiet; then
             echo "::warning::sem mudança no .db"
           else
-            git commit -m "data: IBÁ papel (visão) -> ${IBA_LATEST}"
+            git commit -m "data: IBÁ papel (visão ${IBA_MODEL}) -> ${IBA_LATEST}"
             git pull --rebase --autostash || true
             git push
           fi
 
-      - name: E-mail — atualizado
+      # Só DEPOIS do commit → e-mail "base atualizada" (dedup 1×/mês)
+      - name: E-mail — base atualizada
         if: env.IBA_NEW_DATA == 'true'
-        env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          PYTHONUTF8: "1"
         run: |
-          python _shared/notify.py --kind new_data --source iba_paper \
-            --period "${IBA_LATEST}" --detail "leitura por visão (Gemini), 3 checksums OK"
+          python _shared/notify.py --source iba_paper --period "${IBA_LATEST}" --kind updated \
+            --subject "✅ IBÁ ${IBA_LATEST} publicado no dashboard" \
+            --body "O boletim DadosPapel de ${IBA_LATEST} foi lido por visão (${IBA_MODEL}), passou nos 3 checksums e já está publicado no dashboard. https://metals-mining-pulp-paper-dashboard.vercel.app"
 
       - name: Log update
         if: env.IBA_NEW_DATA == 'true'
-        env:
-          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python _shared/log_update.py "IBÁ papel" auto "visão Gemini ${IBA_LATEST}"
-
-      # ── não bateu / falhou a extração → e-mail "precisa de conferência" ──
-      - name: E-mail — precisa de conferência
-        if: env.IBA_REVIEW == 'true'
-        env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          PYTHONUTF8: "1"
-        run: |
-          python _shared/notify.py --kind alert \
-            --subject "IBÁ ${IBA_SITE} — precisa de conferência" \
-            --body "O robô leu o DadosPapel novo (${IBA_SITE}) por visão, mas os checksums NÃO bateram (ou a leitura falhou). NÃO publiquei nada. Confira o PDF e atualize à mão pelo montar_pulp.py / update_iba.py. Página: https://iba.org/publicacoes/dados-papel/"
+        run: python _shared/log_update.py "iba_paper" auto "visão ${IBA_MODEL} ${IBA_LATEST}"

@@ -20,10 +20,12 @@ Uso (import, p/ o status_digest):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import smtplib
 import ssl
 import sys
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -88,27 +90,72 @@ def alert(subject: str, body: str, to: list[str] | None = None) -> bool:
     return send(f"⚠️ {subject}", body, to)
 
 
+# ── envio "uma vez só" (anti-spam) — lembra pelo update_log do Supabase ───────
+# Como vamos checar de hora em hora, cada e-mail (fonte+mês+tipo) só pode sair 1×.
+# Guardamos um registro no update_log já existente: source, method="mail:<kind>",
+# detail=<period>. Antes de enviar, olhamos se já existe esse registro. Sem SQL novo.
+def _supa(path, method="GET", body=None):
+    url = _env("SUPABASE_URL"); key = _env("SUPABASE_SERVICE_KEY")
+    if not (url and key):
+        return None
+    req = urllib.request.Request(url.rstrip("/") + "/rest/v1/" + path, method=method,
+        headers={"apikey": key, "Authorization": "Bearer " + key,
+                 "Content-Type": "application/json", "Prefer": "return=minimal"},
+        data=json.dumps(body).encode() if body is not None else None)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        raw = r.read()
+        return json.loads(raw) if raw else []
+
+
+def _already_sent(source, kind, period):
+    from urllib.parse import quote
+    try:
+        rows = _supa(f"update_log?source=eq.{quote(source)}&method=eq.{quote('mail:'+kind)}"
+                     f"&detail=eq.{quote(period)}&select=id&limit=1")
+        return bool(rows)
+    except Exception as e:
+        print(f"notify.once: não consegui checar dedup ({e}) — envio mesmo assim.", file=sys.stderr)
+        return False   # fail-open: melhor um e-mail repetido do que um alerta perdido
+
+
+def _mark_sent(source, kind, period):
+    try:
+        _supa("update_log", "POST", {"source": source, "method": "mail:" + kind, "detail": period})
+    except Exception as e:
+        print(f"notify.once: não consegui marcar dedup ({e}).", file=sys.stderr)
+
+
+def once(source: str, period: str, kind: str, subject: str, body: str,
+         to: list[str] | None = None, html: bool = False) -> bool:
+    """Envia UMA vez por (source, period, kind). Repetições no mesmo mês são ignoradas."""
+    if period and _already_sent(source, kind, period):
+        print(f"notify.once: já enviei '{kind}' de {source} {period} — pulando.")
+        return False
+    ok = send(subject, body, to, html)
+    if ok and period:
+        _mark_sent(source, kind, period)
+    return ok
+
+
 def main():
     ap = argparse.ArgumentParser(description="Envia e-mail (camada única).")
-    ap.add_argument("--kind", choices=["new_data", "alert", "raw"], default="raw")
-    ap.add_argument("--source"); ap.add_argument("--period"); ap.add_argument("--detail")
+    ap.add_argument("--source"); ap.add_argument("--period"); ap.add_argument("--kind")
     ap.add_argument("--subject"); ap.add_argument("--body"); ap.add_argument("--body-file")
     ap.add_argument("--to"); ap.add_argument("--html", action="store_true")
     a = ap.parse_args()
     to = [x.strip() for x in a.to.split(",")] if a.to else None
-    if a.kind == "new_data":
-        if not a.source:
-            sys.exit("--source é obrigatório p/ --kind new_data")
-        ok = new_data(a.source, a.period, a.detail)
+    body = a.body
+    if a.body_file:
+        with open(a.body_file, encoding="utf-8") as f:
+            body = f.read()
+    if a.source and a.period and a.kind:
+        # e-mail com DEDUP (1× por fonte+mês+tipo) — p/ os workflows horários não spammarem.
+        once(a.source, a.period, a.kind, a.subject or f"{a.kind} {a.source} {a.period}", body or "", to, a.html)
+    elif a.subject and body is not None:
+        send(a.subject, body, to, a.html)
     else:
-        body = a.body
-        if a.body_file:
-            with open(a.body_file, encoding="utf-8") as f:
-                body = f.read()
-        if not a.subject or body is None:
-            sys.exit("--subject e --body/--body-file são obrigatórios")
-        ok = (alert(a.subject, body, to) if a.kind == "alert" else send(a.subject, body, to, a.html))
-    sys.exit(0 if ok else 0)   # nunca falha o workflow por causa de e-mail
+        sys.exit("uso: --source/--period/--kind (dedup) OU --subject/--body")
+    sys.exit(0)   # nunca falha o workflow por causa de e-mail
 
 
 if __name__ == "__main__":
