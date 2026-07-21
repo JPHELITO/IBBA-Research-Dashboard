@@ -27,6 +27,7 @@ import re
 import sqlite3
 import sys
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
@@ -38,6 +39,18 @@ PAGE = "https://iba.org/publicacoes/dados-papel/"
 UA = {"User-Agent": "Mozilla/5.0"}
 GEMINI_MODEL = os.environ.get("IBA_VISION_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
+# Escalonamento: tenta o modelo LEVE; se o checksum não bater, tenta um mais FORTE antes
+# de pedir conferência (decisão do usuário). Normal = 1 chamada; o forte só entra em falha.
+VISION_MODELS = [m.strip() for m in (os.environ.get("IBA_VISION_MODELS")
+                 or f"{GEMINI_MODEL},gemini-3.1-flash").split(",") if m.strip()]
+VISION_MODELS = list(dict.fromkeys(VISION_MODELS))   # únicos, mantendo a ordem
+
+# camada única de e-mail (dedup por fonte+mês+tipo)
+sys.path.insert(0, str(HERE.parent / "_shared"))
+try:
+    import notify
+except Exception:
+    notify = None
 
 GRADES = ["total", "packaging", "pw", "newsprint", "cardboard", "other"]
 METRICS = {"production": "prod", "domestic": "dom", "exports": "exp", "imports": "imp"}
@@ -97,10 +110,11 @@ def render_png(pdf_bytes: bytes) -> bytes:
     return pix.tobytes("png")
 
 
-def gemini_extract(png: bytes) -> dict:
+def gemini_extract(png: bytes, model: str = None) -> dict:
     if not GEMINI_KEY:
         raise RuntimeError("GEMINI_API_KEY ausente — não dá p/ extrair por visão.")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    model = model or GEMINI_MODEL
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {"contents": [{"parts": [
         {"inline_data": {"mime_type": "image/png", "data": base64.b64encode(png).decode()}},
         {"text": PROMPT},
@@ -183,6 +197,50 @@ def _gh(**kv):
             f.write(f"{k}={v}\n")
 
 
+def _mail(kind, period, subject, body):
+    """E-mail dedup'd (1× por mês/tipo). Silencioso se notify/SMTP indisponível."""
+    if notify:
+        try:
+            notify.once("iba_paper", period, kind, subject, body)
+        except Exception as e:
+            print(f"  (e-mail '{kind}' falhou, ignorado: {e})")
+
+
+def extract_with_escalation(pdf_bytes):
+    """Tenta VISION_MODELS em ordem; para no 1º que passa nos 3 checksums.
+    Devolve (d, probs, modelo). probs vazio = passou."""
+    png = render_png(pdf_bytes)
+    d, probs, model = None, ["não rodou"], None
+    for model in VISION_MODELS:
+        try:
+            d = gemini_extract(png, model)
+        except Exception as e:
+            print(f"  extração falhou com {model}: {e}")
+            d, probs = None, [f"erro de extração ({model}): {e}"]
+            continue
+        probs = verify(d)
+        if not probs:
+            return d, [], model
+        print(f"  {model}: {len(probs)} checagem(ns) falharam → escalando p/ modelo mais forte…")
+    return d, probs, model
+
+
+def _overdue_check(site_period):
+    """Atraso da FONTE. O IBÁ publica o dado de ~2 meses atrás, entre os dias 7-13. Se já passou
+    do dia 15 e a FONTE ainda não tem o período esperado (mês atual − 2), avisa (1× por período)."""
+    now = datetime.utcnow()
+    if now.day < 15:
+        return
+    y, m = now.year, now.month - 2
+    if m <= 0:
+        y -= 1; m += 12
+    exp = f"{y}-{m:02d}"
+    if site_period is None or site_period < exp:
+        _mail("overdue", exp, f"⚠️ IBÁ ainda não publicou {exp}",
+              f"Já é dia {now.day} e o IBÁ ainda não publicou o boletim DadosPapel de {exp} "
+              f"(mais novo no site: {site_period}). Costuma sair entre os dias 7 e 13.\nPágina: {PAGE}")
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -192,60 +250,67 @@ def main():
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--update", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--pdf", help="usar um PDF local em vez de baixar (teste)")
+    ap.add_argument("--pdf", help="usar um PDF local em vez de baixar (teste; sem e-mail)")
     args = ap.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
     dash = dash_latest(conn)
 
+    # ── caminho de TESTE: PDF local, sem site, sem e-mail ──
     if args.pdf:
-        period = None
-        pdf_bytes = Path(args.pdf).read_bytes()
-    else:
-        period, url = site_latest()
-        print(f"IBÁ no site: {period} | dashboard: {dash}")
-        if args.check:
-            novo = bool(period and (dash is None or period > dash))
-            print("MÊS NOVO disponível" if novo else "em dia")
-            _gh(IBA_NEW="true" if novo else "false", IBA_SITE=period or "", IBA_DASH=dash or "")
-            conn.close(); return
-        if not (dash is None or (period and period > dash)) and not args.dry_run:
-            print("Sem mês novo — nada a fazer."); _gh(IBA_NEW_DATA="false"); conn.close(); return
-        pdf_bytes = requests.get(url, headers=UA, timeout=120, verify=False).content
-
-    print(f"Extraindo por visão ({GEMINI_MODEL})…")
-    try:
-        d = gemini_extract(render_png(pdf_bytes))
-    except Exception as e:
-        # falha de rede/chave/parse NÃO deve derrubar o workflow (spam de e-mail de erro):
-        # sinaliza "precisa de conferência" e sai limpo.
-        print(f"  ⚠️ extração por visão falhou ({e}) — sinalizando revisão manual.")
-        _gh(IBA_NEW_DATA="false", IBA_REVIEW="true", IBA_SITE=period or "")
-        conn.close()
-        sys.exit(0)
-    period = period or d.get("period")
-    print(f"  período extraído: {period} | consumo aparente (curr): "
-          f"{(d.get('apparent_consumption') or {}).get('curr')}")
-
-    probs = verify(d)
-    if probs:
-        print(f"\n  ⚠️ {len(probs)} checagem(ns) FALHARAM — NÃO vou publicar (precisa conferir):")
+        d, probs, model = extract_with_escalation(Path(args.pdf).read_bytes())
+        period = (d or {}).get("period")
+        print(f"  período: {period} | modelo: {model} | checagens falhas: {len(probs)}")
         for p in probs[:12]:
             print("   · " + p)
-        _gh(IBA_NEW_DATA="false", IBA_REVIEW="true", IBA_SITE=period or "")
-        conn.close()
-        sys.exit(0)   # não é erro de execução; é "precisa de humano"
-
-    print("  ✅ passou nos 3 checksums (var impressa + somas + identidade).")
-    if args.dry_run:
-        print("  [DRY-RUN] não gravei. Valores de produção (curr):",
-              {g: (d['production'].get(g) or {}).get('curr') for g in GRADES})
+        if not probs and period and not args.dry_run:
+            write_period(conn, period, d); print(f"  gravado {period}.")
+        elif not probs:
+            print("  ✅ passou nos checksums (DRY-RUN — não gravei).")
         conn.close(); return
 
+    period, url = site_latest()
+    print(f"IBÁ no site: {period} | dashboard: {dash}")
+
+    if args.check:
+        novo = bool(period and (dash is None or period > dash))
+        print("MÊS NOVO disponível" if novo else "em dia")
+        _gh(IBA_NEW="true" if novo else "false", IBA_SITE=period or "", IBA_DASH=dash or "")
+        conn.close(); return
+
+    _overdue_check(period)                     # avisa se a FONTE atrasou
+
+    if not (dash is None or (period and period > dash)):
+        print("Sem mês novo — em dia."); _gh(IBA_NEW_DATA="false"); conn.close(); return
+
+    # ── DETECTADO mês novo → e-mail "saiu o dado" (1× por mês) ──
+    print(f"  MÊS NOVO detectado: {period}")
+    _mail("detected", period, f"📄 Saiu o IBÁ de {period}",
+          f"O IBÁ publicou o boletim DadosPapel de {period}. Vou ler por visão e, se conferir, "
+          f"publicar no dashboard.\nPágina: {PAGE}")
+    _gh(IBA_DETECTED="true", IBA_SITE=period)
+
+    pdf_bytes = requests.get(url, headers=UA, timeout=120, verify=False).content
+    print(f"Extraindo por visão (escalona modelos: {VISION_MODELS})…")
+    d, probs, model = extract_with_escalation(pdf_bytes)
+
+    if d is None or probs:
+        print(f"  ⚠️ não passou (último modelo {model}): {len(probs)} checagem(ns) — NÃO publico.")
+        for p in probs[:12]:
+            print("   · " + p)
+        _mail("review", period, f"⚠️ IBÁ {period} precisa de conferência",
+              f"Li o DadosPapel de {period} por visão (tentei os modelos {VISION_MODELS}), mas os "
+              f"checksums NÃO bateram. NÃO publiquei. Confira o PDF e atualize à mão.\n\nProblemas:\n- "
+              + "\n- ".join(probs[:12]) + f"\n\nPágina: {PAGE}")
+        _gh(IBA_NEW_DATA="false", IBA_REVIEW="true", IBA_SITE=period)
+        conn.close(); sys.exit(0)
+
+    print(f"  ✅ passou nos 3 checksums (modelo {model}).")
     write_period(conn, period, d)
     print(f"  gravado iba_paper[{period}] (mês novo; resto preservado).")
-    _gh(IBA_NEW_DATA="true", IBA_LATEST=period)
+    _gh(IBA_NEW_DATA="true", IBA_LATEST=period, IBA_MODEL=model)
     conn.close()
+    # o e-mail "base atualizada" sai no WORKFLOW, após o commit (só aí publicou de verdade).
 
 
 if __name__ == "__main__":
