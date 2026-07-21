@@ -11,10 +11,15 @@ O que ele faz, em ordem:
 Roda em QUALQUER PC com Python. NÃO precisa do repositório clonado nem de git
 instalado — só de conseguir abrir o github.com (já testado no PC do banco: ok).
 
+ONDE DEIXAR AS PLANILHAS:
+    Deixe este programa na mesma pasta das planilhas (ex.: G:\\Dashboard) — ele
+    procura ali (e nas subpastas) automaticamente. Também procura em Downloads.
+    (Ou defina a variável de ambiente IBBA_BASES_DIR com o caminho da pasta.)
+
 USO:
     python publicar_base.py                 (menu)
     python publicar_base.py iba             (direto)
-    python publicar_base.py iba "C:\\caminho\\planilha.xlsx"
+    python publicar_base.py iba "G:\\Dashboard\\planilha.xlsx"
     python publicar_base.py iba --dry-run   (faz tudo, menos publicar — pra testar)
 
 TOKEN: na primeira publicação ele pede um token do GitHub (uma vez; fica guardado
@@ -40,8 +45,30 @@ OWNER, REPO, BRANCH = "JPHELITO", "IBBA-Research-Dashboard", "main"
 API = f"https://api.github.com/repos/{OWNER}/{REPO}"
 RAW = "https://raw.githubusercontent.com/{o}/{r}/{ref}/{path}"
 TOKEN_FILE = Path.home() / ".ibba_publish" / "token.txt"
-DOWNLOADS = Path.home() / "Downloads"
 UA = "ibba-publish-base"
+
+# Onde procurar as planilhas. Ordem: (1) pasta forçada por IBBA_BASES_DIR, se você
+# definir; (2) a PRÓPRIA PASTA onde este programa está (ex.: G:\Dashboard) — inclui
+# subpastas; (3) sua pasta Downloads. Basta deixar o programa junto das planilhas.
+SCRIPT_DIR = Path(__file__).resolve().parent
+DOWNLOADS = Path.home() / "Downloads"
+def pastas_de_busca():
+    fontes = []
+    if os.environ.get("IBBA_BASES_DIR"):
+        fontes.append((Path(os.environ["IBBA_BASES_DIR"]), True))
+    fontes.append((SCRIPT_DIR, True))     # recursivo (pega subpastas)
+    fontes.append((DOWNLOADS, False))     # só o nível de cima (não varre o PC todo)
+    out, vistos = [], set()
+    for d, rec in fontes:
+        try:
+            chave = str(d.resolve()).lower()
+        except Exception:
+            chave = str(d).lower()
+        if chave in vistos or not d.exists():
+            continue
+        vistos.add(chave)
+        out.append((d, rec))
+    return out
 
 # ── Bases. `run`/`post` chamam os MESMOS scripts que o robô do GitHub roda. ────
 BASES = {
@@ -162,15 +189,19 @@ def resumo(db_path, tabela):
 
 
 def achar_planilha(base):
-    achados = []
-    for g in base["globs"]:
-        achados += list(DOWNLOADS.glob(g))
-    achados = sorted({p for p in achados if not p.name.startswith("~$")},
+    cand = []
+    for d, rec in pastas_de_busca():
+        for g in base["globs"]:
+            cand += list(d.rglob(g)) if rec else list(d.glob(g))
+    achados = sorted({p for p in cand if not p.name.startswith("~$")},
                      key=lambda p: p.stat().st_mtime, reverse=True)
     if not achados:
-        print(f"\n  ✗ Não achei planilha de '{base['titulo']}' em {DOWNLOADS}")
-        print(f"    Procurei por: {', '.join(base['globs'])}")
-        print('    Baixe-a para Downloads, ou passe o caminho como 2º argumento.')
+        print(f"\n  ✗ Não achei planilha de '{base['titulo']}'. Procurei por "
+              f"{' / '.join(base['globs'])} em:")
+        for d, _ in pastas_de_busca():
+            print(f"      - {d}")
+        print("    Deixe a planilha numa dessas pastas (o ideal é a mesma pasta deste "
+              "programa), ou passe o caminho como 2º argumento.")
         return None
     if len(achados) == 1:
         return achados[0]
@@ -178,7 +209,7 @@ def achar_planilha(base):
     print("\n  Achei mais de uma planilha — qual é a nova?\n")
     for i, p in enumerate(achados[:6], 1):
         q = datetime.datetime.fromtimestamp(p.stat().st_mtime).strftime("%d/%m/%Y %H:%M")
-        print(f"    [{i}] {p.name}   ({q}){'  <- mais recente' if i == 1 else ''}")
+        print(f"    [{i}] {p.name}   ({q})   [{p.parent}]{'  <- mais recente' if i == 1 else ''}")
     e = input("\n  Número (Enter = a mais recente): ").strip()
     return achados[0] if not e else (achados[int(e) - 1] if e.isdigit() and 1 <= int(e) <= len(achados) else None)
 
@@ -236,6 +267,7 @@ def main():
     if not xlsx or not xlsx.exists():
         sys.exit("\n  ✗ Planilha não encontrada.")
     print(f"  Planilha: {xlsx.name}  ({xlsx.stat().st_size/1024:,.0f} KB)")
+    print(f"            em {xlsx.parent}")
 
     # 5) fixa o ponto de partida (commit atual) e baixa o necessário DAQUELE ponto
     print("\n  [1/4] Baixando o código e o banco atual do GitHub...")
