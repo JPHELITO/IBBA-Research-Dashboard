@@ -70,11 +70,20 @@ def _period(col_idx):
 
 
 def find_latest_xls():
-    """Acha o Performance-Mensal_AAAA.MM.xls mais novo na página. Retorna (url, 'AAAA-MM')."""
-    html = requests.get(PAGE, headers=UA, timeout=60, verify=False).text
-    hits = re.findall(r'href="(https?://[^"]*Performance-Mensal_(\d{4})\.(\d{2})\.xls)"', html, re.I)
+    """Acha o Performance-Mensal_AAAA.MM(-N).xls(x) mais novo. Retorna (url, 'AAAA-MM') ou (None, None).
+    ⚠️ Tolera o sufixo '-1' que o WordPress põe ao re-subir o arquivo (ex.:
+    Performance-Mensal_2026.06-1.xls) — era o que quebrava a raspagem (dado parava
+    silenciosamente). NÃO volta a exigir '\\.xls' colado ao mês.
+    NÃO levanta exceção: em falha devolve (None, None) p/ não derrubar o job do SECEX."""
+    try:
+        html = requests.get(PAGE, headers=UA, timeout=60, verify=False).text
+    except Exception as e:
+        print(f"  [IABr] falha ao abrir a página ({e}).")
+        return None, None
+    hits = re.findall(r'href="(https?://[^"]*Performance-Mensal_(\d{4})\.(\d{2})(?:-\d+)?\.xlsx?)"', html, re.I)
     if not hits:
-        raise SystemExit("Não achei o link do Excel na página do Aço Brasil.")
+        print("  [IABr] não achei o link do Excel na página do Aço Brasil (layout mudou?).")
+        return None, None
     url, y, m = max(hits, key=lambda h: (h[1], h[2]))
     return url, f"{y}-{m}"
 
@@ -153,6 +162,18 @@ def main():
     dbmax = latest_db(conn)
     url, xls_period = find_latest_xls()
     print(f"DB: {DB_PATH} | iabr_production até {dbmax} | Excel do site: {xls_period}")
+
+    # Falha da raspagem NÃO derruba o job (era o bug: SystemExit abortava o SECEX inteiro
+    # antes do commit). Sinaliza "sem novidade" + erro e sai limpo; o monitoramento (digest/
+    # alerta) pega o IABr desatualizado porque é fonte AUTO.
+    if not url:
+        _gh("false", None)
+        gh = os.environ.get("GITHUB_ENV")
+        if gh:
+            with open(gh, "a") as f:
+                f.write("IABR_ERROR=true\n")
+        conn.close()
+        return
     print(f"  {url}")
 
     if args.check:
