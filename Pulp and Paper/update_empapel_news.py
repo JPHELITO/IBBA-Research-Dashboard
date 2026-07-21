@@ -131,14 +131,51 @@ def parse_month_year(text: str, published_at: str):
     return f"{y}-{mn:02d}"
 
 
+_MES_RE = "|".join(_MONTHS)                            # nomes de mês (en+pt) p/ achar comparação
+_YOY_MK = ("y-o-y", "yoy", "year on year", "year-on-year", "year earlier", "a year",
+           "interannual", "interanual", "anual", "annual", "12-month", "ano anterior",
+           "mesmo mês", "mesmo mes", "same month")
+_MOM_MK = ("previous month", "month earlier", "month-on-month", "month on month",
+           "mês anterior", "mes anterior", "sequential")
+
+
+def _tag_pct(low, s, e):
+    """Classifica um % como 'yoy' (anual), 'mom' (mensal) ou 'plain' pela cláusula IMEDIATA
+    a ele (não a frase toda — senão o ano do 'outro' % contamina)."""
+    head = low[max(0, s - 25): s]
+    tail = low[e: e + 55]
+    for cut in (" and ", " e ", ";", ", ", ". ", " while ", " but ", " mas "):
+        j = tail.find(cut)
+        if j != -1:
+            tail = tail[:j]
+    ctx = head + " " + tail
+    if any(k in ctx for k in _YOY_MK):
+        return "yoy"
+    if re.search(r"(?:" + _MES_RE + r")\w*\s+20\d\d", tail) \
+       or re.search(r"(?:than|vs\.?|versus|from|to|de|que)\s+[a-zç]* ?20\d\d", tail):
+        return "yoy"                                  # comparação com MÊS+ANO ("June 2024") ou "than 2024"
+    if any(k in ctx for k in _MOM_MK) or re.search(
+            r"(?:compared (?:with|to)|from|than|vs\.?|versus|over|ante)\s+(?:the\s+)?(?:month of\s+)?"
+            r"(?:" + _MES_RE + r")\b", tail):
+        return "mom"                                  # comparação com um MÊS sem ano ("vs May")
+    return "plain"
+
+
 def parse_yoy(text: str):
-    """% variação a/a (com sinal) se der p/ ler, senão None."""
-    m = re.search(r"([\d]+(?:[.,]\d+)?)\s*%", text)
-    if not m:
-        return None
-    pct = float(m.group(1).replace(",", "."))
+    """% variação ANO-A-ANO (com sinal) se der p/ ler, senão None. Robusto a textos com DUAS
+    %: pega a anual (ex.: 'down 6% vs May and 1.5% lower than June 2024' -> -1.5, não -6)."""
     low = text.lower()
-    seg = low[max(0, m.start() - 60): m.start() + 5]  # contexto ao redor do %
+    hits = list(re.finditer(r"(\d+(?:[.,]\d+)?)\s*%", low))
+    if not hits:
+        return None
+    tags = [_tag_pct(low, m.start(), m.end()) for m in hits]
+    idx = next((i for i, t in enumerate(tags) if t == "yoy"),
+               next((i for i, t in enumerate(tags) if t == "plain"), None))
+    if idx is None:                                   # só sobrou % mensal → sem a/a confiável
+        return None
+    m = hits[idx]
+    pct = float(m.group(1).replace(",", "."))
+    seg = low[max(0, m.start() - 40): m.end() + 25]   # sinal: janela em volta do %
     if any(w in seg for w in _NEG):
         return -pct
     if any(w in seg for w in _POS):
@@ -162,9 +199,11 @@ def classify(a: dict):
     period = parse_month_year(text, a.get("published_at") or "")
     if kton is None or period is None:
         return None
-    return {"period": period, "kton": kton, "precise": bool(precise),
-            "preliminary": ("preliminary" in low) or ("preliminar" in low),
-            "yoy": parse_yoy(text), "source": a.get("source_name") or "?",
+    src = a.get("source_name") or "?"
+    # Fastmarkets faz o "flash" PRELIMINAR; a palavra "preliminary"/"preliminar" confirma.
+    preliminary = ("preliminary" in low) or ("preliminar" in low) or ("fastmarkets" in src.lower())
+    return {"period": period, "kton": kton, "precise": bool(precise), "preliminary": preliminary,
+            "yoy": parse_yoy(text), "source": src,
             "title": title, "published": (a.get("published_at") or "")[:10]}
 
 
