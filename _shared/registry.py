@@ -45,6 +45,7 @@ COMO_PUXA = {
     "yahoo":        "Yahoo Finance (chart API)",
     "vision":       "visão de máquina lê o PDF-imagem (Gemini) + checksums",
     "pdf":          "baixa um PDF público e lê com o Gemini + checksums",
+    "news":         "lê o número nas notícias já coletadas (news-hunter) + regex + checksums",
     "playwright":   "login automatizado (Playwright)",
     "bcb":          "API do Banco Central (BCB)",
     "mixed":        "várias fontes",
@@ -96,8 +97,11 @@ REGISTRY: list[dict] = [
               "Publica o dado ~2 meses após o mês (lag da fonte) → overdue_days folgado (80). update_iba_auto.py."),
     dict(key="empapel", label="Empapel (papelão ondulado)", sector="pulp",
          db="pulp", table="empapel", cadence="monthly",
-         how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=55,
-         note="Excel ABPO via update_empapel.py. Sem workflow nem processor de upload."),
+         how_pulled="news", confidence="medium", auto=True, overdue_days=75,
+         note="Número mensal (índice IBPO) extraído das NOTÍCIAS já coletadas: Fastmarkets=preliminar "
+              "(~dia 15), Valor/CNN/ABTCP=oficial (~mês seguinte). Regex + checksum de %a/a; publica o "
+              "preliminar e REVISA p/ o oficial. dias úteis = seg-sáb. update_empapel_news.py. "
+              "O antigo update_empapel.py (Excel ABPO) fica de reserva."),
     dict(key="gacc", label="GACC — cavaco China (woodchips)", sector="pulp",
          db="pulp", table="gacc_woodchips", cadence="monthly",
          how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=75,

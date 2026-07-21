@@ -1,0 +1,62 @@
+name: 🔄 Auto-Update Empapel (papelão ondulado) — via notícias
+
+# DE HORA EM HORA, todo dia. O número mensal do Empapel (índice IBPO) não tem planilha
+# pública — ele aparece nas NOTÍCIAS que a dashboard já coleta (news_articles no Supabase).
+# Sai 2× por mês: PRELIMINAR (Fastmarkets, ~dia 14-16) e OFICIAL (IBPO via Valor/CNN/ABTCP,
+# ~começo do mês seguinte). O robô publica o preliminar e depois REVISA p/ o oficial.
+# Extração por REGEX (sem Gemini) + checksum de %a/a; dias úteis = seg-sáb. Só bib. padrão.
+# 3 e-mails (1×/mês): "preliminar publicado" / "número oficial" / "erro-atraso".
+#
+# ⚠️ Secrets necessários neste repo: SUPABASE_URL, SUPABASE_SERVICE_KEY (ler as notícias),
+#    SMTP_USER, SMTP_PASS (e-mails). NÃO usa Gemini.
+
+on:
+  schedule:
+    - cron: "37 * * * *"   # de hora em hora (offset :37 p/ fugir da congestão)
+  workflow_dispatch:
+
+concurrency:
+  group: update-empapel
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Lê as notícias do Empapel, extrai/confere, revisa p/ oficial + insere os novos.
+      # O próprio script manda os e-mails (com dedup 1×/mês, via update_log) — inclusive os
+      # de "preliminar publicado", "número oficial" e "erro/atraso".
+      - name: Ler notícias / conferir / gravar (regex + checksums + e-mails)
+        run: python "Pulp and Paper/update_empapel_news.py" --update
+
+      # Publicou/revisou algo → commit do pulp_paper.db (pequeno, sem web-gz)
+      - name: Commit pulp_paper.db
+        if: env.EMP_NEW_DATA == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Pulp and Paper/pulp_paper.db"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no .db"
+          else
+            git commit -m "data: Empapel papelão ondulado -> ${EMP_LATEST}"
+            git pull --rebase --autostash || true
+            git push
+          fi
+
+      - name: Log update
+        if: env.EMP_NEW_DATA == 'true'
+        run: python _shared/log_update.py "empapel" auto "notícias IBPO ${EMP_LATEST}"
