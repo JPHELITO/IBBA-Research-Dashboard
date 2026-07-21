@@ -41,9 +41,9 @@ try:
 except Exception:
     pass
 
+VERSION = "2026-07-20c"   # confira no cabeçalho ao rodar — garante que você tem a versão nova
 OWNER, REPO, BRANCH = "JPHELITO", "IBBA-Research-Dashboard", "main"
 API = f"https://api.github.com/repos/{OWNER}/{REPO}"
-RAW = "https://raw.githubusercontent.com/{o}/{r}/{ref}/{path}"
 TOKEN_FILE = Path.home() / ".ibba_publish" / "token.txt"
 UA = "ibba-publish-base"
 
@@ -145,14 +145,22 @@ def api(path, method="GET", token=None, body=None):
         raise RuntimeError(f"GitHub {method} {path} -> HTTP {e.code}: {detail}") from None
 
 
-def baixar(path_rel, sha, destino):
-    """Baixa um arquivo do repo (fixado no commit `sha`) para `destino`."""
-    from urllib.parse import quote
-    url = RAW.format(o=OWNER, r=REPO, ref=sha, path=quote(path_rel))
+# NÃO baixamos do raw.githubusercontent.com: a rede do banco bloqueia o download de
+# arquivos "de script" (.py/.db → "Media Type Blocked"). Buscamos tudo pela API do
+# GitHub (api.github.com), que devolve JSON com o conteúdo em base64 — a rede libera.
+def arvore(base_sha, token):
+    """Mapa {caminho: sha do blob} de todo o repo, fixado no commit `base_sha`."""
+    _, tr = api(f"/git/trees/{base_sha}?recursive=1", token=token or None)
+    if tr.get("truncated"):
+        raise RuntimeError("árvore do repo veio truncada (inesperado p/ este repo).")
+    return {e["path"]: e["sha"] for e in tr.get("tree", []) if e.get("type") == "blob"}
+
+
+def baixar_blob(sha, token, destino):
+    """Baixa 1 arquivo pela API de blobs (JSON base64) — escapa do bloqueio de tipo do proxy."""
+    _, b = api(f"/git/blobs/{sha}", token=token or None)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        destino.write_bytes(resp.read())
+    destino.write_bytes(base64.b64decode(b["content"]))
 
 
 # ── Token ─────────────────────────────────────────────────────────────────────
@@ -236,7 +244,7 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     dry = "--dry-run" in sys.argv or "--check" in sys.argv
     print("=" * 70)
-    print("  PUBLICAR BASE DA DASHBOARD" + ("   [DRY-RUN — não vai publicar]" if dry else ""))
+    print(f"  PUBLICAR BASE DA DASHBOARD  (v{VERSION})" + ("   [DRY-RUN — não vai publicar]" if dry else ""))
     print("=" * 70)
 
     # 1) qual base
@@ -270,13 +278,17 @@ def main():
     print(f"            em {xlsx.parent}")
 
     # 5) fixa o ponto de partida (commit atual) e baixa o necessário DAQUELE ponto
-    print("\n  [1/4] Baixando o código e o banco atual do GitHub...")
+    print("\n  [1/4] Baixando o código e o banco atual do GitHub (via API)...")
     _, ref = api(f"/git/ref/heads/{BRANCH}", token=token or None)
     base_sha = ref["object"]["sha"]
+    tree = arvore(base_sha, token)
     tmp = Path(tempfile.mkdtemp(prefix="ibba_pub_"))
     try:
         for rel in base["precisa"] + [base["db"]]:
-            baixar(rel, base_sha, tmp / rel)
+            sha = tree.get(rel)
+            if not sha:
+                sys.exit(f"\n  ✗ Não encontrei '{rel}' no repositório (será que mudou de lugar?).")
+            baixar_blob(sha, token, tmp / rel)
         antes = resumo(tmp / base["db"], base["tabela"])
         if antes:
             print(f"        {base['tabela']}: hoje vai até {antes[0]} ({antes[1]:,} linhas)")
