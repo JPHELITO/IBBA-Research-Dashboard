@@ -44,6 +44,7 @@ COMO_PUXA = {
     "manual_excel": "planilha baixada por humano",
     "yahoo":        "Yahoo Finance (chart API)",
     "vision":       "visão de máquina lê o PDF-imagem (Gemini) + checksums",
+    "pdf":          "baixa um PDF público e lê com o Gemini + checksums",
     "playwright":   "login automatizado (Playwright)",
     "bcb":          "API do Banco Central (BCB)",
     "mixed":        "várias fontes",
@@ -79,8 +80,9 @@ REGISTRY: list[dict] = [
          note="Excel (aba CHINA) via upload, ou Comtrade (defasado). Sem feed ao vivo limpo."),
     dict(key="inda", label="INDA (distribuição de aço plano)", sector="steel",
          db="steel", table="inda_distribution", cadence="monthly",
-         how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=60,
-         note="Só bootstrap (extractor_sm.py). SEM updater e fora do fluxo de upload — a mais parada."),
+         how_pulled="pdf", confidence="medium", auto=True, overdue_days=80,
+         note="In Data PDF (público) lido por Gemini + 2 checksums (soma dos produtos=total; giro≈estoque/vendas); "
+              "preenche TODOS os meses faltantes em ordem (sales_ltm/sales_ma3 calculados). Lag ~2 meses. update_inda.py."),
 
     # ═══ PULP & PAPER (pulp_paper.db) ═══
     dict(key="pulp_secex", label="Celulose por porto (SECEX)", sector="pulp",
