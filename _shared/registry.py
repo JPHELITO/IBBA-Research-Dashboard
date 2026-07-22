@@ -105,7 +105,9 @@ REGISTRY: list[dict] = [
     dict(key="gacc", label="GACC — cavaco China (woodchips)", sector="pulp",
          db="pulp", table="gacc_woodchips", cadence="monthly",
          how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=75,
-         note="Alfândega China. SEM updater cirúrgico — só rebuild completo do extractor_pp. A mais órfã."),
+         note="Alfândega China (portal c/ WAF+CAPTCHA → download é manual, exige humano). "
+              "montar_gacc.py lê o CSV do customs e monta a base (pivô em código, validado 922/922; "
+              "sem Excel, sem rebuild). watch_gacc.py avisa por e-mail quando deve ter saído mês novo."),
 
     # ═══ FEEDS AO VIVO (Supabase, via news-hunter) ═══
     dict(key="quotes", label="Cotações (ações/índices)", sector="live",

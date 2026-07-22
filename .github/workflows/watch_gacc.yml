@@ -1,0 +1,30 @@
+name: 🔔 Vigia GACC (cavaco China) — lembrete de mês novo
+
+# O download do GACC exige VOCÊ (o portal da alfândega tem WAF + CAPTCHA). Este vigia NÃO
+# baixa nada — só avisa por e-mail (1×/mês) quando, pelo calendário, já deve ter saído um mês
+# novo e o dashboard está atrás. Aí você baixa o CSV, roda o montar_gacc.py e sobe.
+#
+# Roda de dia 15 a 31 (a China publica o detalhado ~dia 18-20 do mês seguinte).
+# Secrets: SMTP_USER, SMTP_PASS, SUPABASE_URL, SUPABASE_SERVICE_KEY (dedup do e-mail).
+
+on:
+  schedule:
+    - cron: "0 13 15-31 * *"   # 13:00 UTC (10:00 BRT), dias 15-31
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Vigia (calendário + estado do dashboard → e-mail se atrasado)
+        run: python _shared/watch_gacc.py
