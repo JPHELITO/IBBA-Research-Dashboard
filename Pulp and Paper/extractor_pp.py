@@ -364,6 +364,58 @@ def extract_gacc(path):
     out.sort(key=lambda x:(x["period"],x["country"],x["fibre"]))
     return out
 
+
+def extract_gacc_raw(path, sheet="GACC INPUT"):
+    """Lê a aba BRUTA do customs chinês (o download direto) e PIVOTA p/ o formato de
+    gacc_woodchips — dispensa o pivô manual do Excel. Validado célula a célula contra o
+    histórico (922/922, 2015→2026, erro 0).
+
+    Bruto (uma linha por mês×HS×país×regime×porto): colunas 'Date of data' (AAAAMM),
+    'Commodity code' (HS), 'Trading partner' (país), 'Quantity' (kg), 'US dollar' (valor).
+    Regra: HW=44012200, SW=44012100 (fuelwood 4401.11/12 ignorado); volume_bdmt=Σkg/1e9;
+    revenue_usd_mn=ΣUS$/1e6; países Vietnam/Australia destacados, resto='Others', +Total.
+    Emite a grade cheia (2 fibras × 4 países por mês, com 0 onde não houve importação)."""
+    from collections import defaultdict
+    wb=load(path)
+    if sheet not in wb.sheetnames:
+        wb.close(); return []
+    ws=wb[sheet]
+    hdr=[str(h).strip().lower() if h is not None else "" for h in
+         next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+    def col(cands, default):
+        for i,h in enumerate(hdr):
+            if any(h==c or (c in h and "code" not in h) for c in cands):
+                return i
+        return default
+    iD=col(["date of data","date"],0); iHS=col(["commodity code"],1)
+    iP=col(["trading partner"],4); iQ=col(["quantity"],9); iV=col(["us dollar","value"],13)
+    FIB={44012200:"HW", 44012100:"SW"}
+    def grp(p):
+        p=str(p).strip()
+        return "Vietnam" if p in ("Viet Nam","Vietnam") else ("Australia" if p=="Australia" else "Others")
+    agg=defaultdict(lambda:[0.0,0.0]); pers={}
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        hs=r[iHS] if iHS<len(r) else None
+        if hs not in FIB: continue
+        ym=r[iD] if iD<len(r) else None
+        if not isinstance(ym,(int,float)) or ym<190000: continue
+        y,m=int(ym)//100, int(ym)%100
+        if not (1<=m<=12): continue
+        per=f"{y}-{m:02d}"; pers[per]=(y,m); fib=FIB[hs]; c=grp(r[iP] if iP<len(r) else None)
+        kg=num(r[iQ]) if iQ<len(r) else None; usd=num(r[iV]) if iV<len(r) else None
+        for cc in (c,"Total"):
+            a=agg[(per,fib,cc)]; a[0]+=(kg or 0); a[1]+=(usd or 0)
+    wb.close()
+    out=[]
+    for per,(y,m) in pers.items():                       # grade cheia: 2 fibras × 4 países
+        for fib in ("HW","SW"):
+            for c in ("Total","Vietnam","Australia","Others"):
+                kg,usd=agg.get((per,fib,c),[0.0,0.0])
+                out.append({"period":per,"year":y,"month":m,"fibre":fib,"country":c,
+                            "volume_bdmt":round(kg/1e9,9),"revenue_usd_mn":round(usd/1e6,6)})
+    out.sort(key=lambda x:(x["period"],x["country"],x["fibre"]))
+    return out
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  DB WRITER
 # ═══════════════════════════════════════════════════════════════════════════
