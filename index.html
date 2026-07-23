@@ -142,7 +142,10 @@ body{height:100vh;overflow:hidden;}
     "news news news news news news news news comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
-.page.has-events .pulse-body{gap:10px;flex-wrap:wrap;justify-content:center;}
+/* Pulse espremido (card Events ligado): layout VERTICAL limpo — gauge em cima, stats 2×2 (igual ao mobile) */
+.page.has-events .pulse-body{flex-direction:column;gap:10px;padding:10px 12px;justify-content:center;}
+.page.has-events .pulse-body > .gauge{margin:0 auto;}
+.page.has-events .pulse-stats{grid-template-columns:repeat(2,1fr);}
 .ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
 .ev-open:hover{text-decoration:underline;}
 .ev-body{flex:1;min-height:0;overflow:auto;padding:6px 12px 10px;}
