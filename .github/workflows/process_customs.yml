@@ -1,0 +1,61 @@
+name: 📥 Inbox do customs (cavaco + aço) → dashboard
+
+# Você baixa o CSV no portal do customs chinês e ARRASTA pra pasta _inbox/customs/ pelo
+# github.com. Este robô detecta o tipo (cavaco HS 4401 → GACC; aço HS 72 p/ Brasil → linha
+# preta China), atualiza o(s) banco(s), arquiva o CSV e commita. NADA roda no seu PC.
+#
+# Secrets: SMTP_USER, SMTP_PASS (e-mail de confirmação). Só biblioteca padrão (sem pip).
+
+on:
+  push:
+    paths: ["_inbox/customs/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: customs-inbox
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Processa a caixa (detecta cavaco/aço, atualiza os bancos, arquiva)
+        run: python process_customs_inbox.py
+
+      # Se a linha preta (aço) mudou, regenera o banco WEB do Steel & Mining
+      - name: Regenera o banco web do aço
+        if: env.STEEL_CHANGED == 'true'
+        run: python "Steel and Mining/build_web_db.py"
+
+      - name: Commit (bancos + CSV arquivado)
+        if: env.INBOX_CHANGED == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Pulp and Paper/pulp_paper.db" "Steel and Mining/steel_sm.db" \
+                  "Steel and Mining/steel_sm_web.db.gz" _inbox
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança nos bancos"
+          else
+            git commit -m "data: inbox customs -> ${INBOX_SUMMARY}"
+            git pull --rebase --autostash || true
+            git push
+          fi
+
+      - name: E-mail de confirmação
+        if: env.INBOX_CHANGED == 'true'
+        run: |
+          python _shared/notify.py \
+            --subject "📥 Customs: ${INBOX_SUMMARY}" \
+            --body "O robô da caixa de entrada processou seu arquivo. Resultado: ${INBOX_SUMMARY}. A dashboard atualiza em ~1-2 min: https://metals-mining-pulp-paper-dashboard.vercel.app"
