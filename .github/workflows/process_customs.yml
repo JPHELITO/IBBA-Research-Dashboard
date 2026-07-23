@@ -29,8 +29,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install deps
+        run: pip install openpyxl        # só a Coreia (xlsx KITA) precisa; cavaco/China são CSV
 
-      - name: Processa a caixa (detecta cavaco/aço, atualiza os bancos, arquiva)
+      - name: Processa a caixa (detecta cavaco/aço pelo NOME, atualiza os bancos, arquiva)
         run: python process_customs_inbox.py
 
       # Se a linha preta (aço) mudou, regenera o banco WEB do Steel & Mining
