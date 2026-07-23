@@ -69,10 +69,11 @@ REGISTRY: list[dict] = [
          note="MDIC SH6 260111/260112."),
     dict(key="iabr", label="Aço Brasil / IABr (produção etc.)", sector="steel",
          db="steel", table="iabr_production", cadence="monthly",
-         how_pulled="site_scrape", confidence="brittle", auto=True, overdue_days=80,
+         how_pulled="site_scrape", confidence="medium", auto=True, overdue_days=80,
          note="Workflow PRÓPRIO update_iabr.yml (horário dias 8-28 — sai na 2ª/3ª semana, mês N-1, NÃO 1-10). "
               "Detecta por 2 sinais: link do Excel + cabeçalho 'MÊS ANO - PRODUÇÃO BRASILEIRA' (confere e avisa "
-              "se descompassar). Parsing por índices fixos de linha (ainda frágil). Trava steel-sm-db c/ o SECEX."),
+              "se descompassar). Parsing acha as linhas por RÓTULO ancorado por seção (resolve_rows) → tolera "
+              "reordenação/inserção; cai no índice fixo se não achar o âncora. Trava steel-sm-db c/ o SECEX."),
     dict(key="pred_korea", label="Modelo — linha preta (Coreia)", sector="steel",
          db="steel", table="pred_exports", period_col="period", cadence="monthly",
          how_pulled="gov_api", confidence="manual", auto=False, overdue_days=60,

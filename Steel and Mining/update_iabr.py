@@ -111,15 +111,69 @@ def heading_period(html):
     return f"{m.group(2)}-{mes:02d}" if mes else None
 
 
+# Mapa por RÓTULO (tolera reordenação/inserção de linhas). Cada seção tem um ÂNCORA único
+# (col 0) e, dentro dela, as sublinhas por rótulo. sub=None → o valor está na própria linha
+# do âncora (ex.: Vendas Internas = total). Os rótulos "Planos/Longos/Semiacabados" repetem
+# entre seções, por isso são buscados SÓ dentro da faixa da seção.
+LABEL_SECTIONS = [
+    ("iabr_production", r"Produ[çc][aã]o\s*/\s*Production",
+     {"crude_steel": r"A[çc]o Bruto", "flat": r"Planos", "long_prod": r"Longos",
+      "semi": r"Semiacabados", "slabs": r"Placas", "billets": r"Blocos e Tarugos",
+      "pig_iron": r"Ferro-Gusa"}),
+    ("iabr_domestic_sales", r"Vendas Internas",
+     {"total": None, "flat": r"Planos", "long_prod": r"Longos", "semi": r"Semiacabados"}),
+    ("iabr_foreign_market", r"Vendas Externas",
+     {"total": None, "flat": r"Planos", "long_prod": r"Longos", "semi": r"Semiacabados"}),
+    ("iabr_exports", r"Exporta[çc][õo]es\s*/\s*Exports",
+     {"flat_ktons": r"Planos", "long_ktons": r"Longos", "semi_ktons": r"Semiacabados",
+      "total_ktons": r"Total\s*\(Mil t", "total_usd_mn": r"US\$\s*Milh[õo]es"}),
+    ("iabr_imports", r"Importa[çc][õo]es\s*/\s*Imports",
+     {"flat_ktons": r"Planos", "long_ktons": r"Longos", "semi_ktons": r"Semiacabados",
+      "total_ktons": r"Total\s*\(Mil t", "total_usd_mn": r"US\$\s*Milh[õo]es"}),
+    ("iabr_consumption", r"Consumo Aparente",
+     {"total": None, "flat": r"Planos", "long_prod": r"Longos"}),
+]
+
+
+def resolve_rows(df):
+    """{table: {col: row_idx}} achado pelos RÓTULOS (col 0), ancorado por seção → tolera
+    reordenação/inserção de linhas. Cai no índice FIXO (TABLES) p/ qualquer linha que não achar."""
+    labels = [str(df.iloc[i, 0] or "") for i in range(df.shape[0])]
+
+    def find(rgx, lo, hi):
+        for i in range(max(lo, 0), min(hi, len(labels))):
+            if re.search(rgx, labels[i], re.I):
+                return i
+        return None
+
+    anchors = {t: find(a, 0, len(labels)) for t, a, _ in LABEL_SECTIONS}
+    order = sorted(a for a in anchors.values() if a is not None)
+    resolved = {t: dict(zip(spec["cols"], spec["rows"])) for t, spec in TABLES.items()}  # base = fixo
+    for tbl, _arx, cols in LABEL_SECTIONS:
+        a = anchors.get(tbl)
+        if a is None:
+            print(f"  [IABr] âncora da seção '{tbl}' não achada — uso índices fixos p/ ela.")
+            continue
+        after = [x for x in order if x > a]
+        end = after[0] if after else len(labels)
+        for col, srgx in cols.items():
+            row = a if srgx is None else find(srgx, a + 1, end)
+            if row is not None:
+                resolved[tbl][col] = row
+    return resolved
+
+
 def parse_xls(content):
-    """Retorna {table: {period: {col: valor}}} p/ todos os meses do arquivo."""
+    """Retorna {table: {period: {col: valor}}} p/ todos os meses do arquivo.
+    Linhas resolvidas por RÓTULO (resolve_rows) → tolera reordenação."""
     df = pd.ExcelFile(io.BytesIO(content), engine="xlrd").parse(SHEET, header=None)
+    rows_by_table = resolve_rows(df)
     ncols = df.shape[1]
     out = {t: {} for t in TABLES}
     for c in range(1, ncols - 1):            # col 1..penúltima (última = % MoM)
         period, y, m = _period(c)
-        for t, spec in TABLES.items():
-            vals = {col: _num(df.iloc[row, c]) for col, row in zip(spec["cols"], spec["rows"])}
+        for t in TABLES:
+            vals = {col: _num(df.iloc[row, c]) for col, row in rows_by_table[t].items()}
             if any(v is not None for v in vals.values()):
                 out[t][period] = {"period": period, "year": y, "month": m, **vals}
     return out
