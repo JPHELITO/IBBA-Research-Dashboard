@@ -12,12 +12,12 @@ Você baixa o arquivo e joga em `_inbox/customs/` (github.com, arrastar-e-soltar
 Airbag: um CSV sem palavra no nome, se tiver HS 4401, ainda é reconhecido como cavaco. Aço
 sem nome fica AMBÍGUO (China e Coreia têm o mesmo HS 72) → avisa p/ renomear.
 
-Preserva histórico/irmãs/o outro país; proteção contra buraco no cavaco; arquiva em
-`_inbox/processed/`. Sinais p/ o workflow: INBOX_CHANGED, PULP_CHANGED, STEEL_CHANGED, INBOX_SUMMARY.
+Preserva histórico/irmãs/o outro país; proteção contra buraco no cavaco; DESCARTA o arquivo
+bruto após processar (política do repo: não guardar fonte). Sinais p/ o workflow:
+INBOX_CHANGED, PULP_CHANGED, STEEL_CHANGED, INBOX_SUMMARY.
 """
 import csv
 import os
-import shutil
 import sqlite3
 import sys
 from datetime import datetime
@@ -30,7 +30,6 @@ import montar_gacc as mg                 # motor do cavaco (ler_csvs/pivotar/mer
 import dictionary as _dict               # dicionário SH6 (linha preta = mesmos 55 antidumping)
 
 INBOX = HERE / "_inbox" / "customs"
-PROCESSED = HERE / "_inbox" / "processed"
 PULP_DB = HERE / "Pulp and Paper" / "pulp_paper.db"
 STEEL_DB = HERE / "Steel and Mining" / "steel_sm.db"
 AD_SH6 = _dict.antidumping_sh6_set()
@@ -238,10 +237,11 @@ def main():
             else:
                 avisos.append(f"⚠ {label}: não extraí nada de {[f.name for f in groups[kind]]} (formato?).")
 
-    if aplicados:
-        PROCESSED.mkdir(parents=True, exist_ok=True)
-        for c in aplicados:
-            shutil.move(str(c), str(PROCESSED / c.name))
+    for c in aplicados:                   # descarta o arquivo bruto após processar
+        try:                              # (política do repo: não guardar fonte proprietária)
+            c.unlink()
+        except Exception:
+            pass
 
     changed = pulp_changed or steel_changed
     _gh(INBOX_CHANGED="true" if changed else "false",

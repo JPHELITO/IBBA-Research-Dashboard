@@ -13,8 +13,9 @@
 Exemplos: `woodchip 202606.csv`, `steelchina.csv`, `steelcoreia_202606.xlsx`.
 Maiúscula/minúscula não importa — só precisa **conter** a palavra em algum lugar do nome.
 
-Em ~1-2 min a dashboard atualiza sozinha; o arquivo vai para `processed/` e você recebe um
-e-mail. **Nada precisa rodar no seu PC.**
+Em ~1-2 min a dashboard atualiza sozinha; o arquivo bruto é **descartado** após processar
+(a política do repo é não guardar fonte proprietária) e você recebe um e-mail de confirmação.
+O registro do que rodou fica no histórico de commits. **Nada precisa rodar no seu PC.**
 
 ### Passo a passo
 1. Baixe o arquivo e **renomeie** (ex.: `steelcoreia_202606.xlsx`).
