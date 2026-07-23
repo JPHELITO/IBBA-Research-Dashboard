@@ -156,6 +156,7 @@ html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
 <div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading the calendar…</div></div>
 <div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
   <div class="muted" style="max-width:380px">This section is not enabled for your account.</div>
+  <div class="muted" id="denied-why" style="max-width:460px;font-size:12px;opacity:.85"></div>
   <a class="hbtn" href="/index.html">← Back to home</a></div>
 
 <div id="app" hidden>
@@ -202,7 +203,10 @@ const DOW_ORDER=[1,2,3,4,5,6,0];             // Mon..Sun
 const DATA_RELEASE_FALLBACK='#00838F';
 
 // ── estado ────────────────────────────────────────────────────────────────────
-const S={ view:'month', cursor:CAL.todayISO(), today:CAL.todayISO(),
+// cursor/today são preenchidos no boot (calStart) — NÃO no topo: se o calendar-lib.js
+// não carregar, um CAL.todayISO() aqui mataria o script inteiro e a página ficaria
+// presa no "Loading…" sem dizer o motivo.
+const S={ view:'month', cursor:null, today:null,
   cats:[], catById:{}, windows:[], events:[], activeCats:null, company:'all' };
 
 // contraste p/ texto sobre a cor da categoria
@@ -465,21 +469,41 @@ function wire(){
 }
 
 // ── boot ────────────────────────────────────────────────────────────────────────
-async function calStart(){ await loadStatic(); renderChips(); await loadEvents(); render();
+async function calStart(){
+  if(!S.today){ S.today=CAL.todayISO(); S.cursor=S.today; }
+  await loadStatic(); renderChips(); await loadEvents(); render();
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{
   wire();
   if(window.__CAL_TEST__){ return; }        // harness injeta dados e chama render manualmente
   try{
+    if(!window.CAL) throw new Error('calendar-lib.js não carregou — recarregue com Ctrl+F5. (Se persistir, o arquivo /calendar-lib.js não está sendo servido.)');
     const {data:{session}}=await sbAuth.auth.getSession();
     if(!session){window.location.replace('/login.html');return}
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
-    let flagOn=false,isAdmin=false;
-    try{ const role=await rpc('get_my_role'); isAdmin=(role==='admin');
-      const flags=await rpc('get_dashboard_flags'); const f=(flags||[]).find(x=>x.key==='exec_calendar'); if(f)flagOn=!!f.enabled;
-    }catch(e){}
-    if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
+    // NUNCA engolir o motivo: se o admin cair no "Unavailable", a tela tem que dizer POR QUÊ.
+    let flagOn=false, isAdmin=false, why=[];
+    try{                                   // chamada idêntica à do admin.html (função sem parâmetros)
+      const r=await sbAuth.rpc('get_my_role');
+      if(r.error) throw r.error;
+      const role=String(r.data==null?'':r.data).trim();
+      isAdmin=(role==='admin');
+      if(!isAdmin) why.push('get_my_role devolveu "'+role+'" (esperado "admin")');
+    }catch(e){ why.push('get_my_role falhou: '+(e.message||e)); }
+    try{
+      const f=await sbAuth.rpc('get_dashboard_flags');
+      if(f.error) throw f.error;
+      const row=(f.data||[]).find(x=>x.key==='exec_calendar');
+      if(row) flagOn=!!row.enabled; else why.push('a flag "exec_calendar" não existe (rodou o admin/supabase_exec_calendar.sql?)');
+    }catch(e){ why.push('get_dashboard_flags falhou: '+(e.message||e)); }
+    if(!flagOn&&!isAdmin){
+      document.getElementById('gate').hidden=true;
+      document.getElementById('denied').hidden=false;
+      const w=document.getElementById('denied-why');
+      if(w) w.textContent='Ligue a flag "Executive Calendar" em /admin → Funcionalidades. ('+(why.join(' · ')||'flag desligada')+')';
+      return;
+    }
     await calStart();
   }catch(e){ console.error(e);
     const raw=String(e&&e.message||e);
