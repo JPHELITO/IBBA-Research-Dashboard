@@ -1,21 +1,25 @@
-# 📥 Caixa de entrada do customs (cavaco + aço China)
+# 📥 Caixa de entrada do customs (cavaco + aço China + aço Coreia)
 
-**Para atualizar a dashboard: baixe o CSV no portal do customs chinês e arraste o arquivo
-para a pasta [`customs/`](customs/) — aqui pelo github.com.** Um robô (GitHub Action) cuida do resto.
+**Baixe o arquivo, renomeie pra conter uma destas palavras, e arraste para a pasta
+[`customs/`](customs/)** aqui pelo github.com. Um robô (GitHub Action) cuida do resto.
 
-### Como o robô decide o que fazer (pelo código HS do arquivo)
-| Se o CSV tem… | O robô atualiza… |
-|---|---|
-| **HS 4401xx** (cavaco/woodchips) | o gráfico do **GACC** (`gacc_woodchips`) |
-| **HS 72xx** com destino **Brazil** (aço) | a **linha preta / China** do modelo Steel & Mining (`pred_exports`) |
+### O robô decide pelo NOME do arquivo
+| Se o nome contém… | O robô atualiza… | Fonte / formato |
+|---|---|---|
+| **woodchip** | o gráfico do **GACC** (`gacc_woodchips`) | portal customs China (CSV) |
+| **steelchina** | a **linha preta — China** (`pred_exports`) | portal customs China (CSV) |
+| **steelcoreia** | a **linha preta — Coreia** (`pred_exports`) | KITA (xlsx) |
 
-Em ~1-2 min a dashboard atualiza sozinha. O CSV processado é movido para `processed/`
-(fica de arquivo). Você recebe um e-mail de confirmação. **Nada precisa rodar no seu PC.**
+Exemplos: `woodchip 202606.csv`, `steelchina.csv`, `steelcoreia_202606.xlsx`.
+Maiúscula/minúscula não importa — só precisa **conter** a palavra em algum lugar do nome.
+
+Em ~1-2 min a dashboard atualiza sozinha; o arquivo vai para `processed/` e você recebe um
+e-mail. **Nada precisa rodar no seu PC.**
 
 ### Passo a passo
-1. No github.com, abra a pasta **`customs/`**.
-2. **Add file → Upload files** → arraste o `downloadData (NN).csv`.
-3. **Commit changes**. Pronto — o robô faz o resto.
+1. Baixe o arquivo e **renomeie** (ex.: `steelcoreia_202606.xlsx`).
+2. No github.com, pasta **`customs/`** → **Add file → Upload files** → arraste → **Commit**.
 
-> Dica: pode subir vários meses de uma vez (ex.: maio **e** junho do cavaco juntos), pra não
-> deixar buraco na série. Se faltar um mês, o robô avisa e não publica aquele pedaço.
+> **Por que aço precisa do nome:** China e Coreia exportam o mesmo tipo de aço (HS 72), então
+> o robô não consegue distinguir pelo conteúdo — o nome resolve. (Cavaco, HS 4401, é
+> reconhecido mesmo sem a palavra.) Pode subir vários arquivos de uma vez.
