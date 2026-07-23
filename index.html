@@ -640,7 +640,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
       <div class="sector-tabs">
         <a class="sector-tab" href="stock-guide.html">Comps</a>
-        <a class="sector-tab" href="stock-guide.html">Sensibilidade</a>
+        <a class="sector-tab" href="stock-guide.html">Sensitivity</a>
         <a class="sector-tab" href="stock-guide.html">Peers</a>
       </div>
     </div>
@@ -1162,7 +1162,7 @@ const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (
 // Grupos do "painel de cotações" (presets do heatmap) — listas explícitas do usuário.
 // As recomendadas no modal derivam do SETOR (grupo) da empresa aberta + índice aderente.
 const HM_MAX = 15;                              // teto de cartões (evita poluir a visão)
-const G_COVERAGE = ['AURA33.SA','SUZB3.SA','VALE3.SA','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
+const G_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
 const G_STEEL    = ['CSNA3.SA','GGBR4.SA','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];
 const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
@@ -1194,10 +1194,10 @@ const KNOWN = new Set([].concat(G_COVERAGE,G_STEEL,G_IRON,G_GOLD,G_COPPER,G_RARE
 const TICKER_SECTOR = {};
 [['steel',G_STEEL],['iron_ore',G_IRON],['gold',G_GOLD],['copper',G_COPPER],['rare_earths',G_RARE],['pp',G_PP],['index',G_INDEX]]
   .forEach(([sec,arr])=>arr.forEach(t=>{ if(!(t in TICKER_SECTOR)) TICKER_SECTOR[t]=sec; }));
-// cobertura cujos tickers não estão num grupo setorial (usam outro listing no grupo):
-// VALE3 (o grupo usa a ADR VALE) e AURA33 (o grupo usa a AUGO da Nasdaq). RANI3 NÃO entra aqui —
-// ela está no G_PP mesmo (2026-07-20: estava só na cobertura → preset/peers de P&P a deixavam de fora).
-Object.assign(TICKER_SECTOR, {'VALE3.SA':'iron_ore','AURA33.SA':'gold','IBOV':'index'});
+// cobertura cujo ticker não está num grupo setorial: só o IBOV (índice).
+// VALE (ADR NYSE) e AUGO (Nasdaq) agora entram na cobertura pelos próprios listings US — já
+// pertencem a G_IRON/G_GOLD, então herdam o setor pelo loop acima. RANI3 está no G_PP mesmo.
+Object.assign(TICKER_SECTOR, {'IBOV':'index'});
 // (o antigo SECTOR_TICKERS saiu em 2026-07-20: o painel de filtro virou duas colunas e a coluna
 //  da esquerda lê direto o HM_PRESETS — a união dos grupos é a mesma, nada ficou inalcançável.)
 
@@ -1278,7 +1278,10 @@ function _fmtPrice(value, exchange){
   return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
+// Rótulo curto do cartão: tira o sufixo de bolsa. Override p/ os listings US da cobertura
+// (VALE = ADR na NYSE → mostra "VALE US"; AUGO já sai "AUGO" sozinho).
+const SYM_LABEL = {'VALE':'VALE US'};
+const _short = t => SYM_LABEL[t] || t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 
 // Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
 function _seriesFor(q, range){
