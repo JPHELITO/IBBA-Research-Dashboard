@@ -518,23 +518,6 @@ html.dark .cr-input{color-scheme:dark}
     </div>
     <div class="kpi-row" id="gc-kpis"></div>
     <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">China Woodchip Import Volume (M BDMT)</div>
-        <div class="chart-sub" id="gc-vol-sub">GACC · all suppliers</div>
-        <div class="chart-wrap h240"><canvas id="gc-vol"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">YoY Import Volume (%)</div>
-        <div class="chart-sub">Change vs. same period prior year</div>
-        <div class="chart-wrap h240"><canvas id="gc-yoy"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-row c2">
-      <div class="chart-card">
-        <div class="chart-title">Import Price (US$/BDMT)</div>
-        <div class="chart-sub">GACC · revenue ÷ volume</div>
-        <div class="chart-wrap h220"><canvas id="gc-price"></canvas></div>
-      </div>
       <div class="chart-card origin-card">
         <div class="chart-title">Import Volume by Supplier (M BDMT)</div>
         <div class="origin-controls">
@@ -546,15 +529,25 @@ html.dark .cr-input{color-scheme:dark}
             </div>
           </div>
         </div>
-        <div class="chart-sub" id="gc-ctry-sub">GACC · Vietnam · Australia · Others (stacked)</div>
-        <div class="chart-wrap h220"><canvas id="gc-ctry"></canvas></div>
+        <div class="chart-sub" id="gc-ctry-sub">GACC · Vietnam · Australia</div>
+        <div class="chart-wrap h240"><canvas id="gc-ctry"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">YoY Import Volume (%)</div>
+        <div class="chart-sub">Total · vs. same period prior year</div>
+        <div class="chart-wrap h240"><canvas id="gc-yoy"></canvas></div>
       </div>
     </div>
-    <div class="charts-row c1">
+    <div class="charts-row c2">
+      <div class="chart-card">
+        <div class="chart-title">Import Price (US$/BDMT)</div>
+        <div class="chart-sub">GACC · revenue ÷ volume · all suppliers</div>
+        <div class="chart-wrap h220"><canvas id="gc-price"></canvas></div>
+      </div>
       <div class="chart-card">
         <div class="chart-title">Seasonality — Import Volume (M BDMT/month)</div>
         <div class="chart-sub">GACC · each line = 1 year · orange = current · black = prior</div>
-        <div class="chart-wrap h260"><canvas id="gc-seas"></canvas></div>
+        <div class="chart-wrap h220"><canvas id="gc-seas"></canvas></div>
       </div>
     </div>
   </div>
@@ -720,8 +713,11 @@ let customRange = {from:null, to:null};
 let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[];
 let CAL={};                       // period -> working_days
 let portState={metric:'volume_ktons', ports:null};
-const GACC_COUNTRIES=['Vietnam','Australia','Others'];
-let gaccCountryState={countries:null};   // null = todos os fornecedores
+// Fornecedores de cavaco (sincronizar com montar_gacc.NAMED_COUNTRIES + extractor_pp).
+const GACC_COUNTRIES=['Vietnam','Australia','Thailand','Chile','Brazil','Indonesia','South Africa','Uruguay','New Zealand','Russia','Others'];
+const GACC_DEFAULT=['Vietnam','Australia'];   // padrão do gráfico dinâmico
+const GACC_PALETTE=['#FF5000','#111827','#2E7D32','#C62828','#1565C0','#6A1B9A','#00838F','#AD1457','#EF6C00','#4E342E','#9AA3AF'];
+let gaccCountryState={countries:null};   // null = usa o padrão (Vietnam+Australia)
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -1243,7 +1239,7 @@ function renderPulpIba(){
 // ═══════════════════════════════════════════════════════════════════════════
 function gaccFibre(){return (currentProd==='hw'||currentProd==='sw')?currentProd:'total';}
 function gaccMatch(r,fib){return fib==='total'?true:(fib==='hw'?r.fibre==='HW':r.fibre==='SW');}
-function gaccSelCountries(){return (gaccCountryState.countries&&gaccCountryState.countries.length)?gaccCountryState.countries:GACC_COUNTRIES;}
+function gaccSelCountries(){return (gaccCountryState.countries&&gaccCountryState.countries.length)?gaccCountryState.countries:GACC_DEFAULT;}
 function gaccTotals(fib){
   const byP={};
   GACC.forEach(r=>{
@@ -1260,8 +1256,6 @@ function renderGacc(){
   const arr=tx(totals,['volume_bdmt','revenue_usd_mn']);
   arr.forEach(r=>{r.price=(r.revenue_usd_mn!=null&&r.volume_bdmt)?r.revenue_usd_mn/r.volume_bdmt:null;});
   const lbs=arr.map(r=>r.period);
-  document.getElementById('gc-vol-sub').textContent=
-    `GACC · ${fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres'} · all suppliers`;
 
   // KPIs
   const full=totals,li=full.length-1;
@@ -1281,17 +1275,17 @@ function renderGacc(){
       kpiCard('Vietnam share',vnShare!=null?Math.round(vnShare*100):'—','%','of latest month');
   }
 
-  mkChart('gc-vol','line',lbs,[areaDs(arr.map(r=>r.volume_bdmt),C_OR,0.12,'Volume (M BDMT)')],{scales:{y:{ticks:{callback:fmt2}}}});
   const srcFull=currentGran==='quarterly'?toQ(totals,['volume_bdmt']):currentGran==='annual'?toA(totals,['volume_bdmt']):totals;
   const yoyV=arr.map((r,i)=>yoyOf(arr,'volume_bdmt',i,srcFull));
   mkChart('gc-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
     yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
   mkChart('gc-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_BK,'Price (US$/BDMT)')],YINT);
 
-  // Volume by supplier (stacked) — Vietnam / Australia / Others
+  // MAIN — Import Volume by selected Supplier (stacked). Padrão: Vietnam + Australia.
   const _selCtry=gaccSelCountries();
   const _ctrySubEl=document.getElementById('gc-ctry-sub');
-  if(_ctrySubEl) _ctrySubEl.textContent=`GACC · ${_selCtry.join(' · ')} (stacked)`;
+  const _fibL=fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres';
+  if(_ctrySubEl) _ctrySubEl.textContent=`GACC · ${_fibL} · ${_selCtry.join(' · ')}`;
   const acc={};
   applyWin(GACC.filter(r=>r.country!=='Total'&&_selCtry.includes(r.country)&&gaccMatch(r,fib))).forEach(r=>{
     const pk=periodKey(r.period);if(!pk)return;
@@ -1300,9 +1294,9 @@ function renderGacc(){
   });
   const periods=Object.keys(acc).sort();
   const clabels=periods.map(periodLabelDisplay);
-  const _coAll=[['Vietnam',C_OR],['Australia',C_BK],['Others',C_GR]];
-  const cds=_coAll.filter(x=>_selCtry.includes(x[0])).map(x=>({type:'bar',label:x[0],stack:'s',borderWidth:0,backgroundColor:x[1],
-    data:periods.map(p=>+((acc[p]?.[x[0]])||0).toFixed(3))}));
+  const cds=GACC_COUNTRIES.filter(c=>_selCtry.includes(c)).map(c=>({type:'bar',label:c,stack:'s',borderWidth:0,
+    backgroundColor:GACC_PALETTE[GACC_COUNTRIES.indexOf(c)],
+    data:periods.map(p=>+((acc[p]?.[c])||0).toFixed(3))}));
   mkChart('gc-ctry','bar',clabels,cds,{...LEG,scales:{
     x:{stacked:true,ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:IS_MOBILE()?6:14}},
     y:{stacked:true,ticks:{callback:fmt2}}}});
@@ -1320,7 +1314,7 @@ function buildGaccPanel(){
     const item=document.createElement('div');item.className='cs-item';
     item.innerHTML=`<input type="checkbox" id="${id}" ${checked?'checked':''}><label for="${id}">${c}</label>`;
     item.querySelector('input').onchange=e=>{
-      let cur=gaccCountryState.countries?[...gaccCountryState.countries]:[...GACC_COUNTRIES];
+      let cur=gaccCountryState.countries?[...gaccCountryState.countries]:[...GACC_DEFAULT];
       if(e.target.checked){if(!cur.includes(c))cur.push(c);}else cur=cur.filter(x=>x!==c);
       gaccCountryState.countries=cur.length?cur:null;
       renderGacc();

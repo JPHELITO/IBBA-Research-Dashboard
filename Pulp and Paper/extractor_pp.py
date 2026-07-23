@@ -365,6 +365,12 @@ def extract_gacc(path):
     return out
 
 
+# Fornecedores de cavaco destacados individualmente (resto = 'Others').
+# MANTER EM SINCRONIA com montar_gacc.NAMED_COUNTRIES e o GACC_COUNTRIES do pp_dashboard.html.
+NAMED_COUNTRIES = ["Vietnam", "Australia", "Thailand", "Chile", "Brazil", "Indonesia",
+                   "South Africa", "Uruguay", "New Zealand", "Russia"]
+
+
 def extract_gacc_raw(path, sheet="GACC INPUT"):
     """Lê a aba BRUTA do customs chinês (o download direto) e PIVOTA p/ o formato de
     gacc_woodchips — dispensa o pivô manual do Excel. Validado célula a célula contra o
@@ -391,8 +397,8 @@ def extract_gacc_raw(path, sheet="GACC INPUT"):
     iP=col(["trading partner"],4); iQ=col(["quantity"],9); iV=col(["us dollar","value"],13)
     FIB={44012200:"HW", 44012100:"SW"}
     def grp(p):
-        p=str(p).strip()
-        return "Vietnam" if p in ("Viet Nam","Vietnam") else ("Australia" if p=="Australia" else "Others")
+        p="Vietnam" if str(p).strip()=="Viet Nam" else str(p).strip()
+        return p if p in NAMED_COUNTRIES else "Others"
     agg=defaultdict(lambda:[0.0,0.0]); pers={}
     for r in ws.iter_rows(min_row=2, values_only=True):
         hs=r[iHS] if iHS<len(r) else None
@@ -407,9 +413,9 @@ def extract_gacc_raw(path, sheet="GACC INPUT"):
             a=agg[(per,fib,cc)]; a[0]+=(kg or 0); a[1]+=(usd or 0)
     wb.close()
     out=[]
-    for per,(y,m) in pers.items():                       # grade cheia: 2 fibras × 4 países
+    for per,(y,m) in pers.items():                       # grade cheia: 2 fibras × (Total+países+Others)
         for fib in ("HW","SW"):
-            for c in ("Total","Vietnam","Australia","Others"):
+            for c in ["Total"] + NAMED_COUNTRIES + ["Others"]:
                 kg,usd=agg.get((per,fib,c),[0.0,0.0])
                 out.append({"period":per,"year":y,"month":m,"fibre":fib,"country":c,
                             "volume_bdmt":round(kg/1e9,9),"revenue_usd_mn":round(usd/1e6,6)})

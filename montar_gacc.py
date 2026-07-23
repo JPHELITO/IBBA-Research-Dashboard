@@ -44,7 +44,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DOWNLOADS = Path.home() / "Downloads"
 
 FIBRE = {44012200: "HW", 44012100: "SW"}          # HW=não-conífera, SW=conífera (chips)
-COUNTRIES = ("Total", "Vietnam", "Australia", "Others")
+# Fornecedores destacados individualmente (o resto cai em 'Others'). Manter em sincronia
+# com extractor_pp.NAMED_COUNTRIES e o GACC_COUNTRIES do pp_dashboard.html.
+NAMED_COUNTRIES = ["Vietnam", "Australia", "Thailand", "Chile", "Brazil", "Indonesia",
+                   "South Africa", "Uruguay", "New Zealand", "Russia"]
+COUNTRIES = ["Total"] + NAMED_COUNTRIES + ["Others"]
+_CANON = {"Viet Nam": "Vietnam"}                  # normalizações de nome do customs
 
 
 # ── achar os CSV do customs ───────────────────────────────────────────────────
@@ -70,8 +75,8 @@ def _num(s):
 
 
 def _grp(p):
-    p = str(p).strip()
-    return "Vietnam" if p in ("Viet Nam", "Vietnam") else ("Australia" if p == "Australia" else "Others")
+    p = _CANON.get(str(p).strip(), str(p).strip())
+    return p if p in NAMED_COUNTRIES else "Others"
 
 
 def ler_csvs(paths):
