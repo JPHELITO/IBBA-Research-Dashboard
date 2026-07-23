@@ -50,6 +50,7 @@ COMO_PUXA = {
     "bcb":          "API do Banco Central (BCB)",
     "mixed":        "várias fontes",
     "pipeline":     "pipeline de coleta (news-hunter)",
+    "inbox":        "humano baixa o arquivo e arrasta no _inbox/customs/ — a nuvem processa",
 }
 
 # ── AS FONTES ─────────────────────────────────────────────────────────────────
@@ -76,12 +77,14 @@ REGISTRY: list[dict] = [
               "reordenação/inserção; cai no índice fixo se não achar o âncora. Trava steel-sm-db c/ o SECEX."),
     dict(key="pred_korea", label="Modelo — linha preta (Coreia)", sector="steel",
          db="steel", table="pred_exports", period_col="period", cadence="monthly",
-         how_pulled="gov_api", confidence="manual", auto=False, overdue_days=60,
-         note="data.go.kr — DORMENTE (cron comentado, sem KOREA_SERVICE_KEY). Ligar = vitória fácil."),
+         how_pulled="inbox", confidence="medium", auto=False, overdue_days=60,
+         note="INBOX: baixe o xlsx da KITA e arraste em _inbox/customs/ com 'steelcoreia' no nome — "
+              "process_customs.yml lê e publica sozinho. (update_korea.py/data.go.kr fica dormente, exigia CPF coreano.)"),
     dict(key="pred_china", label="Modelo — linha preta (China)", sector="steel",
          db="steel", table="pred_exports", period_col="period", cadence="monthly",
-         how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=60,
-         note="Excel (aba CHINA) via upload, ou Comtrade (defasado). Sem feed ao vivo limpo."),
+         how_pulled="inbox", confidence="medium", auto=False, overdue_days=60,
+         note="INBOX: baixe o CSV do customs da China (HS 72, destino Brazil) e arraste em _inbox/customs/ "
+              "com 'steelchina' no nome — process_customs.yml lê e publica sozinho."),
     dict(key="inda", label="INDA (distribuição de aço plano)", sector="steel",
          db="steel", table="inda_distribution", cadence="monthly",
          how_pulled="pdf", confidence="medium", auto=True, overdue_days=80,
@@ -107,10 +110,10 @@ REGISTRY: list[dict] = [
               "O antigo update_empapel.py (Excel ABPO) fica de reserva."),
     dict(key="gacc", label="GACC — cavaco China (woodchips)", sector="pulp",
          db="pulp", table="gacc_woodchips", cadence="monthly",
-         how_pulled="manual_excel", confidence="manual", auto=False, overdue_days=75,
-         note="Alfândega China (portal c/ WAF+CAPTCHA → download é manual, exige humano). "
-              "montar_gacc.py lê o CSV do customs e monta a base (pivô em código, validado 922/922; "
-              "sem Excel, sem rebuild). watch_gacc.py avisa por e-mail quando deve ter saído mês novo."),
+         how_pulled="inbox", confidence="medium", auto=False, overdue_days=75,
+         note="INBOX: o portal do customs tem CAPTCHA (download exige humano). Baixe o CSV e arraste em "
+              "_inbox/customs/ com 'woodchip' no nome — process_customs.yml pivota e publica sozinho "
+              "(validado 922/922). watch_gacc.py avisa por e-mail quando deve ter saído mês novo."),
 
     # ═══ FEEDS AO VIVO (Supabase, via news-hunter) ═══
     dict(key="quotes", label="Cotações (ações/índices)", sector="live",
