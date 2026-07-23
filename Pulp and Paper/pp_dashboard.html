@@ -1310,8 +1310,9 @@ function renderGacc(){
     y:{stacked:true,ticks:{callback:fmt2}}}});
 
   // PREÇO (linhas): Total + cada selecionado + Others  (US$/BDMT = receita ÷ volume)
-  const _prLine=(fn,color,label)=>lineDs(periods.map(p=>{const x=fn(p);return x!=null?+x.toFixed(1):null;}),color,label);
-  const prDs=[_prLine(p=>{const v=_tv(p);return v?_tr(p)/v:null;},C_BK,'Total')];
+  // exclui outliers: preço > 1000 US$/BDMT é ruído (volume ~0 c/ receita), quebra o eixo (sobretudo em Softwood)
+  const _prLine=(fn,color,label)=>lineDs(periods.map(p=>{const x=fn(p);return (x!=null&&x<=1000)?+x.toFixed(1):null;}),color,label);
+  const prDs=[_prLine(p=>{const v=_tv(p);return v?_tr(p)/v:null;},'#2563EB','Total')];
   _selNamed.forEach(c=>prDs.push(_prLine(p=>{const v=_cv(p,c);return v?_cr(p,c)/v:null;},GACC_PALETTE[GACC_COUNTRIES.indexOf(c)],c)));
   prDs.push(_prLine(p=>{const v=_ov(p);return v?_or(p)/v:null;},GACC_OTHERS_COLOR,'Others'));
   mkChart('gc-price','line',clabels,prDs,{...LEG,scales:{y:{ticks:{callback:v=>Math.round(v)}}}});
