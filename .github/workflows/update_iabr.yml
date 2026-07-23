@@ -1,0 +1,87 @@
+name: 🔄 Auto-Update IABr (Aço Brasil) — estatística mensal
+
+# DE HORA EM HORA, dias 8-28 (a IABr publica o mês ANTERIOR na 2ª/3ª semana — NÃO nos dias 1-10
+# como o SECEX). Acha o Excel na página por 2 sinais (o link do arquivo + o cabeçalho
+# "MÊS ANO - PRODUÇÃO BRASILEIRA", com conferência) → baixa/parseia → grava só os meses novos
+# em iabr_* → e-mails (saiu o dado / atualizado / descompasso-atraso), 1×/mês.
+# Separado do SECEX; as duas dividem a TRAVA do steel_sm.db (concurrency) p/ não commitar juntas.
+#
+# Secrets: SMTP_USER, SMTP_PASS, SUPABASE_URL, SUPABASE_SERVICE_KEY.
+
+on:
+  schedule:
+    - cron: "0 * 8-28 * *"   # de hora em hora, dias 8 a 28
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Reconstruir iabr_* do zero (--backfill)"
+        required: false
+        default: "false"
+
+concurrency:
+  group: steel-sm-db          # MESMA trava do update_secex → não commitam o steel_sm.db juntos
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: "Steel and Mining/requirements.txt"
+      - name: Install deps
+        run: pip install -r "Steel and Mining/requirements.txt"
+
+      # Acha (link + cabeçalho) / baixa / parseia / grava. Manda "saiu o dado" (detecção),
+      # "descompasso" (site anuncia mas o arquivo não atualizou) e "atraso", tudo 1×/mês.
+      - name: Update IABr
+        run: |
+          if [ "${{ github.event.inputs.backfill }}" = "true" ]; then
+            python "Steel and Mining/update_iabr.py" --backfill
+          else
+            python "Steel and Mining/update_iabr.py" --update
+          fi
+
+      - name: DB size gate (<50 MB p/ sql.js)
+        if: env.IABR_NEW_DATA == 'true'
+        run: python _shared/check_db_size.py "Steel and Mining/steel_sm.db"
+
+      - name: Build web DB (slim + gzip)
+        if: env.IABR_NEW_DATA == 'true'
+        run: python "Steel and Mining/build_web_db.py"
+
+      - name: Commit steel_sm.db (+ web gz)
+        if: env.IABR_NEW_DATA == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no .db"
+          else
+            git commit -m "data: IABr (Aço Brasil) -> ${IABR_LATEST}"
+            git pull --rebase --autostash || true
+            git push
+          fi
+
+      - name: E-mail — base atualizada
+        if: env.IABR_NEW_DATA == 'true'
+        run: |
+          python _shared/notify.py --source iabr --period "${IABR_LATEST}" --kind updated \
+            --subject "✅ IABr ${IABR_LATEST} publicado no dashboard" \
+            --body "A estatística mensal do Aço Brasil de ${IABR_LATEST} foi lida e publicada. https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"
+
+      - name: Log update
+        if: env.IABR_NEW_DATA == 'true'
+        run: python _shared/log_update.py "IABr" auto "cron acobrasil ${IABR_LATEST}"

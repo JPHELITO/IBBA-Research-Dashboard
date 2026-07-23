@@ -16,6 +16,10 @@ on:
         required: false
         default: "false"
 
+concurrency:
+  group: steel-sm-db          # trava compartilhada com o update_iabr (ambos commitam steel_sm.db)
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -58,18 +62,14 @@ jobs:
         if: github.event.inputs.backfill_sh6 != 'true'
         run: python "Steel and Mining/update_iron_ore.py" --update
 
-      # ── 3a2. IABr (Aço Brasil) — Excel do site → tabelas iabr_* ───────────────
-      - name: Update IABr (estatística mensal)
-        if: github.event.inputs.backfill_sh6 != 'true'
-        run: python "Steel and Mining/update_iabr.py" --update
+      # (IABr saiu daqui: virou workflow próprio update_iabr.yml — sai na 2ª/3ª semana, não 1-10.)
 
-      # ── 3b. (Manual, 1x) Histórico: SH6×País/URF + laranja + minério + IABr ───
+      # ── 3b. (Manual, 1x) Histórico: SH6×País/URF + linha laranja + minério ────
       - name: Backfill (manual)
         if: github.event.inputs.backfill_sh6 == 'true'
         run: |
           python "Steel and Mining/updater_sm.py" --backfill-sh6
           python "Steel and Mining/update_iron_ore.py" --backfill
-          python "Steel and Mining/update_iabr.py" --backfill
 
       # ── 4. Portão de tamanho: barra o commit se o .db estourar o limite do navegador ─
       - name: DB size gate (<50 MB p/ sql.js)
@@ -115,7 +115,7 @@ jobs:
       # "Working tree clean. Nothing to commit." (bug histórico). Commit manual
       # com o caminho entre aspas resolve.
       - name: Commit & push updated DB
-        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || env.IABR_NEW_DATA == 'true' || github.event.inputs.backfill_sh6 == 'true'
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || github.event.inputs.backfill_sh6 == 'true'
         run: |
           git config user.name  "IBBA Bot"
           git config user.email "bot@itaubba.com"
@@ -135,14 +135,13 @@ jobs:
 
       # ── 6b. Registra no painel admin (update_log) que rodou AUTOMÁTICO ────────
       - name: Log auto-update (painel admin)
-        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || env.IABR_NEW_DATA == 'true'
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           if [ "$NEW_DATA" = "true" ]; then python _shared/log_update.py "SECEX" auto "cron MDIC ${LATEST_PERIOD}"; fi
           if [ "$IRON_NEW_DATA" = "true" ]; then python _shared/log_update.py "Minério" auto "cron MDIC"; fi
-          if [ "$IABR_NEW_DATA" = "true" ]; then python _shared/log_update.py "IABr" auto "cron acobrasil"; fi
 
       # ── 7. Log final ────────────────────────────────────────────────────────
       - name: Summary
