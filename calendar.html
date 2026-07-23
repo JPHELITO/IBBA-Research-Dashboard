@@ -481,7 +481,16 @@ async function calStart(){ await loadStatic(); renderChips(); await loadEvents()
     }catch(e){}
     if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
     await calStart();
-  }catch(e){ console.error(e); document.getElementById('gate').innerHTML='<div style="text-align:center"><div style="font-size:30px">⚠️</div><div>Failed to load.</div><div class="muted" style="max-width:400px">'+esc(e.message||e)+'</div></div>'; }
+  }catch(e){ console.error(e);
+    const raw=String(e&&e.message||e);
+    const notSetUp=/exist|not found|404|schema|PGRST|function/i.test(raw);
+    const msg=notSetUp
+      ? 'Calendar isn’t set up yet — the one-time database step (admin/supabase_exec_calendar.sql) hasn’t been run in Supabase.'
+      : raw;
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">🗓️</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Calendar unavailable</div>'
+      +'<div class="muted">'+esc(msg)+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Back to home</a></div>'; }
 })();
 </script>
 </body>
