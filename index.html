@@ -333,7 +333,8 @@ img.team-avatar{object-fit:cover;background:none;}
 .hm-change{font-size:9px;font-weight:700;letter-spacing:-.01em;flex:none;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;}
+.hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
+.hm-ccy{font-weight:500;opacity:.6;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
@@ -1278,10 +1279,14 @@ function _fmtPrice(value, exchange){
   return value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-// Rótulo curto do cartão: tira o sufixo de bolsa. Override p/ os listings US da cobertura
-// (VALE = ADR na NYSE → mostra "VALE US"; AUGO já sai "AUGO" sozinho).
-const SYM_LABEL = {'VALE':'VALE US'};
-const _short = t => SYM_LABEL[t] || t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
+// Moeda de cotação por bolsa (badge ao lado do preço). Índices (IBOV/S&P/Nasdaq…) são
+// pontos, não moeda → sem badge (detectados por sector 'index').
+const EXCH_CCY = {B3:'BRL', NYSE:'USD', NASDAQ:'USD', BCS:'CLP', BMV:'MXN',
+                  ASX:'AUD', LSE:'GBp', TSX:'CAD', HEL:'EUR', US:'USD'};
+function _ccy(q){ return q.sector === 'index' ? '' : (EXCH_CCY[q.exchange] || ''); }
+
+// Rótulo curto do cartão: tira só o sufixo de bolsa (VALE, AUGO já saem limpos).
+const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 
 // Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
 function _seriesFor(q, range){
@@ -1335,7 +1340,7 @@ function _renderHeatmap(){
       </div>
       <div class="hm-name">${q.name}</div>
       ${_sparkline(closes)}
-      <div class="hm-price">${_fmtPrice(q.price, q.exchange)}</div>
+      <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
     </a>`;
   }).join('');
 }
