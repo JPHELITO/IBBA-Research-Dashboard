@@ -40,6 +40,16 @@ SHEET = "Perfomance Mensal-Monthly"   # (sic — typo no arquivo da fonte)
 UA = {"User-Agent": "Mozilla/5.0"}
 NOW = datetime.utcnow().isoformat()
 
+sys.path.insert(0, os.path.join(HERE, "..", "_shared"))
+try:
+    import notify
+except Exception:
+    notify = None
+
+_MESES_PT = {"janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4, "maio": 5,
+             "junho": 6, "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10,
+             "novembro": 11, "dezembro": 12}
+
 # rótulo->linha (0-based) na aba; col 1 = Jan/2013 (mensal contíguo até a penúltima col)
 TABLES = {
     "iabr_production":     {"cols": ["crude_steel", "flat", "long_prod", "semi", "slabs", "billets", "pig_iron"],
@@ -69,23 +79,36 @@ def _period(col_idx):
     return f"{y}-{m:02d}", y, m
 
 
-def find_latest_xls():
-    """Acha o Performance-Mensal_AAAA.MM(-N).xls(x) mais novo. Retorna (url, 'AAAA-MM') ou (None, None).
-    ⚠️ Tolera o sufixo '-1' que o WordPress põe ao re-subir o arquivo (ex.:
-    Performance-Mensal_2026.06-1.xls) — era o que quebrava a raspagem (dado parava
-    silenciosamente). NÃO volta a exigir '\\.xls' colado ao mês.
-    NÃO levanta exceção: em falha devolve (None, None) p/ não derrubar o job do SECEX."""
+def fetch_page():
+    """HTML da página de estatística mensal (ou None em falha de rede)."""
     try:
-        html = requests.get(PAGE, headers=UA, timeout=60, verify=False).text
+        return requests.get(PAGE, headers=UA, timeout=60, verify=False).text
     except Exception as e:
         print(f"  [IABr] falha ao abrir a página ({e}).")
-        return None, None
+        return None
+
+
+def file_link(html):
+    """Acha o Performance-Mensal_AAAA.MM(-N).xls(x) mais novo → (url, 'AAAA-MM') ou (None, None).
+    ⚠️ Tolera o sufixo '-N' que o WordPress põe ao re-subir (ex.: ...2026.06-1.xls) — era o que
+    quebrava a raspagem (o dado parava calado)."""
     hits = re.findall(r'href="(https?://[^"]*Performance-Mensal_(\d{4})\.(\d{2})(?:-\d+)?\.xlsx?)"', html, re.I)
     if not hits:
-        print("  [IABr] não achei o link do Excel na página do Aço Brasil (layout mudou?).")
+        print("  [IABr] não achei o link do Excel na página (layout mudou?).")
         return None, None
     url, y, m = max(hits, key=lambda h: (h[1], h[2]))
     return url, f"{y}-{m}"
+
+
+def heading_period(html):
+    """Lê o cabeçalho 'MÊS ANO - PRODUÇÃO BRASILEIRA' → 'AAAA-MM' (ou None). Sinal robusto do
+    mês mais novo, INDEPENDENTE do nome do arquivo (é como o humano confere no site)."""
+    m = re.search(r'\b(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|'
+                  r'outubro|novembro|dezembro)\s+(\d{4})\s*[-–—]\s*produ', html, re.I)
+    if not m:
+        return None
+    mes = _MESES_PT.get(m.group(1).lower())
+    return f"{m.group(2)}-{mes:02d}" if mes else None
 
 
 def parse_xls(content):
@@ -144,6 +167,33 @@ def _gh(new, period):
             f.write(f"IABR_LATEST={period}\n")
 
 
+def _shift(y, m, d):
+    i = y * 12 + (m - 1) + d
+    return i // 12, i % 12 + 1
+
+
+def _mail(kind, period, subject, body):
+    if notify:
+        try:
+            notify.once("iabr", period, kind, subject, body)
+        except Exception as e:
+            print(f"  (e-mail '{kind}' ignorado: {e})")
+
+
+def _overdue_check(dbmax):
+    """IABr publica o mês anterior na 2ª/3ª semana. Se passou do dia 25 e o dashboard ainda não
+    tem o esperado (atual − 1), avisa (1×/mês)."""
+    now = datetime.utcnow()
+    if now.day < 25:
+        return
+    ey, em = _shift(now.year, now.month, -1)
+    exp = f"{ey}-{em:02d}"
+    if dbmax is None or dbmax < exp:
+        _mail("overdue", exp, f"⚠️ IABr ainda sem {exp}",
+              f"Já é dia {now.day} e o dashboard não tem o IABr de {exp} (mais novo no dash: {dbmax}). "
+              f"Costuma sair na 2ª/3ª semana.\nPágina: {PAGE}")
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -160,27 +210,41 @@ def main():
 
     conn = sqlite3.connect(DB_PATH)
     dbmax = latest_db(conn)
-    url, xls_period = find_latest_xls()
-    print(f"DB: {DB_PATH} | iabr_production até {dbmax} | Excel do site: {xls_period}")
+    html = fetch_page()
+    url, xls_period = file_link(html) if html else (None, None)
+    head_period = heading_period(html) if html else None
+    site_period = max([p for p in (xls_period, head_period) if p], default=None)
+    print(f"DB: iabr até {dbmax} | site: cabeçalho {head_period} / arquivo {xls_period}")
 
-    # Falha da raspagem NÃO derruba o job (era o bug: SystemExit abortava o SECEX inteiro
-    # antes do commit). Sinaliza "sem novidade" + erro e sai limpo; o monitoramento (digest/
-    # alerta) pega o IABr desatualizado porque é fonte AUTO.
+    if args.check:
+        novo = bool(site_period and (dbmax is None or site_period > dbmax))
+        print(f"=> {'HÁ MÊS NOVO no IABr' if novo else 'sem novidade'}")
+        conn.close()
+        return
+
+    # detecção: mês novo no site (cabeçalho OU arquivo) → e-mail "saiu o dado" (1×/mês)
+    if site_period and (dbmax is None or site_period > dbmax):
+        _mail("detected", site_period, f"📄 Saiu o IABr de {site_period}",
+              f"O Aço Brasil publicou a estatística de {site_period}. Vou baixar e publicar.\n{PAGE}")
+
+    # descompasso: o site já ANUNCIA um mês que o link do arquivo ainda não reflete → avisa
+    if head_period and (not xls_period or head_period > xls_period):
+        _mail("review", head_period, f"⚠️ IABr {head_period} no site, mas o arquivo não atualizou",
+              f"O cabeçalho do site já mostra {head_period}, mas o link do Excel ainda está em "
+              f"{xls_period or '—'}. Pode ser demora deles ou o nome do arquivo mudou — NÃO publiquei "
+              f"esse mês.\nPágina: {PAGE}")
+
+    # Falha/ausência do arquivo NÃO derruba o job (bug antigo: SystemExit abortava o SECEX).
     if not url:
         _gh("false", None)
         gh = os.environ.get("GITHUB_ENV")
         if gh:
             with open(gh, "a") as f:
                 f.write("IABR_ERROR=true\n")
+        _overdue_check(dbmax)
         conn.close()
         return
     print(f"  {url}")
-
-    if args.check:
-        novo = dbmax is None or xls_period > dbmax
-        print(f"=> {'HÁ MÊS NOVO no IABr' if novo else 'sem novidade'}")
-        conn.close()
-        return
 
     content = requests.get(url, headers=UA, timeout=120, verify=False).content
     parsed = parse_xls(content)
@@ -211,6 +275,7 @@ def main():
         novo = dbmax is None or (prodmax and prodmax > dbmax)
         print(f"[UPDATE] {n} linhas | até {prodmax}")
         _gh("true" if (novo or args.force) else "false", prodmax if novo else None)
+        _overdue_check(dbmax)
     else:
         print("Use --check, --update, --backfill ou --reconcile.")
     conn.close()
