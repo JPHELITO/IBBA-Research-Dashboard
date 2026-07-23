@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/calendar-lib.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -133,6 +134,27 @@ body{height:100vh;overflow:hidden;}
 .area-news  {grid-area:news;}
 .area-heat  {grid-area:heat;}
 .area-comm  {grid-area:comm;}
+.area-events{grid-area:events;}
+/* Home com o card "Events" ligado: espreme o Market Pulse e abre 2 col à direita (alinha c/ comm/heat) */
+.page.has-events{
+  grid-template-areas:
+    "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse events events"
+    "news news news news news news news news comm comm comm comm"
+    "news news news news news news news news heat heat heat heat";
+}
+.page.has-events .pulse-body{gap:10px;flex-wrap:wrap;justify-content:center;}
+.ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
+.ev-open:hover{text-decoration:underline;}
+.ev-body{flex:1;min-height:0;overflow:auto;padding:6px 12px 10px;}
+.ev-sub{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-mid);margin:7px 0 3px;}
+.ev-item{display:flex;align-items:center;gap:7px;padding:4px 0;text-decoration:none;border-bottom:1px solid var(--border);}
+.ev-item:last-child{border-bottom:none;}
+.ev-item:hover .ev-t{color:var(--orange);}
+.ev-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.ev-when{font-size:10px;font-weight:700;color:var(--gray-mid);font-variant-numeric:tabular-nums;flex:none;min-width:40px;}
+.ev-t{font-size:11.5px;font-weight:600;color:var(--black);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.ev-none{font-size:12px;color:var(--gray-mid);padding:8px 2px;}
+.ev-loading{font-size:12px;color:var(--gray-mid);padding:8px 2px;}
 
 /* ── CARD BASE ──────────────────────────────────────────────────────── */
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
@@ -579,6 +601,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         <a href="stock-guide.html#comp">Comp Table</a>
         <a href="stock-guide.html#sens">Sensitivity</a></div></div>
     <a class="tn-item" href="/market.html">Market</a>
+    <a class="tn-item" href="/calendar.html">Calendar</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
   <div class="team-head" id="team-head"></div>
@@ -698,6 +721,15 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- EVENTS (Executive Calendar) — só aparece com a flag exec_calendar (admin sempre) -->
+  <div class="sec area-events" data-flag="exec_calendar" style="display:none">
+    <div class="sec-head">
+      <span style="display:flex;align-items:center;gap:7px;min-width:0;"><span class="sec-title">Events</span></span>
+      <a class="ev-open" href="/calendar.html">Open calendar →</a>
+    </div>
+    <div class="ev-body" id="ev-body"><div class="ev-loading">Loading…</div></div>
   </div>
 
   <!-- NEWS HUNTER -->
@@ -843,6 +875,16 @@ function applyFlags(flags, isAdmin){
       } else { el.style.display=''; }                                       // ligado: visível
     });
   }
+  // Executive Calendar (card "Events"): fail-closed — só com a flag ON; admin vê OFF (com selo).
+  // Alterna .page.has-events (espreme o pulse + abre o card) e dispara loadEvents quando visível.
+  const _calOn = (on['exec_calendar'] === true) || isAdmin;
+  document.querySelectorAll('[data-flag="exec_calendar"]').forEach(el=>{
+    el.classList.remove('admin-off');
+    if(_calOn){ el.style.display=''; if(on['exec_calendar']!==true && isAdmin) el.classList.add('admin-off'); }
+    else { el.style.display='none'; }
+  });
+  const _pg=document.querySelector('.page'); if(_pg) _pg.classList.toggle('has-events', _calOn);
+  if(_calOn && typeof loadEvents==='function') loadEvents();
 }
 /* ── PRÉ-CARGA das dashboards pesadas (M&M lê um SQLite de ~47 MB no navegador) ─────────
    Quando o mouse PARA sobre o card do setor (180ms = intenção, não passagem), começamos a
@@ -1812,6 +1854,50 @@ function _updateMeta(elId, iso){
   else el.textContent = `updated ${Math.floor(s/3600)}h ago`;
 }
 
+// ── Events (Executive Calendar) — card da home (today + upcoming) ──────
+function _evEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function loadEvents(){
+  if(!window.CAL) return;
+  const {data:{session}} = await sbAuth.auth.getSession(); if(!session) return;
+  try{
+    const today = CAL.todayISO(), to = CAL.addDays(today, 45);
+    const [evs, cats, wins] = await Promise.all([
+      sbAuth.rpc('get_exec_calendar_events',{p_from:today,p_to:to}),
+      sbAuth.rpc('get_exec_calendar_categories'),
+      sbAuth.rpc('get_exec_calendar_data_windows'),
+    ]);
+    if(evs.error) throw evs.error;
+    const catById={}; (cats.data||[]).forEach(c=>catById[c.id]=c);
+    const items=[];
+    (evs.data||[]).forEach(e=>{ CAL.expandOccurrences(e, today, to).forEach(o=>{
+      items.push({start:o.occ_start, allDay:!!e.all_day||!e.start_time, st:e.start_time,
+        title:e.title||'(untitled)', color:(catById[e.category_id]||{}).color||'#8C8C8C'}); }); });
+    const drColor=((cats.data||[]).find(c=>c.kind==='data_release')||{}).color||'#00838F';
+    let cur=today.slice(0,7);
+    for(let k=0;k<3;k++){ const [y,m]=cur.split('-').map(Number);
+      (wins.data||[]).forEach(w=>{ const b=CAL.dataWindowBands(w,y,m);
+        if(b.startYMD>=today && b.startYMD<=to) items.push({start:b.startYMD, allDay:true, title:w.label+' · '+b.target, color:drColor}); });
+      let nm=m+1,ny=y; if(nm>12){nm=1;ny++;} cur=ny+'-'+String(nm).padStart(2,'0'); }
+    renderEvents(items, today);
+  }catch(e){ console.warn('events', e);
+    const c=document.querySelector('[data-flag="exec_calendar"]'); if(c)c.style.display='none';
+    const pg=document.querySelector('.page'); if(pg)pg.classList.remove('has-events'); }
+}
+function renderEvents(items, today){
+  const body=document.getElementById('ev-body'); if(!body) return;
+  items.sort((a,b)=> a.start<b.start?-1:a.start>b.start?1:String(a.st||'').localeCompare(String(b.st||'')));
+  const todays=items.filter(i=>i.start===today);
+  const upcoming=items.filter(i=>i.start>today).slice(0,7);
+  const line=(i,showDate)=>{ const when=showDate ? CAL.MONTHS_SHORT[+i.start.slice(5,7)-1]+' '+(+i.start.slice(8,10))
+      : (i.allDay?'all-day':CAL.hhmm(i.st));
+    return `<a class="ev-item" href="/calendar.html"><span class="ev-when">${when}</span>`
+      +`<span class="ev-dot" style="background:${i.color}"></span><span class="ev-t">${_evEsc(i.title)}</span></a>`; };
+  let h='<div class="ev-sub">Today</div>';
+  h += todays.length ? todays.map(i=>line(i,false)).join('') : '<div class="ev-none">No events today.</div>';
+  if(upcoming.length) h+='<div class="ev-sub">Upcoming</div>'+upcoming.map(i=>line(i,true)).join('');
+  body.innerHTML=h;
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────
 renderTeam();
 applyDashboardConfig();   // aplica flags (liga/desliga) + analistas do Supabase (ao vivo); fail-safe
@@ -1827,6 +1913,7 @@ setInterval(loadPulse, NEWS_INTERVAL);   // pulse acompanha o feed (60s); antes 
 setInterval(loadQuotes, 60 * 1000);
 setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 setInterval(loadCommodities, 5 * 60 * 1000);
+setInterval(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 * 60 * 1000);
 </script>
 
 <!-- STAGING BADGE -->
