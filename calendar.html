@@ -491,6 +491,14 @@ async function calStart(){
       isAdmin=(role==='admin');
       if(!isAdmin) why.push('get_my_role devolveu "'+role+'" (esperado "admin")');
     }catch(e){ why.push('get_my_role falhou: '+(e.message||e)); }
+    if(!isAdmin){            // 2ª VIA independente: is_admin() no banco (o admin precisa poder
+      try{                   // pré-visualizar com a flag DESLIGADA — sem expor nada ao cliente)
+        const a=await sbAuth.rpc('is_admin');
+        if(a.error) throw a.error;
+        if(a.data===true){ isAdmin=true; why.length=0; }
+        else why.push('is_admin() devolveu '+JSON.stringify(a.data));
+      }catch(e){ why.push('is_admin falhou: '+(e.message||e)); }
+    }
     try{
       const f=await sbAuth.rpc('get_dashboard_flags');
       if(f.error) throw f.error;
