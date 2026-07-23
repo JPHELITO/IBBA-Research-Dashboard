@@ -1,0 +1,292 @@
+{
+  "generated_from": "_shared/registry.py",
+  "sources": [
+    {
+      "key": "secex_steel",
+      "label": "SECEX Aço (comércio exterior)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "mdic_api",
+      "how_pulled_txt": "API do governo (MDIC/Comex Stat, CSV em massa)",
+      "confidence": "high",
+      "overdue_days": 45,
+      "stale_min": null,
+      "window": "dias 1–10",
+      "note": "MDIC Comex Stat. Deriva secex_exports/imports/sh6_* e a linha laranja.",
+      "log_keys": [
+        "SECEX",
+        "secex_steel",
+        "SECEX Aço (comércio exterior)"
+      ]
+    },
+    {
+      "key": "import_prediction",
+      "label": "Modelo — linha laranja (import. BR←KR/CN)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "mdic_api",
+      "how_pulled_txt": "API do governo (MDIC/Comex Stat, CSV em massa)",
+      "confidence": "high",
+      "overdue_days": 45,
+      "stale_min": null,
+      "window": "junto com o SECEX",
+      "note": "Importações antidumping (55 SH6), mesma base do SECEX.",
+      "log_keys": [
+        "import_prediction",
+        "Modelo",
+        "Modelo — linha laranja (import. BR←KR/CN)"
+      ]
+    },
+    {
+      "key": "iron_ore",
+      "label": "Minério de ferro (Fines/Pellets)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "mdic_api",
+      "how_pulled_txt": "API do governo (MDIC/Comex Stat, CSV em massa)",
+      "confidence": "high",
+      "overdue_days": 45,
+      "stale_min": null,
+      "window": "dias 1–10",
+      "note": "MDIC SH6 260111/260112.",
+      "log_keys": [
+        "Minério",
+        "Minerio",
+        "iron_ore",
+        "Minério de ferro (Fines/Pellets)"
+      ]
+    },
+    {
+      "key": "iabr",
+      "label": "Aço Brasil / IABr (produção etc.)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "site_scrape",
+      "how_pulled_txt": "raspagem de site + download de Excel",
+      "confidence": "medium",
+      "overdue_days": 80,
+      "stale_min": null,
+      "window": "2ª/3ª semana",
+      "note": "Workflow PRÓPRIO update_iabr.yml (horário dias 8-28 — sai na 2ª/3ª semana, mês N-1, NÃO 1-10). Detecta por 2 sinais: link do Excel + cabeçalho 'MÊS ANO - PRODUÇÃO BRASILEIRA' (confere e avisa se descompassar). Parsing acha as linhas por RÓTULO ancorado por seção (resolve_rows) → tolera reordenação/inserção; cai no índice fixo se não achar o âncora. Trava steel-sm-db c/ o SECEX.",
+      "log_keys": [
+        "IABr",
+        "iabr",
+        "Aço Brasil / IABr (produção etc.)"
+      ]
+    },
+    {
+      "key": "pred_korea",
+      "label": "Modelo — linha preta (Coreia)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": false,
+      "how_pulled": "inbox",
+      "how_pulled_txt": "humano baixa o arquivo e arrasta no _inbox/customs/ — a nuvem processa",
+      "confidence": "medium",
+      "overdue_days": 60,
+      "stale_min": null,
+      "window": "após o fechamento do mês",
+      "note": "INBOX: baixe o xlsx da KITA e arraste em _inbox/customs/ com 'steelcoreia' no nome — process_customs.yml lê e publica sozinho. (update_korea.py/data.go.kr fica dormente, exigia CPF coreano.)",
+      "log_keys": [
+        "pred_korea",
+        "Korea",
+        "Coreia",
+        "pred_exports",
+        "Modelo — linha preta (Coreia)"
+      ]
+    },
+    {
+      "key": "pred_china",
+      "label": "Modelo — linha preta (China)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": false,
+      "how_pulled": "inbox",
+      "how_pulled_txt": "humano baixa o arquivo e arrasta no _inbox/customs/ — a nuvem processa",
+      "confidence": "medium",
+      "overdue_days": 60,
+      "stale_min": null,
+      "window": "após o fechamento do mês",
+      "note": "INBOX: baixe o CSV do customs da China (HS 72, destino Brazil) e arraste em _inbox/customs/ com 'steelchina' no nome — process_customs.yml lê e publica sozinho.",
+      "log_keys": [
+        "pred_china",
+        "China",
+        "pred_exports",
+        "Modelo — linha preta (China)"
+      ]
+    },
+    {
+      "key": "inda",
+      "label": "INDA (distribuição de aço plano)",
+      "sector": "steel",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "pdf",
+      "how_pulled_txt": "baixa um PDF público e lê com o Gemini + checksums",
+      "confidence": "medium",
+      "overdue_days": 80,
+      "stale_min": null,
+      "window": "meio do mês (lag ~2m)",
+      "note": "In Data PDF (público) lido por Gemini + 2 checksums (soma dos produtos=total; giro≈estoque/vendas); preenche TODOS os meses faltantes em ordem (sales_ltm/sales_ma3 calculados). Lag ~2 meses. update_inda.py.",
+      "log_keys": [
+        "inda_distribution",
+        "INDA",
+        "inda",
+        "INDA (distribuição de aço plano)"
+      ]
+    },
+    {
+      "key": "pulp_secex",
+      "label": "Celulose por porto (SECEX)",
+      "sector": "pulp",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "mdic_api",
+      "how_pulled_txt": "API do governo (MDIC/Comex Stat, CSV em massa)",
+      "confidence": "high",
+      "overdue_days": 45,
+      "stale_min": null,
+      "window": "dias 1–12",
+      "note": "MDIC Comex Stat, 17 SH6 de celulose.",
+      "log_keys": [
+        "Celulose",
+        "pulp_secex",
+        "Celulose por porto (SECEX)"
+      ]
+    },
+    {
+      "key": "iba_paper",
+      "label": "IBÁ — papel",
+      "sector": "pulp",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "vision",
+      "how_pulled_txt": "visão de máquina lê o PDF-imagem (Gemini) + checksums",
+      "confidence": "medium",
+      "overdue_days": 80,
+      "stale_min": null,
+      "window": "dias 7–13 (lag ~2m)",
+      "note": "PDF imagem lido por VISÃO (Gemini, escalona modelo) + 3 checksums; auto-publica se bater. Publica o dado ~2 meses após o mês (lag da fonte) → overdue_days folgado (80). update_iba_auto.py.",
+      "log_keys": [
+        "iba_paper",
+        "IBÁ papel",
+        "IBA papel",
+        "IBÁ — papel"
+      ]
+    },
+    {
+      "key": "empapel",
+      "label": "Empapel (papelão ondulado)",
+      "sector": "pulp",
+      "cadence": "monthly",
+      "auto": true,
+      "how_pulled": "news",
+      "how_pulled_txt": "lê o número nas notícias já coletadas (news-hunter) + regex + checksums",
+      "confidence": "medium",
+      "overdue_days": 75,
+      "stale_min": null,
+      "window": "~dia 15 (prelim.) / mês seguinte (oficial)",
+      "note": "Número mensal (índice IBPO) extraído das NOTÍCIAS já coletadas: Fastmarkets=preliminar (~dia 15), Valor/CNN/ABTCP=oficial (~mês seguinte). Regex + checksum de %a/a; publica o preliminar e REVISA p/ o oficial. dias úteis = seg-sáb. update_empapel_news.py. O antigo update_empapel.py (Excel ABPO) fica de reserva.",
+      "log_keys": [
+        "empapel",
+        "Empapel (papelão ondulado)"
+      ]
+    },
+    {
+      "key": "gacc",
+      "label": "GACC — cavaco China (woodchips)",
+      "sector": "pulp",
+      "cadence": "monthly",
+      "auto": false,
+      "how_pulled": "inbox",
+      "how_pulled_txt": "humano baixa o arquivo e arrasta no _inbox/customs/ — a nuvem processa",
+      "confidence": "medium",
+      "overdue_days": 75,
+      "stale_min": null,
+      "window": "~dia 18–20 do mês seguinte",
+      "note": "INBOX: o portal do customs tem CAPTCHA (download exige humano). Baixe o CSV e arraste em _inbox/customs/ com 'woodchip' no nome — process_customs.yml pivota e publica sozinho (validado 922/922). watch_gacc.py avisa por e-mail quando deve ter saído mês novo.",
+      "log_keys": [
+        "gacc",
+        "gacc_woodchips",
+        "GACC",
+        "GACC — cavaco China (woodchips)"
+      ]
+    },
+    {
+      "key": "quotes",
+      "label": "Cotações (ações/índices)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "yahoo",
+      "how_pulled_txt": "Yahoo Finance (chart API)",
+      "confidence": "high",
+      "overdue_days": null,
+      "stale_min": 180,
+      "window": null,
+      "note": "Yahoo Finance, ~5 min (hunt-loop).",
+      "log_keys": [
+        "quotes",
+        "Cotações (ações/índices)"
+      ]
+    },
+    {
+      "key": "commodities",
+      "label": "Commodities (Platts/Yahoo/TE)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "mixed",
+      "how_pulled_txt": "várias fontes",
+      "confidence": "medium",
+      "overdue_days": null,
+      "stale_min": 240,
+      "window": null,
+      "note": "Platts (~30 min, sessão Okta frágil) + Yahoo Cu/Au + minério 62% (token TE quebradiço).",
+      "log_keys": [
+        "commodities",
+        "Commodities (Platts/Yahoo/TE)"
+      ]
+    },
+    {
+      "key": "macro",
+      "label": "Macro (FX + BCB)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "bcb",
+      "how_pulled_txt": "API do Banco Central (BCB)",
+      "confidence": "high",
+      "overdue_days": null,
+      "stale_min": 240,
+      "window": null,
+      "note": "Yahoo FX + US10Y + BCB (SELIC/CDI/IPCA/PIB).",
+      "log_keys": [
+        "macro",
+        "Macro (FX + BCB)"
+      ]
+    },
+    {
+      "key": "news",
+      "label": "Notícias (News Hunter)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "pipeline",
+      "how_pulled_txt": "pipeline de coleta (news-hunter)",
+      "confidence": "high",
+      "overdue_days": null,
+      "stale_min": 360,
+      "window": null,
+      "note": "RSS+sitemaps+scrapers+Playwright. Auto-cura. Coluna de frescor = found_at.",
+      "log_keys": [
+        "news",
+        "Notícias (News Hunter)"
+      ]
+    }
+  ]
+}

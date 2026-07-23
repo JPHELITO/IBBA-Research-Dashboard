@@ -156,6 +156,84 @@ html.dark nav.tabs button.active{background:var(--orange);border-color:var(--ora
 html.dark .side button.active{background:var(--orange)}
 html.dark table.data tr:hover td{background:rgba(255,255,255,.05)}
 html.dark .ov-card{background:#20242b}
+
+/* ═══════════════════ REDESIGN 2026-07 — camada nova (sobrepõe o acima) ═══════════════════ */
+html,body{background:#F7F6F3}
+html.dark body{background:#0d0e11}
+header{padding:0 24px;height:56px;border-bottom:1px solid rgba(255,255,255,.07)}
+header .brand{font-size:14px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:9px}
+header .brand::before{content:'';width:24px;height:24px;border-radius:6px;background:var(--orange)}
+header button{border-color:rgba(255,255,255,.16);color:rgba(255,255,255,.75);font-size:12px;padding:7px 13px;border-radius:7px}
+
+/* shell + sidebar agrupada */
+.shell{max-width:1280px;gap:22px;padding:22px 24px 40px;align-items:flex-start}
+.side{flex:0 0 224px;padding:10px 9px;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);gap:1px}
+.side-grp{font-size:9.5px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--gray-mid);
+  padding:13px 12px 5px;user-select:none}
+.side-grp:first-child{padding-top:4px}
+.side button{font-size:12.5px;font-weight:500;padding:8px 12px;border-radius:8px;gap:10px;transition:background .12s,color .12s}
+.side button.active{background:var(--black);color:#fff;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.16)}
+html.dark .side button.active{background:var(--orange);color:#fff}
+
+/* cards */
+.card{border-radius:14px;padding:20px 22px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h2{font-size:15.5px;font-weight:700;letter-spacing:-.01em;color:var(--black);margin-bottom:3px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card p.sub{font-size:12.5px;line-height:1.5;margin-bottom:15px}
+.page-h{font-size:20px;font-weight:700;letter-spacing:-.015em;color:var(--black);margin:2px 0 3px}
+.page-sub{font-size:12.5px;color:var(--gray-mid);margin-bottom:16px;line-height:1.5;max-width:760px}
+
+/* faixa explicativa "o que esta aba faz" — mata o 'não entendo o que é isso' */
+.help{display:flex;gap:11px;align-items:flex-start;background:rgba(255,80,0,.06);border:1px solid rgba(255,80,0,.22);
+  border-radius:11px;padding:12px 14px;margin-bottom:15px;font-size:12.5px;line-height:1.55;color:var(--gray-dark)}
+.help b{color:var(--black)}
+.help::before{content:'💡';flex:none;font-size:14px;line-height:1.3}
+.help.warn{background:rgba(192,57,43,.07);border-color:rgba(192,57,43,.28)}
+.help.warn::before{content:'⚠️'}
+html.dark .help{background:rgba(255,80,0,.10)}
+
+/* botões / inputs */
+.btn{border-radius:9px;padding:9px 17px;font-size:13px;font-weight:600;letter-spacing:.005em;
+  box-shadow:0 1px 2px rgba(255,80,0,.25);transition:filter .12s,transform .06s}
+.btn:active{transform:translateY(1px)}
+.btn.sec{box-shadow:none;font-weight:500}
+.btn.sec:hover{border-color:var(--gray-mid)}
+.btn.danger{background:var(--red);box-shadow:0 1px 2px rgba(192,57,43,.25)}
+.chip{border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:600;color:var(--gray-dark);transition:all .12s}
+.chip:hover{border-color:var(--gray-mid);color:var(--black)}
+.chip.danger:hover{border-color:var(--red);color:var(--red)}
+input.in,select.in,textarea.in{border-radius:9px;padding:9px 12px;font-size:13px;transition:border-color .12s}
+input.in:focus,select.in:focus,textarea.in:focus{outline:none;border-color:var(--orange)}
+.field{gap:11px;max-width:560px}
+.lbl{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);
+  display:block;margin-bottom:4px}
+
+/* linhas de lista (team/categorias/eventos/…) */
+.team-row{padding:12px 4px;gap:12px}
+.team-row:hover{background:rgba(0,0,0,.015)}
+html.dark .team-row:hover{background:rgba(255,255,255,.03)}
+
+/* overview */
+.ov-grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:13px}
+.ov-card{border-radius:12px;padding:15px 16px;background:var(--white);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.ov-val{font-size:24px;letter-spacing:-.02em}
+.ov-lab{font-size:12px;font-weight:600;color:var(--gray-dark)}
+html.dark .ov-card{background:#20242b}
+
+/* status das fontes */
+.src{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.src:last-child{border-bottom:none}
+.src-dot{width:9px;height:9px;border-radius:50%;flex:none}
+.src-dot.ok{background:var(--green)} .src-dot.warn{background:#E8A33D} .src-dot.bad{background:var(--red)}
+.src-dot.idle{background:var(--gray-mid)}
+.src-main{flex:1;min-width:0}
+.src-name{font-size:13px;font-weight:600;color:var(--black)}
+.src-meta{font-size:11px;color:var(--gray-mid);margin-top:1px}
+.src-when{font-size:11.5px;font-weight:600;color:var(--gray-dark);flex:none;text-align:right;min-width:104px}
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px;
+  border:1px solid var(--border);color:var(--gray-mid);flex:none}
+.tag.auto{color:var(--green);border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.08)}
+.tag.manual{color:#B8860B;border-color:rgba(184,134,11,.4);background:rgba(184,134,11,.09)}
 </style>
 </head>
 <body>
@@ -192,18 +270,22 @@ html.dark .ov-card{background:#20242b}
   </header>
   <div class="shell">
     <aside class="side">
+      <div class="side-grp">Painel</div>
       <button class="active" data-tab="overview" onclick="showTab('overview')">📊 Visão geral</button>
-      <button data-tab="status" onclick="showTab('status')">🩺 Status das fontes</button>
-      <button data-tab="github" onclick="showTab('github')">🔧 GitHub</button>
+
+      <div class="side-grp">Conteúdo do cliente</div>
       <button data-tab="flags" onclick="showTab('flags')">🎛️ Funcionalidades</button>
+      <button data-tab="calendar" onclick="showTab('calendar')">📅 Calendário</button>
+      <button data-tab="stockguide" onclick="showTab('stockguide')">📈 Stock Guide</button>
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
       <button data-tab="heatmap" onclick="showTab('heatmap')">🗺️ Heatmap</button>
+
+      <div class="side-grp">Dados &amp; operação</div>
+      <button data-tab="status" onclick="showTab('status')">🩺 Status das fontes</button>
+      <button data-tab="github" onclick="showTab('github')">🔧 Automação</button>
       <button data-tab="users" onclick="showTab('users')">👤 Usuários</button>
-      <button data-tab="upload" onclick="showTab('upload')">⬆️ Atualizar dados</button>
       <button data-tab="db" onclick="showTab('db')">🗄️ Bancos de dados</button>
-      <button data-tab="stockguide" onclick="showTab('stockguide')">📈 Stock Guide</button>
-      <button data-tab="calendar" onclick="showTab('calendar')">📅 Calendar</button>
     </aside>
     <main class="content">
 
@@ -288,8 +370,18 @@ html.dark .ov-card{background:#20242b}
         <h2 id="team-form-title">Novo analista</h2>
         <div class="field">
           <input class="in" id="tf-name" placeholder="Nome">
-          <input class="in" id="tf-role" placeholder="Cargo (ex.: Head / Analyst)">
-          <input class="in" id="tf-photo" placeholder="Foto (ex.: assets/team-nome.jpg)">
+          <label class="lbl">Cargo</label>
+          <select class="in" id="tf-role">
+            <option value="Head">Head</option>
+            <option value="Analyst">Analyst</option>
+            <option value="Associate">Associate</option>
+          </select>
+          <label class="lbl">Foto</label>
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap">
+            <img id="tf-photo-prev" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--gray-light);border:1px solid var(--border);flex:none">
+            <input class="in" id="tf-photo" placeholder="assets/team-nome.jpg  ou  https://…" oninput="tfPhotoPrev()">
+          </div>
+          <div class="muted" style="font-size:11.5px;margin-top:-5px">A imagem precisa existir: comite o arquivo em <code>assets/</code> no repositório, ou cole uma URL. (Upload direto não passa na rede do banco — mesmo motivo da antiga aba "Atualizar dados".)</div>
           <input class="in" id="tf-email" placeholder="E-mail (opcional)">
           <input class="in" id="tf-wa" placeholder="WhatsApp só números (ex.: 5511999999999)">
           <input class="in" id="tf-sort" type="number" placeholder="Ordem (menor aparece primeiro)">
@@ -301,6 +393,9 @@ html.dark .ov-card{background:#20242b}
 
     <!-- ── Commodities (grupos do carrossel) ────────────────────────────── -->
     <section id="tab-comm" hidden>
+      <div class="page-h">Commodities</div>
+      <div class="page-sub">Como as commodities aparecem no carrossel da home — quais, em que ordem e em que "página".</div>
+      <div class="help warn"><span><b>Isto aqui só AGRUPA e ORDENA o que o robô já busca.</b> Criar um grupo <b>não</b> passa a puxar preço de uma commodity nova: os preços vêm do backend (Platts, Yahoo e Trading Economics). Se você digitar um código que o robô não busca, ele simplesmente <b>não aparece</b> no carrossel. Para incluir uma commodity que ainda não existe, é preciso ligar a fonte dela no backend primeiro — me peça.</span></div>
       <div class="card">
         <h2>Commodities — grupos do carrossel</h2>
         <p class="sub">Cada grupo é uma "página" do carrossel da home. Edite título, ordem dos códigos, posição e visibilidade. Reflete na home dos clientes.</p>
@@ -320,65 +415,15 @@ html.dark .ov-card{background:#20242b}
     </section>
 
     <!-- ── Atualizar dados (upload → robô) ───────────────────────────────── -->
-    <section id="tab-upload" hidden>
-
-      <!-- Caminho ALTERNATIVO (rede do banco bloqueia o upload direto) -->
-      <div class="card" style="border-color:var(--orange)">
-        <h2>⬇ Atualizar pelo seu PC <span class="muted" style="font-weight:400;font-size:13px">— quando o upload acima dá "Failed to fetch"</span></h2>
-        <p class="sub">Se a rede do banco bloqueia o envio direto (o tal <b>Failed to fetch</b>), use este caminho: um programinha em <b>Python</b> que roda <b>no seu PC</b>, processa a planilha aí mesmo (ela <b>nunca sai da sua máquina</b>) e publica só o banco de dados. Roda em qualquer PC que abra o GitHub — não precisa instalar nada além do Python.</p>
-        <ol class="sub" style="margin:0 0 12px 18px;line-height:1.9">
-          <li><b>Baixe o programa</b> (botão abaixo) e salve na <b>pasta onde você guarda as bases</b> (ex.: <code>G:\Dashboard</code>).</li>
-          <li>Deixe as <b>planilhas</b> nessa <b>mesma pasta</b> — o programa procura ali (e nas subpastas) sozinho. <span class="muted">(Também procura em Downloads.)</span></li>
-          <li>Rode <code>python publicar_base.py</code> (ou duplo-clique). Ele acha a planilha, mostra o <b>antes → depois</b> e só publica se você confirmar.</li>
-          <li>Na 1ª vez ele pede um <b>token do GitHub</b> (o mesmo tipo de token da configuração ao lado, com permissão <b>Contents: Read and write</b>). Fica guardado no seu PC.</li>
-        </ol>
-        <div class="row">
-          <a class="btn" href="/publicar_base.py" download="publicar_base.py">⬇ Baixar o programa (publicar_base.py)</a>
-          <button class="btn sec" onclick="verCodigo()">👁 Ver / copiar o código</button>
-        </div>
-        <p class="sub" style="margin-top:8px;font-size:12px">
-          A rede do banco bloqueou o download (<b>Media Type Blocked</b>)? Sem problema — use um destes:
-          <b>1)</b> clique em <b>👁 Ver / copiar o código</b>, cole no <b>Bloco de Notas</b> e salve como <code>publicar_base.py</code>;
-          <b>2)</b> abra o código no GitHub e salve com <b>Ctrl+S</b>:
-          <a href="https://raw.githubusercontent.com/JPHELITO/IBBA-Research-Dashboard/main/publicar_base.py" target="_blank" rel="noopener">raw.githubusercontent.com/…/publicar_base.py</a>.
-        </p>
-        <div id="pub-status" class="status"></div>
-        <pre id="pub-code" class="tbl-wrap" style="display:none;white-space:pre;overflow:auto;max-height:340px;font-size:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-top:10px"></pre>
-      </div>
-
-      <div class="card">
-        <h2>Atualizar dados <span class="muted" style="font-weight:400;font-size:13px">— envio direto (pode não passar na rede do banco)</span></h2>
-        <p class="sub">Escolha a <b>base</b>, suba a planilha e clique — o robô processa e publica <b>na hora</b>, sem sair daqui (precisa do token configurado abaixo). <span class="muted">SECEX/IABr/minério/celulose atualizam sozinhos (cron); aqui ficam as bases manuais.</span></p>
-        <div class="field">
-          <label class="chk" style="gap:8px">Base:
-            <select class="in" id="up-kind" style="max-width:400px">
-              <option value="pred_exports">Linha preta — SECEX Prediction Analysis (.xlsx)</option>
-              <option value="iba">IBÁ papel — IBÁ Brazilian Pulp &amp; Paper (.xlsx)</option>
-            </select>
-          </label>
-          <input class="in" id="up-file" type="file" accept=".xlsx,.xls">
-          <div class="row"><button class="btn" id="up-btn" onclick="uploadFile()">Enviar e atualizar agora</button>
-            <button class="btn" onclick="diagUpload()" title="Testa sessão, banco e Storage em separado para achar onde trava">🩺 Testar conexão</button></div>
-          <div id="up-status" class="status"></div>
-          <div id="up-diag" class="status" style="line-height:1.7"></div>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Configuração do robô <span class="muted" style="font-weight:400">(1x)</span></h2>
-        <p class="sub">Cole um <b>token do GitHub</b> (fine-grained → repo IBBA-Research-Dashboard → permissão <b>Actions: Read and write</b>). Fica guardado seguro no Supabase; é o que permite atualizar na hora sem abrir o GitHub.</p>
-        <div class="field" style="max-width:540px">
-          <input class="in" id="gh-pat" type="password" placeholder="github_pat_… (cole aqui)" autocomplete="off">
-          <div class="row"><button class="btn sec" onclick="savePat()">Salvar token</button><span id="pat-status" class="muted"></span></div>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Histórico de envios</h2>
-        <div id="jobs-list" class="status">—</div>
-      </div>
-    </section>
-
     <!-- ── Heatmap (esconder tickers + cobertura padrão) ─────────────────── -->
     <section id="tab-heatmap" hidden>
+      <div class="page-h">Heatmap</div>
+      <div class="page-sub">Curadoria do mapa de cotações da home.</div>
+      <div class="help"><span>Cada linha aqui é uma <b>regra para um ticker</b> que o robô já acompanha, com 3 controles:<br>
+        &bull; <b>Esconder</b> — o ticker some do heatmap e do filtro, para todo mundo.<br>
+        &bull; <b>Cobertura padrão</b> — o ticker entra no conjunto que aparece por padrão quando o cliente abre a home (o preset &ldquo;Our coverage&rdquo;).<br>
+        &bull; <b>Ordem</b> — posição dele dentro dessa cobertura padrão (menor primeiro).<br>
+        Tabela vazia = a dashboard usa a cobertura padrão do código, sem alteração. <b>Adicionar um ticker NOVO</b> (que o robô ainda não cota) exige ligar a fonte no backend — aqui só se curam os que já existem.</span></div>
       <div class="card">
         <h2>Heatmap — tickers</h2>
         <p class="sub"><b>Esconder</b> tickers do heatmap e definir a <b>cobertura padrão</b> (o que aparece por default). Digite o símbolo (ex.: <code>TX</code>, <code>VALE3.SA</code>). Reflete na home. <span class="muted">Sem regras, o heatmap usa o padrão atual. Adicionar um ticker NOVO ainda precisa do back-end (fase futura).</span></p>
@@ -409,36 +454,64 @@ html.dark .ov-card{background:#20242b}
     <!-- ── Status das bases ──────────────────────────────────────────────── -->
     <section id="tab-status" hidden>
       <style>
-      #tab-status .ss-tbl{border-collapse:collapse;width:100%;font-size:13px}
-      #tab-status .ss-tbl th,#tab-status .ss-tbl td{border:1px solid var(--border,#E3E3E3);padding:6px 9px;text-align:left;vertical-align:top}
-      #tab-status .ss-tbl th{background:var(--g-light,#F4F3F0);font-weight:600}
-      #tab-status .ss-tbl td.ss-when{white-space:nowrap;text-align:right}
-      #tab-status .ss-acao{font-size:12px}
-      #tab-status .ss-tag{font-size:11px;padding:1px 7px;border-radius:10px;white-space:nowrap}
-      #tab-status .ss-auto{background:#DCFCE7;color:#166534}#tab-status .ss-semi{background:#FEF3C7;color:#92400E}#tab-status .ss-manual{background:#E0E7FF;color:#3730A3}
+      #tab-status .ss-tbl{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:4px}
+      #tab-status .ss-tbl th,#tab-status .ss-tbl td{border-bottom:1px solid var(--border);padding:7px 9px;text-align:left}
+      #tab-status .ss-tbl th{font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-mid)}
       </style>
+      <div class="page-h">Status das fontes</div>
+      <div class="page-sub">Toda fonte de dado da dashboard: se roda sozinha ou depende de você, quando atualizou pela última vez e o que se espera dela.</div>
+      <div class="help">Esta lista sai do <b>registro de fontes</b> (<code>_shared/registry.py</code>) &mdash; a mesma verdade que os robôs usam. O &ldquo;atualizou&rdquo; vem do <b>log real</b> de execuções (<code>update_log</code>). Fonte nova no registro aparece aqui sozinha &mdash; acabou a lista escrita à mão que ficava velha.</div>
+
       <div class="card">
-        <h2>🩺 Status das fontes <span class="muted" style="font-weight:400;font-size:13px">— o que a dashboard precisa de você</span></h2>
-        <p class="sub">Cada fonte de dado: se <b>roda sozinha</b> (🤖) ou <b>precisa de você</b> (✍️/⚠️), <b>quando atualizou</b> por último e <b>o que fazer</b> se estiver velha. Verde = fresco · laranja = atrasado · cinza = sem sinal ao vivo (confira pela data do dado).</p>
-        <div id="ss-action"></div>
-        <div id="ss-auto" style="margin-top:14px"></div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn sec" onclick="loadStatus()">🔄 Recarregar</button>
-          <button class="btn sec" onclick="loadDbDates()">📅 Ver última data dos dados (.db, ~46MB)</button>
+        <h2>Dependem de você <span class="tag manual" id="ss-n-manual">&mdash;</span></h2>
+        <p class="sub">Têm um passo humano (baixar o arquivo e arrastar no <code>_inbox/customs/</code>). O processamento e a publicação a nuvem faz sozinha.</p>
+        <div id="ss-action" class="status">Carregando&hellip;</div>
+      </div>
+
+      <div class="card">
+        <h2>Rodam sozinhas <span class="tag auto" id="ss-n-auto">&mdash;</span></h2>
+        <p class="sub">Cron/robô cuida. Só olhe aqui se desconfiar de atraso.</p>
+        <div id="ss-auto" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Feeds ao vivo</h2>
+        <p class="sub">Cotações, commodities, macro e notícias &mdash; medidos em minutos, direto das tabelas.</p>
+        <div id="ss-live" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Data do dado publicado</h2>
+        <p class="sub">Confere o <b>último mês</b> que existe em cada base. Lê os bancos (~46 MB) &mdash; por isso é sob demanda, não automático.</p>
+        <div class="row">
+          <button class="btn sec" onclick="loadStatus()">Recarregar status</button>
+          <button class="btn sec" onclick="loadDbDates()">Checar data dos dados (~46 MB)</button>
         </div>
-        <div id="ss-dbdates" style="margin-top:10px"></div>
+        <div id="ss-dbdates" style="margin-top:12px"></div>
       </div>
     </section>
 
     <!-- ── GitHub — execuções (Actions) ao vivo ──────────────────────────── -->
     <section id="tab-github" hidden>
+      <div class="page-h">Automação</div>
+      <div class="page-sub">Execuções reais dos robôs (GitHub Actions) e o token que permite consultá-las.</div>
+
       <div class="card">
-        <h2>GitHub — execuções (Actions)</h2>
-        <p class="sub">Runs recentes dos robôs (dashboard + news-hunter), ao vivo. Precisa do token configurado (Atualizar dados → Configuração) e da função <code>github-runs</code> publicada.</p>
+        <h2>Execuções dos robôs <span class="tag auto">ao vivo</span></h2>
+        <p class="sub">Estes números vêm <b>direto da API do GitHub</b> a cada carregamento — não são estimativa nem cache. A leitura passa pela função <code>github-runs</code>, que usa o token abaixo <b>no servidor</b> (o token nunca chega ao navegador). Confira no botão "Conferir no GitHub" — tem que bater exatamente.</p>
         <div id="gh-runs" class="status">Carregando…</div>
         <div class="row" style="margin-top:10px">
           <button class="btn sec" onclick="loadGithubRuns()">🔄 Recarregar</button>
-          <a class="btn sec" href="https://github.com/JPHELITO/IBBA-Research-Dashboard/actions" target="_blank" rel="noopener" style="text-decoration:none">↗ Abrir no GitHub</a>
+          <a class="btn sec" href="https://github.com/JPHELITO/IBBA-Research-Dashboard/actions" target="_blank" rel="noopener" style="text-decoration:none">↗ Conferir no GitHub</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Token do robô <span class="muted" style="font-weight:400;font-size:12.5px">— configura 1 vez</span></h2>
+        <p class="sub">Token do GitHub (fine-grained → repo <code>IBBA-Research-Dashboard</code> → <b>Actions: Read</b>). Fica guardado no Supabase; é o que permite ler as execuções acima. Sem ele, a lista fica vazia.</p>
+        <div class="field" style="max-width:560px">
+          <input class="in" id="gh-pat" type="password" placeholder="github_pat_… (cole aqui)" autocomplete="off">
+          <div class="row"><button class="btn sec" onclick="savePat()">Salvar token</button><span id="pat-status" class="muted"></span></div>
         </div>
       </div>
     </section>
@@ -515,7 +588,7 @@ html.dark .ov-card{background:#20242b}
           <div class="row">
             <input class="in" id="calc-name" placeholder="Nome da categoria" style="flex:1">
             <input type="color" id="calc-color" value="#FF5000" title="Cor" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer">
-            <input class="in" id="calc-sort" type="number" placeholder="ordem" style="max-width:88px">
+            <input type="hidden" id="calc-sort">
           </div>
           <div class="row">
             <label class="muted"><input type="checkbox" id="calc-active" checked> ativa</label>
@@ -632,7 +705,7 @@ function calCatEdit(id){ const c=_calCats.find(x=>x.id===id); if(!c)return;
   _cg('cal-cat-list').scrollIntoView({block:'nearest'}); }
 function calCatReset(){ _cg('calc-id').value=''; _cg('calc-name').value=''; _cg('calc-color').value='#FF5000'; _cg('calc-sort').value=''; _cg('calc-active').checked=true; _cg('calc-kind').value=''; }
 async function calCatSave(){ const name=_cg('calc-name').value.trim(); if(!name){alert('Nome obrigatório.');return}
-  const p_data={name, color:_cg('calc-color').value, sort_order:+_cg('calc-sort').value||0, is_active:_cg('calc-active').checked, kind:_cg('calc-kind').value||null};
+  const p_data={name, color:_cg('calc-color').value, sort_order:+_cg('calc-sort').value||((_calCats.length+1)*10), is_active:_cg('calc-active').checked, kind:_cg('calc-kind').value||null};
   const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_category',{p_id:_cg('calc-id').value||null, p_data});
   if(error){alert('Erro: '+error.message);return} calCatReset(); calLoadCats(); }
 async function calCatDel(id){ if(!confirm('Excluir categoria? Os eventos ligados ficam sem cor.'))return;
@@ -748,7 +821,7 @@ async function loadOverview(){
     const flags=fl.data||[], on=flags.filter(f=>f.enabled).length
     cfg.innerHTML=[ovCard('Painéis ligados',`${on}/${flags.length}`),ovCard('Analistas',(tm.data||[]).length),ovCard('Grupos de commodities',(cg.data||[]).length),ovCard('Regras de heatmap',(ht.data||[]).length)].join('')
   }catch(e){ cfg.textContent='Erro ao ler config: '+(e.message||e)+'  (rodou os SQLs do admin?)' }
-  loadBaseStatus(); loadMetrics()
+  loadMetrics(); ovBasesIdle()   // as bases (~46MB) agora são SOB DEMANDA — o admin abre rápido
 }
 async function loadMetrics(){
   try{ const {data}=await sbAuth.rpc('get_visit_stats'); const v=(data&&data[0])||{}
@@ -771,6 +844,11 @@ const BASE_SOURCES=[
   {db:'pulp', label:'Papel (IBÁ)',      sql:"SELECT MAX(period) FROM iba_paper"},
 ]
 let _ovBasesHtml=null
+function ovBasesIdle(){ const h=document.getElementById('ov-bases'); if(!h) return
+  if(_ovBasesHtml){ h.innerHTML=_ovBasesHtml; return }
+  h.innerHTML='<div class="ov-card" style="grid-column:1/-1;background:transparent;border:1px dashed var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+    +'<span class="muted" style="font-size:12.5px">A última data de cada base exige ler os bancos (~46 MB). Não carrego sozinho pra o painel abrir rápido.</span>'
+    +'<button class="btn sec" onclick="loadBaseStatus(true)">Checar agora</button></div>' }
 async function loadBaseStatus(force){
   const host=document.getElementById('ov-bases')
   if(_ovBasesHtml && !force){ host.innerHTML=_ovBasesHtml; return }
@@ -847,19 +925,18 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','status','github','stockguide','calendar','db','flags','team','comm','upload','heatmap','users']
+const TABS=['overview','status','github','stockguide','calendar','db','flags','team','comm','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='overview') loadOverview()
   if(name==='status') loadStatus()
-  if(name==='github') loadGithubRuns()
+  if(name==='github'){ loadGithubRuns(); checkPat() }   // o token do robô mora aqui agora (a aba "Atualizar dados" foi aposentada)
   if(name==='stockguide') loadStockGuide()
   if(name==='calendar') loadCalAdmin()
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
-  if(name==='upload'){ loadJobs(); checkPat() }
   if(name==='heatmap') loadHeatmap()
   if(name==='users') loadUsers()
 }
@@ -926,6 +1003,10 @@ async function loadFlags(){
 
 // ── Analistas (team) ─────────────────────────────────────────────────────
 let _team=[]
+function tfPhotoPrev(){ const i=document.getElementById('tf-photo'), im=document.getElementById('tf-photo-prev')
+  if(!i||!im) return; const v=(i.value||'').trim()
+  im.src=v||'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+  im.onerror=function(){ this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' } }
 async function loadTeam(){
   const host=document.getElementById('team-list'); host.textContent='Carregando…'
   const {data,error}=await sbAuth.rpc('get_team')
@@ -945,7 +1026,7 @@ function _v(id){ return document.getElementById(id) }
 function teamEdit(id){
   const m = id ? _team.find(x=>x.id===id) : {name:'',role:'Analyst',photo:'',email:'',whatsapp:'',sort_order:(_team.length+1)*10,is_visible:true}
   _v('team-form-title').textContent = id ? 'Editar analista' : 'Novo analista'
-  _v('tf-name').value=m.name||''; _v('tf-role').value=m.role||''; _v('tf-photo').value=m.photo||''
+  _v('tf-name').value=m.name||''; _v('tf-role').value=m.role||'Analyst'; _v('tf-photo').value=m.photo||''; tfPhotoPrev();
   _v('tf-email').value=m.email||''; _v('tf-wa').value=m.whatsapp||''; _v('tf-sort').value=m.sort_order||0
   _v('tf-visible').checked = m.is_visible!==false
   _v('team-form-card').dataset.id = id||''
@@ -1202,54 +1283,77 @@ async function setUserRole(id, role, email){
   loadUsers()
 }
 
-// ── Status das bases (último dado + última atualização manual×auto) ──────
-// ═══════════════ STATUS DAS FONTES — o que a dash precisa de você (Fase 4) ═══════════════
-function _ssAgo(ts){ if(!ts)return '—'; const s=Math.max(0,(Date.now()-new Date(ts).getTime())/1000);
-  if(s<90)return Math.round(s)+'s atrás'; const m=s/60; if(m<90)return Math.round(m)+'min atrás';
-  const h=m/60; if(h<48)return Math.round(h)+'h atrás'; return Math.round(h/24)+'d atrás'; }
-function _ssDot(c){ return `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:7px;vertical-align:middle"></span>`; }
-function _ssBadge(when,staleMin){ if(when==null)return{dot:'#9CA3AF',txt:'—'};
-  const age=(Date.now()-new Date(when).getTime())/60000, txt=_ssAgo(when);
-  if(staleMin==null)return{dot:'#3B82F6',txt}; return{dot:age<=staleMin?'#16A34A':'#F59E0B',txt}; }
-function _ssTag(t){ return t==='auto'?'<span class="ss-tag ss-auto">🤖 automático</span>':(t==='semi'?'<span class="ss-tag ss-semi">⚠️ semi</span>':'<span class="ss-tag ss-manual">✍️ manual</span>'); }
-function _ssRow(label,tipo,b,acao){ return `<tr><td>${_ssDot(b.dot)}<b>${esc(label)}</b></td><td>${_ssTag(tipo)}</td><td class="ss-when">${esc(b.txt)}</td><td class="ss-acao muted">${acao}</td></tr>`; }
-function _ssLog(st,name){ return (st.base_log||[]).find(x=>x.source===name)||null; }
-function _ssHead(){ return '<table class="ss-tbl"><thead><tr><th>Fonte</th><th>Tipo</th><th style="text-align:right">Atualizou</th><th>O que fazer / observação</th></tr></thead><tbody>'; }
-function _ssLogWhen(st,name){ const e=_ssLog(st,name); return e&&e.last_update; }
-
+// STATUS DAS FONTES - dirigido pelo registro (admin/sources_registry.json)
+// O inventario NAO e mais escrito a mao aqui: vem do registry.py (gerado por _shared/gen_sources_json.py).
+// O frescor casa o update_log por uma LISTA de aliases, case-insensitive - antes era `===` e por isso
+// Empapel/IBA/INDA/GACC nunca mostravam data.
+let _srcReg=null;
+async function _loadSrcRegistry(){
+  if(_srcReg) return _srcReg;
+  const r=await fetch('/admin/sources_registry.json?v='+Date.now());
+  if(!r.ok) throw new Error('sources_registry.json HTTP '+r.status);
+  _srcReg=(await r.json()).sources||[]; return _srcReg;
+}
+function _ssAgo(ts){ if(!ts)return '\u2014'; const s=Math.max(0,(Date.now()-new Date(ts).getTime())/1000);
+  if(s<90)return Math.round(s)+'s atras'; const m=s/60; if(m<90)return Math.round(m)+'min atras';
+  const h=m/60; if(h<48)return Math.round(h)+'h atras'; return Math.round(h/24)+'d atras'; }
+function _ssLogFor(st,keys){
+  const low=(keys||[]).map(k=>String(k).toLowerCase()); let best=null;
+  for(const e of (st.base_log||[])){
+    if(low.includes(String(e.source||'').toLowerCase())){ if(!best||e.last_update>best.last_update) best=e; }
+  }
+  return best;
+}
+function _methodTxt(m){ if(!m)return ''; m=String(m);
+  if(m.startsWith('mail:'))return 'ultimo evento: aviso por e-mail';
+  return m==='auto'?'rodou automatico':(m==='manual'?'entrada manual':m); }
+function _ssState(src,when){
+  if(!when) return 'idle';
+  const days=(Date.now()-new Date(when).getTime())/86400000;
+  if(src.cadence==='live'){ return (days*1440)<=(src.stale_min||240)?'ok':'bad'; }
+  const od=src.overdue_days||60;
+  return days<=od*0.7?'ok':(days<=od?'warn':'bad');
+}
+function _srcRow(src,st){
+  const e=_ssLogFor(st,src.log_keys), when=e&&e.last_update, state=_ssState(src,when);
+  const meta=[src.how_pulled_txt, src.window?('esperado '+src.window):null, e?_methodTxt(e.method):null]
+    .filter(Boolean).join(' \u00b7 ');
+  return '<div class="src" title="'+esc(src.note||'')+'">'
+    +'<span class="src-dot '+state+'"></span>'
+    +'<span class="src-main"><span class="src-name">'+esc(src.label)+'</span>'
+    +'<span class="src-meta">'+esc(meta)+'</span></span>'
+    +'<span class="tag '+(src.auto?'auto':'manual')+'">'+(src.auto?'auto':'voce')+'</span>'
+    +'<span class="src-when">'+(when?esc(_ssAgo(when)):'sem registro')+'</span></div>';
+}
 async function loadStatus(){
-  const A=document.getElementById('ss-action'), B=document.getElementById('ss-auto');
-  A.innerHTML='<span class="muted">Carregando…</span>'; B.innerHTML='';
-  let st={};
-  try{ const {data,error}=await sbAuth.rpc('get_source_status'); if(error)throw error; st=data||{}; }
-  catch(e){ A.innerHTML='<div class="muted">Erro: '+esc(e.message||e)+' — você rodou o <code>admin/supabase_source_status.sql</code>?</div>'; return; }
-  const md=st.model_defs||[]; let mdLast=null; md.forEach(m=>{ if(m.updated_at&&(!mdLast||m.updated_at>mdLast))mdLast=m.updated_at; });
-  const pf=st.platts||{}, plFailed=!!(pf&&pf.login_failed);
-  // ── PRECISA DE VOCÊ ──
-  let a=_ssHead();
-  { const b=_ssBadge(st.platts_last,60); if(plFailed)b.dot='#DC2626';
-    const acao=plFailed?'⚠️ <b>Sessão do Platts caiu</b> — rode o atalho <b>“Atualizar Platts”</b> no seu PC (~1-2 min). O login não passa pelo servidor (IP de datacenter bloqueado pelo Okta).'
-      :'Renova sozinho (~30 min). Se ficar &gt;~1h atrás, rode o atalho <b>“Atualizar Platts”</b> no seu PC.';
-    a+=_ssRow('Commodities Platts (minério 61%, aço, coque, rebar)','semi',b,acao); }
-  a+=_ssRow('Modelo · Sensibilidade ('+md.length+' empresas)','manual',_ssBadge(mdLast,null),'Ao mudar a planilha do modelo: rode <code>extract_models.py</code> + <code>push_model_defs.py</code>, ou edite em <b>Stock Guide → Modelo Vivo</b>.');
-  a+=_ssRow('IBÁ papel','semi',_ssBadge(_ssLogWhen(st,'IBÁ papel'),null),'Mensal, entrada manual (o PDF do IBÁ é imagem). Suba em <b>Atualizar dados</b> ou rode <code>update_iba.py</code>. Você recebe e-mail quando sai mês novo.');
-  a+=_ssRow('Empapel (papelão ondulado)','manual',_ssBadge(_ssLogWhen(st,'Empapel'),null),'Mensal manual — rode <code>update_empapel.py</code> com a planilha nova.');
-  a+=_ssRow('Linha preta — export Coreia/China (modelo preditivo)','manual',_ssBadge(_ssLogWhen(st,'Linha preta (modelo)'),null),'Aduana KR/CN sem API. Suba via <b>Atualizar dados</b> (pred_exports) ou ative a Coreia (secret <code>KOREA_SERVICE_KEY</code> + cron).');
-  a+=_ssRow('INDA (distribuição de aço)','manual',_ssBadge(null,null),'Sem auto-update ainda — entra pelo bootstrap (<code>extractor_sm.py</code>).');
-  a+=_ssRow('GACC woodchips (cavaco China)','manual',_ssBadge(null,null),'Bootstrap manual (<code>extractor_pp.py</code>) — auto-update pendente.');
-  A.innerHTML='<h3 style="margin:2px 0 6px;font-size:14px">✍️ Precisa de você</h3>'+a+'</tbody></table>';
-  // ── RODA SOZINHO ──
-  let g=_ssHead();
-  { const ai=(st.ai_24!=null)?(' · IA classificou '+st.ai_24+' nas últimas 24h'):'';
-    g+=_ssRow('Notícias + Takes (IA)','auto',_ssBadge(st.news_last,45),'news-hunter no GitHub Actions (~5 min).'+ai); }
-  g+=_ssRow('Cotações (ações + ouro/cobre)','auto',_ssBadge(st.quotes_last,45),'Yahoo, no loop (~5 min).');
-  g+=_ssRow('Minério 62% Fe (aba Market)','auto',_ssBadge(st.iron62_last,2880),'Trading Economics, algumas vezes/dia.');
-  g+=_ssRow('SECEX aço (import/export)','auto',_ssBadge(_ssLogWhen(st,'SECEX'),null),'Mensal — MDIC, dias 1-10 (sozinho).');
-  g+=_ssRow('Minério SECEX','auto',_ssBadge(_ssLogWhen(st,'Minério'),null),'Mensal — MDIC, junto do SECEX aço.');
-  g+=_ssRow('IABr (produção)','auto',_ssBadge(_ssLogWhen(st,'IABr'),null),'Mensal — baixa o Excel do Aço Brasil sozinho.');
-  g+=_ssRow('Celulose SECEX por porto','auto',_ssBadge(_ssLogWhen(st,'Celulose'),null),'Mensal — MDIC, dias 1-12 (o “herói” da aba Pulp).');
-  g+=_ssRow('Modelo · linha laranja (import Brasil)','auto',_ssBadge(null,null),'Preenche do MDIC junto do SECEX.');
-  B.innerHTML='<h3 style="margin:2px 0 6px;font-size:14px">🤖 Roda sozinho</h3>'+g+'</tbody></table>';
+  const A=document.getElementById('ss-action'), B=document.getElementById('ss-auto'), L=document.getElementById('ss-live');
+  A.textContent='Carregando...'; B.textContent=''; L.textContent='';
+  let st={}, reg=[];
+  try{
+    const rs=await sbAuth.rpc('get_source_status');
+    if(rs.error) throw rs.error;
+    st=rs.data||{}; reg=await _loadSrcRegistry();
+  }catch(e){ A.innerHTML='<span class="muted">Erro: '+esc(e.message||e)+' \u2014 rodou o <code>admin/supabase_source_status.sql</code>?</span>'; return; }
+  const monthly=reg.filter(s=>s.cadence!=='live');
+  const manual=monthly.filter(s=>!s.auto), auto=monthly.filter(s=>s.auto);
+  A.innerHTML=manual.map(s=>_srcRow(s,st)).join('')||'<span class="muted">Nenhuma \u2014 esta tudo automatico.</span>';
+  B.innerHTML=auto.map(s=>_srcRow(s,st)).join('');
+  const nm=document.getElementById('ss-n-manual'), na=document.getElementById('ss-n-auto');
+  if(nm)nm.textContent=manual.length; if(na)na.textContent=auto.length;
+  const live=[
+    ['Noticias (News Hunter)', st.news_last, 45, (st.ai_24!=null?('IA classificou '+st.ai_24+' nas ultimas 24h'):'')],
+    ['Cotacoes (acoes/indices)', st.quotes_last, 45, 'Yahoo, ~5 min'],
+    ['Commodities \u2014 Platts', st.platts_last, 60, (st.platts&&st.platts.login_failed)?'sessao caiu \u2014 rode o atalho "Atualizar Platts" no seu PC':'renova ~30 min'],
+    ['Minerio 62% (Trading Economics)', st.iron62_last, 2880, 'algumas vezes por dia'],
+    ['Macro (FX + BCB)', st.macro_last, 240, ''],
+  ];
+  L.innerHTML=live.map(function(x){ const label=x[0],when=x[1],staleMin=x[2],note=x[3];
+    const state=!when?'idle':(((Date.now()-new Date(when).getTime())/60000)<=staleMin?'ok':'bad');
+    return '<div class="src"><span class="src-dot '+state+'"></span>'
+      +'<span class="src-main"><span class="src-name">'+esc(label)+'</span>'
+      +'<span class="src-meta">'+esc(note||'')+'</span></span>'
+      +'<span class="src-when">'+(when?esc(_ssAgo(when)):'\u2014')+'</span></div>';
+  }).join('');
 }
 // última DATA do dado dos .db (leitura pesada ~46MB, sob demanda)
 const _DBDATE_BASES=[
