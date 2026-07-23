@@ -203,6 +203,7 @@ html.dark .ov-card{background:#20242b}
       <button data-tab="upload" onclick="showTab('upload')">⬆️ Atualizar dados</button>
       <button data-tab="db" onclick="showTab('db')">🗄️ Bancos de dados</button>
       <button data-tab="stockguide" onclick="showTab('stockguide')">📈 Stock Guide</button>
+      <button data-tab="calendar" onclick="showTab('calendar')">📅 Calendar</button>
     </aside>
     <main class="content">
 
@@ -498,6 +499,93 @@ html.dark .ov-card{background:#20242b}
         </div>
       </div>
     </section>
+
+    <!-- ── Executive Calendar ──────────────────────────────────────────── -->
+    <section id="tab-calendar" hidden>
+      <div class="card">
+        <h2>📅 Executive Calendar</h2>
+        <p class="sub">Eventos, categorias e janelas de dados do calendário do cliente (e do card "Events" na home). Tudo reflete <b>ao vivo</b> — o cliente vê no próximo refresh. Precisa ter rodado <code>admin/supabase_exec_calendar.sql</code> no Supabase, e ligar a flag <b>Executive Calendar</b> em Funcionalidades.</p>
+      </div>
+
+      <div class="card">
+        <h2>Categorias</h2>
+        <p class="sub">Nome, cor e ordem. Inativas somem dos filtros do cliente.</p>
+        <div id="cal-cat-list" class="status">Carregando…</div>
+        <div class="field" style="margin-top:12px;max-width:560px">
+          <div class="row">
+            <input class="in" id="calc-name" placeholder="Nome da categoria" style="flex:1">
+            <input type="color" id="calc-color" value="#FF5000" title="Cor" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer">
+            <input class="in" id="calc-sort" type="number" placeholder="ordem" style="max-width:88px">
+          </div>
+          <div class="row">
+            <label class="muted"><input type="checkbox" id="calc-active" checked> ativa</label>
+            <button class="btn" onclick="calCatSave()">Salvar categoria</button>
+            <button class="btn sec" onclick="calCatReset()">Limpar</button>
+            <input type="hidden" id="calc-id"><input type="hidden" id="calc-kind">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Eventos</h2>
+        <p class="sub">Adicione, edite ou remova. Datas/horas em BRT.</p>
+        <div class="row" style="margin-bottom:10px"><button class="btn" onclick="calEvNew()">+ Novo evento</button></div>
+        <div id="cal-ev-form" hidden style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;max-width:680px">
+          <input type="hidden" id="cale-id">
+          <div class="field">
+            <input class="in" id="cale-title" placeholder="Título do evento *">
+            <div class="row">
+              <select class="in" id="cale-cat" style="flex:1"></select>
+              <input class="in" id="cale-company" list="cal-companies" placeholder="Empresa (opcional)" style="flex:1">
+              <datalist id="cal-companies"></datalist>
+            </div>
+            <div class="row">
+              <label class="muted">Início <input class="in" id="cale-start" type="date"></label>
+              <label class="muted">Fim (opcional) <input class="in" id="cale-end" type="date"></label>
+              <label class="muted"><input type="checkbox" id="cale-allday" checked onchange="calToggleAllday()"> dia inteiro</label>
+            </div>
+            <div class="row" id="cale-times" hidden>
+              <label class="muted">Hora início <input class="in" id="cale-st" type="time"></label>
+              <label class="muted">Hora fim <input class="in" id="cale-et" type="time"></label>
+            </div>
+            <input class="in" id="cale-loc" placeholder="Local (opcional)">
+            <textarea class="in" id="cale-desc" placeholder="Descrição (URLs viram links)" style="min-height:64px;font-family:inherit"></textarea>
+            <div id="cale-links"></div>
+            <div class="row"><button class="btn sec" onclick="calLinkAdd()">+ Link</button></div>
+            <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:10px">
+              <div class="row">
+                <label class="muted">Recorrência
+                  <select class="in" id="cale-freq" onchange="calRecUI()">
+                    <option value="">Não repete</option><option value="daily">Diária</option>
+                    <option value="weekly">Semanal</option><option value="monthly">Mensal</option><option value="yearly">Anual</option>
+                  </select></label>
+                <label class="muted" id="cale-int-wrap" hidden>a cada <input class="in" id="cale-interval" type="number" value="1" min="1" style="max-width:70px"> <span id="cale-int-unit"></span></label>
+                <label class="muted" id="cale-until-wrap" hidden>até <input class="in" id="cale-until" type="date"></label>
+              </div>
+              <div class="row" id="cale-wd" hidden></div>
+              <div class="row" id="cale-monthly" hidden>
+                <label class="muted"><input type="radio" name="calmm" id="calmm-dom" value="dom" checked> no dia do mês</label>
+                <label class="muted"><input type="radio" name="calmm" value="nth"> na
+                  <select class="in" id="cale-setpos"><option value="1">1ª</option><option value="2">2ª</option><option value="3">3ª</option><option value="4">4ª</option><option value="-1">última</option></select>
+                  <select class="in" id="cale-nthwd"></select></label>
+              </div>
+            </div>
+            <div class="row">
+              <label class="muted"><input type="checkbox" id="cale-visible" checked> visível ao cliente</label>
+              <button class="btn" onclick="calEvSave()">Salvar evento</button>
+              <button class="btn sec" onclick="calEvCancel()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div id="cal-ev-list" class="status">Carregando…</div>
+      </div>
+
+      <div class="card">
+        <h2>Janelas de dados (auto)</h2>
+        <p class="sub">Faixas mensais "esperado sair" que o calendário desenha sozinho (fonte: registro das fontes). Edite os dias/lag ou desligue.</p>
+        <div id="cal-win-list" class="status">Carregando…</div>
+      </div>
+    </section>
     </main>
   </div>
 </div>
@@ -510,6 +598,146 @@ const DBS = {
 let SQLLIB=null, _db=null, _dbKey=null
 function setStatus(m){ document.getElementById('db-status').textContent=m }
 function initAdmin(){ showTab('overview') }
+
+// ══════════════════ EXECUTIVE CALENDAR (admin) ══════════════════
+const _cg=id=>document.getElementById(id);
+const CAL_COMPANIES=[['VALE','Vale'],['CSNA3.SA','CSN'],['CMIN3.SA','CSN Mineração'],['GGBR4.SA','Gerdau'],['GOAU4.SA','Metalúrgica Gerdau'],['USIM5.SA','Usiminas'],['KLBN11.SA','Klabin'],['SUZB3.SA','Suzano'],['RANI3.SA','Irani'],['AUGO','Aura Minerals'],['BRAP3.SA','Bradespar']];
+const CAL_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let _calCats=[], _calWins=[], _calEvs=[], _calLinks=[];
+
+async function loadCalAdmin(){
+  _cg('cal-companies').innerHTML=CAL_COMPANIES.map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('');
+  await calLoadCats(); calLoadWins(); calLoadEvs();
+}
+
+// ── categorias ──
+async function calLoadCats(){
+  const host=_cg('cal-cat-list'); host.textContent='Carregando…';
+  const {data,error}=await sbAuth.rpc('admin_get_exec_calendar_categories');
+  if(error){host.textContent='Erro: '+error.message+'  (rodou admin/supabase_exec_calendar.sql?)';return}
+  _calCats=data||[];
+  _cg('cale-cat').innerHTML=_calCats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  host.innerHTML=''; if(!_calCats.length){host.textContent='Nenhuma categoria.';return}
+  _calCats.forEach(c=>{ const row=document.createElement('div'); row.className='team-row';
+    const info=document.createElement('span');
+    info.innerHTML=`<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${esc(c.color)};margin-right:8px;vertical-align:-2px"></span><b>${esc(c.name)}</b> ${c.is_active?'':'<span class="muted">(inativa)</span>'} <span class="muted">#${c.sort_order}</span>`;
+    const acts=document.createElement('span'); acts.className='acts';
+    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calCatEdit(c.id);
+    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calCatDel(c.id);
+    acts.append(ed,dl); row.append(info,acts); host.appendChild(row); });
+}
+function calCatEdit(id){ const c=_calCats.find(x=>x.id===id); if(!c)return;
+  _cg('calc-id').value=c.id; _cg('calc-name').value=c.name||''; _cg('calc-color').value=c.color||'#FF5000';
+  _cg('calc-sort').value=c.sort_order||0; _cg('calc-active').checked=c.is_active!==false; _cg('calc-kind').value=c.kind||'';
+  _cg('cal-cat-list').scrollIntoView({block:'nearest'}); }
+function calCatReset(){ _cg('calc-id').value=''; _cg('calc-name').value=''; _cg('calc-color').value='#FF5000'; _cg('calc-sort').value=''; _cg('calc-active').checked=true; _cg('calc-kind').value=''; }
+async function calCatSave(){ const name=_cg('calc-name').value.trim(); if(!name){alert('Nome obrigatório.');return}
+  const p_data={name, color:_cg('calc-color').value, sort_order:+_cg('calc-sort').value||0, is_active:_cg('calc-active').checked, kind:_cg('calc-kind').value||null};
+  const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_category',{p_id:_cg('calc-id').value||null, p_data});
+  if(error){alert('Erro: '+error.message);return} calCatReset(); calLoadCats(); }
+async function calCatDel(id){ if(!confirm('Excluir categoria? Os eventos ligados ficam sem cor.'))return;
+  const {error}=await sbAuth.rpc('admin_delete_exec_calendar_category',{p_id:id}); if(error){alert('Erro: '+error.message);return} calLoadCats(); calLoadEvs(); }
+
+// ── janelas de dados ──
+async function calLoadWins(){
+  const host=_cg('cal-win-list'); host.textContent='Carregando…';
+  const {data,error}=await sbAuth.rpc('admin_get_exec_calendar_data_windows');
+  if(error){host.textContent='Erro: '+error.message;return}
+  _calWins=data||[]; host.innerHTML=''; if(!_calWins.length){host.textContent='Nenhuma janela.';return}
+  _calWins.forEach(w=>{ const row=document.createElement('div'); row.className='team-row';
+    const info=document.createElement('span'); info.innerHTML=`<b>${esc(w.label)}</b> <span class="muted">${esc(w.source_key)}</span>`;
+    const acts=document.createElement('span'); acts.className='acts'; acts.style.gap='4px'; acts.style.flexWrap='wrap';
+    const mk=(v,t)=>Object.assign(document.createElement('input'),{type:'number',value:v,className:'in',title:t,style:'max-width:52px'});
+    const fromI=mk(w.from_day,'dia inicial'), toI=mk(w.to_day,'dia final'), lagI=mk(w.lag_months,'lag (meses)');
+    const actL=document.createElement('label'); actL.className='muted'; const actC=Object.assign(document.createElement('input'),{type:'checkbox'}); actC.checked=w.is_active; actL.append(actC,document.createTextNode(' ativa'));
+    const save=document.createElement('button'); save.className='chip'; save.textContent='Salvar'; save.onclick=async()=>{
+      const p_data={source_key:w.source_key,label:w.label,from_day:+fromI.value,to_day:+toI.value,lag_months:+lagI.value,note:w.note,is_active:actC.checked};
+      const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_data_window',{p_id:w.id,p_data}); if(error){alert('Erro: '+error.message);return} calLoadWins(); };
+    acts.append(document.createTextNode('dias'),fromI,document.createTextNode('–'),toI,document.createTextNode('lag'),lagI,actL,save);
+    row.append(info,acts); host.appendChild(row); });
+}
+
+// ── eventos ──
+async function calLoadEvs(){
+  const host=_cg('cal-ev-list'); host.textContent='Carregando…';
+  const {data,error}=await sbAuth.rpc('admin_get_exec_calendar_events');
+  if(error){host.textContent='Erro: '+error.message;return}
+  _calEvs=data||[]; host.innerHTML=''; if(!_calEvs.length){host.textContent='Nenhum evento.';return}
+  _calEvs.forEach(e=>{ const c=_calCats.find(x=>x.id===e.category_id)||{};
+    const row=document.createElement('div'); row.className='team-row';
+    const when=e.start_date+(e.end_date?' … '+e.end_date:'')+(!e.all_day&&e.start_time?' '+String(e.start_time).slice(0,5):'');
+    const info=document.createElement('span');
+    info.innerHTML=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color||'#8C8C8C')};margin-right:8px"></span><b>${esc(e.title)}</b>${e.recurrence?' 🔁':''}<span class="muted"> — ${esc(when)}${e.company?' · '+esc(e.company):''}${e.is_visible?'':' · oculto'}</span>`;
+    const acts=document.createElement('span'); acts.className='acts';
+    const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calEvEdit(e.id);
+    const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calEvDel(e.id);
+    acts.append(ed,dl); row.append(info,acts); host.appendChild(row); });
+}
+function calRenderLinks(){ _cg('cale-links').innerHTML=_calLinks.map((l,i)=>
+  `<div class="row"><input class="in" placeholder="rótulo" value="${esc(l.label||'')}" oninput="_calLinks[${i}].label=this.value" style="max-width:170px"><input class="in" placeholder="https://…" value="${esc(l.url||'')}" oninput="_calLinks[${i}].url=this.value" style="flex:1"><button class="chip" onclick="_calLinks.splice(${i},1);calRenderLinks()">×</button></div>`).join(''); }
+function calLinkAdd(){ _calLinks.push({label:'',url:''}); calRenderLinks(); }
+function calToggleAllday(){ _cg('cale-times').hidden=_cg('cale-allday').checked; }
+function calRecUI(){
+  const f=_cg('cale-freq').value;
+  _cg('cale-int-wrap').hidden=!f; _cg('cale-until-wrap').hidden=!f;
+  _cg('cale-wd').hidden=(f!=='weekly'); _cg('cale-monthly').hidden=(f!=='monthly');
+  _cg('cale-int-unit').textContent={daily:'dia(s)',weekly:'semana(s)',monthly:'mês(es)',yearly:'ano(s)'}[f]||'';
+  if(f==='weekly' && !_cg('cale-wd').dataset.built){
+    _cg('cale-wd').innerHTML=[1,2,3,4,5,6,0].map(d=>`<label class="muted"><input type="checkbox" class="calwd" value="${d}"> ${CAL_WD[d]}</label>`).join(' ');
+    _cg('cale-wd').dataset.built='1';
+  }
+  if(f==='monthly' && !_cg('cale-nthwd').options.length){
+    _cg('cale-nthwd').innerHTML=[1,2,3,4,5,6,0].map(d=>`<option value="${d}">${CAL_WD[d]}</option>`).join('');
+  }
+}
+function calBuildRecurrence(){
+  const f=_cg('cale-freq').value; if(!f)return null;
+  const rec={freq:f, interval:Math.max(1,+_cg('cale-interval').value||1)};
+  const until=_cg('cale-until').value; if(until)rec.until=until;
+  if(f==='weekly'){ const wd=[...document.querySelectorAll('.calwd:checked')].map(c=>+c.value); if(wd.length)rec.byweekday=wd; }
+  if(f==='monthly'){ const mm=document.querySelector('input[name=calmm]:checked'); if(mm&&mm.value==='nth'){ rec.bysetpos=[+_cg('cale-setpos').value]; rec.byweekday=[+_cg('cale-nthwd').value]; } }
+  return rec;
+}
+function calEvNew(){ calEvReset(); _cg('cal-ev-form').hidden=false; _cg('cale-title').focus(); }
+function calEvCancel(){ _cg('cal-ev-form').hidden=true; }
+function calEvReset(){
+  _cg('cale-id').value=''; _cg('cale-title').value=''; if(_calCats[0])_cg('cale-cat').value=_calCats[0].id;
+  _cg('cale-company').value=''; _cg('cale-start').value=''; _cg('cale-end').value=''; _cg('cale-allday').checked=true;
+  _cg('cale-st').value=''; _cg('cale-et').value=''; _cg('cale-loc').value=''; _cg('cale-desc').value=''; _cg('cale-visible').checked=true;
+  _cg('cale-freq').value=''; _cg('cale-interval').value=1; _cg('cale-until').value='';
+  document.querySelectorAll('.calwd').forEach(c=>c.checked=false); if(_cg('calmm-dom'))_cg('calmm-dom').checked=true;
+  _calLinks=[]; calRenderLinks(); calToggleAllday(); calRecUI();
+}
+function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
+  calEvReset(); _cg('cal-ev-form').hidden=false;
+  _cg('cale-id').value=e.id; _cg('cale-title').value=e.title||''; if(e.category_id)_cg('cale-cat').value=e.category_id;
+  _cg('cale-company').value=e.company||''; _cg('cale-start').value=e.start_date||''; _cg('cale-end').value=e.end_date||'';
+  _cg('cale-allday').checked=e.all_day!==false; calToggleAllday();
+  _cg('cale-st').value=e.start_time?String(e.start_time).slice(0,5):''; _cg('cale-et').value=e.end_time?String(e.end_time).slice(0,5):'';
+  _cg('cale-loc').value=e.location||''; _cg('cale-desc').value=e.description||''; _cg('cale-visible').checked=e.is_visible!==false;
+  _calLinks=Array.isArray(e.links)?e.links.map(l=>({label:l.label||'',url:l.url||''})):[]; calRenderLinks();
+  const r=e.recurrence;
+  if(r&&r.freq){ _cg('cale-freq').value=r.freq; _cg('cale-interval').value=r.interval||1; _cg('cale-until').value=r.until||''; calRecUI();
+    if(r.freq==='weekly'&&r.byweekday) document.querySelectorAll('.calwd').forEach(c=>{c.checked=r.byweekday.includes(+c.value)});
+    if(r.freq==='monthly'&&r.bysetpos&&r.bysetpos.length){ const nth=document.querySelector('input[name=calmm][value=nth]'); if(nth)nth.checked=true; _cg('cale-setpos').value=r.bysetpos[0]; if(r.byweekday&&r.byweekday.length)_cg('cale-nthwd').value=r.byweekday[0]; }
+  } else calRecUI();
+  _cg('cal-ev-form').scrollIntoView({block:'nearest'});
+}
+async function calEvSave(){
+  const title=_cg('cale-title').value.trim(); if(!title){alert('Título obrigatório.');return}
+  const start=_cg('cale-start').value; if(!start){alert('Data de início obrigatória.');return}
+  const allday=_cg('cale-allday').checked;
+  const links=_calLinks.filter(l=>l.url&&l.url.trim()).map(l=>({label:(l.label||'').trim(),url:l.url.trim()}));
+  const p_data={ title, category_id:_cg('cale-cat').value||null, start_date:start, end_date:_cg('cale-end').value||null,
+    all_day:allday, start_time:allday?null:(_cg('cale-st').value||null), end_time:allday?null:(_cg('cale-et').value||null),
+    company:_cg('cale-company').value.trim()||null, location:_cg('cale-loc').value.trim()||null,
+    description:_cg('cale-desc').value||null, links, recurrence:calBuildRecurrence(), is_visible:_cg('cale-visible').checked };
+  const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_event',{p_id:_cg('cale-id').value||null, p_data});
+  if(error){alert('Erro: '+error.message);return}
+  _cg('cal-ev-form').hidden=true; calLoadEvs();
+}
+async function calEvDel(id){ if(!confirm('Excluir evento?'))return;
+  const {error}=await sbAuth.rpc('admin_delete_exec_calendar_event',{p_id:id}); if(error){alert('Erro: '+error.message);return} calLoadEvs(); }
 
 // ── Visão geral (overview) ───────────────────────────────────────────────
 function ovCard(label,val,sub){ return `<div class="ov-card"><div class="ov-val">${esc(val)}</div><div class="ov-lab">${esc(label)}</div>${sub?`<div class="ov-sub">${esc(sub)}</div>`:''}</div>` }
@@ -619,7 +847,7 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','status','github','stockguide','db','flags','team','comm','upload','heatmap','users']
+const TABS=['overview','status','github','stockguide','calendar','db','flags','team','comm','upload','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
@@ -627,6 +855,7 @@ function showTab(name){
   if(name==='status') loadStatus()
   if(name==='github') loadGithubRuns()
   if(name==='stockguide') loadStockGuide()
+  if(name==='calendar') loadCalAdmin()
   if(name==='flags') loadFlags()
   if(name==='team') loadTeam()
   if(name==='comm') loadCommGroups()
@@ -654,6 +883,7 @@ const FLAG_META={
   sector_pp:     {g:'home_sectors',l:'Card Pulp & Paper',   d:'Card do setor na home (abre o dashboard)'},
   market:        {g:'pages',       l:'Market',           d:'Terminal de ações + clique do heatmap'},
   stock_guide:   {g:'pages',       l:'Stock Guide',      d:'Card na home + acesso à página (Comp Table)'},
+  exec_calendar: {g:'pages',       l:'Executive Calendar', d:'Calendário de eventos (nav + página + card "Events" na home)'},
   stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
   stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
   pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
