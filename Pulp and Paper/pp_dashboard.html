@@ -520,7 +520,7 @@ html.dark .cr-input{color-scheme:dark}
     <div class="charts-row c2">
       <div class="chart-card origin-card">
         <div class="chart-title">Import Volume by Supplier (M BDMT)</div>
-        <div class="origin-controls">
+        <div class="origin-controls" style="justify-content:flex-end">
           <div class="country-selector">
             <button class="cs-toggle" id="gc-cs-toggle" onclick="toggleGaccPanel()">Suppliers &#9660;</button>
             <div class="cs-panel" id="gc-cs-panel">
@@ -541,7 +541,7 @@ html.dark .cr-input{color-scheme:dark}
     <div class="charts-row c2">
       <div class="chart-card">
         <div class="chart-title">Import Price (US$/BDMT)</div>
-        <div class="chart-sub">GACC · revenue ÷ volume · all suppliers</div>
+        <div class="chart-sub">GACC · revenue ÷ volume · Total, selected suppliers &amp; Others</div>
         <div class="chart-wrap h220"><canvas id="gc-price"></canvas></div>
       </div>
       <div class="chart-card">
@@ -714,9 +714,10 @@ let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[];
 let CAL={};                       // period -> working_days
 let portState={metric:'volume_ktons', ports:null};
 // Fornecedores de cavaco (sincronizar com montar_gacc.NAMED_COUNTRIES + extractor_pp).
-const GACC_COUNTRIES=['Vietnam','Australia','Thailand','Chile','Brazil','Indonesia','South Africa','Uruguay','New Zealand','Russia','Others'];
+const GACC_COUNTRIES=['Vietnam','Australia','Thailand','Chile','Brazil','Indonesia','South Africa','Uruguay','New Zealand','Russia'];
 const GACC_DEFAULT=['Vietnam','Australia'];   // padrão do gráfico dinâmico
-const GACC_PALETTE=['#FF5000','#111827','#2E7D32','#C62828','#1565C0','#6A1B9A','#00838F','#AD1457','#EF6C00','#4E342E','#9AA3AF'];
+const GACC_PALETTE=['#FF5000','#111827','#2E7D32','#C62828','#1565C0','#6A1B9A','#00838F','#AD1457','#EF6C00','#4E342E'];
+const GACC_OTHERS_COLOR='#9AA3AF';            // 'Others' = soma dos NÃO selecionados (Total − selecionados)
 let gaccCountryState={countries:null};   // null = usa o padrão (Vietnam+Australia)
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1279,27 +1280,41 @@ function renderGacc(){
   const yoyV=arr.map((r,i)=>yoyOf(arr,'volume_bdmt',i,srcFull));
   mkChart('gc-yoy','bar',lbs,[barDs(yoyV.map(v=>v!=null?+(v*100).toFixed(2):null),
     yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
-  mkChart('gc-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_BK,'Price (US$/BDMT)')],YINT);
-
-  // MAIN — Import Volume by selected Supplier (stacked). Padrão: Vietnam + Australia.
+  // Agregação por período: Total + países selecionados (volume + receita), ciente de granularidade
   const _selCtry=gaccSelCountries();
+  const _selNamed=GACC_COUNTRIES.filter(c=>_selCtry.includes(c));
   const _ctrySubEl=document.getElementById('gc-ctry-sub');
   const _fibL=fib==='hw'?'Hardwood':fib==='sw'?'Softwood':'all fibres';
-  if(_ctrySubEl) _ctrySubEl.textContent=`GACC · ${_fibL} · ${_selCtry.join(' · ')}`;
-  const acc={};
-  applyWin(GACC.filter(r=>r.country!=='Total'&&_selCtry.includes(r.country)&&gaccMatch(r,fib))).forEach(r=>{
+  if(_ctrySubEl) _ctrySubEl.textContent=`GACC · ${_fibL} · ${_selNamed.join(' · ')} · Others`;
+  const acc={};   // pk -> {country -> {v:volume, r:revenue}}
+  applyWin(GACC.filter(r=>(r.country==='Total'||_selCtry.includes(r.country))&&gaccMatch(r,fib))).forEach(r=>{
     const pk=periodKey(r.period);if(!pk)return;
-    if(!acc[pk])acc[pk]={};
-    acc[pk][r.country]=(acc[pk][r.country]||0)+(r.volume_bdmt||0);
+    (acc[pk]=acc[pk]||{});
+    const o=(acc[pk][r.country]=acc[pk][r.country]||{v:0,r:0});
+    o.v+=(r.volume_bdmt||0); o.r+=(r.revenue_usd_mn||0);
   });
   const periods=Object.keys(acc).sort();
   const clabels=periods.map(periodLabelDisplay);
-  const cds=GACC_COUNTRIES.filter(c=>_selCtry.includes(c)).map(c=>({type:'bar',label:c,stack:'s',borderWidth:0,
-    backgroundColor:GACC_PALETTE[GACC_COUNTRIES.indexOf(c)],
-    data:periods.map(p=>+((acc[p]?.[c])||0).toFixed(3))}));
-  mkChart('gc-ctry','bar',clabels,cds,{...LEG,scales:{
+  const _cv=(p,c)=>acc[p]?.[c]?.v||0, _cr=(p,c)=>acc[p]?.[c]?.r||0;
+  const _tv=p=>acc[p]?.Total?.v||0,   _tr=p=>acc[p]?.Total?.r||0;
+  const _ov=p=>Math.max(0,_tv(p)-_selNamed.reduce((s,c)=>s+_cv(p,c),0));   // Others volume = Total − selecionados
+  const _or=p=>Math.max(0,_tr(p)-_selNamed.reduce((s,c)=>s+_cr(p,c),0));   // Others revenue
+
+  // VOLUME (empilhado): países selecionados + Others (= o restante, fecha no Total)
+  const volDs=_selNamed.map(c=>({type:'bar',label:c,stack:'s',borderWidth:0,
+    backgroundColor:GACC_PALETTE[GACC_COUNTRIES.indexOf(c)],data:periods.map(p=>+_cv(p,c).toFixed(3))}));
+  volDs.push({type:'bar',label:'Others',stack:'s',borderWidth:0,backgroundColor:GACC_OTHERS_COLOR,
+    data:periods.map(p=>+_ov(p).toFixed(3))});
+  mkChart('gc-ctry','bar',clabels,volDs,{...LEG,scales:{
     x:{stacked:true,ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:IS_MOBILE()?6:14}},
     y:{stacked:true,ticks:{callback:fmt2}}}});
+
+  // PREÇO (linhas): Total + cada selecionado + Others  (US$/BDMT = receita ÷ volume)
+  const _prLine=(fn,color,label)=>lineDs(periods.map(p=>{const x=fn(p);return x!=null?+x.toFixed(1):null;}),color,label);
+  const prDs=[_prLine(p=>{const v=_tv(p);return v?_tr(p)/v:null;},C_BK,'Total')];
+  _selNamed.forEach(c=>prDs.push(_prLine(p=>{const v=_cv(p,c);return v?_cr(p,c)/v:null;},GACC_PALETTE[GACC_COUNTRIES.indexOf(c)],c)));
+  prDs.push(_prLine(p=>{const v=_ov(p);return v?_or(p)/v:null;},GACC_OTHERS_COLOR,'Others'));
+  mkChart('gc-price','line',clabels,prDs,{...LEG,scales:{y:{ticks:{callback:v=>Math.round(v)}}}});
 
   _renderSeasonality('gc-seas',totals.filter(r=>r.volume_bdmt!=null),'volume_bdmt',fmt2);
 }
