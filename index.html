@@ -751,6 +751,8 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
     </div>
     <div class="ev-body" id="ev-body"><div class="ev-loading">Loading…</div></div>
   </div>
+  <script>/* anti-flash: se a última sessão já mostrava Events, aplica o layout AGORA (antes do RPC) → o Market Pulse não pisca no layout antigo */
+  try{ if(localStorage.getItem('ibba_events_on')==='1'){ var _p=document.querySelector('.page'); if(_p)_p.classList.add('has-events'); var _e=document.querySelector('.area-events'); if(_e)_e.style.display=''; } }catch(e){}</script>
 
   <!-- NEWS HUNTER -->
   <div class="sec area-news">
@@ -910,6 +912,7 @@ function applyFlags(flags, isAdmin){
     else { el.style.display='none'; }
   });
   const _pg=document.querySelector('.page'); if(_pg) _pg.classList.toggle('has-events', _calOn);
+  try{ localStorage.setItem('ibba_events_on', _calOn?'1':'0'); }catch(e){}   // lembra p/ o próximo load (anti-flash)
   if(_calOn && typeof loadEvents==='function') loadEvents();
 }
 /* ── PRÉ-CARGA das dashboards pesadas (M&M lê um SQLite de ~47 MB no navegador) ─────────
@@ -1934,26 +1937,29 @@ async function loadEvents(){
     const catById={}; (cats.data||[]).forEach(c=>catById[c.id]=c);
     const items=[];
     (evs.data||[]).forEach(e=>{ CAL.expandOccurrences(e, today, to).forEach(o=>{
-      items.push({start:o.occ_start, allDay:!!e.all_day||!e.start_time, st:e.start_time,
+      items.push({start:o.occ_start, end:o.occ_end, allDay:!!e.all_day||!e.start_time, st:e.start_time,
         title:e.title||'(untitled)', color:(catById[e.category_id]||{}).color||'#8C8C8C'}); }); });
     const drColor=((cats.data||[]).find(c=>c.kind==='data_release')||{}).color||'#00838F';
-    let cur=today.slice(0,7);
-    for(let k=0;k<3;k++){ const [y,m]=cur.split('-').map(Number);
-      (wins.data||[]).forEach(w=>{ const b=CAL.dataWindowBands(w,y,m);
-        if(b.startYMD>=today && b.startYMD<=to) items.push({start:b.startYMD, allDay:true, title:w.label+' · '+b.target, color:drColor}); });
-      let nm=m+1,ny=y; if(nm>12){nm=1;ny++;} cur=ny+'-'+String(nm).padStart(2,'0'); }
+    // janela de dados: SÓ a próxima ocorrência de cada fonte (1 aviso, com RANGE) — não repetir mês a mês
+    (wins.data||[]).forEach(w=>{ let cur=today.slice(0,7);
+      for(let k=0;k<4;k++){ const [y,m]=cur.split('-').map(Number); const b=CAL.dataWindowBands(w,y,m);
+        if(b.endYMD>=today && b.startYMD<=to){ items.push({start:b.startYMD, end:b.endYMD, allDay:true, title:w.label+' · '+b.target, color:drColor}); break; }
+        let nm=m+1,ny=y; if(nm>12){nm=1;ny++;} cur=ny+'-'+String(nm).padStart(2,'0'); } });
     renderEvents(items, today);
   }catch(e){ console.warn('events', e);
     const c=document.querySelector('[data-flag="exec_calendar"]'); if(c)c.style.display='none';
     const pg=document.querySelector('.page'); if(pg)pg.classList.remove('has-events'); }
 }
+function _evD(s){ return CAL.MONTHS_SHORT[+s.slice(5,7)-1]+' '+(+s.slice(8,10)); }   // "Jul 15"
+function _evRange(s,e){ return _evD(s)+(s.slice(0,7)===e.slice(0,7)?('–'+(+e.slice(8,10))):(' – '+_evD(e))); }  // "Jul 15–17" (ou cross-mês)
 function renderEvents(items, today){
   const body=document.getElementById('ev-body'); if(!body) return;
   items.sort((a,b)=> a.start<b.start?-1:a.start>b.start?1:String(a.st||'').localeCompare(String(b.st||'')));
-  const todays=items.filter(i=>i.start===today);
-  const upcoming=items.filter(i=>i.start>today).slice(0,7);
-  const line=(i,showDate)=>{ const when=showDate ? CAL.MONTHS_SHORT[+i.start.slice(5,7)-1]+' '+(+i.start.slice(8,10))
-      : (i.allDay?'all-day':CAL.hhmm(i.st));
+  const multi=i=> i.end && i.end>i.start;
+  const todays=items.filter(i=> i.start<=today && (i.end||i.start)>=today);   // hoje OU em andamento (range)
+  const upcoming=items.filter(i=> i.start>today).slice(0,7);
+  const line=(i,showDate)=>{ const when = multi(i) ? _evRange(i.start,i.end)   // +1 dia → mostra o RANGE (1 linha, sem repetir)
+      : (showDate ? _evD(i.start) : (i.allDay?'all-day':CAL.hhmm(i.st)));
     return `<a class="ev-item" href="/agenda.html"><span class="ev-when">${when}</span>`
       +`<span class="ev-dot" style="background:${i.color}"></span><span class="ev-t">${_evEsc(i.title)}</span></a>`; };
   let h='<div class="ev-sub">Today</div>';

@@ -80,6 +80,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .cal-col.today{background:rgba(255,80,0,.05);}
 .cal-col.oth{background:rgba(0,0,0,.015);}
 html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
+.cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba(120,120,120,.17) 0 6px,transparent 6px 12px);}   /* dia travado (feriado) */
+html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.11) 0 6px,transparent 6px 12px);}
 .cal-col.clickable{cursor:pointer;}
 .cal-col.clickable:hover{background:rgba(255,80,0,.07);}
 .cal-dnum{grid-row:1;justify-self:end;font-size:12px;font-weight:600;color:var(--gray-dark);
@@ -322,13 +324,14 @@ function renderMonth(){
   for(const week of wk){
     const wStart=week[0].ymd, wEnd=week[week.length-1].ymd;
     const row=document.createElement('div'); row.className='cal-wk';
+    const cols=[];
     // colunas (fundo + clique)
     week.forEach((d,i)=>{
       const col=document.createElement('div');
       col.className='cal-col clickable'+(d.ymd===S.today?' today':'')+(d.inMonth?'':' oth');
       col.style.left=(i*100/DPW)+'%'; col.style.width=(100/DPW)+'%'; if(i===DPW-1)col.style.borderRight='none'; col.title='Open week';
       col.onclick=()=>{ S.cursor=d.ymd; setView('week'); };
-      row.appendChild(col);
+      row.appendChild(col); cols[i]=col;
       const num=document.createElement('div');
       num.className='cal-dnum'+(d.ymd===S.today?' today':'')+(d.inMonth?'':' oth');
       num.style.gridColumn=(i+1); num.textContent=String(CAL.parseYMD(d.ymd).getUTCDate());
@@ -350,6 +353,8 @@ function renderMonth(){
       box.appendChild(t); row.appendChild(box); });
     // EVENTOS: lanes (destaque no topo, depois por horário)
     layout(items);
+    // dias travados (feriados) → hachura a célula inteira (independe do lane cap)
+    for(const it of items){ if(calKind(it)==='blocked'){ for(let c=it.startCol;c<it.startCol+it.span;c++){ if(cols[c]) cols[c].classList.add('blocked'); } } }
     const hiddenByDay=new Array(DPW).fill(0);
     for(const it of items){
       if(it.lane>=LANE_CAP){ for(let c=it.startCol;c<it.startCol+it.span;c++) hiddenByDay[c]++; continue; }
