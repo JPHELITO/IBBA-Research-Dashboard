@@ -194,7 +194,18 @@ const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
 let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
 let _session=null;
 function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
-async function rpc(name,args){const{data,error}=await sbAuth.rpc(name,args||{});if(error)throw new Error(name+': '+error.message);return data}
+// Chama a RPC com o JWT do usuário EXPLÍCITO no header. O supabase-js estava mandando as
+// chamadas desta página como ANÔNIMAS (get_my_role vinha 'client' → admin caía no Unavailable);
+// com o token no Authorization isso não depende mais do estado interno do cliente.
+async function rpc(name,args){
+  const tok=(_session&&_session.access_token)||SUPA_KEY;
+  const r=await fetch(`${SUPA_URL}/rest/v1/rpc/${name}`,{method:'POST',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+    body:JSON.stringify(args||{})});
+  if(!r.ok){ let t=''; try{t=await r.text()}catch(e){} throw new Error(name+': HTTP '+r.status+(t?' '+t:'')); }
+  if(r.status===204) return null;
+  const txt=await r.text(); return txt?JSON.parse(txt):null;
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const WEEK_START=1;                          // segunda
@@ -482,34 +493,22 @@ async function calStart(){
     if(!session){window.location.replace('/login.html');return}
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
-    // NUNCA engolir o motivo: se o admin cair no "Unavailable", a tela tem que dizer POR QUÊ.
+    // Portão: rpc() agora leva o JWT explícito. get_my_role='admin' OU is_admin()=true libera
+    // a PRÉ-VISUALIZAÇÃO do admin com a flag DESLIGADA (cliente não vê). NUNCA engole o motivo.
     let flagOn=false, isAdmin=false, why=[];
-    try{                                   // chamada idêntica à do admin.html (função sem parâmetros)
-      const r=await sbAuth.rpc('get_my_role');
-      if(r.error) throw r.error;
-      const role=String(r.data==null?'':r.data).trim();
-      isAdmin=(role==='admin');
-      if(!isAdmin) why.push('get_my_role devolveu "'+role+'" (esperado "admin")');
-    }catch(e){ why.push('get_my_role falhou: '+(e.message||e)); }
-    if(!isAdmin){            // 2ª VIA independente: is_admin() no banco (o admin precisa poder
-      try{                   // pré-visualizar com a flag DESLIGADA — sem expor nada ao cliente)
-        const a=await sbAuth.rpc('is_admin');
-        if(a.error) throw a.error;
-        if(a.data===true){ isAdmin=true; why.length=0; }
-        else why.push('is_admin() devolveu '+JSON.stringify(a.data));
-      }catch(e){ why.push('is_admin falhou: '+(e.message||e)); }
-    }
-    try{
-      const f=await sbAuth.rpc('get_dashboard_flags');
-      if(f.error) throw f.error;
-      const row=(f.data||[]).find(x=>x.key==='exec_calendar');
-      if(row) flagOn=!!row.enabled; else why.push('a flag "exec_calendar" não existe (rodou o admin/supabase_exec_calendar.sql?)');
-    }catch(e){ why.push('get_dashboard_flags falhou: '+(e.message||e)); }
+    try{ const role=String((await rpc('get_my_role'))||'').trim(); isAdmin=(role==='admin');
+      if(!isAdmin) why.push('get_my_role="'+role+'"'); }
+    catch(e){ why.push('get_my_role: '+(e.message||e)); }
+    if(!isAdmin){ try{ const a=await rpc('is_admin'); if(a===true){ isAdmin=true; why.length=0; }
+        else why.push('is_admin='+JSON.stringify(a)); }
+      catch(e){ why.push('is_admin: '+(e.message||e)); } }
+    try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='exec_calendar');
+      if(row) flagOn=!!row.enabled; else why.push('flag "exec_calendar" ausente'); }
+    catch(e){ why.push('get_dashboard_flags: '+(e.message||e)); }
     if(!flagOn&&!isAdmin){
       document.getElementById('gate').hidden=true;
       document.getElementById('denied').hidden=false;
-      const w=document.getElementById('denied-why');
-      if(w) w.textContent='Ligue a flag "Executive Calendar" em /admin → Funcionalidades. ('+(why.join(' · ')||'flag desligada')+')';
+      const w=document.getElementById('denied-why'); if(w) w.textContent='('+(why.join(' · ')||'flag desligada')+')';
       return;
     }
     await calStart();
