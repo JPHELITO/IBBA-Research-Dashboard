@@ -609,8 +609,7 @@ html.dark .ov-card{background:#20242b}
             <input class="in" id="cale-title" placeholder="Título do evento *">
             <div class="row">
               <select class="in" id="cale-cat" style="flex:1"></select>
-              <input class="in" id="cale-company" list="cal-companies" placeholder="Empresa (opcional)" style="flex:1">
-              <datalist id="cal-companies"></datalist>
+              <select class="in" id="cale-company" style="flex:1"><option value="">Empresa de referência (opcional)</option></select>
             </div>
             <div class="row">
               <label class="muted">Início <input class="in" id="cale-start" type="date"></label>
@@ -650,13 +649,11 @@ html.dark .ov-card{background:#20242b}
             </div>
           </div>
         </div>
-        <div id="cal-ev-list" class="status">Carregando…</div>
-
-        <div style="border-top:1px solid var(--border);margin-top:18px;padding-top:14px">
-          <h2 style="font-size:13.5px">Janelas de dados <span class="muted" style="font-weight:400;font-size:12px">— eventos automáticos de "dado a sair"</span></h2>
-          <p class="sub">Estas faixas mensais (SECEX, IABr, IBÁ…) o calendário desenha <b>sozinho</b>, a partir do registro de fontes — funcionam como eventos recorrentes, junto dos que você cadastra acima. Ajuste os dias/lag ou desligue.</p>
-          <div id="cal-win-list" class="status">Carregando…</div>
+        <div class="row" style="margin-bottom:8px;align-items:center;gap:8px">
+          <input class="in" id="cal-ev-search" placeholder="Filtrar eventos (título / empresa)…" oninput="_calRenderEvList()" style="flex:1">
+          <span class="muted" id="cal-ev-count"></span>
         </div>
+        <div id="cal-ev-list" class="status" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:2px 8px">Carregando…</div>
       </div>
     </section>
     </main>
@@ -674,13 +671,25 @@ function initAdmin(){ showTab('overview') }
 
 // ══════════════════ EXECUTIVE CALENDAR (admin) ══════════════════
 const _cg=id=>document.getElementById(id);
-const CAL_COMPANIES=[['VALE','Vale'],['CSNA3.SA','CSN'],['CMIN3.SA','CSN Mineração'],['GGBR4.SA','Gerdau'],['GOAU4.SA','Metalúrgica Gerdau'],['USIM5.SA','Usiminas'],['KLBN11.SA','Klabin'],['SUZB3.SA','Suzano'],['RANI3.SA','Irani'],['AUGO','Aura Minerals'],['BRAP3.SA','Bradespar']];
+// Universo COMPLETO de empresas da aba Market (união dos grupos G_* do market.html). value=ticker (p/ linkar market.html?t=), rótulo=nome.
+const CAL_COMPANIES=[
+  ['ARA.TO','Aclara Resources'],['AEM','Agnico Eagle'],['AAL.L','Anglo American'],['MT','ArcelorMittal'],
+  ['ARIS','Aris Mining'],['AUGO','Aura Minerals'],['B','Barrick'],['BHP','BHP'],['BRAP3.SA','Bradespar'],
+  ['BVN','Buenaventura'],['CAP.SN','CAP'],['CS.TO','Capstone Copper'],['CMPC.SN','CMPC'],['CMC','Commercial Metals'],
+  ['CSNA3.SA','CSN'],['CMIN3.SA','CSN Mineração'],['COPEC.SN','Empresas Copec'],['ERO','Ero Copper'],
+  ['FMG.AX','Fortescue'],['GGBR4.SA','Gerdau'],['GMEXICOB.MX','Grupo México'],['HOC.L','Hochschild Mining'],
+  ['HBM','Hudbay Minerals'],['IP','International Paper'],['RANI3.SA','Irani'],['KLBN11.SA','Klabin'],
+  ['GOAU4.SA','Metalúrgica Gerdau'],['MEI.AX','Meteoric Resources'],['NUE','Nucor'],['RIO','Rio Tinto'],
+  ['SW','Smurfit WestRock'],['SCCO','Southern Copper'],['STLD','Steel Dynamics'],['STERV.HE','Stora Enso'],
+  ['SUZB3.SA','Suzano'],['TX','Ternium'],['UPM.HE','UPM'],['USIM5.SA','Usiminas'],['VALE','Vale'],
+  ['VMM.AX','Viridis Mining']];
 const CAL_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 let _calCats=[], _calWins=[], _calEvs=[], _calLinks=[];
 
 async function loadCalAdmin(){
-  _cg('cal-companies').innerHTML=CAL_COMPANIES.map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('');
-  await calLoadCats(); calLoadWins(); calLoadEvs();
+  _cg('cale-company').innerHTML='<option value="">Empresa de referência (opcional)</option>'
+    +CAL_COMPANIES.slice().sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('');
+  await calLoadCats(); calLoadEvs();
 }
 
 // ── categorias ──
@@ -711,32 +720,25 @@ async function calCatSave(){ const name=_cg('calc-name').value.trim(); if(!name)
 async function calCatDel(id){ if(!confirm('Excluir categoria? Os eventos ligados ficam sem cor.'))return;
   const {error}=await sbAuth.rpc('admin_delete_exec_calendar_category',{p_id:id}); if(error){alert('Erro: '+error.message);return} calLoadCats(); calLoadEvs(); }
 
-// ── janelas de dados ──
-async function calLoadWins(){
-  const host=_cg('cal-win-list'); host.textContent='Carregando…';
-  const {data,error}=await sbAuth.rpc('admin_get_exec_calendar_data_windows');
-  if(error){host.textContent='Erro: '+error.message;return}
-  _calWins=data||[]; host.innerHTML=''; if(!_calWins.length){host.textContent='Nenhuma janela.';return}
-  _calWins.forEach(w=>{ const row=document.createElement('div'); row.className='team-row';
-    const info=document.createElement('span'); info.innerHTML=`<b>${esc(w.label)}</b> <span class="muted">${esc(w.source_key)}</span>`;
-    const acts=document.createElement('span'); acts.className='acts'; acts.style.gap='4px'; acts.style.flexWrap='wrap';
-    const mk=(v,t)=>Object.assign(document.createElement('input'),{type:'number',value:v,className:'in',title:t,style:'max-width:52px'});
-    const fromI=mk(w.from_day,'dia inicial'), toI=mk(w.to_day,'dia final'), lagI=mk(w.lag_months,'lag (meses)');
-    const actL=document.createElement('label'); actL.className='muted'; const actC=Object.assign(document.createElement('input'),{type:'checkbox'}); actC.checked=w.is_active; actL.append(actC,document.createTextNode(' ativa'));
-    const save=document.createElement('button'); save.className='chip'; save.textContent='Salvar'; save.onclick=async()=>{
-      const p_data={source_key:w.source_key,label:w.label,from_day:+fromI.value,to_day:+toI.value,lag_months:+lagI.value,note:w.note,is_active:actC.checked};
-      const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_data_window',{p_id:w.id,p_data}); if(error){alert('Erro: '+error.message);return} calLoadWins(); };
-    acts.append(document.createTextNode('dias'),fromI,document.createTextNode('–'),toI,document.createTextNode('lag'),lagI,actL,save);
-    row.append(info,acts); host.appendChild(row); });
-}
+// (janelas de dados: gerenciamento removido do admin — as faixas do calendário seguem automáticas, do registro de fontes)
 
-// ── eventos ──
+// ── eventos ── (busca + rolagem: vai crescer muito, não pode empilhar sem limite)
 async function calLoadEvs(){
   const host=_cg('cal-ev-list'); host.textContent='Carregando…';
   const {data,error}=await sbAuth.rpc('admin_get_exec_calendar_events');
   if(error){host.textContent='Erro: '+error.message;return}
-  _calEvs=data||[]; host.innerHTML=''; if(!_calEvs.length){host.textContent='Nenhum evento.';return}
-  _calEvs.forEach(e=>{ const c=_calCats.find(x=>x.id===e.category_id)||{};
+  _calEvs=(data||[]).slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));  // mais recentes/futuros primeiro
+  _calRenderEvList();
+}
+function _calRenderEvList(){
+  const host=_cg('cal-ev-list'); if(!host)return;
+  const q=(_cg('cal-ev-search')&&_cg('cal-ev-search').value||'').trim().toLowerCase();
+  const list=_calEvs.filter(e=>!q||(e.title||'').toLowerCase().includes(q)||(e.company||'').toLowerCase().includes(q));
+  const cnt=_cg('cal-ev-count'); if(cnt)cnt.textContent=_calEvs.length?(q?list.length+'/'+_calEvs.length:_calEvs.length+(_calEvs.length===1?' evento':' eventos')):'';
+  host.innerHTML='';
+  if(!_calEvs.length){host.textContent='Nenhum evento.';return}
+  if(!list.length){host.textContent='Nada corresponde ao filtro.';return}
+  list.forEach(e=>{ const c=_calCats.find(x=>x.id===e.category_id)||{};
     const row=document.createElement('div'); row.className='team-row';
     const when=e.start_date+(e.end_date?' … '+e.end_date:'')+(!e.all_day&&e.start_time?' '+String(e.start_time).slice(0,5):'');
     const info=document.createElement('span');

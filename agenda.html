@@ -75,7 +75,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .cal-wk{flex:1;display:grid;grid-template-columns:repeat(7,1fr);position:relative;min-height:74px;
   border-top:1px solid var(--border);}
 .cal-wk:first-child{border-top:none;}
-.cal-col{grid-row:1/-1;border-right:1px solid var(--border);min-width:0;}
+.cal-col{position:absolute;top:0;bottom:0;border-right:1px solid var(--border);min-width:0;}
 .cal-col:last-child{border-right:none;}
 .cal-col.today{background:rgba(255,80,0,.05);}
 .cal-col.oth{background:rgba(0,0,0,.015);}
@@ -286,8 +286,9 @@ function monthsBetween(a,b){ const out=[]; let [y,m]=a.split('-').map(Number); c
   while(y<ey||(y===ey&&m<=em)){ out.push({y,m}); m++; if(m>12){m=1;y++;} } return out; }
 
 // ── layout de faixas por semana (lanes p/ não sobrepor) ─────────────────────────
+function calLaneRank(it){ return (it.isWindow||it.multi||it.allDay)?0:1; }  // faixas / dia-inteiro no topo, eventos com hora abaixo
 function layout(items){
-  items.sort((a,b)=> a.startCol-b.startCol || b.span-a.span || (a.title>b.title?1:-1));
+  items.sort((a,b)=> (calLaneRank(a)-calLaneRank(b)) || a.startCol-b.startCol || b.span-a.span || (a.title>b.title?1:-1));
   const lanes=[];
   for(const it of items){ let l=0;
     for(;;l++){ const lane=lanes[l]||(lanes[l]=[]);
@@ -309,7 +310,7 @@ function renderMonth(){
     week.forEach((d,i)=>{
       const col=document.createElement('div');
       col.className='cal-col clickable'+(d.ymd===S.today?' today':'')+(d.inMonth?'':' oth');
-      col.style.gridColumn=(i+1); col.title='Open week';
+      col.style.left=(i*100/7)+'%'; col.style.width=(100/7)+'%'; if(i===6)col.style.borderRight='none'; col.title='Open week';
       col.onclick=()=>{ S.cursor=d.ymd; setView('week'); };
       row.appendChild(col);
       const num=document.createElement('div');
@@ -327,10 +328,10 @@ function renderMonth(){
       const el=document.createElement('div');
       const single=!it.multi && !it.isWindow;
       if(single){
-        el.className='ev';
+        el.className='ev'+(it.allDay?' allday':'');
         el.style.gridColumn=(it.startCol+1);
-        el.innerHTML=(it.allDay?`<span class="tdot" style="background:${it.color}"></span>`
-                              :`<span class="tm">${esc(CAL.hhmm(it.st))}</span>`)+`<span>${esc(it.title)}</span>`;
+        el.style.background=it.color; el.style.color=it.text;   // pílula colorida da categoria (igual às faixas)
+        el.innerHTML=(it.allDay?'':`<span class="tm">${esc(CAL.hhmm(it.st))}</span>`)+`<span>${esc(it.title)}</span>`;
       }else{
         el.className='band'+(it.isWindow?' win':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
         el.style.gridColumn=(it.startCol+1)+' / span '+it.span;
