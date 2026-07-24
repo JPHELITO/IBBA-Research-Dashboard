@@ -142,10 +142,19 @@ body{height:100vh;overflow:hidden;}
     "news news news news news news news news comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
-/* Pulse espremido (card Events ligado): layout VERTICAL limpo — gauge em cima, stats 2×2 (igual ao mobile) */
-.page.has-events .pulse-body{flex-direction:column;gap:10px;padding:10px 12px;justify-content:center;}
-.page.has-events .pulse-body > .gauge{margin:0 auto;}
-.page.has-events .pulse-stats{grid-template-columns:repeat(2,1fr);}
+/* Pulse espremido (card Events ligado): chips de setor pequenos ao lado do título; gauge menor
+   centralizado em cima; contagens menores logo abaixo. */
+.page.has-events .area-pulse .sec-head{justify-content:flex-start;padding-bottom:5px;}
+.page.has-events .pulse-controls{gap:4px;}
+.page.has-events .pulse-chip{font-size:8.5px!important;padding:2px 7px!important;letter-spacing:0;}
+.page.has-events .pulse-body{flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 8px 8px;}
+.page.has-events .pulse-body > .gauge{margin:0 auto;width:148px;height:74px;}
+.page.has-events .pulse-body > .gauge .gauge-val{font-size:19px;}
+.page.has-events .pulse-body > .gauge .gauge-label{font-size:7px;}
+.page.has-events .pulse-body > div:not(.gauge){width:100%;flex:none;}
+.page.has-events .pulse-stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:0;}
+.page.has-events .pulse-stat-num{font-size:12.5px;}
+.page.has-events .pulse-stat-lbl{font-size:6.5px;}
 .ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
 .ev-open:hover{text-decoration:underline;}
 .ev-body{flex:1;min-height:0;overflow:auto;padding:6px 12px 10px;}
@@ -247,7 +256,7 @@ img.team-avatar{object-fit:cover;background:none;}
 
 /* ── MARKET PULSE ─────────────────────────────────────────────────────── */
 .pulse-controls{display:flex;gap:5px;}
-.pulse-chip{font-size:10.5px;font-weight:600;padding:4px 12px;border-radius:20px;
+.pulse-chip{font-size:9px;font-weight:600;padding:4px 11px;border-radius:20px;
   border:1.5px solid var(--border);background:transparent;color:var(--gray-mid);
   cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
@@ -260,9 +269,9 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
 .gauge{width:200px;height:100px;position:relative;}
 .gauge svg{position:absolute;inset:0;width:100%;height:100%;}
-.gauge-val{position:absolute;left:0;right:0;text-align:center;bottom:28px;
+.gauge-val{position:absolute;left:0;right:0;text-align:center;bottom:28%;
   font-size:26px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;left:0;right:0;text-align:center;bottom:14px;
+.gauge-label{position:absolute;left:0;right:0;text-align:center;bottom:14%;
   font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
@@ -684,8 +693,8 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       </span>
       <div class="pulse-controls" id="pulse-controls">
         <button class="pulse-chip active" data-sector="all">All</button>
-        <button class="pulse-chip" data-sector="sm">Steel &amp; Mining</button>
-        <button class="pulse-chip" data-sector="pp">Pulp &amp; Paper</button>
+        <button class="pulse-chip" data-sector="sm">S&amp;M</button>
+        <button class="pulse-chip" data-sector="pp">P&amp;P</button>
       </div>
     </div>
     <div class="pulse-body">
