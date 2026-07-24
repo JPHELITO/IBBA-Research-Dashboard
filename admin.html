@@ -591,10 +591,18 @@ html.dark .ov-card{background:#20242b}
             <input type="hidden" id="calc-sort">
           </div>
           <div class="row">
+            <label class="muted">Estilo no calendário
+              <select class="in" id="calc-kind" title="Como os eventos desta categoria aparecem no calendário">
+                <option value="">Normal (faixa/pílula colorida)</option>
+                <option value="highlight">Destaque ★ (importantes, ex.: IBBA)</option>
+                <option value="data_release">Base de dados (tag discreta nos dias)</option>
+              </select></label>
             <label class="muted"><input type="checkbox" id="calc-active" checked> ativa</label>
+          </div>
+          <div class="row">
             <button class="btn" onclick="calCatSave()">Salvar categoria</button>
             <button class="btn sec" onclick="calCatReset()">Limpar</button>
-            <input type="hidden" id="calc-id"><input type="hidden" id="calc-kind">
+            <input type="hidden" id="calc-id">
           </div>
         </div>
       </div>
@@ -608,13 +616,18 @@ html.dark .ov-card{background:#20242b}
           <div class="field">
             <input class="in" id="cale-title" placeholder="Título do evento *">
             <div class="row">
-              <select class="in" id="cale-cat" style="flex:1"></select>
+              <select class="in" id="cale-cat" onchange="calCatPicked()" style="flex:1"></select>
               <select class="in" id="cale-company" style="flex:1"><option value="">Empresa de referência (opcional)</option></select>
             </div>
             <div class="row">
               <label class="muted">Início <input class="in" id="cale-start" type="date"></label>
               <label class="muted">Fim (opcional) <input class="in" id="cale-end" type="date"></label>
               <label class="muted"><input type="checkbox" id="cale-allday" checked onchange="calToggleAllday()"> dia inteiro</label>
+            </div>
+            <div class="row" id="cale-emd" hidden>
+              <span class="muted">Horário do resultado:</span>
+              <button type="button" class="btn sec" onclick="calSetEarnings('BMO')" title="Before Market Open">BMO · 08:00–09:00</button>
+              <button type="button" class="btn sec" onclick="calSetEarnings('AMC')" title="After Market Close">AMC · 18:00–19:00</button>
             </div>
             <div class="row" id="cale-times" hidden>
               <label class="muted">Hora início <input class="in" id="cale-st" type="time"></label>
@@ -702,7 +715,7 @@ async function calLoadCats(){
   host.innerHTML=''; if(!_calCats.length){host.textContent='Nenhuma categoria.';return}
   _calCats.forEach(c=>{ const row=document.createElement('div'); row.className='team-row';
     const info=document.createElement('span');
-    info.innerHTML=`<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${esc(c.color)};margin-right:8px;vertical-align:-2px"></span><b>${esc(c.name)}</b> ${c.is_active?'':'<span class="muted">(inativa)</span>'} <span class="muted">#${c.sort_order}</span>`;
+    info.innerHTML=`<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${esc(c.color)};margin-right:8px;vertical-align:-2px"></span><b>${esc(c.name)}</b>${c.kind==='highlight'?' <span class="muted">· ★ destaque</span>':c.kind==='data_release'?' <span class="muted">· tag dados</span>':''} ${c.is_active?'':'<span class="muted">(inativa)</span>'} <span class="muted">#${c.sort_order}</span>`;
     const acts=document.createElement('span'); acts.className='acts';
     const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calCatEdit(c.id);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calCatDel(c.id);
@@ -752,6 +765,17 @@ function calRenderLinks(){ _cg('cale-links').innerHTML=_calLinks.map((l,i)=>
   `<div class="row"><input class="in" placeholder="rótulo" value="${esc(l.label||'')}" oninput="_calLinks[${i}].label=this.value" style="max-width:170px"><input class="in" placeholder="https://…" value="${esc(l.url||'')}" oninput="_calLinks[${i}].url=this.value" style="flex:1"><button class="chip" onclick="_calLinks.splice(${i},1);calRenderLinks()">×</button></div>`).join(''); }
 function calLinkAdd(){ _calLinks.push({label:'',url:''}); calRenderLinks(); }
 function calToggleAllday(){ _cg('cale-times').hidden=_cg('cale-allday').checked; }
+// Earnings/Conf Call → oferece BMO/AMC (horário pré-definido). Detecta pela categoria escolhida.
+function calCatPicked(){
+  const id=_cg('cale-cat').value; const c=_calCats.find(x=>String(x.id)===String(id));
+  const isEarn=!!(c && /earning|conf/i.test(c.name||''));
+  const emd=_cg('cale-emd'); if(emd) emd.hidden=!isEarn;
+}
+function calSetEarnings(which){
+  _cg('cale-allday').checked=false; calToggleAllday();
+  if(which==='BMO'){ _cg('cale-st').value='08:00'; _cg('cale-et').value='09:00'; }
+  else { _cg('cale-st').value='18:00'; _cg('cale-et').value='19:00'; }
+}
 function calRecUI(){
   const f=_cg('cale-freq').value;
   _cg('cale-int-wrap').hidden=!f; _cg('cale-until-wrap').hidden=!f;
@@ -781,11 +805,11 @@ function calEvReset(){
   _cg('cale-st').value=''; _cg('cale-et').value=''; _cg('cale-loc').value=''; _cg('cale-desc').value=''; _cg('cale-visible').checked=true;
   _cg('cale-freq').value=''; _cg('cale-interval').value=1; _cg('cale-until').value='';
   document.querySelectorAll('.calwd').forEach(c=>c.checked=false); if(_cg('calmm-dom'))_cg('calmm-dom').checked=true;
-  _calLinks=[]; calRenderLinks(); calToggleAllday(); calRecUI();
+  _calLinks=[]; calRenderLinks(); calToggleAllday(); calRecUI(); calCatPicked();
 }
 function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
   calEvReset(); _cg('cal-ev-form').hidden=false;
-  _cg('cale-id').value=e.id; _cg('cale-title').value=e.title||''; if(e.category_id)_cg('cale-cat').value=e.category_id;
+  _cg('cale-id').value=e.id; _cg('cale-title').value=e.title||''; if(e.category_id)_cg('cale-cat').value=e.category_id; calCatPicked();
   _cg('cale-company').value=e.company||''; _cg('cale-start').value=e.start_date||''; _cg('cale-end').value=e.end_date||'';
   _cg('cale-allday').checked=e.all_day!==false; calToggleAllday();
   _cg('cale-st').value=e.start_time?String(e.start_time).slice(0,5):''; _cg('cale-et').value=e.end_time?String(e.end_time).slice(0,5):'';
