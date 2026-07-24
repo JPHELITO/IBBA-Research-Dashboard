@@ -482,7 +482,7 @@ async function calStart(){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{
   wire();
-  const BUILD='cal-r9';                       // CARIMBO DE VERSÃO: se você NÃO vê "cal-r9" na tela, está pegando cache VELHO
+  const BUILD='cal-r10';                      // CARIMBO DE VERSÃO (bate com o que subo)
   try{ const _g=document.querySelector('#gate .muted'); if(_g) _g.textContent='Loading… · '+BUILD; }catch(e){}
   if(window.__CAL_TEST__){ return; }        // harness injeta dados e chama render manualmente
   try{
@@ -491,22 +491,32 @@ async function calStart(){
     if(!session){window.location.replace('/login.html');return}
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
-    // Portão: rpc() agora leva o JWT explícito. get_my_role='admin' OU is_admin()=true libera
-    // a PRÉ-VISUALIZAÇÃO do admin com a flag DESLIGADA (cliente não vê). NUNCA engole o motivo.
-    let flagOn=false, isAdmin=false, why=[];
-    try{ const role=String((await rpc('get_my_role'))||'').trim(); isAdmin=(role==='admin');
-      if(!isAdmin) why.push('get_my_role="'+role+'"'); }
+    // Portão: mostra QUEM está logado NESTA ABA (getUser) + testa admin por 3 vias
+    // (get_my_role implícito · is_admin implícito · is_admin com token EXPLÍCITO). A sessão é
+    // POR ABA (sessionStorage): se o calendário abrir numa aba logada como cliente, dá Unavailable.
+    let flagOn=false, isAdmin=false, why=[], email='?';
+    try{ const u=await sbAuth.auth.getUser(); email=(u&&u.data&&u.data.user&&u.data.user.email)||'(sem usuário)'; }
+    catch(e){ email='(getUser falhou)'; why.push('getUser: '+(e.message||e)); }
+    try{ const role=String((await rpc('get_my_role'))||'').trim(); if(role==='admin') isAdmin=true; else why.push('get_my_role="'+role+'"'); }
     catch(e){ why.push('get_my_role: '+(e.message||e)); }
-    if(!isAdmin){ try{ const a=await rpc('is_admin'); if(a===true){ isAdmin=true; why.length=0; }
-        else why.push('is_admin='+JSON.stringify(a)); }
+    if(!isAdmin){ try{ const a=await rpc('is_admin'); if(a===true) isAdmin=true; else why.push('is_admin='+JSON.stringify(a)); }
       catch(e){ why.push('is_admin: '+(e.message||e)); } }
+    if(!isAdmin && _session && _session.access_token){   // 3ª via: token explícito (caso o implícito vá anônimo)
+      try{ const r=await fetch(SUPA_URL+'/rest/v1/rpc/is_admin',{method:'POST',
+          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_session.access_token,'Content-Type':'application/json'},body:'{}'});
+        const t=(await r.text()).trim(); if(t==='true') isAdmin=true; else why.push('is_admin(token)='+t+' http'+r.status); }
+      catch(e){ why.push('is_admin(token): '+(e.message||e)); }
+    }
     try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='exec_calendar');
       if(row) flagOn=!!row.enabled; else why.push('flag "exec_calendar" ausente'); }
     catch(e){ why.push('get_dashboard_flags: '+(e.message||e)); }
     if(!flagOn&&!isAdmin){
       document.getElementById('gate').hidden=true;
       document.getElementById('denied').hidden=false;
-      const w=document.getElementById('denied-why'); if(w) w.textContent=BUILD+'  ·  '+(why.join(' · ')||'flag desligada');
+      const w=document.getElementById('denied-why');
+      if(w){ w.innerHTML='<b>'+BUILD+'</b> — conta logada nesta aba: <b>'+esc(email)+'</b><br><span style="font-size:11px;opacity:.8">'+esc(why.join(' · ')||'flag off')+'</span>';
+        w.style.fontSize='13px'; w.style.opacity='1'; w.style.color='var(--gray-dark)'; }
+      document.title='Cal ⛔ '+email;
       return;
     }
     await calStart();
