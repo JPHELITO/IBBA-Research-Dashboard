@@ -172,16 +172,18 @@
     };
   }
 
-  // ── grade do mês: 6 semanas × 7 dias. weekStart: 0=domingo, 1=segunda (default). ──
-  function monthMatrix(year, month, weekStart) {
+  // ── grade do mês: 6 semanas × N dias. weekStart: 0=domingo, 1=segunda (default).
+  // daysPerWeek: 7 (default) ou 5 p/ semana útil (Seg–Sex; sáb/dom não aparecem). ──
+  function monthMatrix(year, month, weekStart, daysPerWeek) {
     weekStart = (weekStart == null) ? 1 : weekStart;
+    daysPerWeek = daysPerWeek || 7;
     const first = mkYMD(year, month, 1);
     const lead = (dow(first) - weekStart + 7) % 7;   // dias do mês anterior antes do dia 1
     const gridStart = addDays(first, -lead);
     const weeks = [];
     for (let w = 0; w < 6; w++) {
       const row = [];
-      for (let d = 0; d < 7; d++) {
+      for (let d = 0; d < daysPerWeek; d++) {         // d<5 (útil) pega Seg..Sex; sáb/dom ficam de fora
         const cur = addDays(gridStart, w * 7 + d);
         row.push({ ymd: cur, inMonth: parseYMD(cur).getUTCMonth() + 1 === month, dow: dow(cur) });
       }
@@ -190,18 +192,19 @@
     return weeks;
   }
 
-  // 7 dias da semana que contém `anchor`. weekStart default = segunda.
-  function weekDays(anchorYMD, weekStart) {
+  // N dias da semana que contém `anchor`. weekStart default = segunda; daysPerWeek default 7.
+  function weekDays(anchorYMD, weekStart, daysPerWeek) {
     weekStart = (weekStart == null) ? 1 : weekStart;
+    daysPerWeek = daysPerWeek || 7;
     const lead = (dow(anchorYMD) - weekStart + 7) % 7;
     const start = addDays(anchorYMD, -lead);
     const out = [];
-    for (let d = 0; d < 7; d++) out.push(addDays(start, d));
+    for (let d = 0; d < daysPerWeek; d++) out.push(addDays(start, d));
     return out;
   }
-  function weekLabel(anchorYMD, weekStart) {
-    const days = weekDays(anchorYMD, weekStart);
-    const a = parseYMD(days[0]), b = parseYMD(days[6]);
+  function weekLabel(anchorYMD, weekStart, daysPerWeek) {
+    const days = weekDays(anchorYMD, weekStart, daysPerWeek);
+    const a = parseYMD(days[0]), b = parseYMD(days[days.length - 1]);
     const aM = MONTHS_SHORT[a.getUTCMonth()], bM = MONTHS_SHORT[b.getUTCMonth()];
     if (a.getUTCMonth() === b.getUTCMonth())
       return aM + ' ' + a.getUTCDate() + '–' + b.getUTCDate() + ', ' + b.getUTCFullYear();
@@ -210,8 +213,8 @@
 
   // Segmento visível de uma faixa [occStart,occEnd] numa linha-semana que começa em weekStartYMD.
   // Retorna {startCol:0..6, span:1..7} ou null se não intersecta a semana.
-  function segmentForWeek(occStart, occEnd, weekStartYMD) {
-    const wEnd = addDays(weekStartYMD, 6);
+  function segmentForWeek(occStart, occEnd, weekStartYMD, daysPerWeek) {
+    const wEnd = addDays(weekStartYMD, (daysPerWeek || 7) - 1);   // Seg..Sex clipa em Sex; faixas pulam o fim de semana
     if (!overlaps(occStart, occEnd, weekStartYMD, wEnd)) return null;
     const segStart = occStart < weekStartYMD ? weekStartYMD : occStart;
     const segEnd = occEnd > wEnd ? wEnd : occEnd;
