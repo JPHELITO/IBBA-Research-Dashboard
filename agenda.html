@@ -95,8 +95,12 @@ html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
 .band{color:#fff;}
 .band.contL{border-top-left-radius:0;border-bottom-left-radius:0;}
 .band.contR{border-top-right-radius:0;border-bottom-right-radius:0;}
-.band.win{font-weight:600;}                  /* janela de dados: tag discreta (tint+borda aplicados inline) */
+.band.win{font-weight:600;}
 .band.hl,.ev.hl{font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.30);}   /* categoria "destaque" */
+/* base de dados no MÊS: tag pequena preta na altura dos números (fora das lanes → não rouba espaço dos eventos) */
+.daytags{grid-row:1;justify-self:start;align-self:start;display:flex;flex-direction:column;gap:1px;margin:3px 0 0 4px;max-width:calc(100% - 22px);z-index:2;}
+.daytag{font-size:8.5px;font-weight:700;line-height:1.35;letter-spacing:.02em;color:#1a1a1a;background:rgba(0,0,0,.07);border-radius:3px;padding:0 4px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;}
+html.dark .daytag{color:#d8d8d8;background:rgba(255,255,255,.13);}
 .more{color:var(--gray-mid);font-weight:700;background:none;padding-top:0;}
 
 /* week view */
@@ -209,7 +213,7 @@ async function rpc(name,args){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const WEEK_START=1;                          // segunda
-const LANE_CAP=3;                            // faixas visíveis por semana (mês)
+const LANE_CAP=4;                            // faixas visíveis por semana (mês; base de dados sai p/ tag no topo → sobra espaço p/ eventos)
 const DOW_ORDER=[1,2,3,4,5];                 // Mon..Fri (semana útil — sem sáb/dom)
 const DPW=5;                                 // dias por semana exibidos (5 = sem fim de semana)
 const DATA_RELEASE_FALLBACK='#00838F';
@@ -293,9 +297,13 @@ function monthsBetween(a,b){ const out=[]; let [y,m]=a.split('-').map(Number); c
   while(y<ey||(y===ey&&m<=em)){ out.push({y,m}); m++; if(m>12){m=1;y++;} } return out; }
 
 // ── layout de faixas por semana (lanes p/ não sobrepor) ─────────────────────────
-function calLaneRank(it){ return (it.isWindow||it.multi||it.allDay)?0:1; }  // faixas / dia-inteiro no topo, eventos com hora abaixo
+function calLaneRank(it){ return (calKind(it)==='highlight')?0:1; }   // destaque acima de todos no dia
+function evMin(it){ return it.st?toMin(it.st):0; }                    // minutos do horário (dia-inteiro = 0)
 function layout(items){
-  items.sort((a,b)=> (calLaneRank(a)-calLaneRank(b)) || a.startCol-b.startCol || b.span-a.span || (a.title>b.title?1:-1));
+  items.sort((a,b)=> (calLaneRank(a)-calLaneRank(b))                          // 1) destaque primeiro
+    || (((a.allDay||a.multi)?0:1)-((b.allDay||b.multi)?0:1))                   // 2) dia-inteiro/faixa antes dos com hora
+    || (evMin(a)-evMin(b))                                                     // 3) ordem de HORÁRIO
+    || a.startCol-b.startCol || b.span-a.span || (a.title>b.title?1:-1));
   const lanes=[];
   for(const it of items){ let l=0;
     for(;;l++){ const lane=lanes[l]||(lanes[l]=[]);
@@ -326,26 +334,34 @@ function renderMonth(){
       num.style.gridColumn=(i+1); num.textContent=String(CAL.parseYMD(d.ymd).getUTCDate());
       row.appendChild(num);
     });
-    // itens da semana → segmentos
-    const items=[];
-    for(const o of all){ const seg=CAL.segmentForWeek(o.start,o.end,wStart,DPW); if(seg) items.push(Object.assign({},o,seg)); }
+    // segmentos da semana → separa BASE DE DADOS (tag no topo) do resto (faixas/pílulas nas lanes)
+    const segAll=[];
+    for(const o of all){ const seg=CAL.segmentForWeek(o.start,o.end,wStart,DPW); if(seg) segAll.push(Object.assign({},o,seg)); }
+    const dataSegs=segAll.filter(it=>calKind(it)==='data_release');
+    const items=segAll.filter(it=>calKind(it)!=='data_release');
+    // BASE DE DADOS: tagzinha preta na altura dos números (fora das lanes → não atrapalha os eventos)
+    const tagsByCol={};
+    for(const it of dataSegs){ for(let c=it.startCol;c<it.startCol+it.span;c++){ (tagsByCol[c]||(tagsByCol[c]=[])).push(it); } }
+    Object.keys(tagsByCol).forEach(c=>{ const box=document.createElement('div'); box.className='daytags'; box.style.gridColumn=(+c+1);
+      tagsByCol[c].forEach(it=>{ const t=document.createElement('span'); t.className='daytag'; t.textContent=it.title;
+        t.title=it.title+(it.target?' · '+it.target:''); t.onclick=(e)=>{ e.stopPropagation(); openDetail(it); }; box.appendChild(t); });
+      row.appendChild(box); });
+    // EVENTOS: lanes (destaque no topo, depois por horário)
     layout(items);
-    const hiddenByDay=new Array(7).fill(0);
+    const hiddenByDay=new Array(DPW).fill(0);
     for(const it of items){
       if(it.lane>=LANE_CAP){ for(let c=it.startCol;c<it.startCol+it.span;c++) hiddenByDay[c]++; continue; }
       const el=document.createElement('div');
-      const single=!it.multi && !it.isWindow;
       const knd=calKind(it);
-      if(single){
+      el.style.background=it.color; el.style.color=it.text;
+      if(!it.multi){
         el.className='ev'+(it.allDay?' allday':'')+(knd==='highlight'?' hl':'');
         el.style.gridColumn=(it.startCol+1);
-        if(knd==='data_release'){ styleWindow(el,it.color); } else { el.style.background=it.color; el.style.color=it.text; }
         el.innerHTML=(knd==='highlight'?'★ ':'')+(it.allDay?'':`<span class="tm">${esc(CAL.hhmm(it.st))}</span>`)+`<span>${esc(it.title)}</span>`;
       }else{
-        el.className='band'+(it.isWindow||knd==='data_release'?' win':'')+(knd==='highlight'?' hl':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
+        el.className='band'+(knd==='highlight'?' hl':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
         el.style.gridColumn=(it.startCol+1)+' / span '+it.span;
-        if(knd==='data_release'){ styleWindow(el,it.color); } else { el.style.background=it.color; el.style.color=it.text; }
-        el.textContent=(knd==='highlight'?'★ ':'')+(it.isWindow?`${it.title} · ${it.target}`:it.title);
+        el.textContent=(knd==='highlight'?'★ ':'')+it.title;
       }
       el.style.gridRow=(it.lane+2);
       el.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
@@ -380,7 +396,7 @@ function renderWeek(){
   for(const it of adItems){ const el=document.createElement('div'); const knd=calKind(it);
     el.className='band'+(it.isWindow||knd==='data_release'?' win':'')+(knd==='highlight'?' hl':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
     el.style.gridColumn=(it.startCol+1)+' / span '+it.span; el.style.gridRow=(it.lane+1); el.style.margin='0';
-    if(knd==='data_release'){ styleWindow(el,it.color); } else { el.style.background=it.color; el.style.color=it.text; }
+    el.style.background=it.color; el.style.color=it.text;
     el.textContent=(knd==='highlight'?'★ ':'')+(it.isWindow?`${it.title} · ${it.target}`:it.title);
     el.onclick=()=>openDetail(it); lanes.appendChild(el); }
   adWrap.appendChild(lanes); host.appendChild(adWrap);
