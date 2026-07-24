@@ -65,14 +65,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
   border-radius:8px;padding:6px 10px;cursor:pointer;}
 
 /* month */
-.cal-dow{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border);border-bottom:none;
+.cal-dow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--border);border-bottom:none;
   border-radius:10px 10px 0 0;overflow:hidden;background:var(--card);}
 .cal-dow div{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);
   text-align:right;padding:7px 10px;border-right:1px solid var(--border);}
 .cal-dow div:last-child{border-right:none;}
 .cal-month{flex:1;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:0 0 10px 10px;
   overflow:hidden;background:var(--card);min-height:0;}
-.cal-wk{flex:1;display:grid;grid-template-columns:repeat(5,1fr);position:relative;min-height:74px;
+.cal-wk{flex:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:relative;min-height:74px;
   border-top:1px solid var(--border);}
 .cal-wk:first-child{border-top:none;}
 .cal-col{position:absolute;top:0;bottom:0;border-right:1px solid var(--border);min-width:0;}
@@ -87,7 +87,7 @@ html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
 .cal-dnum.oth{color:var(--gray-mid);opacity:.6;}
 .cal-dnum.today{background:var(--orange);color:#fff;width:22px;height:22px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;margin-top:2px;}
-.ev,.band,.more{z-index:2;font-size:10.5px;line-height:1.35;border-radius:5px;padding:1px 6px;margin:1px 3px;
+.ev,.band,.more{z-index:2;font-size:10px;line-height:1.3;border-radius:5px;padding:0 5px;margin:1px 2px;min-width:0;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;font-weight:600;align-self:start;}
 .ev{display:flex;align-items:center;gap:5px;}
 .ev .tdot{width:7px;height:7px;border-radius:50%;flex:none;}
@@ -99,14 +99,14 @@ html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
 .band.hl,.ev.hl{font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.30);}   /* categoria "destaque" */
 /* base de dados no MÊS: tag pequena preta na altura dos números (fora das lanes → não rouba espaço dos eventos) */
 .daytags{grid-row:1;justify-self:start;align-self:start;display:flex;flex-direction:column;gap:1px;margin:3px 0 0 4px;max-width:calc(100% - 22px);z-index:2;}
-.daytag{font-size:8.5px;font-weight:700;line-height:1.35;letter-spacing:.02em;color:#1a1a1a;background:rgba(0,0,0,.07);border-radius:3px;padding:0 4px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;}
-html.dark .daytag{color:#d8d8d8;background:rgba(255,255,255,.13);}
+.daytag{font-size:8.5px;font-weight:700;line-height:1.4;letter-spacing:.02em;border-radius:3px;padding:0 4px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;}
+.dim{opacity:.42;}   /* conteúdo de dias de OUTRO mês fica mais fraco (não é o foco) */
 .more{color:var(--gray-mid);font-weight:700;background:none;padding-top:0;}
 
 /* week view */
 .cal-week{flex:1;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;background:var(--card);min-height:0;}
-.wk-head{display:grid;grid-template-columns:52px repeat(5,1fr);border-bottom:1px solid var(--border);}
+.wk-head{display:grid;grid-template-columns:52px repeat(5,minmax(0,1fr));border-bottom:1px solid var(--border);}
 .wk-head .cell{padding:6px 8px;text-align:center;border-right:1px solid var(--border);}
 .wk-head .cell:last-child{border-right:none;}
 .wk-dow{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);}
@@ -114,13 +114,13 @@ html.dark .daytag{color:#d8d8d8;background:rgba(255,255,255,.13);}
 .wk-head .cell.today .wk-date{background:var(--orange);color:#fff;border-radius:50%;width:26px;height:26px;
   display:inline-flex;align-items:center;justify-content:center;}
 .wk-head .cell.today{background:rgba(255,80,0,.05);}
-.wk-allday{display:grid;grid-template-columns:52px repeat(5,1fr);border-bottom:1px solid var(--border);
+.wk-allday{display:grid;grid-template-columns:52px repeat(5,minmax(0,1fr));border-bottom:1px solid var(--border);
   position:relative;min-height:24px;}
 .wk-allday .gut{font-size:9px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;
   display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);}
-.wk-allday .lanes{grid-column:2/7;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:2px 0;grid-auto-rows:19px;}
+.wk-allday .lanes{grid-column:2/7;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:2px 0;grid-auto-rows:19px;}
 .wk-scroll{flex:1;overflow-y:auto;min-height:0;}
-.wk-grid{display:grid;grid-template-columns:52px repeat(5,1fr);position:relative;}
+.wk-grid{display:grid;grid-template-columns:52px repeat(5,minmax(0,1fr));position:relative;}
 .wk-hours{grid-column:1;}
 .wk-hour{height:44px;position:relative;border-right:1px solid var(--border);}
 .wk-hour span{position:absolute;top:-7px;right:6px;font-size:9.5px;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
@@ -213,7 +213,7 @@ async function rpc(name,args){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 const WEEK_START=1;                          // segunda
-const LANE_CAP=4;                            // faixas visíveis por semana (mês; base de dados sai p/ tag no topo → sobra espaço p/ eventos)
+const LANE_CAP=6;                            // faixas visíveis por semana (mês; base de dados sai p/ tag no topo → sobra espaço p/ eventos)
 const DOW_ORDER=[1,2,3,4,5];                 // Mon..Fri (semana útil — sem sáb/dom)
 const DPW=5;                                 // dias por semana exibidos (5 = sem fim de semana)
 const DATA_RELEASE_FALLBACK='#00838F';
@@ -342,10 +342,12 @@ function renderMonth(){
     // BASE DE DADOS: tagzinha preta na altura dos números (fora das lanes → não atrapalha os eventos)
     const tagsByCol={};
     for(const it of dataSegs){ for(let c=it.startCol;c<it.startCol+it.span;c++){ (tagsByCol[c]||(tagsByCol[c]=[])).push(it); } }
-    Object.keys(tagsByCol).forEach(c=>{ const box=document.createElement('div'); box.className='daytags'; box.style.gridColumn=(+c+1);
-      tagsByCol[c].forEach(it=>{ const t=document.createElement('span'); t.className='daytag'; t.textContent=it.title;
-        t.title=it.title+(it.target?' · '+it.target:''); t.onclick=(e)=>{ e.stopPropagation(); openDetail(it); }; box.appendChild(t); });
-      row.appendChild(box); });
+    Object.keys(tagsByCol).forEach(c=>{ const it=tagsByCol[c][0];   // 1 tag por dia
+      const box=document.createElement('div'); box.className='daytags'+(week[+c].inMonth?'':' dim'); box.style.gridColumn=(+c+1);
+      const t=document.createElement('span'); t.className='daytag'; t.textContent=it.title;
+      t.style.background=it.color; t.style.color=it.text;                   // preto c/ letra branca (cor sólida da categoria)
+      t.title=it.title+(it.target?' · '+it.target:''); t.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
+      box.appendChild(t); row.appendChild(box); });
     // EVENTOS: lanes (destaque no topo, depois por horário)
     layout(items);
     const hiddenByDay=new Array(DPW).fill(0);
@@ -363,12 +365,13 @@ function renderMonth(){
         el.style.gridColumn=(it.startCol+1)+' / span '+it.span;
         el.textContent=(knd==='highlight'?'★ ':'')+it.title;
       }
+      if(!week[it.startCol].inMonth) el.classList.add('dim');   // dia de outro mês → mais fraco
       el.style.gridRow=(it.lane+2);
       el.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
       row.appendChild(el);
     }
     // "+N more"
-    hiddenByDay.forEach((n,c)=>{ if(n>0){ const mo=document.createElement('div'); mo.className='more';
+    hiddenByDay.forEach((n,c)=>{ if(n>0){ const mo=document.createElement('div'); mo.className='more'+(week[c].inMonth?'':' dim');
       mo.style.gridColumn=(c+1); mo.style.gridRow=(LANE_CAP+2); mo.textContent='+'+n+' more';
       mo.onclick=()=>{ S.cursor=week[c].ymd; setView('week'); }; row.appendChild(mo); } });
     host.appendChild(row);
