@@ -28,6 +28,9 @@ html.dark{
 html,body{height:100%;}
 body{font-family:var(--font);background:var(--bg);color:var(--black);
   -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+/* o atributo hidden PRECISA vencer o display:flex do .splash — sem isto, #denied/#app
+   ficam VISÍVEIS mesmo com hidden, e "Unavailable" cobre o calendário aberto. (era o bug!) */
+[hidden]{display:none!important}
 
 /* splash */
 .splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -482,7 +485,7 @@ async function calStart(){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{
   wire();
-  const BUILD='cal-r10';                      // CARIMBO DE VERSÃO (bate com o que subo)
+  const BUILD='cal-r11';                      // CARIMBO DE VERSÃO (bate com o que subo)
   try{ const _g=document.querySelector('#gate .muted'); if(_g) _g.textContent='Loading… · '+BUILD; }catch(e){}
   if(window.__CAL_TEST__){ return; }        // harness injeta dados e chama render manualmente
   try{
