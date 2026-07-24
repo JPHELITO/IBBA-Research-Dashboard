@@ -596,6 +596,7 @@ html.dark .ov-card{background:#20242b}
                 <option value="">Normal (faixa/pílula colorida)</option>
                 <option value="highlight">Destaque ★ (importantes, ex.: IBBA)</option>
                 <option value="data_release">Base de dados (tag discreta nos dias)</option>
+                <option value="blocked">Travar o dia 🔒 (feriado — hachura a data)</option>
               </select></label>
             <label class="muted"><input type="checkbox" id="calc-active" checked> ativa</label>
           </div>
@@ -715,7 +716,7 @@ async function calLoadCats(){
   host.innerHTML=''; if(!_calCats.length){host.textContent='Nenhuma categoria.';return}
   _calCats.forEach(c=>{ const row=document.createElement('div'); row.className='team-row';
     const info=document.createElement('span');
-    info.innerHTML=`<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${esc(c.color)};margin-right:8px;vertical-align:-2px"></span><b>${esc(c.name)}</b>${c.kind==='highlight'?' <span class="muted">· ★ destaque</span>':c.kind==='data_release'?' <span class="muted">· tag dados</span>':''} ${c.is_active?'':'<span class="muted">(inativa)</span>'} <span class="muted">#${c.sort_order}</span>`;
+    info.innerHTML=`<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${esc(c.color)};margin-right:8px;vertical-align:-2px"></span><b>${esc(c.name)}</b>${c.kind==='highlight'?' <span class="muted">· ★ destaque</span>':c.kind==='data_release'?' <span class="muted">· tag dados</span>':c.kind==='blocked'?' <span class="muted">· 🔒 dia travado</span>':''} ${c.is_active?'':'<span class="muted">(inativa)</span>'} <span class="muted">#${c.sort_order}</span>`;
     const acts=document.createElement('span'); acts.className='acts';
     const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calCatEdit(c.id);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calCatDel(c.id);

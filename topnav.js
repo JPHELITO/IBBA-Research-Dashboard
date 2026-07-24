@@ -108,10 +108,19 @@
         <a class="gnt-b wa" href="https://wa.me/'+p.wa+'" target="_blank" rel="noopener" title="WhatsApp">'+SVG_WA+'</a>\
       </div>'; }).join('');
   }
-  function revealAdmin(){
-    try{ if(window.sbAuth && sbAuth.rpc){ sbAuth.rpc('get_my_role').then(function(r){
+  // acha o cliente Supabase da página: `sbAuth` é um `const/let` de topo (NÃO vai pro window) →
+  // referenciar direto (typeof guarda contra ReferenceError/TDZ); window.sbAuth como reserva.
+  function _sb(){ try{ if(typeof sbAuth!=='undefined' && sbAuth && sbAuth.rpc) return sbAuth; }catch(e){}
+    return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
+  function revealAdmin(tries){
+    tries = tries || 0;
+    var sb=_sb();
+    if(sb){ sb.rpc('get_my_role').then(function(r){
       if(r && r.data === 'admin'){ var a=document.getElementById('gnav-admin'); if(a) a.style.display='inline-flex'; }
-    }).catch(function(){}); } }catch(e){}
+    }).catch(function(){}); return; }
+    // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
+    // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).
+    if(tries < 40) setTimeout(function(){ revealAdmin(tries+1); }, 150);
   }
   function inject(){
     if(document.querySelector('.gnav')) return;
