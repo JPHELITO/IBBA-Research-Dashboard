@@ -348,6 +348,13 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-filter-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .news-filter-chip.pos.active{background:#16a34a;border-color:#16a34a;}
 .news-filter-chip.neg.active{background:#c0392b;border-color:#c0392b;}
+.news-sec-filter{border-left:1px solid var(--border);padding-left:8px;margin-left:2px;}
+.news-sec-filter .news-filter-chip.active{background:#1565C0;border-color:#1565C0;}
+.news-sec{font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.03em;margin-left:auto;flex:none;}
+.news-sec.sm{background:rgba(21,101,192,.14);color:#1565C0;}
+.news-sec.pp{background:rgba(46,125,50,.14);color:#2E7D32;}
+html.dark .news-sec.sm{background:rgba(21,101,192,.30);color:#7fb0ee;}
+html.dark .news-sec.pp{background:rgba(46,125,50,.30);color:#8fd39a;}
 
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
 /* Cartões têm ALTURA MÍNIMA legível; se a tela for baixa, o painel ROLA por dentro
@@ -755,6 +762,11 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
           <button class="news-filter-chip neg" data-take="-" title="Negative take">−</button>
           <button class="news-filter-chip" data-take="=" title="Neutral take">=</button>
         </div>
+        <div class="news-filter news-sec-filter" id="news-sector-filter">
+          <button class="news-filter-chip active" data-sec="all" title="All sectors">All</button>
+          <button class="news-filter-chip" data-sec="sm" title="Steel &amp; Mining">S&amp;M</button>
+          <button class="news-filter-chip" data-sec="pp" title="Pulp &amp; Paper">P&amp;P</button>
+        </div>
         <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
         <span class="sec-meta" id="news-meta">loading…</span>
         <a class="sec-link" href="news.html">View history <span>→</span></a>
@@ -952,6 +964,7 @@ let _newsLastHunterRun = 0;
 let _seenUrls = new Set();
 let _firstLoad = true;
 let _newsTakeFilter = 'all';   // 'all' | '+' | '-' | '='
+let _newsSectorFilter = 'all'; // 'all' | 'sm' (steel+mining) | 'pp'
 
 const _LABEL_ALIAS = {
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
@@ -982,7 +995,7 @@ function _age(iso){
 async function loadNews(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return;
-  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,take_sector,take_reason';
+  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,take_sector,take_reason,sector';
   // Janela de recência por DATA DE PUBLICAÇÃO (não por found_at): impede que
   // notícia antiga (re-descoberta por algum scraper) apareça como recente.
   const ageCutoff=new Date(Date.now()-NEWS_MAX_AGE_HOURS*3600*1000).toISOString();
@@ -996,6 +1009,8 @@ async function loadNews(){
     +`&order=found_at.desc&limit=60`;
   // Filtro pela IA (take_llm); cobertura da janela é ~total, robô só cobre o recém-chegado.
   if(_newsTakeFilter!=='all') newsUrl+=`&take_llm=eq.${encodeURIComponent(_newsTakeFilter)}`;
+  if(_newsSectorFilter==='sm') newsUrl+=`&sector=in.(steel,mining)`;            // S&M = aço + mineração (igual ao pulse)
+  else if(_newsSectorFilter!=='all') newsUrl+=`&sector=eq.${encodeURIComponent(_newsSectorFilter)}`;
   try{
     const [newsRes,runRes]=await Promise.all([
       fetch(newsUrl,
@@ -1037,6 +1052,12 @@ function _takeBadge(t){
 // IA ainda não classificou (notícia passou da folga de pendência): spinner — NUNCA "?" nem take do robô.
 function _loadingBadge(){
   return '<span class="news-take loading" title="Awaiting AI classification"></span>';
+}
+// tag de setor (info que já vem em a.sector — mesma do Market Pulse). steel/mining → S&M, pp → P&P.
+function _sectorTag(sec){
+  if(sec==='pp') return '<span class="news-sec pp" title="Pulp &amp; Paper">P&amp;P</span>';
+  if(sec==='steel'||sec==='mining') return '<span class="news-sec sm" title="Steel &amp; Mining">S&amp;M</span>';
+  return '';
 }
 
 // Timestamp efetivo p/ ordenar e exibir idade: publicação real, found_at como
@@ -1080,6 +1101,7 @@ function _renderNews(articles){
         <span class="news-item-source">${lbl}</span>
         <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
+        ${_sectorTag(a.sector)}
       </div>
     </a>`;
   }).join('');
@@ -1089,10 +1111,20 @@ function _renderNews(articles){
 document.getElementById('news-filter').addEventListener('click', e => {
   const btn = e.target.closest('.news-filter-chip');
   if(!btn) return;
-  document.querySelectorAll('.news-filter-chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#news-filter .news-filter-chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   _newsTakeFilter = btn.dataset.take;
   _firstLoad = true;   // não dispara badge "new" ao trocar filtro
+  loadNews();
+});
+// Filtro por SETOR (S&M = steel+mining · P&P = pp) — mesma info do Market Pulse, agora na lista
+document.getElementById('news-sector-filter').addEventListener('click', e => {
+  const btn = e.target.closest('.news-filter-chip');
+  if(!btn) return;
+  document.querySelectorAll('#news-sector-filter .news-filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _newsSectorFilter = btn.dataset.sec;
+  _firstLoad = true;
   loadNews();
 });
 
