@@ -318,7 +318,6 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-item-title{font-size:11.5px;font-weight:600;color:var(--black);
   letter-spacing:-.01em;line-height:1.35;margin-bottom:5px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  min-height:2.7em;   /* reserva 2 linhas → todas as caixinhas ficam do mesmo tamanho */
   transition:color .15s;}
 .news-item-meta{font-size:9.5px;font-weight:500;color:var(--orange);
   display:flex;align-items:center;gap:6px;letter-spacing:.01em;}
@@ -353,8 +352,10 @@ img.team-avatar{object-fit:cover;background:none;}
 .news-sec{font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.03em;flex:none;}
 .news-sec.sm{background:rgba(140,140,140,.18);color:#5b6472;}
 .news-sec.pp{background:rgba(46,125,50,.14);color:#2E7D32;}
+.news-sec.nr{background:rgba(59,110,165,.14);color:#3b6ea5;}
 html.dark .news-sec.sm{background:rgba(255,255,255,.10);color:#aab1bd;}
 html.dark .news-sec.pp{background:rgba(46,125,50,.30);color:#8fd39a;}
+html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
 /* Cartões têm ALTURA MÍNIMA legível; se a tela for baixa, o painel ROLA por dentro
@@ -766,6 +767,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
           <button class="news-filter-chip active" data-sec="all" title="All sectors">All</button>
           <button class="news-filter-chip" data-sec="sm" title="Steel &amp; Mining">S&amp;M</button>
           <button class="news-filter-chip" data-sec="pp" title="Pulp &amp; Paper">P&amp;P</button>
+          <button class="news-filter-chip" data-sec="nr" title="Natural Resources — macro / cross-sector">NR</button>
         </div>
         <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
         <span class="sec-meta" id="news-meta">loading…</span>
@@ -964,7 +966,7 @@ let _newsLastHunterRun = 0;
 let _seenUrls = new Set();
 let _firstLoad = true;
 let _newsTakeFilter = 'all';   // 'all' | '+' | '-' | '='
-let _newsSectorFilter = 'all'; // 'all' | 'sm' (steel+mining) | 'pp'
+let _newsSectorFilter = 'all'; // 'all' | 'sm' | 'pp' | 'nr' (resolvido por fonte+keyword)
 
 const _LABEL_ALIAS = {
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
@@ -982,6 +984,24 @@ function _label(a){
     return d?d.charAt(0).toUpperCase()+d.slice(1):'—';
   }
   return sn;
+}
+// ── Setor EXIBIDO (S&M / P&P / NR) — carimbo por fonte + pára-quedas ──────
+// Fontes de setor ÚNICO recebem o carimbo direto (o título pode não bater keyword —
+// turco, nome de empresa, termo traduzido — mas a FONTE já define o lado).
+const _SM_SOURCES=new Set(['S&P Platts','Platts','Notícias de Mineração','IBRAM','ANM',
+  'Mining.com','Australian Mining','SMM','GMK Center','Siderurgia Brasil','SteelRadar',
+  'Instituto Aço Brasil']);
+const _PP_SOURCES=new Set(['Fastmarkets','PaperAge','Portal Celulose','ABTCP',
+  'China Pulp & Paper','Papnews','Ibá']);
+// NUNCA fica em branco: fonte de setor único → carimbo · fonte mista → keyword (a.sector) ·
+// sem lado claro (macro/genérico) → NR (Natural Resources).
+function _resolveSec(a){
+  const sn=_label(a);
+  if(_SM_SOURCES.has(sn)) return 'sm';
+  if(_PP_SOURCES.has(sn)) return 'pp';
+  if(a.sector==='steel'||a.sector==='mining') return 'sm';
+  if(a.sector==='pp') return 'pp';
+  return 'nr';
 }
 function _age(iso){
   if(!iso)return '—';
@@ -1009,8 +1029,7 @@ async function loadNews(){
     +`&order=found_at.desc&limit=60`;
   // Filtro pela IA (take_llm); cobertura da janela é ~total, robô só cobre o recém-chegado.
   if(_newsTakeFilter!=='all') newsUrl+=`&take_llm=eq.${encodeURIComponent(_newsTakeFilter)}`;
-  if(_newsSectorFilter==='sm') newsUrl+=`&sector=in.(steel,mining)`;            // S&M = aço + mineração (igual ao pulse)
-  else if(_newsSectorFilter!=='all') newsUrl+=`&sector=eq.${encodeURIComponent(_newsSectorFilter)}`;
+  // Setor é resolvido no cliente (carimbo por fonte + NR) → filtragem client-side em _renderNews.
   try{
     const [newsRes,runRes]=await Promise.all([
       fetch(newsUrl,
@@ -1053,11 +1072,11 @@ function _takeBadge(t){
 function _loadingBadge(){
   return '<span class="news-take loading" title="Awaiting AI classification"></span>';
 }
-// tag de setor (info que já vem em a.sector — mesma do Market Pulse). steel/mining → S&M, pp → P&P.
+// tag de setor EXIBIDO: recebe o setor já resolvido ('sm'|'pp'|'nr'). Nunca vazio.
 function _sectorTag(sec){
   if(sec==='pp') return '<span class="news-sec pp" title="Pulp &amp; Paper">P&amp;P</span>';
-  if(sec==='steel'||sec==='mining') return '<span class="news-sec sm" title="Steel &amp; Mining">S&amp;M</span>';
-  return '';
+  if(sec==='nr') return '<span class="news-sec nr" title="Natural Resources — macro / cross-sector">NR</span>';
+  return '<span class="news-sec sm" title="Steel &amp; Mining">S&amp;M</span>';
 }
 
 // Timestamp efetivo p/ ordenar e exibir idade: publicação real, found_at como
@@ -1080,6 +1099,7 @@ function _renderNews(articles){
     // recente (< IA_PENDING_GRACE), oculta (dá tempo à IA). Passada a folga (IA atrasada/caída),
     // deixa passar como PENDENTE (loading) — não trava o feed.
     if(a.take_llm == null && (_now - _foundMs(a)) < IA_PENDING_GRACE) continue;
+    if(_newsSectorFilter!=='all' && _resolveSec(a)!==_newsSectorFilter) continue;   // filtro de setor (client-side)
     const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
     if(!key||seenTitle.has(key)) continue;
     seenTitle.add(key);
@@ -1101,7 +1121,7 @@ function _renderNews(articles){
         <span class="news-item-source">${lbl}</span>
         <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
-        ${_sectorTag(a.sector)}
+        ${_sectorTag(_resolveSec(a))}
       </div>
     </a>`;
   }).join('');
