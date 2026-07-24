@@ -194,17 +194,13 @@ const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
 let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
 let _session=null;
 function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
-// Chama a RPC com o JWT do usuário EXPLÍCITO no header. O supabase-js estava mandando as
-// chamadas desta página como ANÔNIMAS (get_my_role vinha 'client' → admin caía no Unavailable);
-// com o token no Authorization isso não depende mais do estado interno do cliente.
+// IDÊNTICO ao que a HOME usa (e que comprovadamente te reconhece como admin NESTA sessão):
+// supabase-js implícito, que mantém o token renovado sozinho. Sem 2º argumento p/ funções sem
+// parâmetro (get_my_role/is_admin) — passar {} podia atrapalhar a chamada.
 async function rpc(name,args){
-  const tok=(_session&&_session.access_token)||SUPA_KEY;
-  const r=await fetch(`${SUPA_URL}/rest/v1/rpc/${name}`,{method:'POST',
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
-    body:JSON.stringify(args||{})});
-  if(!r.ok){ let t=''; try{t=await r.text()}catch(e){} throw new Error(name+': HTTP '+r.status+(t?' '+t:'')); }
-  if(r.status===204) return null;
-  const txt=await r.text(); return txt?JSON.parse(txt):null;
+  const {data,error} = (args===undefined) ? await sbAuth.rpc(name) : await sbAuth.rpc(name,args);
+  if(error) throw new Error(name+': '+(error.message||error));
+  return data;
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
@@ -486,6 +482,8 @@ async function calStart(){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{
   wire();
+  const BUILD='cal-r9';                       // CARIMBO DE VERSÃO: se você NÃO vê "cal-r9" na tela, está pegando cache VELHO
+  try{ const _g=document.querySelector('#gate .muted'); if(_g) _g.textContent='Loading… · '+BUILD; }catch(e){}
   if(window.__CAL_TEST__){ return; }        // harness injeta dados e chama render manualmente
   try{
     if(!window.CAL) throw new Error('calendar-lib.js não carregou — recarregue com Ctrl+F5. (Se persistir, o arquivo /calendar-lib.js não está sendo servido.)');
@@ -508,7 +506,7 @@ async function calStart(){
     if(!flagOn&&!isAdmin){
       document.getElementById('gate').hidden=true;
       document.getElementById('denied').hidden=false;
-      const w=document.getElementById('denied-why'); if(w) w.textContent='('+(why.join(' · ')||'flag desligada')+')';
+      const w=document.getElementById('denied-why'); if(w) w.textContent=BUILD+'  ·  '+(why.join(' · ')||'flag desligada');
       return;
     }
     await calStart();
