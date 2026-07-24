@@ -604,7 +604,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         <a href="stock-guide.html#comp">Comp Table</a>
         <a href="stock-guide.html#sens">Sensitivity</a></div></div>
     <a class="tn-item" href="/market.html">Market</a>
-    <a class="tn-item" href="/calendar.html">Calendar</a>
+    <a class="tn-item" href="/agenda.html">Calendar</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
   <div class="team-head" id="team-head"></div>
@@ -730,7 +730,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
   <div class="sec area-events" data-flag="exec_calendar" style="display:none">
     <div class="sec-head">
       <span style="display:flex;align-items:center;gap:7px;min-width:0;"><span class="sec-title">Events</span></span>
-      <a class="ev-open" href="/calendar.html">Open calendar →</a>
+      <a class="ev-open" href="/agenda.html">Open calendar →</a>
     </div>
     <div class="ev-body" id="ev-body"><div class="ev-loading">Loading…</div></div>
   </div>
@@ -1893,7 +1893,7 @@ function renderEvents(items, today){
   const upcoming=items.filter(i=>i.start>today).slice(0,7);
   const line=(i,showDate)=>{ const when=showDate ? CAL.MONTHS_SHORT[+i.start.slice(5,7)-1]+' '+(+i.start.slice(8,10))
       : (i.allDay?'all-day':CAL.hhmm(i.st));
-    return `<a class="ev-item" href="/calendar.html"><span class="ev-when">${when}</span>`
+    return `<a class="ev-item" href="/agenda.html"><span class="ev-when">${when}</span>`
       +`<span class="ev-dot" style="background:${i.color}"></span><span class="ev-t">${_evEsc(i.title)}</span></a>`; };
   let h='<div class="ev-sub">Today</div>';
   h += todays.length ? todays.map(i=>line(i,false)).join('') : '<div class="ev-none">No events today.</div>';

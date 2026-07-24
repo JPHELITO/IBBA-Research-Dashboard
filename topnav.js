@@ -88,7 +88,7 @@
       <a href="/stock-guide.html#comp">Comp Table</a>\
       <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
-    <a class="gn-item" href="/calendar.html">Calendar</a>\
+    <a class="gn-item" href="/agenda.html">Calendar</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\

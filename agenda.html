@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Executive Calendar</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/calendar-lib.js"></script>
+<script src="/topnav.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
+  --bg:#F7F6F3;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.06);
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+
+/* splash */
+.splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;background:var(--bg);z-index:2000;color:var(--gray-mid);}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{margin-top:8px;font:600 12px var(--font);color:var(--orange);text-decoration:none;border:1px solid var(--border);
+  padding:8px 14px;border-radius:8px;}
+
+/* app shell */
+#app{flex:1;display:flex;flex-direction:column;min-height:0;padding:14px 20px 18px;gap:12px;}
+.cal-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.cal-navwrap{display:flex;align-items:center;gap:8px;}
+.cal-title{font-size:21px;font-weight:700;letter-spacing:-.01em;min-width:190px;}
+.cal-arrow{width:32px;height:32px;border:1px solid var(--border);background:var(--card);border-radius:8px;color:var(--gray-dark);
+  font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.cal-arrow:hover{border-color:var(--gray-mid);color:var(--black);}
+.cal-today-btn{font:600 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--gray-dark);
+  border-radius:8px;padding:7px 14px;cursor:pointer;}
+.cal-today-btn:hover{border-color:var(--orange);color:var(--orange);}
+.cal-seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);}
+.cal-seg button{font:600 12px var(--font);border:none;background:none;color:var(--gray-mid);padding:7px 15px;cursor:pointer;}
+.cal-seg button.on{background:var(--black);color:var(--white);}
+.cal-filters{display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;}
+.cal-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.cchip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gray-dark);
+  border:1px solid var(--border);background:var(--card);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;transition:all .12s;}
+.cchip .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+.cchip.off{opacity:.4;}
+.cal-company{font:500 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--gray-dark);
+  border-radius:8px;padding:6px 10px;cursor:pointer;}
+
+/* month */
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--border);border-bottom:none;
+  border-radius:10px 10px 0 0;overflow:hidden;background:var(--card);}
+.cal-dow div{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);
+  text-align:right;padding:7px 10px;border-right:1px solid var(--border);}
+.cal-dow div:last-child{border-right:none;}
+.cal-month{flex:1;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:0 0 10px 10px;
+  overflow:hidden;background:var(--card);min-height:0;}
+.cal-wk{flex:1;display:grid;grid-template-columns:repeat(7,1fr);position:relative;min-height:74px;
+  border-top:1px solid var(--border);}
+.cal-wk:first-child{border-top:none;}
+.cal-col{grid-row:1/-1;border-right:1px solid var(--border);min-width:0;}
+.cal-col:last-child{border-right:none;}
+.cal-col.today{background:rgba(255,80,0,.05);}
+.cal-col.oth{background:rgba(0,0,0,.015);}
+html.dark .cal-col.oth{background:rgba(255,255,255,.02);}
+.cal-col.clickable{cursor:pointer;}
+.cal-col.clickable:hover{background:rgba(255,80,0,.07);}
+.cal-dnum{grid-row:1;justify-self:end;font-size:12px;font-weight:600;color:var(--gray-dark);
+  margin:4px 8px 0 0;pointer-events:none;z-index:2;}
+.cal-dnum.oth{color:var(--gray-mid);opacity:.6;}
+.cal-dnum.today{background:var(--orange);color:#fff;width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin-top:2px;}
+.ev,.band,.more{z-index:2;font-size:10.5px;line-height:1.35;border-radius:5px;padding:1px 6px;margin:1px 3px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;font-weight:600;align-self:start;}
+.ev{display:flex;align-items:center;gap:5px;}
+.ev .tdot{width:7px;height:7px;border-radius:50%;flex:none;}
+.ev .tm{font-weight:700;opacity:.8;font-variant-numeric:tabular-nums;}
+.band{color:#fff;}
+.band.contL{border-top-left-radius:0;border-bottom-left-radius:0;}
+.band.contR{border-top-right-radius:0;border-bottom-right-radius:0;}
+.band.win{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 5px,transparent 5px 10px);}
+.more{color:var(--gray-mid);font-weight:700;background:none;padding-top:0;}
+
+/* week view */
+.cal-week{flex:1;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;background:var(--card);min-height:0;}
+.wk-head{display:grid;grid-template-columns:52px repeat(7,1fr);border-bottom:1px solid var(--border);}
+.wk-head .cell{padding:6px 8px;text-align:center;border-right:1px solid var(--border);}
+.wk-head .cell:last-child{border-right:none;}
+.wk-dow{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);}
+.wk-date{font-size:16px;font-weight:700;color:var(--gray-dark);margin-top:2px;}
+.wk-head .cell.today .wk-date{background:var(--orange);color:#fff;border-radius:50%;width:26px;height:26px;
+  display:inline-flex;align-items:center;justify-content:center;}
+.wk-head .cell.today{background:rgba(255,80,0,.05);}
+.wk-allday{display:grid;grid-template-columns:52px repeat(7,1fr);border-bottom:1px solid var(--border);
+  position:relative;min-height:24px;}
+.wk-allday .gut{font-size:9px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);}
+.wk-allday .lanes{grid-column:2/9;display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:2px 0;grid-auto-rows:19px;}
+.wk-scroll{flex:1;overflow-y:auto;min-height:0;}
+.wk-grid{display:grid;grid-template-columns:52px repeat(7,1fr);position:relative;}
+.wk-hours{grid-column:1;}
+.wk-hour{height:44px;position:relative;border-right:1px solid var(--border);}
+.wk-hour span{position:absolute;top:-7px;right:6px;font-size:9.5px;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
+.wk-day{position:relative;border-right:1px solid var(--border);}
+.wk-day:last-child{border-right:none;}
+.wk-day.today{background:rgba(255,80,0,.04);}
+.wk-line{position:absolute;left:0;right:0;border-top:1px solid var(--border);pointer-events:none;}
+.wk-ev{position:absolute;left:3px;right:3px;border-radius:6px;padding:2px 6px;color:#fff;font-size:10.5px;
+  font-weight:600;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.wk-ev .t{font-weight:700;opacity:.85;font-size:9.5px;display:block;}
+
+/* modal */
+.cal-modal{position:fixed;inset:0;background:rgba(10,12,16,.55);display:none;align-items:center;justify-content:center;
+  z-index:3000;padding:20px;}
+.cal-modal.open{display:flex;}
+.cm-card{background:var(--card);border-radius:14px;max-width:460px;width:100%;box-shadow:var(--shadow);overflow:hidden;
+  border:1px solid var(--border);max-height:88vh;display:flex;flex-direction:column;}
+.cm-bar{height:6px;}
+.cm-body{padding:20px 22px;overflow-y:auto;}
+.cm-cat{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px;}
+.cm-cat .dot{width:10px;height:10px;border-radius:50%;}
+.cm-title{font-size:19px;font-weight:700;margin:8px 0 4px;letter-spacing:-.01em;}
+.cm-when{font-size:13px;color:var(--gray-dark);font-weight:600;margin-bottom:12px;}
+.cm-row{display:flex;gap:8px;font-size:13px;color:var(--gray-dark);margin:7px 0;align-items:baseline;}
+.cm-row .k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-mid);min-width:70px;}
+.cm-desc{font-size:13px;line-height:1.55;color:var(--gray-dark);margin-top:10px;white-space:pre-wrap;word-break:break-word;}
+.cm-desc a,.cm-links a{color:var(--orange);}
+.cm-links{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.cm-links a{font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.cm-links a:hover{text-decoration:underline;}
+.cm-co{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--orange);text-decoration:none;
+  border:1px solid var(--border);border-radius:6px;padding:2px 9px;font-size:12px;}
+.cm-x{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:var(--gray-mid);cursor:pointer;line-height:1;}
+.cm-card{position:relative;}
+.cal-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--gray-mid);font-size:14px;}
+@media(max-width:640px){.cal-title{font-size:17px;min-width:0;}#app{padding:10px 10px 14px;}.cal-filters{width:100%;}}
+</style>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading the calendar…</div></div>
+<div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
+  <div class="muted" style="max-width:380px">This section is not enabled for your account.</div>
+  <div class="muted" id="denied-why" style="max-width:460px;font-size:12px;opacity:.85"></div>
+  <a class="hbtn" href="/index.html">← Back to home</a></div>
+
+<div id="app" hidden>
+  <div class="cal-top">
+    <div class="cal-navwrap">
+      <button class="cal-arrow" id="cal-prev" aria-label="Previous">‹</button>
+      <button class="cal-arrow" id="cal-next" aria-label="Next">›</button>
+      <button class="cal-today-btn" id="cal-today">Today</button>
+    </div>
+    <div class="cal-title" id="cal-title">—</div>
+    <div class="cal-seg">
+      <button id="seg-month" class="on">Month</button>
+      <button id="seg-week">Week</button>
+    </div>
+    <div class="cal-filters">
+      <div class="cal-chips" id="cal-chips"></div>
+      <select class="cal-company" id="cal-company"><option value="all">All companies</option></select>
+    </div>
+  </div>
+  <div class="cal-dow" id="cal-dow"></div>
+  <div class="cal-month" id="cal-month"></div>
+  <div class="cal-week" id="cal-week" hidden></div>
+</div>
+
+<div class="cal-modal" id="cal-modal"><div class="cm-card">
+  <div class="cm-bar" id="cm-bar"></div>
+  <button class="cm-x" id="cm-x" aria-label="Close">×</button>
+  <div class="cm-body" id="cm-body"></div>
+</div></div>
+
+<script>
+// ── Supabase + auth ───────────────────────────────────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+let _session=null;
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+// IDÊNTICO ao que a HOME usa (e que comprovadamente te reconhece como admin NESTA sessão):
+// supabase-js implícito, que mantém o token renovado sozinho. Sem 2º argumento p/ funções sem
+// parâmetro (get_my_role/is_admin) — passar {} podia atrapalhar a chamada.
+async function rpc(name,args){
+  const {data,error} = (args===undefined) ? await sbAuth.rpc(name) : await sbAuth.rpc(name,args);
+  if(error) throw new Error(name+': '+(error.message||error));
+  return data;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+const WEEK_START=1;                          // segunda
+const LANE_CAP=3;                            // faixas visíveis por semana (mês)
+const DOW_ORDER=[1,2,3,4,5,6,0];             // Mon..Sun
+const DATA_RELEASE_FALLBACK='#00838F';
+
+// ── estado ────────────────────────────────────────────────────────────────────
+// cursor/today são preenchidos no boot (calStart) — NÃO no topo: se o calendar-lib.js
+// não carregar, um CAL.todayISO() aqui mataria o script inteiro e a página ficaria
+// presa no "Loading…" sem dizer o motivo.
+const S={ view:'month', cursor:null, today:null,
+  cats:[], catById:{}, windows:[], events:[], activeCats:null, company:'all' };
+
+// contraste p/ texto sobre a cor da categoria
+function textOn(hex){
+  const h=(hex||'').replace('#',''); if(h.length<6) return '#fff';
+  const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return (0.299*r+0.587*g+0.114*b)>150 ? '#1a1a1a' : '#fff';
+}
+function catColor(ev){ const c=S.catById[ev.category_id]; return (c&&c.color)||'#8C8C8C'; }
+function dataReleaseColor(){ const c=S.cats.find(x=>x.kind==='data_release'); return (c&&c.color)||DATA_RELEASE_FALLBACK; }
+
+// ── carga ─────────────────────────────────────────────────────────────────────
+function visibleRange(){
+  if(S.view==='week'){ const d=CAL.weekDays(S.cursor,WEEK_START); return [d[0],d[6]]; }
+  const [y,m]=S.cursor.split('-').map(Number);
+  const wk=CAL.monthMatrix(y,m,WEEK_START);
+  return [wk[0][0].ymd, wk[5][6].ymd];
+}
+async function loadStatic(){
+  S.cats=await rpc('get_exec_calendar_categories')||[];
+  S.catById={}; S.cats.forEach(c=>S.catById[c.id]=c);
+  if(S.activeCats===null) S.activeCats=new Set(S.cats.map(c=>c.id));
+  S.windows=await rpc('get_exec_calendar_data_windows')||[];
+}
+async function loadEvents(){
+  const [f,t]=visibleRange();
+  // busca com folga (recorrentes voltam sempre; range cobre não-recorrentes)
+  S.events=await rpc('get_exec_calendar_events',{p_from:CAL.addDays(f,-2),p_to:CAL.addDays(t,2)})||[];
+  refreshCompanyFilter();
+}
+function refreshCompanyFilter(){
+  const set=new Set(); S.events.forEach(e=>{ if(e.company) set.add(e.company); });
+  const sel=document.getElementById('cal-company'); const cur=sel.value;
+  const opts=['<option value="all">All companies</option>'].concat([...set].sort().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`));
+  sel.innerHTML=opts.join(''); sel.value=[...set].includes(cur)?cur:'all';
+}
+
+// ── ocorrências (eventos expandidos + janelas de dados) numa faixa ──────────────
+function occurrencesIn(fromISO,toISO){
+  const out=[];
+  for(const ev of S.events){
+    if(!S.activeCats.has(ev.category_id) && ev.category_id!=null) continue;
+    if(S.company!=='all' && ev.company!==S.company) continue;
+    for(const o of CAL.expandOccurrences(ev,fromISO,toISO)){
+      const col=catColor(ev);
+      out.push({ kind:'event', start:o.occ_start, end:o.occ_end, allDay:!!ev.all_day||!ev.start_time,
+        st:ev.start_time, et:ev.end_time, title:ev.title||'(untitled)', color:col, text:textOn(col),
+        multi:o.occ_end>o.occ_start, ev, company:ev.company });
+    }
+  }
+  // janelas de dados (só se a categoria data_release estiver ativa; empresa=all)
+  const drCat=S.cats.find(x=>x.kind==='data_release');
+  const drOn=!drCat || S.activeCats.has(drCat.id);
+  if(drOn && S.company==='all'){
+    const col=dataReleaseColor();
+    const months=monthsBetween(fromISO,toISO);
+    for(const w of S.windows) for(const mm of months){
+      const b=CAL.dataWindowBands(w,mm.y,mm.m);
+      if(b.endYMD<fromISO||b.startYMD>toISO) continue;
+      out.push({ kind:'window', start:b.startYMD, end:b.endYMD, allDay:true, title:b.label,
+        color:col, text:textOn(col), multi:true, isWindow:true, target:b.target, win:w });
+    }
+  }
+  return out;
+}
+function monthsBetween(a,b){ const out=[]; let [y,m]=a.split('-').map(Number); const [ey,em]=b.split('-').map(Number);
+  while(y<ey||(y===ey&&m<=em)){ out.push({y,m}); m++; if(m>12){m=1;y++;} } return out; }
+
+// ── layout de faixas por semana (lanes p/ não sobrepor) ─────────────────────────
+function layout(items){
+  items.sort((a,b)=> a.startCol-b.startCol || b.span-a.span || (a.title>b.title?1:-1));
+  const lanes=[];
+  for(const it of items){ let l=0;
+    for(;;l++){ const lane=lanes[l]||(lanes[l]=[]);
+      if(!lane.some(r=> it.startCol<r.e && (it.startCol+it.span)>r.s)){ lane.push({s:it.startCol,e:it.startCol+it.span}); it.lane=l; break; } }
+  }
+  return items;
+}
+
+// ── render: MÊS ─────────────────────────────────────────────────────────────────
+function renderMonth(){
+  const [y,m]=S.cursor.split('-').map(Number);
+  const wk=CAL.monthMatrix(y,m,WEEK_START);
+  const all=occurrencesIn(wk[0][0].ymd, wk[5][6].ymd);
+  const host=document.getElementById('cal-month'); host.innerHTML='';
+  for(const week of wk){
+    const wStart=week[0].ymd, wEnd=week[6].ymd;
+    const row=document.createElement('div'); row.className='cal-wk';
+    // colunas (fundo + clique)
+    week.forEach((d,i)=>{
+      const col=document.createElement('div');
+      col.className='cal-col clickable'+(d.ymd===S.today?' today':'')+(d.inMonth?'':' oth');
+      col.style.gridColumn=(i+1); col.title='Open week';
+      col.onclick=()=>{ S.cursor=d.ymd; setView('week'); };
+      row.appendChild(col);
+      const num=document.createElement('div');
+      num.className='cal-dnum'+(d.ymd===S.today?' today':'')+(d.inMonth?'':' oth');
+      num.style.gridColumn=(i+1); num.textContent=String(CAL.parseYMD(d.ymd).getUTCDate());
+      row.appendChild(num);
+    });
+    // itens da semana → segmentos
+    const items=[];
+    for(const o of all){ const seg=CAL.segmentForWeek(o.start,o.end,wStart); if(seg) items.push(Object.assign({},o,seg)); }
+    layout(items);
+    const hiddenByDay=new Array(7).fill(0);
+    for(const it of items){
+      if(it.lane>=LANE_CAP){ for(let c=it.startCol;c<it.startCol+it.span;c++) hiddenByDay[c]++; continue; }
+      const el=document.createElement('div');
+      const single=!it.multi && !it.isWindow;
+      if(single){
+        el.className='ev';
+        el.style.gridColumn=(it.startCol+1);
+        el.innerHTML=(it.allDay?`<span class="tdot" style="background:${it.color}"></span>`
+                              :`<span class="tm">${esc(CAL.hhmm(it.st))}</span>`)+`<span>${esc(it.title)}</span>`;
+      }else{
+        el.className='band'+(it.isWindow?' win':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
+        el.style.gridColumn=(it.startCol+1)+' / span '+it.span;
+        el.style.background=it.color; el.style.color=it.text;
+        el.textContent=it.isWindow?`${it.title} · ${it.target}`:it.title;
+      }
+      el.style.gridRow=(it.lane+2);
+      el.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
+      row.appendChild(el);
+    }
+    // "+N more"
+    hiddenByDay.forEach((n,c)=>{ if(n>0){ const mo=document.createElement('div'); mo.className='more';
+      mo.style.gridColumn=(c+1); mo.style.gridRow=(LANE_CAP+2); mo.textContent='+'+n+' more';
+      mo.onclick=()=>{ S.cursor=week[c].ymd; setView('week'); }; row.appendChild(mo); } });
+    host.appendChild(row);
+  }
+}
+
+// ── render: SEMANA ──────────────────────────────────────────────────────────────
+function renderWeek(){
+  const days=CAL.weekDays(S.cursor,WEEK_START);
+  const all=occurrencesIn(days[0],days[6]);
+  const host=document.getElementById('cal-week'); host.innerHTML='';
+  // cabeçalho
+  const head=document.createElement('div'); head.className='wk-head';
+  head.innerHTML='<div class="cell"></div>'+days.map(d=>{ const dt=CAL.parseYMD(d);
+    return `<div class="cell${d===S.today?' today':''}"><div class="wk-dow">${CAL.WEEKDAYS_SHORT[dt.getUTCDay()]}</div>`
+      +`<div class="wk-date">${dt.getUTCDate()}</div></div>`; }).join('');
+  host.appendChild(head);
+  // all-day / faixas / janelas
+  const allday=all.filter(o=>o.allDay||o.multi||o.isWindow);
+  const adWrap=document.createElement('div'); adWrap.className='wk-allday';
+  adWrap.innerHTML='<div class="gut">all-day</div>';
+  const lanes=document.createElement('div'); lanes.className='lanes';
+  const adItems=[]; for(const o of allday){ const seg=CAL.segmentForWeek(o.start,o.end,days[0]); if(seg) adItems.push(Object.assign({},o,seg)); }
+  layout(adItems);
+  for(const it of adItems){ const el=document.createElement('div');
+    el.className='band'+(it.isWindow?' win':'')+(it.contStart?' contL':'')+(it.contEnd?' contR':'');
+    el.style.gridColumn=(it.startCol+1)+' / span '+it.span; el.style.gridRow=(it.lane+1);
+    el.style.background=it.color; el.style.color=it.text; el.style.margin='0';
+    el.textContent=it.isWindow?`${it.title} · ${it.target}`:it.title;
+    el.onclick=()=>openDetail(it); lanes.appendChild(el); }
+  adWrap.appendChild(lanes); host.appendChild(adWrap);
+  // grade de horas
+  const timed=all.filter(o=>!o.allDay && !o.multi && !o.isWindow && o.st);
+  let minH=7,maxH=21;
+  timed.forEach(o=>{ const sh=parseInt(String(o.st).slice(0,2),10); const eh=o.et?parseInt(String(o.et).slice(0,2),10)+1:sh+1;
+    if(sh<minH)minH=Math.max(0,sh); if(eh>maxH)maxH=Math.min(24,eh); });
+  const HH=44, hours=[]; for(let h=minH;h<=maxH;h++) hours.push(h);
+  const scroll=document.createElement('div'); scroll.className='wk-scroll';
+  const grid=document.createElement('div'); grid.className='wk-grid';
+  const gut=document.createElement('div'); gut.className='wk-hours';
+  hours.forEach(h=>{ const hr=document.createElement('div'); hr.className='wk-hour';
+    hr.innerHTML=`<span>${String(h).padStart(2,'0')}:00</span>`; gut.appendChild(hr); });
+  grid.appendChild(gut);
+  const totalMin=(maxH-minH)*60, gridH=(maxH-minH)*HH;
+  days.forEach((d,di)=>{ const col=document.createElement('div'); col.className='wk-day'+(d===S.today?' today':'');
+    col.style.height=gridH+'px'; col.style.gridColumn=(di+2);
+    hours.forEach((h,hi)=>{ if(hi>0){ const ln=document.createElement('div'); ln.className='wk-line'; ln.style.top=(hi*HH)+'px'; col.appendChild(ln); } });
+    // eventos do dia + colunas p/ sobreposição
+    const dayEv=timed.filter(o=>o.start<=d && o.end>=d).sort((a,b)=>String(a.st).localeCompare(String(b.st)));
+    const cols=[]; // fim (min) de cada coluna
+    dayEv.forEach(o=>{ const sm=toMin(o.st), em=o.et?toMin(o.et):sm+60; let ci=cols.findIndex(e=>e<=sm); if(ci<0){ci=cols.length;} cols[ci]=em; o._ci=ci; o._em=em; o._sm=sm; });
+    const ncol=Math.max(1,cols.length);
+    dayEv.forEach(o=>{ const top=((o._sm-minH*60)/totalMin)*gridH, hgt=Math.max(16,((o._em-o._sm)/totalMin)*gridH);
+      const el=document.createElement('div'); el.className='wk-ev';
+      el.style.top=top+'px'; el.style.height=hgt+'px'; el.style.background=o.color; el.style.color=o.text;
+      el.style.left=`calc(${(o._ci/ncol)*100}% + 3px)`; el.style.width=`calc(${100/ncol}% - 6px)`;
+      el.innerHTML=`<span class="t">${esc(CAL.fmtTimeRange(o.st,o.et))}</span>${esc(o.title)}`;
+      el.onclick=()=>openDetail(o); col.appendChild(el); });
+    grid.appendChild(col); });
+  scroll.appendChild(grid); host.appendChild(scroll);
+  if(!all.length){ const e=document.createElement('div'); e.className='cal-empty'; e.textContent='No events this week.'; host.appendChild(e); }
+}
+function toMin(t){ const p=String(t).split(':'); return (+p[0])*60+(+p[1]||0); }
+
+// ── detalhe ─────────────────────────────────────────────────────────────────────
+function linkify(s){ return esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+function openDetail(o){
+  const bar=document.getElementById('cm-bar'), body=document.getElementById('cm-body');
+  bar.style.background=o.color;
+  let whenTxt;
+  if(o.isWindow){ whenTxt=`Expected window · data for ${esc(o.target)}`; }
+  else{ const ev=o.ev; const sd=CAL.fmtDateLong(o.start);
+    const ed=(o.end&&o.end!==o.start)?' – '+CAL.fmtDateLong(o.end):'';
+    const tm=(!ev.all_day&&ev.start_time)?'  ·  '+esc(CAL.fmtTimeRange(ev.start_time,ev.end_time)):'';
+    whenTxt=sd+ed+tm; }
+  const cat=o.isWindow?{name:'Data Release',color:o.color}:(S.catById[o.ev.category_id]||{name:'',color:o.color});
+  let html=`<div class="cm-cat"><span class="dot" style="background:${o.color}"></span>${esc(cat.name||(o.isWindow?'Data Release':''))}</div>`
+    +`<div class="cm-title">${esc(o.title)}</div><div class="cm-when">${whenTxt}</div>`;
+  if(!o.isWindow){ const ev=o.ev;
+    if(ev.company) html+=`<div class="cm-row"><span class="k">Company</span><a class="cm-co" href="/market.html?t=${encodeURIComponent(ev.company)}">${esc(ev.company)}</a></div>`;
+    if(ev.location) html+=`<div class="cm-row"><span class="k">Location</span><span>${esc(ev.location)}</span></div>`;
+    if(ev.description) html+=`<div class="cm-desc">${linkify(ev.description)}</div>`;
+    const links=Array.isArray(ev.links)?ev.links:[];
+    if(links.length) html+='<div class="cm-links">'+links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.label||l.url)}</a>`).join('')+'</div>';
+  }else if(o.win&&o.win.note){ html+=`<div class="cm-desc">${esc(o.win.note)}</div>`; }
+  body.innerHTML=html;
+  document.getElementById('cal-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('cal-modal').classList.remove('open'); }
+
+// ── chrome / navegação ──────────────────────────────────────────────────────────
+function renderChips(){
+  const host=document.getElementById('cal-chips');
+  host.innerHTML=S.cats.map(c=>`<span class="cchip${S.activeCats.has(c.id)?'':' off'}" data-id="${c.id}">
+    <span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span>`).join('');
+  host.querySelectorAll('.cchip').forEach(ch=>ch.onclick=()=>{ const id=ch.getAttribute('data-id');
+    if(S.activeCats.has(id))S.activeCats.delete(id); else S.activeCats.add(id); render(); });
+}
+function renderDow(){
+  document.getElementById('cal-dow').style.display = S.view==='month'?'grid':'none';
+  document.getElementById('cal-dow').innerHTML=DOW_ORDER.map(d=>`<div>${CAL.WEEKDAYS_SHORT[d]}</div>`).join('');
+}
+function updateTitle(){
+  const [y,m]=S.cursor.split('-').map(Number);
+  document.getElementById('cal-title').textContent = S.view==='month'?CAL.monthTitle(y,m):CAL.weekLabel(S.cursor,WEEK_START);
+}
+function render(){
+  document.getElementById('cal-month').hidden = S.view!=='month';
+  document.getElementById('cal-week').hidden  = S.view!=='week';
+  renderDow(); updateTitle();
+  if(S.view==='month') renderMonth(); else renderWeek();
+}
+async function setView(v){
+  S.view=v;
+  document.getElementById('seg-month').classList.toggle('on',v==='month');
+  document.getElementById('seg-week').classList.toggle('on',v==='week');
+  await loadEvents(); render();
+}
+function shift(dir){
+  if(S.view==='week'){ S.cursor=CAL.addDays(S.cursor,7*dir); }
+  else{ let [y,m]=S.cursor.split('-').map(Number); m+=dir; while(m<1){m+=12;y--;} while(m>12){m-=12;y++;} S.cursor=CAL.mkYMD(y,m,1); }
+  loadEvents().then(render);
+}
+function wire(){
+  document.getElementById('cal-prev').onclick=()=>shift(-1);
+  document.getElementById('cal-next').onclick=()=>shift(1);
+  document.getElementById('cal-today').onclick=()=>{ S.cursor=S.today; loadEvents().then(render); };
+  document.getElementById('seg-month').onclick=()=>setView('month');
+  document.getElementById('seg-week').onclick=()=>setView('week');
+  document.getElementById('cal-company').onchange=e=>{ S.company=e.target.value; render(); };
+  document.getElementById('cm-x').onclick=closeModal;
+  document.getElementById('cal-modal').onclick=e=>{ if(e.target.id==='cal-modal') closeModal(); };
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+}
+
+// ── boot ────────────────────────────────────────────────────────────────────────
+async function calStart(){
+  if(!S.today){ S.today=CAL.todayISO(); S.cursor=S.today; }
+  await loadStatic(); renderChips(); await loadEvents(); render();
+  document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
+;(async()=>{
+  wire();
+  const BUILD='cal-r9';                       // CARIMBO DE VERSÃO: se você NÃO vê "cal-r9" na tela, está pegando cache VELHO
+  try{ const _g=document.querySelector('#gate .muted'); if(_g) _g.textContent='Loading… · '+BUILD; }catch(e){}
+  if(window.__CAL_TEST__){ return; }        // harness injeta dados e chama render manualmente
+  try{
+    if(!window.CAL) throw new Error('calendar-lib.js não carregou — recarregue com Ctrl+F5. (Se persistir, o arquivo /calendar-lib.js não está sendo servido.)');
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _session=session; _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Portão: rpc() agora leva o JWT explícito. get_my_role='admin' OU is_admin()=true libera
+    // a PRÉ-VISUALIZAÇÃO do admin com a flag DESLIGADA (cliente não vê). NUNCA engole o motivo.
+    let flagOn=false, isAdmin=false, why=[];
+    try{ const role=String((await rpc('get_my_role'))||'').trim(); isAdmin=(role==='admin');
+      if(!isAdmin) why.push('get_my_role="'+role+'"'); }
+    catch(e){ why.push('get_my_role: '+(e.message||e)); }
+    if(!isAdmin){ try{ const a=await rpc('is_admin'); if(a===true){ isAdmin=true; why.length=0; }
+        else why.push('is_admin='+JSON.stringify(a)); }
+      catch(e){ why.push('is_admin: '+(e.message||e)); } }
+    try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='exec_calendar');
+      if(row) flagOn=!!row.enabled; else why.push('flag "exec_calendar" ausente'); }
+    catch(e){ why.push('get_dashboard_flags: '+(e.message||e)); }
+    if(!flagOn&&!isAdmin){
+      document.getElementById('gate').hidden=true;
+      document.getElementById('denied').hidden=false;
+      const w=document.getElementById('denied-why'); if(w) w.textContent=BUILD+'  ·  '+(why.join(' · ')||'flag desligada');
+      return;
+    }
+    await calStart();
+  }catch(e){ console.error(e);
+    const raw=String(e&&e.message||e);
+    const notSetUp=/exist|not found|404|schema|PGRST|function/i.test(raw);
+    const msg=notSetUp
+      ? 'Calendar isn’t set up yet — the one-time database step (admin/supabase_exec_calendar.sql) hasn’t been run in Supabase.'
+      : raw;
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">🗓️</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Calendar unavailable</div>'
+      +'<div class="muted">'+esc(msg)+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Back to home</a></div>'; }
+})();
+</script>
+</body>
+</html>
