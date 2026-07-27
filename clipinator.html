@@ -129,6 +129,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .pub-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;padding:0 2px;}
 .pub-x:hover{color:var(--red);}
 .ex-add{padding:3px 9px;font-size:11px;margin-top:3px;}
+/* Onda 4: status de scraping por fonte + corpos que falharam */
+.src-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);background:var(--bg);}
+.src-bar:empty{display:none;}
+.src-lbl{font-size:10px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.03em;}
+.src-chip{font-size:10.5px;color:var(--gray-dark);border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:var(--card);}
+.src-chip b{color:var(--black);}
+.scr{font-size:10px;}
+.src-chip.scr-auth{border-color:rgba(0,176,80,.55);}
+.src-chip.scr-regular{border-color:rgba(90,140,255,.5);}
+.src-chip.scr-unknown{border-color:var(--red);color:var(--red);}
+.fails{margin-top:10px;border:1px solid var(--red);border-radius:8px;padding:10px;background:rgba(255,80,0,.05);}
+.fail-h{font-size:11.5px;font-weight:700;color:var(--red);margin-bottom:8px;}
+.fail-row{margin-bottom:8px;}
+.fail-t{font-size:11.5px;font-weight:600;margin-bottom:3px;}
+.fail-t a{color:var(--black);text-decoration:none;} .fail-t a:hover{color:var(--orange);}
+.fail-why{font-weight:400;color:var(--gray-mid);font-size:10px;margin-left:6px;}
+.fail-body{width:100%;box-sizing:border-box;min-height:68px;resize:vertical;font:400 11px var(--font);
+  background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:6px 8px;}
 </style>
 </head>
 <body>
@@ -165,6 +183,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
           <button class="btn" id="clip-reload">↻ Recarregar</button>
         </div>
       </div>
+      <div id="clip-sources" class="src-bar"></div>
       <div class="panel-b" style="padding:0">
         <div id="clip-list" class="clist"><div class="empty">Carregando notícias…</div></div>
       </div>
@@ -203,6 +222,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
       <div class="gen">
         <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
         <div class="gen-status" id="clip-status"></div>
+        <div id="clip-fails" class="fails" hidden></div>
       </div>
     </div>
   </div>
@@ -230,6 +250,34 @@ const SECTORS=[['SM','S&M'],['PP','P&P'],['NR','NR'],['CEMENT','Cement']];
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr',CEMENT:'cement'};
 
 function domainOf(u){ try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';} }
+
+// ── Status de scraping por fonte (espelha bodies._AUTH do backend) ────────────
+const SCRAPER={
+  auth:   {icon:'🔒', label:'login',    hint:'raspador dedicado com login — corpo completo'},
+  regular:{icon:'🌐', label:'aberto',   hint:'raspador aberto (site público)'},
+  unknown:{icon:'⚠️', label:'genérico', hint:'sem raspador dedicado — pode vir sem corpo'},
+};
+const _AUTH_DOMS=['spglobal.com','fastmarkets.com','valor.globo.com','estadao.com.br'];
+const _REG_DOMS =['mining.com','portalcelulose.com.br'];
+function scraperOf(c){
+  const d=(c.domain||domainOf(c.url)||'').toLowerCase();
+  if(_AUTH_DOMS.some(x=>d===x||d.endsWith('.'+x)||d.endsWith(x))) return 'auth';
+  if(_REG_DOMS.some(x=>d===x||d.endsWith('.'+x)||d.endsWith(x))) return 'regular';
+  return c.manual ? 'unknown' : 'regular';
+}
+// legenda agregada: fontes distintas presentes + seu status de scraping
+function renderSources(){
+  const host=document.getElementById('clip-sources'); if(!host) return;
+  const groups={};
+  S.cand.forEach(c=>{ const s=c.source_name||domainOf(c.url); const k=scraperOf(c);
+    (groups[s]=groups[s]||{k,n:0}).n++; });
+  const items=Object.entries(groups).sort((a,b)=>b[1].n-a[1].n);
+  if(!items.length){ host.innerHTML=''; return; }
+  host.innerHTML='<span class="src-lbl">Fontes:</span>'+items.map(([s,g])=>{
+    const sc=SCRAPER[g.k];
+    return `<span class="src-chip scr-${g.k}" title="${sc.hint}">${sc.icon} ${esc(s)} <b>${g.n}</b></span>`;
+  }).join('');
+}
 // setor SUGERIDO a partir do classificador (steel|mining→SM, pp→PP, senão NR)
 function suggestSector(c){
   const s=(c.sector||'').toLowerCase();
@@ -269,6 +317,7 @@ function renderFilters(){
 
 // ── render: lista de candidatos ───────────────────────────────────────────────
 function renderList(){
+  renderSources();
   const host=document.getElementById('clip-list'); if(!host) return;
   let rows=S.cand;
   if(S.filter!=='all') rows=rows.filter(c=>c._sec===S.filter);
@@ -276,11 +325,12 @@ function renderList(){
   host.innerHTML=rows.map(c=>{
     const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
     const src=esc(c.source_name||domainOf(c.url)); const t=timeAgo(c.published_at||c.found_at);
+    const sk=scraperOf(c); const sc=SCRAPER[sk];
     return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
       <input type="checkbox" ${picked?'checked':''} data-act="pick">
       <div class="r-main">
         <a class="r-title" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title||c.url)}</a>
-        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
+        <div class="r-meta"><span class="scr scr-${sk}" title="${sc.hint}">${sc.icon}</span> ${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
       </div>
       <div class="tk" data-act="take">
         <button data-t="+" class="pos${st.take==='+'?' on':''}">+</button>
@@ -356,7 +406,9 @@ function renderSel(){
 // payload p/ enfileirar o job (e p/ salvar o rascunho)
 function buildPayload(){
   return S.order.map((u,i)=>{ const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{};
-    return {url:u, title:c.title||'', source_name:c.source_name||domainOf(u), take:st.take||'=', sector:st.sector||'NR', pos:i}; });
+    const row={url:u, title:c.title||'', source_name:c.source_name||domainOf(u), take:st.take||'=', sector:st.sector||'NR', pos:i};
+    if(c._manualBody && c._manualBody.trim()) row.body=c._manualBody;   // corpo colado (item 8) → motor não re-raspa
+    return row; });
 }
 
 // ── Rascunho persistente (a pré-seleção fica salva no banco, por usuário) ──────
@@ -369,6 +421,7 @@ function restoreDraft(rows){
                published_at:null,found_at:null,sector:null,take_llm:null,_sec:r.sector||'NR',_take:r.take||'=',fromDraft:true};
       S.cand.push(c); S.byUrl[u]=c;
     } else { S.byUrl[u].fromDraft=true; }
+    if(r.body && S.byUrl[u]) S.byUrl[u]._manualBody=r.body;   // corpo colado sobrevive ao reload
     S.sel.set(u,{take:r.take||'=', sector:r.sector||'NR'}); S.order.push(u);
   });
 }
@@ -385,12 +438,35 @@ function saveDraft(){
 }
 function clearSel(){ S.order=[]; S.sel.clear(); renderList(); renderSel(); saveDraft(); }
 
+// ── Corpos que falharam: colar o texto e gerar de novo (item 8) ──────────────
+function renderFailures(errors){
+  const host=document.getElementById('clip-fails'); if(!host) return;
+  errors=(errors||[]).filter(e=>e&&e.url);
+  if(!errors.length){ host.hidden=true; host.innerHTML=''; return; }
+  host.hidden=false;
+  host.innerHTML='<div class="fail-h">⚠️ '+errors.length+' matéria(s) sem corpo. Cole o texto e gere de novo:</div>'
+    +errors.map(e=>{ const c=S.byUrl[e.url]||{};
+      return `<div class="fail-row" data-u="${esc(e.url)}">
+        <div class="fail-t"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(c.title||e.url)}</a>
+          <span class="fail-why">${esc(e.reason||'corpo não obtido')}</span></div>
+        <textarea class="fail-body" placeholder="Cole aqui o texto da matéria…">${esc(c._manualBody||'')}</textarea>
+      </div>`; }).join('')
+    +'<button class="btn primary" id="clip-regen" style="width:100%;margin-top:6px">Gerar de novo com os corpos colados</button>';
+  host.querySelectorAll('.fail-row').forEach(row=>{
+    const u=row.dataset.u; const c=S.byUrl[u];
+    row.querySelector('.fail-body').oninput=e=>{ if(c){ c._manualBody=e.target.value; saveDraft(); } };
+  });
+  const rb=document.getElementById('clip-regen');
+  if(rb) rb.onclick=()=>{ host.hidden=true; generate(); };
+}
+
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
   const btn=document.getElementById('clip-gen'), st=document.getElementById('clip-status');
   btn.disabled=true; st.className='gen-status';
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
+  renderFailures([]);                       // limpa painel de falhas de uma geração anterior
   try{
     const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config});
     st.innerHTML='<span class="spin2"></span> Gerando o clipping… (busca os corpos, traduz e monta o Word — ~1-3 min)';
@@ -411,7 +487,7 @@ async function pollJob(jobId, st, btn){
       st.innerHTML='✓ Pronto! '
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
         +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
-      btn.disabled=false; return;
+      btn.disabled=false; renderFailures(job.errors); return;   // corpos que falharam → colar e regerar
     }
     if(job.status==='error'){
       st.className='gen-status err'; st.textContent='Erro na geração: '+(job.error||'desconhecido'); btn.disabled=false; return;
@@ -500,7 +576,7 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, S };
 
 ;(async()=>{
   wire();
