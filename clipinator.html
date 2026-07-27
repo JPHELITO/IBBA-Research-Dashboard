@@ -408,6 +408,7 @@ function buildPayload(){
   return S.order.map((u,i)=>{ const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{};
     const row={url:u, title:c.title||'', source_name:c.source_name||domainOf(u), take:st.take||'=', sector:st.sector||'NR', pos:i};
     if(c._manualBody && c._manualBody.trim()) row.body=c._manualBody;   // corpo colado (item 8) → motor não re-raspa
+    const ai=(c.take_llm||'').trim(); if(ai) row.take_ai=ai;             // take da IA (Onda 5) → correção p/ o few-shot
     return row; });
 }
 

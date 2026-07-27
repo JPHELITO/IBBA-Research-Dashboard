@@ -36,6 +36,27 @@ create index if not exists clipping_jobs_created_idx on public.clipping_jobs (cr
 alter table public.clipping_jobs add column if not exists config jsonb;   -- {intro, recent_publications, earnings_review}
 alter table public.clipping_jobs add column if not exists errors jsonb;   -- [{url,reason}] corpos que falharam (Onda 4)
 
+-- ───────────── 1b) CORREÇÕES DE TAKE (Onda 5 — a IA aprende com o analista) ─────────────
+-- Cada vez que você gera um clipping, grava-se 1 linha por notícia: o take que a IA sugeriu
+-- (take_ai) vs. o que você escolheu (take_analyst). changed = você trocou (erro da IA) → esses
+-- viram FEW-SHOT dinâmico no motor (hunter/llm_take.py), sem gastar as IAs. Definida ANTES da
+-- admin_enqueue_clipping porque a função a referencia (check_function_bodies valida no CREATE).
+-- RLS on, SEM policy: só a service key (motor lê) e a RPC SECURITY DEFINER (grava).
+create table if not exists public.take_corrections (
+  id              uuid primary key default gen_random_uuid(),
+  created_at      timestamptz not null default now(),
+  url             text unique,               -- 1 linha por notícia (re-gerar faz upsert)
+  headline        text,
+  source_name     text,
+  sector          text,
+  take_ai         text,                      -- +/-/= sugerido pela IA (news_articles.take_llm)
+  take_analyst    text,                      -- +/-/= escolhido pelo analista no clipping
+  changed         boolean not null default false,   -- take_ai <> take_analyst (a IA errou)
+  used_in_fewshot boolean not null default false    -- p/ o passo futuro de promoção ao gabarito
+);
+alter table public.take_corrections enable row level security;
+create index if not exists take_corrections_recent_idx on public.take_corrections (created_at desc);
+
 -- ───────────── 2) FEATURE FLAG (nasce DESLIGADA; só controla o link no menu — acesso é por is_admin) ─────────────
 insert into public.dashboard_flags (key, label, sort_order, enabled) values
   ('clipinator', 'Clipinator (gerador de clipping — só admin)', 120, false)
@@ -57,6 +78,20 @@ create or replace function public.admin_enqueue_clipping(p_payload jsonb, p_ref_
             coalesce(p_ref_date, (now() at time zone 'America/Sao_Paulo')::date),
             p_payload, p_config, auth.uid())
     returning id into v_id;
+
+    -- Onda 5: registra as correções de take (IA sugeriu vs. analista escolheu) → few-shot dinâmico.
+    -- Só quando a IA deu um take direcional (+/-/=); URL vira chave (re-gerar = upsert do mesmo item).
+    insert into public.take_corrections (url, headline, source_name, sector, take_ai, take_analyst, changed)
+    select e->>'url', left(coalesce(e->>'title',''), 400), e->>'source_name', e->>'sector',
+           e->>'take_ai', e->>'take',
+           (e->>'take_ai') is distinct from (e->>'take')
+    from jsonb_array_elements(p_payload) e
+    where e->>'take_ai' in ('+','-','=') and coalesce(e->>'url','') <> ''
+    on conflict (url) do update set
+      headline = excluded.headline, source_name = excluded.source_name, sector = excluded.sector,
+      take_ai = excluded.take_ai, take_analyst = excluded.take_analyst,
+      changed = excluded.changed, created_at = now(), used_in_fewshot = false;
+
     return v_id;
   end; $$;
 revoke all on function public.admin_enqueue_clipping(jsonb, date, jsonb) from public, anon;
