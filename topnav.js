@@ -94,7 +94,7 @@
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
   <button class="gnav-theme" id="gnav-theme" onclick="__toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="gnav-theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>\
-  <button class="gnav-out" onclick="(window.sbAuth?sbAuth.auth.signOut():0); document.cookie=\'sb-access-token=; Max-Age=0; Path=/\'; location.replace(\'/login.html\');">Sign out</button>\
+  <button class="gnav-out" onclick="(window.sbAuth?sbAuth.auth.signOut():0); try{localStorage.removeItem(\'ibba_is_admin\')}catch(e){}; document.cookie=\'sb-access-token=; Max-Age=0; Path=/\'; location.replace(\'/login.html\');">Sign out</button>\
 </div><div class="gnav-rule"></div>';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -113,14 +113,19 @@
   // referenciar direto (typeof guarda contra ReferenceError/TDZ); window.sbAuth como reserva.
   function _sb(){ try{ if(typeof sbAuth!=='undefined' && sbAuth && sbAuth.rpc) return sbAuth; }catch(e){}
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
+  function _setAdminLinks(show){
+    ['gnav-admin','gnav-clipinator'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+  }
   function revealAdmin(tries){
     tries = tries || 0;
+    // Cache: aplica o estado admin NA HORA (sem esperar o RPC) → os botões Admin/Clipinator não
+    // "pipocam" depois dos demais. Roda ainda dentro do inject(), antes do 1º paint.
+    try{ if(localStorage.getItem('ibba_is_admin')==='1') _setAdminLinks(true); }catch(e){}
     var sb=_sb();
     if(sb){ sb.rpc('get_my_role').then(function(r){
-      if(r && r.data === 'admin'){
-        var a=document.getElementById('gnav-admin'); if(a) a.style.display='inline-flex';
-        var c=document.getElementById('gnav-clipinator'); if(c) c.style.display='inline-flex';   // ferramenta interna: só admin
-      }
+      var isAdmin = !!(r && r.data === 'admin');
+      try{ localStorage.setItem('ibba_is_admin', isAdmin?'1':'0'); }catch(e){}
+      _setAdminLinks(isAdmin);   // reconcilia com a verdade do servidor (mostra p/ admin, esconde se o cache errou)
     }).catch(function(){}); return; }
     // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
     // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).
