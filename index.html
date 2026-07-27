@@ -32,13 +32,13 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
   _setAuthCookie(session)
   sbAuth.rpc('log_visit',{p_path:location.pathname}).then(()=>{},()=>{})   // contador de acessos — .then(ok,err): o .rpc() do supabase-js não tem .catch
   // Mostra a aba "Admin" no cabeçalho só para o papel admin (falha silenciosa p/ não-admin)
-  sbAuth.rpc('get_my_role').then(r=>{ if(r&&r.data==='admin'){ ['admin-link','clip-link'].forEach(id=>{ const a=document.getElementById(id); if(a) a.style.display='inline-block' }) } }).catch(()=>{})
+  sbAuth.rpc('get_my_role').then(r=>{ const _ad=!!(r&&r.data==='admin'); try{localStorage.setItem('ibba_is_admin',_ad?'1':'0')}catch(e){}; ['admin-link','clip-link'].forEach(id=>{ const a=document.getElementById(id); if(a) a.style.display=_ad?'inline-block':'none' }) }).catch(()=>{})
   sbAuth.auth.onAuthStateChange((ev,s)=>{
     if(s?.access_token)_setAuthCookie(s)
-    else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
+    else if(ev==='SIGNED_OUT'){try{localStorage.removeItem('ibba_is_admin')}catch(e){};document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
   })
 })()
-async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
+async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem('ibba_is_admin')}catch(e){};document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 </script>
 
 <style>
@@ -624,6 +624,8 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
     <a class="tn-item tn-admin" id="clip-link" href="/clipinator.html" style="display:none">Clipinator</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
+  <!-- Cache: revela Admin/Clipinator NA HORA (antes do 1º paint) p/ não "pipocarem" depois; o RPC abaixo reconcilia -->
+  <script>try{if(localStorage.getItem('ibba_is_admin')==='1'){['admin-link','clip-link'].forEach(function(id){var a=document.getElementById(id);if(a)a.style.display='inline-block'})}}catch(e){}</script>
   <div class="team-head" id="team-head"></div>
   <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Switch to dark" aria-label="Toggle dark mode"><svg id="theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
   <button class="logout-btn" onclick="logout()" style="margin-left:14px">Sign out</button>
