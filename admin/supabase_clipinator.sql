@@ -112,7 +112,58 @@ $$;
 revoke all on function public.admin_get_clipping_candidates(int) from public, anon;
 grant execute on function public.admin_get_clipping_candidates(int) to authenticated;
 
+-- ───────────── 8) RASCUNHO PERSISTENTE (a pré-seleção fica salva até você gerar) ─────────────
+-- Um rascunho por admin (auth.uid()): pré-seleciona na véspera → volta pronto na manhã seguinte.
+create table if not exists public.clipping_drafts (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  payload     jsonb not null default '[]'::jsonb,   -- [{url,title,source_name,take,sector,pos}]
+  updated_at  timestamptz not null default now()
+);
+alter table public.clipping_drafts enable row level security;
+
+create or replace function public.admin_get_clipping_draft()
+  returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
+  select case when public.is_admin()
+              then coalesce((select payload from public.clipping_drafts where user_id = auth.uid()), '[]'::jsonb)
+              else '[]'::jsonb end;
+$$;
+revoke all on function public.admin_get_clipping_draft() from public, anon;
+grant execute on function public.admin_get_clipping_draft() to authenticated;
+
+create or replace function public.admin_save_clipping_draft(p_payload jsonb)
+  returns void language plpgsql security definer set search_path = public, pg_temp as $$
+  begin
+    if not public.is_admin() then raise exception 'forbidden' using errcode='42501'; end if;
+    insert into public.clipping_drafts (user_id, payload, updated_at)
+    values (auth.uid(), coalesce(p_payload, '[]'::jsonb), now())
+    on conflict (user_id) do update set payload = excluded.payload, updated_at = now();
+  end; $$;
+revoke all on function public.admin_save_clipping_draft(jsonb) from public, anon;
+grant execute on function public.admin_save_clipping_draft(jsonb) to authenticated;
+
+-- ───────────── 7) BACKEND: reivindicar o próximo job (só service_role — o robô do Actions) ─────────────
+-- Claim atômico (FOR UPDATE SKIP LOCKED) → nunca dois runners pegam o mesmo job.
+create or replace function public.claim_next_clipping_job()
+  returns setof public.clipping_jobs
+  language plpgsql security definer set search_path = public, pg_temp as $$
+  declare v_id uuid;
+  begin
+    select id into v_id from public.clipping_jobs
+      where status = 'pending' order by created_at
+      for update skip locked limit 1;
+    if v_id is null then return; end if;
+    return query
+      update public.clipping_jobs
+        set status = 'running', claimed_at = now(), updated_at = now()
+      where id = v_id
+      returning *;
+  end; $$;
+revoke all on function public.claim_next_clipping_job() from public, anon, authenticated;
+grant execute on function public.claim_next_clipping_job() to service_role;
+
 -- =============================================================================
 -- FIM. Idempotente (create-or-replace) → pode rodar o arquivo inteiro de novo com segurança.
 -- A flag 'clipinator' pode ficar OFF — o acesso é por is_admin(); a flag só controla o link no menu.
+-- O robô do Actions usa a SERVICE KEY (ignora RLS): reivindica via claim_next_clipping_job(),
+-- gera os arquivos, sobe no Storage (bucket admin-uploads) e faz PATCH do job p/ done/error.
 -- =============================================================================
