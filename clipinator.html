@@ -88,14 +88,26 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .secsel{font:600 11px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:4px 5px;}
 
 /* painel de seleção / preview */
-.prev-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
-  padding:8px 8px;border-bottom:1px solid var(--border);}
-.prev-ord{display:flex;flex-direction:column;gap:1px;}
-.prev-ord button{width:20px;height:16px;border:1px solid var(--border);background:var(--bg);border-radius:4px;
-  font-size:9px;line-height:1;color:var(--gray-mid);cursor:pointer;padding:0;}
+.sel-sec{padding:7px 10px 4px;font-size:10.5px;font-weight:700;color:var(--gray-dark);
+  text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:6px;
+  background:var(--bg);border-bottom:1px solid var(--border);}
+.sel-sec b{color:var(--gray-mid);font-weight:600;}
+.prev-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:start;
+  padding:8px 8px;border-bottom:1px solid var(--border);background:var(--card);}
+.prev-row.dragging{opacity:.4;}
+.prev-row.drop-above{box-shadow:inset 0 2px 0 0 var(--orange);}
+.prev-row.drop-below{box-shadow:inset 0 -2px 0 0 var(--orange);}
+.prev-h{cursor:grab;color:var(--gray-mid);font-size:13px;line-height:1.5;user-select:none;padding:0 1px;}
+.prev-h:active{cursor:grabbing;}
+.prev-n{min-width:18px;height:18px;border-radius:5px;background:var(--bg);border:1px solid var(--border);
+  font-size:10.5px;font-weight:700;color:var(--gray-dark);display:flex;align-items:center;justify-content:center;}
+.prev-body{min-width:0;}
 .prev-t{font-size:11.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.prev-m{font-size:10px;color:var(--gray-mid);margin-top:1px;display:flex;gap:6px;align-items:center;}
+.prev-ctl{margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.prev-ctl .tk button{width:24px;height:22px;}
+.prev-ctl .secsel{padding:3px 4px;}
+.prev-src{font-size:10px;color:var(--gray-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:50px;}
 .tag{font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em;}
 .tag.sm{background:#e9eaec;color:#3a3f47;} html.dark .tag.sm{background:#2b3038;color:#c3c7cd;}
 .tag.pp{background:#dff3e6;color:#1a7a3f;} html.dark .tag.pp{background:#12351f;color:#22c55e;}
@@ -115,15 +127,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .spin2{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex-shrink:0;}
 .dl{display:inline-block;padding:6px 12px;border-radius:7px;background:var(--orange);color:#fff!important;text-decoration:none;font-weight:600;font-size:11.5px;}
 .dl:hover{opacity:.9;}
-.extras{margin:0 12px 4px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
-.extras summary{cursor:pointer;font-weight:600;font-size:11.5px;color:var(--gray-dark);}
-.ex-block{margin-top:10px;}
-.ex-h{display:block;font-weight:600;font-size:11.5px;margin-bottom:4px;}
+.extras-panel{margin-top:18px;}
+.ex-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+@media(max-width:820px){.ex-grid{grid-template-columns:1fr;}}
+.ex-block{min-width:0;}
+.ex-h{display:block;font-weight:600;font-size:11.5px;margin-bottom:6px;}
 .ex-h input[type=checkbox]{margin-right:5px;accent-color:var(--orange);vertical-align:middle;}
 .ex-hint{font-weight:400;color:var(--gray-mid);font-size:10px;}
-.extras textarea,.extras input,.extras select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
-.extras textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
-.extras textarea{resize:vertical;}
+.ex-grid textarea,.ex-grid input,.ex-grid select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
+.ex-grid textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
+.ex-grid textarea{resize:vertical;}
 .pub-row{display:grid;grid-template-columns:1fr 62px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
 .pub-row input,.pub-row select{min-width:0;}
 .pub-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;padding:0 2px;}
@@ -201,28 +214,32 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <input id="clip-url" type="url" placeholder="Colar uma URL avulsa…"/>
         <button class="btn" id="clip-add">Adicionar</button>
       </div>
-      <details class="extras">
-        <summary>Extras (mensagem · publicações · earnings)</summary>
-        <div class="ex-block">
-          <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
-          <textarea id="cfg-intro-text" rows="4" placeholder="Dear clients,…"></textarea>
-        </div>
-        <div class="ex-block">
-          <div class="ex-h">Recent Publications</div>
-          <div id="cfg-pubs"></div>
-          <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
-        </div>
-        <div class="ex-block">
-          <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga a seção)</span></label>
-          <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
-          <div id="cfg-earn"></div>
-          <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
-        </div>
-      </details>
       <div class="gen">
         <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
         <div class="gen-status" id="clip-status"></div>
         <div id="clip-fails" class="fails" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel extras-panel">
+    <div class="panel-h"><h2>Extras do clipping</h2>
+      <span class="count">mensagem · publicações · earnings — salvo automaticamente</span></div>
+    <div class="panel-b ex-grid">
+      <div class="ex-block">
+        <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
+        <textarea id="cfg-intro-text" rows="6" placeholder="Dear clients,…"></textarea>
+      </div>
+      <div class="ex-block">
+        <div class="ex-h">Recent Publications</div>
+        <div id="cfg-pubs"></div>
+        <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
+      </div>
+      <div class="ex-block">
+        <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga)</span></label>
+        <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
+        <div id="cfg-earn"></div>
+        <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
       </div>
     </div>
   </div>
@@ -246,8 +263,10 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','
 const DEFAULT_INTRO="Dear clients,\n\nPlease find below the latest news for Metals & Mining and Pulp & Paper.\n\nAccess our live dashboard: https://metals-mining-pulp-paper-dashboard.vercel.app\nLogin: BUYSIDE / Password: ibba5*";
 const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all',
           config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]} } };
-const SECTORS=[['SM','S&M'],['PP','P&P'],['NR','NR'],['CEMENT','Cement']];
-const SEC_TAG={SM:'sm',PP:'pp',NR:'nr',CEMENT:'cement'};
+const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
+const SEC_TAG={SM:'sm',PP:'pp',NR:'nr'};
+const SEC_ORDER=['NR','SM','PP'];                        // agrupamento/ordem do clipping (= SECTOR_ORDER do motor)
+const SEC_FULL={NR:'Natural Resources',SM:'Steel & Mining',PP:'Pulp & Paper'};
 
 function domainOf(u){ try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';} }
 
@@ -274,8 +293,7 @@ function renderSources(){
   const items=Object.entries(groups).sort((a,b)=>b[1].n-a[1].n);
   if(!items.length){ host.innerHTML=''; return; }
   host.innerHTML='<span class="src-lbl">Fontes:</span>'+items.map(([s,g])=>{
-    const sc=SCRAPER[g.k];
-    return `<span class="src-chip scr-${g.k}" title="${sc.hint}">${sc.icon} ${esc(s)} <b>${g.n}</b></span>`;
+    return `<span class="src-chip scr-${g.k}" title="${SCRAPER[g.k].hint}">${esc(s)} <b>${g.n}</b></span>`;
   }).join('');
 }
 // setor SUGERIDO a partir do classificador (steel|mining→SM, pp→PP, senão NR)
@@ -310,7 +328,7 @@ function renderFilters(){
   const host=document.getElementById('clip-filters'); if(!host) return;
   const counts={all:S.cand.length,SM:0,PP:0,NR:0};
   S.cand.forEach(c=>{ counts[c._sec]=(counts[c._sec]||0)+1; });
-  const defs=[['all','Todas'],['SM','S&M'],['PP','P&P'],['NR','NR']];
+  const defs=[['all','Todas'],['NR','NR'],['SM','S&M'],['PP','P&P']];
   host.innerHTML=defs.map(([k,l])=>`<span class="chip${S.filter===k?' on':''}" data-f="${k}">${l} ${counts[k]||0}</span>`).join('');
   host.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{ S.filter=ch.dataset.f; renderFilters(); renderList(); });
 }
@@ -325,12 +343,11 @@ function renderList(){
   host.innerHTML=rows.map(c=>{
     const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
     const src=esc(c.source_name||domainOf(c.url)); const t=timeAgo(c.published_at||c.found_at);
-    const sk=scraperOf(c); const sc=SCRAPER[sk];
     return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
       <input type="checkbox" ${picked?'checked':''} data-act="pick">
       <div class="r-main">
         <a class="r-title" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title||c.url)}</a>
-        <div class="r-meta"><span class="scr scr-${sk}" title="${sc.hint}">${sc.icon}</span> ${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
+        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
       </div>
       <div class="tk" data-act="take">
         <button data-t="+" class="pos${st.take==='+'?' on':''}">+</button>
@@ -369,37 +386,63 @@ function setSector(u,v){
   const st=S.sel.get(u); if(st) st.sector=v;
   renderList(); renderSel(); saveDraft();
 }
-function move(u,dir){
-  const i=S.order.indexOf(u); const j=i+dir;
-  if(i<0||j<0||j>=S.order.length) return;
-  const t=S.order[i]; S.order[i]=S.order[j]; S.order[j]=t;
-  renderSel(); saveDraft();
+// arrastar-e-soltar: reordena DENTRO do mesmo setor (o setor se muda no seletor).
+let _dragU=null;
+function reorder(dragU, targetU, before){
+  if(dragU===targetU) return;
+  const sd=(S.sel.get(dragU)||{}).sector, stg=(S.sel.get(targetU)||{}).sector;
+  if(sd!==stg) return;                                  // só reordena dentro do setor
+  const a=S.order.filter(x=>x!==dragU);
+  const ti=a.indexOf(targetU); if(ti<0) return;
+  a.splice(before?ti:ti+1, 0, dragU);
+  S.order=a; renderSel(); saveDraft();
 }
 
-// ── render: painel de seleção ─────────────────────────────────────────────────
+// ── render: painel de seleção (agrupado NR→S&M→P&P, numerado, drag, take+setor) ──
 function renderSel(){
   const host=document.getElementById('clip-sel'); const cnt=document.getElementById('clip-count');
   if(cnt) cnt.innerHTML='<b>'+S.order.length+'</b> selecionadas';
   const gb=document.getElementById('clip-gen'); if(gb) gb.disabled=!S.order.length;
   if(!host) return;
   if(!S.order.length){ host.innerHTML='<div class="empty">Marque notícias à esquerda para montar o clipping.</div>'; return; }
-  host.innerHTML=S.order.map((u,i)=>{
-    const c=S.byUrl[u]; if(!c) return '';
-    const st=S.sel.get(u)||{take:'=',sector:'NR'};
-    const tk=st.take==='+'?'pos':st.take==='-'?'neg':'neu';
-    const tkl=st.take==='+'?'+':st.take==='-'?'−':'=';
-    return `<div class="prev-row" data-u="${esc(u)}">
-      <div class="prev-ord"><button data-d="-1">▲</button><button data-d="1">▼</button></div>
-      <div><div class="prev-t">${esc(c.title||u)}</div>
-        <div class="prev-m"><span class="tag ${SEC_TAG[st.sector]||'nr'}">${st.sector}</span>
-          <span class="tag ${tk}">${tkl}</span><span>${esc(c.source_name||domainOf(u))}</span></div></div>
-      <button class="prev-x" title="Remover">×</button>
-    </div>`;
-  }).join('');
+  let html=''; let n=0;
+  SEC_ORDER.forEach(sec=>{
+    const urls=S.order.filter(u=>((S.sel.get(u)||{}).sector||'NR')===sec);
+    if(!urls.length) return;
+    html+=`<div class="sel-sec"><span class="tag ${SEC_TAG[sec]}">${sec}</span> ${esc(SEC_FULL[sec])} <b>${urls.length}</b></div>`;
+    urls.forEach(u=>{
+      const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{take:'=',sector:sec}; n++;
+      const takeBtns=[['+','pos','+'],['=','neu','='],['-','neg','−']].map(([t,cls,lbl])=>
+        `<button data-t="${t}" class="${cls}${st.take===t?' on':''}">${lbl}</button>`).join('');
+      const secOpts=SECTORS.map(([v,l])=>`<option value="${v}"${st.sector===v?' selected':''}>${l}</option>`).join('');
+      html+=`<div class="prev-row" data-u="${esc(u)}">
+        <div class="prev-h" draggable="true" title="Arraste para reordenar">⠿</div>
+        <div class="prev-n">${n}</div>
+        <div class="prev-body">
+          <div class="prev-t">${esc(c.title||u)}</div>
+          <div class="prev-ctl">
+            <div class="tk">${takeBtns}</div>
+            <select class="secsel" data-act="sector">${secOpts}</select>
+            <span class="prev-src">${esc(c.source_name||domainOf(u))}</span>
+          </div>
+        </div>
+        <button class="prev-x" title="Remover">×</button>
+      </div>`;
+    });
+  });
+  host.innerHTML=html;
   host.querySelectorAll('.prev-row').forEach(row=>{
     const u=row.dataset.u;
-    row.querySelectorAll('.prev-ord button').forEach(b=>b.onclick=()=>move(u,+b.dataset.d));
+    row.querySelectorAll('.tk button').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
+    row.querySelector('[data-act=sector]').onchange=e=>setSector(u,e.target.value);
     row.querySelector('.prev-x').onclick=()=>togglePick(u,false);
+    const clearDrop=()=>host.querySelectorAll('.prev-row').forEach(r=>r.classList.remove('drop-above','drop-below'));
+    const h=row.querySelector('.prev-h');
+    h.addEventListener('dragstart',e=>{ _dragU=u; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',u); });
+    h.addEventListener('dragend',()=>{ _dragU=null; row.classList.remove('dragging'); clearDrop(); });
+    row.addEventListener('dragover',e=>{ if(!_dragU) return; e.preventDefault(); const r=row.getBoundingClientRect(); const before=(e.clientY-r.top)<r.height/2; row.classList.toggle('drop-above',before); row.classList.toggle('drop-below',!before); });
+    row.addEventListener('dragleave',()=>{ row.classList.remove('drop-above','drop-below'); });
+    row.addEventListener('drop',e=>{ e.preventDefault(); const r=row.getBoundingClientRect(); const before=(e.clientY-r.top)<r.height/2; clearDrop(); if(_dragU) reorder(_dragU,u,before); });
   });
 }
 
