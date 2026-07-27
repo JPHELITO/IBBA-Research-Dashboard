@@ -171,6 +171,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .pv-load{padding:24px;text-align:center;color:var(--gray-mid);font-size:12px;}
 .pv-frame{width:100%;height:72vh;border:none;background:#fff;display:block;}
 .dl-pv{border:none;cursor:pointer;}
+/* Prévia por-notícia (modal do leitor) */
+.r-title{cursor:pointer;}
+.hasbody{color:var(--green);font-weight:600;}
+.reader-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:5vh 20px;}
+.reader-modal[hidden]{display:none;}
+.reader-panel{background:var(--card);color:var(--black);border:1px solid var(--border);border-radius:12px;max-width:820px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.35);}
+.reader-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.reader-close{background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font:600 12px var(--font);color:var(--gray-dark);}
+.reader-close:hover{border-color:var(--orange);color:var(--orange);}
+.reader-title{flex:1;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reader-ext{font-size:11.5px;color:var(--orange);text-decoration:none;font-weight:600;white-space:nowrap;}
+.reader-content{padding:22px 26px;overflow:auto;}
+.reader-body{font-size:14px;line-height:1.62;color:var(--black);}
+.reader-body p{margin:0 0 12px;}
+.reader-body img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;}
+.reader-body h2,.reader-body h3{font-size:15px;margin:14px 0 6px;}
+.reader-loading,.reader-empty{color:var(--gray-mid);font-size:13px;text-align:center;padding:26px 10px;line-height:1.5;}
+.reader-tr{border-top:1px dashed var(--border);margin-top:18px;padding-top:14px;}
+.reader-trh{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-mid);margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -256,6 +275,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
   </div>
 
   <div id="clip-preview" class="preview" hidden></div>
+
+  <div id="reader-modal" class="reader-modal" hidden onclick="if(event.target===this)closeReader()">
+    <div class="reader-panel">
+      <div class="reader-topbar">
+        <button type="button" class="reader-close" onclick="closeReader()">✕ Fechar</button>
+        <span id="reader-title" class="reader-title"></span>
+        <a id="reader-ext" href="#" target="_blank" rel="noopener" class="reader-ext">↗ Abrir no site original</a>
+      </div>
+      <div id="reader-content" class="reader-content"><p class="reader-loading">Selecione uma manchete.</p></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -359,8 +389,8 @@ function renderList(){
     return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
       <input type="checkbox" ${picked?'checked':''} data-act="pick">
       <div class="r-main">
-        <a class="r-title" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title||c.url)}</a>
-        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
+        <a class="r-title" href="${esc(c.url)}" data-act="preview" title="Ver prévia (corpo raspado)">${esc(c.title||c.url)}</a>
+        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}${c.has_body?' · <span class="hasbody">✓ prévia</span>':''}</div>
       </div>
       <div class="tk" data-act="take">
         <button data-t="+" class="pos${st.take==='+'?' on':''}">+</button>
@@ -378,6 +408,7 @@ function renderList(){
     row.querySelector('[data-act=pick]').onchange=e=>togglePick(u,e.target.checked);
     row.querySelectorAll('.tk button').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
     row.querySelector('[data-act=sector]').onchange=e=>setSector(u,e.target.value);
+    const tt=row.querySelector('[data-act=preview]'); if(tt) tt.onclick=e=>{ e.preventDefault(); openPreview(u); };
   });
 }
 
@@ -535,6 +566,30 @@ async function showPreview(url){
 }
 function clearPreview(){ const pv=document.getElementById('clip-preview'); if(pv){ pv.hidden=true; pv.innerHTML=''; } }
 
+// ── Prévia por-notícia (clique na manchete → corpo guardado, instantâneo) ─────
+async function openPreview(url){
+  const c=S.byUrl[url]||{};
+  const host=document.getElementById('reader-modal'); if(!host) return;
+  host.hidden=false;
+  const content=host.querySelector('#reader-content');
+  const ext=host.querySelector('#reader-ext'); if(ext) ext.href=url;
+  const ttl=host.querySelector('#reader-title'); if(ttl) ttl.textContent=c.title||url;
+  content.innerHTML='<p class="reader-loading">Carregando…</p>';
+  try{
+    const r=(await rpc('admin_get_clipping_body',{p_url:url}))||{};
+    const body=r.body||'';
+    if(body.length>40){
+      let html='<div class="reader-body">'+body+'</div>';
+      if(r.translated_body) html+='<div class="reader-tr"><div class="reader-trh">Free translation</div><div class="reader-body">'+r.translated_body+'</div></div>';
+      content.innerHTML=html;
+    }else{
+      content.innerHTML='<p class="reader-empty">Corpo ainda não raspado. O aquecedor pega em até ~1h — '
+        +'ou clique em Gerar (ele raspa na hora e guarda p/ a próxima).</p>';
+    }
+  }catch(e){ content.innerHTML='<p class="reader-empty">Não consegui carregar: '+esc(String(e&&e.message||e))+'</p>'; }
+}
+function closeReader(){ const h=document.getElementById('reader-modal'); if(h) h.hidden=true; }
+
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
@@ -651,11 +706,12 @@ function wire(){
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
   document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.push({name:'',sector:'SM',link:''}); renderConfig(); };
   document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.push({name:'',sector:'SM',link:''}); renderConfig(); };
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReader(); });
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, showPreview, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, showPreview, openPreview, S };
 
 ;(async()=>{
   wire();

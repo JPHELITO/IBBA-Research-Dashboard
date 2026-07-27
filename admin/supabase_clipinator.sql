@@ -58,6 +58,36 @@ create table if not exists public.take_corrections (
 alter table public.take_corrections enable row level security;
 create index if not exists take_corrections_recent_idx on public.take_corrections (created_at desc);
 
+-- ───────────── 1c) CORPOS GUARDADOS (velocidade — 100% À PARTE do news hunter) ─────────────
+-- O clipping ganha o SEU PRÓPRIO armazém de corpos. Um "aquecedor" (clipping/warm_bodies.py, num
+-- workflow separado) LÊ os candidatos (só leitura do news_articles — não escreve lá) e raspa+guarda
+-- o corpo aqui. Depois: clicar na headline = corpo já pronto (instantâneo); Gerar = reusa (Word rápido).
+-- NÃO toca no news_articles nem no pipeline do hunter. RLS on, SEM policy: service key grava (aquecedor)
+-- + RPC SECURITY DEFINER lê (admin).
+create table if not exists public.clipping_bodies (
+  url               text primary key,
+  title             text,
+  source_name       text,
+  body              text,               -- HTML seguro (article_to_safe_html), pronto p/ o Word/preview
+  translated_title  text,               -- tradução EN (Valor/Estadão) — guardada p/ o Word sair instantâneo
+  translated_body   text,
+  status            text default 'ok',  -- ok | empty | error
+  char_len          int  default 0,
+  fetched_at        timestamptz not null default now()
+);
+alter table public.clipping_bodies enable row level security;
+create index if not exists clipping_bodies_fetched_idx on public.clipping_bodies (fetched_at desc);
+
+-- prévia por-notícia (admin clica na headline → corpo guardado, instantâneo)
+create or replace function public.admin_get_clipping_body(p_url text)
+  returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
+  select case when public.is_admin()
+      then coalesce((select to_jsonb(b) from public.clipping_bodies b where b.url = p_url), '{}'::jsonb)
+      else '{}'::jsonb end;
+$$;
+revoke all on function public.admin_get_clipping_body(text) from public, anon;
+grant execute on function public.admin_get_clipping_body(text) to authenticated;
+
 -- ───────────── 2) FEATURE FLAG (nasce DESLIGADA; só controla o link no menu — acesso é por is_admin) ─────────────
 insert into public.dashboard_flags (key, label, sort_order, enabled) values
   ('clipinator', 'Clipinator (gerador de clipping — só admin)', 120, false)
@@ -136,12 +166,14 @@ grant execute on function public.admin_delete_clipping_job(uuid) to authenticate
 create or replace function public.admin_get_clipping_candidates(p_hours int default 24)
   returns table(
     url text, domain text, title text, source_name text, snippet text,
-    published_at text, found_at text, sector text, take text, take_llm text
+    published_at text, found_at text, sector text, take text, take_llm text, has_body boolean
   )
   language sql stable security definer set search_path = public, pg_temp as $$
   select n.url, n.domain, n.title, n.source_name, n.snippet,
-         n.published_at::text, n.found_at::text, n.sector, n.take, n.take_llm
+         n.published_at::text, n.found_at::text, n.sector, n.take, n.take_llm,
+         (b.char_len is not null and b.char_len > 80) as has_body   -- corpo já guardado (aquecedor)?
   from public.news_articles n
+  left join public.clipping_bodies b on b.url = n.url
   where public.is_admin()
     and n.include_in_report is distinct from false
     -- Clipping usa SÓ estas 6 fontes (decisão do usuário 2026-07-27): scraping dedicado/liso
