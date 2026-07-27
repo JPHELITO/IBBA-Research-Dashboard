@@ -89,6 +89,7 @@
       <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
+    <a class="gn-item" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipinator</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
@@ -116,7 +117,10 @@
     tries = tries || 0;
     var sb=_sb();
     if(sb){ sb.rpc('get_my_role').then(function(r){
-      if(r && r.data === 'admin'){ var a=document.getElementById('gnav-admin'); if(a) a.style.display='inline-flex'; }
+      if(r && r.data === 'admin'){
+        var a=document.getElementById('gnav-admin'); if(a) a.style.display='inline-flex';
+        var c=document.getElementById('gnav-clipinator'); if(c) c.style.display='inline-flex';   // ferramenta interna: só admin
+      }
     }).catch(function(){}); return; }
     // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
     // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).
