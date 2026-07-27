@@ -35,6 +35,7 @@ create index if not exists clipping_jobs_created_idx on public.clipping_jobs (cr
 -- colunas adicionais (idempotente p/ tabelas já criadas)
 alter table public.clipping_jobs add column if not exists config jsonb;   -- {intro, recent_publications, earnings_review}
 alter table public.clipping_jobs add column if not exists errors jsonb;   -- [{url,reason}] corpos que falharam (Onda 4)
+alter table public.clipping_jobs add column if not exists preview_path text;  -- URL assinada do HTML de prévia (Opção A)
 
 -- ───────────── 1b) CORREÇÕES DE TAKE (Onda 5 — a IA aprende com o analista) ─────────────
 -- Cada vez que você gera um clipping, grava-se 1 linha por notícia: o take que a IA sugeriu
