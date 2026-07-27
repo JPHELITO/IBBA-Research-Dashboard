@@ -89,10 +89,30 @@ create or replace function public.admin_delete_clipping_job(p_id uuid)
 revoke all on function public.admin_delete_clipping_job(uuid) from public, anon;
 grant execute on function public.admin_delete_clipping_job(uuid) to authenticated;
 
+-- ───────────── 6) CANDIDATOS (frontend admin → notícias recentes já classificadas) ─────────────
+-- Lê news_articles das últimas p_hours (default 24h, teto 168h=7d), só as incluídas no report,
+-- trazendo o take da IA (take_llm) e o setor como SUGESTÃO editável. Datas devolvidas como text
+-- (robusto ao tipo real da coluna); comparação/ordem via ::timestamptz (funciona p/ text ou tstz).
+create or replace function public.admin_get_clipping_candidates(p_hours int default 24)
+  returns table(
+    url text, domain text, title text, source_name text, snippet text,
+    published_at text, found_at text, sector text, take text, take_llm text
+  )
+  language sql stable security definer set search_path = public, pg_temp as $$
+  select n.url, n.domain, n.title, n.source_name, n.snippet,
+         n.published_at::text, n.found_at::text, n.sector, n.take, n.take_llm
+  from public.news_articles n
+  where public.is_admin()
+    and n.include_in_report is distinct from false
+    and coalesce(n.published_at::timestamptz, n.found_at::timestamptz)
+        >= now() - make_interval(hours => greatest(1, least(coalesce(p_hours, 24), 168)))
+  order by coalesce(n.published_at::timestamptz, n.found_at::timestamptz) desc
+  limit 400;
+$$;
+revoke all on function public.admin_get_clipping_candidates(int) from public, anon;
+grant execute on function public.admin_get_clipping_candidates(int) to authenticated;
+
 -- =============================================================================
--- (Fase 1 vai ADICIONAR aqui a RPC admin_get_clipping_candidates(p_hours) que lê
---  news_articles recentes com take_llm+sector — depois de confirmar o schema da tabela.)
---
--- FIM. Depois de rodar: a área já existe. A flag 'clipinator' pode ficar OFF —
--- o acesso é por is_admin(); a flag só controla a exibição do link no menu.
+-- FIM. Idempotente (create-or-replace) → pode rodar o arquivo inteiro de novo com segurança.
+-- A flag 'clipinator' pode ficar OFF — o acesso é por is_admin(); a flag só controla o link no menu.
 -- =============================================================================
