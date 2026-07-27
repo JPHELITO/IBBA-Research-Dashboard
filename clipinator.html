@@ -160,6 +160,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .fail-why{font-weight:400;color:var(--gray-mid);font-size:10px;margin-left:6px;}
 .fail-body{width:100%;box-sizing:border-box;min-height:68px;resize:vertical;font:400 11px var(--font);
   background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:6px 8px;}
+/* Prévia inline do clipping (Opção A) */
+.preview{margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:var(--shadow);}
+.pv-h{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;}
+.pv-h span{flex:1;}
+.pv-open{font-weight:600;font-size:11.5px;color:var(--orange);text-decoration:none;}
+.pv-open:hover{text-decoration:underline;}
+.pv-x{background:none;border:none;color:var(--gray-mid);font-size:18px;cursor:pointer;line-height:1;}
+.pv-x:hover{color:var(--red);}
+.pv-load{padding:24px;text-align:center;color:var(--gray-mid);font-size:12px;}
+.pv-frame{width:100%;height:72vh;border:none;background:#fff;display:block;}
+.dl-pv{border:none;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -243,6 +254,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
       </div>
     </div>
   </div>
+
+  <div id="clip-preview" class="preview" hidden></div>
 </div>
 
 <script>
@@ -504,13 +517,31 @@ function renderFailures(errors){
   if(rb) rb.onclick=()=>{ host.hidden=true; generate(); };
 }
 
+// ── Prévia do clipping renderizada inline (Opção A) ──────────────────────────
+async function showPreview(url){
+  const host=document.getElementById('clip-preview'); if(!host||!url) return;
+  host.hidden=false;
+  host.innerHTML='<div class="pv-h"><span>👁 Prévia do clipping</span>'
+    +'<a class="pv-open" href="'+esc(url)+'" target="_blank" rel="noopener">abrir em nova aba ↗</a>'
+    +'<button class="pv-x" title="Fechar prévia">×</button></div>'
+    +'<div class="pv-load">Carregando prévia…</div>'
+    +'<iframe class="pv-frame" title="Prévia do clipping" hidden></iframe>';
+  host.querySelector('.pv-x').onclick=()=>{ host.hidden=true; host.innerHTML=''; };
+  const ifr=host.querySelector('.pv-frame'), load=host.querySelector('.pv-load');
+  const reveal=()=>{ if(load) load.hidden=true; ifr.hidden=false; };
+  try{ const r=await fetch(url); if(!r.ok) throw 0; ifr.srcdoc=await r.text(); reveal(); }
+  catch(e){ ifr.src=url; reveal(); }                 // fallback: carrega direto (sem depender de CORS)
+  host.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function clearPreview(){ const pv=document.getElementById('clip-preview'); if(pv){ pv.hidden=true; pv.innerHTML=''; } }
+
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
   const btn=document.getElementById('clip-gen'), st=document.getElementById('clip-status');
   btn.disabled=true; st.className='gen-status';
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
-  renderFailures([]);                       // limpa painel de falhas de uma geração anterior
+  renderFailures([]); clearPreview();        // limpa falhas + prévia de uma geração anterior
   try{
     const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config});
     st.innerHTML='<span class="spin2"></span> Gerando o clipping… (busca os corpos, traduz e monta o Word — ~1-3 min)';
@@ -530,8 +561,12 @@ async function pollJob(jobId, st, btn){
       st.className='gen-status ok';
       st.innerHTML='✓ Pronto! '
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
-        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
-      btn.disabled=false; renderFailures(job.errors); return;   // corpos que falharam → colar e regerar
+        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>'
+        +(job.preview_path?'<button class="dl dl-pv">👁 Prévia</button>':'');
+      const pvb=st.querySelector('.dl-pv'); if(pvb) pvb.onclick=()=>showPreview(job.preview_path);
+      btn.disabled=false; renderFailures(job.errors);           // corpos que falharam → colar e regerar
+      if(job.preview_path) showPreview(job.preview_path);        // prévia inline automática (Opção A)
+      return;
     }
     if(job.status==='error'){
       st.className='gen-status err'; st.textContent='Erro na geração: '+(job.error||'desconhecido'); btn.disabled=false; return;
@@ -620,7 +655,7 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, showPreview, S };
 
 ;(async()=>{
   wire();
