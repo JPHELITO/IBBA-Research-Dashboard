@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Clipinator</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/topnav.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
+  --bg:#F7F6F3;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.06);
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+/* o atributo hidden PRECISA vencer o display:flex do .splash */
+[hidden]{display:none!important}
+
+.splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{display:inline-block;margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--orange);color:#fff;
+  text-decoration:none;font-size:12.5px;font-weight:600;}
+
+#app{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:26px 28px 60px;}
+.clip-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+.clip-title{font-size:23px;font-weight:700;letter-spacing:-.01em;}
+.clip-title small{display:block;font-size:12.5px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
+.clip-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
+  border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:3px 9px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;}
+.card h2{font-size:14px;font-weight:700;margin-bottom:6px;}
+.card p{font-size:13px;color:var(--gray-dark);line-height:1.55;}
+.stat{font-size:12px;color:var(--gray-mid);margin-top:14px;}
+.stat b{color:var(--black);}
+</style>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Carregando o Clipinator…</div></div>
+
+<div id="denied" class="splash" hidden>
+  <div style="font-size:34px">🔒</div>
+  <div><b>Área restrita</b></div>
+  <div class="muted" style="max-width:400px">O Clipinator é uma ferramenta interna, disponível apenas para administradores.</div>
+  <a class="hbtn" href="/index.html">← Voltar para a home</a>
+</div>
+
+<div id="app" hidden>
+  <div class="clip-head">
+    <div class="clip-title">Clipinator <span class="clip-badge">admin</span>
+      <small>Montagem do clipping diário — seleção assistida por IA, corpo completo, Word + e-mail.</small>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Fundação no ar ✓</h2>
+    <p>A área está criada e protegida (só admin). A <b>seleção assistida</b> das notícias entra na próxima etapa:
+       a lista das últimas 24h já classificadas pela IA (take e setor sugeridos), pronta para você curar e gerar
+       o clipping.</p>
+    <div class="stat" id="clip-stat">Verificando o banco…</div>
+  </div>
+</div>
+
+<script>
+// ── Supabase + auth (idêntico às demais páginas) ──────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+let _session=null;
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){
+  const {data,error}=(args===undefined)?await sbAuth.rpc(name):await sbAuth.rpc(name,args);
+  if(error) throw new Error(name+': '+(error.message||error));
+  return data;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// smoke test da Fase 0: confirma que as RPCs do clipping respondem
+async function clipStart(){
+  document.getElementById('gate').hidden=true;
+  document.getElementById('app').hidden=false;
+  try{
+    const jobs=await rpc('admin_get_clipping_jobs',{p_limit:5})||[];
+    document.getElementById('clip-stat').innerHTML='Banco conectado — <b>'+jobs.length+'</b> job(s) recente(s) na fila.';
+  }catch(e){
+    document.getElementById('clip-stat').innerHTML='<span style="color:var(--red)">Falta rodar admin/supabase_clipinator.sql no Supabase.</span>';
+  }
+}
+
+;(async()=>{
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _session=session; _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Portão ADMIN-ONLY: esta ferramenta NUNCA é exposta ao cliente (nem com a flag ligada).
+    let isAdmin=false;
+    try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role', e); }
+    if(!isAdmin){ try{ isAdmin=(await rpc('is_admin'))===true; }catch(e){ console.warn('is_admin', e); } }
+    if(!isAdmin){
+      document.getElementById('gate').hidden=true;
+      document.getElementById('denied').hidden=false;
+      return;
+    }
+    await clipStart();
+  }catch(e){ console.error(e);
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📰</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Clipinator indisponível</div>'
+      +'<div class="muted">'+esc(String(e&&e.message||e))+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Voltar para a home</a></div>'; }
+})();
+</script>
+</body>
+</html>

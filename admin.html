@@ -975,6 +975,7 @@ const FLAG_GROUPS=[
   {id:'pages',       label:'Páginas / Áreas',  sub:'Acesso às áreas completas da dashboard'},
   {id:'stock_guide', label:'Stock Guide',      sub:'Sub-áreas (desligadas mostram "indisponível", não somem)'},
   {id:'steel',       label:'Steel & Mining',   sub:''},
+  {id:'admin_tools', label:'Ferramentas internas', sub:'Só admin — nunca aparecem para o cliente'},
   {id:'other',       label:'Outros',           sub:'Flags sem grupo definido'},
 ]
 const FLAG_META={
@@ -991,6 +992,7 @@ const FLAG_META={
   stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
   stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
   pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
+  clipinator:    {g:'admin_tools', l:'Clipinator',       d:'Gerador do clipping diário (o acesso é sempre restrito ao admin)'},
 }
 function _flagCounts(){
   document.querySelectorAll('.flag-grp').forEach(g=>{ const its=g.querySelectorAll('.flag-item'),on=[...its].filter(i=>i.querySelector('input').checked).length,c=g.querySelector('.cnt'); if(c)c.textContent=on+'/'+its.length })
