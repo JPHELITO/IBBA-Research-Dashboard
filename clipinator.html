@@ -27,7 +27,6 @@ html.dark{
 html,body{height:100%;}
 body{font-family:var(--font);background:var(--bg);color:var(--black);
   -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
-/* o atributo hidden PRECISA vencer o display:flex do .splash */
 [hidden]{display:none!important}
 
 .splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
@@ -35,19 +34,81 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 @keyframes spin{to{transform:rotate(360deg)}}
 .muted{color:var(--gray-mid);font-size:13px;}
 .hbtn{display:inline-block;margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--orange);color:#fff;
-  text-decoration:none;font-size:12.5px;font-weight:600;}
+  text-decoration:none;font-size:12.5px;font-weight:600;border:none;cursor:pointer;}
 
-#app{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:26px 28px 60px;}
-.clip-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
-.clip-title{font-size:23px;font-weight:700;letter-spacing:-.01em;}
-.clip-title small{display:block;font-size:12.5px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
+#app{flex:1;width:100%;max-width:1240px;margin:0 auto;padding:22px 26px 60px;}
+.clip-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+.clip-title{font-size:22px;font-weight:700;letter-spacing:-.01em;}
+.clip-title small{display:block;font-size:12px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
 .clip-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
-  border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:3px 9px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;}
-.card h2{font-size:14px;font-weight:700;margin-bottom:6px;}
-.card p{font-size:13px;color:var(--gray-dark);line-height:1.55;}
-.stat{font-size:12px;color:var(--gray-mid);margin-top:14px;}
-.stat b{color:var(--black);}
+  border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:2px 8px;vertical-align:middle;}
+
+/* layout duas colunas: candidatos | seleção */
+.clip-grid{display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start;}
+@media(max-width:940px){.clip-grid{grid-template-columns:1fr;}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;border-bottom:1px solid var(--border);}
+.panel-h h2{font-size:13.5px;font-weight:700;}
+.panel-b{padding:8px 10px;}
+
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sel{font:600 12px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);
+  border-radius:7px;padding:6px 9px;cursor:pointer;}
+.btn{font:600 12px var(--font);background:var(--bg);color:var(--gray-dark);border:1px solid var(--border);
+  border-radius:7px;padding:6px 11px;cursor:pointer;}
+.btn:hover{border-color:var(--orange);color:var(--orange);}
+.btn.primary{background:var(--orange);color:#fff;border-color:var(--orange);}
+.btn.primary:disabled{opacity:.5;cursor:not-allowed;}
+.chip{font:600 11px var(--font);background:var(--bg);color:var(--gray-mid);border:1px solid var(--border);
+  border-radius:999px;padding:5px 11px;cursor:pointer;}
+.chip.on{background:var(--black);color:var(--card);border-color:var(--black);}
+.count{font-size:11.5px;color:var(--gray-mid);}
+.count b{color:var(--black);}
+
+/* linha de candidato */
+.clist{max-height:66vh;overflow:auto;}
+.row{display:grid;grid-template-columns:22px 1fr auto auto;gap:10px;align-items:center;
+  padding:9px 8px;border-bottom:1px solid var(--border);}
+.row:last-child{border-bottom:none;}
+.row.picked{background:rgba(255,80,0,.05);}
+.row input[type=checkbox]{width:16px;height:16px;accent-color:var(--orange);cursor:pointer;}
+.r-main{min-width:0;}
+.r-title{font-size:12.5px;font-weight:600;line-height:1.35;color:var(--black);text-decoration:none;
+  display:block;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.r-title:hover{color:var(--orange);}
+.r-meta{font-size:10.5px;color:var(--gray-mid);margin-top:2px;}
+.tk{display:inline-flex;gap:3px;}
+.tk button{width:26px;height:24px;border:1px solid var(--border);background:var(--bg);border-radius:6px;
+  font:700 12px var(--font);color:var(--gray-mid);cursor:pointer;line-height:1;}
+.tk button.on.pos{background:var(--green);border-color:var(--green);color:#fff;}
+.tk button.on.neu{background:#8a8f98;border-color:#8a8f98;color:#fff;}
+.tk button.on.neg{background:var(--red);border-color:var(--red);color:#fff;}
+.secsel{font:600 11px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:4px 5px;}
+
+/* painel de seleção / preview */
+.prev-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+  padding:8px 8px;border-bottom:1px solid var(--border);}
+.prev-ord{display:flex;flex-direction:column;gap:1px;}
+.prev-ord button{width:20px;height:16px;border:1px solid var(--border);background:var(--bg);border-radius:4px;
+  font-size:9px;line-height:1;color:var(--gray-mid);cursor:pointer;padding:0;}
+.prev-t{font-size:11.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.prev-m{font-size:10px;color:var(--gray-mid);margin-top:1px;display:flex;gap:6px;align-items:center;}
+.tag{font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em;}
+.tag.sm{background:#e9eaec;color:#3a3f47;} html.dark .tag.sm{background:#2b3038;color:#c3c7cd;}
+.tag.pp{background:#dff3e6;color:#1a7a3f;} html.dark .tag.pp{background:#12351f;color:#22c55e;}
+.tag.nr{background:#e2edfb;color:#1c5aa8;} html.dark .tag.nr{background:#16233a;color:#6aa3ec;}
+.tag.cement{background:#f6efe4;color:#8a5a1a;} html.dark .tag.cement{background:#332616;color:#d8a35a;}
+.tag.pos{background:var(--green);color:#fff;} .tag.neu{background:#8a8f98;color:#fff;} .tag.neg{background:var(--red);color:#fff;}
+.prev-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;line-height:1;}
+.prev-x:hover{color:var(--red);}
+.manual{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);}
+.manual input{flex:1;font:400 12px var(--font);background:var(--bg);color:var(--black);
+  border:1px solid var(--border);border-radius:7px;padding:7px 9px;}
+.empty{padding:26px 14px;text-align:center;color:var(--gray-mid);font-size:12px;}
+.note{font-size:11px;color:var(--gray-mid);padding:10px 12px;border-top:1px solid var(--border);line-height:1.5;}
 </style>
 </head>
 <body>
@@ -64,15 +125,47 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 <div id="app" hidden>
   <div class="clip-head">
     <div class="clip-title">Clipinator <span class="clip-badge">admin</span>
-      <small>Montagem do clipping diário — seleção assistida por IA, corpo completo, Word + e-mail.</small>
+      <small>Selecione as notícias do clipping. Take e setor já vêm sugeridos pela IA — ajuste e ordene.</small>
     </div>
   </div>
-  <div class="card">
-    <h2>Fundação no ar ✓</h2>
-    <p>A área está criada e protegida (só admin). A <b>seleção assistida</b> das notícias entra na próxima etapa:
-       a lista das últimas 24h já classificadas pela IA (take e setor sugeridos), pronta para você curar e gerar
-       o clipping.</p>
-    <div class="stat" id="clip-stat">Verificando o banco…</div>
+
+  <div class="clip-grid">
+    <!-- coluna esquerda: candidatos -->
+    <div class="panel">
+      <div class="panel-h">
+        <div class="bar">
+          <div id="clip-filters" class="bar"></div>
+        </div>
+        <div class="bar">
+          <select class="sel" id="clip-hours">
+            <option value="24">Últimas 24h</option>
+            <option value="48">Últimas 48h</option>
+            <option value="72">Últimas 72h</option>
+          </select>
+          <button class="btn" id="clip-reload">↻ Recarregar</button>
+        </div>
+      </div>
+      <div class="panel-b" style="padding:0">
+        <div id="clip-list" class="clist"><div class="empty">Carregando notícias…</div></div>
+      </div>
+    </div>
+
+    <!-- coluna direita: seleção -->
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Clipping de hoje</h2>
+        <span class="count" id="clip-count"><b>0</b> selecionadas</span>
+      </div>
+      <div id="clip-sel" class="panel-b" style="padding:0"><div class="empty">Marque notícias à esquerda para montar o clipping.</div></div>
+      <div class="manual">
+        <input id="clip-url" type="url" placeholder="Colar uma URL avulsa…"/>
+        <button class="btn" id="clip-add">Adicionar</button>
+      </div>
+      <div class="note">
+        A geração do Word + e-mail entra na <b>Fase 3</b>. Por ora você monta e confere a seleção.
+        <div style="margin-top:8px"><button class="btn primary" id="clip-gen" disabled>Gerar clipping (em breve)</button></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -90,19 +183,175 @@ async function rpc(name,args){
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-// smoke test da Fase 0: confirma que as RPCs do clipping respondem
-async function clipStart(){
-  document.getElementById('gate').hidden=true;
-  document.getElementById('app').hidden=false;
+// ── estado ────────────────────────────────────────────────────────────────────
+const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all' };
+const SECTORS=[['SM','S&M'],['PP','P&P'],['NR','NR'],['CEMENT','Cement']];
+const SEC_TAG={SM:'sm',PP:'pp',NR:'nr',CEMENT:'cement'};
+
+function domainOf(u){ try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';} }
+// setor SUGERIDO a partir do classificador (steel|mining→SM, pp→PP, senão NR)
+function suggestSector(c){
+  const s=(c.sector||'').toLowerCase();
+  if(s==='pp'||s==='pulp_paper'||s==='pulp'||s==='paper') return 'PP';
+  if(s==='steel'||s==='mining'||s==='sm') return 'SM';
+  return 'NR';
+}
+// take SUGERIDO a partir da IA (+/-/= aproveitados; "no take"/vazio → '=')
+function suggestTake(c){ const t=(c.take_llm||'').trim(); return (t==='+'||t==='-'||t==='=')?t:'='; }
+function timeAgo(iso){
+  if(!iso) return '';
+  const d=new Date(iso.replace(' ','T')); if(isNaN(d)) return '';
+  const m=Math.max(0,Math.round((Date.now()-d.getTime())/60000));
+  if(m<60) return 'há '+m+'m'; const h=Math.round(m/60);
+  if(h<48) return 'há '+h+'h'; return 'há '+Math.round(h/24)+'d';
+}
+
+function setCandidates(list){
+  S.cand=(list||[]).map(c=>({...c, _sec:suggestSector(c), _take:suggestTake(c)}));
+  S.byUrl={}; S.cand.forEach(c=>S.byUrl[c.url]=c);
+  // limpa seleção órfã
+  S.order=S.order.filter(u=>S.byUrl[u]);
+  renderFilters(); renderList(); renderSel();
+}
+
+// ── render: filtros por setor ─────────────────────────────────────────────────
+function renderFilters(){
+  const host=document.getElementById('clip-filters'); if(!host) return;
+  const counts={all:S.cand.length,SM:0,PP:0,NR:0};
+  S.cand.forEach(c=>{ counts[c._sec]=(counts[c._sec]||0)+1; });
+  const defs=[['all','Todas'],['SM','S&M'],['PP','P&P'],['NR','NR']];
+  host.innerHTML=defs.map(([k,l])=>`<span class="chip${S.filter===k?' on':''}" data-f="${k}">${l} ${counts[k]||0}</span>`).join('');
+  host.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{ S.filter=ch.dataset.f; renderFilters(); renderList(); });
+}
+
+// ── render: lista de candidatos ───────────────────────────────────────────────
+function renderList(){
+  const host=document.getElementById('clip-list'); if(!host) return;
+  let rows=S.cand;
+  if(S.filter!=='all') rows=rows.filter(c=>c._sec===S.filter);
+  if(!rows.length){ host.innerHTML='<div class="empty">Nenhuma notícia nessa janela/filtro.</div>'; return; }
+  host.innerHTML=rows.map(c=>{
+    const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
+    const src=esc(c.source_name||domainOf(c.url)); const t=timeAgo(c.published_at||c.found_at);
+    return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
+      <input type="checkbox" ${picked?'checked':''} data-act="pick">
+      <div class="r-main">
+        <a class="r-title" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title||c.url)}</a>
+        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}</div>
+      </div>
+      <div class="tk" data-act="take">
+        <button data-t="+" class="pos${st.take==='+'?' on':''}">+</button>
+        <button data-t="=" class="neu${st.take==='='?' on':''}">=</button>
+        <button data-t="-" class="neg${st.take==='-'?' on':''}">−</button>
+      </div>
+      <select class="secsel" data-act="sector">
+        ${SECTORS.map(([v,l])=>`<option value="${v}"${st.sector===v?' selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+  // wire
+  host.querySelectorAll('.row').forEach(row=>{
+    const u=row.dataset.u;
+    row.querySelector('[data-act=pick]').onchange=e=>togglePick(u,e.target.checked);
+    row.querySelectorAll('.tk button').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
+    row.querySelector('[data-act=sector]').onchange=e=>setSector(u,e.target.value);
+  });
+}
+
+// ── ações de seleção ──────────────────────────────────────────────────────────
+function togglePick(u,on){
+  const c=S.byUrl[u]; if(!c) return;
+  if(on){ if(!S.sel.has(u)){ S.sel.set(u,{take:c._take,sector:c._sec}); S.order.push(u); } }
+  else{ S.sel.delete(u); S.order=S.order.filter(x=>x!==u); }
+  renderList(); renderSel();
+}
+function setTake(u,t){
+  if(!S.sel.has(u)){ togglePick(u,true); }         // ajustar take já inclui a notícia
+  const st=S.sel.get(u); if(st){ st.take=t; }
+  const c=S.byUrl[u]; if(c) c._take=t;
+  renderList(); renderSel();
+}
+function setSector(u,v){
+  const c=S.byUrl[u]; if(c) c._sec=v;
+  const st=S.sel.get(u); if(st) st.sector=v;
+  renderList(); renderSel();
+}
+function move(u,dir){
+  const i=S.order.indexOf(u); const j=i+dir;
+  if(i<0||j<0||j>=S.order.length) return;
+  const t=S.order[i]; S.order[i]=S.order[j]; S.order[j]=t;
+  renderSel();
+}
+
+// ── render: painel de seleção ─────────────────────────────────────────────────
+function renderSel(){
+  const host=document.getElementById('clip-sel'); const cnt=document.getElementById('clip-count');
+  if(cnt) cnt.innerHTML='<b>'+S.order.length+'</b> selecionadas';
+  if(!host) return;
+  if(!S.order.length){ host.innerHTML='<div class="empty">Marque notícias à esquerda para montar o clipping.</div>'; return; }
+  host.innerHTML=S.order.map((u,i)=>{
+    const c=S.byUrl[u]; if(!c) return '';
+    const st=S.sel.get(u)||{take:'=',sector:'NR'};
+    const tk=st.take==='+'?'pos':st.take==='-'?'neg':'neu';
+    const tkl=st.take==='+'?'+':st.take==='-'?'−':'=';
+    return `<div class="prev-row" data-u="${esc(u)}">
+      <div class="prev-ord"><button data-d="-1">▲</button><button data-d="1">▼</button></div>
+      <div><div class="prev-t">${esc(c.title||u)}</div>
+        <div class="prev-m"><span class="tag ${SEC_TAG[st.sector]||'nr'}">${st.sector}</span>
+          <span class="tag ${tk}">${tkl}</span><span>${esc(c.source_name||domainOf(u))}</span></div></div>
+      <button class="prev-x" title="Remover">×</button>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.prev-row').forEach(row=>{
+    const u=row.dataset.u;
+    row.querySelectorAll('.prev-ord button').forEach(b=>b.onclick=()=>move(u,+b.dataset.d));
+    row.querySelector('.prev-x').onclick=()=>togglePick(u,false);
+  });
+}
+
+// payload p/ a Fase 3 (enfileirar o job)
+function buildPayload(){
+  return S.order.map((u,i)=>{ const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{};
+    return {url:u, title:c.title||'', source_name:c.source_name||domainOf(u), take:st.take||'=', sector:st.sector||'NR', pos:i}; });
+}
+
+// URL avulsa
+function addManual(){
+  const inp=document.getElementById('clip-url'); const u=(inp.value||'').trim();
+  if(!/^https?:\/\//i.test(u)){ inp.style.borderColor='var(--red)'; return; }
+  inp.style.borderColor='';
+  if(!S.byUrl[u]){
+    const c={url:u,domain:domainOf(u),title:u,source_name:domainOf(u),published_at:null,found_at:new Date().toISOString(),sector:null,take_llm:null,manual:true,_sec:'NR',_take:'='};
+    S.cand.unshift(c); S.byUrl[u]=c;
+  }
+  togglePick(u,true); inp.value=''; renderFilters(); renderList();
+}
+
+// ── carregar candidatos ───────────────────────────────────────────────────────
+async function loadCandidates(){
+  const host=document.getElementById('clip-list'); if(host) host.innerHTML='<div class="empty">Carregando notícias…</div>';
   try{
-    const jobs=await rpc('admin_get_clipping_jobs',{p_limit:5})||[];
-    document.getElementById('clip-stat').innerHTML='Banco conectado — <b>'+jobs.length+'</b> job(s) recente(s) na fila.';
+    const data=await rpc('admin_get_clipping_candidates',{p_hours:S.hours});
+    setCandidates(data||[]);
   }catch(e){
-    document.getElementById('clip-stat').innerHTML='<span style="color:var(--red)">Falta rodar admin/supabase_clipinator.sql no Supabase.</span>';
+    if(host) host.innerHTML='<div class="empty" style="color:var(--red)">Falta rodar admin/supabase_clipinator.sql no Supabase.<br>'+esc(String(e&&e.message||e))+'</div>';
   }
 }
 
+function wire(){
+  document.getElementById('clip-hours').onchange=e=>{ S.hours=+e.target.value; loadCandidates(); };
+  document.getElementById('clip-reload').onclick=loadCandidates;
+  document.getElementById('clip-add').onclick=addManual;
+  document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
+}
+
+// hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
+const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, S };
+
 ;(async()=>{
+  wire();
+  if(CLIPTEST){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; return; }
   try{
     const {data:{session}}=await sbAuth.auth.getSession();
     if(!session){window.location.replace('/login.html');return}
@@ -112,12 +361,9 @@ async function clipStart(){
     let isAdmin=false;
     try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role', e); }
     if(!isAdmin){ try{ isAdmin=(await rpc('is_admin'))===true; }catch(e){ console.warn('is_admin', e); } }
-    if(!isAdmin){
-      document.getElementById('gate').hidden=true;
-      document.getElementById('denied').hidden=false;
-      return;
-    }
-    await clipStart();
+    if(!isAdmin){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; return; }
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    await loadCandidates();
   }catch(e){ console.error(e);
     document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📰</div>'
       +'<div style="font-weight:700;margin:8px 0 4px">Clipinator indisponível</div>'
