@@ -163,6 +163,9 @@ grant execute on function public.admin_delete_clipping_job(uuid) to authenticate
 -- Lê news_articles das últimas p_hours (default 24h, teto 168h=7d), só as incluídas no report,
 -- trazendo o take da IA (take_llm) e o setor como SUGESTÃO editável. Datas devolvidas como text
 -- (robusto ao tipo real da coluna); comparação/ordem via ::timestamptz (funciona p/ text ou tstz).
+-- ganhou a coluna has_body (2026-07-27) → o retorno mudou; create-or-replace não troca tipo de
+-- retorno de função existente → precisa DROP antes (idempotente).
+drop function if exists public.admin_get_clipping_candidates(int);
 create or replace function public.admin_get_clipping_candidates(p_hours int default 24)
   returns table(
     url text, domain text, title text, source_name text, snippet text,
