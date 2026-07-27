@@ -32,7 +32,7 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
   _setAuthCookie(session)
   sbAuth.rpc('log_visit',{p_path:location.pathname}).then(()=>{},()=>{})   // contador de acessos — .then(ok,err): o .rpc() do supabase-js não tem .catch
   // Mostra a aba "Admin" no cabeçalho só para o papel admin (falha silenciosa p/ não-admin)
-  sbAuth.rpc('get_my_role').then(r=>{ if(r&&r.data==='admin'){ const a=document.getElementById('admin-link'); if(a) a.style.display='inline-block' } }).catch(()=>{})
+  sbAuth.rpc('get_my_role').then(r=>{ if(r&&r.data==='admin'){ ['admin-link','clip-link'].forEach(id=>{ const a=document.getElementById(id); if(a) a.style.display='inline-block' }) } }).catch(()=>{})
   sbAuth.auth.onAuthStateChange((ev,s)=>{
     if(s?.access_token)_setAuthCookie(s)
     else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
@@ -63,13 +63,13 @@ body{height:100vh;overflow:hidden;}
    preenchida pelo layout FLUIDO, exatamente como a produção já faz. Resultado: mesma formatação/
    proporção das colunas em qualquer tela, fontes proporcionais à largura, SEM faixas e SEM esticar.
    (Mobile ≤1024px reseta isto e usa layout próprio.) */
-#stage{width:1920px;height:calc(100vh / var(--app-scale,1));flex:none;
+#stage{width:1920px;height:calc((100vh - 68px) / var(--app-scale,1));flex:none;
   display:flex;flex-direction:column;overflow:hidden;
   transform:scale(var(--app-scale,1));transform-origin:top left;}
 
 /* ══ HEADER ════════════════════════════════════════════════════════════════ */
 .header{background:var(--black);flex:none;display:flex;align-items:center;
-  padding:0 40px;height:62px;gap:14px;}
+  padding:0 28px;height:54px;gap:14px;position:relative;z-index:500;}
 .logout-btn{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:600;
   letter-spacing:.03em;color:rgba(255,255,255,.45);background:none;
   border:1px solid rgba(255,255,255,.15);border-radius:6px;
@@ -596,8 +596,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
 </head>
 <body>
 
-<div id="stage">
-<!-- HEADER -->
+<!-- HEADER (fixo, FORA do #stage escalado → mesma barra/altura das outras páginas) -->
 <div class="header">
   <svg class="brand-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect width="22" height="22" rx="6" fill="#FF5000"/>
@@ -622,6 +621,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         <a href="stock-guide.html#sens">Sensitivity</a></div></div>
     <a class="tn-item" href="/market.html">Market</a>
     <a class="tn-item" href="/agenda.html">Calendar</a>
+    <a class="tn-item tn-admin" id="clip-link" href="/clipinator.html" style="display:none">Clipinator</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
   <div class="team-head" id="team-head"></div>
@@ -629,6 +629,8 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
   <button class="logout-btn" onclick="logout()" style="margin-left:14px">Sign out</button>
 </div>
 <div class="orange-rule"></div>
+
+<div id="stage">
 
 <!-- HERO removido a pedido do usuario (2026-06-18) -->
 
