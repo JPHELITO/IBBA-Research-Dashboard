@@ -32,6 +32,9 @@ create table if not exists public.clipping_jobs (
 alter table public.clipping_jobs enable row level security;
 create index if not exists clipping_jobs_status_idx  on public.clipping_jobs (status);
 create index if not exists clipping_jobs_created_idx on public.clipping_jobs (created_at desc);
+-- colunas adicionais (idempotente p/ tabelas já criadas)
+alter table public.clipping_jobs add column if not exists config jsonb;   -- {intro, recent_publications, earnings_review}
+alter table public.clipping_jobs add column if not exists errors jsonb;   -- [{url,reason}] corpos que falharam (Onda 4)
 
 -- ───────────── 2) FEATURE FLAG (nasce DESLIGADA; só controla o link no menu — acesso é por is_admin) ─────────────
 insert into public.dashboard_flags (key, label, sort_order, enabled) values
@@ -40,7 +43,8 @@ on conflict (key) do nothing;
 
 -- ───────────── 3) ENFILEIRAR (frontend admin → cria um job pending) ─────────────
 -- p_payload: array JSON com a seleção curada. p_ref_date: data do clipping (default = hoje BRT).
-create or replace function public.admin_enqueue_clipping(p_payload jsonb, p_ref_date date default null)
+drop function if exists public.admin_enqueue_clipping(jsonb, date);   -- substituída pela versão com p_config
+create or replace function public.admin_enqueue_clipping(p_payload jsonb, p_ref_date date default null, p_config jsonb default null)
   returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
   declare v_id uuid;
   begin
@@ -48,15 +52,15 @@ create or replace function public.admin_enqueue_clipping(p_payload jsonb, p_ref_
     if jsonb_typeof(p_payload) is distinct from 'array' or jsonb_array_length(p_payload) = 0 then
       raise exception 'payload vazio ou inválido' using errcode='22023';
     end if;
-    insert into public.clipping_jobs (status, ref_date, payload, requested_by)
+    insert into public.clipping_jobs (status, ref_date, payload, config, requested_by)
     values ('pending',
             coalesce(p_ref_date, (now() at time zone 'America/Sao_Paulo')::date),
-            p_payload, auth.uid())
+            p_payload, p_config, auth.uid())
     returning id into v_id;
     return v_id;
   end; $$;
-revoke all on function public.admin_enqueue_clipping(jsonb, date) from public, anon;
-grant execute on function public.admin_enqueue_clipping(jsonb, date) to authenticated;
+revoke all on function public.admin_enqueue_clipping(jsonb, date, jsonb) from public, anon;
+grant execute on function public.admin_enqueue_clipping(jsonb, date, jsonb) to authenticated;
 
 -- ───────────── 4) LER JOBS (frontend admin → histórico + polling) ─────────────
 create or replace function public.admin_get_clipping_jobs(p_limit int default 20)
@@ -142,6 +146,36 @@ create or replace function public.admin_save_clipping_draft(p_payload jsonb)
   end; $$;
 revoke all on function public.admin_save_clipping_draft(jsonb) from public, anon;
 grant execute on function public.admin_save_clipping_draft(jsonb) to authenticated;
+
+-- ───────────── 9) CONFIG DO CLIPPING (intro/mensagem + Recent Publications + Earnings Review) ─────────────
+-- Um registro por admin (auth.uid()): a caixa de mensagem, as publicações e o toggle/nome do
+-- Earnings Review ficam salvos e voltam prontos. Vão no job via p_config do enqueue.
+create table if not exists public.clipping_config (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  settings    jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+alter table public.clipping_config enable row level security;
+
+create or replace function public.admin_get_clipping_config()
+  returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
+  select case when public.is_admin()
+              then coalesce((select settings from public.clipping_config where user_id = auth.uid()), '{}'::jsonb)
+              else '{}'::jsonb end;
+$$;
+revoke all on function public.admin_get_clipping_config() from public, anon;
+grant execute on function public.admin_get_clipping_config() to authenticated;
+
+create or replace function public.admin_save_clipping_config(p_settings jsonb)
+  returns void language plpgsql security definer set search_path = public, pg_temp as $$
+  begin
+    if not public.is_admin() then raise exception 'forbidden' using errcode='42501'; end if;
+    insert into public.clipping_config (user_id, settings, updated_at)
+    values (auth.uid(), coalesce(p_settings, '{}'::jsonb), now())
+    on conflict (user_id) do update set settings = excluded.settings, updated_at = now();
+  end; $$;
+revoke all on function public.admin_save_clipping_config(jsonb) from public, anon;
+grant execute on function public.admin_save_clipping_config(jsonb) to authenticated;
 
 -- ───────────── 7) BACKEND: reivindicar o próximo job (só service_role — o robô do Actions) ─────────────
 -- Claim atômico (FOR UPDATE SKIP LOCKED) → nunca dois runners pegam o mesmo job.

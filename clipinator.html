@@ -115,6 +115,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .spin2{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex-shrink:0;}
 .dl{display:inline-block;padding:6px 12px;border-radius:7px;background:var(--orange);color:#fff!important;text-decoration:none;font-weight:600;font-size:11.5px;}
 .dl:hover{opacity:.9;}
+.extras{margin:0 12px 4px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+.extras summary{cursor:pointer;font-weight:600;font-size:11.5px;color:var(--gray-dark);}
+.ex-block{margin-top:10px;}
+.ex-h{display:block;font-weight:600;font-size:11.5px;margin-bottom:4px;}
+.ex-h input[type=checkbox]{margin-right:5px;accent-color:var(--orange);vertical-align:middle;}
+.ex-hint{font-weight:400;color:var(--gray-mid);font-size:10px;}
+.extras textarea,.extras input,.extras select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
+.extras textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
+.extras textarea{resize:vertical;}
+.pub-row{display:grid;grid-template-columns:1fr 62px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
+.pub-row input,.pub-row select{min-width:0;}
+.pub-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;padding:0 2px;}
+.pub-x:hover{color:var(--red);}
+.ex-add{padding:3px 9px;font-size:11px;margin-top:3px;}
 </style>
 </head>
 <body>
@@ -168,6 +182,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <input id="clip-url" type="url" placeholder="Colar uma URL avulsa…"/>
         <button class="btn" id="clip-add">Adicionar</button>
       </div>
+      <details class="extras">
+        <summary>Extras (mensagem · publicações · earnings)</summary>
+        <div class="ex-block">
+          <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
+          <textarea id="cfg-intro-text" rows="4" placeholder="Dear clients,…"></textarea>
+        </div>
+        <div class="ex-block">
+          <div class="ex-h">Recent Publications</div>
+          <div id="cfg-pubs"></div>
+          <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
+        </div>
+        <div class="ex-block">
+          <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga a seção)</span></label>
+          <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
+          <div id="cfg-earn"></div>
+          <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
+        </div>
+      </details>
       <div class="gen">
         <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
         <div class="gen-status" id="clip-status"></div>
@@ -191,7 +223,9 @@ async function rpc(name,args){
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // ── estado ────────────────────────────────────────────────────────────────────
-const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all' };
+const DEFAULT_INTRO="Dear clients,\n\nPlease find below the latest news for Metals & Mining and Pulp & Paper.\n\nAccess our live dashboard: https://metals-mining-pulp-paper-dashboard.vercel.app\nLogin: BUYSIDE / Password: ibba5*";
+const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all',
+          config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]} } };
 const SECTORS=[['SM','S&M'],['PP','P&P'],['NR','NR'],['CEMENT','Cement']];
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr',CEMENT:'cement'};
 
@@ -358,7 +392,7 @@ async function generate(){
   btn.disabled=true; st.className='gen-status';
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
   try{
-    const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload()});
+    const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config});
     st.innerHTML='<span class="spin2"></span> Gerando o clipping… (busca os corpos, traduz e monta o Word — ~1-3 min)';
     await pollJob(jobId, st, btn);
   }catch(e){
@@ -411,6 +445,43 @@ async function loadCandidates(){
   }
 }
 
+// ── Config: mensagem/intro + Recent Publications + Earnings Review (persistente) ──
+let _cfgT=null;
+function saveConfig(){ if(CLIPTEST) return; clearTimeout(_cfgT); _cfgT=setTimeout(()=>{ rpc('admin_save_clipping_config',{p_settings:S.config}).catch(()=>{}); }, 800); }
+async function loadConfig(){
+  if(!CLIPTEST){
+    try{ const c=await rpc('admin_get_clipping_config')||{};
+      if(c.intro) S.config.intro=Object.assign({on:false,text:DEFAULT_INTRO},c.intro);
+      if(c.recent_publications) S.config.recent_publications=c.recent_publications;
+      if(c.earnings_review) S.config.earnings_review=Object.assign({on:false,label:'2Q26 Review',items:[]},c.earnings_review);
+    }catch(e){ console.warn('config', e); }
+  }
+  renderConfig();
+}
+function renderPubList(hostId, list){
+  const host=document.getElementById(hostId); if(!host) return;
+  host.innerHTML=(list||[]).map((p,i)=>`<div class="pub-row" data-i="${i}">
+    <input class="pub-name" placeholder="Nome a exibir" value="${esc(p.name||'')}">
+    <select class="pub-sec">${SECTORS.map(([v,l])=>`<option value="${v}"${p.sector===v?' selected':''}>${l}</option>`).join('')}</select>
+    <input class="pub-link" placeholder="Link do relatório" value="${esc(p.link||'')}">
+    <button class="pub-x" title="Remover">×</button></div>`).join('');
+  host.querySelectorAll('.pub-row').forEach(row=>{ const i=+row.dataset.i;
+    row.querySelector('.pub-name').oninput=e=>{ list[i].name=e.target.value; saveConfig(); };
+    row.querySelector('.pub-sec').onchange=e=>{ list[i].sector=e.target.value; saveConfig(); };
+    row.querySelector('.pub-link').oninput=e=>{ list[i].link=e.target.value; saveConfig(); };
+    row.querySelector('.pub-x').onclick=()=>{ list.splice(i,1); renderConfig(); saveConfig(); };
+  });
+}
+function renderConfig(){
+  const c=S.config, set=(id,prop,val)=>{ const el=document.getElementById(id); if(el) el[prop]=val; };
+  set('cfg-intro-on','checked',!!c.intro.on);
+  set('cfg-intro-text','value',c.intro.text||'');
+  set('cfg-earn-on','checked',!!c.earnings_review.on);
+  set('cfg-earn-label','value',c.earnings_review.label||'');
+  renderPubList('cfg-pubs', c.recent_publications);
+  renderPubList('cfg-earn', c.earnings_review.items);
+}
+
 function wire(){
   document.getElementById('clip-hours').onchange=e=>{ S.hours=+e.target.value; loadCandidates(); };
   document.getElementById('clip-reload').onclick=loadCandidates;
@@ -418,15 +489,22 @@ function wire(){
   document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
   document.getElementById('clip-gen').onclick=generate;
   const cc=document.getElementById('clip-clear'); if(cc) cc.onclick=clearSel;
+  // Config (mensagem/intro + Recent Publications + Earnings Review)
+  document.getElementById('cfg-intro-on').onchange=e=>{ S.config.intro.on=e.target.checked; saveConfig(); };
+  document.getElementById('cfg-intro-text').oninput=e=>{ S.config.intro.text=e.target.value; saveConfig(); };
+  document.getElementById('cfg-earn-on').onchange=e=>{ S.config.earnings_review.on=e.target.checked; saveConfig(); };
+  document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
+  document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.push({name:'',sector:'SM',link:''}); renderConfig(); };
+  document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.push({name:'',sector:'SM',link:''}); renderConfig(); };
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, S };
 
 ;(async()=>{
   wire();
-  if(CLIPTEST){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; return; }
+  if(CLIPTEST){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; renderConfig(); return; }
   try{
     const {data:{session}}=await sbAuth.auth.getSession();
     if(!session){window.location.replace('/login.html');return}
@@ -440,6 +518,7 @@ window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePic
     document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
     await loadCandidates();
     await loadDraft();       // restaura a pré-seleção salva (véspera → manhã seguinte)
+    await loadConfig();      // restaura mensagem/intro + Recent Publications + Earnings Review
   }catch(e){ console.error(e);
     document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📰</div>'
       +'<div style="font-weight:700;margin:8px 0 4px">Clipinator indisponível</div>'
