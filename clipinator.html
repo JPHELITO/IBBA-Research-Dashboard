@@ -70,7 +70,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 /* linha de candidato */
 .clist{max-height:66vh;overflow:auto;}
 /* lista no estilo do clipinator antigo: [✓] [HH:MM] [FONTE: título] [↗] [idade] */
-.row{display:grid;grid-template-columns:16px 40px 1fr auto auto;gap:9px;align-items:baseline;
+.row{display:grid;grid-template-columns:16px 40px minmax(0,1fr) auto auto auto;gap:8px;align-items:center;
   padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
 .row:last-child{border-bottom:none;}
 .row:hover{background:var(--gray-light);}
@@ -105,15 +105,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .prev-body{min-width:0;}
 .prev-src{font-size:9.5px;color:var(--orange);font-weight:800;text-transform:uppercase;letter-spacing:.04em;line-height:1.25;}
 .prev-t{font-size:12px;font-weight:500;line-height:1.35;color:var(--black);}   /* título INTEIRO (sem corte) */
-.prev-ctl{display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
-.qsel{display:flex;gap:2px;}
-.qbtn{min-width:22px;height:20px;padding:0 5px;border:1px solid var(--border);background:var(--card);border-radius:5px;
-  font:700 10px var(--font);color:var(--gray-mid);cursor:pointer;line-height:1;}
-.qbtn:hover{border-color:var(--orange);color:var(--orange);}
-.qsel-sec .qbtn.on{background:var(--gray-dark);border-color:var(--gray-dark);color:#fff;}
-.qsel-take .qbtn.on.pos{background:var(--green);border-color:var(--green);color:#fff;}
-.qsel-take .qbtn.on.neu{background:#8a8f98;border-color:#8a8f98;color:#fff;}
-.qsel-take .qbtn.on.neg{background:var(--red);border-color:var(--red);color:#fff;}
+.prev-ctl{display:flex;flex-direction:column;gap:3px;align-items:center;}
+/* botões padronizados (take + setor) — pequenos, iguais, reusados na lista e na fila */
+.tks,.secs{display:inline-flex;gap:2px;flex-shrink:0;}
+.mini-btn{height:18px;border:1px solid var(--border);background:var(--card);border-radius:4px;cursor:pointer;
+  font:700 9.5px var(--font);color:var(--gray-mid);line-height:1;padding:0;}
+.mini-btn.tk{width:18px;}
+.mini-btn.sc{min-width:27px;padding:0 3px;}
+.mini-btn:hover{border-color:var(--orange);color:var(--orange);}
+.mini-btn.sc.on{background:var(--gray-dark);border-color:var(--gray-dark);color:#fff;}
+.mini-btn.tk.on.pos{background:var(--green);border-color:var(--green);color:#fff;}
+.mini-btn.tk.on.neu{background:#8a8f98;border-color:#8a8f98;color:#fff;}
+.mini-btn.tk.on.neg{background:var(--red);border-color:var(--red);color:#fff;}
 .tag{font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em;}
 .tag.sm{background:#e9eaec;color:#3a3f47;} html.dark .tag.sm{background:#2b3038;color:#c3c7cd;}
 .tag.pp{background:#dff3e6;color:#1a7a3f;} html.dark .tag.pp{background:#12351f;color:#22c55e;}
@@ -321,21 +324,34 @@ function suggestSector(c){
 }
 // take SUGERIDO a partir da IA (+/-/= aproveitados; "no take"/vazio → '=')
 function suggestTake(c){ const t=(c.take_llm||'').trim(); return (t==='+'||t==='-'||t==='=')?t:'='; }
+// parse robusto do timestamp do Postgres ("2026-07-28 13:25:05.3+00") — tolera o "+00" sem colon
+function _parseTS(iso){
+  if(!iso) return null;
+  let s=String(iso).trim().replace(' ','T').replace(/([+-]\d{2})$/,'$1:00');
+  if(!/([zZ]|[+-]\d{2}:\d{2})$/.test(s)) s+='Z';   // sem timezone → assume UTC
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
 function timeAgo(iso){
-  if(!iso) return '';
-  const d=new Date(iso.replace(' ','T')); if(isNaN(d)) return '';
+  const d=_parseTS(iso); if(!d) return '';
   const m=Math.max(0,Math.round((Date.now()-d.getTime())/60000));
   if(m<60) return 'há '+m+'m'; const h=Math.round(m/60);
   if(h<48) return 'há '+h+'h'; return 'há '+Math.round(h/24)+'d';
 }
-// hora (HH:MM) + dia (DD/MM, só quando não é hoje) de cada notícia
+// hora (HH:MM) + dia (DD/MM, só quando não é hoje) — do horário que CHEGOU na dash (found_at)
 function fmtDT(iso){
-  if(!iso) return {t:'--:--',d:''};
-  const dt=new Date(iso.replace(' ','T')); if(isNaN(dt)) return {t:'--:--',d:''};
+  const dt=_parseTS(iso); if(!dt) return {t:'--:--',d:''};
   const t=String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
   const d=(dt.toDateString()===new Date().toDateString())
           ? '' : String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');
   return {t,d};
+}
+// grupos de botões padronizados (reusados na lista E na fila)
+function takeBtnsHTML(take){
+  return [['+','pos','+'],['=','neu','='],['-','neg','−']].map(([t,cls,lbl])=>
+    `<button data-t="${t}" class="mini-btn tk ${cls}${take===t?' on':''}">${lbl}</button>`).join('');
+}
+function secBtnsHTML(sec){
+  return SECTORS.map(([v,l])=>`<button data-s="${v}" class="mini-btn sc${sec===v?' on':''}">${l}</button>`).join('');
 }
 
 function setCandidates(list){
@@ -366,21 +382,24 @@ function renderList(){
   if(S.filter!=='all') rows=rows.filter(c=>c._sec===S.filter);
   if(!rows.length){ host.innerHTML='<div class="empty">Nenhuma notícia nessa janela/filtro.</div>'; return; }
   host.innerHTML=rows.map(c=>{
-    const picked=S.sel.has(c.url);
-    const src=esc(c.source_name||domainOf(c.url)); const dt=fmtDT(c.published_at||c.found_at); const t=timeAgo(c.published_at||c.found_at);
+    const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
+    const src=esc(c.source_name||domainOf(c.url)); const dt=fmtDT(c.found_at||c.published_at);
     return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
       <input type="checkbox" ${picked?'checked':''} data-act="pick">
       <span class="r-time"><b>${dt.t}</b>${dt.d?`<small>${dt.d}</small>`:''}</span>
-      <span class="r-link"><span class="r-src sec-${SEC_TAG[c._sec]||'nr'}">${src}:</span> ${esc(c.title||c.url)}</span>
+      <span class="r-link"><span class="r-src">${src}:</span> ${esc(c.title||c.url)}</span>
+      <span class="tks" data-act="take">${takeBtnsHTML(st.take)}</span>
+      <span class="secs" data-act="sector">${secBtnsHTML(st.sector)}</span>
       <a class="r-open" href="${esc(c.url)}" target="_blank" rel="noopener" title="Abrir no site original">↗</a>
-      <span class="r-age">${t||''}</span>
     </div>`;
   }).join('');
   host.querySelectorAll('.row').forEach(row=>{
     const u=row.dataset.u;
     const cb=row.querySelector('[data-act=pick]');
     cb.onchange=e=>togglePick(u,e.target.checked);
-    row.onclick=e=>{ if(e.target.closest('.r-open')||e.target===cb) return;
+    row.querySelectorAll('.tks .mini-btn').forEach(b=>b.onclick=e=>{e.stopPropagation(); setTake(u,b.dataset.t);});
+    row.querySelectorAll('.secs .mini-btn').forEach(b=>b.onclick=e=>{e.stopPropagation(); setSector(u,b.dataset.s);});
+    row.onclick=e=>{ if(e.target.closest('.r-open')||e.target.closest('.tks')||e.target.closest('.secs')||e.target===cb) return;
       cb.checked=!cb.checked; togglePick(u,cb.checked); };
   });
 }
@@ -393,9 +412,8 @@ function togglePick(u,on){
   renderList(); renderSel(); saveDraft();
 }
 function setTake(u,t){
-  if(!S.sel.has(u)){ togglePick(u,true); }         // ajustar take já inclui a notícia
-  const st=S.sel.get(u); if(st){ st.take=t; }
-  const c=S.byUrl[u]; if(c) c._take=t;
+  const c=S.byUrl[u]; if(c) c._take=t;             // edita o take (lista OU fila) sem auto-incluir
+  const st=S.sel.get(u); if(st) st.take=t;
   renderList(); renderSel(); saveDraft();
 }
 function setSector(u,v){
@@ -429,10 +447,6 @@ function renderSel(){
     html+=`<div class="sel-sec"><span class="tag ${SEC_TAG[sec]}">${sec}</span> ${esc(SEC_FULL[sec])} <b>${urls.length}</b></div>`;
     urls.forEach(u=>{
       const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{take:'=',sector:sec}; n++;
-      const takeBtns=[['+','pos','+'],['=','neu','='],['-','neg','−']].map(([t,cls,lbl])=>
-        `<button data-t="${t}" class="qbtn ${cls}${st.take===t?' on':''}">${lbl}</button>`).join('');
-      const secBtns=SECTORS.map(([v,l])=>
-        `<button data-s="${v}" class="qbtn${st.sector===v?' on':''}">${l}</button>`).join('');
       html+=`<div class="prev-row" data-u="${esc(u)}">
         <span class="prev-n">${n}</span>
         <span class="prev-h" draggable="true" title="Arraste para reordenar">⠿</span>
@@ -441,8 +455,8 @@ function renderSel(){
           <div class="prev-t">${esc(c.title||u)}</div>
         </div>
         <div class="prev-ctl">
-          <div class="qsel qsel-sec">${secBtns}</div>
-          <div class="qsel qsel-take">${takeBtns}</div>
+          <span class="secs" data-act="sector">${secBtnsHTML(st.sector)}</span>
+          <span class="tks" data-act="take">${takeBtnsHTML(st.take)}</span>
         </div>
         <button class="prev-x" title="Remover">×</button>
       </div>`;
@@ -451,8 +465,8 @@ function renderSel(){
   host.innerHTML=html;
   host.querySelectorAll('.prev-row').forEach(row=>{
     const u=row.dataset.u;
-    row.querySelectorAll('.qsel-take .qbtn').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
-    row.querySelectorAll('.qsel-sec .qbtn').forEach(b=>b.onclick=()=>setSector(u,b.dataset.s));
+    row.querySelectorAll('.tks .mini-btn').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
+    row.querySelectorAll('.secs .mini-btn').forEach(b=>b.onclick=()=>setSector(u,b.dataset.s));
     row.querySelector('.prev-x').onclick=()=>togglePick(u,false);
     const clearDrop=()=>host.querySelectorAll('.prev-row').forEach(r=>r.classList.remove('drop-above','drop-below'));
     const h=row.querySelector('.prev-h');
