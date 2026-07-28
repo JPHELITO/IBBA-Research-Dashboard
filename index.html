@@ -66,9 +66,9 @@ body{height:100vh;overflow:hidden;}
    preenchida pelo layout FLUIDO, exatamente como a produção já faz. Resultado: mesma formatação/
    proporção das colunas em qualquer tela, fontes proporcionais à largura, SEM faixas e SEM esticar.
    (Mobile ≤1024px reseta isto e usa layout próprio.) */
-/* -56px = altura do .gnav global (54px barra + 2px régua laranja do topnav.js), que substitui
-   o .header/.orange-rule próprios (escondidos no desktop). Antes 68px (header 54 + régua 2 + 12 de respiro). */
-#stage{width:1920px;height:calc((100vh - 56px) / var(--app-scale,1));flex:none;
+/* 68px reservados no topo = 56 do .gnav global (54 barra + 2 régua) + 12px de respiro entre a barra
+   e os boxes (margin-top; recria o antigo margin-bottom:12px da .orange-rule, escondida no desktop). */
+#stage{width:1920px;height:calc((100vh - 68px) / var(--app-scale,1));flex:none;margin-top:12px;
   display:flex;flex-direction:column;overflow:hidden;
   transform:scale(var(--app-scale,1));transform-origin:top left;}
 
@@ -534,7 +534,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 @media (max-width:1024px){
   html,body{height:auto;}
   body{height:auto;overflow:auto;display:block;}
-  #stage{width:auto;height:auto;transform:none;display:block;overflow:visible;}  /* mobile: sem escala, layout próprio */
+  #stage{width:auto;height:auto;transform:none;display:block;overflow:visible;margin-top:0;}  /* mobile: sem escala, layout próprio (respiro vem do margin-bottom da .orange-rule) */
   .page{grid-template-columns:1fr;grid-template-rows:none;overflow:visible;padding:8px 14px 40px;gap:14px;
     grid-template-areas:
     "secrow" "pulse" "news" "heat" "comm";}
