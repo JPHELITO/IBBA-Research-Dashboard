@@ -151,6 +151,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .pub-h{cursor:grab;color:var(--gray-mid);font-size:12px;user-select:none;opacity:.55;}
 .pub-h:active{cursor:grabbing;}
 .pub-row input,.pub-row select{min-width:0;}
+.an-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:9px;}
+.an-fields{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;}
+.an-fields input{width:100%;min-width:0;}
 .pub-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;padding:0 2px;}
 .pub-x:hover{color:var(--red);}
 .ex-add{padding:3px 9px;font-size:11px;margin-top:3px;}
@@ -244,14 +247,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <div id="clip-fails" class="fails" hidden></div>
       </div>
       <details class="ex-fold">
-        <summary>Extras — mensagem · publicações · earnings</summary>
+        <summary>Extras — mensagem · publicações · earnings · analistas</summary>
         <div class="ex-stack">
           <div class="ex-block">
             <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
             <textarea id="cfg-intro-text" rows="5" placeholder="Dear clients,…"></textarea>
             <div class="ex-introtools">
-              <button class="btn ex-add" id="cfg-intro-link" title="Selecione a palavra no texto e clique">🔗 Inserir link</button>
-              <span class="ex-hint">selecione a palavra → clique → cole o link</span>
+              <button class="btn ex-add" id="cfg-intro-bold" title="Selecione a palavra e clique">𝐁 Negrito</button>
+              <button class="btn ex-add" id="cfg-intro-link" title="Selecione a palavra e clique">🔗 Link</button>
+              <span class="ex-hint">selecione a palavra → negrito ou link</span>
             </div>
           </div>
           <div class="ex-block">
@@ -264,6 +268,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
             <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
             <div id="cfg-earn"></div>
             <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
+          </div>
+          <div class="ex-block">
+            <div class="ex-h">Analistas <span class="ex-hint">(bloco de contatos no rodapé do Word e do e-mail)</span></div>
+            <div id="cfg-analysts"></div>
+            <button class="btn ex-add" id="cfg-analysts-add">+ analista</button>
           </div>
         </div>
       </details>
@@ -288,8 +297,13 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','
 
 // ── estado ────────────────────────────────────────────────────────────────────
 const DEFAULT_INTRO="Dear clients,\n\nPlease find below the latest news for Metals & Mining and Pulp & Paper.\n\nAccess our live dashboard: https://metals-mining-pulp-paper-dashboard.vercel.app\nLogin: BUYSIDE / Password: ibba5*";
+const DEFAULT_ANALYSTS=[
+  {name:'Daniel Sasson, CFA',          role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t. +55 11 3073 3031  m.+55 11 99674 1242', email:'daniel.sasson@itaubba.com'},
+  {name:'Marcelo Furlan Palhares, CFA',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t. +55 11 3073 3357  m.+55 11 97464 2801', email:'marcelo.palhares@itaubba.com'},
+  {name:'João Paulo Luka Helito, CNPI',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t.+55 11 3073 3005  m.+55 11 93452 7535',  email:'joao.helito@itaubba.com'},
+];
 const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all',
-          config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]} } };
+          config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]}, analysts:DEFAULT_ANALYSTS.map(a=>({...a})) } };
 const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr'};
 const SEC_ORDER=['NR','SM','PP'];                        // agrupamento/ordem do clipping (= SECTOR_ORDER do motor)
@@ -615,6 +629,7 @@ async function loadConfig(){
       if(c.intro) S.config.intro=Object.assign({on:false,text:DEFAULT_INTRO},c.intro);
       if(c.recent_publications) S.config.recent_publications=c.recent_publications;
       if(c.earnings_review) S.config.earnings_review=Object.assign({on:false,label:'2Q26 Review',items:[]},c.earnings_review);
+      if(Array.isArray(c.analysts) && c.analysts.length) S.config.analysts=c.analysts;
     }catch(e){ console.warn('config', e); }
   }
   renderConfig();
@@ -649,6 +664,35 @@ function renderConfig(){
   set('cfg-earn-label','value',c.earnings_review.label||'');
   renderPubList('cfg-pubs', c.recent_publications);
   renderPubList('cfg-earn', c.earnings_review.items);
+  if(!Array.isArray(c.analysts)) c.analysts=DEFAULT_ANALYSTS.map(a=>({...a}));
+  renderAnalysts('cfg-analysts', c.analysts);
+}
+// editor de analistas (bloco de contatos): nome · cargo/linha · telefones · e-mail (arrastar p/ reordenar)
+function renderAnalysts(hostId, list){
+  const host=document.getElementById(hostId); if(!host) return;
+  host.innerHTML=(list||[]).map((a,i)=>`<div class="an-row" data-i="${i}">
+    <span class="pub-h" draggable="true" title="Arraste para reordenar">⠿</span>
+    <div class="an-fields">
+      <input class="an-name"  placeholder="Nome (ex.: Daniel Sasson, CFA)" value="${esc(a.name||'')}">
+      <input class="an-role"  placeholder="Cargo/linha (ex.: Equity Research – …)" value="${esc(a.role||'')}">
+      <input class="an-phone" placeholder="Telefones (t. … m. …)" value="${esc(a.phone||'')}">
+      <input class="an-email" placeholder="E-mail" value="${esc(a.email||'')}">
+    </div>
+    <button class="pub-x" title="Remover">×</button></div>`).join('');
+  let dragI=null;
+  host.querySelectorAll('.an-row').forEach(row=>{ const i=+row.dataset.i;
+    row.querySelector('.an-name').oninput =e=>{ list[i].name =e.target.value; saveConfig(); };
+    row.querySelector('.an-role').oninput =e=>{ list[i].role =e.target.value; saveConfig(); };
+    row.querySelector('.an-phone').oninput=e=>{ list[i].phone=e.target.value; saveConfig(); };
+    row.querySelector('.an-email').oninput=e=>{ list[i].email=e.target.value; saveConfig(); };
+    row.querySelector('.pub-x').onclick=()=>{ list.splice(i,1); renderConfig(); saveConfig(); };
+    const h=row.querySelector('.pub-h');
+    h.addEventListener('dragstart',e=>{ dragI=i; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',''); });
+    h.addEventListener('dragend',()=>{ dragI=null; host.querySelectorAll('.an-row').forEach(r=>r.classList.remove('dragging')); });
+    row.addEventListener('dragover',e=>{ if(dragI!==null) e.preventDefault(); });
+    row.addEventListener('drop',e=>{ e.preventDefault(); if(dragI===null||dragI===i) return;
+      const it=list.splice(dragI,1)[0]; list.splice(dragI<i?i-1:i,0,it); renderConfig(); saveConfig(); });
+  });
 }
 
 // inserir um link ([palavra](url)) na mensagem de abertura — vira hyperlink no Word e no e-mail
@@ -663,6 +707,16 @@ function insertIntroLink(){
   const md='['+word+']('+url+')';
   const a=hasSel?s:ta.selectionStart, b=hasSel?e:ta.selectionStart;
   ta.value=ta.value.slice(0,a)+md+ta.value.slice(b);
+  S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
+}
+
+// deixar a(s) palavra(s) selecionada(s) em **negrito** — vira bold no Word e no e-mail
+function insertIntroBold(){
+  const ta=document.getElementById('cfg-intro-text'); if(!ta) return;
+  const s=ta.selectionStart, e=ta.selectionEnd;
+  if(e<=s){ alert('Selecione a palavra no texto primeiro.'); return; }
+  const md='**'+ta.value.slice(s,e)+'**';
+  ta.value=ta.value.slice(0,s)+md+ta.value.slice(e);
   S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
 }
 
@@ -681,6 +735,8 @@ function wire(){
   document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-intro-link').onclick=insertIntroLink;
+  document.getElementById('cfg-intro-bold').onclick=insertIntroBold;
+  document.getElementById('cfg-analysts-add').onclick=()=>{ if(!Array.isArray(S.config.analysts)) S.config.analysts=[]; S.config.analysts.push({name:'',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement',phone:'',email:''}); renderConfig(); saveConfig(); };
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
