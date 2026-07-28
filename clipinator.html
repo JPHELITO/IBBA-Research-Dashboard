@@ -146,7 +146,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .ex-grid textarea,.ex-grid input,.ex-grid select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
 .ex-grid textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
 .ex-grid textarea{resize:vertical;}
-.pub-row{display:grid;grid-template-columns:1fr 62px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
+.pub-row{display:grid;grid-template-columns:auto 1fr 58px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
+.pub-row.dragging{opacity:.4;}
+.pub-h{cursor:grab;color:var(--gray-mid);font-size:12px;user-select:none;opacity:.55;}
+.pub-h:active{cursor:grabbing;}
 .pub-row input,.pub-row select{min-width:0;}
 .pub-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;padding:0 2px;}
 .pub-x:hover{color:var(--red);}
@@ -180,6 +183,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .ex-stack textarea,.ex-stack input,.ex-stack select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
 .ex-stack textarea,.ex-stack #cfg-earn-label{width:100%;box-sizing:border-box;}
 .ex-stack textarea{resize:vertical;}
+.ex-introtools{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -245,6 +249,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
           <div class="ex-block">
             <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
             <textarea id="cfg-intro-text" rows="5" placeholder="Dear clients,…"></textarea>
+            <div class="ex-introtools">
+              <button class="btn ex-add" id="cfg-intro-link" title="Selecione a palavra no texto e clique">🔗 Inserir link</button>
+              <span class="ex-hint">selecione a palavra → clique → cole o link</span>
+            </div>
           </div>
           <div class="ex-block">
             <div class="ex-h">Recent Publications</div>
@@ -614,15 +622,23 @@ async function loadConfig(){
 function renderPubList(hostId, list){
   const host=document.getElementById(hostId); if(!host) return;
   host.innerHTML=(list||[]).map((p,i)=>`<div class="pub-row" data-i="${i}">
+    <span class="pub-h" draggable="true" title="Arraste para reordenar">⠿</span>
     <input class="pub-name" placeholder="Nome a exibir" value="${esc(p.name||'')}">
     <select class="pub-sec">${SECTORS.map(([v,l])=>`<option value="${v}"${p.sector===v?' selected':''}>${l}</option>`).join('')}</select>
     <input class="pub-link" placeholder="Link do relatório" value="${esc(p.link||'')}">
     <button class="pub-x" title="Remover">×</button></div>`).join('');
+  let dragI=null;
   host.querySelectorAll('.pub-row').forEach(row=>{ const i=+row.dataset.i;
     row.querySelector('.pub-name').oninput=e=>{ list[i].name=e.target.value; saveConfig(); };
     row.querySelector('.pub-sec').onchange=e=>{ list[i].sector=e.target.value; saveConfig(); };
     row.querySelector('.pub-link').oninput=e=>{ list[i].link=e.target.value; saveConfig(); };
     row.querySelector('.pub-x').onclick=()=>{ list.splice(i,1); renderConfig(); saveConfig(); };
+    const h=row.querySelector('.pub-h');
+    h.addEventListener('dragstart',e=>{ dragI=i; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',''); });
+    h.addEventListener('dragend',()=>{ dragI=null; host.querySelectorAll('.pub-row').forEach(r=>r.classList.remove('dragging')); });
+    row.addEventListener('dragover',e=>{ if(dragI!==null) e.preventDefault(); });
+    row.addEventListener('drop',e=>{ e.preventDefault(); if(dragI===null||dragI===i) return;
+      const it=list.splice(dragI,1)[0]; list.splice(dragI<i?i-1:i,0,it); renderConfig(); saveConfig(); });
   });
 }
 function renderConfig(){
@@ -633,6 +649,21 @@ function renderConfig(){
   set('cfg-earn-label','value',c.earnings_review.label||'');
   renderPubList('cfg-pubs', c.recent_publications);
   renderPubList('cfg-earn', c.earnings_review.items);
+}
+
+// inserir um link ([palavra](url)) na mensagem de abertura — vira hyperlink no Word e no e-mail
+function insertIntroLink(){
+  const ta=document.getElementById('cfg-intro-text'); if(!ta) return;
+  const s=ta.selectionStart, e=ta.selectionEnd, hasSel=e>s;
+  const word=(hasSel? ta.value.slice(s,e) : (prompt('Qual palavra vira o link?','')||'')).trim();
+  if(!word) return;
+  let url=(prompt('Cole o link (URL):','https://')||'').trim();
+  if(!url||url==='https://') return;
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  const md='['+word+']('+url+')';
+  const a=hasSel?s:ta.selectionStart, b=hasSel?e:ta.selectionStart;
+  ta.value=ta.value.slice(0,a)+md+ta.value.slice(b);
+  S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
 }
 
 function wire(){
@@ -647,8 +678,9 @@ function wire(){
   document.getElementById('cfg-intro-text').oninput=e=>{ S.config.intro.text=e.target.value; saveConfig(); };
   document.getElementById('cfg-earn-on').onchange=e=>{ S.config.earnings_review.on=e.target.checked; saveConfig(); };
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
-  document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.push({name:'',sector:'SM',link:''}); renderConfig(); };
-  document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.push({name:'',sector:'SM',link:''}); renderConfig(); };
+  document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
+  document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
+  document.getElementById('cfg-intro-link').onclick=insertIntroLink;
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
