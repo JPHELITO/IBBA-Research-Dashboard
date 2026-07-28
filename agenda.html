@@ -100,7 +100,7 @@ html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba
 .band.win{font-weight:600;}
 .band.hl,.ev.hl{font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.30);}   /* categoria "destaque" */
 /* base de dados no MÊS: tag pequena preta na altura dos números (fora das lanes → não rouba espaço dos eventos) */
-.daytags{grid-row:1;justify-self:start;align-self:start;display:flex;flex-direction:column;gap:1px;margin:3px 0 0 4px;max-width:calc(100% - 22px);z-index:2;}
+.daytags{grid-row:1;justify-self:start;align-self:start;display:flex;flex-direction:row;flex-wrap:wrap;gap:2px;margin:3px 0 0 4px;max-width:calc(100% - 22px);z-index:2;}
 .daytag{font-size:8.5px;font-weight:700;line-height:1.4;letter-spacing:.02em;border-radius:3px;padding:0 4px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;}
 .dim{opacity:.42;}   /* conteúdo de dias de OUTRO mês fica mais fraco (não é o foco) */
 .more{color:var(--gray-mid);font-weight:700;background:none;padding-top:0;}
@@ -345,12 +345,17 @@ function renderMonth(){
     // BASE DE DADOS: tagzinha preta na altura dos números (fora das lanes → não atrapalha os eventos)
     const tagsByCol={};
     for(const it of dataSegs){ for(let c=it.startCol;c<it.startCol+it.span;c++){ (tagsByCol[c]||(tagsByCol[c]=[])).push(it); } }
-    Object.keys(tagsByCol).forEach(c=>{ const it=tagsByCol[c][0];   // 1 tag por dia
+    Object.keys(tagsByCol).forEach(c=>{
       const box=document.createElement('div'); box.className='daytags'+(week[+c].inMonth?'':' dim'); box.style.gridColumn=(+c+1);
-      const t=document.createElement('span'); t.className='daytag'; t.textContent=it.title;
-      t.style.background=it.color; t.style.color=it.text;                   // preto c/ letra branca (cor sólida da categoria)
-      t.title=it.title+(it.target?' · '+it.target:''); t.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
-      box.appendChild(t); row.appendChild(box); });
+      const seen=new Set();
+      for(const it of tagsByCol[c]){                                         // TODAS as bases do dia, lado a lado (antes só [0] → 2 no mesmo dia sobrepunham/sumiam)
+        const key=it.title+'|'+(it.target||''); if(seen.has(key)) continue; seen.add(key);   // evita repetir tag idêntica
+        const t=document.createElement('span'); t.className='daytag'; t.textContent=it.title;
+        t.style.background=it.color; t.style.color=it.text;                 // preto c/ letra branca (cor sólida da categoria)
+        t.title=it.title+(it.target?' · '+it.target:''); t.onclick=(e)=>{ e.stopPropagation(); openDetail(it); };
+        box.appendChild(t);
+      }
+      row.appendChild(box); });
     // EVENTOS: lanes (destaque no topo, depois por horário)
     layout(items);
     // dias travados (feriados) → hachura a célula inteira (independe do lane cap)
