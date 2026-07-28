@@ -654,6 +654,9 @@ html.dark .ov-card{background:#20242b}
                 <label class="muted"><input type="radio" name="calmm" value="nth"> na
                   <select class="in" id="cale-setpos"><option value="1">1ª</option><option value="2">2ª</option><option value="3">3ª</option><option value="4">4ª</option><option value="-1">última</option></select>
                   <select class="in" id="cale-nthwd"></select></label>
+                <label class="muted"><input type="radio" name="calmm" value="week"> na
+                  <select class="in" id="cale-weekpos"><option value="1">1ª</option><option value="2">2ª</option><option value="3">3ª</option><option value="4">4ª</option><option value="-1">última</option></select>
+                  semana inteira (Seg–Sex)</label>
               </div>
             </div>
             <div class="row">
@@ -795,7 +798,10 @@ function calBuildRecurrence(){
   const rec={freq:f, interval:Math.max(1,+_cg('cale-interval').value||1)};
   const until=_cg('cale-until').value; if(until)rec.until=until;
   if(f==='weekly'){ const wd=[...document.querySelectorAll('.calwd:checked')].map(c=>+c.value); if(wd.length)rec.byweekday=wd; }
-  if(f==='monthly'){ const mm=document.querySelector('input[name=calmm]:checked'); if(mm&&mm.value==='nth'){ rec.bysetpos=[+_cg('cale-setpos').value]; rec.byweekday=[+_cg('cale-nthwd').value]; } }
+  if(f==='monthly'){ const mm=document.querySelector('input[name=calmm]:checked');
+    if(mm&&mm.value==='nth'){ rec.bysetpos=[+_cg('cale-setpos').value]; rec.byweekday=[+_cg('cale-nthwd').value]; }
+    else if(mm&&mm.value==='week'){ rec.bysetpos=[+_cg('cale-weekpos').value]; rec.byweekday=[1]; rec.whole_week=true; }   // 1=segunda → faixa Seg–Sex da N-ésima semana
+  }
   return rec;
 }
 function calEvNew(){ calEvReset(); _cg('cal-ev-form').hidden=false; _cg('cale-title').focus(); }
@@ -805,7 +811,7 @@ function calEvReset(){
   _cg('cale-company').value=''; _cg('cale-start').value=''; _cg('cale-end').value=''; _cg('cale-allday').checked=true;
   _cg('cale-st').value=''; _cg('cale-et').value=''; _cg('cale-loc').value=''; _cg('cale-desc').value=''; _cg('cale-visible').checked=true;
   _cg('cale-freq').value=''; _cg('cale-interval').value=1; _cg('cale-until').value='';
-  document.querySelectorAll('.calwd').forEach(c=>c.checked=false); if(_cg('calmm-dom'))_cg('calmm-dom').checked=true;
+  document.querySelectorAll('.calwd').forEach(c=>c.checked=false); if(_cg('calmm-dom'))_cg('calmm-dom').checked=true; if(_cg('cale-weekpos'))_cg('cale-weekpos').value='1';
   _calLinks=[]; calRenderLinks(); calToggleAllday(); calRecUI(); calCatPicked();
 }
 function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
@@ -819,19 +825,21 @@ function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
   const r=e.recurrence;
   if(r&&r.freq){ _cg('cale-freq').value=r.freq; _cg('cale-interval').value=r.interval||1; _cg('cale-until').value=r.until||''; calRecUI();
     if(r.freq==='weekly'&&r.byweekday) document.querySelectorAll('.calwd').forEach(c=>{c.checked=r.byweekday.includes(+c.value)});
-    if(r.freq==='monthly'&&r.bysetpos&&r.bysetpos.length){ const nth=document.querySelector('input[name=calmm][value=nth]'); if(nth)nth.checked=true; _cg('cale-setpos').value=r.bysetpos[0]; if(r.byweekday&&r.byweekday.length)_cg('cale-nthwd').value=r.byweekday[0]; }
+    if(r.freq==='monthly'&&r.whole_week&&r.bysetpos&&r.bysetpos.length){ const wk=document.querySelector('input[name=calmm][value=week]'); if(wk)wk.checked=true; _cg('cale-weekpos').value=r.bysetpos[0]; }
+    else if(r.freq==='monthly'&&r.bysetpos&&r.bysetpos.length){ const nth=document.querySelector('input[name=calmm][value=nth]'); if(nth)nth.checked=true; _cg('cale-setpos').value=r.bysetpos[0]; if(r.byweekday&&r.byweekday.length)_cg('cale-nthwd').value=r.byweekday[0]; }
   } else calRecUI();
   _cg('cal-ev-form').scrollIntoView({block:'nearest'});
 }
 async function calEvSave(){
   const title=_cg('cale-title').value.trim(); if(!title){alert('Título obrigatório.');return}
   const start=_cg('cale-start').value; if(!start){alert('Data de início obrigatória.');return}
-  const allday=_cg('cale-allday').checked;
+  const rec=calBuildRecurrence();
+  const allday=_cg('cale-allday').checked || !!(rec&&rec.whole_week);   // faixa de semana inteira é sempre dia-inteiro
   const links=_calLinks.filter(l=>l.url&&l.url.trim()).map(l=>({label:(l.label||'').trim(),url:l.url.trim()}));
   const p_data={ title, category_id:_cg('cale-cat').value||null, start_date:start, end_date:_cg('cale-end').value||null,
     all_day:allday, start_time:allday?null:(_cg('cale-st').value||null), end_time:allday?null:(_cg('cale-et').value||null),
     company:_cg('cale-company').value.trim()||null, location:_cg('cale-loc').value.trim()||null,
-    description:_cg('cale-desc').value||null, links, recurrence:calBuildRecurrence(), is_visible:_cg('cale-visible').checked };
+    description:_cg('cale-desc').value||null, links, recurrence:rec, is_visible:_cg('cale-visible').checked };
   const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_event',{p_id:_cg('cale-id').value||null, p_data});
   if(error){alert('Erro: '+error.message);return}
   _cg('cal-ev-form').hidden=true; calLoadEvs();

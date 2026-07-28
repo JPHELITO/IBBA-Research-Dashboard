@@ -8,7 +8,10 @@
  *    (Date.UTC(y,m-1,d,12)) p/ nunca escorregar de dia por fuso/DST.
  *  - Dia da semana = convenção JS: 0=domingo … 6=sábado (byweekday usa isso).
  *  - Recorrência (jsonb do evento): { freq:'daily|weekly|monthly|yearly', interval:N,
- *      byweekday:[0..6]?, bymonthday:[1..31]?, bysetpos:[1,2,3,4,-1]?, until:'YYYY-MM-DD'?, count:N? }
+ *      byweekday:[0..6]?, bymonthday:[1..31]?, bysetpos:[1,2,3,4,-1]?, until:'YYYY-MM-DD'?, count:N?,
+ *      whole_week:true? }
+ *    whole_week: cada ocorrência = a SEMANA ÚTIL inteira (Seg–Sex) que contém a data gerada
+ *      (ex.: monthly + bysetpos:[2] + byweekday:[1] = "a 2ª semana inteira do mês"). Ignora end_date.
  * ============================================================================= */
 (function (root, factory) {
   const api = factory();
@@ -129,12 +132,16 @@
     if (!startYMD) return [];
     const durDays = ev.end_date ? Math.max(0, diffDays(startYMD, ev.end_date)) : 0;
     const rec = ev.recurrence;
+    // whole_week: a ocorrência vira a semana útil INTEIRA (Seg–Sex) que contém a data gerada (ignora end_date).
+    const wholeWeek = !!(rec && rec.whole_week);
+    const workWeekSpan = (os) => { const monday = addDays(os, -((dow(os) + 6) % 7)); return { s: monday, e: addDays(monday, 4) }; };
+    const rangeOf = (os) => wholeWeek ? workWeekSpan(os) : { s: os, e: addDays(os, durDays) };
     const out = [];
-    const mk = (os) => Object.assign({}, ev, { occ_start: os, occ_end: addDays(os, durDays), is_recurring: !!(rec && rec.freq) });
+    const mk = (os) => { const r = rangeOf(os); return Object.assign({}, ev, { occ_start: r.s, occ_end: r.e, is_recurring: !!(rec && rec.freq) }); };
 
     if (!rec || !rec.freq) {
-      const oe = addDays(startYMD, durDays);
-      if (overlaps(startYMD, oe, fromISO, toISO)) out.push(mk(startYMD));
+      const r = rangeOf(startYMD);
+      if (overlaps(r.s, r.e, fromISO, toISO)) out.push(mk(startYMD));
       return out;
     }
 
@@ -147,8 +154,8 @@
       if (n >= maxCount) break;
       n++;                                          // conta do início da série (semântica de count)
       if (cmp(os, toISO) > 0) break;                // starts só crescem → nada mais entra na janela
-      const oe = addDays(os, durDays);
-      if (overlaps(os, oe, fromISO, toISO)) out.push(mk(os));
+      const r = rangeOf(os);
+      if (overlaps(r.s, r.e, fromISO, toISO)) out.push(mk(os));
     }
     return out;
   }
