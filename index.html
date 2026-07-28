@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Barra de navegação GLOBAL (mesma de todas as páginas). Injeta o .gnav no topo e esconde o
+     .header/.orange-rule próprios da home no desktop (topnav.js CSS) → barra IDÊNTICA às demais. -->
+<script src="/topnav.js"></script>
 <script src="/calendar-lib.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
@@ -63,7 +66,9 @@ body{height:100vh;overflow:hidden;}
    preenchida pelo layout FLUIDO, exatamente como a produção já faz. Resultado: mesma formatação/
    proporção das colunas em qualquer tela, fontes proporcionais à largura, SEM faixas e SEM esticar.
    (Mobile ≤1024px reseta isto e usa layout próprio.) */
-#stage{width:1920px;height:calc((100vh - 68px) / var(--app-scale,1));flex:none;
+/* -56px = altura do .gnav global (54px barra + 2px régua laranja do topnav.js), que substitui
+   o .header/.orange-rule próprios (escondidos no desktop). Antes 68px (header 54 + régua 2 + 12 de respiro). */
+#stage{width:1920px;height:calc((100vh - 56px) / var(--app-scale,1));flex:none;
   display:flex;flex-direction:column;overflow:hidden;
   transform:scale(var(--app-scale,1));transform-origin:top left;}
 
@@ -621,7 +626,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         <a href="stock-guide.html#sens">Sensitivity</a></div></div>
     <a class="tn-item" href="/market.html">Market</a>
     <a class="tn-item" href="/agenda.html">Calendar</a>
-    <a class="tn-item tn-admin" id="clip-link" href="/clipinator.html" style="display:none">Clipinator</a>
+    <a class="tn-item tn-admin" id="clip-link" href="/clipinator.html" style="display:none">Clipping</a>
     <a class="tn-item tn-admin" id="admin-link" href="/admin.html" style="display:none">Admin</a>
   </nav>
   <!-- Cache: revela Admin/Clipinator NA HORA (antes do 1º paint) p/ não "pipocarem" depois; o RPC abaixo reconcilia -->

@@ -2,8 +2,9 @@
  * topnav.js — BARRA DE NAVEGAÇÃO GLOBAL (mesma de todas as páginas).
  * Inclua em qualquer página: <script src="/topnav.js"></script> (depois do supabase-js).
  * Auto-injeta no topo do <body>. Usa window.sbAuth (se existir) p/ revelar a aba Admin.
- * Fonte ÚNICA da nav → editar aqui muda em todo o dashboard. (A HOME tem a sua própria
- * barra integrada ao header com escala; as demais páginas usam esta.)
+ * Fonte ÚNICA da nav → editar aqui muda em todo o dashboard. TODAS as páginas usam esta barra,
+ * INCLUSIVE a HOME (que ainda tem um .header/.orange-rule próprios, escondidos no desktop pelo
+ * CSS abaixo e usados só como fallback no mobile ≤900px).
  * ========================================================================== */
 ;(function () {
   if (window.__TOPNAV_LOADED__) return; window.__TOPNAV_LOADED__ = true;
