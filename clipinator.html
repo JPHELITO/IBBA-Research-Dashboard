@@ -36,8 +36,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .hbtn{display:inline-block;margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--orange);color:#fff;
   text-decoration:none;font-size:12.5px;font-weight:600;border:none;cursor:pointer;}
 
-#app{flex:1;width:100%;max-width:1240px;margin:0 auto;padding:22px 26px 60px;}
-.clip-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+#app{flex:1;width:100%;max-width:1440px;margin:0 auto;padding:14px 20px 22px;}
+.clip-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px;}
 .clip-title{font-size:22px;font-weight:700;letter-spacing:-.01em;}
 .clip-title small{display:block;font-size:12px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
 .clip-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
@@ -69,24 +69,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 
 /* linha de candidato */
 .clist{max-height:66vh;overflow:auto;}
-.row{display:grid;grid-template-columns:22px 1fr auto auto;gap:12px;align-items:center;
-  padding:12px 12px;border-bottom:1px solid var(--border);transition:background .12s;}
+/* lista no estilo do clipinator antigo: [✓] [HH:MM] [FONTE: título] [↗] [idade] */
+.row{display:grid;grid-template-columns:16px 40px 1fr auto auto;gap:9px;align-items:baseline;
+  padding:7px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
 .row:last-child{border-bottom:none;}
 .row:hover{background:var(--gray-light);}
-.row.picked{background:rgba(255,80,0,.06);}
-.row input[type=checkbox]{width:16px;height:16px;accent-color:var(--orange);cursor:pointer;}
-.r-main{min-width:0;}
-.r-title{font-size:12.5px;font-weight:600;line-height:1.35;color:var(--black);text-decoration:none;
-  display:block;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.r-title:hover{color:var(--orange);}
-.r-meta{font-size:10.5px;color:var(--gray-mid);margin-top:2px;}
-.tk{display:inline-flex;gap:3px;}
-.tk button{width:26px;height:24px;border:1px solid var(--border);background:var(--bg);border-radius:6px;
-  font:700 12px var(--font);color:var(--gray-mid);cursor:pointer;line-height:1;}
-.tk button.on.pos{background:var(--green);border-color:var(--green);color:#fff;}
-.tk button.on.neu{background:#8a8f98;border-color:#8a8f98;color:#fff;}
-.tk button.on.neg{background:var(--red);border-color:var(--red);color:#fff;}
-.secsel{font:600 11px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:4px 5px;}
+.row.picked{background:rgba(255,80,0,.07);}
+.row input[type=checkbox]{width:15px;height:15px;accent-color:var(--orange);cursor:pointer;align-self:center;}
+.r-time{font-size:11px;color:var(--gray-dark);line-height:1.1;text-align:right;font-variant-numeric:tabular-nums;align-self:center;}
+.r-time b{font-weight:700;}
+.r-time small{display:block;font-size:9px;color:var(--gray-mid);}
+.r-link{font-size:12.5px;line-height:1.4;color:var(--black);min-width:0;}
+.r-src{font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.02em;color:var(--gray-dark);}
+.r-open{color:var(--gray-mid);text-decoration:none;font-size:12px;align-self:center;padding:0 2px;}
+.r-open:hover{color:var(--orange);}
+.r-age{font-size:10px;color:var(--gray-mid);white-space:nowrap;align-self:center;}
 
 /* painel de seleção / preview */
 .sel-sec{padding:9px 12px 6px;font-size:10px;font-weight:700;color:var(--gray-mid);
@@ -95,22 +92,28 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .sel-sec:first-child{border-top:none;}
 .sel-sec b{color:var(--gray-dark);font-weight:700;margin-left:auto;
   background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 7px;font-size:9.5px;}
-.prev-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:start;
-  padding:12px 12px;border-bottom:1px solid var(--border);background:var(--card);transition:background .12s;}
+.prev-row{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:7px;align-items:center;
+  padding:9px 10px;border-bottom:1px solid var(--border);background:var(--card);transition:background .1s;}
 .prev-row:hover{background:var(--gray-light);}
 .prev-row.dragging{opacity:.4;}
 .prev-row.drop-above{box-shadow:inset 0 2px 0 0 var(--orange);}
 .prev-row.drop-below{box-shadow:inset 0 -2px 0 0 var(--orange);}
-.prev-h{cursor:grab;color:var(--gray-mid);font-size:14px;line-height:1.5;user-select:none;padding:0 1px;}
+.prev-n{font-size:10px;font-weight:700;color:var(--gray-mid);min-width:13px;text-align:right;font-variant-numeric:tabular-nums;}
+.prev-h{cursor:grab;color:var(--gray-mid);font-size:13px;line-height:1;user-select:none;opacity:.4;}
+.prev-row:hover .prev-h{opacity:.85;}
 .prev-h:active{cursor:grabbing;}
-.prev-n{min-width:19px;height:19px;border-radius:6px;background:var(--bg);border:1px solid var(--border);
-  font-size:10.5px;font-weight:700;color:var(--gray-dark);display:flex;align-items:center;justify-content:center;}
 .prev-body{min-width:0;}
-.prev-t{font-size:12px;font-weight:600;line-height:1.4;}   /* título INTEIRO (sem corte) */
-.prev-ctl{margin-top:7px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.prev-ctl .tk button{width:24px;height:22px;}
-.prev-ctl .secsel{padding:3px 4px;}
-.prev-src{font-size:10px;color:var(--gray-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:50px;}
+.prev-src{font-size:9.5px;color:var(--orange);font-weight:800;text-transform:uppercase;letter-spacing:.04em;line-height:1.25;}
+.prev-t{font-size:12px;font-weight:500;line-height:1.35;color:var(--black);}   /* título INTEIRO (sem corte) */
+.prev-ctl{display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
+.qsel{display:flex;gap:2px;}
+.qbtn{min-width:22px;height:20px;padding:0 5px;border:1px solid var(--border);background:var(--card);border-radius:5px;
+  font:700 10px var(--font);color:var(--gray-mid);cursor:pointer;line-height:1;}
+.qbtn:hover{border-color:var(--orange);color:var(--orange);}
+.qsel-sec .qbtn.on{background:var(--gray-dark);border-color:var(--gray-dark);color:#fff;}
+.qsel-take .qbtn.on.pos{background:var(--green);border-color:var(--green);color:#fff;}
+.qsel-take .qbtn.on.neu{background:#8a8f98;border-color:#8a8f98;color:#fff;}
+.qsel-take .qbtn.on.neg{background:var(--red);border-color:var(--red);color:#fff;}
 .tag{font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em;}
 .tag.sm{background:#e9eaec;color:#3a3f47;} html.dark .tag.sm{background:#2b3038;color:#c3c7cd;}
 .tag.pp{background:#dff3e6;color:#1a7a3f;} html.dark .tag.pp{background:#12351f;color:#22c55e;}
@@ -163,36 +166,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .fail-why{font-weight:400;color:var(--gray-mid);font-size:10px;margin-left:6px;}
 .fail-body{width:100%;box-sizing:border-box;min-height:68px;resize:vertical;font:400 11px var(--font);
   background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:6px 8px;}
-/* Prévia inline do clipping (Opção A) */
-.preview{margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:var(--shadow);}
-.pv-h{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;}
-.pv-h span{flex:1;}
-.pv-open{font-weight:600;font-size:11.5px;color:var(--orange);text-decoration:none;}
-.pv-open:hover{text-decoration:underline;}
-.pv-x{background:none;border:none;color:var(--gray-mid);font-size:18px;cursor:pointer;line-height:1;}
-.pv-x:hover{color:var(--red);}
-.pv-load{padding:24px;text-align:center;color:var(--gray-mid);font-size:12px;}
-.pv-frame{width:100%;height:72vh;border:none;background:#fff;display:block;}
-.dl-pv{border:none;cursor:pointer;}
-/* Prévia por-notícia (modal do leitor) */
-.r-title{cursor:pointer;}
-.hasbody{color:var(--green);font-weight:600;}
-.reader-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:5vh 20px;}
-.reader-modal[hidden]{display:none;}
-.reader-panel{background:var(--card);color:var(--black);border:1px solid var(--border);border-radius:12px;max-width:820px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.35);}
-.reader-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);}
-.reader-close{background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font:600 12px var(--font);color:var(--gray-dark);}
-.reader-close:hover{border-color:var(--orange);color:var(--orange);}
-.reader-title{flex:1;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.reader-ext{font-size:11.5px;color:var(--orange);text-decoration:none;font-weight:600;white-space:nowrap;}
-.reader-content{padding:22px 26px;overflow:auto;}
-.reader-body{font-size:14px;line-height:1.62;color:var(--black);}
-.reader-body p{margin:0 0 12px;}
-.reader-body img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;}
-.reader-body h2,.reader-body h3{font-size:15px;margin:14px 0 6px;}
-.reader-loading,.reader-empty{color:var(--gray-mid);font-size:13px;text-align:center;padding:26px 10px;line-height:1.5;}
-.reader-tr{border-top:1px dashed var(--border);margin-top:18px;padding-top:14px;}
-.reader-trh{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-mid);margin-bottom:8px;}
+/* Extras — collapsible DENTRO da coluna direita (sem gap grande) */
+.ex-fold{border-top:1px solid var(--border);}
+.ex-fold summary{cursor:pointer;padding:11px 14px;font-size:12px;font-weight:600;color:var(--gray-dark);list-style:none;}
+.ex-fold summary::-webkit-details-marker{display:none;}
+.ex-fold summary::before{content:'▸ ';color:var(--gray-mid);}
+.ex-fold[open] summary::before{content:'▾ ';}
+.ex-fold summary:hover{color:var(--orange);}
+.ex-stack{padding:2px 14px 14px;display:flex;flex-direction:column;gap:15px;}
+.ex-stack textarea,.ex-stack input,.ex-stack select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
+.ex-stack textarea,.ex-stack #cfg-earn-label{width:100%;box-sizing:border-box;}
+.ex-stack textarea{resize:vertical;}
 </style>
 </head>
 <body>
@@ -252,43 +236,29 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <div class="gen-status" id="clip-status"></div>
         <div id="clip-fails" class="fails" hidden></div>
       </div>
+      <details class="ex-fold">
+        <summary>Extras — mensagem · publicações · earnings</summary>
+        <div class="ex-stack">
+          <div class="ex-block">
+            <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
+            <textarea id="cfg-intro-text" rows="5" placeholder="Dear clients,…"></textarea>
+          </div>
+          <div class="ex-block">
+            <div class="ex-h">Recent Publications</div>
+            <div id="cfg-pubs"></div>
+            <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
+          </div>
+          <div class="ex-block">
+            <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga)</span></label>
+            <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
+            <div id="cfg-earn"></div>
+            <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 
-  <div class="panel extras-panel">
-    <div class="panel-h"><h2>Extras do clipping</h2>
-      <span class="count">mensagem · publicações · earnings — salvo automaticamente</span></div>
-    <div class="panel-b ex-grid">
-      <div class="ex-block">
-        <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
-        <textarea id="cfg-intro-text" rows="6" placeholder="Dear clients,…"></textarea>
-      </div>
-      <div class="ex-block">
-        <div class="ex-h">Recent Publications</div>
-        <div id="cfg-pubs"></div>
-        <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
-      </div>
-      <div class="ex-block">
-        <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga)</span></label>
-        <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
-        <div id="cfg-earn"></div>
-        <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="clip-preview" class="preview" hidden></div>
-
-  <div id="reader-modal" class="reader-modal" hidden onclick="if(event.target===this)closeReader()">
-    <div class="reader-panel">
-      <div class="reader-topbar">
-        <button type="button" class="reader-close" onclick="closeReader()">✕ Fechar</button>
-        <span id="reader-title" class="reader-title"></span>
-        <a id="reader-ext" href="#" target="_blank" rel="noopener" class="reader-ext">↗ Abrir no site original</a>
-      </div>
-      <div id="reader-content" class="reader-content"><p class="reader-loading">Selecione uma manchete.</p></div>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -358,6 +328,15 @@ function timeAgo(iso){
   if(m<60) return 'há '+m+'m'; const h=Math.round(m/60);
   if(h<48) return 'há '+h+'h'; return 'há '+Math.round(h/24)+'d';
 }
+// hora (HH:MM) + dia (DD/MM, só quando não é hoje) de cada notícia
+function fmtDT(iso){
+  if(!iso) return {t:'--:--',d:''};
+  const dt=new Date(iso.replace(' ','T')); if(isNaN(dt)) return {t:'--:--',d:''};
+  const t=String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+  const d=(dt.toDateString()===new Date().toDateString())
+          ? '' : String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');
+  return {t,d};
+}
 
 function setCandidates(list){
   // preserva itens do RASCUNHO já selecionados que estão fora da janela atual de candidatos
@@ -387,31 +366,22 @@ function renderList(){
   if(S.filter!=='all') rows=rows.filter(c=>c._sec===S.filter);
   if(!rows.length){ host.innerHTML='<div class="empty">Nenhuma notícia nessa janela/filtro.</div>'; return; }
   host.innerHTML=rows.map(c=>{
-    const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
-    const src=esc(c.source_name||domainOf(c.url)); const t=timeAgo(c.published_at||c.found_at);
+    const picked=S.sel.has(c.url);
+    const src=esc(c.source_name||domainOf(c.url)); const dt=fmtDT(c.published_at||c.found_at); const t=timeAgo(c.published_at||c.found_at);
     return `<div class="row${picked?' picked':''}" data-u="${esc(c.url)}">
       <input type="checkbox" ${picked?'checked':''} data-act="pick">
-      <div class="r-main">
-        <a class="r-title" href="${esc(c.url)}" data-act="preview" title="Ver prévia (corpo raspado)">${esc(c.title||c.url)}</a>
-        <div class="r-meta">${src}${t?' · '+t:''}${c.take_llm?' · IA: '+esc(c.take_llm):''}${c.has_body?' · <span class="hasbody">✓ prévia</span>':''}</div>
-      </div>
-      <div class="tk" data-act="take">
-        <button data-t="+" class="pos${st.take==='+'?' on':''}">+</button>
-        <button data-t="=" class="neu${st.take==='='?' on':''}">=</button>
-        <button data-t="-" class="neg${st.take==='-'?' on':''}">−</button>
-      </div>
-      <select class="secsel" data-act="sector">
-        ${SECTORS.map(([v,l])=>`<option value="${v}"${st.sector===v?' selected':''}>${l}</option>`).join('')}
-      </select>
+      <span class="r-time"><b>${dt.t}</b>${dt.d?`<small>${dt.d}</small>`:''}</span>
+      <span class="r-link"><span class="r-src sec-${SEC_TAG[c._sec]||'nr'}">${src}:</span> ${esc(c.title||c.url)}</span>
+      <a class="r-open" href="${esc(c.url)}" target="_blank" rel="noopener" title="Abrir no site original">↗</a>
+      <span class="r-age">${t||''}</span>
     </div>`;
   }).join('');
-  // wire
   host.querySelectorAll('.row').forEach(row=>{
     const u=row.dataset.u;
-    row.querySelector('[data-act=pick]').onchange=e=>togglePick(u,e.target.checked);
-    row.querySelectorAll('.tk button').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
-    row.querySelector('[data-act=sector]').onchange=e=>setSector(u,e.target.value);
-    const tt=row.querySelector('[data-act=preview]'); if(tt) tt.onclick=e=>{ e.preventDefault(); openPreview(u); };
+    const cb=row.querySelector('[data-act=pick]');
+    cb.onchange=e=>togglePick(u,e.target.checked);
+    row.onclick=e=>{ if(e.target.closest('.r-open')||e.target===cb) return;
+      cb.checked=!cb.checked; togglePick(u,cb.checked); };
   });
 }
 
@@ -460,18 +430,19 @@ function renderSel(){
     urls.forEach(u=>{
       const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{take:'=',sector:sec}; n++;
       const takeBtns=[['+','pos','+'],['=','neu','='],['-','neg','−']].map(([t,cls,lbl])=>
-        `<button data-t="${t}" class="${cls}${st.take===t?' on':''}">${lbl}</button>`).join('');
-      const secOpts=SECTORS.map(([v,l])=>`<option value="${v}"${st.sector===v?' selected':''}>${l}</option>`).join('');
+        `<button data-t="${t}" class="qbtn ${cls}${st.take===t?' on':''}">${lbl}</button>`).join('');
+      const secBtns=SECTORS.map(([v,l])=>
+        `<button data-s="${v}" class="qbtn${st.sector===v?' on':''}">${l}</button>`).join('');
       html+=`<div class="prev-row" data-u="${esc(u)}">
-        <div class="prev-h" draggable="true" title="Arraste para reordenar">⠿</div>
-        <div class="prev-n">${n}</div>
+        <span class="prev-n">${n}</span>
+        <span class="prev-h" draggable="true" title="Arraste para reordenar">⠿</span>
         <div class="prev-body">
+          <div class="prev-src">${esc(c.source_name||domainOf(u))}</div>
           <div class="prev-t">${esc(c.title||u)}</div>
-          <div class="prev-ctl">
-            <div class="tk">${takeBtns}</div>
-            <select class="secsel" data-act="sector">${secOpts}</select>
-            <span class="prev-src">${esc(c.source_name||domainOf(u))}</span>
-          </div>
+        </div>
+        <div class="prev-ctl">
+          <div class="qsel qsel-sec">${secBtns}</div>
+          <div class="qsel qsel-take">${takeBtns}</div>
         </div>
         <button class="prev-x" title="Remover">×</button>
       </div>`;
@@ -480,8 +451,8 @@ function renderSel(){
   host.innerHTML=html;
   host.querySelectorAll('.prev-row').forEach(row=>{
     const u=row.dataset.u;
-    row.querySelectorAll('.tk button').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
-    row.querySelector('[data-act=sector]').onchange=e=>setSector(u,e.target.value);
+    row.querySelectorAll('.qsel-take .qbtn').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
+    row.querySelectorAll('.qsel-sec .qbtn').forEach(b=>b.onclick=()=>setSector(u,b.dataset.s));
     row.querySelector('.prev-x').onclick=()=>togglePick(u,false);
     const clearDrop=()=>host.querySelectorAll('.prev-row').forEach(r=>r.classList.remove('drop-above','drop-below'));
     const h=row.querySelector('.prev-h');
@@ -551,55 +522,13 @@ function renderFailures(errors){
   if(rb) rb.onclick=()=>{ host.hidden=true; generate(); };
 }
 
-// ── Prévia do clipping renderizada inline (Opção A) ──────────────────────────
-async function showPreview(url){
-  const host=document.getElementById('clip-preview'); if(!host||!url) return;
-  host.hidden=false;
-  host.innerHTML='<div class="pv-h"><span>👁 Prévia do clipping</span>'
-    +'<a class="pv-open" href="'+esc(url)+'" target="_blank" rel="noopener">abrir em nova aba ↗</a>'
-    +'<button class="pv-x" title="Fechar prévia">×</button></div>'
-    +'<div class="pv-load">Carregando prévia…</div>'
-    +'<iframe class="pv-frame" title="Prévia do clipping" hidden></iframe>';
-  host.querySelector('.pv-x').onclick=()=>{ host.hidden=true; host.innerHTML=''; };
-  const ifr=host.querySelector('.pv-frame'), load=host.querySelector('.pv-load');
-  const reveal=()=>{ if(load) load.hidden=true; ifr.hidden=false; };
-  try{ const r=await fetch(url); if(!r.ok) throw 0; ifr.srcdoc=await r.text(); reveal(); }
-  catch(e){ ifr.src=url; reveal(); }                 // fallback: carrega direto (sem depender de CORS)
-  host.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function clearPreview(){ const pv=document.getElementById('clip-preview'); if(pv){ pv.hidden=true; pv.innerHTML=''; } }
-
-// ── Prévia por-notícia (clique na manchete → corpo guardado, instantâneo) ─────
-async function openPreview(url){
-  const c=S.byUrl[url]||{};
-  const host=document.getElementById('reader-modal'); if(!host) return;
-  host.hidden=false;
-  const content=host.querySelector('#reader-content');
-  const ext=host.querySelector('#reader-ext'); if(ext) ext.href=url;
-  const ttl=host.querySelector('#reader-title'); if(ttl) ttl.textContent=c.title||url;
-  content.innerHTML='<p class="reader-loading">Carregando…</p>';
-  try{
-    const r=(await rpc('admin_get_clipping_body',{p_url:url}))||{};
-    const body=r.body||'';
-    if(body.length>40){
-      let html='<div class="reader-body">'+body+'</div>';
-      if(r.translated_body) html+='<div class="reader-tr"><div class="reader-trh">Free translation</div><div class="reader-body">'+r.translated_body+'</div></div>';
-      content.innerHTML=html;
-    }else{
-      content.innerHTML='<p class="reader-empty">Corpo ainda não raspado. O aquecedor pega em até ~1h — '
-        +'ou clique em Gerar (ele raspa na hora e guarda p/ a próxima).</p>';
-    }
-  }catch(e){ content.innerHTML='<p class="reader-empty">Não consegui carregar: '+esc(String(e&&e.message||e))+'</p>'; }
-}
-function closeReader(){ const h=document.getElementById('reader-modal'); if(h) h.hidden=true; }
-
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
   const btn=document.getElementById('clip-gen'), st=document.getElementById('clip-status');
   btn.disabled=true; st.className='gen-status';
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
-  renderFailures([]); clearPreview();        // limpa falhas + prévia de uma geração anterior
+  renderFailures([]);                        // limpa falhas de uma geração anterior
   try{
     const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config});
     st.innerHTML='<span class="spin2"></span> Gerando o clipping… (busca os corpos, traduz e monta o Word — ~1-3 min)';
@@ -619,11 +548,8 @@ async function pollJob(jobId, st, btn){
       st.className='gen-status ok';
       st.innerHTML='✓ Pronto! '
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
-        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>'
-        +(job.preview_path?'<button class="dl dl-pv">👁 Prévia</button>':'');
-      const pvb=st.querySelector('.dl-pv'); if(pvb) pvb.onclick=()=>showPreview(job.preview_path);
+        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
       btn.disabled=false; renderFailures(job.errors);           // corpos que falharam → colar e regerar
-      if(job.preview_path) showPreview(job.preview_path);        // prévia inline automática (Opção A)
       return;
     }
     if(job.status==='error'){
@@ -709,12 +635,11 @@ function wire(){
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
   document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.push({name:'',sector:'SM',link:''}); renderConfig(); };
   document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.push({name:'',sector:'SM',link:''}); renderConfig(); };
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReader(); });
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, showPreview, openPreview, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, S };
 
 ;(async()=>{
   wire();
