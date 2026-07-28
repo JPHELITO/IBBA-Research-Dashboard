@@ -69,10 +69,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 
 /* linha de candidato */
 .clist{max-height:66vh;overflow:auto;}
-.row{display:grid;grid-template-columns:22px 1fr auto auto;gap:10px;align-items:center;
-  padding:9px 8px;border-bottom:1px solid var(--border);}
+.row{display:grid;grid-template-columns:22px 1fr auto auto;gap:12px;align-items:center;
+  padding:12px 12px;border-bottom:1px solid var(--border);transition:background .12s;}
 .row:last-child{border-bottom:none;}
-.row.picked{background:rgba(255,80,0,.05);}
+.row:hover{background:var(--gray-light);}
+.row.picked{background:rgba(255,80,0,.06);}
 .row input[type=checkbox]{width:16px;height:16px;accent-color:var(--orange);cursor:pointer;}
 .r-main{min-width:0;}
 .r-title{font-size:12.5px;font-weight:600;line-height:1.35;color:var(--black);text-decoration:none;
@@ -88,23 +89,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .secsel{font:600 11px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:4px 5px;}
 
 /* painel de seleção / preview */
-.sel-sec{padding:7px 10px 4px;font-size:10.5px;font-weight:700;color:var(--gray-dark);
-  text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:6px;
-  background:var(--bg);border-bottom:1px solid var(--border);}
-.sel-sec b{color:var(--gray-mid);font-weight:600;}
-.prev-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:start;
-  padding:8px 8px;border-bottom:1px solid var(--border);background:var(--card);}
+.sel-sec{padding:9px 12px 6px;font-size:10px;font-weight:700;color:var(--gray-mid);
+  text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:7px;
+  background:var(--gray-light);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.sel-sec:first-child{border-top:none;}
+.sel-sec b{color:var(--gray-dark);font-weight:700;margin-left:auto;
+  background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 7px;font-size:9.5px;}
+.prev-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:start;
+  padding:12px 12px;border-bottom:1px solid var(--border);background:var(--card);transition:background .12s;}
+.prev-row:hover{background:var(--gray-light);}
 .prev-row.dragging{opacity:.4;}
 .prev-row.drop-above{box-shadow:inset 0 2px 0 0 var(--orange);}
 .prev-row.drop-below{box-shadow:inset 0 -2px 0 0 var(--orange);}
-.prev-h{cursor:grab;color:var(--gray-mid);font-size:13px;line-height:1.5;user-select:none;padding:0 1px;}
+.prev-h{cursor:grab;color:var(--gray-mid);font-size:14px;line-height:1.5;user-select:none;padding:0 1px;}
 .prev-h:active{cursor:grabbing;}
-.prev-n{min-width:18px;height:18px;border-radius:5px;background:var(--bg);border:1px solid var(--border);
+.prev-n{min-width:19px;height:19px;border-radius:6px;background:var(--bg);border:1px solid var(--border);
   font-size:10.5px;font-weight:700;color:var(--gray-dark);display:flex;align-items:center;justify-content:center;}
 .prev-body{min-width:0;}
-.prev-t{font-size:11.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.prev-ctl{margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.prev-t{font-size:12px;font-weight:600;line-height:1.4;}   /* título INTEIRO (sem corte) */
+.prev-ctl{margin-top:7px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .prev-ctl .tk button{width:24px;height:22px;}
 .prev-ctl .secsel{padding:3px 4px;}
 .prev-src{font-size:10px;color:var(--gray-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:50px;}
