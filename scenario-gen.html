@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Gerador de Cenários</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/topnav.js"></script>
+<style>
+:root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#F4F3F0;--border:#E3E3E3;
+  --white:#fff;--green:#1E8E4E;--red:#C0392B;--amber:#B7791F;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.06)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);color:var(--black);background:var(--g-light);font-size:13px;line-height:1.45}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 22px 70px}
+.sec-title{font-weight:700;font-size:17px;letter-spacing:.3px;margin-bottom:3px}
+.sec-sub{font-size:11.5px;color:var(--g-mid);margin-bottom:18px;max-width:820px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:18px}
+.card h3{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.35px;margin-bottom:2px}
+.card .csub{font-size:10.5px;color:var(--g-mid);margin-bottom:12px}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 2px}
+.btn{font:600 12px var(--font);padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--black);cursor:pointer;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--orange)}
+.btn.primary{background:var(--orange);color:#fff;border-color:var(--orange)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{color:var(--g-mid)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+table.vars{border-collapse:collapse;width:100%;font-size:12.5px}
+table.vars th,table.vars td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:center}
+table.vars th{font-weight:600;color:var(--g-dark);background:var(--g-light);font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+table.vars td.l,table.vars th.l{text-align:left}
+table.vars input{font:500 12.5px var(--font);width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--black);text-align:center}
+table.vars input.lab{text-align:left}
+table.vars input:focus{outline:none;border-color:var(--orange)}
+table.vars td.lv{font-variant-numeric:tabular-nums;font-weight:600;color:var(--g-dark)}
+table.vars td.lv.sweep{color:var(--orange)}
+.xbtn{border:none;background:none;color:var(--g-mid);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;border-radius:5px}
+.xbtn:hover{color:var(--red);background:rgba(192,57,43,.08)}
+.total-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-top:12px;font-size:12.5px}
+.total-num{font-size:20px;font-weight:700}
+.total-num.ok{color:var(--green)} .total-num.over{color:var(--red)}
+.hint{font-size:11px;color:var(--g-mid)}
+.warn{background:#FFF7E6;border:1px solid #F3D48A;color:var(--amber);border-radius:8px;padding:9px 12px;font-size:12px;margin-top:10px}
+.warn b{color:#8a5a00}
+.out-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:8px}
+.out-count{font-size:11.5px;color:var(--g-mid)}
+textarea#out{width:100%;height:230px;font:500 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:#FAFAF8;color:var(--black);resize:vertical;white-space:pre;overflow:auto}
+.copied{color:var(--green);font-size:11.5px;font-weight:600;opacity:0;transition:opacity .2s}
+.copied.show{opacity:1}
+.fmt-note{font-size:11px;color:var(--g-mid);margin-top:6px}
+.fmt-note code{background:var(--g-light);padding:1px 5px;border-radius:4px;font-size:11px}
+/* dark */
+html.dark body{background:#0f1216;color:#e6e6e6}
+html.dark .card{background:#171b21;border-color:#2a2f37;box-shadow:none}
+html.dark .card h3{color:#e6e6e6}
+html.dark table.vars th{background:#1e232b;color:#c2c8d0}
+html.dark table.vars td,html.dark table.vars th{border-color:#2a2f37}
+html.dark table.vars input{background:#0f1216;border-color:#333a44;color:#e6e6e6}
+html.dark table.vars td.lv{color:#c2c8d0}
+html.dark .btn{background:#1e232b;border-color:#333a44;color:#e6e6e6}
+html.dark .btn.primary{background:var(--orange);color:#fff;border-color:var(--orange)}
+html.dark textarea#out{background:#0f1216;border-color:#2a2f37;color:#e6e6e6}
+html.dark .sec-sub,html.dark .csub,html.dark .hint,html.dark .out-count,html.dark .fmt-note{color:#8b93a0}
+html.dark .warn{background:#2b2410;border-color:#5c4a1a;color:#e0b95a}
+html.dark .fmt-note code{background:#1e232b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sec-title">Gerador de Cenários</div>
+  <div class="sec-sub">Defina, para cada variável, o valor <b>inicial</b>, <b>final</b> e o <b>passo</b>. O gerador monta
+    todas as combinações e devolve as sequências <code>a;b;c;…</code> prontas para colar na coluna B da aba <b>Cenarios</b>
+    do Excel. Deixe <b>passo = 0</b> (ou fim = início) para uma variável ficar fixa.</div>
+
+  <div class="card">
+    <h3>Variáveis</h3>
+    <div class="csub">A ordem das linhas = a ordem dos valores na sequência. Para o modelo do Suzano, use o preset (15 posições, na ordem certa).</div>
+    <div class="row-actions">
+      <button class="btn" id="preset-suzano">Preset: Suzano (15 posições)</button>
+      <button class="btn ghost" id="add-row">+ Adicionar variável</button>
+      <button class="btn ghost" id="clear-rows">Limpar</button>
+    </div>
+    <div style="overflow-x:auto;margin-top:10px">
+      <table class="vars">
+        <thead><tr>
+          <th class="l" style="width:38%">Variável (rótulo)</th>
+          <th style="width:15%">Início</th><th style="width:15%">Fim</th><th style="width:15%">Passo</th>
+          <th style="width:11%">Níveis</th><th style="width:6%"></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="total-line">
+      <span>Total de cenários:</span>
+      <span class="total-num ok" id="total">1</span>
+      <span class="hint" id="total-calc"></span>
+    </div>
+    <div class="warn" id="cap-warn" hidden></div>
+  </div>
+
+  <div class="card">
+    <div class="out-head">
+      <button class="btn primary" id="gen">Gerar cenários</button>
+      <button class="btn" id="copy">Copiar tudo</button>
+      <span class="out-count" id="out-count"></span>
+      <span class="copied" id="copied">✓ copiado</span>
+    </div>
+    <textarea id="out" spellcheck="false" placeholder="As sequências geradas aparecem aqui — uma por linha."></textarea>
+    <div class="fmt-note">Formato de cada linha: valores separados por <code>;</code>, decimal com <b>ponto</b> (ex. <code>500;570;570;600;640;5.0;5.5;…</code>) — igual ao que a aba Cenarios espera.</div>
+  </div>
+</div>
+
+<script>
+/* ---- estado ---- */
+var CAP = 300;                 // teto de segurança (cada cenário = 1 F9 no Excel)
+var rows = [];                 // {label,start,end,step}
+
+var BASE = {
+  pulp:[590,570,570,600,640],
+  fx:[5.30354,5.50833,5.62708,5.68351,5.75093],
+  cost:[897.57,833.195,868.162,902.563,938.665]
+};
+var YEARS=[2026,2027,2028,2029,2030];
+
+function suzanoPreset(){
+  rows=[];
+  YEARS.forEach(function(y,i){ rows.push({label:'Celulose '+y, start:BASE.pulp[i], end:BASE.pulp[i], step:0}); });
+  YEARS.forEach(function(y,i){ rows.push({label:'Cambio '+y,   start:BASE.fx[i],   end:BASE.fx[i],   step:0}); });
+  YEARS.forEach(function(y,i){ rows.push({label:'Custo '+y,    start:BASE.cost[i], end:BASE.cost[i], step:0}); });
+  render();
+}
+
+/* ---- helpers ---- */
+function decimals(v){ var s=String(v); var i=s.indexOf('.'); return i<0?0:(s.length-i-1); }
+function levelsOf(r){
+  var st=Number(r.step), a=Number(r.start), b=Number(r.end);
+  if(!isFinite(a)) return 1;
+  if(!isFinite(st) || st<=0 || !isFinite(b) || b<=a) return 1;   // fixo
+  return Math.floor((b-a)/st + 1e-9) + 1;
+}
+function fmtNum(v, d){ var f=Math.pow(10,d); var n=Math.round(v*f)/f; return String(n); }
+
+function totalScenarios(){ return rows.reduce(function(t,r){ return t*levelsOf(r); }, 1); }
+
+/* ---- render ---- */
+function render(){
+  var tb=document.getElementById('rows');
+  tb.innerHTML = rows.map(function(r,idx){
+    var lv=levelsOf(r);
+    return '<tr>'+
+      '<td class="l"><input class="lab" data-i="'+idx+'" data-k="label" value="'+escAttr(r.label)+'" placeholder="ex. Celulose 2026"></td>'+
+      '<td><input data-i="'+idx+'" data-k="start" value="'+escAttr(r.start)+'" inputmode="decimal"></td>'+
+      '<td><input data-i="'+idx+'" data-k="end" value="'+escAttr(r.end)+'" inputmode="decimal"></td>'+
+      '<td><input data-i="'+idx+'" data-k="step" value="'+escAttr(r.step)+'" inputmode="decimal"></td>'+
+      '<td class="lv '+(lv>1?'sweep':'')+'">'+lv+'</td>'+
+      '<td><button class="xbtn" data-del="'+idx+'" title="Remover">&times;</button></td>'+
+    '</tr>';
+  }).join('');
+  updateTotal();
+}
+function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); }
+
+function updateTotal(){
+  var t=totalScenarios();
+  var el=document.getElementById('total'); el.textContent=t.toLocaleString('pt-BR');
+  el.className='total-num '+(t>CAP?'over':'ok');
+  var parts=rows.map(levelsOf).filter(function(n){return n>1;});
+  document.getElementById('total-calc').textContent = parts.length? '= '+parts.join(' × ')+' (variáveis que variam)' : '(nenhuma variável variando — tudo fixo)';
+  var warn=document.getElementById('cap-warn');
+  if(t>CAP){ warn.hidden=false; warn.innerHTML='<b>Passou do teto de '+CAP+' cenários.</b> Cada cenário é um recálculo (F9) do modelo inteiro — gerar milhares trava o Excel. Reduza as faixas/passos, ou fale comigo pra subir o teto se precisar mesmo.'; }
+  else warn.hidden=true;
+  document.getElementById('gen').disabled = (t>CAP || t<1);
+}
+
+/* ---- gerar (mixed-radix) ---- */
+function generate(){
+  var lv=rows.map(levelsOf);
+  var total=lv.reduce(function(a,b){return a*b;},1);
+  if(total>CAP || total<1) return;
+  var dec=rows.map(function(r){ return Math.max(decimals(r.start), decimals(r.step)); });
+  // place value de cada variável = produto dos níveis das variáveis SEGUINTES
+  var place=new Array(rows.length); var acc=1;
+  for(var v=rows.length-1; v>=0; v--){ place[v]=acc; acc*=lv[v]; }
+  var lines=[];
+  for(var i=0;i<total;i++){
+    var vals=[];
+    for(var v=0; v<rows.length; v++){
+      var level = Math.floor(i/place[v]) % lv[v];
+      var val = Number(rows[v].start) + level*Number(rows[v].step||0);
+      vals.push(fmtNum(val, dec[v]||0));
+    }
+    lines.push(vals.join(';'));
+  }
+  document.getElementById('out').value = lines.join('\n');
+  document.getElementById('out-count').textContent = lines.length.toLocaleString('pt-BR')+' cenário(s) · '+rows.length+' valores cada';
+}
+
+/* ---- eventos ---- */
+document.getElementById('rows').addEventListener('input', function(e){
+  var t=e.target; if(t.dataset.i==null) return;
+  var i=+t.dataset.i, k=t.dataset.k;
+  rows[i][k] = (k==='label') ? t.value : t.value.replace(',','.');   // aceita vírgula, guarda com ponto
+  // atualiza só a coluna de níveis + total (sem re-render p/ não perder o foco)
+  if(k!=='label'){ var lvTd=t.closest('tr').querySelector('.lv'); var lv=levelsOf(rows[i]); lvTd.textContent=lv; lvTd.className='lv '+(lv>1?'sweep':''); updateTotal(); }
+});
+document.getElementById('rows').addEventListener('click', function(e){
+  if(e.target.dataset.del!=null){ rows.splice(+e.target.dataset.del,1); render(); }
+});
+document.getElementById('preset-suzano').onclick=suzanoPreset;
+document.getElementById('add-row').onclick=function(){ rows.push({label:'Variável '+(rows.length+1),start:0,end:0,step:0}); render(); };
+document.getElementById('clear-rows').onclick=function(){ rows=[]; render(); document.getElementById('out').value=''; document.getElementById('out-count').textContent=''; };
+document.getElementById('gen').onclick=generate;
+document.getElementById('copy').onclick=function(){
+  var ta=document.getElementById('out'); if(!ta.value) return;
+  ta.select();
+  var done=function(){ var c=document.getElementById('copied'); c.classList.add('show'); setTimeout(function(){c.classList.remove('show');},1400); };
+  if(navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(done, function(){ document.execCommand('copy'); done(); }); }
+  else { document.execCommand('copy'); done(); }
+};
+
+/* start */
+suzanoPreset();
+</script>
+</body>
+</html>
