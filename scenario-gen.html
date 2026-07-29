@@ -123,10 +123,11 @@ html.dark .pc-del{border-color:#2a2f37}
 
   <div class="card">
     <h3>Meus presets</h3>
-    <div class="csub">Salve a configuração atual (variáveis, faixas e passos) com um nome — carregue depois já com tudo pronto. Fica guardado neste navegador.</div>
+    <div class="csub">Salve a configuração atual (variáveis, faixas e passos) com um nome — carregue depois já com tudo pronto. Cada preset tem <b>Carregar</b> e <b>Apagar</b>. Fica guardado neste navegador.</div>
     <div class="row-actions">
       <input id="preset-name" class="preset-inp" placeholder="Nome do preset (ex. Celulose fina 2027)" maxlength="60"/>
       <button class="btn primary" id="preset-save">Salvar config atual</button>
+      <button class="btn ghost" id="preset-clear-all" hidden>Apagar todos</button>
     </div>
     <div id="preset-list" class="preset-list"></div>
   </div>
@@ -272,12 +273,13 @@ function escHtml(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){ r
 function renderPresets(){
   var store=loadStore(); var names=Object.keys(store).sort();
   var el=document.getElementById('preset-list');
+  var clr=document.getElementById('preset-clear-all'); if(clr) clr.hidden = !names.length;
   if(!names.length){ el.innerHTML='<span class="preset-empty">Nenhum preset salvo ainda.</span>'; return; }
   el.innerHTML=names.map(function(n){
     var rws=store[n]||[]; var nv=rws.length; var nc=rws.reduce(function(t,r){ return t*levelsOf(r); },1);
-    return '<span class="preset-chip"><button class="pc-load" data-name="'+escAttr(n)+'">'+escHtml(n)+
+    return '<span class="preset-chip"><button class="pc-load" data-name="'+escAttr(n)+'" title="Carregar este preset">'+escHtml(n)+
            '<small>'+nv+' var · '+nc.toLocaleString('pt-BR')+' cenários</small></button>'+
-           '<button class="pc-del" data-name="'+escAttr(n)+'" title="Excluir">×</button></span>';
+           '<button class="pc-del" data-name="'+escAttr(n)+'" title="Apagar este preset">🗑</button></span>';
   }).join('');
 }
 document.getElementById('preset-save').onclick=function(){
@@ -294,8 +296,11 @@ document.getElementById('preset-list').addEventListener('click', function(e){
   var t=e.target.closest('button'); if(!t) return;
   var nm=t.dataset.name; var store=loadStore();
   if(t.classList.contains('pc-load')){ if(store[nm]){ rows=JSON.parse(JSON.stringify(store[nm])); render(); } }
-  else if(t.classList.contains('pc-del')){ if(confirm('Excluir o preset "'+nm+'"?')){ delete store[nm]; saveStore(store); renderPresets(); } }
+  else if(t.classList.contains('pc-del')){ if(confirm('Apagar o preset "'+nm+'"?')){ delete store[nm]; saveStore(store); renderPresets(); } }
 });
+document.getElementById('preset-clear-all').onclick=function(){
+  if(confirm('Apagar TODOS os presets salvos?')){ saveStore({}); renderPresets(); }
+};
 
 /* start */
 suzanoPreset();
