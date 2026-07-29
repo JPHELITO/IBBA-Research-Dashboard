@@ -56,6 +56,16 @@ textarea#out{width:100%;height:230px;font:500 12px ui-monospace,SFMono-Regular,M
 .copied.show{opacity:1}
 .fmt-note{font-size:11px;color:var(--g-mid);margin-top:6px}
 .fmt-note code{background:var(--g-light);padding:1px 5px;border-radius:4px;font-size:11px}
+.preset-inp{font:500 12.5px var(--font);padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--black);flex:1;min-width:240px;max-width:420px}
+.preset-inp:focus{outline:none;border-color:var(--orange)}
+.preset-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.preset-chip{display:inline-flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
+.pc-load{border:none;background:none;cursor:pointer;font:600 12px var(--font);color:var(--black);padding:7px 11px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left}
+.pc-load:hover{background:var(--g-light);color:var(--orange)}
+.pc-load small{font-weight:500;color:var(--g-mid);font-size:9.5px}
+.pc-del{border:none;border-left:1px solid var(--border);background:none;cursor:pointer;color:var(--g-mid);font-size:15px;line-height:1;padding:0 10px}
+.pc-del:hover{color:var(--red);background:rgba(192,57,43,.08)}
+.preset-empty{font-size:11.5px;color:var(--g-mid)}
 /* dark */
 html.dark body{background:#0f1216;color:#e6e6e6}
 html.dark .card{background:#171b21;border-color:#2a2f37;box-shadow:none}
@@ -70,6 +80,10 @@ html.dark textarea#out{background:#0f1216;border-color:#2a2f37;color:#e6e6e6}
 html.dark .sec-sub,html.dark .csub,html.dark .hint,html.dark .out-count,html.dark .fmt-note{color:#8b93a0}
 html.dark .warn{background:#2b2410;border-color:#5c4a1a;color:#e0b95a}
 html.dark .fmt-note code{background:#1e232b}
+html.dark .preset-inp{background:#0f1216;border-color:#333a44;color:#e6e6e6}
+html.dark .preset-chip{background:#171b21;border-color:#2a2f37}
+html.dark .pc-load{color:#e6e6e6} html.dark .pc-load:hover{background:#1e232b}
+html.dark .pc-del{border-color:#2a2f37}
 </style>
 </head>
 <body>
@@ -108,6 +122,16 @@ html.dark .fmt-note code{background:#1e232b}
   </div>
 
   <div class="card">
+    <h3>Meus presets</h3>
+    <div class="csub">Salve a configuração atual (variáveis, faixas e passos) com um nome — carregue depois já com tudo pronto. Fica guardado neste navegador.</div>
+    <div class="row-actions">
+      <input id="preset-name" class="preset-inp" placeholder="Nome do preset (ex. Celulose fina 2027)" maxlength="60"/>
+      <button class="btn primary" id="preset-save">Salvar config atual</button>
+    </div>
+    <div id="preset-list" class="preset-list"></div>
+  </div>
+
+  <div class="card">
     <div class="out-head">
       <button class="btn primary" id="gen">Gerar cenários</button>
       <button class="btn" id="copy">Copiar tudo</button>
@@ -121,8 +145,8 @@ html.dark .fmt-note code{background:#1e232b}
 
 <script>
 /* ---- estado ---- */
-var CAP = 100000;              // teto duro (o gargalo real é o Excel, não o gerador)
-var SOFT = 1000;               // acima disso, avisa que o F9 no Excel fica lento
+var SOFT = 1000;               // sem teto; acima disso só AVISA (F9 lento no Excel)
+var HUGE = 200000;             // acima disso, confirma antes de gerar (evita travar o navegador) — não é limite
 var rows = [];                 // {label,start,end,step}
 
 var BASE = {
@@ -183,21 +207,21 @@ function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); }
 function updateTotal(){
   var t=totalScenarios();
   var el=document.getElementById('total'); el.textContent=t.toLocaleString('pt-BR');
-  el.className='total-num '+(t>CAP?'over':(t>SOFT?'warnc':'ok'));
+  el.className='total-num '+(t>SOFT?'warnc':'ok');
   var parts=rows.map(levelsOf).filter(function(n){return n>1;});
   document.getElementById('total-calc').textContent = parts.length? '= '+parts.join(' × ')+' (variáveis que variam)' : '(nenhuma variável variando — tudo fixo)';
   var warn=document.getElementById('cap-warn');
-  if(t>CAP){ warn.hidden=false; warn.innerHTML='<b>Passou do teto de '+CAP.toLocaleString('pt-BR')+' cenários.</b> Reduza as faixas/passos.'; }
-  else if(t>SOFT){ warn.hidden=false; warn.innerHTML='<b>'+t.toLocaleString('pt-BR')+' cenários.</b> O gerador dá conta, mas cada linha colada no Excel é um recálculo (F9) do modelo inteiro — acima de ~1.000 o F9 fica bem lento. Gere e cole em lotes se precisar.'; }
+  if(t>SOFT){ warn.hidden=false; warn.innerHTML='<b>'+t.toLocaleString('pt-BR')+' cenários.</b> Sem limite aqui — mas cada linha colada no Excel é um recálculo (F9) do modelo inteiro: acima de ~1.000 o F9 fica bem lento, e centenas de milhares podem pesar no próprio navegador ao gerar. Gere e cole em lotes.'; }
   else warn.hidden=true;
-  document.getElementById('gen').disabled = (t>CAP || t<1);
+  document.getElementById('gen').disabled = (t<1);
 }
 
 /* ---- gerar (mixed-radix) ---- */
 function generate(){
   var lv=rows.map(levelsOf);
   var total=lv.reduce(function(a,b){return a*b;},1);
-  if(total>CAP || total<1) return;
+  if(total<1) return;
+  if(total>HUGE && !confirm(total.toLocaleString('pt-BR')+' cenários é MUITO — gerar isso pode travar o navegador. Continuar mesmo assim?')) return;
   var dec=rows.map(function(r){ return Math.max(decimals(r.start), decimals(r.step)); });
   // place value de cada variável = produto dos níveis das variáveis SEGUINTES
   var place=new Array(rows.length); var acc=1;
@@ -240,8 +264,42 @@ document.getElementById('copy').onclick=function(){
   else { document.execCommand('copy'); done(); }
 };
 
+/* ---- presets salvos (guardados neste navegador via localStorage) ---- */
+var PKEY='ibba_scengen_presets';
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(PKEY)||'{}'); }catch(e){ return {}; } }
+function saveStore(o){ try{ localStorage.setItem(PKEY, JSON.stringify(o)); }catch(e){ alert('Não consegui salvar (armazenamento do navegador bloqueado).'); } }
+function escHtml(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+function renderPresets(){
+  var store=loadStore(); var names=Object.keys(store).sort();
+  var el=document.getElementById('preset-list');
+  if(!names.length){ el.innerHTML='<span class="preset-empty">Nenhum preset salvo ainda.</span>'; return; }
+  el.innerHTML=names.map(function(n){
+    var rws=store[n]||[]; var nv=rws.length; var nc=rws.reduce(function(t,r){ return t*levelsOf(r); },1);
+    return '<span class="preset-chip"><button class="pc-load" data-name="'+escAttr(n)+'">'+escHtml(n)+
+           '<small>'+nv+' var · '+nc.toLocaleString('pt-BR')+' cenários</small></button>'+
+           '<button class="pc-del" data-name="'+escAttr(n)+'" title="Excluir">×</button></span>';
+  }).join('');
+}
+document.getElementById('preset-save').onclick=function(){
+  var inp=document.getElementById('preset-name'); var nm=(inp.value||'').trim();
+  if(!nm){ inp.focus(); return; }
+  if(!rows.length) return;
+  var store=loadStore();
+  if(store[nm] && !confirm('Já existe um preset "'+nm+'". Sobrescrever?')) return;
+  store[nm]=JSON.parse(JSON.stringify(rows));   // guarda variáveis + faixas + passos, tudo pronto
+  saveStore(store); inp.value=''; renderPresets();
+};
+document.getElementById('preset-name').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('preset-save').click(); } });
+document.getElementById('preset-list').addEventListener('click', function(e){
+  var t=e.target.closest('button'); if(!t) return;
+  var nm=t.dataset.name; var store=loadStore();
+  if(t.classList.contains('pc-load')){ if(store[nm]){ rows=JSON.parse(JSON.stringify(store[nm])); render(); } }
+  else if(t.classList.contains('pc-del')){ if(confirm('Excluir o preset "'+nm+'"?')){ delete store[nm]; saveStore(store); renderPresets(); } }
+});
+
 /* start */
 suzanoPreset();
+renderPresets();
 </script>
 </body>
 </html>
