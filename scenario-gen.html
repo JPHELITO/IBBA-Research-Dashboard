@@ -135,11 +135,12 @@ html.dark .pc-del{border-color:#2a2f37}
   <div class="card">
     <div class="out-head">
       <button class="btn primary" id="gen">Gerar cenários</button>
-      <button class="btn" id="copy">Copiar tudo</button>
+      <button class="btn" id="copy" disabled>Copiar tudo</button>
+      <button class="btn" id="dl" disabled>Baixar .txt</button>
       <span class="out-count" id="out-count"></span>
       <span class="copied" id="copied">✓ copiado</span>
     </div>
-    <textarea id="out" spellcheck="false" placeholder="As sequências geradas aparecem aqui — uma por linha."></textarea>
+    <textarea id="out" spellcheck="false" placeholder="As sequências geradas aparecem aqui — uma por linha (se forem muitas, a caixa mostra só uma prévia; use Baixar .txt para todas)."></textarea>
     <div class="fmt-note">Formato de cada linha: valores separados por <code>;</code>, decimal com <b>ponto</b> (ex. <code>500;570;570;600;640;5.0;5.5;…</code>) — igual ao que a aba Cenarios espera.</div>
   </div>
 </div>
@@ -217,28 +218,53 @@ function updateTotal(){
   document.getElementById('gen').disabled = (t<1);
 }
 
-/* ---- gerar (mixed-radix) ---- */
-function generate(){
+/* ---- gerar (mixed-radix, em LOTES para não travar) ---- */
+var genState = { blob:null, url:null, count:0 };
+var PREVIEW = 1000;              // linhas mostradas na caixa (o resto vai no Baixar)
+var CHUNK = 25000;              // linhas por lote; entre lotes cedemos o controle ao navegador
+
+async function generate(){
   var lv=rows.map(levelsOf);
   var total=lv.reduce(function(a,b){return a*b;},1);
   if(total<1) return;
-  if(total>HUGE && !confirm(total.toLocaleString('pt-BR')+' cenários é MUITO — gerar isso pode travar o navegador. Continuar mesmo assim?')) return;
+  if(total>HUGE && !confirm(total.toLocaleString('pt-BR')+' cenários. Vou gerar em lotes (com % de progresso) e entregar por DOWNLOAD — a caixa mostra só uma prévia. Continuar?')) return;
   var dec=rows.map(function(r){ return Math.max(decimals(r.start), decimals(r.step)); });
-  // place value de cada variável = produto dos níveis das variáveis SEGUINTES
   var place=new Array(rows.length); var acc=1;
   for(var v=rows.length-1; v>=0; v--){ place[v]=acc; acc*=lv[v]; }
-  var lines=[];
+
+  var genBtn=document.getElementById('gen'), oc=document.getElementById('out-count');
+  var copyB=document.getElementById('copy'), dlB=document.getElementById('dl');
+  genBtn.disabled=true; copyB.disabled=true; dlB.disabled=true;
+  var nrows=rows.length;
+  var starts=rows.map(function(r){return Number(r.start);}), steps=rows.map(function(r){return Number(r.step||0);});
+  var parts=[], buf=new Array(CHUNK), bl=0, preview=[];
   for(var i=0;i<total;i++){
-    var vals=[];
-    for(var v=0; v<rows.length; v++){
-      var level = Math.floor(i/place[v]) % lv[v];
-      var val = Number(rows[v].start) + level*Number(rows[v].step||0);
-      vals.push(fmtNum(val, dec[v]||0));
+    var s='';
+    for(var v=0; v<nrows; v++){
+      var level=Math.floor(i/place[v])%lv[v];
+      s += (v? ';' : '') + fmtNum(starts[v]+level*steps[v], dec[v]||0);
     }
-    lines.push(vals.join(';'));
+    buf[bl++]=s;
+    if(preview.length<PREVIEW) preview.push(s);
+    if(bl>=CHUNK){
+      parts.push(buf.join('\n')); bl=0;
+      oc.textContent='Gerando… '+Math.round((i+1)/total*100)+'%  ('+(i+1).toLocaleString('pt-BR')+')';
+      await new Promise(function(r){ setTimeout(r); });   // <-- respiro: a aba não congela
+    }
   }
-  document.getElementById('out').value = lines.join('\n');
-  document.getElementById('out-count').textContent = lines.length.toLocaleString('pt-BR')+' cenário(s) · '+rows.length+' valores cada';
+  if(bl){ parts.push(buf.slice(0,bl).join('\n')); }
+
+  // Blob a partir dos PEDAÇOS (sem materializar uma string gigante única)
+  var blobParts=[];
+  for(var p=0;p<parts.length;p++){ if(p) blobParts.push('\n'); blobParts.push(parts[p]); }
+  if(genState.url){ try{ URL.revokeObjectURL(genState.url); }catch(e){} genState.url=null; }
+  genState.blob = new Blob(blobParts, {type:'text/plain;charset=utf-8'});
+  genState.count = total;
+
+  document.getElementById('out').value = preview.join('\n');
+  var note = total>preview.length ? '  ·  a caixa mostra as primeiras '+preview.length.toLocaleString('pt-BR')+' — use Baixar .txt para TODAS' : '';
+  oc.textContent = total.toLocaleString('pt-BR')+' cenário(s) · '+nrows+' valores cada'+note;
+  genBtn.disabled=false; copyB.disabled=false; dlB.disabled=false;
 }
 
 /* ---- eventos ---- */
@@ -258,11 +284,19 @@ document.getElementById('add-row').onclick=function(){ rows.push({label:'Variáv
 document.getElementById('clear-rows').onclick=function(){ rows=[]; render(); document.getElementById('out').value=''; document.getElementById('out-count').textContent=''; };
 document.getElementById('gen').onclick=generate;
 document.getElementById('copy').onclick=function(){
-  var ta=document.getElementById('out'); if(!ta.value) return;
-  ta.select();
+  if(!genState.blob) return;
   var done=function(){ var c=document.getElementById('copied'); c.classList.add('show'); setTimeout(function(){c.classList.remove('show');},1400); };
-  if(navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(done, function(){ document.execCommand('copy'); done(); }); }
-  else { document.execCommand('copy'); done(); }
+  genState.blob.text().then(function(txt){                       // conteúdo COMPLETO (não só a prévia)
+    if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(done, done); }
+    else { var ta=document.getElementById('out'), old=ta.value; ta.value=txt; ta.select(); document.execCommand('copy'); ta.value=old; done(); }
+  });
+};
+document.getElementById('dl').onclick=function(){
+  if(!genState.blob) return;
+  if(genState.url){ try{ URL.revokeObjectURL(genState.url); }catch(e){} }
+  genState.url=URL.createObjectURL(genState.blob);
+  var a=document.createElement('a'); a.href=genState.url; a.download='cenarios_'+genState.count+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 };
 
 /* ---- presets salvos (guardados neste navegador via localStorage) ---- */
