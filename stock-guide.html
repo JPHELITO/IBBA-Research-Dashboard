@@ -80,6 +80,15 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .snap{display:flex;gap:4px;margin-top:2px}
 .snap span{font-size:9.5px;padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border)}
 .snap .base{color:var(--g-dark)} .snap .live{color:var(--orange);border-color:var(--orange)}
+/* grade 6-D por empresa */
+.g6-subtabs{margin-bottom:14px;flex-wrap:wrap}
+.g6-groups{display:flex;flex-wrap:wrap;gap:18px;margin:2px 0 12px}
+.g6-group{border:1px solid var(--border);border-radius:10px;padding:8px 12px 10px}
+.g6-gname{font:700 11px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.g6-group .steppers{margin:0}
+.g6-actions{margin:0 0 12px}
+.g6d{font-size:9.5px;color:var(--g-mid);font-weight:600;margin-left:3px}
+.g6-scnhead{background:var(--g-light)}
 .foot{font-size:10.5px;color:var(--g-mid);margin-top:8px}
 .splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--g-light);z-index:50;text-align:center;padding:30px}
 .spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite}
@@ -442,7 +451,14 @@ function sgRenderSensitivity(tables,drivers,marketValues,computedComps,config){
   _SENS_CTX={drivers:drivers||[],marketValues:marketValues||{},comps:computedComps||[],config:config||{}};
   const host=document.getElementById('sens-host'); host.innerHTML='';
   if(!tables||!tables.length){host.innerHTML='<div class="card"><span class="muted">No sensitivity tables configured.</span></div>';return}
-  // agrupa por painel (definition.panel); cada painel é um card
+  const g6=tables.filter(t=>t.definition&&t.definition.kind==='grid6');
+  const others=tables.filter(t=>!(t.definition&&t.definition.kind==='grid6'));
+  if(g6.length){ sgRenderGrid6Tabs(g6,others,host); }   // grade 6-D por empresa = abinhas no topo
+  else { _sgRenderPanels(others,host); }                 // formato antigo (estático / grid 1-3D)
+}
+// formato antigo: agrupa por painel (definition.panel); cada painel é um card
+function _sgRenderPanels(tables,host){
+  if(!tables||!tables.length){host.innerHTML='<div class="card"><span class="muted">No sensitivity tables configured.</span></div>';return}
   const panels={}; const order=[];
   tables.forEach(t=>{const p=(t.definition&&t.definition.panel)||'_';if(!panels[p]){panels[p]=[];order.push(p)}panels[p].push(t)});
   const grid=document.createElement('div'); grid.className='panels'; host.appendChild(grid);
@@ -588,6 +604,142 @@ function renderGridBody(t){
   document.getElementById('grid-body-'+t.id).innerHTML=h;
 }
 
+// ══════════ GRADE 6-D por empresa (definition.kind==='grid6') ══════════
+// Abinhas por empresa no topo da aba Sensitivity; blob gzip lazy ao abrir; 6 steppers
+// agrupados por variável (3×2 anos); 12 indicadores (EBITDA/EV-EBITDA/FCF/FCF yield/
+// Net Debt/ND-EBITDA × 2 anos), múltiplos derivados AO VIVO com o market cap; Base × Cenário.
+let _G6_TABS=[]; const _grid6State={}; const _grid6Mesh={};
+const _G6_FAMS=[
+  {key:'ebitda',   label:'EBITDA',    mode:'absolute'},
+  {key:'ev_ebitda',label:'EV/EBITDA', mode:'ev_ebitda'},
+  {key:'fcf',      label:'FCF',       mode:'absolute'},
+  {key:'fcf_yield',label:'FCF yield', mode:'yield'},
+  {key:'net_debt', label:'Net Debt',  mode:'absolute'},
+  {key:'nd_ebitda',label:'ND/EBITDA', mode:'nd_ebitda'},
+];
+function _grid6ById(id){const x=_G6_TABS.find(t=>t.t&&String(t.t.id)===String(id));return x?x.t:null}
+function _g6TabIndex(id){return _G6_TABS.findIndex(t=>t.t&&String(t.t.id)===String(id))}
+function _g6Label(t){const tk=(t.definition&&t.definition.ticker)||'';const c=compByTicker(tk);return (c&&c.company_name)?c.company_name:(tk||t.title)}
+function _g6FmtLevel(v){if(v==null||!isFinite(v))return '';return (Math.abs(v-Math.round(v))<1e-9)?String(Math.round(v)):String(Math.round(v*100)/100)}
+function _g6InitVals(t){const axes=(t.definition.axes)||[];const bc=(t.definition.base&&t.definition.base.coords)||null;
+  return axes.map((a,k)=>{const lv=a.levels||[0];return (bc&&bc[k]!=null)?n(bc[k]):lv[Math.floor(lv.length/2)]})}
+
+function sgRenderGrid6Tabs(g6,others,host){
+  _G6_TABS=g6.map(t=>({key:'g6-'+t.id,t:t,label:_g6Label(t)}));
+  if(others&&others.length) _G6_TABS.push({key:'others',others:others,label:'Tabelas'});
+  g6.forEach(t=>{ if(!_grid6State[t.id]) _grid6State[t.id]={vals:_g6InitVals(t),loaded:false,loading:false,error:false}; });
+  const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs';
+  _G6_TABS.forEach((tab,i)=>{ const b=document.createElement('button'); b.className='sg-tab'+(i===0?' active':'');
+    b.id='g6tab-'+i; b.textContent=tab.label; b.onclick=()=>_g6ShowTab(i); bar.appendChild(b); });
+  host.appendChild(bar);
+  const pane=document.createElement('div'); pane.id='g6-pane'; host.appendChild(pane);
+  _g6ShowTab(0);
+}
+function _g6ShowTab(i){
+  _G6_TABS.forEach((tab,j)=>{const b=document.getElementById('g6tab-'+j);if(b)b.classList.toggle('active',j===i)});
+  const pane=document.getElementById('g6-pane'); if(!pane)return; const tab=_G6_TABS[i]; if(!tab)return;
+  if(tab.others){ pane.innerHTML=''; _sgRenderPanels(tab.others,pane); return; }
+  const t=tab.t; const st=_grid6State[t.id];
+  if(st.loaded){ _g6RenderPane(t,pane); return; }
+  pane.innerHTML='<div class="muted" style="font-size:12px;padding:12px">Loading scenarios…</div>';
+  ensureGrid6Loaded(t).then(()=>{ if(_g6TabIndex(t.id)===_curG6()) _g6RenderPane(t,pane); })
+    .catch(e=>{ console.warn('grid6',e); pane.innerHTML=`<div class="foot" style="padding:10px">Couldn’t load scenarios (${esc(String(e.message||e))}). <button class="hbtn" onclick="_g6Reload(${t.id})">Retry</button></div>`; });
+}
+function _curG6(){for(let j=0;j<_G6_TABS.length;j++){const b=document.getElementById('g6tab-'+j);if(b&&b.classList.contains('active'))return j}return 0}
+function _g6Reload(id){const st=_grid6State[id];if(st){st.loaded=false;st.loading=false;st.error=false}_g6ShowTab(_g6TabIndex(id))}
+
+async function ensureGrid6Loaded(t){
+  const st=_grid6State[t.id]; if(st.loaded)return; if(st.loading&&st._p)return st._p;
+  st.loading=true;
+  st._p=(async()=>{
+    const b64=await rpc('get_stock_guide_scenario_blob',{p_sensitivity_id:Number(t.id)});
+    if(!b64) throw new Error('no scenario data');
+    const json=await _gunzipB64(b64); const blob=JSON.parse(json);
+    const lv=((t.definition.axes)||[]).map(a=>a.levels);
+    const meshes={}; const mm=blob.metrics||{};
+    Object.keys(mm).forEach(mk=>{ meshes[mk]=SG.buildGridMeshFromDense(lv,mm[mk]); });
+    _grid6Mesh[t.id]=meshes; st.loaded=true; st.loading=false;
+  })();
+  return st._p;
+}
+async function _gunzipB64(b64){
+  const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  const ab=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  return new TextDecoder().decode(ab);
+}
+
+function _g6RenderPane(t,pane){
+  const d=t.definition; const axes=d.axes||[]; const groups=d.groups||[]; const st=_grid6State[t.id];
+  let h='<div class="g6-groups">';
+  groups.forEach(g=>{
+    h+=`<div class="g6-group"><div class="g6-gname">${esc(g.name)}</div><div class="steppers">`;
+    (g.axes||[]).forEach(k=>{ const a=axes[k]||{}; const bc=(d.base&&d.base.coords)?d.base.coords[k]:null;
+      h+=`<div class="stepper"><label>${esc(a.label||('axis '+(k+1)))}</label>
+        <div class="ctl"><button onclick="_g6Step(${t.id},${k},-1)">−</button>
+        <input id="g6ax-${t.id}-${k}" type="number" value="${st.vals[k]}" onchange="_g6Set(${t.id},${k},this.value)"/>
+        <button onclick="_g6Step(${t.id},${k},1)">+</button></div>
+        <div class="snap">${bc!=null?`<span class="base" onclick="_g6Set(${t.id},${k},${bc})">Base ${_g6FmtLevel(bc)}</span>`:''}</div></div>`; });
+    h+='</div></div>';
+  });
+  h+='</div>';
+  h+=`<div class="g6-actions"><button class="hbtn" onclick="_g6ResetBase(${t.id})">↺ Base case</button></div>`;
+  h+='<div id="g6-body-'+t.id+'"></div>';
+  pane.innerHTML=h; _g6RenderBody(t);
+}
+function _g6Set(id,k,v){const num=n(v);if(num==null)return;const st=_grid6State[id];if(!st)return;st.vals[k]=num;
+  const el=document.getElementById('g6ax-'+id+'-'+k);if(el)el.value=num;const t=_grid6ById(id);if(t)_g6RenderBody(t)}
+function _g6Step(id,k,dir){const t=_grid6ById(id);if(!t)return;const lv=((t.definition.axes[k]||{}).levels)||[];const st=_grid6State[id];const cur=st.vals[k];
+  let target=cur;
+  if(dir>0){const nx=lv.find(x=>x>cur+1e-9);target=(nx!=null?nx:(lv.length?lv[lv.length-1]:cur));}
+  else{let pv=null;for(const x of lv){if(x<cur-1e-9)pv=x;}target=(pv!=null?pv:(lv.length?lv[0]:cur));}
+  _g6Set(id,k,target);}
+function _g6ResetBase(id){const t=_grid6ById(id);if(!t)return;const st=_grid6State[id];st.vals=_g6InitVals(t);
+  _g6RenderPane(t,document.getElementById('g6-pane'));}
+
+function _g6Val(t,comp,fam,y,useBase){
+  const meshes=_grid6Mesh[t.id]||{}; const at=_grid6State[t.id].vals;
+  const base=(t.definition.base&&t.definition.base.metrics)||{};
+  const get=mk=> useBase ? (base[mk]!=null?n(base[mk]):null) : (meshes[mk]?SG.interpolateMesh(meshes[mk],at):null);
+  let primary=null,secondary=null;
+  if(fam.key==='ebitda') primary=get('ebitda_'+y);
+  else if(fam.key==='fcf') primary=get('fcf_'+y);
+  else if(fam.key==='net_debt') primary=get('net_debt_'+y);
+  else if(fam.key==='fcf_yield') primary=get('fcf_'+y);
+  else if(fam.key==='ev_ebitda'){ primary=get('ebitda_'+y); secondary=get('net_debt_'+y); }
+  else if(fam.key==='nd_ebitda'){ primary=get('ebitda_'+y); secondary=get('net_debt_'+y); }
+  return SG.computeSensitivityCellValue({valueMode:fam.mode,primary:primary,secondary:secondary,
+    marketCapBrlMn:comp?comp.marketCapBrlMn:null,livePrice:comp?comp.livePrice:null});
+}
+function _g6DeltaStr(fam,bv,sv){
+  if(bv==null||sv==null||!isFinite(bv)||!isFinite(sv))return '';
+  if(fam.mode==='absolute'){ if(Math.abs(bv)<1e-9)return ''; const p=(sv-bv)/Math.abs(bv)*100;
+    if(Math.abs(p)<0.05)return ''; return '('+(p>=0?'+':'')+p.toFixed(1)+'%)'; }
+  const dd=sv-bv; if(Math.abs(dd)<0.005)return ''; return '('+(dd>=0?'+':'')+dd.toFixed(fam.mode==='yield'?1:2)+(fam.mode==='yield'?'pp':'×')+')';
+}
+function _g6RenderBody(t){
+  const d=t.definition; const comp=compByTicker(d.ticker);
+  const y1l=d.y1_label||'yA', y2l=d.y2_label||'yB';
+  const host=document.getElementById('g6-body-'+t.id); if(!host)return;
+  let h='';
+  if(!comp) h+=`<div class="foot" style="color:#B8860B;margin:0 0 8px">⚠ Sem cotação ao vivo p/ ${esc(d.ticker||'?')} — EV/EBITDA e FCF yield dependem do market cap; confira o ticker no admin.</div>`;
+  h+='<div class="tbl-scroll"><table class="data"><thead><tr><th class="l">Indicator</th>'
+    +`<th>Base ${esc(y1l)}</th><th class="g6-scnhead">Scenario ${esc(y1l)}</th>`
+    +`<th class="grp-th">Base ${esc(y2l)}</th><th class="g6-scnhead">Scenario ${esc(y2l)}</th></tr></thead><tbody>`;
+  _G6_FAMS.forEach(fam=>{
+    const dec=(fam.mode==='absolute')?0:1;
+    h+=`<tr><td class="l">${esc(fam.label)}</td>`;
+    ['y1','y2'].forEach((y,yi)=>{
+      const bv=_g6Val(t,comp,fam,y,true), sv=_g6Val(t,comp,fam,y,false);
+      h+=`<td class="num${yi===1?' grp-th':''}">${SG.formatSensitivityValue(bv,fam.mode,'',dec)}</td>`;
+      h+=`<td class="num g6-scnhead">${SG.formatSensitivityValue(sv,fam.mode,'',dec)}<span class="g6d">${_g6DeltaStr(fam,bv,sv)}</span></td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+=`<div class="foot">Base = caso-base do modelo · Scenario = ponto escolhido (interpolado) · EV/EBITDA, FCF yield e ND/EBITDA usam o market cap ao vivo${comp&&comp.marketCapBrlMn?(' (~'+fmt(comp.marketCapBrlMn/1000,1)+' bi)'):''}.</div>`;
+  host.innerHTML=h;
+}
+
 // ── boot ────────────────────────────────────────────────────────────────────
 let _SG={}; let _sgTimer=null;
 // aba Sensitivity desligada (cliente, sub-flag off): mostra "indisponível" — não some
@@ -667,6 +819,9 @@ async function sgTickLive(){
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
     if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey);
+    // grade 6-D: recalcula os múltiplos vivos (market cap) da abinha aberta — sem rebuild/refetch
+    if(typeof _G6_TABS!=='undefined'&&_G6_TABS.length){ const tab=_G6_TABS[_curG6()];
+      if(tab&&tab.t&&_grid6State[tab.t.id]&&_grid6State[tab.t.id].loaded) _g6RenderBody(tab.t); }
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
