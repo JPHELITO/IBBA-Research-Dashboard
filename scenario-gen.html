@@ -76,14 +76,16 @@ html.dark .fmt-note code{background:#1e232b}
 <div class="wrap">
   <div class="sec-title">Gerador de Cenários</div>
   <div class="sec-sub">Defina, para cada variável, o valor <b>inicial</b>, <b>final</b> e o <b>passo</b>. O gerador monta
-    todas as combinações e devolve as sequências <code>a;b;c;…</code> prontas para colar na coluna B da aba <b>Cenarios</b>
-    do Excel. Deixe <b>passo = 0</b> (ou fim = início) para uma variável ficar fixa.</div>
+    todas as combinações e devolve as sequências <code>a;b;c;…</code> prontas para colar na coluna B do Excel.
+    Use <b>Suzano (15 valores)</b> → aba <b>Cenarios</b> (todos os anos), ou <b>1 ano (3 valores: celulose;câmbio;custo)</b>
+    → abas <b>por ano coláveis</b>. Deixe <b>passo = 0</b> (ou fim = início) para uma variável ficar fixa.</div>
 
   <div class="card">
     <h3>Variáveis</h3>
     <div class="csub">A ordem das linhas = a ordem dos valores na sequência. Para o modelo do Suzano, use o preset (15 posições, na ordem certa).</div>
     <div class="row-actions">
-      <button class="btn" id="preset-suzano">Preset: Suzano (15 posições)</button>
+      <button class="btn" id="preset-suzano">Preset: Suzano — Cenarios (15 posições)</button>
+      <button class="btn" id="preset-ano">Preset: 1 ano — aba colável (3 posições)</button>
       <button class="btn ghost" id="add-row">+ Adicionar variável</button>
       <button class="btn ghost" id="clear-rows">Limpar</button>
     </div>
@@ -135,6 +137,16 @@ function suzanoPreset(){
   YEARS.forEach(function(y,i){ rows.push({label:'Celulose '+y, start:BASE.pulp[i], end:BASE.pulp[i], step:0}); });
   YEARS.forEach(function(y,i){ rows.push({label:'Cambio '+y,   start:BASE.fx[i],   end:BASE.fx[i],   step:0}); });
   YEARS.forEach(function(y,i){ rows.push({label:'Custo '+y,    start:BASE.cost[i], end:BASE.cost[i], step:0}); });
+  render();
+}
+function anoPreset(){
+  // 3 posições: celulose ; cambio ; custo — para colar nas abas por ano (colável).
+  // valores de partida ~base 2026; ajuste as faixas e cole na aba do ano que quiser.
+  rows=[
+    {label:'Celulose (US$/t)', start:590,  end:590,  step:0},
+    {label:'Cambio (USD/BRL)', start:5.30, end:5.30, step:0},
+    {label:'Custo (R$/t)',     start:898,  end:898,  step:0}
+  ];
   render();
 }
 
@@ -216,6 +228,7 @@ document.getElementById('rows').addEventListener('click', function(e){
   if(e.target.dataset.del!=null){ rows.splice(+e.target.dataset.del,1); render(); }
 });
 document.getElementById('preset-suzano').onclick=suzanoPreset;
+document.getElementById('preset-ano').onclick=anoPreset;
 document.getElementById('add-row').onclick=function(){ rows.push({label:'Variável '+(rows.length+1),start:0,end:0,step:0}); render(); };
 document.getElementById('clear-rows').onclick=function(){ rows=[]; render(); document.getElementById('out').value=''; document.getElementById('out-count').textContent=''; };
 document.getElementById('gen').onclick=generate;
