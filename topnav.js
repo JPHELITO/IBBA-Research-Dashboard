@@ -90,6 +90,7 @@
       <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
+    <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
@@ -115,7 +116,7 @@
   function _sb(){ try{ if(typeof sbAuth!=='undefined' && sbAuth && sbAuth.rpc) return sbAuth; }catch(e){}
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
   function _setAdminLinks(show){
-    ['gnav-admin','gnav-clipinator'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+    ['gnav-admin','gnav-clipinator','gnav-scenario'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
   }
   function revealAdmin(tries){
     tries = tries || 0;
