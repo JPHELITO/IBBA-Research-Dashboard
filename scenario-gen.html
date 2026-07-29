@@ -44,7 +44,7 @@ table.vars td.lv.sweep{color:var(--orange)}
 .xbtn:hover{color:var(--red);background:rgba(192,57,43,.08)}
 .total-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-top:12px;font-size:12.5px}
 .total-num{font-size:20px;font-weight:700}
-.total-num.ok{color:var(--green)} .total-num.over{color:var(--red)}
+.total-num.ok{color:var(--green)} .total-num.over{color:var(--red)} .total-num.warnc{color:var(--amber)}
 .hint{font-size:11px;color:var(--g-mid)}
 .warn{background:#FFF7E6;border:1px solid #F3D48A;color:var(--amber);border-radius:8px;padding:9px 12px;font-size:12px;margin-top:10px}
 .warn b{color:#8a5a00}
@@ -119,7 +119,8 @@ html.dark .fmt-note code{background:#1e232b}
 
 <script>
 /* ---- estado ---- */
-var CAP = 300;                 // teto de segurança (cada cenário = 1 F9 no Excel)
+var CAP = 100000;              // teto duro (o gargalo real é o Excel, não o gerador)
+var SOFT = 1000;               // acima disso, avisa que o F9 no Excel fica lento
 var rows = [];                 // {label,start,end,step}
 
 var BASE = {
@@ -170,11 +171,12 @@ function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); }
 function updateTotal(){
   var t=totalScenarios();
   var el=document.getElementById('total'); el.textContent=t.toLocaleString('pt-BR');
-  el.className='total-num '+(t>CAP?'over':'ok');
+  el.className='total-num '+(t>CAP?'over':(t>SOFT?'warnc':'ok'));
   var parts=rows.map(levelsOf).filter(function(n){return n>1;});
   document.getElementById('total-calc').textContent = parts.length? '= '+parts.join(' × ')+' (variáveis que variam)' : '(nenhuma variável variando — tudo fixo)';
   var warn=document.getElementById('cap-warn');
-  if(t>CAP){ warn.hidden=false; warn.innerHTML='<b>Passou do teto de '+CAP+' cenários.</b> Cada cenário é um recálculo (F9) do modelo inteiro — gerar milhares trava o Excel. Reduza as faixas/passos, ou fale comigo pra subir o teto se precisar mesmo.'; }
+  if(t>CAP){ warn.hidden=false; warn.innerHTML='<b>Passou do teto de '+CAP.toLocaleString('pt-BR')+' cenários.</b> Reduza as faixas/passos.'; }
+  else if(t>SOFT){ warn.hidden=false; warn.innerHTML='<b>'+t.toLocaleString('pt-BR')+' cenários.</b> O gerador dá conta, mas cada linha colada no Excel é um recálculo (F9) do modelo inteiro — acima de ~1.000 o F9 fica bem lento. Gere e cole em lotes se precisar.'; }
   else warn.hidden=true;
   document.getElementById('gen').disabled = (t>CAP || t<1);
 }
