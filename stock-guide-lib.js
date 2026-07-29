@@ -63,6 +63,25 @@
     return { dim: dim, levels: levels, values: values };
   }
 
+  // Monta a MESMA malha de interpolateMesh a partir de arrays DENSOS (grade regular comprimida).
+  // levels: [ [níveis eixo0 ASC], ..., [níveis eixoN ASC] ]; dense: array achatado em ROW-MAJOR
+  // (eixo 0 mais lento, último eixo mais rápido) sobre os níveis ordenados. Valores null = célula vazia.
+  function buildGridMeshFromDense(levels, dense) {
+    if (!levels || !levels.length || !dense) return null;
+    const dim = levels.length;
+    const sizes = levels.map(function (l) { return l.length; });
+    let total = 1; for (let a = 0; a < dim; a++) total *= sizes[a];
+    if (!total || dense.length < total) return null;
+    const values = new Map();
+    const idx = new Array(dim).fill(0);
+    for (let flat = 0; flat < total; flat++) {
+      const v = dense[flat];
+      if (v != null && Number.isFinite(v)) values.set(idx.join(','), v);
+      for (let a = dim - 1; a >= 0; a--) { if (++idx[a] < sizes[a]) break; idx[a] = 0; }
+    }
+    return { dim: dim, levels: levels, values: values };
+  }
+
   // ── 6.4 interpolação MULTILINEAR (verbatim) ───────────────────────────────
   function bracketAxis(levels, v) {
     const n = levels.length;
@@ -106,7 +125,7 @@
   }
 
   // ── 6.5 derivação por value_mode (ÚNICA fonte da matemática) ──────────────
-  const VALUE_MODE_UNIT = { absolute: '', yield: '%', pe: '×', ev_ebitda: '×', upside: '%' };
+  const VALUE_MODE_UNIT = { absolute: '', yield: '%', pe: '×', ev_ebitda: '×', nd_ebitda: '×', upside: '%' };
 
   function computeSensitivityCellValue(o) {
     const valueMode = o.valueMode, primary = o.primary, secondary = o.secondary;
@@ -116,6 +135,7 @@
       case 'yield':     return primary != null && marketCapBrlMn != null && marketCapBrlMn > 0 ? (primary / marketCapBrlMn) * 100 : null;
       case 'pe':        return marketCapBrlMn != null && primary != null && primary > 0 ? marketCapBrlMn / primary : null;
       case 'ev_ebitda': return primary != null && primary > 0 && secondary != null && marketCapBrlMn != null ? (marketCapBrlMn + secondary) / primary : null;
+      case 'nd_ebitda': return primary != null && primary > 0 && secondary != null ? secondary / primary : null;   // primary=EBITDA, secondary=Net Debt (do próprio ano)
       case 'upside':    return primary != null && livePrice != null && livePrice > 0 ? (primary / livePrice - 1) * 100 : null;
       default:          return null;
     }
@@ -130,9 +150,13 @@
     net_income_abs: { mode: 'absolute',  rawMetric: 'net_income',   secondary: null },   // compartilha o mesh de net_income
     ebitda:         { mode: 'absolute',  rawMetric: 'ebitda',       secondary: null },
     ev_ebitda:      { mode: 'ev_ebitda', rawMetric: 'ebitda',       secondary: 'net_debt' }, // 2º mesh = net_debt
+    fcf:            { mode: 'absolute',  rawMetric: 'fcf',          secondary: null },
+    fcf_yield:      { mode: 'yield',     rawMetric: 'fcf',          secondary: null },        // FCF / market cap
+    net_debt:       { mode: 'absolute',  rawMetric: 'net_debt',     secondary: null },
+    nd_ebitda:      { mode: 'nd_ebitda', rawMetric: 'ebitda',       secondary: 'net_debt' },  // Net Debt / EBITDA (do próprio ano)
   };
-  // bases ordenadas p/ casar a MAIS LONGA primeiro (net_income_abs antes de net_income; ev_ebitda antes de ebitda)
-  const _SG_BASES = ['target_price', 'net_income_abs', 'net_income', 'ev_ebitda', 'ebitda', 'fcfe', 'dividends'];
+  // bases ordenadas p/ casar a MAIS LONGA/específica primeiro (net_income_abs<net_income; ev_ebitda<ebitda; fcf_yield<fcf; nd_ebitda sem colisão)
+  const _SG_BASES = ['target_price', 'net_income_abs', 'net_income', 'ev_ebitda', 'nd_ebitda', 'ebitda', 'fcf_yield', 'fcf', 'fcfe', 'net_debt', 'dividends'];
 
   function _parseColumnKey(key) {
     for (const b of _SG_BASES) {
@@ -155,11 +179,11 @@
   function formatSensitivityValue(v, mode, unit, decimals) {
     if (v == null || !Number.isFinite(v)) return '—'; // —
     let d = decimals;
-    if (d == null) d = (mode === 'pe' || mode === 'ev_ebitda') ? 1 : ((mode === 'yield' || mode === 'upside') ? 1 : 0);
+    if (d == null) d = (mode === 'pe' || mode === 'ev_ebitda' || mode === 'nd_ebitda') ? 1 : ((mode === 'yield' || mode === 'upside') ? 1 : 0);
     d = Math.max(0, Math.min(6, d));
     const num = v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
     if (mode === 'yield' || mode === 'upside') return num + '%';
-    if (mode === 'pe' || mode === 'ev_ebitda') return num + '×'; // ×
+    if (mode === 'pe' || mode === 'ev_ebitda' || mode === 'nd_ebitda') return num + '×'; // ×
     return unit ? (num + ' ' + unit) : num;
   }
 
@@ -407,6 +431,7 @@
     isDynamicSource: isDynamicSource,
     resolveDriverValue: resolveDriverValue,
     buildGridMesh: buildGridMesh,
+    buildGridMeshFromDense: buildGridMeshFromDense,
     bracketAxis: bracketAxis,
     interpolateMesh: interpolateMesh,
     VALUE_MODE_UNIT: VALUE_MODE_UNIT,
