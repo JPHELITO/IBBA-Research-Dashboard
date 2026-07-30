@@ -1547,7 +1547,7 @@ function renderSensList(){
   const host=_v('sg-sens-host');
   let h='<div class="row" style="margin-bottom:10px">'
     +'<label class="btn" style="cursor:pointer">⬆ Importar cenários (por ano)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label>'
-    +'<label class="btn" style="cursor:pointer;margin-left:8px">⬆ Importar grade 6-D (1 empresa)<input type="file" accept=".xlsx" style="display:none" onchange="sgGrid6Pick(this.files[0]);this.value=\'\'"></label>'
+    +'<label class="btn" style="cursor:pointer;margin-left:8px">⬆ Importar grade 6-D (abas = tickers)<input type="file" accept=".xlsx" style="display:none" onchange="sgGrid6Pick(this.files[0]);this.value=\'\'"></label>'
     +'</div>'
     +'<div id="sg-g6-form"></div>'
     +'<div id="sg-import-status" class="foot" style="margin-bottom:8px"></div>';
@@ -1687,52 +1687,72 @@ async function sgImportModel(file){ if(!file)return; const setS=h=>{ const el=_v
     loadSGSens();
   }catch(e){ setS('<b style="color:#C0392B">Falha:</b> '+esc(e.message||e)); } }
 
-// ════════════ GRADE 6-D por empresa (formato SUZB3_HLP: aba Sensitivity A:I) ════════════
-// Formato: linha1=cabeçalho (D..I = EBITDA/FCF/Net Debt × ano atual/próximo); col B = sequência
-// de 6 valores ";" (3 variáveis × 2 anos, agrupada por variável: v1_ano1;v1_ano2;v2_ano1;...);
-// col C = idx (idx1 = CASO-BASE, fora da grade); D..I = 6 métricas. Grade grande → blob gzip.
-let _sgG6=null;   // {ticker, aoa, hdrYears:[y1,y2], nrows}
+// ════════════ GRADE 6-D por empresa (aba por TICKER: A:I) ════════════
+// Formato por aba: NOME DA ABA = ticker; linha1=cabeçalho (D..I = EBITDA/FCF/Net Debt × ano atual/
+// próximo); col B = sequência de 6 valores ";" (3 variáveis × 2 anos, agrupada por variável:
+// v1_ano1;v1_ano2;v2_ano1;...); col C = idx (idx1 = CASO-BASE, fora da grade); D..I = 6 métricas.
+// Um arquivo pode ter VÁRIAS abas (uma por empresa). Grade grande → blob gzip por empresa.
+let _sgG6=null;   // {buf, companies:[{sheet,ticker,y1,y2,nrows}]}
 function _g6Year(s){ const m=String(s==null?'':s).match(/(20\d{2})/); return m?m[1]:null; }
-function _g6TickerFromName(nm){ const m=String(nm||'').toUpperCase().match(/([A-Z]{3,5}\d{1,2})/); return m?m[1]:''; }
+function _g6TickerFromName(nm){ const s=String(nm||'').trim().toUpperCase(); const m=s.match(/([A-Z]{2,6}\d{0,2})/); return m?m[1]:s.replace(/\s+/g,''); }
+
+// lê UMA aba do buffer (memória limitada a 1 aba) -> aoa
+function _g6ReadSheet(buf,sheet){ const wb=XLSX.read(buf,{type:'array',sheets:[sheet],dense:true}); return XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,raw:true}); }
 
 async function sgGrid6Pick(file){ if(!file)return; const setS=h=>{ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
-  const form=_v('sg-g6-form'); if(form)form.innerHTML=''; setS('Lendo cabeçalho…');
+  const form=_v('sg-g6-form'); if(form)form.innerHTML=''; setS('Lendo abas do arquivo…');
   try{
     const buf=await file.arrayBuffer();
     const names=(XLSX.read(buf,{type:'array',bookSheets:true}).SheetNames)||[];
-    const snm=names.find(n=>/sensitiv/i.test(n))||names[0];
-    if(!snm){ setS('<b style="color:#C0392B">Arquivo sem abas.</b>'); return; }
-    const wb=XLSX.read(buf,{type:'array',sheets:[snm],dense:true});
-    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[snm],{header:1,raw:true});
-    if(!aoa||aoa.length<4){ setS('<b style="color:#C0392B">Aba "'+esc(snm)+'" muito curta.</b>'); return; }
-    const hdr=aoa[0]||[]; const y1=_g6Year(hdr[3])||'', y2=_g6Year(hdr[4])||'';
-    // conta linhas com sequência de 6 (barato: só col B)
-    let nrows=0; for(let r=1;r<aoa.length;r++){ const B=(aoa[r]||[])[1]; if(B!=null&&String(B).split(';').length===6) nrows++; }
-    _sgG6={ticker:_g6TickerFromName(file.name), aoa:aoa, sheet:snm, y1:y1, y2:y2, nrows:nrows};
+    if(!names.length){ setS('<b style="color:#C0392B">Arquivo sem abas.</b>'); return; }
+    const companies=[]; const skipped=[];
+    for(const nm of names){
+      setS('Analisando aba "'+esc(nm)+'"…');
+      let aoa; try{ aoa=_g6ReadSheet(buf,nm); }catch(e){ skipped.push(String(nm)); continue; }
+      if(!aoa||aoa.length<4){ skipped.push(String(nm)); continue; }
+      // conta linhas com sequência de 6 valores (só col B) — barato
+      let nrows=0; for(let r=1;r<aoa.length;r++){ const B=(aoa[r]||[])[1]; if(B!=null&&String(B).split(';').length===6) nrows++; }
+      if(nrows<8){ skipped.push(String(nm)); continue; }   // não é uma aba de grade (capa/notas)
+      const hdr=aoa[0]||[];
+      companies.push({sheet:String(nm), ticker:_g6TickerFromName(nm), y1:_g6Year(hdr[3])||'', y2:_g6Year(hdr[4])||'', nrows:nrows});
+    }
+    if(!companies.length){ setS('<b style="color:#C0392B">Nenhuma aba com grade de cenários</b> (preciso de: nome da aba = ticker + col B com 6 valores separados por ";" + col C idx + D:I as métricas).'+(skipped.length?'<br><span class="muted">Abas vistas: '+esc(skipped.join(', '))+'</span>':'')); return; }
+    _sgG6={buf:buf, companies:companies, skipped:skipped};
     setS(''); sgG6RenderForm();
   }catch(e){ setS('<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e)); } }
 
 function sgG6RenderForm(){ const g=_sgG6; if(!g)return; const form=_v('sg-g6-form'); if(!form)return;
-  const inp=(id,ph,val)=>`<input id="${id}" placeholder="${ph}" value="${esc(val||'')}" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%">`;
+  const inp=(id,ph,val,w)=>`<input id="${id}" placeholder="${ph}" value="${esc(val||'')}" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:${w||'100%'}">`;
+  let rows='';
+  g.companies.forEach((c,i)=>{
+    rows+=`<div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;padding:8px 0;border-top:1px solid #eee">
+      <div style="width:120px"><div class="foot">Ticker <span class="muted">(aba "${esc(c.sheet)}")</span></div>${inp('g6-tk-'+i,'SUZB3',c.ticker)}</div>
+      <div style="width:150px"><div class="foot">Variável 1</div>${inp('g6-v0-'+i,'Ex.: Celulose')}</div>
+      <div style="width:150px"><div class="foot">Variável 2</div>${inp('g6-v1-'+i,'Ex.: Câmbio')}</div>
+      <div style="width:150px"><div class="foot">Variável 3</div>${inp('g6-v2-'+i,'Ex.: Custo')}</div>
+      <div style="width:60px"><div class="foot">Ano 1</div>${inp('g6-y1-'+i,'2026',c.y1,'56px')}</div>
+      <div style="width:60px"><div class="foot">Ano 2</div>${inp('g6-y2-'+i,'2027',c.y2,'56px')}</div>
+      <div class="foot" style="padding-bottom:6px">${c.nrows.toLocaleString('pt-BR')} cen.</div>
+    </div>`; });
   form.innerHTML=`<div style="border:1px solid #e2e2e2;border-radius:10px;padding:12px;margin:8px 0;background:#fafafa">
-    <div style="font-weight:600;margin-bottom:8px">Grade 6-D — aba "${esc(g.sheet)}" · ${g.nrows.toLocaleString('pt-BR')} cenários</div>
-    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <div style="width:130px"><div class="foot">Ticker</div>${inp('g6-ticker','SUZB3',g.ticker)}</div>
-      <div style="width:90px"><div class="foot">Ano atual</div>${inp('g6-y1','2026',g.y1)}</div>
-      <div style="width:90px"><div class="foot">Próximo ano</div>${inp('g6-y2','2027',g.y2)}</div>
+    <div style="font-weight:600;margin-bottom:2px">Grade 6-D — ${g.companies.length} empresa(s) detectada(s)</div>
+    <div class="foot" style="margin-bottom:8px">Confira o ticker de cada aba e dê nome às 3 variáveis (viram os rótulos dos controles na dash). Deixe o ticker vazio p/ pular uma aba.</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;background:#f0f4ff;border:1px solid #d5e0f5;border-radius:8px;padding:8px">
+      <div class="foot" style="width:100%;font-weight:600">Nomes padrão (aplicar a todas):</div>
+      <div style="width:150px">${inp('g6-def0','Ex.: Celulose')}</div>
+      <div style="width:150px">${inp('g6-def1','Ex.: Câmbio')}</div>
+      <div style="width:150px">${inp('g6-def2','Ex.: Custo')}</div>
+      <button class="chip" onclick="sgG6ApplyDefaults()">Aplicar a todas</button>
     </div>
-    <div class="foot" style="margin:10px 0 4px">Nome das 3 variáveis da sequência (cada uma abrange os 2 anos):</div>
-    <div class="row" style="gap:12px;flex-wrap:wrap">
-      <div style="width:160px"><div class="foot">Variável 1</div>${inp('g6-v0','Ex.: Celulose (US$/t)')}</div>
-      <div style="width:160px"><div class="foot">Variável 2</div>${inp('g6-v1','Ex.: Câmbio (R$/US$)')}</div>
-      <div style="width:160px"><div class="foot">Variável 3</div>${inp('g6-v2','Ex.: Custo caixa (R$/t)')}</div>
-    </div>
+    ${rows}
     <div class="row" style="margin-top:12px;gap:8px">
-      <button class="btn" onclick="sgGrid6Import()">Importar grade</button>
+      <button class="btn" onclick="sgGrid6Import()">Importar ${g.companies.length>1?('as '+g.companies.length+' empresas'):'empresa'}</button>
       <button class="chip" onclick="_sgG6=null;_v('sg-g6-form').innerHTML=''">Cancelar</button>
     </div>
   </div>`;
 }
+function sgG6ApplyDefaults(){ const g=_sgG6; if(!g)return; const d=[( _v('g6-def0').value||''),( _v('g6-def1').value||''),( _v('g6-def2').value||'')];
+  g.companies.forEach((c,i)=>{ for(let k=0;k<3;k++){ const el=_v('g6-v'+k+'-'+i); if(el&&d[k].trim()!=='') el.value=d[k]; } }); }
 
 // PARSE puro (testável) -> {def, dense, sizes, prod, filled, complete, summary}
 function sgParseGrid6(aoa, opts){
@@ -1786,31 +1806,39 @@ async function _gzipToB64(str){
   return btoa(bin); }
 
 async function sgGrid6Import(){ const setS=h=>{ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
-  const g=_sgG6; if(!g){ setS('Escolha o arquivo primeiro.'); return; }
-  const ticker=((_v('g6-ticker').value||'').trim().toUpperCase());
-  if(!ticker){ setS('<b style="color:#C0392B">Informe o ticker.</b>'); return; }
-  const opts={ticker:ticker, y1:(_v('g6-y1').value||'').trim(), y2:(_v('g6-y2').value||'').trim(),
-    varNames:[(_v('g6-v0').value||'').trim(),(_v('g6-v1').value||'').trim(),(_v('g6-v2').value||'').trim()]};
-  let p; try{ p=sgParseGrid6(g.aoa,opts); }catch(e){ setS('<b style="color:#C0392B">Bloqueado:</b> '+esc(String(e))); return; }
-  try{
-    setS('['+esc(ticker)+'] salvando definição… ('+p.summary.scen.toLocaleString('pt-BR')+' cenários, grade '+p.sizes.join('×')+')');
-    const existing=_sgSens.find(t=>t.definition&&(t.definition.import_ticker===ticker||t.title===p.def.title));
-    const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:existing?Number(existing.id):null,p_data:p.def});
-    if(up.error){ setS('<b style="color:#C0392B">Falhou (definição):</b> '+esc(up.error.message)); return; }
-    let sid=up.data; if(sid==null){ await loadSGSens(); const t2=_sgSens.find(t=>t.definition&&t.definition.import_ticker===ticker); sid=t2?t2.id:null; }
-    if(sid==null){ setS('<b style="color:#C0392B">Não recebi o id da sensibilidade.</b>'); return; }
-    setS('['+esc(ticker)+'] comprimindo grade…');
-    const b64=await _gzipToB64(JSON.stringify({metrics:p.dense}));
-    const CH=262144; const total=Math.max(1,Math.ceil(b64.length/CH));
-    for(let i=0;i<total;i++){ const chunk=b64.slice(i*CH,(i+1)*CH);
-      const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_blob',{p_sensitivity_id:sid,p_seq:i,p_chunk:chunk,p_first_chunk:i===0});
-      if(error){ setS('<b style="color:#C0392B">Falhou (blob '+(i+1)+'/'+total+'):</b> '+esc(error.message)+' (rodou o supabase_stock_guide_grid6.sql?)'); return; }
-      setS('['+esc(ticker)+'] subindo grade… '+(i+1)+'/'+total+' ('+Math.round(b64.length/1024)+' KB)'); }
-    let msg='<b style="color:#1E8E4E">OK!</b> '+esc(ticker)+' · '+p.summary.scen.toLocaleString('pt-BR')+' cenários · grade '+p.sizes.join('×')+' · '+Math.round(b64.length/1024)+' KB';
-    if(!p.hasBase) msg+='<br><span style="color:#B8860B">⚠ Sem linha idx1 (caso-base) — a coluna "Base" usará interpolação.</span>';
-    if(!p.complete) msg+='<br><span style="color:#B8860B">⚠ Grade incompleta ('+p.filled.toLocaleString('pt-BR')+'/'+p.prod.toLocaleString('pt-BR')+' células) — pontos fora dos cantos preenchidos não interpolam.</span>';
-    setS(msg); _sgG6=null; _v('sg-g6-form').innerHTML=''; loadSGSens();
-  }catch(e){ setS('<b style="color:#C0392B">Falha:</b> '+esc(e.message||e)); } }
+  const g=_sgG6; if(!g||!g.companies||!g.companies.length){ setS('Escolha o arquivo primeiro.'); return; }
+  // coleta os inputs de cada aba; ticker vazio = pular a aba
+  const jobs=[]; g.companies.forEach((c,i)=>{ const tk=((_v('g6-tk-'+i).value||'').trim().toUpperCase()); if(!tk) return;
+    jobs.push({sheet:c.sheet, ticker:tk, y1:(_v('g6-y1-'+i).value||'').trim(), y2:(_v('g6-y2-'+i).value||'').trim(),
+      varNames:[(_v('g6-v0-'+i).value||'').trim(),(_v('g6-v1-'+i).value||'').trim(),(_v('g6-v2-'+i).value||'').trim()]}); });
+  if(!jobs.length){ setS('<b style="color:#C0392B">Nenhuma empresa p/ importar</b> (todos os tickers vazios).'); return; }
+  const done=[]; const fails=[]; const N=jobs.length;
+  for(let ci=0;ci<N;ci++){ const j=jobs[ci]; const tag='['+(ci+1)+'/'+N+'] '+esc(j.ticker);
+    try{
+      setS(tag+' — lendo aba "'+esc(j.sheet)+'"…');
+      const aoa=_g6ReadSheet(g.buf, j.sheet);
+      let p; try{ p=sgParseGrid6(aoa,j); }catch(e){ fails.push(j.ticker+' ('+String(e)+')'); continue; }
+      setS(tag+' — salvando definição… ('+p.summary.scen.toLocaleString('pt-BR')+' cen., grade '+p.sizes.join('×')+')');
+      const existing=_sgSens.find(t=>t.definition&&(t.definition.import_ticker===j.ticker||t.title===p.def.title));
+      const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',{p_id:existing?Number(existing.id):null,p_data:p.def});
+      if(up.error){ fails.push(j.ticker+' (definição: '+up.error.message+')'); continue; }
+      let sid=up.data; if(sid==null){ await loadSGSens(); const t2=_sgSens.find(t=>t.definition&&t.definition.import_ticker===j.ticker); sid=t2?t2.id:null; }
+      if(sid==null){ fails.push(j.ticker+' (não recebi o id)'); continue; }
+      setS(tag+' — comprimindo grade…');
+      const b64=await _gzipToB64(JSON.stringify({metrics:p.dense}));
+      const CH=262144; const total=Math.max(1,Math.ceil(b64.length/CH)); let blobErr=null;
+      for(let bi=0;bi<total;bi++){ const chunk=b64.slice(bi*CH,(bi+1)*CH);
+        const {error}=await sbAuth.rpc('admin_replace_stock_guide_scenario_blob',{p_sensitivity_id:sid,p_seq:bi,p_chunk:chunk,p_first_chunk:bi===0});
+        if(error){ blobErr=error.message; break; }
+        setS(tag+' — subindo grade '+(bi+1)+'/'+total+' ('+Math.round(b64.length/1024)+' KB)'); }
+      if(blobErr){ fails.push(j.ticker+' (blob: '+blobErr+' — rodou o supabase_stock_guide_grid6.sql?)'); continue; }
+      let extra=''; if(!p.hasBase) extra+=' ⚠ sem idx1 (Base interpolado)'; if(!p.complete) extra+=' ⚠ grade incompleta '+p.filled+'/'+p.prod;
+      done.push(j.ticker+' · '+p.summary.scen.toLocaleString('pt-BR')+' cen. · grade '+p.sizes.join('×')+' · '+Math.round(b64.length/1024)+' KB'+extra);
+    }catch(e){ fails.push(j.ticker+' ('+(e.message||e)+')'); } }
+  let msg='';
+  if(done.length) msg+='<b style="color:#1E8E4E">OK!</b> '+done.length+' empresa(s):<br>'+done.map(esc).join('<br>');
+  if(fails.length) msg+=(msg?'<br>':'')+'<b style="color:#C0392B">Falhou:</b> '+fails.map(esc).join(' · ')+' (re-subir refaz — idempotente).';
+  setS(msg||'Nada importado.'); _sgG6=null; _v('sg-g6-form').innerHTML=''; loadSGSens(); }
 </script>
 </body>
 </html>
