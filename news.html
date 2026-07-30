@@ -333,12 +333,6 @@ const LOAD_MORE_STEP = 250;   // "Load more" revela um lote maior (o histórico 
 // Timestamp efetivo: publicação real, found_at como fallback (igual à home).
 function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
 
-// Feedback ao vivo enquanto o "All" pagina o histórico inteiro (vários blocos).
-function _fetchProgress(n){
-  const meta=document.getElementById('results-meta');
-  if(meta) meta.innerHTML=`Loading full history… <strong>${n.toLocaleString('en-US')}</strong>`;
-}
-
 async function fetchArticles(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return [];
@@ -350,26 +344,47 @@ async function fetchArticles(){
     // Janela por data de publicação (fontes sem published_at também passam).
     base+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
-  // Pagina em blocos de 1000 (teto do Supabase por request) até esgotar a janela.
-  // Sem isto, "All" e "7 days" travavam no 1º milhar (≈990 após dedup) — só se via
-  // a última fatia do histórico. Agora carrega tudo o que casa o filtro.
-  const PAGE=1000, SAFETY=40000;   // trava: no máx. ~40 mil linhas (evita loop infinito)
-  let from=0, rows=[];
-  for(;;){
-    const res=await fetch(base,{headers:{
-      'apikey':SUPA_KEY,
-      'Authorization':`Bearer ${session.access_token}`,
-      'Range-Unit':'items',
-      'Range':`${from}-${from+PAGE-1}`
-    }});
-    if(!res.ok)break;
-    const batch=await res.json();
-    if(!Array.isArray(batch))break;
-    rows=rows.concat(batch);
-    if(_periodHours==='all') _fetchProgress(rows.length);   // conta ao vivo no "All"
-    if(batch.length<PAGE || from+PAGE>=SAFETY)break;        // última página / trava
-    from+=PAGE;
+  const hdr={'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`};
+  // Pagina por limit/offset em QUERY PARAMS (sem header custom → à prova de CORS).
+  // Antes o limite de 1000 do Supabase travava "All"/"7 days" no 1º milhar (≈990
+  // após dedup) — só se via a última fatia. Agora carrega o histórico inteiro.
+  const PAGE=1000, SAFETY=40000;   // teto por request / trava de segurança (~40 mil)
+  const pageUrl=off=>`${base}&limit=${PAGE}&offset=${off}`;
+  async function _page(off){                 // busca 1 página; NUNCA lança
+    try{
+      const r=await fetch(pageUrl(off),{headers:hdr});
+      if(!r.ok)return [];
+      const b=await r.json();
+      return Array.isArray(b)?b:[];
+    }catch(e){ return []; }
   }
+
+  // 1ª página + TOTAL (Content-Range, exposto no CORS) numa tacada só.
+  let rows=[], total=NaN;
+  try{
+    const res=await fetch(pageUrl(0),{headers:{...hdr,'Prefer':'count=exact'}});
+    if(!res.ok)return [];
+    const cr=res.headers.get('content-range')||'';   // ex.: "0-999/8422"
+    total=parseInt(cr.split('/')[1],10);
+    const b=await res.json();
+    rows=Array.isArray(b)?b:[];
+  }catch(e){ return []; }
+
+  // Demais páginas só se houver mais que 1 milhar (All / 7 days). EM PARALELO = rápido
+  // (some a lentidão das requisições em fila).
+  if(Number.isFinite(total) && total>PAGE){
+    const cap=Math.min(total,SAFETY), offs=[];
+    for(let o=PAGE;o<cap;o+=PAGE) offs.push(o);
+    const more=await Promise.all(offs.map(_page));
+    for(const b of more) rows=rows.concat(b);
+  }else if(!Number.isFinite(total) && rows.length>=PAGE){
+    // Fallback (total não veio): pagina em série até a página encurtar.
+    for(let o=PAGE;o<SAFETY;o+=PAGE){
+      const b=await _page(o); rows=rows.concat(b);
+      if(b.length<PAGE) break;
+    }
+  }
+
   // Ordena por timestamp efetivo (mais nova primeiro) + remove duplicatas de título.
   const seen=new Set(), out=[];
   for(const a of rows.sort((x,y)=>_effTs(y)-_effTs(x))){
@@ -467,7 +482,9 @@ function _buildSourceFilter(){
 }
 
 async function refresh(){
+  const meta=document.getElementById('results-meta');
   document.getElementById('feed').innerHTML='<div class="empty">Loading…</div>';
+  if(meta) meta.textContent=(_periodHours==='all')?'Loading full history…':'Loading…';
   _allArticles=await fetchArticles();
   _buildSourceFilter();
   _renderFeed();
