@@ -1406,19 +1406,33 @@ function _ccy(q){ return q.sector === 'index' ? '' : (EXCH_CCY[q.exchange] || ''
 // Rótulo curto do cartão: tira só o sufixo de bolsa (VALE, AUGO já saem limpos).
 const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 
-// Série + % do período. D = intradiário (+change_pct); W/M/Y = fatia final do diário.
+// Série diária "com a ponta AO VIVO": fechamentos históricos + o PREÇO ATUAL como último ponto (agora).
+// WoW/MoM/YTD/YoY passam a comparar o preço de AGORA com o fechamento de N atrás — não o último fechamento
+// gravado (que fica 1-2 dias atrás e varia por ticker → "uns no 28, outros no 29"). Descarta o bar parcial de
+// hoje (Yahoo) p/ não duplicar a ponta. O 'D' já é ao vivo (change_pct vs fechamento de ontem).
+function _dailyLive(q){
+  const d=(q&&Array.isArray(q.daily))?q.daily:[];
+  const px=q&&q.price;
+  if(px==null||!isFinite(px)) return d.slice();
+  const now=Math.floor(Date.now()/1000), today0=Math.floor(now/86400)*86400;   // meia-noite UTC de hoje
+  const out=d.filter(p=>p&&p[0]<today0);   // só fechamentos ATÉ ontem
+  out.push([now,px]);                       // ponta ao vivo = preço atual, agora
+  return out;
+}
+
+// Série + % do período. D = intradiário (+change_pct, já ao vivo); W/M/YTD/Y = diário-com-ponta-ao-vivo.
 function _seriesFor(q, range){
   if(range === 'D'){
     const pts = (q.intraday && q.intraday.pts) || [];
     return { closes: pts.map(p=>p[1]), pct: q.change_pct };
   }
-  const daily = q.daily;
-  if(!daily || daily.length < 2) return { closes: [], pct: null };
+  const daily = _dailyLive(q);
+  if(daily.length < 2) return { closes: [], pct: null };
   let arr;
   if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = daily.filter(p=>p[0]>=jan1); }
   else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = daily.filter(p=>p[0]>=cut); }
   if(arr.length < 2) arr = daily.slice(-2);
-  const first = arr[0][1], last = arr[arr.length-1][1];
+  const first = arr[0][1], last = arr[arr.length-1][1];   // last = preço AO VIVO (ponta de _dailyLive)
   return { closes: arr.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
 }
 
@@ -1726,17 +1740,19 @@ function _renderReco(){
   box.innerHTML=`<span class="mc-reco-label">Recommended</span><div class="mc-reco-chips">${chips}</div>`;
 }
 
-// Série diária normalizada a 0% no início do range → [[epoch, %], ...]
+// Série diária normalizada a 0% no início do range → [[epoch, %], ...] — termina no preço AO VIVO
 function _mcSeries(ticker){
   const q=_quotes.find(x=>x.ticker===ticker);
   if(!q || !q.daily || q.daily.length<2) return null;
+  const d=_dailyLive(q);   // fechamentos + preço ao vivo como ponta
   let arr;
   if(_mcRange==='custom' && _mcFrom!=null){
+    const src=(_mcTo!=null)?q.daily:d;   // To fixa no passado = janela histórica; To vazia = até hoje (ponta viva)
     const to=(_mcTo!=null)?_mcTo:(Date.now()/1000);
-    arr=q.daily.filter(p=>p[0]>=_mcFrom && p[0]<=to);
-  } else if(_mcRange==='YTD'){ const jan1=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=q.daily.filter(p=>p[0]>=jan1); }
-  else { const cut=(Date.now()/1000)-(_MC_RANGE_DAYS[_mcRange]||372)*86400; arr=q.daily.filter(p=>p[0]>=cut); }
-  if(arr.length<2) arr=q.daily.slice(-2);
+    arr=src.filter(p=>p[0]>=_mcFrom && p[0]<=to);
+  } else if(_mcRange==='YTD'){ const jan1=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=jan1); }
+  else { const cut=(Date.now()/1000)-(_MC_RANGE_DAYS[_mcRange]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
+  if(arr.length<2) arr=d.slice(-2);
   const base=arr[0][1];
   return arr.map(p=>[p[0], (p[1]/base-1)*100]);
 }

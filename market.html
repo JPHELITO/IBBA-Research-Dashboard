@@ -575,31 +575,46 @@ function _commAsset(t){ const m=COMM_BY_TICKER[t], c=(m&&_commByCode[m.code])||n
 function _toDateInput(epoch){ return new Date(epoch*1000).toISOString().slice(0,10); }
 function _fromDateInput(s){ return s ? Date.parse(s+'T00:00:00Z')/1000 : null; }
 
-// série [[epoch,value]] por range. 1D=intraday; custom=From→To; resto=daily fatiado. mode: 'price'|'pct'
+// Série diária "com a ponta AO VIVO": fechamentos históricos + o PREÇO ATUAL como último ponto (agora).
+// Todo retorno/gráfico (1W/1M/3M/YTD/1Y) passa a terminar no preço que a ação tem AGORA — não no último
+// fechamento gravado (que fica 1-2 dias atrás e varia de ticker p/ ticker). O histórico só dá a âncora do início.
+// Descarta o fechamento de HOJE ainda em formação (bar parcial do Yahoo) p/ não duplicar a ponta.
+function _dailyLive(q){
+  const d=(q&&Array.isArray(q.daily))?q.daily:[];
+  const px=q&&q.price;
+  if(px==null||!isFinite(px)) return d.slice();
+  const now=Math.floor(Date.now()/1000), today0=Math.floor(now/86400)*86400;   // meia-noite UTC de hoje
+  const out=d.filter(p=>p&&p[0]<today0);   // só fechamentos ATÉ ontem (dropa o bar parcial de hoje)
+  out.push([now,px]);                       // ponta ao vivo = preço atual, agora
+  return out;
+}
+
+// série [[epoch,value]] por range. 1D=intraday; custom=From→To; resto=diário-com-ponta-ao-vivo fatiado. mode: 'price'|'pct'
 function _series(q,range,mode){
   let arr;
   if(range==='1D'){
     const pts=(q.intraday&&q.intraday.pts)||[];
     if(pts.length>=2){ const base=(q.intraday.prev!=null?q.intraday.prev:pts[0][1]);
       return pts.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]); }
-    if(q.isComm && q.daily && q.daily.length>=2){ const a=q.daily.slice(-2), base=a[0][1];   // commodity não tem intraday → usa os 2 últimos diários
-      return a.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]); }
+    if(q.isComm){ const dl=_dailyLive(q); if(dl.length>=2){ const a=dl.slice(-2), base=a[0][1];   // commodity não tem intraday → penúltimo fechamento → preço ao vivo
+      return a.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]); } }
     return null;
   }
-  if(range==='custom' && _cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=(q.daily||[]).filter(p=>p[0]>=_cFrom&&p[0]<=to); }
-  else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=(q.daily||[]).filter(p=>p[0]>=j); }
-  else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=(q.daily||[]).filter(p=>p[0]>=cut); }
-  if(!arr||arr.length<2){ if(q.daily&&q.daily.length>=2) arr=q.daily.slice(-2); else return null; }
+  const d=_dailyLive(q);   // fechamentos + preço ao vivo como ponta
+  if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?((q&&Array.isArray(q.daily))?q.daily:[]):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }   // To fixa no passado = janela histórica (sem ponta ao vivo); To vazia = até hoje (ponta viva)
+  else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
+  else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
+  if(!arr||arr.length<2){ if(d.length>=2) arr=d.slice(-2); else return null; }
   const base=arr[0][1];
   return arr.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]);
 }
 function _ret(q,range){ if(range==='1D') return q.change_pct; const s=_series(q,range,'pct'); if(!s||s.length<2) return null; return s[s.length-1][1]; }
-// série diária de uma COMMODITY normalizada a 0% (p/ o spread ação×commodity)
+// série diária de uma COMMODITY normalizada a 0% (p/ o spread ação×commodity) — também termina no preço ao vivo
 function _commSeries(c, range){
-  const d=c&&c.daily; if(!Array.isArray(d)||d.length<2) return null;
+  const d=_dailyLive(c); if(d.length<2) return null;   // fechamentos + preço ao vivo da commodity
   let arr;
-  if(range==='custom' && _cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=d.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
-  else if(range==='1D'){ arr=d.slice(-2); }   // commodity não tem intraday → últimos 2 diários
+  if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?((c&&Array.isArray(c.daily))?c.daily:[]):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
+  else if(range==='1D'){ arr=d.slice(-2); }   // commodity não tem intraday → penúltimo fechamento → preço ao vivo
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
   else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
   if(!arr||arr.length<2) arr=d.slice(-2);
@@ -1400,7 +1415,7 @@ async function init(){
   document.addEventListener('click', e=>{ if(!e.target.closest('#car-auto')) _noteInteract(); }, true);   // qualquer clique TRAVA o tour (botão Auto isento)
   document.addEventListener('keydown', _noteInteract, true);
   setInterval(_carIdleCheck, 20000);   // 5 min sem interação → retoma o tour
-  setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); }); loadMacro().then(renderHeader); }, 60000);
+  setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); renderChart(); }); loadMacro().then(renderHeader); }, 60000);   // renderChart: a ponta ao vivo do gráfico acompanha o preço ao longo do dia
   if(_isAdmin) _initExports();   // controles de download (PNG/Excel) só p/ admin
 }
 function showApp(){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
