@@ -369,11 +369,14 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:#fff;
   display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;transition:transform .15s;}
 .hm-card:hover{transform:translateY(-1px);}
-.hm-card.up-strong{background:#16a34a;}
-.hm-card.up{background:#86c587;color:#1a3d23;}
-.hm-card.flat{background:#d3d3d0;color:#444;}
-.hm-card.down{background:#f0a3a3;color:#5e1a1a;}
-.hm-card.down-strong{background:#c0392b;}
+/* Escala graduada de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
+.hm-card.up-strong{background:#178a3e;color:#fff;}      /* ≥ +5%  verde escuro */
+.hm-card.up-mid{background:#57bd6a;color:#0c3a1a;}      /* +2..5% verde médio */
+.hm-card.up{background:#bfe6c3;color:#14532d;}          /* +0.5..2% verde claro */
+.hm-card.flat{background:#d3d3d0;color:#444;}           /* −0.5..+0.5% cinza */
+.hm-card.down{background:#f6bcbc;color:#7f1d1d;}        /* −0.5..−2% vermelho claro */
+.hm-card.down-mid{background:#e26b62;color:#46100c;}    /* −2..−5% vermelho médio */
+.hm-card.down-strong{background:#a81f1f;color:#fff;}    /* ≤ −5%  vermelho escuro */
 .hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;}
 .hm-ticker{font-size:10px;font-weight:700;letter-spacing:.02em;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1382,11 +1385,13 @@ async function loadQuotesDaily(){
 
 function _heatClass(pct){
   if(pct == null) return 'flat';
-  if(pct >= 2) return 'up-strong';
-  if(pct >= 0.05) return 'up';
-  if(pct <= -2) return 'down-strong';
-  if(pct <= -0.05) return 'down';
-  return 'flat';
+  if(pct >= 5)    return 'up-strong';    // verde escuro
+  if(pct >= 2)    return 'up-mid';       // verde médio
+  if(pct >= 0.5)  return 'up';           // verde claro
+  if(pct <= -5)   return 'down-strong';  // vermelho escuro
+  if(pct <= -2)   return 'down-mid';     // vermelho médio
+  if(pct <= -0.5) return 'down';         // vermelho claro
+  return 'flat';                         // −0.5..+0.5% cinza
 }
 
 // Formata preço com locale apropriado por exchange (decimal/thousands separators)
