@@ -327,25 +327,49 @@ let _searchText = '';
 let _allArticles = [];
 let _displayLimit = 50;
 const PAGE_SIZE = 50;
+const LOAD_MORE_STEP = 250;   // "Load more" revela um lote maior (o histórico tem milhares)
 
 // ─── Fetch ─────────────────────────────────────────────────────────────
 // Timestamp efetivo: publicação real, found_at como fallback (igual à home).
 function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
+
+// Feedback ao vivo enquanto o "All" pagina o histórico inteiro (vários blocos).
+function _fetchProgress(n){
+  const meta=document.getElementById('results-meta');
+  if(meta) meta.innerHTML=`Loading full history… <strong>${n.toLocaleString('en-US')}</strong>`;
+}
 
 async function fetchArticles(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return [];
   const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,sector';
   // MESMO filtro da home: só notícias relevantes (include_in_report=true).
-  let url=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc&limit=1000`;
+  let base=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc`;
   if(_periodHours!=='all'){
     const cutoff=new Date(Date.now()-_periodHours*3600*1000).toISOString();
     // Janela por data de publicação (fontes sem published_at também passam).
-    url+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
+    base+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
-  const res=await fetch(url,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
-  if(!res.ok)return [];
-  const rows=await res.json();
+  // Pagina em blocos de 1000 (teto do Supabase por request) até esgotar a janela.
+  // Sem isto, "All" e "7 days" travavam no 1º milhar (≈990 após dedup) — só se via
+  // a última fatia do histórico. Agora carrega tudo o que casa o filtro.
+  const PAGE=1000, SAFETY=40000;   // trava: no máx. ~40 mil linhas (evita loop infinito)
+  let from=0, rows=[];
+  for(;;){
+    const res=await fetch(base,{headers:{
+      'apikey':SUPA_KEY,
+      'Authorization':`Bearer ${session.access_token}`,
+      'Range-Unit':'items',
+      'Range':`${from}-${from+PAGE-1}`
+    }});
+    if(!res.ok)break;
+    const batch=await res.json();
+    if(!Array.isArray(batch))break;
+    rows=rows.concat(batch);
+    if(_periodHours==='all') _fetchProgress(rows.length);   // conta ao vivo no "All"
+    if(batch.length<PAGE || from+PAGE>=SAFETY)break;        // última página / trava
+    from+=PAGE;
+  }
   // Ordena por timestamp efetivo (mais nova primeiro) + remove duplicatas de título.
   const seen=new Set(), out=[];
   for(const a of rows.sort((x,y)=>_effTs(y)-_effTs(x))){
@@ -390,7 +414,7 @@ function _renderFeed(){
   const loadMore=document.getElementById('load-more');
   const filtered=_filterArticles();
 
-  meta.innerHTML=`<strong>${filtered.length}</strong> article${filtered.length!==1?'s':''} found`;
+  meta.innerHTML=`<strong>${filtered.length.toLocaleString('en-US')}</strong> article${filtered.length!==1?'s':''} found`;
 
   if(!filtered.length){
     feed.innerHTML='<div class="empty">No articles found with these filters.</div>';
@@ -422,7 +446,13 @@ function _renderFeed(){
     </a>`;
   }
   feed.innerHTML=html;
-  loadMore.style.display=filtered.length>_displayLimit?'block':'none';
+  if(filtered.length>_displayLimit){
+    const rest=filtered.length-_displayLimit;
+    loadMore.textContent=`Load more (${rest.toLocaleString('en-US')} more)`;
+    loadMore.style.display='block';
+  }else{
+    loadMore.style.display='none';
+  }
 }
 
 function _buildSourceFilter(){
@@ -476,12 +506,15 @@ document.getElementById('search-input').addEventListener('input',e=>{
   },200);
 });
 document.getElementById('load-more').addEventListener('click',()=>{
-  _displayLimit+=PAGE_SIZE;
+  _displayLimit+=LOAD_MORE_STEP;
   _renderFeed();
 });
 
 refresh();
-setInterval(refresh, 60 * 1000);  // atualiza a cada minuto
+// Auto-atualiza a cada minuto nas janelas curtas (24h/48h/7d).
+// No "All" NÃO recarrega sozinho: o arquivo completo (milhares de linhas) não muda
+// de minuto a minuto, e repaginar tudo apagaria a rolagem/"Load more" do usuário.
+setInterval(()=>{ if(_periodHours!=='all') refresh(); }, 60 * 1000);
 </script>
 
 <!-- STAGING BADGE -->
