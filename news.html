@@ -241,7 +241,7 @@ html.dark{ --pos:#4ade80; --neg:#f87171; --neu:#9ca3af; }
 .tl-title{font-size:11px;font-weight:700;color:var(--gray-dark);letter-spacing:.02em;text-transform:uppercase;}
 .tl-legend{display:flex;gap:12px;font-size:9.5px;color:var(--gray-mid);}
 .tl-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle;}
-.tl-wrap{position:relative;overflow-x:auto;overflow-y:hidden;}
+.tl-wrap{position:relative;overflow:hidden;}
 .tl-svg{display:block;width:100%;height:106px;touch-action:none;}
 .tl-tip{position:absolute;pointer-events:none;background:var(--black);color:#fff;font-size:10.5px;line-height:1.55;padding:6px 9px;border-radius:7px;white-space:nowrap;opacity:0;transform:translate(-50%,calc(-100% - 10px));transition:opacity .1s;z-index:9;box-shadow:0 4px 14px rgba(0,0,0,.25);}
 html.dark .tl-tip{background:#0d0e11;border:1px solid var(--border);}
@@ -692,7 +692,11 @@ function _renderTimeline(){
     cur=_dateAdd(cur,1);
   }
   const N=days.length, maxT=Math.max(1,...days.map(d=>d.total));
-  const BAND=10, H=106, padTop=8, padBot=16, baseY=H-padBot, plotH=baseY-padTop, W=N*BAND;
+  // BAND calculado p/ CABER a largura visível → o range inteiro aparece de uma vez,
+  // sem rolagem horizontal (viewBox = largura real do container, escala 1:1 = sem distorção).
+  const wrap=document.querySelector('.tl-wrap');
+  const cw=(wrap && wrap.clientWidth>60) ? wrap.clientWidth : 900;
+  const H=106, padTop=8, padBot=16, baseY=H-padBot, plotH=baseY-padTop, BAND=cw/N, W=cw;
   const C=_tlColors();
   let sel='';
   if(_dateFrom||_dateTo){
@@ -702,7 +706,7 @@ function _renderTimeline(){
   }
   let bars='';
   days.forEach((d,i)=>{
-    const x=i*BAND, bx=x+1.5, bw=BAND-3; let y=baseY;
+    const x=i*BAND, bw=Math.max(1,BAND*0.72), bx=x+(BAND-bw)/2; let y=baseY;
     const seg=(v,c)=>{ if(v<=0)return ''; const h=v/maxT*plotH; y-=h; return `<rect x="${bx}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${c}"/>`; };
     const s=seg(d.pos,C.pos)+seg(d.neu,C.neu)+seg(d.neg,C.neg)+seg(d.other,C.other);
     bars+=`<rect class="bar" x="${x}" y="${padTop}" width="${BAND}" height="${plotH}" fill="transparent"/>${s}`;
@@ -715,7 +719,7 @@ function _renderTimeline(){
     }
   });
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  svg.style.minWidth=Math.max(520,N*7)+'px';
+  svg.style.minWidth='';                    // sem largura mínima → nunca transborda (cabe tudo)
   svg.innerHTML=sel+axis+bars;
   _tlDays=days; _tlN=N;
 }
@@ -827,6 +831,9 @@ document.getElementById('load-more').addEventListener('click',()=>{ _displayLimi
 
 // Re-renderiza a timeline quando o tema muda (evento global da dashboard)
 window.addEventListener('ibba:theme',()=>{ if(_allArticles.length) _renderTimeline(); });
+// Reencaixa a timeline na largura ao redimensionar a janela (debounce).
+let _rzTL=null;
+window.addEventListener('resize',()=>{ clearTimeout(_rzTL); _rzTL=setTimeout(()=>{ if(_allArticles.length) _renderTimeline(); },150); });
 
 // ─── Boot + polling incremental ─────────────────────────────────────────
 async function boot(){
