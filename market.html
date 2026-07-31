@@ -555,6 +555,23 @@ const SECTOR_DRIVER={
 };
 const SECTOR_NEWS={steel:'steel',iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',pp:'pp',index:null,commodity:'mining'};
 
+/* ── setor de RECOMENDAÇÃO do âncora (p/ os chips de comparação) ──
+   Empresa → seu próprio setor. Commodity (@CODE) → o setor que ela DIRIGE (ouro→gold, cobre→copper,
+   minério 62%→iron_ore). Índice → o setor de que ele é o índice (GDX→gold, NASDAQ→rare_earths); índice
+   AMPLO (aparece em vários setores: SPX, MATB11) → null → cai na cobertura. Antes, âncora commodity/índice
+   virava setor 'commodity'/'index' (sem SECTOR_GROUPS) → as recomendações SUMIAM. */
+const COMM_CODE_TO_SECTOR={};
+Object.entries(SECTOR_DRIVER).forEach(([sec,arr])=>arr.forEach(d=>{ if(!(d.code in COMM_CODE_TO_SECTOR)) COMM_CODE_TO_SECTOR[d.code]=sec; }));
+const INDEX_TO_SECTOR={};
+Object.entries(SECTOR_INDEX).forEach(([sec,arr])=>arr.forEach(t=>{ INDEX_TO_SECTOR[t]=(t in INDEX_TO_SECTOR && INDEX_TO_SECTOR[t]!==sec)?null:sec; }));
+function _recoSector(t){
+  if(!t) return null;
+  if(_isComm(t)){ const c=COMM_BY_TICKER[t]; return (c&&COMM_CODE_TO_SECTOR[c.code])||null; }   // commodity → setor que dirige
+  const s=TICKER_SECTOR[t];
+  if(s==='index') return INDEX_TO_SECTOR[t]||null;   // índice → seu setor (GDX→gold); amplo → null
+  return s||null;   // empresa → seu setor
+}
+
 /* ── helpers ── */
 const _short=t=>{ if(_isComm(t)){ const m=COMM_BY_TICKER[t]; return m?m.short:String(t).slice(1); } return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,''); };
 function _fmtPrice(v,ex){if(v==null||!isFinite(v))return '—';const c=ex==='B3'||ex==='BCS';return v.toLocaleString(c?'pt-BR':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -948,8 +965,9 @@ function renderChart(){
 // Compare: SÓ recommended (pares+índice do primário) inline; selecionados realçados.
 function renderChips(){
   const box=document.getElementById('cmp-chips'); if(!box)return;
-  const sec=_anchor?TICKER_SECTOR[_anchor]:null; const have=new Set(_quotes.map(q=>q.ticker));
+  const sec=_recoSector(_anchor); const have=new Set(_quotes.map(q=>q.ticker));   // âncora commodity/índice resolve p/ o setor certo (não some mais)
   let reco=[]; if(sec&&SECTOR_GROUPS[sec]){ reco=[...SECTOR_GROUPS[sec].filter(t=>have.has(t)),...(SECTOR_INDEX[sec]||[]).filter(t=>have.has(t))]; }
+  else if(_anchor && (_isComm(_anchor)||TICKER_SECTOR[_anchor]==='index')){ reco=[...COVERAGE.filter(t=>have.has(t))]; }   // índice amplo (SPX/IBOV) sem setor único → cobertura
   // commodity driver do setor (ouro/cobre/minério 62%) entra como recomendação p/ comparar a variação com a ação
   const drvChips=(SECTOR_DRIVER[sec]||[]).map(d=>COMM_CODE_TO_TICKER[d.code]).filter(t=>t&&_commByCode[COMM_BY_TICKER[t].code]);
   reco=[...drvChips,...reco];
@@ -1152,12 +1170,19 @@ function _pfPort(win){   // win = range string OU [startSec,endSec] (Advanced us
   const isSpan=Array.isArray(win);
   const maps=_sel.map(t=>{ const ser=isSpan?_seriesSpan(byT(t),win[0],win[1]):_series(byT(t),win,'pct'); const m=new Map(); if(ser)for(const p of ser){ m.set(new Date(p[0]*1000).toISOString().slice(0,10),p[1]); } return m; });
   if(maps.some(m=>m.size<2)) return null;
-  let common=[...maps[0].keys()]; for(let i=1;i<maps.length;i++) common=common.filter(d=>maps[i].has(d)); common.sort();
-  if(common.length<2) return null;
+  // Grade de datas = UNIÃO de todas as datas (NÃO a interseção N-vias, que colapsava a ponta numa "reta"
+  // quando um ativo tinha série mais esparsa/defasada que os outros — bolsas/calendários/frescor diferentes).
+  // Cada ativo carrega o último valor conhecido (forward-fill) nas datas sem ponto; começa quando TODOS já têm valor.
+  const firsts=maps.map(m=>[...m.keys()].sort()[0]).sort(); const start=firsts[firsts.length-1];   // max das 1as datas → todos definidos daqui p/ frente
+  const all=new Set(); maps.forEach(m=>m.forEach((_,d)=>{ if(d>=start)all.add(d); })); const grid=[...all].sort();
+  if(grid.length<2) return null;
+  const prev=maps.map(m=>{ let best='',v=null; m.forEach((val,d)=>{ if(d<=start&&d>=best){best=d;v=val;} }); return v; });   // valor de cada ativo em `start` (forward-fill)
   const rows=_pfSched.rows, out=[]; let idx=1;
-  for(let d=0;d<common.length;d++){ const daySec=Math.floor(Date.parse(common[d])/1000), row=_wAt(rows,daySec); let rp=0;
-    if(d>0&&row)_sel.forEach((t,i)=>{ const a=1+maps[i].get(common[d-1])/100, b=1+maps[i].get(common[d])/100; rp+=((+row.w[t]||0)/100)*((a>0&&b>0)?(b/a-1):0); });
-    idx*=(1+rp); out.push([daySec,(idx-1)*100]); }
+  for(let d=0;d<grid.length;d++){ const date=grid[d], daySec=Math.floor(Date.parse(date)/1000), row=_wAt(rows,daySec);
+    const cur=maps.map((m,i)=> m.has(date)?m.get(date):prev[i]);   // forward-fill nas datas em que o ativo não tem ponto
+    let rp=0;
+    if(d>0&&row)_sel.forEach((t,i)=>{ const a=1+prev[i]/100, b=1+cur[i]/100; rp+=((+row.w[t]||0)/100)*((a>0&&b>0)?(b/a-1):0); });
+    idx*=(1+rp); out.push([daySec,(idx-1)*100]); for(let i=0;i<cur.length;i++)prev[i]=cur[i]; }
   return out; }
 function _pfVol(p){ if(!p||p.length<20)return null; const r=[]; for(let i=1;i<p.length;i++){ const a=1+p[i-1][1]/100,b=1+p[i][1]/100; if(a>0&&b>0)r.push(Math.log(b/a)); } if(r.length<10)return null; const m=r.reduce((s,v)=>s+v,0)/r.length; const v=r.reduce((s,x)=>s+(x-m)*(x-m),0)/(r.length-1); return Math.sqrt(v)*Math.sqrt(252)*100; }
 function _pfDD(p){ if(!p||p.length<5)return null; let peak=-Infinity,dd=0; for(const x of p){ const lvl=1+x[1]/100; if(lvl>peak)peak=lvl; if(peak>0){const c=lvl/peak-1; if(c<dd)dd=c;} } return dd*100; }
