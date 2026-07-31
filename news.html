@@ -188,6 +188,92 @@ html.dark .news-take.neg{color:#f87171;background:rgba(239,68,68,.18);}
 html.dark .news-take.neu{color:#9ca3af;background:rgba(140,140,140,.2);}
 html.dark .news-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
 html.dark .news-take.nt{color:#9ca3af;}
+
+/* ══════════════════ REDESIGN 2026-07-31 — layout · filtros · timeline ══════════════════ */
+:root{ --pos:#16a34a; --neg:#c0392b; --neu:#8c8c8c; }
+html.dark{ --pos:#4ade80; --neg:#f87171; --neu:#9ca3af; }
+
+.page{max-width:1460px;display:block;padding:22px 30px 60px;}
+.page>.crumb{margin-bottom:12px;}
+.hist-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+.hist-sub{font-size:12px;color:var(--gray-mid);}
+.hist-sub b{color:var(--gray-dark);font-weight:600;}
+
+.h-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start;}
+.rail{position:sticky;top:14px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 26px);overflow:auto;padding-right:3px;}
+.main{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.fblock{padding:12px 14px;}
+.fblock-h{font-size:10px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.09em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;}
+.fblock-h .mini{font-weight:600;letter-spacing:0;text-transform:none;color:var(--orange);cursor:pointer;font-size:10px;}
+.fblock-h .mini:hover{text-decoration:underline;}
+.rail .search-input{width:100%;}
+.seg{display:flex;flex-wrap:wrap;gap:5px;}
+.seg .chip{padding:5px 11px;}
+.daterow{display:flex;align-items:center;gap:6px;margin-top:9px;}
+.date-in{flex:1;min-width:0;font-family:var(--font);font-size:11px;padding:5px 7px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--gray-dark);outline:none;}
+.date-in:focus{border-color:var(--orange);}
+.daterow .to{font-size:11px;color:var(--gray-mid);flex:none;}
+.facet{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:1px;margin:0 -4px;}
+.facet-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:11.5px;color:var(--gray-dark);transition:background .12s;}
+.facet-row:hover{background:var(--gray-light);}
+.facet-row.on{background:rgba(255,80,0,.09);}
+.facet-row .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.facet-row .c{font-size:10px;color:var(--gray-mid);font-weight:600;font-variant-numeric:tabular-nums;flex:none;}
+.facet-row .bx{width:14px;height:14px;border:1.5px solid var(--border);border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;line-height:1;}
+.facet-row.on .bx{background:var(--orange);border-color:var(--orange);}
+.btn-clear{width:100%;padding:8px;font-size:11px;font-weight:600;font-family:var(--font);border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--gray-mid);cursor:pointer;transition:all .15s;}
+.btn-clear:hover{border-color:var(--neg);color:var(--neg);}
+
+/* STAT TILES */
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 13px;}
+.stat.click{cursor:pointer;transition:border-color .15s;}
+.stat.click:hover{border-color:#bbb;}
+.stat.sel{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange) inset;}
+.stat-num{font-size:22px;font-weight:800;letter-spacing:-.03em;color:var(--black);font-variant-numeric:tabular-nums;line-height:1;}
+.stat-num.pos{color:var(--pos);} .stat-num.neg{color:var(--neg);} .stat-num.neu{color:var(--neu);}
+.stat-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);margin-top:6px;}
+
+/* TIMELINE */
+.tl-card{padding:12px 14px 9px;}
+.tl-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;}
+.tl-title{font-size:11px;font-weight:700;color:var(--gray-dark);letter-spacing:.02em;text-transform:uppercase;}
+.tl-legend{display:flex;gap:12px;font-size:9.5px;color:var(--gray-mid);}
+.tl-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+.tl-wrap{position:relative;overflow-x:auto;overflow-y:hidden;}
+.tl-svg{display:block;width:100%;height:106px;touch-action:none;}
+.tl-tip{position:absolute;pointer-events:none;background:var(--black);color:#fff;font-size:10.5px;line-height:1.55;padding:6px 9px;border-radius:7px;white-space:nowrap;opacity:0;transform:translate(-50%,calc(-100% - 10px));transition:opacity .1s;z-index:9;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+html.dark .tl-tip{background:#0d0e11;border:1px solid var(--border);}
+.tl-hint{font-size:9.5px;color:var(--gray-mid);text-align:center;margin-top:3px;}
+
+/* META BAR */
+.meta-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:0 2px;}
+.meta-bar .results-meta{margin:0;}
+.meta-bar .spacer{flex:1;}
+.sortlink,.refreshlink{font-size:11px;color:var(--gray-mid);cursor:pointer;background:none;border:none;font-family:var(--font);display:inline-flex;align-items:center;gap:4px;padding:2px;}
+.sortlink:hover,.refreshlink:hover{color:var(--orange);}
+.chipmini{font-size:10px;font-weight:600;color:var(--orange);background:rgba(255,80,0,.1);border-radius:20px;padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:7px;}
+.chipmini .x{cursor:pointer;font-weight:800;font-size:11px;}
+.chipmini .x:hover{color:var(--neg);}
+
+/* FEED — faixinha lateral colorida por take */
+.item{position:relative;padding-left:22px;}
+.item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;}
+.item.tk-pos::before{background:var(--pos);}
+.item.tk-neg::before{background:var(--neg);}
+.item.tk-neu::before{background:var(--neu);opacity:.5;}
+.item.tk-rev::before{background:#d97706;}
+.day-divider{display:flex;align-items:center;justify-content:space-between;}
+.day-divider .dd-c{font-weight:600;color:var(--gray-mid);letter-spacing:.02em;}
+
+@media(max-width:900px){
+  .h-layout{grid-template-columns:1fr;}
+  .rail{position:static;max-height:none;overflow:visible;}
+  .facet{max-height:260px;}
+  .stat-row{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:560px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
 <body>
@@ -214,49 +300,94 @@ html.dark .news-take.nt{color:#9ca3af;}
     <span style="font-size:11px;color:var(--gray-dark);font-weight:600;">News History</span>
   </div>
 
-  <div class="page-title">News Hunter — History</div>
-
-  <!-- FILTERS -->
-  <div class="filters">
-    <div class="filter-group">
-      <span class="filter-label">Period</span>
-      <div class="filter-chips" id="period-chips">
-        <button class="chip" data-period="24">Last 24h</button>
-        <button class="chip active" data-period="48">48h</button>
-        <button class="chip" data-period="168">7 days</button>
-        <button class="chip" data-period="all">All</button>
-      </div>
-    </div>
-    <div class="filter-group">
-      <span class="filter-label">Sector</span>
-      <div class="filter-chips" id="sector-chips">
-        <button class="chip active" data-sec="all">All</button>
-        <button class="chip" data-sec="sm">S&amp;M</button>
-        <button class="chip" data-sec="pp">P&amp;P</button>
-        <button class="chip" data-sec="nr" title="Natural Resources — macro / cross-sector">NR</button>
-      </div>
-    </div>
-    <div class="filter-group">
-      <span class="filter-label">Source</span>
-      <select class="search-input" id="source-select">
-        <option value="">All sources</option>
-      </select>
-    </div>
-    <div class="filter-group" style="margin-left:auto;">
-      <input type="search" class="search-input" id="search-input"
-             placeholder="Search title…"/>
-    </div>
+  <div class="hist-head">
+    <div class="page-title">News Hunter — History</div>
+    <div class="hist-sub" id="hist-sub">Loading…</div>
   </div>
 
-  <div class="results-meta" id="results-meta">Loading…</div>
+  <div class="h-layout">
+    <!-- ░░░ FILTER RAIL ░░░ -->
+    <aside class="rail">
+      <div class="card fblock">
+        <div class="fblock-h">Search</div>
+        <input type="search" class="search-input" id="search-input" placeholder="Search headline…"/>
+      </div>
+      <div class="card fblock">
+        <div class="fblock-h">Period</div>
+        <div class="seg" id="period-seg">
+          <button class="chip" data-days="1">24h</button>
+          <button class="chip active" data-days="2">48h</button>
+          <button class="chip" data-days="7">7d</button>
+          <button class="chip" data-days="30">30d</button>
+          <button class="chip" data-days="all">All</button>
+        </div>
+        <div class="daterow">
+          <input type="date" class="date-in" id="date-from" aria-label="From date"/>
+          <span class="to">→</span>
+          <input type="date" class="date-in" id="date-to" aria-label="To date"/>
+        </div>
+      </div>
+      <div class="card fblock">
+        <div class="fblock-h">Sector</div>
+        <div class="seg" id="sector-seg">
+          <button class="chip active" data-sec="all">All</button>
+          <button class="chip" data-sec="sm">S&amp;M</button>
+          <button class="chip" data-sec="pp">P&amp;P</button>
+          <button class="chip" data-sec="nr" title="Natural Resources — macro / cross-sector">NR</button>
+        </div>
+      </div>
+      <div class="card fblock">
+        <div class="fblock-h">Take</div>
+        <div class="seg" id="take-seg">
+          <button class="chip active" data-take="all">All</button>
+          <button class="chip" data-take="+" title="Positive">+</button>
+          <button class="chip" data-take="-" title="Negative">−</button>
+          <button class="chip" data-take="=" title="Neutral">=</button>
+          <button class="chip" data-take="no take" title="No take — not scored">○</button>
+        </div>
+      </div>
+      <div class="card fblock">
+        <div class="fblock-h">Source <span class="mini" id="src-clear">reset</span></div>
+        <div class="facet" id="src-facet"><div class="empty" style="padding:12px">Loading…</div></div>
+      </div>
+      <button class="btn-clear" id="clear-all">Clear all filters</button>
+    </aside>
 
-  <div class="feed" id="feed">
-    <div class="empty">Loading…</div>
+    <!-- ░░░ MAIN ░░░ -->
+    <div class="main">
+      <div class="stat-row" id="stat-row"></div>
+
+      <div class="card tl-card">
+        <div class="tl-top">
+          <div class="tl-title">Daily volume &amp; sentiment</div>
+          <div class="tl-legend">
+            <span><i style="background:var(--pos)"></i>Positive</span>
+            <span><i style="background:var(--neu);opacity:.6"></i>Neutral</span>
+            <span><i style="background:var(--neg)"></i>Negative</span>
+          </div>
+        </div>
+        <div class="tl-wrap">
+          <svg class="tl-svg" id="tl-svg" preserveAspectRatio="none"></svg>
+          <div class="tl-tip" id="tl-tip"></div>
+        </div>
+        <div class="tl-hint">Click a day to filter · drag across days to select a range</div>
+      </div>
+
+      <div class="meta-bar">
+        <div class="results-meta" id="results-meta">Loading…</div>
+        <span id="range-chip"></span>
+        <span class="spacer"></span>
+        <button class="sortlink" id="sort-link">↓ Newest</button>
+        <button class="refreshlink" id="refresh-link" title="Fetch latest"><span id="upd-label">↻ Refresh</span></button>
+      </div>
+
+      <div class="feed" id="feed">
+        <div class="empty">Loading…</div>
+      </div>
+
+      <button class="load-more" id="load-more" style="display:none;">Load more</button>
+    </div>
   </div>
-
-  <button class="load-more" id="load-more" style="display:none;">Load more</button>
-
-</div>
 
 <div class="footer">
   <span class="footer-text">Equity Research</span>
@@ -320,72 +451,72 @@ function _dayLabel(iso){
 }
 
 // ─── State ─────────────────────────────────────────────────────────────
-let _periodHours = 48;   // default 48h = mesma janela da home (NEWS_MAX_AGE_HOURS)
-let _sourceFilter = '';
-let _sectorFilter = 'all';   // 'all' | 'sm' | 'pp' | 'nr' (resolvido por fonte+keyword)
+// O histórico INTEIRO é carregado uma vez (_allArticles); TODO filtro é client-side
+// e instantâneo (janela de datas, setor, take, fontes, busca). A timeline é o mapa.
+let _periodPreset = '2';       // '1'|'2'|'7'|'30'|'all'|'custom' (dias)
+let _dateFrom = null;          // 'YYYY-MM-DD' inclusivo, ou null
+let _dateTo   = null;          // 'YYYY-MM-DD' inclusivo, ou null
+let _sectorFilter = 'all';     // 'all'|'sm'|'pp'|'nr'
+let _takeFilter   = 'all';     // 'all'|'+'|'-'|'='|'no take'
+let _srcFilter = new Set();    // fontes marcadas (vazio = todas)
 let _searchText = '';
-let _allArticles = [];
+let _sortDesc = true;          // mais novas primeiro
+let _allArticles = [];         // histórico inteiro, deduplicado
+let _seenUrls = new Set();     // p/ o polling incremental (evita re-inserir)
 let _displayLimit = 50;
+let _lastUpdate = 0;
+let _tlDays = [], _tlN = 0;    // cache da timeline p/ hit-testing do mouse
 const PAGE_SIZE = 50;
-const LOAD_MORE_STEP = 250;   // "Load more" revela um lote maior (o histórico tem milhares)
+const LOAD_MORE_STEP = 250;
 
 // ─── Fetch ─────────────────────────────────────────────────────────────
 // Timestamp efetivo: publicação real, found_at como fallback (igual à home).
 function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
+function _effDate(a){                       // 'YYYY-MM-DD' local do timestamp efetivo
+  const t=_effTs(a); if(!t) return '';
+  const d=new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
-async function fetchArticles(){
+// Busca por limit/offset em QUERY PARAMS (à prova de CORS), páginas em PARALELO.
+// windowHours = janela recente (polling incremental) OU null = histórico INTEIRO.
+async function _fetchPages(windowHours){
   const {data:{session}}=await sbAuth.auth.getSession();
-  if(!session)return [];
+  if(!session) return [];
   const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,sector';
-  // MESMO filtro da home: só notícias relevantes (include_in_report=true).
   let base=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc`;
-  if(_periodHours!=='all'){
-    const cutoff=new Date(Date.now()-_periodHours*3600*1000).toISOString();
-    // Janela por data de publicação (fontes sem published_at também passam).
+  if(windowHours){
+    const cutoff=new Date(Date.now()-windowHours*3600*1000).toISOString();
     base+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
   const hdr={'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`};
-  // Pagina por limit/offset em QUERY PARAMS (sem header custom → à prova de CORS).
-  // Antes o limite de 1000 do Supabase travava "All"/"7 days" no 1º milhar (≈990
-  // após dedup) — só se via a última fatia. Agora carrega o histórico inteiro.
-  const PAGE=1000, SAFETY=40000;   // teto por request / trava de segurança (~40 mil)
+  const PAGE=1000, SAFETY=40000;             // teto por request / trava de segurança
   const pageUrl=off=>`${base}&limit=${PAGE}&offset=${off}`;
   async function _page(off){                 // busca 1 página; NUNCA lança
-    try{
-      const r=await fetch(pageUrl(off),{headers:hdr});
-      if(!r.ok)return [];
-      const b=await r.json();
-      return Array.isArray(b)?b:[];
-    }catch(e){ return []; }
+    try{ const r=await fetch(pageUrl(off),{headers:hdr});
+      if(!r.ok) return []; const b=await r.json(); return Array.isArray(b)?b:[]; }
+    catch(e){ return []; }
   }
-
   // 1ª página + TOTAL (Content-Range, exposto no CORS) numa tacada só.
   let rows=[], total=NaN;
   try{
     const res=await fetch(pageUrl(0),{headers:{...hdr,'Prefer':'count=exact'}});
-    if(!res.ok)return [];
-    const cr=res.headers.get('content-range')||'';   // ex.: "0-999/8422"
-    total=parseInt(cr.split('/')[1],10);
-    const b=await res.json();
-    rows=Array.isArray(b)?b:[];
+    if(!res.ok) return [];
+    total=parseInt((res.headers.get('content-range')||'').split('/')[1],10);
+    const b=await res.json(); rows=Array.isArray(b)?b:[];
   }catch(e){ return []; }
-
-  // Demais páginas só se houver mais que 1 milhar (All / 7 days). EM PARALELO = rápido
-  // (some a lentidão das requisições em fila).
+  // Demais páginas EM PARALELO (só quando há mais que 1 milhar).
   if(Number.isFinite(total) && total>PAGE){
     const cap=Math.min(total,SAFETY), offs=[];
     for(let o=PAGE;o<cap;o+=PAGE) offs.push(o);
-    const more=await Promise.all(offs.map(_page));
-    for(const b of more) rows=rows.concat(b);
+    for(const b of await Promise.all(offs.map(_page))) rows=rows.concat(b);
   }else if(!Number.isFinite(total) && rows.length>=PAGE){
-    // Fallback (total não veio): pagina em série até a página encurtar.
-    for(let o=PAGE;o<SAFETY;o+=PAGE){
-      const b=await _page(o); rows=rows.concat(b);
-      if(b.length<PAGE) break;
-    }
+    for(let o=PAGE;o<SAFETY;o+=PAGE){ const b=await _page(o); rows=rows.concat(b); if(b.length<PAGE) break; }
   }
-
-  // Ordena por timestamp efetivo (mais nova primeiro) + remove duplicatas de título.
+  return rows;
+}
+// Ordena por ts efetivo (mais novas primeiro) + remove duplicatas por título.
+function _dedupInto(rows){
   const seen=new Set(), out=[];
   for(const a of rows.sort((x,y)=>_effTs(y)-_effTs(x))){
     const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
@@ -394,8 +525,9 @@ async function fetchArticles(){
   }
   return out;
 }
+function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-// ─── Render ────────────────────────────────────────────────────────────
+// ─── Render — helpers ───────────────────────────────────────────────────
 function _takeBadge(t){
   if(t==='+')     return '<span class="news-take pos" title="Positive">+</span>';
   if(t==='-')     return '<span class="news-take neg" title="Negative">−</span>';
@@ -409,50 +541,116 @@ function _sectorTag(sec){   // sec já resolvido: 'sm'|'pp'|'nr' — nunca vazio
   if(sec==='nr') return '<span class="item-sec nr" title="Natural Resources — macro / cross-sector">NR</span>';
   return '<span class="item-sec sm" title="Steel &amp; Mining">S&amp;M</span>';
 }
-function _secMatch(a){
-  if(_sectorFilter==='all') return true;
-  return _resolveSec(a)===_sectorFilter;
+function _takeCls(t){ return t==='+'?'tk-pos':t==='-'?'tk-neg':t==='='?'tk-neu':t==='review'?'tk-rev':''; }
+function _todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function _dateAdd(iso,n){ const p=iso.split('-').map(Number); const d=new Date(p[0],p[1]-1,p[2]+n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function _niceDate(iso){ if(!iso)return '—'; const p=iso.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'}); }
+
+// ─── Filtro client-side (facetado) ──────────────────────────────────────
+function _passSector(a){ return _sectorFilter==='all' || _resolveSec(a)===_sectorFilter; }
+function _passTake(a){ return _takeFilter==='all' || (a.take_llm||'')===_takeFilter; }
+function _passSrc(a){ return _srcFilter.size===0 || _srcFilter.has(_label(a)); }
+function _passSearch(a){ return !_searchText || (a.title||'').toLowerCase().includes(_searchText.toLowerCase()); }
+function _passDate(a){
+  if(!_dateFrom && !_dateTo) return true;
+  const d=_effDate(a); if(!d) return false;
+  if(_dateFrom && d<_dateFrom) return false;
+  if(_dateTo   && d>_dateTo)   return false;
+  return true;
+}
+// `except` = dimensão a IGNORAR (p/ contagem facetada): 'sector'|'take'|'src'|'date'|null
+function _match(a,except){
+  return (except==='sector'||_passSector(a))
+      && (except==='take'  ||_passTake(a))
+      && (except==='src'   ||_passSrc(a))
+      && (except==='date'  ||_passDate(a))
+      && _passSearch(a);
+}
+function _list(except){ return _allArticles.filter(a=>_match(a,except)); }
+
+// ─── Orquestrador ───────────────────────────────────────────────────────
+function renderAll(){ _renderHeadSub(); _renderStats(); _renderTimeline(); _renderFacets(); _renderMetaExtras(); _renderFeed(); }
+
+function _renderHeadSub(){
+  const sub=document.getElementById('hist-sub'); if(!sub) return;
+  if(!_allArticles.length){ sub.textContent='No data'; return; }
+  const dates=_allArticles.map(_effDate).filter(Boolean).sort();
+  const srcN=new Set(_allArticles.map(_label)).size;
+  sub.innerHTML=`<b>${_allArticles.length.toLocaleString('en-US')}</b> articles · <b>${_niceDate(dates[0])}</b> → <b>${_niceDate(dates[dates.length-1])}</b> · <b>${srcN}</b> sources`;
 }
 
-function _filterArticles(){
-  return _allArticles.filter(a=>{
-    if(_sourceFilter && _label(a)!==_sourceFilter)return false;
-    if(!_secMatch(a))return false;
-    if(_searchText && !a.title.toLowerCase().includes(_searchText.toLowerCase()))return false;
-    return true;
-  });
+function _renderStats(){
+  const row=document.getElementById('stat-row'); if(!row) return;
+  const baseTake=_list('take');            // ignora o filtro de take → contagem facetada
+  const cnt=t=>baseTake.reduce((n,a)=>n+((a.take_llm||'')===t?1:0),0);
+  const tiles=[
+    {k:null,     num:_list(null).length, lbl:'Articles', cls:''},
+    {k:'+',      num:cnt('+'),      lbl:'Positive', cls:'pos'},
+    {k:'-',      num:cnt('-'),      lbl:'Negative', cls:'neg'},
+    {k:'=',      num:cnt('='),      lbl:'Neutral',  cls:'neu'},
+    {k:'no take',num:cnt('no take'),lbl:'No take',  cls:''},
+  ];
+  row.innerHTML=tiles.map(t=>{
+    const cl=t.k!==null, sel=cl&&_takeFilter===t.k;
+    return `<div class="stat ${cl?'click':''} ${sel?'sel':''}" ${cl?`data-take="${_esc(t.k)}"`:''}>
+      <div class="stat-num ${t.cls}">${t.num.toLocaleString('en-US')}</div>
+      <div class="stat-lbl">${t.lbl}</div></div>`;
+  }).join('');
+}
+
+function _renderFacets(){
+  const wrap=document.getElementById('src-facet'); if(!wrap) return;
+  const base=_list('src');                 // ignora o próprio filtro de fonte
+  const counts=new Map();
+  for(const a of base){ const s=_label(a); counts.set(s,(counts.get(s)||0)+1); }
+  const arr=[...counts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  wrap.innerHTML = arr.length ? arr.map(([s,c])=>{
+    const on=_srcFilter.has(s);
+    return `<div class="facet-row ${on?'on':''}" data-src="${_esc(s)}">
+      <span class="bx">${on?'✓':''}</span>
+      <span class="nm" title="${_esc(s)}">${_esc(s)}</span>
+      <span class="c">${c.toLocaleString('en-US')}</span></div>`;
+  }).join('') : '<div class="empty" style="padding:12px">No sources</div>';
+}
+
+function _renderMetaExtras(){
+  const chip=document.getElementById('range-chip');
+  if(chip){
+    if(_dateFrom||_dateTo){
+      const txt=(_dateFrom?_niceDate(_dateFrom):'…')+' → '+(_dateTo?_niceDate(_dateTo):'today');
+      chip.innerHTML=`<span class="chipmini">${txt}<span class="x" id="range-x" title="Clear dates">✕</span></span>`;
+    }else chip.innerHTML='';
+  }
+  const sl=document.getElementById('sort-link'); if(sl) sl.textContent=_sortDesc?'↓ Newest':'↑ Oldest';
+  const upd=document.getElementById('upd-label');
+  if(upd) upd.textContent = _lastUpdate ? ('↻ '+_age(new Date(_lastUpdate).toISOString())) : '↻ Refresh';
 }
 
 function _renderFeed(){
   const feed=document.getElementById('feed');
   const meta=document.getElementById('results-meta');
   const loadMore=document.getElementById('load-more');
-  const filtered=_filterArticles();
-
-  meta.innerHTML=`<strong>${filtered.length.toLocaleString('en-US')}</strong> article${filtered.length!==1?'s':''} found`;
-
-  if(!filtered.length){
-    feed.innerHTML='<div class="empty">No articles found with these filters.</div>';
-    loadMore.style.display='none';
-    return;
-  }
-
-  const slice=filtered.slice(0,_displayLimit);
-  let lastDay='';
-  let html='';
+  let list=_list(null);
+  if(!_sortDesc) list=list.slice().reverse();
+  meta.innerHTML=`<strong>${list.length.toLocaleString('en-US')}</strong> article${list.length!==1?'s':''}`;
+  if(!list.length){ feed.innerHTML='<div class="empty">No articles match these filters.</div>'; loadMore.style.display='none'; return; }
+  const dayCount={};
+  for(const a of list){ const dl=_dayLabel(a.published_at||a.found_at); dayCount[dl]=(dayCount[dl]||0)+1; }
+  const slice=list.slice(0,_displayLimit);
+  let lastDay='', html='';
   for(const a of slice){
-    const date=a.published_at||a.found_at;   // idade/dia pela publicação real
+    const date=a.published_at||a.found_at;
     const day=_dayLabel(date);
     if(day!==lastDay){
-      html+=`<div class="day-divider">${day}</div>`;
+      html+=`<div class="day-divider"><span>${day}</span><span class="dd-c">${dayCount[day]}</span></div>`;
       lastDay=day;
     }
-    const lbl=_label(a);
-    const snip=a.snippet?`<div class="item-snippet">${a.snippet.replace(/<[^>]+>/g,' ').slice(0,180)}</div>`:'';
-    html+=`<a class="item" href="${a.url}" target="_blank" rel="noopener">
-      <div class="item-titlerow">${_takeBadge(a.take_llm)}<div class="item-title">${a.title}</div></div>
+    const url=/^https?:/i.test(a.url||'')?a.url:'#';
+    const snip=a.snippet?`<div class="item-snippet">${_esc(a.snippet.replace(/<[^>]+>/g,' ').slice(0,200))}</div>`:'';
+    html+=`<a class="item ${_takeCls(a.take_llm)}" href="${_esc(url)}" target="_blank" rel="noopener">
+      <div class="item-titlerow">${_takeBadge(a.take_llm)}<div class="item-title">${_esc(a.title)}</div></div>
       <div class="item-meta">
-        <span class="item-source">${lbl}</span>
+        <span class="item-source">${_esc(_label(a))}</span>
         <span class="sep">·</span>
         <span class="item-age">${_age(date)}</span>
         ${_sectorTag(_resolveSec(a))}
@@ -461,77 +659,197 @@ function _renderFeed(){
     </a>`;
   }
   feed.innerHTML=html;
-  if(filtered.length>_displayLimit){
-    const rest=filtered.length-_displayLimit;
+  if(list.length>_displayLimit){
+    const rest=list.length-_displayLimit;
     loadMore.textContent=`Load more (${rest.toLocaleString('en-US')} more)`;
     loadMore.style.display='block';
-  }else{
-    loadMore.style.display='none';
+  }else loadMore.style.display='none';
+}
+
+// ─── Timeline (SVG, volume + sentimento por dia; clique/arraste = janela) ─
+function _tlColors(){
+  const dark=document.documentElement.classList.contains('dark');
+  return dark
+    ? {pos:'#37b26b',neu:'#565d68',neg:'#e0654f',other:'#2f3540',sel:'rgba(255,80,0,.22)',axis:'#5b6069'}
+    : {pos:'#22a559',neu:'#c4c9d0',neg:'#d0503f',other:'#eceef1',sel:'rgba(255,80,0,.14)',axis:'#c2c7ce'};
+}
+function _renderTimeline(){
+  const svg=document.getElementById('tl-svg'); if(!svg) return;
+  const data=_list('date');                // reflete sector/take/src/search; ignora a janela
+  if(!data.length){ svg.innerHTML=''; _tlDays=[]; _tlN=0; return; }
+  const byDay=new Map(); let min=null,max=null;
+  for(const a of data){
+    const d=_effDate(a); if(!d) continue;
+    if(!byDay.has(d)) byDay.set(d,{pos:0,neu:0,neg:0,other:0});
+    const o=byDay.get(d), t=a.take_llm;
+    if(t==='+')o.pos++; else if(t==='-')o.neg++; else if(t==='=')o.neu++; else o.other++;
+    if(!min||d<min)min=d; if(!max||d>max)max=d;
   }
+  const days=[]; let cur=min, guard=0;
+  while(cur && cur<=max && guard++<600){
+    const o=byDay.get(cur)||{pos:0,neu:0,neg:0,other:0};
+    o.date=cur; o.total=o.pos+o.neu+o.neg+o.other; days.push(o);
+    cur=_dateAdd(cur,1);
+  }
+  const N=days.length, maxT=Math.max(1,...days.map(d=>d.total));
+  const BAND=10, H=106, padTop=8, padBot=16, baseY=H-padBot, plotH=baseY-padTop, W=N*BAND;
+  const C=_tlColors();
+  let sel='';
+  if(_dateFrom||_dateTo){
+    let a=-1,b=-1;
+    days.forEach((d,i)=>{ const inR=(!_dateFrom||d.date>=_dateFrom)&&(!_dateTo||d.date<=_dateTo); if(inR){ if(a<0)a=i; b=i; } });
+    if(a>=0) sel=`<rect x="${a*BAND}" y="${padTop-4}" width="${(b-a+1)*BAND}" height="${plotH+8}" fill="${C.sel}" rx="3"/>`;
+  }
+  let bars='';
+  days.forEach((d,i)=>{
+    const x=i*BAND, bx=x+1.5, bw=BAND-3; let y=baseY;
+    const seg=(v,c)=>{ if(v<=0)return ''; const h=v/maxT*plotH; y-=h; return `<rect x="${bx}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${c}"/>`; };
+    const s=seg(d.pos,C.pos)+seg(d.neu,C.neu)+seg(d.neg,C.neg)+seg(d.other,C.other);
+    bars+=`<rect class="bar" x="${x}" y="${padTop}" width="${BAND}" height="${plotH}" fill="transparent"/>${s}`;
+  });
+  let axis='';
+  days.forEach((d,i)=>{
+    if(d.date.slice(8)==='01' || i===0){
+      axis+=`<line x1="${i*BAND+0.5}" y1="${padTop}" x2="${i*BAND+0.5}" y2="${baseY}" stroke="${C.axis}" stroke-width="0.5"/>`;
+      axis+=`<text x="${i*BAND+2}" y="${H-5}" font-size="7" fill="${C.axis}">${_niceDate(d.date).slice(3)}</text>`;
+    }
+  });
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.style.minWidth=Math.max(520,N*7)+'px';
+  svg.innerHTML=sel+axis+bars;
+  _tlDays=days; _tlN=N;
+}
+function _tlIndex(e){
+  const svg=document.getElementById('tl-svg'); if(!svg||!_tlN) return -1;
+  const r=svg.getBoundingClientRect(); if(r.width<=0) return -1;
+  const i=Math.floor((e.clientX-r.left)/r.width*_tlN);
+  return Math.max(0,Math.min(_tlN-1,i));
+}
+function _tlShowTip(i,e){
+  const tip=document.getElementById('tl-tip'), wrap=document.querySelector('.tl-wrap');
+  if(!tip||!wrap) return; const d=_tlDays[i]; if(!d){ tip.style.opacity=0; return; }
+  const bits=[]; if(d.pos)bits.push(`<span style="color:#4ade80">+${d.pos}</span>`); if(d.neg)bits.push(`<span style="color:#f87171">−${d.neg}</span>`); if(d.neu)bits.push(`<span style="color:#c4c9d0">=${d.neu}</span>`);
+  tip.innerHTML=`<b>${_niceDate(d.date)}</b> · ${d.total} article${d.total!==1?'s':''}`+(bits.length?'<br>'+bits.join(' '):'');
+  const rr=wrap.getBoundingClientRect();
+  tip.style.left=(e.clientX-rr.left)+'px'; tip.style.top=(e.clientY-rr.top)+'px'; tip.style.opacity=1;
 }
 
-function _buildSourceFilter(){
-  const sel=document.getElementById('source-select');
-  const sources=new Set();
-  _allArticles.forEach(a=>sources.add(_label(a)));
-  const sorted=Array.from(sources).sort();
-  const current=sel.value;
-  sel.innerHTML='<option value="">Todas as fontes</option>'+
-    sorted.map(s=>`<option value="${s}">${s}</option>`).join('');
-  sel.value=current;
+// ─── Ações de janela de datas (presets · inputs · timeline) ─────────────
+function _syncDateInputs(){
+  const f=document.getElementById('date-from'), t=document.getElementById('date-to');
+  if(f) f.value=_dateFrom||''; if(t) t.value=_dateTo||'';
 }
-
-async function refresh(){
-  const meta=document.getElementById('results-meta');
-  document.getElementById('feed').innerHTML='<div class="empty">Loading…</div>';
-  if(meta) meta.textContent=(_periodHours==='all')?'Loading full history…':'Loading…';
-  _allArticles=await fetchArticles();
-  _buildSourceFilter();
-  _renderFeed();
+function _setSegActive(id,attr,val){ document.querySelectorAll('#'+id+' .chip').forEach(c=>c.classList.toggle('active', c.dataset[attr]===val)); }
+function _clearSegActive(id){ document.querySelectorAll('#'+id+' .chip').forEach(c=>c.classList.remove('active')); }
+function _applyPreset(days){
+  _periodPreset=days;
+  if(days==='all'){ _dateFrom=null; _dateTo=null; }
+  else{ const n=parseInt(days,10); _dateTo=null; _dateFrom=_dateAdd(_todayStr(),-(n-1)); }
+  _syncDateInputs(); _setSegActive('period-seg','days',days); _displayLimit=PAGE_SIZE;
+}
+function _setRange(from,to){    // usado pela timeline (clique/arraste) e inputs custom
+  _dateFrom=from||null; _dateTo=to||null; _periodPreset='custom';
+  _clearSegActive('period-seg'); _syncDateInputs(); _displayLimit=PAGE_SIZE;
 }
 
 // ─── Event listeners ────────────────────────────────────────────────────
-document.getElementById('period-chips').addEventListener('click',e=>{
-  const btn=e.target.closest('.chip');
-  if(!btn)return;
-  document.querySelectorAll('#period-chips .chip').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  _periodHours=btn.dataset.period==='all'?'all':parseInt(btn.dataset.period);
-  _displayLimit=PAGE_SIZE;
-  refresh();
+document.getElementById('period-seg').addEventListener('click',e=>{
+  const btn=e.target.closest('.chip'); if(!btn) return;
+  _applyPreset(btn.dataset.days); renderAll();
 });
-document.getElementById('sector-chips').addEventListener('click',e=>{
-  const btn=e.target.closest('.chip'); if(!btn)return;
-  document.querySelectorAll('#sector-chips .chip').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  _sectorFilter=btn.dataset.sec;
-  _displayLimit=PAGE_SIZE;
-  _renderFeed();   // client-side (a.sector já veio no fetch) — sem re-fetch
+function _onDateInput(){
+  const f=document.getElementById('date-from').value||null;
+  const t=document.getElementById('date-to').value||null;
+  _setRange(f,t); renderAll();
+}
+document.getElementById('date-from').addEventListener('change',_onDateInput);
+document.getElementById('date-to').addEventListener('change',_onDateInput);
+document.getElementById('sector-seg').addEventListener('click',e=>{
+  const btn=e.target.closest('.chip'); if(!btn) return;
+  _sectorFilter=btn.dataset.sec; _setSegActive('sector-seg','sec',_sectorFilter);
+  _displayLimit=PAGE_SIZE; renderAll();
 });
-document.getElementById('source-select').addEventListener('change',e=>{
-  _sourceFilter=e.target.value;
-  _displayLimit=PAGE_SIZE;
-  _renderFeed();
+document.getElementById('take-seg').addEventListener('click',e=>{
+  const btn=e.target.closest('.chip'); if(!btn) return;
+  _takeFilter=btn.dataset.take; _setSegActive('take-seg','take',_takeFilter);
+  _displayLimit=PAGE_SIZE; renderAll();
 });
+// Stat tiles → filtram por take (clique alterna liga/desliga)
+document.getElementById('stat-row').addEventListener('click',e=>{
+  const t=e.target.closest('.stat.click'); if(!t) return;
+  const k=t.dataset.take;
+  _takeFilter=(_takeFilter===k)?'all':k;
+  _setSegActive('take-seg','take',_takeFilter);
+  _displayLimit=PAGE_SIZE; renderAll();
+});
+// Fontes (multi-seleção) + reset
+document.getElementById('src-facet').addEventListener('click',e=>{
+  const row=e.target.closest('.facet-row'); if(!row) return;
+  const s=row.dataset.src;
+  if(_srcFilter.has(s)) _srcFilter.delete(s); else _srcFilter.add(s);
+  _displayLimit=PAGE_SIZE; renderAll();
+});
+document.getElementById('src-clear').addEventListener('click',()=>{ _srcFilter.clear(); _displayLimit=PAGE_SIZE; renderAll(); });
 let _searchTimer=null;
 document.getElementById('search-input').addEventListener('input',e=>{
   clearTimeout(_searchTimer);
-  _searchTimer=setTimeout(()=>{
-    _searchText=e.target.value.trim();
-    _displayLimit=PAGE_SIZE;
-    _renderFeed();
-  },200);
+  _searchTimer=setTimeout(()=>{ _searchText=e.target.value.trim(); _displayLimit=PAGE_SIZE; renderAll(); },180);
 });
-document.getElementById('load-more').addEventListener('click',()=>{
-  _displayLimit+=LOAD_MORE_STEP;
-  _renderFeed();
+document.getElementById('sort-link').addEventListener('click',()=>{ _sortDesc=!_sortDesc; _renderMetaExtras(); _renderFeed(); });
+document.getElementById('refresh-link').addEventListener('click',_poll);
+document.getElementById('clear-all').addEventListener('click',()=>{
+  _sectorFilter='all'; _takeFilter='all'; _srcFilter.clear(); _searchText='';
+  document.getElementById('search-input').value='';
+  _setSegActive('sector-seg','sec','all'); _setSegActive('take-seg','take','all');
+  _applyPreset('2'); renderAll();
 });
+document.getElementById('range-chip').addEventListener('click',e=>{
+  if(e.target.closest('#range-x')){ _applyPreset('all'); renderAll(); }
+});
+document.getElementById('load-more').addEventListener('click',()=>{ _displayLimit+=LOAD_MORE_STEP; _renderFeed(); });
 
-refresh();
-// Auto-atualiza a cada minuto nas janelas curtas (24h/48h/7d).
-// No "All" NÃO recarrega sozinho: o arquivo completo (milhares de linhas) não muda
-// de minuto a minuto, e repaginar tudo apagaria a rolagem/"Load more" do usuário.
-setInterval(()=>{ if(_periodHours!=='all') refresh(); }, 60 * 1000);
+// Timeline: hover (tooltip) + clique (1 dia) / arraste (faixa de dias)
+(function(){
+  const svg=document.getElementById('tl-svg'), tip=document.getElementById('tl-tip');
+  if(!svg) return;
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{ const i=_tlIndex(e); if(i<0)return; drag={a:i,b:i}; try{svg.setPointerCapture(e.pointerId)}catch(_){} });
+  svg.addEventListener('pointermove',e=>{ const i=_tlIndex(e); if(i<0){tip.style.opacity=0;return;} if(drag)drag.b=i; _tlShowTip(i,e); });
+  svg.addEventListener('pointerup',()=>{
+    if(!drag) return;
+    const a=Math.min(drag.a,drag.b), b=Math.max(drag.a,drag.b);
+    const dA=_tlDays[a]&&_tlDays[a].date, dB=_tlDays[b]&&_tlDays[b].date;
+    drag=null;
+    if(dA&&dB){ _setRange(dA,dB); renderAll(); }
+  });
+  svg.addEventListener('pointerleave',()=>{ tip.style.opacity=0; });
+})();
+
+// Re-renderiza a timeline quando o tema muda (evento global da dashboard)
+window.addEventListener('ibba:theme',()=>{ if(_allArticles.length) _renderTimeline(); });
+
+// ─── Boot + polling incremental ─────────────────────────────────────────
+async function boot(){
+  _applyPreset('2');                          // view padrão = últimas 48h
+  const meta=document.getElementById('results-meta'); if(meta) meta.textContent='Loading full history…';
+  const rows=await _fetchPages(null);         // histórico INTEIRO, 1×
+  _allArticles=_dedupInto(rows);
+  _seenUrls=new Set(_allArticles.map(a=>a.url));
+  _lastUpdate=Date.now();
+  renderAll();
+}
+async function _poll(){                        // incremental: só as últimas 48h → sem flicker
+  try{
+    const recent=await _fetchPages(48);
+    const fresh=recent.filter(a=>a.url && !_seenUrls.has(a.url));
+    fresh.forEach(a=>_seenUrls.add(a.url));
+    _lastUpdate=Date.now();
+    if(fresh.length){ _allArticles=_dedupInto(_allArticles.concat(fresh)); renderAll(); }
+    else _renderMetaExtras();                  // só atualiza o "updated Xm ago"
+  }catch(e){}
+}
+boot();
+setInterval(_poll, 90*1000);                   // puxa novidades a cada 1min30 (leve: 1 requisição)
 </script>
 
 <!-- STAGING BADGE -->
