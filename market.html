@@ -1144,24 +1144,33 @@ let _pfSched={mode:'simple',touched:false,rows:[]}, _pfId=2;
   const lg=JSON.parse(localStorage.getItem('mkt_pf'))||{}; _pfSched={mode:'simple',touched:Object.keys(lg).length>0,rows:[{id:1,start:0,end:0,label:'',w:lg}]}; }catch(e){_pfSched={mode:'simple',touched:false,rows:[{id:1,start:0,end:0,label:'',w:{}}]};} })();
 function _pfSave(){ try{localStorage.setItem('mkt_pf2',JSON.stringify(_pfSched));}catch(e){} }
 function _pfTouch(){ _pfSched.touched=true; }
+// Fim do período AO VIVO: null/≤0 = "segue o último dia" (hoje). Só vira data FIXA se o cliente escolher,
+// de propósito, uma data passada — NUNCA gravamos "hoje" como data fixa (senão o Advanced congelava a ponta).
+function _endOf(r){ return (r&&r.end!=null&&r.end>0)?r.end:Date.now()/1000; }
+// v3: migra schedules antigos 1× — zera o fim GRAVADO do último período (que ficava preso no "hoje" de quando
+// foi criado) → a ponta volta a ser AO VIVO. Um fim fixo (data passada escolhida pelo cliente) é preservado.
+(function(){ if(!_pfSched||_pfSched._v3)return; const rs=_pfSched.rows||[]; if(rs.length){ let li=0; for(let i=1;i<rs.length;i++) if((+rs[i].start||0)>(+rs[li].start||0))li=i; rs[li].end=null; } _pfSched._v3=true; _pfSave(); })();
 function _rangeBounds(range){ const now=Date.now()/1000;
   if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
   if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
   return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
 function _dataFloor(){ let f=Infinity; _sel.forEach(t=>{ const q=byT(t), d=q&&q.daily; if(d&&d.length)f=Math.min(f,d[0][0]); }); return isFinite(f)?f:(Date.now()/1000-6*372*86400); }   // 1ª data com dado (limite p/ trás no Advanced)
 function _seriesSpan(q,sSec,eSec){ const arr=(q&&q.daily||[]).filter(p=>p[0]>=sSec&&p[0]<=eSec); if(arr.length<2)return null; const base=arr[0][1]; return arr.map(p=>[p[0], base?(p[1]/base-1)*100:0]); }
-function _schedSpan(){ const r=_pfSched.rows; if(!r||!r.length)return _rangeBounds(_range==='1D'?'1M':_range); return [Math.min(...r.map(x=>x.start)), Math.max(...r.map(x=>x.end))]; }
+function _schedSpan(){ const r=_pfSched.rows; if(!r||!r.length)return _rangeBounds(_range==='1D'?'1M':_range); return [Math.min(...r.map(x=>x.start)), Math.max(...r.map(_endOf))]; }
 function _pfSpanLabel(sp){ const o={day:'2-digit',month:'short',timeZone:'UTC'}, f=d=>new Date(d*1000).toLocaleDateString('en-US',o); return `${f(sp[0])} – ${f(sp[1])}`; }
-function _pfReset(){ const [s,e]=_rangeBounds(_range==='1D'?'1M':_range); _pfSched={mode:'simple',touched:false,rows:[{id:_pfId++,start:s,end:e,label:'',w:{}}]}; _pfSave(); }
+function _pfReset(){ const s=_rangeBounds(_range==='1D'?'1M':_range)[0]; _pfSched={mode:'simple',touched:false,_v3:true,rows:[{id:_pfId++,start:s,end:null,label:'',w:{}}]}; _pfSave(); }
 function _cashOf(row){ return 100-_sel.reduce((s,t)=>s+(+(row.w&&row.w[t])||0),0); }
-function _wAt(rows,daySec){ for(let i=0;i<rows.length;i++){ if(daySec>=rows[i].start&&daySec<=rows[i].end)return rows[i]; }
+function _wAt(rows,daySec){ for(let i=0;i<rows.length;i++){ if(daySec>=rows[i].start&&daySec<=_endOf(rows[i]))return rows[i]; }
   if(rows.length&&daySec<rows[0].start)return rows[0]; return null; }   // antes do 1º período → usa o 1º; gaps/após o último → cash
 function _schedReconcile(){ const adv=_pfSched.mode==='advanced', gs=_rangeBounds(_range==='1D'?'1M':_range)[0], e=Date.now()/1000, floor=adv?_dataFloor():gs;
-  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,start:gs,end:e,label:'',w:{}}];
+  let rows=_pfSched.rows; if(!rows||!rows.length) rows=[{id:_pfId++,start:gs,end:null,label:'',w:{}}];
   rows.sort((a,b)=>a.start-b.start); let prevEnd=floor;
-  rows.forEach((r,i)=>{ if(r.start==null||r.start<=0)r.start=(i===0?gs:prevEnd); if(r.start<floor)r.start=floor; if(i>0&&r.start<prevEnd)r.start=prevEnd; if(r.start>e)r.start=e;
-    if(r.end==null||r.end<=0||r.end>e)r.end=e; if(r.end<r.start)r.end=r.start; prevEnd=r.end; });
-  if(rows.length>1) rows=rows.filter((r,i)=>i===0||r.end>r.start+43200);   // descarta períodos degenerados
+  rows.forEach((r,i)=>{ const last=(i===rows.length-1); if(r.start==null||r.start<=0)r.start=(i===0?gs:prevEnd); if(r.start<floor)r.start=floor; if(i>0&&r.start<prevEnd)r.start=prevEnd; if(r.start>e)r.start=e;
+    // fim do ÚLTIMO período = AO VIVO (null → segue hoje); intermediários têm fim concreto (fronteira).
+    if(last){ if(r.end==null||r.end<=0)r.end=null; else{ if(r.end>e)r.end=e; if(r.end<r.start)r.end=r.start; } }
+    else{ if(r.end==null||r.end<=0||r.end>e)r.end=e; if(r.end<r.start)r.end=r.start; }
+    prevEnd=_endOf(r); });
+  if(rows.length>1) rows=rows.filter((r,i)=>i===0||_endOf(r)>r.start+43200);   // descarta períodos degenerados
   rows.forEach(r=>{ if(!r.w)r.w={}; _sel.forEach(t=>{ if(r.w[t]==null)r.w[t]=0; }); Object.keys(r.w).forEach(t=>{ if(!_sel.includes(t))delete r.w[t]; }); });
   if(!_pfSched.touched && _sel.length){ const eq=Math.floor(100/_sel.length); rows.forEach(r=>_sel.forEach(t=>r.w[t]=eq)); }   // default = equal weight (floor, ≤100)
   _pfSched.rows=rows; }
@@ -1198,10 +1207,10 @@ function _pfWireSimple(){ document.querySelectorAll('.pf-rows .pf-inbox input').
   v=Math.min(v,Math.max(0,100-others)); w[inp.dataset.t]=v; if(String(v)!==inp.value)inp.value=v; _pfTouch(); _pfSave(); _pfRecompute(); }); }
 function _pfAdvancedHTML(){ const s=_dataFloor(), e=Date.now()/1000, rows=_pfSched.rows;   // datas livres: do início dos dados até hoje
   const heads=_sel.map((t,i)=>`<th class="num"><span class="sw" style="background:${_MC_COLORS[i%8]}"></span>${_short(t)}</th>`).join('');
-  const body=rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5, prevEnd=ri>0?rows[ri-1].end:s, nextStart=ri+1<rows.length?rows[ri+1].start:e;
+  const body=rows.map((r,ri)=>{ const cash=_cashOf(r), inv=cash<-0.5, prevEnd=ri>0?_endOf(rows[ri-1]):s, nextStart=ri+1<rows.length?rows[ri+1].start:e;
     const cells=_sel.map(t=>`<td class="num"><span class="pf-inbox"><input type="number" min="0" max="100" step="1" value="${Math.round(+r.w[t]||0)}" data-row="${r.id}" data-t="${t}"/></span></td>`).join('');
     return `<tr class="pf-srow${inv?' invalid':''}" data-row="${r.id}">
-      <td class="pf-when"><span class="pf-dates"><input type="date" class="pf-d0" value="${_toDateInput(r.start)}" min="${_toDateInput(prevEnd)}" max="${_toDateInput(r.end)}" data-row="${r.id}"><span class="pf-dsep">→</span><input type="date" class="pf-d1" value="${_toDateInput(r.end)}" min="${_toDateInput(r.start)}" max="${_toDateInput(nextStart)}" data-row="${r.id}"></span><input class="pf-lbl" type="text" placeholder="label…" value="${esc(r.label||'')}" data-row="${r.id}" maxlength="14"></td>
+      <td class="pf-when"><span class="pf-dates"><input type="date" class="pf-d0" value="${_toDateInput(r.start)}" min="${_toDateInput(prevEnd)}" max="${_toDateInput(_endOf(r))}" data-row="${r.id}"><span class="pf-dsep">→</span><input type="date" class="pf-d1" value="${_toDateInput(_endOf(r))}" min="${_toDateInput(r.start)}" max="${_toDateInput(nextStart)}" data-row="${r.id}"></span><input class="pf-lbl" type="text" placeholder="label…" value="${esc(r.label||'')}" data-row="${r.id}" maxlength="14"></td>
       ${cells}<td class="num pf-cashc${inv?' over':''}">${cash.toFixed(0)}%</td>
       <td>${rows.length>1?`<span class="pf-del" data-row="${r.id}" title="Remove">×</span>`:''}</td></tr>`; }).join('');
   return `<div class="pf-hint">Each row is a period — set its <b>start → end</b> and the weights for it (periods can't overlap; under 100% = cash).</div>
@@ -1215,15 +1224,18 @@ function _pfWireAdvanced(){ const findRow=id=>_pfSched.rows.find(r=>String(r.id)
     const cash=_cashOf(row), tr=inp.closest('tr'), cc=tr&&tr.querySelector('.pf-cashc'); if(cc){cc.textContent=cash.toFixed(0)+'%';cc.classList.toggle('over',cash<-0.5);} if(tr)tr.classList.toggle('invalid',cash<-0.5);
     _pfRecompute(); });
   document.querySelectorAll('.pf-sched .pf-d0').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.start=d; _pfTouch(); _pfSave(); renderPortfolio(); });
-  document.querySelectorAll('.pf-sched .pf-d1').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value); if(d!=null)row.end=d; _pfTouch(); _pfSave(); renderPortfolio(); });
+  document.querySelectorAll('.pf-sched .pf-d1').forEach(inp=>inp.onchange=()=>{ const row=findRow(inp.dataset.row); if(!row)return; const d=_fromDateInput(inp.value);
+    if(d!=null){ const rows=_pfSched.rows, isLast=rows.indexOf(row)===rows.length-1, today0=Math.floor(Date.now()/1000/86400)*86400;
+      row.end=(isLast&&d>=today0)?null:d; }   // último período: escolher HOJE volta a acompanhar o último dia; data passada = fixa
+    _pfTouch(); _pfSave(); renderPortfolio(); });
   document.querySelectorAll('.pf-sched .pf-lbl').forEach(inp=>inp.oninput=()=>{ const row=findRow(inp.dataset.row); if(row){row.label=inp.value; _pfSave(); _renderBand();} });
   document.querySelectorAll('.pf-sched .pf-del').forEach(x=>x.onclick=()=>{ _pfSched.rows=_pfSched.rows.filter(r=>String(r.id)!==x.dataset.row); _pfTouch(); _pfSave(); renderPortfolio(); });
-  const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const rows=_pfSched.rows, last=rows[rows.length-1], mid=Math.floor((last.start+last.end)/2), ne=last.end, w={}; _sel.forEach(t=>w[t]=+(last.w[t])||0); last.end=mid; rows.push({id:_pfId++,start:mid,end:ne,label:'',w}); _pfTouch(); _pfSave(); renderPortfolio(); }; }
+  const add=document.getElementById('pf-add'); if(add)add.onclick=()=>{ const rows=_pfSched.rows, last=rows[rows.length-1], le=_endOf(last), mid=Math.floor((last.start+le)/2), ne=(last.end==null||last.end<=0)?null:last.end, w={}; _sel.forEach(t=>w[t]=+(last.w[t])||0); last.end=mid; rows.push({id:_pfId++,start:mid,end:ne,label:'',w}); _pfTouch(); _pfSave(); renderPortfolio(); }; }
 function _renderBand(){ const host=document.getElementById('pf-band'); if(!host)return;
   const rows=_pfSched.rows; if(_pfSched.mode!=='advanced'||!rows.length){ host.innerHTML=''; return; }
   const [s,e]=_schedSpan(), span=(e-s)||1, W=Math.max(280,Math.round(host.clientWidth||776)), H=Math.round(host.clientHeight||26);
   const X=ds=>((Math.max(s,Math.min(e,ds))-s)/span)*W; let svg='';
-  rows.forEach((r,ri)=>{ const x0=X(r.start), x1=X(r.end), w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
+  rows.forEach((r,ri)=>{ const x0=X(r.start), x1=X(_endOf(r)), w=Math.max(0,x1-x0); if(w<=0)return; let y=H;
     _sel.forEach((t,i)=>{ const wt=(+r.w[t]||0)/100*H; if(wt<=0)return; y-=wt; svg+=`<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${wt.toFixed(1)}" fill="${_MC_COLORS[i%8]}"/>`; });
     if(y>0.5) svg+=`<rect x="${x0.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${y.toFixed(1)}" fill="url(#pfhatch)"/>`;
     if(r.label && w>40) svg+=`<text x="${(x0+w/2).toFixed(1)}" y="${(H/2+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#fff" opacity="0.85">${esc(r.label)}</text>`;
