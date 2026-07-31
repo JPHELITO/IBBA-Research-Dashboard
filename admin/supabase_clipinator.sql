@@ -179,8 +179,8 @@ create or replace function public.admin_get_clipping_candidates(p_hours int defa
   left join public.clipping_bodies b on b.url = n.url
   where public.is_admin()
     and n.include_in_report is distinct from false
-    -- Clipping usa SÓ estas 6 fontes (decisão do usuário 2026-07-27): scraping dedicado/liso
-    and n.source_name = any (array['S&P Platts','Fastmarkets','Valor Econômico','Mining.com','Portal Celulose','Estadão'])
+    -- Clipping usa SÓ estas 5 fontes (Estadão REMOVIDO 2026-07-31, decisão do usuário): scraping dedicado/liso
+    and n.source_name = any (array['S&P Platts','Fastmarkets','Valor Econômico','Mining.com','Portal Celulose'])
     and coalesce(n.published_at::timestamptz, n.found_at::timestamptz)
         >= now() - make_interval(hours => greatest(1, least(coalesce(p_hours, 24), 168)))
   order by coalesce(n.published_at::timestamptz, n.found_at::timestamptz) desc

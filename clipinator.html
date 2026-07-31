@@ -376,10 +376,18 @@ function secBtnsHTML(sec){
   return SECTORS.map(([v,l])=>`<button data-s="${v}" class="mini-btn sc${sec===v?' on':''}">${l}</button>`).join('');
 }
 
+// Estadão saiu do clipping (decisão do usuário 2026-07-31). O portão autoritativo é o SQL
+// admin_get_clipping_candidates, mas filtramos aqui também p/ valer JÁ no deploy (mesmo antes
+// de re-rodar o SQL) e barrar item de rascunho antigo. Mantém as outras 5 fontes intactas.
+function _isDropped(c){
+  const d=(c.domain||domainOf(c.url)||'').toLowerCase();
+  return d==='estadao.com.br'||d.endsWith('.estadao.com.br')||(c.source_name||'')==='Estadão';
+}
 function setCandidates(list){
+  list=(list||[]).filter(c=>!_isDropped(c));
   // preserva itens do RASCUNHO já selecionados que estão fora da janela atual de candidatos
-  const keep=S.cand.filter(c=>c.fromDraft && S.sel.has(c.url));
-  S.cand=(list||[]).map(c=>({...c, _sec:suggestSector(c), _take:suggestTake(c)}));
+  const keep=S.cand.filter(c=>c.fromDraft && S.sel.has(c.url) && !_isDropped(c));
+  S.cand=list.map(c=>({...c, _sec:suggestSector(c), _take:suggestTake(c)}));
   keep.forEach(c=>{ if(!S.cand.some(x=>x.url===c.url)) S.cand.push(c); });
   S.byUrl={}; S.cand.forEach(c=>S.byUrl[c.url]=c);
   S.order=S.order.filter(u=>S.byUrl[u]);   // mantém a ordem; itens do rascunho seguem preservados acima
@@ -514,6 +522,7 @@ function restoreDraft(rows){
   rows=(rows||[]).slice().sort((a,b)=>(a.pos||0)-(b.pos||0));
   S.order=[]; S.sel.clear();
   rows.forEach(r=>{ const u=r.url; if(!u) return;
+    if(_isDropped({url:u, source_name:r.source_name})) return;   // Estadão saiu do clipping (mesmo em rascunho antigo)
     if(!S.byUrl[u]){ // não está entre os candidatos atuais → item sintético p/ o painel de seleção
       const c={url:u,domain:domainOf(u),title:r.title||u,source_name:r.source_name||domainOf(u),
                published_at:null,found_at:null,sector:null,take_llm:null,_sec:r.sector||'NR',_take:r.take||'=',fromDraft:true};
