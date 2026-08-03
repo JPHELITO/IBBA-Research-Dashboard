@@ -32,7 +32,7 @@ from email.mime.text import MIMEText
 try:
     from registry import DEFAULT_RECIPIENTS, get
 except Exception:                       # rodando fora do _shared (fallback)
-    DEFAULT_RECIPIENTS = ["jphelito@gmail.com", "joao.helito@itaubba.com"]
+    DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]   # 2026-08-03: só o e-mail do Itaú
     def get(_key):  # type: ignore
         return None
 

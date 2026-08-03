@@ -28,7 +28,8 @@ Campos de cada fonte:
 from __future__ import annotations
 
 # Destinatários padrão de todos os e-mails (mesma lista em todo o projeto hoje).
-DEFAULT_RECIPIENTS = ["jphelito@gmail.com", "joao.helito@itaubba.com"]
+# 2026-08-03 (pedido do usuário): SÓ o e-mail do Itaú — tirado o jphelito@gmail.com.
+DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]
 
 # Onde vive cada banco versionado (caminho relativo à raiz do repo do frontend).
 DB_PATHS = {

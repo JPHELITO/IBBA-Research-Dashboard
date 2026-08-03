@@ -55,7 +55,7 @@ RECENT_FROM = f"{datetime.utcnow().year - 6}-01"
 TOP_COUNTRIES_N = 15
 
 # ── E-mail ─────────────────────────────────────────────────────────────────────
-EMAIL_RECIPIENTS = ["jphelito@gmail.com", "joao.helito@itaubba.com"]
+EMAIL_RECIPIENTS = ["joao.helito@itaubba.com"]   # 2026-08-03: só o e-mail do Itaú (sem gmail)
 NOW = datetime.utcnow().isoformat()
 
 # ── MDIC ───────────────────────────────────────────────────────────────────────
