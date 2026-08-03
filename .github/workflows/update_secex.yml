@@ -91,7 +91,7 @@ jobs:
           secure:         false
           username:       ${{ secrets.SMTP_USER }}
           password:       ${{ secrets.SMTP_PASS }}
-          to:             jphelito@gmail.com,joao.helito@itaubba.com
+          to:             joao.helito@itaubba.com
           from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
           subject:        "🔔 SECEX Steel & Mining — novo dado: ${{ env.LATEST_PERIOD }}"
           body: |
