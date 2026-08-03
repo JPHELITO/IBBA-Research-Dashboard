@@ -131,6 +131,24 @@ input.in,select.in{width:100%;border:1px solid var(--border);border-radius:8px;p
 .team-row .acts{display:flex;gap:6px;flex-shrink:0}
 label.chk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
 label.chk input{width:17px;height:17px;accent-color:var(--orange)}
+/* ── Editor de foto do analista (bolinha ajustável → salva embutida como data URI) ── */
+.photo-ed{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin:2px 0}
+.pe-crop{position:relative;width:224px;height:224px;border-radius:50%;overflow:hidden;flex:none;
+  background:var(--gray-light);border:1px solid var(--border);cursor:grab;touch-action:none;user-select:none}
+.pe-crop:active{cursor:grabbing}
+.pe-crop img{position:absolute;max-width:none;-webkit-user-drag:none;user-select:none;pointer-events:none}
+.pe-ring{position:absolute;inset:0;border-radius:50%;pointer-events:none;box-shadow:0 0 0 2px rgba(255,80,0,.85) inset}
+.pe-empty{width:224px;height:224px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 22px;background:var(--gray-light);border:1px dashed var(--border);color:var(--gray-mid);font-size:12.5px;line-height:1.45}
+.pe-side{display:flex;flex-direction:column;gap:11px;min-width:196px;max-width:240px;flex:1}
+.pe-prevs{display:flex;align-items:flex-end;gap:16px}
+.pe-prev-item{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9.5px;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.04em}
+.pe-av{border-radius:50%;background:var(--gray-light) center/cover no-repeat;border:1px solid var(--border);flex:none}
+.pe-av.lg{width:46px;height:46px}
+.pe-av.sm{width:24px;height:24px}
+.pe-zoom{display:flex;align-items:center;gap:9px}
+.pe-zoom input[type=range]{flex:1;accent-color:var(--orange);cursor:pointer}
+.pe-link{align-self:flex-start;background:none;border:none;padding:0;color:var(--gray-mid);font:inherit;font-size:11.5px;text-decoration:underline;cursor:pointer}
 /* ── Layout do painel (menu lateral) ── */
 .shell{display:flex;gap:18px;max-width:1180px;margin:0 auto;padding:20px;align-items:flex-start}
 .side{flex:0 0 208px;position:sticky;top:18px;display:flex;flex-direction:column;gap:3px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:8px}
@@ -377,11 +395,33 @@ html.dark .ov-card{background:#20242b}
             <option value="Associate">Associate</option>
           </select>
           <label class="lbl">Foto</label>
-          <div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap">
-            <img id="tf-photo-prev" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--gray-light);border:1px solid var(--border);flex:none">
-            <input class="in" id="tf-photo" placeholder="assets/team-nome.jpg  ou  https://…" oninput="tfPhotoPrev()">
+          <!-- Editor da bolinha: escolhe do PC, arrasta/zoom p/ ajustar; salva a foto RECORTADA embutida (data URI),
+               pelo mesmo admin_upsert_team_member dos outros campos — sem upload de arquivo à rede do banco. -->
+          <div class="photo-ed">
+            <div class="pe-stage">
+              <div id="tf-crop" class="pe-crop" hidden>
+                <img id="tf-crop-img" alt="">
+                <div class="pe-ring"></div>
+              </div>
+              <div id="tf-crop-empty" class="pe-empty">Nenhuma foto ainda.<br>Clique em “📷 Enviar foto”.</div>
+            </div>
+            <div class="pe-side">
+              <div class="pe-prevs">
+                <div class="pe-prev-item"><span id="tf-prev-lg" class="pe-av lg"></span>prévia</div>
+                <div class="pe-prev-item"><span id="tf-prev-sm" class="pe-av sm"></span>na home</div>
+              </div>
+              <input type="file" id="tf-file" accept="image/*" hidden>
+              <button type="button" class="btn" onclick="document.getElementById('tf-file').click()">📷 Enviar foto</button>
+              <div class="pe-zoom" id="tf-zoomwrap" hidden>
+                <span class="muted" style="font-size:11px">Zoom</span>
+                <input type="range" id="tf-zoom" min="1" max="4" step="0.01" value="1">
+                <button type="button" class="chip" id="tf-remove">Remover</button>
+              </div>
+              <div class="muted" style="font-size:11px;line-height:1.45">Arraste a foto e use o zoom até ela ficar do jeito que você quer dentro da bolinha. A prévia mostra exatamente como vai aparecer.</div>
+              <button type="button" class="pe-link" id="tf-url-toggle">ou colar um endereço de imagem</button>
+              <input class="in" id="tf-photo" placeholder="assets/team-nome.jpg  ou  https://…" hidden>
+            </div>
           </div>
-          <div class="muted" style="font-size:11.5px;margin-top:-5px">A imagem precisa existir: comite o arquivo em <code>assets/</code> no repositório, ou cole uma URL. (Upload direto não passa na rede do banco — mesmo motivo da antiga aba "Atualizar dados".)</div>
           <input class="in" id="tf-email" placeholder="E-mail (opcional)">
           <input class="in" id="tf-wa" placeholder="WhatsApp só números (ex.: 5511999999999)">
           <input class="in" id="tf-sort" type="number" placeholder="Ordem (menor aparece primeiro)">
@@ -1040,10 +1080,100 @@ async function loadFlags(){
 
 // ── Analistas (team) ─────────────────────────────────────────────────────
 let _team=[]
-function tfPhotoPrev(){ const i=document.getElementById('tf-photo'), im=document.getElementById('tf-photo-prev')
-  if(!i||!im) return; const v=(i.value||'').trim()
-  im.src=v||'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
-  im.onerror=function(){ this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' } }
+// ── Editor de foto do analista: recorta a bolinha e EMBUTE como data URI ─────
+// A foto vira TEXTO (data URI) e é salva pelo mesmo admin_upsert_team_member dos
+// outros campos — que já funciona na rede do banco. Nada de upload de arquivo
+// (Storage) nem de commit no repo: some o motivo pelo qual "upload direto" falhava.
+const PE_OUT=320   // lado (px) da imagem final gravada — sobra p/ uma bolinha de 24-46px
+const PE_D=224     // diâmetro (px) do editor na tela — TEM que casar com o CSS .pe-crop
+let _peImg=null,_peBase=1,_peZoom=1,_peTx=0,_peTy=0
+let _peDrag=null,_peDirty=false,_peLoaded=false,_peReady=false,_peObjUrl=null
+function _peEl(id){ return document.getElementById(id) }
+function peInit(){                        // liga os controles uma única vez
+  if(_peReady) return; _peReady=true
+  _peEl('tf-file').addEventListener('change',peFilePicked)
+  const crop=_peEl('tf-crop')
+  crop.addEventListener('pointerdown',peDown)
+  crop.addEventListener('wheel',peWheel,{passive:false})
+  window.addEventListener('pointermove',peMove)
+  window.addEventListener('pointerup',peUp)
+  _peEl('tf-zoom').addEventListener('input',peZoomSlider)
+  _peEl('tf-remove').addEventListener('click',peRemove)
+  _peEl('tf-url-toggle').addEventListener('click',peToggleUrl)
+  const tp=_peEl('tf-photo')
+  tp.addEventListener('input',()=>peStaticPreview(tp.value.trim()))                                   // digitou link → só a prévia
+  tp.addEventListener('change',()=>{const v=tp.value.trim();_peDirty=false;v?peLoadImage(v,/^https?:/i.test(v)):peReset()})
+}
+// Mostra a bolinha atual (valor já salvo) e tenta abri-la no editor p/ reajuste
+function pePrime(value){
+  _peDirty=false
+  peStaticPreview(value||'')
+  if(value) peLoadImage(value,/^https?:/i.test(value)); else peReset()
+}
+function peStaticPreview(src){             // pinta as duas prévias com a foto atual (cover)
+  ;['tf-prev-lg','tf-prev-sm'].forEach(id=>{const pv=_peEl(id);if(!pv)return
+    pv.style.backgroundImage=src?`url("${src}")`:''
+    pv.style.backgroundSize='cover';pv.style.backgroundPosition='center';pv.style.backgroundRepeat='no-repeat'})
+}
+function peReset(){                        // volta ao estado "sem foto"
+  _peImg=null;_peLoaded=false;_peZoom=1;_peTx=0;_peTy=0
+  const c=_peEl('tf-crop'),z=_peEl('tf-zoomwrap'),e=_peEl('tf-crop-empty')
+  if(c)c.hidden=true; if(z)z.hidden=true; if(e)e.hidden=false
+}
+function peLoadImage(src,external){        // carrega a imagem no editor circular
+  const img=new Image()
+  if(external) img.crossOrigin='anonymous'                        // tenta permitir recorte de URL externa (pode não ter CORS)
+  img.onload=function(){
+    _peImg=img
+    _peBase=PE_D/Math.min(img.naturalWidth,img.naturalHeight)     // "cover": preenche a bolinha inteira
+    _peZoom=1;_peTx=0;_peTy=0;_peLoaded=true
+    _peEl('tf-zoom').value=1
+    _peEl('tf-crop').hidden=false;_peEl('tf-zoomwrap').hidden=false;_peEl('tf-crop-empty').hidden=true
+    peRender()
+  }
+  img.onerror=function(){ peReset() }                             // link quebrado/externo sem CORS → mantém só a prévia estática
+  img.src=src
+}
+function peRender(){                       // posiciona a imagem e atualiza as prévias ao vivo
+  if(!_peImg) return
+  const el=_peEl('tf-crop-img')
+  const dw=_peImg.naturalWidth*_peBase*_peZoom, dh=_peImg.naturalHeight*_peBase*_peZoom
+  const maxX=Math.max(0,(dw-PE_D)/2), maxY=Math.max(0,(dh-PE_D)/2)   // trava p/ nunca deixar "buraco" na bolinha
+  _peTx=Math.max(-maxX,Math.min(maxX,_peTx)); _peTy=Math.max(-maxY,Math.min(maxY,_peTy))
+  const left=PE_D/2-dw/2+_peTx, top=PE_D/2-dh/2+_peTy
+  el.style.width=dw+'px'; el.style.height=dh+'px'; el.style.left=left+'px'; el.style.top=top+'px'
+  ;[['tf-prev-lg',46],['tf-prev-sm',24]].forEach(([id,PV])=>{const pv=_peEl(id);if(!pv)return
+    const r=PV/PE_D
+    pv.style.backgroundImage=`url("${_peImg.src}")`;pv.style.backgroundRepeat='no-repeat'
+    pv.style.backgroundSize=(dw*r)+'px '+(dh*r)+'px'
+    pv.style.backgroundPosition=(left*r)+'px '+(top*r)+'px'})
+}
+function peExport(){                       // recorta o círculo → data URI (JPEG comprimido)
+  if(!_peImg) return null
+  const cv=document.createElement('canvas'); cv.width=PE_OUT; cv.height=PE_OUT
+  const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,PE_OUT,PE_OUT)
+  const k=PE_OUT/PE_D, dw=_peImg.naturalWidth*_peBase*_peZoom, dh=_peImg.naturalHeight*_peBase*_peZoom
+  ctx.drawImage(_peImg,(PE_D/2-dw/2+_peTx)*k,(PE_D/2-dh/2+_peTy)*k,dw*k,dh*k)
+  try{ return cv.toDataURL('image/jpeg',0.85) }catch(e){ return null }   // canvas "tainted" (externa sem CORS)
+}
+function peCommit(){                       // chamado no Salvar: se mexeu, grava o recorte no campo
+  if(!(_peDirty&&_peLoaded)) return
+  const uri=peExport()
+  if(uri) _v('tf-photo').value=uri
+  else alert('Não consegui recortar essa imagem (link externo sem permissão). Mantive o endereço original. Para recortar, use “Enviar foto” e escolha um arquivo do seu PC.')
+}
+function peFilePicked(e){ const f=e.target.files&&e.target.files[0]; if(!f) return
+  if(_peObjUrl) URL.revokeObjectURL(_peObjUrl)
+  _peObjUrl=URL.createObjectURL(f); _peDirty=true; peLoadImage(_peObjUrl,false)
+  e.target.value='' }                                             // permite reescolher o mesmo arquivo
+function peDown(e){ if(!_peLoaded)return; _peDrag={x:e.clientX,y:e.clientY,tx:_peTx,ty:_peTy} }
+function peMove(e){ if(!_peDrag)return; _peTx=_peDrag.tx+(e.clientX-_peDrag.x); _peTy=_peDrag.ty+(e.clientY-_peDrag.y); _peDirty=true; peRender() }
+function peUp(){ _peDrag=null }
+function peWheel(e){ if(!_peLoaded)return; e.preventDefault()
+  _peZoom=Math.max(1,Math.min(4,_peZoom*(e.deltaY<0?1.06:0.94))); _peEl('tf-zoom').value=_peZoom; _peDirty=true; peRender() }
+function peZoomSlider(e){ if(!_peLoaded)return; _peZoom=parseFloat(e.target.value)||1; _peDirty=true; peRender() }
+function peRemove(){ _v('tf-photo').value=''; _peDirty=true; peReset(); peStaticPreview('') }
+function peToggleUrl(){ const i=_v('tf-photo'); i.hidden=!i.hidden; if(!i.hidden) i.focus() }
 async function loadTeam(){
   const host=document.getElementById('team-list'); host.textContent='Carregando…'
   const {data,error}=await sbAuth.rpc('get_team')
@@ -1063,7 +1193,8 @@ function _v(id){ return document.getElementById(id) }
 function teamEdit(id){
   const m = id ? _team.find(x=>x.id===id) : {name:'',role:'Analyst',photo:'',email:'',whatsapp:'',sort_order:(_team.length+1)*10,is_visible:true}
   _v('team-form-title').textContent = id ? 'Editar analista' : 'Novo analista'
-  _v('tf-name').value=m.name||''; _v('tf-role').value=m.role||'Analyst'; _v('tf-photo').value=m.photo||''; tfPhotoPrev();
+  _v('tf-name').value=m.name||''; _v('tf-role').value=m.role||'Analyst'; _v('tf-photo').value=m.photo||''
+  _v('tf-photo').hidden=true; peInit(); pePrime(m.photo||'')
   _v('tf-email').value=m.email||''; _v('tf-wa').value=m.whatsapp||''; _v('tf-sort').value=m.sort_order||0
   _v('tf-visible').checked = m.is_visible!==false
   _v('team-form-card').dataset.id = id||''
@@ -1074,6 +1205,7 @@ async function teamSave(){
   const id=_v('team-form-card').dataset.id||null
   const name=_v('tf-name').value.trim()
   if(!name){ alert('Nome é obrigatório.'); return }
+  peCommit()   // se ajustou/enviou foto no editor, grava o recorte (data URI) em tf-photo
   const args={ p_id:id||null, p_name:name, p_role:_v('tf-role').value.trim()||'Analyst',
     p_photo:_v('tf-photo').value.trim()||null, p_email:_v('tf-email').value.trim()||null,
     p_whatsapp:_v('tf-wa').value.trim()||null, p_sort_order:parseInt(_v('tf-sort').value)||0,
