@@ -1040,7 +1040,7 @@ const FLAG_META={
   stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
   stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
   pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
-  clipinator:    {g:'admin_tools', l:'Clipinator',       d:'Gerador do clipping diário (o acesso é sempre restrito ao admin)'},
+  clipinator:    {g:'admin_tools', l:'Clipping',         d:'Gerador do clipping diário (o acesso é sempre restrito ao admin)'},
 }
 function _flagCounts(){
   document.querySelectorAll('.flag-grp').forEach(g=>{ const its=g.querySelectorAll('.flag-item'),on=[...its].filter(i=>i.querySelector('input').checked).length,c=g.querySelector('.cnt'); if(c)c.textContent=on+'/'+its.length })
