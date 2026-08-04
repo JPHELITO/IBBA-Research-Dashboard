@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="theme-color" content="#111111"/>
-<title>Clipinator</title>
+<title>Clipping</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -191,18 +191,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 </head>
 <body>
 
-<div id="gate" class="splash"><div class="spin"></div><div class="muted">Carregando o Clipinator…</div></div>
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Carregando o Clipping…</div></div>
 
 <div id="denied" class="splash" hidden>
   <div style="font-size:34px">🔒</div>
   <div><b>Área restrita</b></div>
-  <div class="muted" style="max-width:400px">O Clipinator é uma ferramenta interna, disponível apenas para administradores.</div>
+  <div class="muted" style="max-width:400px">O Clipping é uma ferramenta interna, disponível apenas para administradores.</div>
   <a class="hbtn" href="/index.html">← Voltar para a home</a>
 </div>
 
 <div id="app" hidden>
   <div class="clip-head">
-    <div class="clip-title">Clipinator <span class="clip-badge">admin</span>
+    <div class="clip-title">Clipping <span class="clip-badge">admin</span>
       <small>Selecione as notícias do clipping. Take e setor já vêm sugeridos pela IA — ajuste e ordene.</small>
     </div>
   </div>
@@ -221,6 +221,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
             <option value="72">Últimas 72h</option>
           </select>
           <button class="btn" id="clip-reload">↻ Recarregar</button>
+        </div>
+        <div class="bar" style="margin-top:6px">
+          <span style="font-size:11px;color:var(--gray-mid)">Buscar novas agora:</span>
+          <button class="btn" id="clip-hunt-pw" title="Dispara um run do Platts + Fastmarkets agora (aparecem em ~2-4 min)">↻ Platts + FM</button>
+          <button class="btn" id="clip-hunt-rss" title="Dispara um run das fontes RSS agora (Valor, Mining.com, Portal Celulose…)">↻ RSS</button>
+          <span class="gen-status" id="clip-hunt-status" style="margin:0"></span>
         </div>
       </div>
       <div id="clip-sources" class="src-bar"></div>
@@ -242,6 +248,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <button class="btn" id="clip-add">Adicionar</button>
       </div>
       <div class="gen">
+        <div class="bar" style="margin-bottom:8px">
+          <label for="cfg-ref-date" style="font-size:11px;color:var(--gray-mid)">Data do clipping:</label>
+          <input type="date" class="sel" id="cfg-ref-date" title="Data de referência do clipping (default: hoje)">
+        </div>
         <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
         <div class="gen-status" id="clip-status"></div>
         <div id="clip-fails" class="fails" hidden></div>
@@ -575,7 +585,8 @@ async function generate(){
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
   renderFailures([]);                        // limpa falhas de uma geração anterior
   try{
-    const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config});
+    const _rd=document.getElementById('cfg-ref-date');
+    const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:S.config, p_ref_date:(_rd&&_rd.value)||null});
     st.innerHTML='<span class="spin2"></span> Gerando o clipping… (busca os corpos, traduz e monta o Word — ~1-3 min)';
     await pollJob(jobId, st, btn);
   }catch(e){
@@ -729,6 +740,25 @@ function insertIntroBold(){
   S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
 }
 
+// ── Buscar novas agora (dispara o run do GitHub Actions via RPC) + data BRT ────
+function todayBRT(){
+  // YYYY-MM-DD de hoje em America/Sao_Paulo (locale sv-SE = formato ISO)
+  try{ return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}); }
+  catch(e){ return new Date().toISOString().slice(0,10); }
+}
+async function triggerHunt(which, label, btn){
+  const st=document.getElementById('clip-hunt-status');
+  btn.disabled=true; if(st){ st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Disparando '+esc(label)+'…'; }
+  try{
+    await rpc('admin_trigger_hunt',{p_which:which});
+    if(st){ st.className='gen-status ok'; st.textContent='✓ '+label+' disparado — recarregue em ~2-4 min.'; }
+  }catch(e){
+    if(st){ st.className='gen-status err'; st.textContent='Erro: '+(e.message||e); }
+  }
+  // debounce anti-duplo-clique: 60s (o run já foi disparado; evita enfileirar vários)
+  setTimeout(()=>{ btn.disabled=false; if(st){ st.textContent=''; st.className='gen-status'; } }, 60000);
+}
+
 function wire(){
   document.getElementById('clip-hours').onchange=e=>{ S.hours=+e.target.value; loadCandidates(); };
   document.getElementById('clip-reload').onclick=loadCandidates;
@@ -746,6 +776,11 @@ function wire(){
   document.getElementById('cfg-intro-link').onclick=insertIntroLink;
   document.getElementById('cfg-intro-bold').onclick=insertIntroBold;
   document.getElementById('cfg-analysts-add').onclick=()=>{ if(!Array.isArray(S.config.analysts)) S.config.analysts=[]; S.config.analysts.push({name:'',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement',phone:'',email:''}); renderConfig(); saveConfig(); };
+  // Buscar novas agora (2 botões, disparam o GitHub Actions) + data default = hoje BRT
+  const _hp=document.getElementById('clip-hunt-pw'), _hr=document.getElementById('clip-hunt-rss');
+  if(_hp) _hp.onclick=()=>triggerHunt('playwright','Platts + Fastmarkets',_hp);
+  if(_hr) _hr.onclick=()=>triggerHunt('rss','notícias RSS',_hr);
+  const _rd=document.getElementById('cfg-ref-date'); if(_rd && !_rd.value) _rd.value=todayBRT();
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
@@ -771,7 +806,7 @@ window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePic
     await loadConfig();      // restaura mensagem/intro + Recent Publications + Earnings Review
   }catch(e){ console.error(e);
     document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📰</div>'
-      +'<div style="font-weight:700;margin:8px 0 4px">Clipinator indisponível</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Clipping indisponível</div>'
       +'<div class="muted">'+esc(String(e&&e.message||e))+'</div>'
       +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Voltar para a home</a></div>'; }
 })();

@@ -90,8 +90,11 @@ grant execute on function public.admin_get_clipping_body(text) to authenticated;
 
 -- ───────────── 2) FEATURE FLAG (nasce DESLIGADA; só controla o link no menu — acesso é por is_admin) ─────────────
 insert into public.dashboard_flags (key, label, sort_order, enabled) values
-  ('clipinator', 'Clipinator (gerador de clipping — só admin)', 120, false)
+  ('clipinator', 'Clipping (gerador de clipping — só admin)', 120, false)
 on conflict (key) do nothing;
+-- 2026-08: rótulo renomeado p/ "Clipping". O on-conflict-do-nothing acima NÃO re-aplica
+-- em linha já existente → force o UPDATE. (Na UI, o admin.html FLAG_META.l já mostra "Clipping".)
+update public.dashboard_flags set label = 'Clipping (gerador de clipping — só admin)' where key = 'clipinator';
 
 -- ───────────── 3) ENFILEIRAR (frontend admin → cria um job pending) ─────────────
 -- p_payload: array JSON com a seleção curada. p_ref_date: data do clipping (default = hoje BRT).
