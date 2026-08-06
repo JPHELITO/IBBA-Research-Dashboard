@@ -161,12 +161,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .src-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);background:var(--bg);}
 .src-bar:empty{display:none;}
 .src-lbl{font-size:10px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.03em;}
-.src-chip{font-size:10.5px;color:var(--gray-dark);border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:var(--card);}
+.src-chip{font:500 10.5px var(--font);color:var(--gray-dark);border:1px solid var(--border);border-radius:999px;
+  padding:2px 8px;background:var(--card);cursor:pointer;transition:background .1s,color .1s,border-color .1s;}
 .src-chip b{color:var(--black);}
 .scr{font-size:10px;}
 .src-chip.scr-auth{border-color:rgba(0,176,80,.55);}
 .src-chip.scr-regular{border-color:rgba(90,140,255,.5);}
 .src-chip.scr-unknown{border-color:var(--red);color:var(--red);}
+.src-chip:hover{border-color:var(--orange);color:var(--orange);}
+.src-chip:hover b{color:var(--orange);}
+/* fonte SELECIONADA no filtro (vem depois das scr-* p/ vencer a cor delas) */
+.src-chip.on,.src-chip.on:hover{background:var(--black);border-color:var(--black);color:var(--card);}
+.src-chip.on b,.src-chip.on:hover b{color:var(--card);}
+.src-chip.src-clear{color:var(--gray-mid);border-style:dashed;}
+.src-chip.src-0:not(.on){opacity:.45;}   /* sem notícia no setor filtrado */
 .fails{margin-top:10px;border:1px solid var(--red);border-radius:8px;padding:10px;background:rgba(255,80,0,.05);}
 .fail-h{font-size:11.5px;font-weight:700;color:var(--red);margin-bottom:8px;}
 .fail-row{margin-bottom:8px;}
@@ -224,8 +232,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         </div>
         <div class="bar" style="margin-top:6px">
           <span style="font-size:11px;color:var(--gray-mid)">Buscar novas agora:</span>
-          <button class="btn" id="clip-hunt-pw" title="Dispara um run do Platts + Fastmarkets agora (aparecem em ~2-4 min)">↻ Platts + FM</button>
-          <button class="btn" id="clip-hunt-rss" title="Dispara um run das fontes RSS agora (Valor, Mining.com, Portal Celulose…)">↻ RSS</button>
+          <button class="btn" id="clip-hunt-pw" title="Roda AGORA uma coleta do Platts + Fastmarkets (e das fontes abertas junto). A lista se atualiza sozinha quando chegar notícia nova.">↻ Platts + FM</button>
+          <button class="btn" id="clip-hunt-rss" title="Roda AGORA uma coleta das fontes abertas (Valor, Mining.com, Portal Celulose). A lista se atualiza sozinha quando chegar notícia nova.">↻ RSS</button>
           <span class="gen-status" id="clip-hunt-status" style="margin:0"></span>
         </div>
       </div>
@@ -312,7 +320,7 @@ const DEFAULT_ANALYSTS=[
   {name:'Marcelo Furlan Palhares, CFA',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t. +55 11 3073 3357  m.+55 11 97464 2801', email:'marcelo.palhares@itaubba.com'},
   {name:'João Paulo Luka Helito, CNPI',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t.+55 11 3073 3005  m.+55 11 93452 7535',  email:'joao.helito@itaubba.com'},
 ];
-const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all',
+const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all', src:new Set(),
           config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]}, analysts:DEFAULT_ANALYSTS.map(a=>({...a})) } };
 const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr'};
@@ -335,17 +343,31 @@ function scraperOf(c){
   if(_REG_DOMS.some(x=>d===x||d.endsWith('.'+x)||d.endsWith(x))) return 'regular';
   return c.manual ? 'unknown' : 'regular';
 }
-// legenda agregada: fontes distintas presentes + seu status de scraping
+function srcOf(c){ return c.source_name||domainOf(c.url)||'—'; }
+
+// Fontes: legenda (status de scraping) + FILTRO clicável (multi-seleção, igual aos setores).
+// A contagem de cada fonte é FACETADA pelo filtro de setor ativo — o número é o que você
+// realmente vê ao clicar. Nenhuma fonte some da barra (senão não dava p/ desmarcar).
 function renderSources(){
   const host=document.getElementById('clip-sources'); if(!host) return;
   const groups={};
-  S.cand.forEach(c=>{ const s=c.source_name||domainOf(c.url); const k=scraperOf(c);
-    (groups[s]=groups[s]||{k,n:0}).n++; });
-  const items=Object.entries(groups).sort((a,b)=>b[1].n-a[1].n);
+  S.cand.forEach(c=>{ const s=srcOf(c); const k=scraperOf(c);
+    const g=(groups[s]=groups[s]||{k,n:0,tot:0});
+    g.tot++;                                             // total (define a ORDEM — fixa)
+    if(S.filter==='all'||c._sec===S.filter) g.n++; });   // visível no setor ativo (é o número mostrado)
+  // ordena pelo TOTAL, não pelo facetado: as chips não pulam de lugar ao trocar de setor
+  const items=Object.entries(groups).sort((a,b)=>b[1].tot-a[1].tot||a[0].localeCompare(b[0]));
   if(!items.length){ host.innerHTML=''; return; }
-  host.innerHTML='<span class="src-lbl">Fontes:</span>'+items.map(([s,g])=>{
-    return `<span class="src-chip scr-${g.k}" title="${SCRAPER[g.k].hint}">${esc(s)} <b>${g.n}</b></span>`;
-  }).join('');
+  host.innerHTML='<span class="src-lbl">Fontes:</span>'
+    +items.map(([s,g])=>`<button class="src-chip scr-${g.k}${S.src.has(s)?' on':''}${g.n?'':' src-0'}" data-s="${esc(s)}"
+        title="${SCRAPER[g.k].hint} — clique para filtrar por esta fonte">${esc(s)} <b>${g.n}</b></button>`).join('')
+    +(S.src.size?`<button class="src-chip src-clear" data-clr="1" title="Voltar a mostrar todas as fontes">× limpar (${S.src.size})</button>`:'');
+  host.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>toggleSource(b.dataset.s));
+  const cl=host.querySelector('[data-clr]'); if(cl) cl.onclick=()=>{ S.src.clear(); renderFilters(); renderList(); };
+}
+function toggleSource(s){
+  if(S.src.has(s)) S.src.delete(s); else S.src.add(s);
+  renderFilters(); renderList();
 }
 // setor SUGERIDO a partir do classificador (steel|mining→SM, pp→PP, senão NR)
 function suggestSector(c){
@@ -404,11 +426,12 @@ function setCandidates(list){
   renderFilters(); renderList(); renderSel();
 }
 
-// ── render: filtros por setor ─────────────────────────────────────────────────
+// ── render: filtros por setor (contagem FACETADA pelo filtro de fonte ativo) ───
 function renderFilters(){
   const host=document.getElementById('clip-filters'); if(!host) return;
-  const counts={all:S.cand.length,SM:0,PP:0,NR:0};
-  S.cand.forEach(c=>{ counts[c._sec]=(counts[c._sec]||0)+1; });
+  const vis=S.src.size ? S.cand.filter(c=>S.src.has(srcOf(c))) : S.cand;
+  const counts={all:vis.length,SM:0,PP:0,NR:0};
+  vis.forEach(c=>{ counts[c._sec]=(counts[c._sec]||0)+1; });
   const defs=[['all','Todas'],['NR','NR'],['SM','S&M'],['PP','P&P']];
   host.innerHTML=defs.map(([k,l])=>`<span class="chip${S.filter===k?' on':''}" data-f="${k}">${l} ${counts[k]||0}</span>`).join('');
   host.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{ S.filter=ch.dataset.f; renderFilters(); renderList(); });
@@ -420,7 +443,11 @@ function renderList(){
   const host=document.getElementById('clip-list'); if(!host) return;
   let rows=S.cand;
   if(S.filter!=='all') rows=rows.filter(c=>c._sec===S.filter);
-  if(!rows.length){ host.innerHTML='<div class="empty">Nenhuma notícia nessa janela/filtro.</div>'; return; }
+  if(S.src.size)       rows=rows.filter(c=>S.src.has(srcOf(c)));
+  if(!rows.length){
+    host.innerHTML='<div class="empty">Nenhuma notícia nessa janela/filtro.'
+      +(S.src.size?'<br><small>Filtro de fonte ativo — clique em “× limpar” na barra de fontes.</small>':'')+'</div>';
+    return; }
   host.innerHTML=rows.map(c=>{
     const picked=S.sel.has(c.url); const st=S.sel.get(c.url)||{take:c._take,sector:c._sec};
     const src=esc(c.source_name||domainOf(c.url)); const dt=fmtDT(c.found_at||c.published_at);
@@ -746,17 +773,75 @@ function todayBRT(){
   try{ return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}); }
   catch(e){ return new Date().toISOString().slice(0,10); }
 }
+// Dispara um run ONE-SHOT do news-hunter (hunt-once.yml) e ACOMPANHA até a notícia
+// aparecer. Antes a função só dizia "disparado" e ia embora — e o disparo, apesar de
+// chegar no GitHub, morria na fila do concurrency das correntes (ver supabase_hunt_trigger.sql).
+// Agora: (1) confirma que o GitHub aceitou de verdade (pg_net é assíncrono → admin_check_hunt);
+//        (2) fica olhando os candidatos e avisa quantas notícias novas entraram.
+let _huntSeq=0;
+function _huntBtns(){ return [document.getElementById('clip-hunt-pw'), document.getElementById('clip-hunt-rss')].filter(Boolean); }
+function _huntSay(cls,html){ const st=document.getElementById('clip-hunt-status');
+  if(st){ st.className='gen-status'+(cls?' '+cls:''); st.innerHTML=html; } }
+
 async function triggerHunt(which, label, btn){
-  const st=document.getElementById('clip-hunt-status');
-  btn.disabled=true; if(st){ st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Disparando '+esc(label)+'…'; }
-  try{
-    await rpc('admin_trigger_hunt',{p_which:which});
-    if(st){ st.className='gen-status ok'; st.textContent='✓ '+label+' disparado — recarregue em ~2-4 min.'; }
-  }catch(e){
-    if(st){ st.className='gen-status err'; st.textContent='Erro: '+(e.message||e); }
+  const seq=++_huntSeq;
+  _huntBtns().forEach(b=>b.disabled=true);
+  _huntSay('', '<span class="spin2"></span> Disparando '+esc(label)+'…');
+  let reqId=null;
+  try{ reqId=await rpc('admin_trigger_hunt',{p_which:which}); }
+  catch(e){ _huntSay('err','Erro ao disparar: '+esc(e.message||e)); _huntBtns().forEach(b=>b.disabled=false); return; }
+  if(seq!==_huntSeq) return;
+
+  const chk=await _checkHunt(reqId);
+  if(seq!==_huntSeq) return;
+  if(chk && chk.state==='erro'){
+    _huntSay('err','O GitHub RECUSOU o disparo (HTTP '+esc(chk.status)+'). '
+      +(String(chk.status)==='404'
+          ? 'Provavelmente falta o workflow hunt-once.yml no branch master do news-hunter, ou o token não enxerga o repo.'
+          : esc(String(chk.body||chk.error||'').slice(0,160))));
+    _huntBtns().forEach(b=>b.disabled=false); return;
   }
-  // debounce anti-duplo-clique: 60s (o run já foi disparado; evita enfileirar vários)
-  setTimeout(()=>{ btn.disabled=false; if(st){ st.textContent=''; st.className='gen-status'; } }, 60000);
+  _huntSay('', '<span class="spin2"></span> '+esc(label)+' rodando no GitHub — procurando notícias novas (~1-3 min)…');
+  _watchNews(seq, label);
+}
+
+// pg_net só ENFILEIRA o POST; a resposta do GitHub chega depois. Pergunta algumas
+// vezes até o worker responder (204 = aceitou). Sem isso, 404/403 passavam como sucesso.
+async function _checkHunt(id){
+  if(id===null||id===undefined||id==='') return null;
+  for(let i=0;i<5;i++){
+    await new Promise(r=>setTimeout(r,1200));
+    try{ const j=await rpc('admin_check_hunt',{p_id:Number(id)});
+      if(j && j.state && j.state!=='pendente') return j;
+    }catch(e){ return null; }        // RPC nova ainda não rodada no Supabase → segue sem confirmação
+  }
+  return null;
+}
+
+// Acompanha o resultado REAL: recarrega os candidatos e avisa o que entrou de novo.
+async function _watchNews(seq, label){
+  const before=new Set(S.cand.map(c=>c.url));
+  const t0=Date.now();
+  while(Date.now()-t0 < 5*60*1000){
+    await new Promise(r=>setTimeout(r,20000));
+    if(seq!==_huntSeq) return;                       // outro clique assumiu
+    let data=null;
+    try{ data=await rpc('admin_get_clipping_candidates',{p_hours:S.hours}); }catch(e){ continue; }
+    const fresh=(data||[]).filter(c=>c && c.url && !before.has(c.url));
+    if(fresh.length){
+      setCandidates(data);
+      // honestidade: com filtro de setor/fonte ligado, parte das novas pode estar escondida
+      const vis=fresh.filter(c=>(S.filter==='all'||suggestSector(c)===S.filter)
+                              &&(!S.src.size||S.src.has(srcOf(c)))).length;
+      _huntSay('ok','✓ '+esc(label)+': <b>'+fresh.length+'</b> notícia(s) nova(s)'
+        +(vis<fresh.length?' — <b>'+vis+'</b> aparece(m) com os filtros ligados.':' já na lista.'));
+      _huntBtns().forEach(b=>b.disabled=false); return;
+    }
+    _huntSay('', '<span class="spin2"></span> '+esc(label)+' rodando… nada novo ainda ('
+                 +Math.round((Date.now()-t0)/60000)+' min)');
+  }
+  _huntSay('','O run terminou sem notícia nova — as fontes podem não ter publicado nada desde a última coleta.');
+  _huntBtns().forEach(b=>b.disabled=false);
 }
 
 function wire(){
@@ -785,7 +870,7 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, scraperOf, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S };
 
 ;(async()=>{
   wire();
