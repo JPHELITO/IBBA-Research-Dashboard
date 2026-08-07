@@ -114,13 +114,17 @@ create or replace function public.admin_enqueue_clipping(p_payload jsonb, p_ref_
     returning id into v_id;
 
     -- Onda 5: registra as correções de take (IA sugeriu vs. analista escolheu) → few-shot dinâmico.
-    -- Só quando a IA deu um take direcional (+/-/=); URL vira chave (re-gerar = upsert do mesmo item).
+    -- URL vira chave (re-gerar = upsert do mesmo item).
+    -- ⚠️ 2026-08-07: 'no take' PRECISA estar nesta lista. Antes o filtro era só ('+','-','=') e
+    -- descartava justamente a correção mais valiosa: "a IA descartou a notícia, mas o analista
+    -- puxou pro clipping e deu take". Era o caso do incidente de 2026-08-06 (Turkish rebar →
+    -- "no take" quando a regra manda "="). Ver admin/supabase_clipinator_fewshot_notake.sql.
     insert into public.take_corrections (url, headline, source_name, sector, take_ai, take_analyst, changed)
     select e->>'url', left(coalesce(e->>'title',''), 400), e->>'source_name', e->>'sector',
            e->>'take_ai', e->>'take',
            (e->>'take_ai') is distinct from (e->>'take')
     from jsonb_array_elements(p_payload) e
-    where e->>'take_ai' in ('+','-','=') and coalesce(e->>'url','') <> ''
+    where e->>'take_ai' in ('+','-','=','no take') and coalesce(e->>'url','') <> ''
     on conflict (url) do update set
       headline = excluded.headline, source_name = excluded.source_name, sector = excluded.sector,
       take_ai = excluded.take_ai, take_analyst = excluded.take_analyst,
