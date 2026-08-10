@@ -208,6 +208,16 @@ html.dark{ --pos:#4ade80; --neg:#f87171; --neu:#9ca3af; }
 .fblock-h .mini{font-weight:600;letter-spacing:0;text-transform:none;color:var(--orange);cursor:pointer;font-size:10px;}
 .fblock-h .mini:hover{text-decoration:underline;}
 .rail .search-input{width:100%;}
+/* Busca multi-termo: Enter fixa a palavra como "chip"; todos os chips precisam casar (E) */
+.searchchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.searchchips:empty{display:none;}
+.schip{font-size:10.5px;font-weight:600;color:var(--orange);background:rgba(255,80,0,.1);
+  border-radius:20px;padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:6px;max-width:100%;}
+.schip .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.schip .x{cursor:pointer;font-weight:800;font-size:11px;line-height:1;flex:none;}
+.schip .x:hover{color:var(--neg);}
+.fhint{font-size:9.5px;color:var(--gray-mid);margin-top:7px;line-height:1.45;}
+.fhint b{color:var(--gray-dark);font-weight:700;}
 .seg{display:flex;flex-wrap:wrap;gap:5px;}
 .seg .chip{padding:5px 11px;}
 .daterow{display:flex;align-items:center;gap:6px;margin-top:9px;}
@@ -309,17 +319,19 @@ html.dark .tl-tip{background:#0d0e11;border:1px solid var(--border);}
     <!-- ░░░ FILTER RAIL ░░░ -->
     <aside class="rail">
       <div class="card fblock">
-        <div class="fblock-h">Search</div>
+        <div class="fblock-h">Search <span class="mini" id="search-clear" style="display:none">reset</span></div>
         <input type="search" class="search-input" id="search-input" placeholder="Search headline…"/>
+        <div class="searchchips" id="search-chips"></div>
+        <div class="fhint" id="search-hint">Press <b>Enter</b> to add a term · all terms must match</div>
       </div>
       <div class="card fblock">
         <div class="fblock-h">Period</div>
         <div class="seg" id="period-seg">
           <button class="chip" data-days="1">24h</button>
-          <button class="chip active" data-days="2">48h</button>
+          <button class="chip" data-days="2">48h</button>
           <button class="chip" data-days="7">7d</button>
           <button class="chip" data-days="30">30d</button>
-          <button class="chip" data-days="all">All</button>
+          <button class="chip active" data-days="all">All</button>
         </div>
         <div class="daterow">
           <input type="date" class="date-in" id="date-from" aria-label="From date"/>
@@ -453,13 +465,17 @@ function _dayLabel(iso){
 // ─── State ─────────────────────────────────────────────────────────────
 // O histórico INTEIRO é carregado uma vez (_allArticles); TODO filtro é client-side
 // e instantâneo (janela de datas, setor, take, fontes, busca). A timeline é o mapa.
-let _periodPreset = '2';       // '1'|'2'|'7'|'30'|'all'|'custom' (dias)
+let _periodPreset = 'all';     // '1'|'2'|'7'|'30'|'all'|'custom' (dias) — base = histórico INTEIRO
 let _dateFrom = null;          // 'YYYY-MM-DD' inclusivo, ou null
 let _dateTo   = null;          // 'YYYY-MM-DD' inclusivo, ou null
 let _sectorFilter = 'all';     // 'all'|'sm'|'pp'|'nr'
 let _takeFilter   = 'all';     // 'all'|'+'|'-'|'='|'no take'
 let _srcFilter = new Set();    // fontes marcadas (vazio = todas)
-let _searchText = '';
+// Busca MULTI-TERMO: Enter fixa a palavra como chip; TODOS os chips precisam casar (E).
+let _searchTerms = [];         // termos fixados, como digitados (exibição)
+let _searchLC = [];            // os mesmos em minúsculas (comparação)
+let _searchText = '';          // rascunho — o que está sendo digitado agora, filtra ao vivo
+let _searchDraftLC = '';
 let _sortDesc = true;          // mais novas primeiro
 let _allArticles = [];         // histórico inteiro, deduplicado
 let _seenUrls = new Set();     // p/ o polling incremental (evita re-inserir)
@@ -550,7 +566,13 @@ function _niceDate(iso){ if(!iso)return '—'; const p=iso.split('-').map(Number
 function _passSector(a){ return _sectorFilter==='all' || _resolveSec(a)===_sectorFilter; }
 function _passTake(a){ return _takeFilter==='all' || (a.take_llm||'')===_takeFilter; }
 function _passSrc(a){ return _srcFilter.size===0 || _srcFilter.has(_label(a)); }
-function _passSearch(a){ return !_searchText || (a.title||'').toLowerCase().includes(_searchText.toLowerCase()); }
+// Casa quando TODOS os termos fixados aparecem no título (E) + o rascunho em digitação.
+function _passSearch(a){
+  if(!_searchLC.length && !_searchDraftLC) return true;
+  const t=(a.title||'').toLowerCase();
+  for(const w of _searchLC) if(!t.includes(w)) return false;
+  return !_searchDraftLC || t.includes(_searchDraftLC);
+}
 function _passDate(a){
   if(!_dateFrom && !_dateTo) return true;
   const d=_effDate(a); if(!d) return false;
@@ -568,8 +590,31 @@ function _match(a,except){
 }
 function _list(except){ return _allArticles.filter(a=>_match(a,except)); }
 
+// ─── Busca multi-termo (chips) ──────────────────────────────────────────
+function _addSearchTerm(raw){
+  const t=(raw||'').trim(); if(!t) return false;
+  if(_searchLC.includes(t.toLowerCase())) return false;   // já está na lista → não duplica
+  _searchTerms.push(t); _searchLC.push(t.toLowerCase());
+  return true;
+}
+function _removeSearchTerm(i){
+  if(!(i>=0 && i<_searchTerms.length)) return;
+  _searchTerms.splice(i,1); _searchLC.splice(i,1);
+}
+function _clearSearch(){
+  _searchTerms=[]; _searchLC=[]; _searchText=''; _searchDraftLC='';
+  const inp=document.getElementById('search-input'); if(inp) inp.value='';
+}
+function _renderSearchChips(){
+  const box=document.getElementById('search-chips'); if(!box) return;
+  box.innerHTML=_searchTerms.map((t,i)=>
+    `<span class="schip"><span class="t">${_esc(t)}</span><span class="x" data-i="${i}" title="Remove">✕</span></span>`).join('');
+  const rs=document.getElementById('search-clear');   if(rs)   rs.style.display   = _searchTerms.length?'':'none';
+  const hint=document.getElementById('search-hint');  if(hint) hint.style.display = _searchTerms.length?'none':'';
+}
+
 // ─── Orquestrador ───────────────────────────────────────────────────────
-function renderAll(){ _renderHeadSub(); _renderStats(); _renderTimeline(); _renderFacets(); _renderMetaExtras(); _renderFeed(); }
+function renderAll(){ _renderHeadSub(); _renderSearchChips(); _renderStats(); _renderTimeline(); _renderFacets(); _renderMetaExtras(); _renderFeed(); }
 
 function _renderHeadSub(){
   const sub=document.getElementById('hist-sub'); if(!sub) return;
@@ -795,17 +840,32 @@ document.getElementById('src-facet').addEventListener('click',e=>{
 });
 document.getElementById('src-clear').addEventListener('click',()=>{ _srcFilter.clear(); _displayLimit=PAGE_SIZE; renderAll(); });
 let _searchTimer=null;
-document.getElementById('search-input').addEventListener('input',e=>{
+const _searchInput=document.getElementById('search-input');
+function _setDraft(v){ _searchText=(v||'').trim(); _searchDraftLC=_searchText.toLowerCase(); }
+_searchInput.addEventListener('input',e=>{
   clearTimeout(_searchTimer);
-  _searchTimer=setTimeout(()=>{ _searchText=e.target.value.trim(); _displayLimit=PAGE_SIZE; renderAll(); },180);
+  _searchTimer=setTimeout(()=>{ _setDraft(e.target.value); _displayLimit=PAGE_SIZE; renderAll(); },180);
 });
+_searchInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){                       // fixa o termo como chip (soma ao filtro, em E)
+    e.preventDefault(); clearTimeout(_searchTimer);
+    _addSearchTerm(e.target.value);
+    e.target.value=''; _setDraft(''); _displayLimit=PAGE_SIZE; renderAll();
+  }else if(e.key==='Backspace' && !e.target.value && _searchTerms.length){
+    _removeSearchTerm(_searchTerms.length-1); _displayLimit=PAGE_SIZE; renderAll();
+  }
+});
+document.getElementById('search-chips').addEventListener('click',e=>{
+  const x=e.target.closest('.x'); if(!x) return;
+  _removeSearchTerm(parseInt(x.dataset.i,10)); _displayLimit=PAGE_SIZE; renderAll();
+});
+document.getElementById('search-clear').addEventListener('click',()=>{ _clearSearch(); _displayLimit=PAGE_SIZE; renderAll(); });
 document.getElementById('sort-link').addEventListener('click',()=>{ _sortDesc=!_sortDesc; _renderMetaExtras(); _renderFeed(); });
 document.getElementById('refresh-link').addEventListener('click',_poll);
 document.getElementById('clear-all').addEventListener('click',()=>{
-  _sectorFilter='all'; _takeFilter='all'; _srcFilter.clear(); _searchText='';
-  document.getElementById('search-input').value='';
+  _sectorFilter='all'; _takeFilter='all'; _srcFilter.clear(); _clearSearch();
   _setSegActive('sector-seg','sec','all'); _setSegActive('take-seg','take','all');
-  _applyPreset('2'); renderAll();
+  _applyPreset('all'); renderAll();
 });
 document.getElementById('range-chip').addEventListener('click',e=>{
   if(e.target.closest('#range-x')){ _applyPreset('all'); renderAll(); }
@@ -837,7 +897,7 @@ window.addEventListener('resize',()=>{ clearTimeout(_rzTL); _rzTL=setTimeout(()=
 
 // ─── Boot + polling incremental ─────────────────────────────────────────
 async function boot(){
-  _applyPreset('2');                          // view padrão = últimas 48h
+  _applyPreset('all');                        // view padrão = histórico INTEIRO
   const meta=document.getElementById('results-meta'); if(meta) meta.textContent='Loading full history…';
   const rows=await _fetchPages(null);         // histórico INTEIRO, 1×
   _allArticles=_dedupInto(rows);
