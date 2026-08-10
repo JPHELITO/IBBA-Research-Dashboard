@@ -146,7 +146,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .ex-grid textarea,.ex-grid input,.ex-grid select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
 .ex-grid textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
 .ex-grid textarea{resize:vertical;}
-.pub-row{display:grid;grid-template-columns:auto 1fr 58px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
+.pub-row{display:grid;grid-template-columns:auto auto 1fr 58px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
 .pub-row.dragging{opacity:.4;}
 .pub-h{cursor:grab;color:var(--gray-mid);font-size:12px;user-select:none;opacity:.55;}
 .pub-h:active{cursor:grabbing;}
@@ -194,7 +194,33 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .ex-stack textarea,.ex-stack input,.ex-stack select{font:400 11.5px var(--font);background:var(--bg);color:var(--black);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
 .ex-stack textarea,.ex-stack #cfg-earn-label{width:100%;box-sizing:border-box;}
 .ex-stack textarea{resize:vertical;}
-.ex-introtools{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;}
+/* Relatórios (Recent Publications / Earnings): numeração + contador — igual às notícias */
+.ex-n{font:700 9.5px var(--font);color:var(--gray-dark);background:var(--card);border:1px solid var(--border);
+  border-radius:999px;padding:1px 7px;vertical-align:middle;}
+.pub-n{font:700 10px var(--font);color:var(--gray-mid);min-width:12px;text-align:right;
+  font-variant-numeric:tabular-nums;user-select:none;}
+/* Editor rico da mensagem de abertura (tipo Word: negrito/itálico/sublinhado/cor/link) */
+.rt-tools{display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding:4px 5px;
+  border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;background:var(--gray-light);}
+.rt-b{min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
+  font:600 11.5px var(--font);color:var(--gray-dark);background:var(--card);border:1px solid var(--border);
+  border-radius:4px;cursor:pointer;padding:0 3px;}
+.rt-b:hover{border-color:var(--orange);color:var(--orange);}
+.rt-b.on{background:var(--gray-dark);border-color:var(--gray-dark);color:#fff;}
+.rt-sep{width:1px;height:15px;background:var(--border);margin:0 3px;}
+.rt-sw{width:15px;height:15px;border-radius:3px;border:1px solid var(--gray-mid);cursor:pointer;padding:0;}
+.rt-pick{width:24px;height:22px;padding:0 1px;border:1px solid var(--border);border-radius:4px;
+  background:var(--card);cursor:pointer;}
+/* fundo BRANCO e letra preta mesmo no modo escuro: o editor é a prévia do documento
+   (o Word e o e-mail são brancos) — cor escolhida aqui é a cor que o cliente vai ver */
+.rt-edit{min-height:98px;max-height:280px;overflow:auto;padding:7px 9px;font:400 11.5px/1.6 var(--font);
+  color:#111111;background:#ffffff;border:1px solid var(--border);border-radius:0 0 6px 6px;}
+.rt-edit:focus{outline:none;border-color:var(--orange);}
+.rt-edit:empty::before{content:attr(data-ph);color:#8C8C8C;}
+.rt-edit a{color:#0000FF;text-decoration:underline;cursor:pointer;}
+/* barrinha flutuante que aparece ao selecionar um texto (ou ao clicar num link) */
+.rt-pop{position:fixed;z-index:60;display:flex;gap:3px;align-items:center;padding:4px;
+  background:var(--card);border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);}
 </style>
 </head>
 <body>
@@ -269,20 +295,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <div class="ex-stack">
           <div class="ex-block">
             <label class="ex-h"><input type="checkbox" id="cfg-intro-on"> Mensagem de abertura <span class="ex-hint">(topo do Word e do e-mail)</span></label>
-            <textarea id="cfg-intro-text" rows="5" placeholder="Dear clients,…"></textarea>
-            <div class="ex-introtools">
-              <button class="btn ex-add" id="cfg-intro-bold" title="Selecione a palavra e clique">𝐁 Negrito</button>
-              <button class="btn ex-add" id="cfg-intro-link" title="Selecione a palavra e clique">🔗 Link</button>
-              <span class="ex-hint">selecione a palavra → negrito ou link</span>
+            <div class="rt-tools" id="cfg-intro-tools">
+              <button type="button" class="rt-b" data-cmd="bold"      title="Negrito (Ctrl+B)"><b>B</b></button>
+              <button type="button" class="rt-b" data-cmd="italic"    title="Itálico (Ctrl+I)"><i>I</i></button>
+              <button type="button" class="rt-b" data-cmd="underline" title="Sublinhado (Ctrl+U)"><u>U</u></button>
+              <span class="rt-sep"></span>
+              <span id="cfg-intro-colors" style="display:inline-flex;gap:3px;align-items:center"></span>
+              <input type="color" id="cfg-intro-pick" class="rt-pick" value="#111111" title="Outra cor da letra">
+              <span class="rt-sep"></span>
+              <button type="button" class="rt-b" data-cmd="link"  title="Inserir/editar link (Ctrl+K)">🔗</button>
+              <button type="button" class="rt-b" data-cmd="clear" title="Limpar formatação">⌫</button>
             </div>
+            <div id="cfg-intro-rt" class="rt-edit" contenteditable="true" data-ph="Dear clients,…"></div>
+            <span class="ex-hint">Ctrl+B negrito · Ctrl+I itálico · Ctrl+U sublinhado · selecione um texto → 🔗 link · Ctrl+clique abre o link</span>
           </div>
           <div class="ex-block">
-            <div class="ex-h">Recent Publications</div>
+            <div class="ex-h">Recent Publications <span class="ex-n" id="cfg-pubs-n">0</span></div>
             <div id="cfg-pubs"></div>
             <button class="btn ex-add" id="cfg-pubs-add">+ publicação</button>
           </div>
           <div class="ex-block">
-            <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-hint">(liga/desliga)</span></label>
+            <label class="ex-h"><input type="checkbox" id="cfg-earn-on"> Earnings Review <span class="ex-n" id="cfg-earn-n">0</span> <span class="ex-hint">(liga/desliga)</span></label>
             <input id="cfg-earn-label" placeholder="Nome da seção (ex.: 2Q26 Review)"/>
             <div id="cfg-earn"></div>
             <button class="btn ex-add" id="cfg-earn-add">+ relatório</button>
@@ -683,12 +716,16 @@ async function loadConfig(){
 }
 function renderPubList(hostId, list){
   const host=document.getElementById(hostId); if(!host) return;
+  // numeração 1..n por linha + contador total no cabeçalho (igual ao painel de notícias)
   host.innerHTML=(list||[]).map((p,i)=>`<div class="pub-row" data-i="${i}">
+    <span class="pub-n">${i+1}</span>
     <span class="pub-h" draggable="true" title="Arraste para reordenar">⠿</span>
     <input class="pub-name" placeholder="Nome a exibir" value="${esc(p.name||'')}">
     <select class="pub-sec">${SECTORS.map(([v,l])=>`<option value="${v}"${p.sector===v?' selected':''}>${l}</option>`).join('')}</select>
     <input class="pub-link" placeholder="Link do relatório" value="${esc(p.link||'')}">
     <button class="pub-x" title="Remover">×</button></div>`).join('');
+  const cnt=document.getElementById(hostId+'-n');
+  if(cnt){ cnt.textContent=(list||[]).length; cnt.title=(list||[]).length+' relatório(s) neste bloco'; }
   let dragI=null;
   host.querySelectorAll('.pub-row').forEach(row=>{ const i=+row.dataset.i;
     row.querySelector('.pub-name').oninput=e=>{ list[i].name=e.target.value; saveConfig(); };
@@ -706,7 +743,13 @@ function renderPubList(hostId, list){
 function renderConfig(){
   const c=S.config, set=(id,prop,val)=>{ const el=document.getElementById(id); if(el) el[prop]=val; };
   set('cfg-intro-on','checked',!!c.intro.on);
-  set('cfg-intro-text','value',c.intro.text||'');
+  // editor rico: só (re)escreve o conteúdo quando NÃO está com o cursor dentro — senão
+  // reescrever o innerHTML a cada render jogaria o cursor pro começo no meio da digitação.
+  const _rt=rtEl();
+  if(_rt && document.activeElement!==_rt){
+    const want=introHTML(c.intro);
+    if(rtClean(_rt.innerHTML)!==want) _rt.innerHTML=want;
+  }
   set('cfg-earn-on','checked',!!c.earnings_review.on);
   set('cfg-earn-label','value',c.earnings_review.label||'');
   renderPubList('cfg-pubs', c.recent_publications);
@@ -742,29 +785,297 @@ function renderAnalysts(hostId, list){
   });
 }
 
-// inserir um link ([palavra](url)) na mensagem de abertura — vira hyperlink no Word e no e-mail
-function insertIntroLink(){
-  const ta=document.getElementById('cfg-intro-text'); if(!ta) return;
-  const s=ta.selectionStart, e=ta.selectionEnd, hasSel=e>s;
-  const word=(hasSel? ta.value.slice(s,e) : (prompt('Qual palavra vira o link?','')||'')).trim();
-  if(!word) return;
-  let url=(prompt('Cole o link (URL):','https://')||'').trim();
-  if(!url||url==='https://') return;
-  if(!/^https?:\/\//i.test(url)) url='https://'+url;
-  const md='['+word+']('+url+')';
-  const a=hasSel?s:ta.selectionStart, b=hasSel?e:ta.selectionStart;
-  ta.value=ta.value.slice(0,a)+md+ta.value.slice(b);
-  S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
+// ══════════════════════════════════════════════════════════════════════════════
+// EDITOR RICO DA MENSAGEM DE ABERTURA (tipo Word: negrito · itálico · sublinhado ·
+// cor da letra · link). Escreve-se JÁ FORMATADO — nada de ver "**palavra**" na tela.
+//
+// O que fica guardado é HTML enxuto em S.config.intro.html (formato canônico que o motor
+// lê no Word E no e-mail — clipping/build.py::parse_intro_lines). S.config.intro.text
+// segue gravado como TEXTO PURO: é o que as mensagens antigas usavam, e serve de reserva.
+// ══════════════════════════════════════════════════════════════════════════════
+const RT_OK={B:1,STRONG:1,I:1,EM:1,U:1,A:1,SPAN:1,FONT:1,BR:1,DIV:1,P:1};
+// ao colar: essas viram uma LINHA (div) em vez de sumir — item de lista/título/linha de
+// tabela colado do Word não pode virar um blocão de texto emendado
+const RT_AS_DIV={LI:1,H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,BLOCKQUOTE:1,TR:1,PRE:1};
+const RT_COLORS=[['#111111','Preto'],['#FF5000','Laranja Itaú'],['#C00000','Vermelho'],
+                 ['#00B050','Verde'],['#0000FF','Azul']];
+function rtEl(){ return document.getElementById('cfg-intro-rt'); }
+function _rtEsc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// cor válida → '#rrggbb'. Usa o normalizador do canvas: qualquer cor CSS válida (nome,
+// rgb(), hex curto) volta como #rrggbb; valor inválido não muda o fillStyle → detectado
+// pela dupla atribuição (parte de preto e de branco; se as duas concordam, foi aceita).
+const _rtCtx=(function(){ try{ return document.createElement('canvas').getContext('2d'); }catch(e){ return null; } })();
+function _rtColor(v){
+  v=String(v||'').trim(); if(!v||!_rtCtx) return '';
+  _rtCtx.fillStyle='#000000'; _rtCtx.fillStyle=v; const a=_rtCtx.fillStyle;
+  _rtCtx.fillStyle='#ffffff'; _rtCtx.fillStyle=v; const b=_rtCtx.fillStyle;
+  return (a===b && /^#[0-9a-f]{6}$/i.test(a)) ? String(a).toLowerCase() : '';
+}
+// URL segura (nada de javascript:/data:) — sem esquema, assume https://
+function _rtUrl(u){
+  u=String(u||'').trim(); if(!u) return '';
+  if(/^(https?:\/\/|mailto:)/i.test(u)) return u;
+  if(/^(javascript|data|vbscript):/i.test(u)) return '';
+  return 'https://'+u.replace(/^\/+/,'');
 }
 
-// deixar a(s) palavra(s) selecionada(s) em **negrito** — vira bold no Word e no e-mail
-function insertIntroBold(){
-  const ta=document.getElementById('cfg-intro-text'); if(!ta) return;
-  const s=ta.selectionStart, e=ta.selectionEnd;
-  if(e<=s){ alert('Selecione a palavra no texto primeiro.'); return; }
-  const md='**'+ta.value.slice(s,e)+'**';
-  ta.value=ta.value.slice(0,s)+md+ta.value.slice(e);
-  S.config.intro.text=ta.value; S.config.intro.on=true; renderConfig(); saveConfig(); ta.focus();
+// Sanitiza o HTML do editor: só as tags/atributos que o motor entende sobrevivem.
+// Tag de fora é DESEMBRULHADA (o texto dela fica) — assim colar do Word/Outlook não suja.
+function rtClean(html){
+  const box=document.createElement('div'); box.innerHTML=String(html||'');
+  (function walk(node){
+    Array.prototype.slice.call(node.childNodes).forEach(ch=>{
+      if(ch.nodeType===3) return;                                  // texto: mantém
+      if(ch.nodeType!==1){ ch.remove(); return; }                   // comentário etc.
+      const tag=ch.tagName;
+      if(tag==='SCRIPT'||tag==='STYLE'){ ch.remove(); return; }
+      walk(ch);
+      if(RT_AS_DIV[tag]){                                           // vira uma linha
+        const dv=document.createElement('div');
+        while(ch.firstChild) dv.appendChild(ch.firstChild);
+        ch.parentNode.replaceChild(dv,ch); return;
+      }
+      if(!RT_OK[tag]){                                              // desembrulha
+        while(ch.firstChild) ch.parentNode.insertBefore(ch.firstChild,ch);
+        ch.remove(); return;
+      }
+      // A cor pode cair em QUALQUER tag: o execCommand('foreColor') aproveita o elemento
+      // que já envolve a seleção (ex.: <i style="color:…">) em vez de criar um <span>.
+      const color=_rtColor(ch.style && ch.style.color) || _rtColor(ch.getAttribute('color'));
+      const href=(tag==='A') ? _rtUrl(ch.getAttribute('href')) : '';
+      const unwrap=()=>{ while(ch.firstChild) ch.parentNode.insertBefore(ch.firstChild,ch); ch.remove(); };
+      Array.prototype.slice.call(ch.attributes).forEach(at=>ch.removeAttribute(at.name));
+      if(tag==='A'){
+        if(!href){ unwrap(); return; }
+        ch.setAttribute('href',href); ch.setAttribute('target','_blank'); ch.setAttribute('rel','noopener');
+        if(color) ch.setAttribute('style','color:'+color);
+      }else if(tag==='FONT'){
+        if(!color){ unwrap(); return; }
+        const sp=document.createElement('span');                    // <font color> → <span style>
+        while(ch.firstChild) sp.appendChild(ch.firstChild);
+        sp.setAttribute('style','color:'+color);
+        ch.parentNode.replaceChild(sp,ch); return;
+      }else if(tag==='SPAN'){
+        if(!color){ unwrap(); return; }                             // span sem cor não serve p/ nada
+        ch.setAttribute('style','color:'+color);
+      }else if(color){ ch.setAttribute('style','color:'+color); }
+    });
+  })(box);
+  return box.innerHTML;
+}
+
+// HTML do editor → texto puro (uma linha por parágrafo/<br>) p/ a reserva em intro.text
+function rtPlain(html){
+  const box=document.createElement('div'); box.innerHTML=String(html||'');
+  let out='';
+  (function walk(node){
+    Array.prototype.slice.call(node.childNodes).forEach(ch=>{
+      if(ch.nodeType===3){ out+=String(ch.nodeValue).replace(/[ \t\r\n\f]+/g,' '); return; }
+      if(ch.nodeType!==1) return;
+      const t=ch.tagName;
+      if(t==='BR'){ out+='\n'; return; }
+      const blk=(t==='DIV'||t==='P'||t==='LI');
+      if(blk && out && !/\n$/.test(out)) out+='\n';
+      walk(ch);
+      if(blk && out && !/\n$/.test(out)) out+='\n';
+    });
+  })(box);
+  return out.replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
+}
+
+// Mensagem no formato ANTIGO (**negrito** / [texto](url)) → HTML do editor.
+function mdToHTML(text){
+  return String(text||'').split('\n').map(ln=>{
+    let out='',pos=0,m; const re=/\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+    while((m=re.exec(ln))){
+      if(m.index>pos) out+=_rtEsc(ln.slice(pos,m.index));
+      out+= (m[1]!=null) ? '<b>'+_rtEsc(m[1])+'</b>'
+                         : '<a href="'+_rtEsc(_rtUrl(m[3])).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">'+_rtEsc(m[2])+'</a>';
+      pos=re.lastIndex;
+    }
+    if(pos<ln.length) out+=_rtEsc(ln.slice(pos));
+    return '<div>'+(out||'<br>')+'</div>';
+  }).join('');
+}
+// o que o editor deve mostrar p/ um config['intro'] (HTML novo, ou converte o antigo)
+function introHTML(intro){
+  intro=intro||{};
+  return (intro.html||'').trim() ? rtClean(intro.html) : mdToHTML(intro.text||'');
+}
+
+// guarda o que está escrito (sem tocar no DOM → não perde o cursor enquanto se digita)
+function rtSync(){
+  const el=rtEl(); if(!el) return;
+  const html=rtClean(el.innerHTML), plain=rtPlain(html);
+  S.config.intro.html = plain.trim() ? html : '';
+  S.config.intro.text = plain;
+  saveConfig();
+}
+
+// seleção: lembrar/restaurar (os botões da barra não podem roubar o cursor do editor)
+let _rtRange=null;
+function rtRemember(){
+  const el=rtEl(), s=window.getSelection();
+  if(!el||!s||!s.rangeCount) return;
+  const r=s.getRangeAt(0);
+  if(el.contains(r.commonAncestorContainer)) _rtRange=r.cloneRange();
+}
+function rtRestore(){
+  const el=rtEl(); if(!el) return;
+  const s=window.getSelection();
+  // se a seleção JÁ está dentro do editor, ela manda — a guardada é reserva p/ quando o
+  // clique num botão/seletor de cor tirou o foco de lá (senão um range velho sobrescreve).
+  const live=!!(s && s.rangeCount && el.contains(s.getRangeAt(0).commonAncestorContainer));
+  el.focus();
+  if(!live && _rtRange){ s.removeAllRanges(); s.addRange(_rtRange); }
+}
+function rtCmd(cmd,val){
+  rtRestore();
+  try{
+    document.execCommand('styleWithCSS',false, cmd==='foreColor');   // b/i/u → <b>/<i>/<u>; cor → <span style>
+    document.execCommand(cmd,false, val===undefined?null:val);
+  }catch(e){ console.warn('rt',cmd,e); }
+  rtRemember(); rtSync(); rtState(); rtBubble();
+}
+function rtClear(){ rtRestore();
+  try{ document.execCommand('removeFormat'); document.execCommand('unlink'); }catch(e){}
+  rtSync(); rtState(); rtBubble(); }
+// botões B/I/U acesos conforme onde o cursor está
+function rtState(){
+  const el=rtEl(); if(!el) return;
+  [['bold','bold'],['italic','italic'],['underline','underline']].forEach(([cmd])=>{
+    const b=document.querySelector('#cfg-intro-tools [data-cmd="'+cmd+'"]'); if(!b) return;
+    let on=false; try{ on=document.queryCommandState(cmd); }catch(e){}
+    b.classList.toggle('on', !!on);
+  });
+}
+
+// ── links ─────────────────────────────────────────────────────────────────────
+function rtAnchor(){
+  const el=rtEl(), s=window.getSelection();
+  if(!el||!s||!s.rangeCount) return null;
+  let n=s.anchorNode; if(n&&n.nodeType===3) n=n.parentNode;
+  if(!n||!el.contains(n)) return null;
+  return n.closest ? n.closest('a') : null;
+}
+function rtLink(){
+  rtRestore();
+  const a=rtAnchor(), s=window.getSelection();
+  const hasSel=!!(s&&!s.isCollapsed&&String(s).trim());
+  let text=a?a.textContent:(hasSel?String(s):'');
+  if(!a&&!hasSel){ text=(prompt('Qual texto vira o link?','')||'').trim(); if(!text) return; }
+  const url=_rtUrl(prompt('Cole o link (URL):', a?a.getAttribute('href'):'https://')||'');
+  if(!url||url==='https://') return;
+  if(a){ a.setAttribute('href',url); }
+  else if(hasSel){ try{ document.execCommand('createLink',false,url); }catch(e){} }
+  else{ try{ document.execCommand('insertHTML',false,
+    '<a href="'+_rtEsc(url).replace(/"/g,'&quot;')+'">'+_rtEsc(text)+'</a>&nbsp;'); }catch(e){} }
+  const el=rtEl();
+  if(el) el.querySelectorAll('a').forEach(x=>{ x.target='_blank'; x.rel='noopener'; });
+  rtRemember(); rtSync(); rtBubble();
+}
+function rtUnlink(){
+  rtRestore();
+  const a=rtAnchor();
+  if(a){ const r=document.createRange(); r.selectNodeContents(a);
+         const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  try{ document.execCommand('unlink'); }catch(e){}
+  rtRemember(); rtSync(); rtBubble();
+}
+
+// ── barrinha flutuante: aparece ao selecionar texto (ou ao clicar num link) ────
+function _rtPop(){
+  let p=document.getElementById('rt-pop');
+  if(!p){ p=document.createElement('div'); p.id='rt-pop'; p.className='rt-pop'; p.hidden=true;
+          document.body.appendChild(p); }
+  return p;
+}
+function rtBubble(){
+  const el=rtEl(), pop=_rtPop(); if(!el) return;
+  const s=window.getSelection();
+  const inside=s&&s.rangeCount&&el.contains(s.anchorNode);
+  if(!inside){ pop.hidden=true; return; }
+  const a=rtAnchor(), hasSel=!s.isCollapsed&&String(s).trim();
+  if(!a&&!hasSel){ pop.hidden=true; return; }
+  pop.innerHTML = a
+    ? '<button type="button" class="rt-b" data-pop="open">↗ abrir</button>'
+      +'<button type="button" class="rt-b" data-pop="link">🔗 editar</button>'
+      +'<button type="button" class="rt-b" data-pop="unlink">⛓ remover</button>'
+    : '<button type="button" class="rt-b" data-pop="bold"><b>B</b></button>'
+      +'<button type="button" class="rt-b" data-pop="italic"><i>I</i></button>'
+      +'<button type="button" class="rt-b" data-pop="underline"><u>U</u></button>'
+      +'<button type="button" class="rt-b" data-pop="link">🔗</button>';
+  pop.hidden=false;
+  const href=a?a.getAttribute('href'):'';
+  pop.querySelectorAll('[data-pop]').forEach(b=>{
+    b.addEventListener('mousedown',e=>e.preventDefault());          // não rouba o cursor
+    b.onclick=()=>{ const k=b.dataset.pop;
+      if(k==='open'){ if(href) window.open(href,'_blank','noopener'); }
+      else if(k==='link') rtLink();
+      else if(k==='unlink') rtUnlink();
+      else rtCmd(k); };
+  });
+  const r=(a?a:s.getRangeAt(0)).getBoundingClientRect();
+  const w=pop.offsetWidth, h=pop.offsetHeight;
+  pop.style.left=Math.max(8, Math.min(window.innerWidth-w-8, r.left))+'px';
+  pop.style.top =(r.top-h-6 > 8 ? r.top-h-6 : r.bottom+6)+'px';
+}
+
+// ── ligação dos eventos do editor (chamado uma vez, no wire()) ─────────────────
+function wireIntroEditor(){
+  const el=rtEl(), tools=document.getElementById('cfg-intro-tools');
+  if(!el||!tools) return;
+  try{ document.execCommand('defaultParagraphSeparator',false,'div'); }catch(e){}
+
+  const sw=document.getElementById('cfg-intro-colors');
+  if(sw) sw.innerHTML=RT_COLORS.map(([c,n])=>
+    `<button type="button" class="rt-sw" data-color="${c}" title="Cor da letra: ${n}" style="background:${c}"></button>`).join('');
+
+  tools.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('mousedown',e=>e.preventDefault());          // mantém a seleção no editor
+    b.onclick=()=>{ const c=b.dataset.cmd;
+      if(b.dataset.color) return rtCmd('foreColor', b.dataset.color);
+      if(c==='link')  return rtLink();
+      if(c==='clear') return rtClear();
+      if(c) rtCmd(c); };
+  });
+  const pick=document.getElementById('cfg-intro-pick');
+  if(pick){
+    pick.addEventListener('mousedown',rtRemember);                  // o seletor do sistema tira o foco
+    pick.addEventListener('input', ()=>rtCmd('foreColor',pick.value));
+  }
+
+  el.addEventListener('input', ()=>{ S.config.intro.on=true;
+    const cb=document.getElementById('cfg-intro-on'); if(cb) cb.checked=true;
+    rtSync(); rtState(); });
+  el.addEventListener('keyup',   ()=>{ rtRemember(); rtState(); rtBubble(); });
+  el.addEventListener('mouseup', ()=>{ rtRemember(); rtState(); rtBubble(); });
+  el.addEventListener('blur',    ()=>setTimeout(()=>{ if(document.activeElement!==rtEl()) _rtPop().hidden=true; },200));
+  el.addEventListener('keydown', e=>{
+    if(!(e.ctrlKey||e.metaKey)) return;
+    const k=(e.key||'').toLowerCase();
+    if(k==='b'||k==='i'||k==='u'){ e.preventDefault(); rtCmd({b:'bold',i:'italic',u:'underline'}[k]); }
+    else if(k==='k'){ e.preventDefault(); rtLink(); }
+  });
+  // Ctrl+clique abre o link (igual ao Word); clique simples mostra a barrinha do link
+  el.addEventListener('click', e=>{
+    const a=e.target.closest&&e.target.closest('a');
+    if(a&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); window.open(a.href,'_blank','noopener'); }
+    else setTimeout(rtBubble,0);
+  });
+  // colar SEM sujeira: passa o HTML da área de transferência pelo sanitizador
+  el.addEventListener('paste', e=>{
+    const dt=e.clipboardData; if(!dt) return;
+    e.preventDefault();
+    const html=dt.getData('text/html');
+    const frag=html ? rtClean(html)
+                    : _rtEsc(dt.getData('text/plain')).replace(/\r?\n/g,'<br>');
+    try{ document.execCommand('insertHTML',false,frag); }catch(err){ }
+    rtSync();
+  });
+  window.addEventListener('scroll', ()=>{ if(!_rtPop().hidden) rtBubble(); }, true);
+  window.addEventListener('resize',()=>{ if(!_rtPop().hidden) rtBubble(); });
 }
 
 // ── Buscar novas agora (dispara o run do GitHub Actions via RPC) + data BRT ────
@@ -853,13 +1164,11 @@ function wire(){
   const cc=document.getElementById('clip-clear'); if(cc) cc.onclick=clearSel;
   // Config (mensagem/intro + Recent Publications + Earnings Review)
   document.getElementById('cfg-intro-on').onchange=e=>{ S.config.intro.on=e.target.checked; saveConfig(); };
-  document.getElementById('cfg-intro-text').oninput=e=>{ S.config.intro.text=e.target.value; saveConfig(); };
+  wireIntroEditor();   // negrito/itálico/sublinhado/cor/link direto no texto (tipo Word)
   document.getElementById('cfg-earn-on').onchange=e=>{ S.config.earnings_review.on=e.target.checked; saveConfig(); };
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
   document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
-  document.getElementById('cfg-intro-link').onclick=insertIntroLink;
-  document.getElementById('cfg-intro-bold').onclick=insertIntroBold;
   document.getElementById('cfg-analysts-add').onclick=()=>{ if(!Array.isArray(S.config.analysts)) S.config.analysts=[]; S.config.analysts.push({name:'',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement',phone:'',email:''}); renderConfig(); saveConfig(); };
   // Buscar novas agora (2 botões, disparam o GitHub Actions) + data default = hoje BRT
   const _hp=document.getElementById('clip-hunt-pw'), _hr=document.getElementById('clip-hunt-rss');
@@ -870,7 +1179,8 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S };
+window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
+              rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl };
 
 ;(async()=>{
   wire();
