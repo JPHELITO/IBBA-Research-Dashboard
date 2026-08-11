@@ -175,6 +175,10 @@ html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba
       <button class="cal-arrow" id="cal-prev" aria-label="Previous">‹</button>
       <button class="cal-arrow" id="cal-next" aria-label="Next">›</button>
       <button class="cal-today-btn" id="cal-today">Today</button>
+      <!-- Só admin: assinatura do calendário de earnings no Outlook (URL secreta,
+           servida pelo Supabase Storage — o middleware.js barraria pela Vercel). -->
+      <a class="cal-today-btn" id="cal-ics" hidden target="_blank" rel="noopener"
+         title="Assinar no Outlook: Adicionar calendário → Assinar da Web">📆 Subscribe</a>
     </div>
     <div class="cal-title" id="cal-title">—</div>
     <div class="cal-seg">
@@ -462,6 +466,9 @@ function openDetail(o){
     +`<div class="cm-title">${esc(o.title)}</div><div class="cm-when">${whenTxt}</div>`;
   if(!o.isWindow){ const ev=o.ev;
     if(ev.company) html+=`<div class="cm-row"><span class="k">Company</span><a class="cm-co" href="/market.html?t=${encodeURIComponent(ev.company)}">${esc(ev.company)}</a></div>`;
+    // Origem automática: a B3 informa a data de ENTREGA do ITR/DFP à CVM, que é um bom
+    // proxy do resultado mas não é a data anunciada pelo RI. Deixar isso explícito.
+    if(ev.source==='b3') html+=`<div class="cm-row"><span class="k">Source</span><span>B3 · Cronograma de Eventos Corporativos <em style="opacity:.7">(previsão)</em></span></div>`;
     if(ev.location) html+=`<div class="cm-row"><span class="k">Location</span><span>${esc(ev.location)}</span></div>`;
     if(ev.description) html+=`<div class="cm-desc">${linkify(ev.description)}</div>`;
     const links=Array.isArray(ev.links)?ev.links:[];
@@ -531,6 +538,25 @@ async function calStart(){
     if(!session){window.location.replace('/login.html');return}
     _session=session; _setAuthCookie(session);
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Botão de assinatura do .ics — só admin. O endereço tem um código secreto guardado
+    // em secure_config (que o navegador não lê direto), então vem por RPC. Clicar copia
+    // o endereço: no Outlook o caminho é "Adicionar calendário → Assinar da Web → colar".
+    async function revealIcsLink(){
+      try{
+        const url = await rpc('admin_get_ics_url');
+        if(!url) return;
+        const a = document.getElementById('cal-ics');
+        a.href = url; a.hidden = false;
+        a.addEventListener('click', ev => {
+          ev.preventDefault();
+          navigator.clipboard.writeText(url).then(()=>{
+            const t = a.textContent; a.textContent = '✓ Link copiado';
+            setTimeout(()=>{ a.textContent = t; }, 2200);
+          }).catch(()=> window.open(url,'_blank','noopener'));
+        });
+      }catch(e){ console.warn('admin_get_ics_url', e); }   // SQL ainda não rodado
+    }
+
     // Portão: admin (get_my_role OU is_admin) pré-visualiza mesmo com a flag DESLIGADA; cliente não vê.
     let flagOn=false, isAdmin=false;
     try{ isAdmin = (await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role', e); }
@@ -543,6 +569,7 @@ async function calStart(){
       document.getElementById('denied').hidden=false;
       return;
     }
+    if(isAdmin) revealIcsLink();
     await calStart();
   }catch(e){ console.error(e);
     const raw=String(e&&e.message||e);

@@ -1,0 +1,74 @@
+name: 📅 B3 — Cronograma de Eventos Corporativos → Calendário + .ics
+
+# 1×/DIA, 23:20 UTC = 20:20 de Brasília. A B3 publicou a versão de 05/08 às 16:51 BRT
+# (Last-Modified do arquivo), então 20:20 pega no mesmo dia.
+#
+# A B3 NÃO declara com que frequência atualiza. As duas versões observadas (05/07 e
+# 05/08/2026) sugerem mensal, ~dia 5, mas com duas amostras isso é indício, não regra —
+# e o Wayback não guarda a página, então não dá para medir o histórico. Checar todo dia
+# é barato e imune a essa incerteza: se o arquivo não mudou, o robô sai em segundos sem
+# escrever nada. De quebra, cada mudança fica em update_log — daqui a alguns meses a
+# cadência real estará MEDIDA.
+#
+# Não commita nada (tudo vai para o Supabase) → sem concurrency com os workflows do
+# steel_sm.db.
+#
+# ⚠️ Secrets necessários neste repo: SUPABASE_URL, SUPABASE_SERVICE_KEY, SMTP_USER, SMTP_PASS.
+# ⚠️ Pré-requisito de uma vez só: rodar admin/supabase_b3_calendar.sql no Supabase.
+
+on:
+  schedule:
+    - cron: "20 23 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Reprocessar mesmo sem mudança"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Só mostrar o que faria, sem gravar"
+        type: boolean
+        default: false
+      hidden:
+        description: "Criar os eventos ocultos (só admin vê)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: b3-calendar
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependências
+        run: pip install requests openpyxl pytest
+
+      # Roda ANTES de publicar: um .ics malformado é pior que um .ics velho — o Outlook
+      # pode largar a assinatura, e aí o usuário perde o calendário sem entender por quê.
+      - name: Testes (bytes do .ics + parser da planilha)
+        run: python -m pytest tests/test_ics_bytes.py tests/test_b3_calendar.py -q
+
+      # O script manda os próprios e-mails (dedup via update_log) e nunca sai != 0.
+      - name: Ler a B3 → calendário + publicar .ics
+        run: |
+          ARGS="--update"
+          [ "${{ inputs.force }}"   = "true" ] && ARGS="$ARGS --force"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          [ "${{ inputs.hidden }}"  = "true" ] && ARGS="$ARGS --hidden"
+          python _shared/update_b3_calendar.py $ARGS
+
+      - name: Log update
+        if: env.B3_NEW_DATA == 'true'
+        run: python _shared/log_update.py "b3_calendar" auto "cronograma B3 ${B3_ATUALIZADO}"

@@ -799,7 +799,9 @@ function _calRenderEvList(){
     const row=document.createElement('div'); row.className='team-row';
     const when=e.start_date+(e.end_date?' … '+e.end_date:'')+(!e.all_day&&e.start_time?' '+String(e.start_time).slice(0,5):'');
     const info=document.createElement('span');
-    info.innerHTML=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color||'#8C8C8C')};margin-right:8px"></span><b>${esc(e.title)}</b>${e.recurrence?' 🔁':''}<span class="muted"> — ${esc(when)}${e.company?' · '+esc(e.company):''}${e.is_visible?'':' · oculto'}</span>`;
+    // "· B3" = importado do cronograma da B3 pelo robô. Editar aqui funciona, mas o robô
+    // pode reescrever a data no próximo run; o que você cria à mão ele nunca toca.
+    info.innerHTML=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color||'#8C8C8C')};margin-right:8px"></span><b>${esc(e.title)}</b>${e.recurrence?' 🔁':''}<span class="muted"> — ${esc(when)}${e.company?' · '+esc(e.company):''}${e.source==='b3'?' · B3':''}${e.is_visible?'':' · oculto'}</span>`;
     const acts=document.createElement('span'); acts.className='acts';
     const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calEvEdit(e.id);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calEvDel(e.id);

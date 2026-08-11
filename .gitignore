@@ -9,6 +9,9 @@ venv/
 *.xlsx
 *.xlsm
 *.xls
+# Exceção: fixtures de teste. Só entram aqui arquivos PÚBLICOS (o cronograma da B3
+# qualquer um baixa do site, sem login). Nada proprietário nesta pasta.
+!tests/fixtures/*.xlsx
 
 # Claude Code
 .claude/
