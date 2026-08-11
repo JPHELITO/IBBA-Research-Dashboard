@@ -113,7 +113,7 @@ def test_period_label():
 
 def _existente(**kw):
     base = dict(id="uuid-x", title="", company="", start_date="", source=None,
-                external_id=None, is_visible=True, ics_seq=0)
+                external_id=None, is_visible=True, ics_seq=0, locked=False)
     base.update(kw)
     return base
 
@@ -226,6 +226,49 @@ def test_acha_o_link_da_planilha():
 def test_link_ausente_nao_quebra(monkeypatch):
     monkeypatch.setattr(b3, "_mail", lambda *a, **k: None)
     assert b3.find_xlsx_link("<html>sem link</html>") is None
+
+
+# ───────────────────────── o cadeado (locked) ────────────────────────────────
+
+def test_cadeado_fechado_impede_o_robo_de_corrigir_a_data(planilha):
+    """Você editou a data no admin e travou. O robô não pode desfazer isso."""
+    dados, atualizado, _b = planilha
+    existentes = [_existente(id="rob-1", company="VALE", source="b3", locked=True,
+                             external_id="b3:VALE:2026:ITR3",
+                             title="VALE | 3Q26 Earnings Release (B3)",
+                             start_date="2026-11-20")]          # data que VOCÊ pôs
+    ups, div, canc, _a = b3.build_events(dados, 2026, "cat-1", existentes, atualizado,
+                                         b3.PREGAO_TO_TICKER, today=HOJE)
+    assert not any(u["external_id"] == "b3:VALE:2026:ITR3" for u in ups)
+    assert div == [] and canc == []      # nem corrige, nem reclama: foi escolha sua
+
+
+def test_cadeado_aberto_deixa_o_robo_corrigir(planilha):
+    """Espelho do teste acima: sem cadeado, a B3 manda."""
+    dados, atualizado, _b = planilha
+    existentes = [_existente(id="rob-1", company="VALE", source="b3", locked=False,
+                             external_id="b3:VALE:2026:ITR3",
+                             title="VALE | 3Q26 Earnings Release (B3)",
+                             start_date="2026-11-20")]
+    ups, _d, _c, _a = b3.build_events(dados, 2026, "cat-1", existentes, atualizado,
+                                      b3.PREGAO_TO_TICKER, today=HOJE)
+    vale = [u for u in ups if u["external_id"] == "b3:VALE:2026:ITR3"]
+    assert vale and vale[0]["start_date"] == "2026-10-29"
+
+
+def test_cadeado_fechado_nao_e_removido_quando_some_da_planilha(planilha):
+    dados, atualizado, _b = planilha
+    existentes = [_existente(id="travado", source="b3", locked=True,
+                             external_id="b3:XPTO3.SA:2026:ITR3", company="XPTO3.SA",
+                             title="XPTO3 | 3Q26 Earnings Release (B3)",
+                             start_date="2026-12-01"),
+                  _existente(id="solto", source="b3", locked=False,
+                             external_id="b3:YYYY3.SA:2026:ITR3", company="YYYY3.SA",
+                             title="YYYY3 | 3Q26 Earnings Release (B3)",
+                             start_date="2026-12-01")]
+    _u, _d, canc, _a = b3.build_events(dados, 2026, "cat-1", existentes, atualizado,
+                                       b3.PREGAO_TO_TICKER, today=HOJE)
+    assert [c["id"] for c in canc] == ["solto"]
 
 
 # ───────────────────────── trava de segurança ────────────────────────────────

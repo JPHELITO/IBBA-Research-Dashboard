@@ -339,6 +339,9 @@ def build_events(parsed: dict, fy: int, cat_id: str, existing: list,
     """→ (para_gravar, divergencias, cancelar, ausentes)."""
     today = today or dt.date.today()
     idx = index_existing(existing)
+    # Cadeado fechado = você assumiu este evento. Vale tanto para os que você criou
+    # do zero quanto para os que vieram da B3 e você corrigiu no admin.
+    travados = {e.get("external_id") for e in existing if e.get("locked")}
     upserts, diverge, seen_ext = [], [], set()
 
     atu = atualizado.strftime("%d/%m/%Y") if atualizado else "?"
@@ -352,6 +355,11 @@ def build_events(parsed: dict, fy: int, cat_id: str, existing: list,
             per = period_label(kind, fy)
             ext = f"{SOURCE_TAG}:{ticker}:{fy}:{kind}"
             seen_ext.add(ext)
+
+            # Cadeado fechado: você mandou manter do jeito que está. Nem atualiza,
+            # nem reclama — foi uma escolha sua, não uma divergência a resolver.
+            if ext in travados:
+                continue
 
             # Já existe algo seu para (empresa, trimestre)? Então o robô não encosta.
             manual = [e for e in idx.get((ticker, per), []) if not e.get("source")]
@@ -381,6 +389,7 @@ def build_events(parsed: dict, fy: int, cat_id: str, existing: list,
     # e só do exercício que este arquivo cobre. Passado jamais é mexido.
     cancel = [e for e in existing
               if e.get("source") == SOURCE_TAG and e.get("is_visible")
+              and not e.get("locked")            # cadeado fechado não some do calendário
               and e.get("external_id") not in seen_ext
               and (e.get("external_id") or "").split(":")[2:3] == [str(fy)]
               and (e.get("start_date") or "") > today.isoformat()]
@@ -545,7 +554,7 @@ def main() -> None:
 
     existing = _get("exec_calendar_events",
                     "select=id,title,company,start_date,end_date,all_day,start_time,"
-                    "end_time,description,source,external_id,is_visible,ics_seq"
+                    "end_time,description,source,external_id,is_visible,ics_seq,locked"
                     f"&category_id=eq.{cat_id}")
     if existing is None:
         # Sem saber o que já existe, qualquer gravação arrisca duplicar ou passar por
@@ -594,7 +603,7 @@ def main() -> None:
     if slug:
         fresh = _get("exec_calendar_events",
                      "select=id,title,company,start_date,end_date,all_day,start_time,"
-                     "end_time,description,source,external_id,ics_seq"
+                     "end_time,description,source,external_id,ics_seq,locked"
                      f"&category_id=eq.{cat_id}&is_visible=eq.true"
                      f"&start_date=gte.{(dt.date.today() - dt.timedelta(days=90)).isoformat()}")
         if fresh is None:

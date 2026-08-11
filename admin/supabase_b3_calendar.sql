@@ -24,7 +24,12 @@
 alter table public.exec_calendar_events
   add column if not exists source      text,
   add column if not exists external_id text,
-  add column if not exists ics_seq     int not null default 0;
+  add column if not exists ics_seq     int not null default 0,
+  add column if not exists locked      boolean not null default false;
+
+comment on column public.exec_calendar_events.locked is
+  'true = cadeado fechado: o robô não mexe mais neste evento. Fecha sozinho quando '
+  'você edita pelo admin um evento que veio da B3.';
 
 comment on column public.exec_calendar_events.source is
   'null = criado à mão no admin; ''b3'' = importado do cronograma de eventos corporativos da B3';
@@ -94,6 +99,72 @@ create or replace function public.admin_get_exec_calendar_events()
 $$;
 revoke all on function public.admin_get_exec_calendar_events() from public, anon;
 grant execute on function public.admin_get_exec_calendar_events() to authenticated;
+
+-- ───────────── 3b) O CADEADO: gravar pelo admin trava o evento ───────────────
+-- Regra combinada: se você editar pelo admin um evento que veio da B3, ele passa a
+-- ser SEU — o cadeado fecha sozinho e o robô não encosta mais. Você pode reabrir a
+-- qualquer momento desmarcando a caixinha (aí ele volta a acompanhar a B3).
+--
+-- ⚠️ Esta função é uma CÓPIA da de supabase_exec_calendar.sql com duas linhas a mais
+--    (`locked`). Se um dia mexer no upsert lá, reaplique este arquivo depois.
+create or replace function public.admin_upsert_exec_calendar_event(p_id uuid, p_data jsonb)
+  returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
+  declare
+    v_id     uuid;
+    v_links  jsonb := case when jsonb_typeof(p_data->'links') = 'array' then p_data->'links' else '[]'::jsonb end;
+    v_recur  jsonb := case when jsonb_typeof(p_data->'recurrence') = 'object' then p_data->'recurrence' else null end;
+    v_src    text;
+    v_locked boolean;
+  begin
+    if not public.is_admin() then raise exception 'forbidden' using errcode='42501'; end if;
+    p_data := public._cal_blanks_to_null(p_data);
+    if p_id is null then
+      insert into public.exec_calendar_events
+        (title, category_id, start_date, end_date, all_day, start_time, end_time,
+         company, location, description, links, recurrence, is_visible, locked, updated_by)
+      values (
+        nullif(trim(p_data->>'title'),''),
+        (p_data->>'category_id')::uuid,
+        (p_data->>'start_date')::date,
+        (p_data->>'end_date')::date,
+        coalesce((p_data->>'all_day')::boolean, true),
+        (p_data->>'start_time')::time,
+        (p_data->>'end_time')::time,
+        nullif(trim(p_data->>'company'),''),
+        nullif(trim(p_data->>'location'),''),
+        nullif(trim(p_data->>'description'),''),
+        v_links, v_recur,
+        coalesce((p_data->>'is_visible')::boolean, true),
+        coalesce((p_data->>'locked')::boolean, false), auth.uid() )
+      returning id into v_id;
+    else
+      select source, locked into v_src, v_locked
+        from public.exec_calendar_events where id = p_id;
+      update public.exec_calendar_events set
+        title       = nullif(trim(p_data->>'title'),''),
+        category_id = (p_data->>'category_id')::uuid,
+        start_date  = (p_data->>'start_date')::date,
+        end_date    = (p_data->>'end_date')::date,
+        all_day     = coalesce((p_data->>'all_day')::boolean, true),
+        start_time  = (p_data->>'start_time')::time,
+        end_time    = (p_data->>'end_time')::time,
+        company     = nullif(trim(p_data->>'company'),''),
+        location    = nullif(trim(p_data->>'location'),''),
+        description = nullif(trim(p_data->>'description'),''),
+        links       = v_links,
+        recurrence  = v_recur,
+        is_visible  = coalesce((p_data->>'is_visible')::boolean, true),
+        -- A caixinha manda. Se o formulário não disser nada e o evento for da B3,
+        -- o cadeado fecha sozinho: você mexeu, então é seu.
+        locked      = coalesce((p_data->>'locked')::boolean,
+                               case when v_src = 'b3' then true else v_locked end),
+        updated_at  = now(), updated_by = auth.uid()
+      where id = p_id returning id into v_id;
+    end if;
+    return v_id;
+  end; $$;
+revoke all on function public.admin_upsert_exec_calendar_event(uuid, jsonb) from public, anon;
+grant execute on function public.admin_upsert_exec_calendar_event(uuid, jsonb) to authenticated;
 
 -- ───────────── 4) PASTA PÚBLICA DO ARQUIVO .ics ───────────────────────────────
 -- Precisa ser público: o Outlook busca o endereço sem login nenhum (e o middleware.js
