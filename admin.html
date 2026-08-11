@@ -701,9 +701,15 @@ html.dark .ov-card{background:#20242b}
             </div>
             <div class="row">
               <label class="muted"><input type="checkbox" id="cale-visible" checked> visível ao cliente</label>
+              <!-- Cadeado: fecha sozinho quando você edita um evento vindo da B3.
+                   Desmarcar devolve o evento ao robô, que volta a seguir a B3. -->
+              <label class="muted" id="cale-lock-wrap" hidden title="Com o cadeado fechado, o robô da B3 não altera nem remove este evento.">
+                <input type="checkbox" id="cale-locked" onchange="calLockUI()"> 🔒 manter como está (robô não mexe)
+              </label>
               <button class="btn" onclick="calEvSave()">Salvar evento</button>
               <button class="btn sec" onclick="calEvCancel()">Cancelar</button>
             </div>
+            <div class="muted" id="cale-lock-hint" hidden style="font-size:11px;opacity:.8;margin-top:-4px"></div>
           </div>
         </div>
         <div class="row" style="margin-bottom:8px;align-items:center;gap:8px">
@@ -799,7 +805,9 @@ function _calRenderEvList(){
     const row=document.createElement('div'); row.className='team-row';
     const when=e.start_date+(e.end_date?' … '+e.end_date:'')+(!e.all_day&&e.start_time?' '+String(e.start_time).slice(0,5):'');
     const info=document.createElement('span');
-    info.innerHTML=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color||'#8C8C8C')};margin-right:8px"></span><b>${esc(e.title)}</b>${e.recurrence?' 🔁':''}<span class="muted"> — ${esc(when)}${e.company?' · '+esc(e.company):''}${e.is_visible?'':' · oculto'}</span>`;
+    // "· B3" = importado do cronograma da B3 pelo robô. Editar aqui funciona, mas o robô
+    // pode reescrever a data no próximo run; o que você cria à mão ele nunca toca.
+    info.innerHTML=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color||'#8C8C8C')};margin-right:8px"></span><b>${esc(e.title)}</b>${e.recurrence?' 🔁':''}<span class="muted"> — ${esc(when)}${e.company?' · '+esc(e.company):''}${e.source==='b3'?(e.locked?' · B3 🔒':' · B3'):''}${e.locked&&e.source!=='b3'?' · 🔒':''}${e.is_visible?'':' · oculto'}</span>`;
     const acts=document.createElement('span'); acts.className='acts';
     const ed=document.createElement('button'); ed.className='chip'; ed.textContent='Editar'; ed.onclick=()=>calEvEdit(e.id);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>calEvDel(e.id);
@@ -852,7 +860,21 @@ function calEvReset(){
   _cg('cale-st').value=''; _cg('cale-et').value=''; _cg('cale-loc').value=''; _cg('cale-desc').value=''; _cg('cale-visible').checked=true;
   _cg('cale-freq').value=''; _cg('cale-interval').value=1; _cg('cale-until').value='';
   document.querySelectorAll('.calwd').forEach(c=>c.checked=false); if(_cg('calmm-dom'))_cg('calmm-dom').checked=true; if(_cg('cale-weekpos'))_cg('cale-weekpos').value='1';
+  _cg('cale-locked').checked=false; _calEvSrc=null; calLockUI();
   _calLinks=[]; calRenderLinks(); calToggleAllday(); calRecUI(); calCatPicked();
+}
+// O cadeado só faz sentido em evento que o robô alimenta (origem B3) ou que já está
+// travado; nos que você criou do zero ele nunca encostou, então nem aparece.
+let _calEvSrc=null;
+function calLockUI(){
+  const daB3=_calEvSrc==='b3', trav=_cg('cale-locked').checked;
+  _cg('cale-lock-wrap').hidden=!(daB3||trav);
+  const hint=_cg('cale-lock-hint'); hint.hidden=!daB3;
+  if(daB3) hint.textContent = trav
+    ? 'Veio do cronograma da B3. Salvando assim, este evento passa a ser seu — o robô '
+      + 'não altera mais a data nem remove.'
+    : 'Veio do cronograma da B3 e vai continuar no automático: o robô pode corrigir a '
+      + 'data no próximo dia, desfazendo o que você mudar aqui.';
 }
 function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
   calEvReset(); _cg('cal-ev-form').hidden=false;
@@ -861,6 +883,9 @@ function calEvEdit(id){ const e=_calEvs.find(x=>x.id===id); if(!e)return;
   _cg('cale-allday').checked=e.all_day!==false; calToggleAllday();
   _cg('cale-st').value=e.start_time?String(e.start_time).slice(0,5):''; _cg('cale-et').value=e.end_time?String(e.end_time).slice(0,5):'';
   _cg('cale-loc').value=e.location||''; _cg('cale-desc').value=e.description||''; _cg('cale-visible').checked=e.is_visible!==false;
+  // Abrir um evento da B3 para editar já pressupõe que você quer mandar nele: o cadeado
+  // vem fechado. Desmarcar devolve o evento ao robô. O que você vê é o que será salvo.
+  _calEvSrc=e.source||null; _cg('cale-locked').checked=(e.locked===true||_calEvSrc==='b3'); calLockUI();
   _calLinks=Array.isArray(e.links)?e.links.map(l=>({label:l.label||'',url:l.url||''})):[]; calRenderLinks();
   const r=e.recurrence;
   if(r&&r.freq){ _cg('cale-freq').value=r.freq; _cg('cale-interval').value=r.interval||1; _cg('cale-until').value=r.until||''; calRecUI();
@@ -880,6 +905,9 @@ async function calEvSave(){
     all_day:allday, start_time:allday?null:(_cg('cale-st').value||null), end_time:allday?null:(_cg('cale-et').value||null),
     company:_cg('cale-company').value.trim()||null, location:_cg('cale-loc').value.trim()||null,
     description:_cg('cale-desc').value||null, links, recurrence:rec, is_visible:_cg('cale-visible').checked };
+  // Só manda o cadeado quando a caixinha está à vista — assim o que você vê é o que
+  // vale. Em evento comum (sem caixinha) o banco mantém o estado que já estava.
+  if(!_cg('cale-lock-wrap').hidden) p_data.locked=_cg('cale-locked').checked;
   const {error}=await sbAuth.rpc('admin_upsert_exec_calendar_event',{p_id:_cg('cale-id').value||null, p_data});
   if(error){alert('Erro: '+error.message);return}
   _cg('cal-ev-form').hidden=true; calLoadEvs();

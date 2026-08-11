@@ -133,6 +133,14 @@ REGISTRY: list[dict] = [
          db="supabase", table="news_articles", cadence="live", fresh_col="found_at",
          how_pulled="pipeline", confidence="high", auto=True, stale_min=360,
          note="RSS+sitemaps+scrapers+Playwright. Auto-cura. Coluna de frescor = found_at."),
+    dict(key="b3_calendar", label="Cronograma de earnings (B3)", sector="live",
+         db="supabase", table="exec_calendar_events", cadence="live",
+         fresh_col="updated_at", how_pulled="site_scrape", confidence="medium",
+         auto=True, stale_min=4320,
+         note="Datas previstas de entrega de ITR/DFP das 7 empresas B3 da cobertura. "
+              "A B3 não declara frequência; observado ~mensal (dia ~5). O robô checa "
+              "1×/dia e nunca sobrescreve evento cadastrado à mão. CSN e Aura não "
+              "estão na fonte (segmento tradicional / BDR) e seguem manuais."),
 ]
 
 # ── acessores ────────────────────────────────────────────────────────────────
