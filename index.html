@@ -151,19 +151,25 @@ body{height:100vh;overflow:hidden;}
     "news news news news news news news news comm comm comm comm"
     "news news news news news news news news heat heat heat heat";
 }
-/* Pulse espremido (card Events ligado): chips de setor pequenos ao lado do título; gauge menor
-   centralizado em cima; contagens menores logo abaixo. */
+/* Pulse espremido (card Events ligado): mesma lista, tudo um pouco menor. A lista rola,
+   então nada é perdido — só encolhe. */
 .page.has-events .area-pulse .sec-head{justify-content:flex-start;padding-bottom:5px;}
 .page.has-events .pulse-controls{gap:4px;}
 .page.has-events .pulse-chip{font-size:8.5px!important;padding:2px 7px!important;letter-spacing:0;}
-.page.has-events .pulse-body{flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 8px 8px;}
-.page.has-events .pulse-body > .gauge{margin:0 auto;width:148px;height:74px;}
-.page.has-events .pulse-body > .gauge .gauge-val{font-size:19px;}
-.page.has-events .pulse-body > .gauge .gauge-label{font-size:7px;}
-.page.has-events .pulse-body > div:not(.gauge){width:100%;flex:none;}
-.page.has-events .pulse-stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:0;}
-.page.has-events .pulse-stat-num{font-size:12.5px;}
-.page.has-events .pulse-stat-lbl{font-size:6.5px;}
+.page.has-events .pulse-body{gap:5px;padding:6px 10px 8px;}
+.page.has-events .pulse-mkt{gap:8px;padding:4px 8px;}
+.page.has-events .pulse-mkt-val{font-size:20px;min-width:50px;}
+.page.has-events .pulse-mkt-lbl{font-size:8px;}
+.page.has-events .pulse-mkt-sub{font-size:7.5px;}
+/* espremido pelo card Events: a lista volta a UMA coluna (271px não comportam
+   nome + gap + score + confiança lado a lado) e rola por dentro. */
+.page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);}
+.page.has-events .pulse-row{grid-template-columns:1fr 46px 36px 26px;gap:4px;padding:2px 4px;}
+.page.has-events .pulse-name{font-size:10px;}
+.page.has-events .pulse-gap{font-size:10px;}
+.page.has-events .pscore{font-size:8.5px;}
+.page.has-events .pulse-conf{font-size:8px;}
+.page.has-events .pulse-foot{font-size:7px;}
 .ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
 .ev-open:hover{text-decoration:underline;}
 .ev-body{flex:1;min-height:0;overflow:auto;padding:6px 12px 10px;}
@@ -271,35 +277,65 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
 
-/* layout HORIZONTAL: gauge grande à esquerda + números à direita (preenche o painel largo) */
-.pulse-body{flex:1;min-height:0;overflow:hidden;padding:10px 24px;display:flex;
-  flex-direction:row;align-items:center;gap:24px;}
-.pulse-body > .gauge{flex:none;}
-.pulse-body > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
-.gauge{width:200px;height:100px;position:relative;}
-.gauge svg{position:absolute;inset:0;width:100%;height:100%;}
-.gauge-val{position:absolute;left:0;right:0;text-align:center;bottom:28%;
-  font-size:26px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
-.gauge-label{position:absolute;left:0;right:0;text-align:center;bottom:14%;
-  font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
-.gauge-label.bullish{color:var(--green);}
-.gauge-label.bearish{color:var(--red);}
-.gauge-label.neutral{color:var(--gray-mid);}
+/* v2 (2026-08): saiu o ponteiro de sentimento de notícia, entrou a leitura por EMPRESA.
+   O modelo estima o GAP DE ABERTURA de cada coberta a partir do que Ásia, Europa e
+   commodities negociaram de madrugada. Layout: faixa de mercado em cima + lista embaixo. */
+.pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 16px 10px;display:flex;
+  flex-direction:column;gap:7px;}
 
-.pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
-.pulse-stat{text-align:center;}
-.pulse-stat-num{font-size:16px;font-weight:700;letter-spacing:-.02em;}
-.pulse-stat-num.pos{color:var(--green);}
-.pulse-stat-num.neg{color:var(--red);}
-.pulse-stat-num.neu{color:var(--gray-mid);}
-.pulse-stat-lbl{font-size:8px;font-weight:600;color:var(--gray-mid);
-  letter-spacing:.04em;text-transform:uppercase;margin-top:1px;}
-.pulse-bar{height:5px;border-radius:3px;display:flex;overflow:hidden;
-  margin-top:6px;grid-column:1/-1;background:var(--border);}
-.pulse-bar-seg{transition:flex .3s;}
-.pulse-bar-seg.pos{background:var(--green);}
-.pulse-bar-seg.neg{background:var(--red);}
-.pulse-bar-seg.neu{background:var(--gray-mid);}
+/* faixa do topo: o número da cobertura + o que ele significa */
+.pulse-mkt{display:flex;align-items:center;gap:10px;flex:none;
+  padding:4px 9px;border-radius:7px;background:var(--gray-light);border:1px solid var(--border);}
+.pulse-mkt-val{font-size:21px;font-weight:700;letter-spacing:-.03em;line-height:1;
+  min-width:52px;text-align:center;font-variant-numeric:tabular-nums;}
+.pulse-mkt-val.pos{color:var(--green);} .pulse-mkt-val.neg{color:var(--red);}
+.pulse-mkt-val.neu{color:var(--gray-mid);}
+.pulse-mkt-txt{min-width:0;flex:1;}
+.pulse-mkt-lbl{font-size:8.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--gray-dark);line-height:1.25;}
+.pulse-mkt-sub{font-size:8px;color:var(--gray-mid);line-height:1.3;margin-top:1px;}
+
+/* lista de empresas — TRÊS COLUNAS × 3 linhas: o painel é largo (~580px de lista) e BAIXO
+   (a faixa 1 do grid tem 180px), então empilhar 9 nomes não caberia (só 3 apareciam).
+   Em 3×3 as nove cobertas ficam visíveis de uma vez, sem rolagem.
+   ⚠️ `minmax(0,1fr)` e NÃO `1fr`: as linhas têm texto `nowrap`, e o `1fr` puro
+   (=`minmax(auto,1fr)`) deixa o min-content esticar a coluna e desalinhar tudo —
+   mesma armadilha já documentada no calendário. */
+.pulse-list{flex:1;min-height:0;overflow:auto;display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;
+  gap:1px 10px;align-content:start;}
+.pulse-row{display:grid;grid-template-columns:1fr 46px 34px 26px;align-items:center;gap:4px;
+  padding:2px 4px;border-radius:5px;cursor:pointer;transition:background .12s;}
+.pulse-row:hover{background:var(--gray-light);}
+.pulse-row.off{cursor:default;opacity:.45;}
+.pulse-row.off:hover{background:transparent;}
+.pulse-name{font-size:10.5px;font-weight:600;color:var(--black);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.pulse-gap{font-size:10.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+.pulse-gap.pos{color:var(--green);} .pulse-gap.neg{color:var(--red);}
+.pulse-gap.neu{color:var(--gray-mid);}
+.pscore{font-size:9.5px;font-weight:700;text-align:center;border-radius:20px;padding:2px 0;
+  font-variant-numeric:tabular-nums;background:var(--border);color:var(--gray-dark);}
+.pscore.pos{background:rgba(22,163,74,.14);color:var(--green);}
+.pscore.neg{background:rgba(192,57,43,.14);color:var(--red);}
+.pscore.strong{font-weight:800;}
+.pscore.pos.strong{background:var(--green);color:#fff;}
+.pscore.neg.strong{background:var(--red);color:#fff;}
+.pulse-conf{font-size:9px;font-weight:600;color:var(--gray-mid);text-align:right;
+  font-variant-numeric:tabular-nums;}
+/* "por quê": abre embaixo da linha clicada, atravessando as duas colunas */
+.pulse-attr{display:none;padding:3px 8px 6px;grid-column:1/-1;
+  background:var(--gray-light);border-radius:5px;}
+.pulse-attr.open{display:block;}
+.pulse-attr-t{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--gray-mid);margin-bottom:3px;}
+.pulse-attr-r{display:grid;grid-template-columns:1fr 40px;gap:6px;align-items:center;
+  font-size:9.5px;line-height:1.5;}
+.pulse-attr-r span:first-child{color:var(--gray-dark);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;}
+.pulse-attr-r span:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+.pulse-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:2px;
+  border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ── NEWS HUNTER (2 cols × 10 rows) ────────────────────────────────── */
 .sec-new-badge{display:none;background:var(--orange);color:#fff;
@@ -561,8 +597,11 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   .hero-title{font-size:20px;}
   .page{padding:8px 14px 40px;gap:14px;}
   .area-secrow{grid-template-columns:1fr;}
-  .pulse-body{flex-direction:column;gap:14px;padding:14px;}
-  .gauge{margin:0 auto;}
+  .pulse-body{gap:10px;padding:12px 14px 14px;}
+  .pulse-list{overflow:visible;grid-template-columns:minmax(0,1fr);}
+  .pulse-row{grid-template-columns:1fr 62px 50px 40px;padding:5px 6px;}
+  .pulse-name,.pulse-gap{font-size:13px;}
+  .pscore{font-size:11px;} .pulse-conf{font-size:10.5px;} .pulse-mkt-val{font-size:28px;}
   .news-feed{grid-template-columns:1fr;grid-auto-flow:row;
     grid-template-rows:none;}
   .news-item{border-right:none;}
@@ -571,7 +610,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 }
 @media (max-width:420px){
   .hero-title{font-size:18px;}
-  .pulse-stats{grid-template-columns:repeat(2,1fr);}
+  .pulse-row{grid-template-columns:1fr 56px 44px 34px;}
 }
 /* ── NIGHT MODE: botão de tema (header é escuro nas duas versões) ── */
 .theme-btn{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;
@@ -595,6 +634,11 @@ html.dark .hm-pop-chip.on,html.dark .modal-ranges button.active{background:var(-
 html.dark .news-filter-chip.active{background:#343941;border-color:#343941;color:#fff;}
 html.dark .news-filter-chip.pos.active{background:var(--green);border-color:var(--green);}
 html.dark .news-filter-chip.neg.active{background:var(--red);border-color:var(--red);}
+/* chips de score do Market Pulse: no fundo escuro o tinte de 14% quase some */
+html.dark .pscore.pos{background:rgba(34,197,94,.22);}
+html.dark .pscore.neg{background:rgba(239,68,68,.22);}
+html.dark .pscore.pos.strong{background:var(--green);color:#0b0f0c;}
+html.dark .pscore.neg.strong{background:var(--red);color:#180b0b;}
 /* superfícies/realces hardcoded (não vêm de variável) */
 html.dark .news-item:hover{background:rgba(255,255,255,.05);}
 html.dark .tn-menu{background:#1c2026;}
@@ -722,40 +766,15 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       </div>
     </div>
     <div class="pulse-body">
-      <div class="gauge" id="pulse-gauge">
-        <svg viewBox="0 15 140 70" preserveAspectRatio="xMidYMid meet">
-          <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#E3E3E3" stroke-width="10" fill="none" stroke-linecap="round"/>
-          <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#FF5000" stroke-width="10" fill="none"
-                stroke-linecap="round" stroke-dasharray="188 188" id="gauge-arc"/>
-        </svg>
-        <div class="gauge-val" id="gauge-val">—</div>
-        <div class="gauge-label neutral" id="gauge-label">LOADING</div>
-      </div>
-      <div>
-        <div class="pulse-stats">
-          <div class="pulse-stat">
-            <div class="pulse-stat-num pos" id="stat-pos">—</div>
-            <div class="pulse-stat-lbl">Positive</div>
-          </div>
-          <div class="pulse-stat">
-            <div class="pulse-stat-num neg" id="stat-neg">—</div>
-            <div class="pulse-stat-lbl">Negative</div>
-          </div>
-          <div class="pulse-stat">
-            <div class="pulse-stat-num neu" id="stat-neu">—</div>
-            <div class="pulse-stat-lbl">Neutral</div>
-          </div>
-          <div class="pulse-stat">
-            <div class="pulse-stat-num" id="stat-tot">—</div>
-            <div class="pulse-stat-lbl">Total (24h)</div>
-          </div>
-        </div>
-        <div class="pulse-bar">
-          <div class="pulse-bar-seg pos" id="bar-pos" style="flex:0;"></div>
-          <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
-          <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
+      <div class="pulse-mkt">
+        <div class="pulse-mkt-val neu" id="pulse-mkt-val">—</div>
+        <div class="pulse-mkt-txt">
+          <div class="pulse-mkt-lbl" id="pulse-mkt-lbl">Loading</div>
+          <div class="pulse-mkt-sub" id="pulse-mkt-sub">Expected open across the coverage</div>
         </div>
       </div>
+      <div class="pulse-list" id="pulse-list"></div>
+      <div class="pulse-foot" id="pulse-foot"></div>
     </div>
   </div>
 
@@ -1179,8 +1198,21 @@ function _updateNewsMeta(){
 }
 setInterval(_updateNewsMeta,15000);
 
-// ─── MARKET PULSE ─────────────────────────────────────────────────────
+// ─── MARKET PULSE v2 ──────────────────────────────────────────────────
+// O QUE MUDOU (2026-08): o ponteiro antigo contava takes de notícia do dia. A auditoria
+// mostrou que aquilo media o retorno de ONTEM (correlação +0,18) e não sabia nada sobre
+// hoje (+0,013, p=0,71) — quase todo o material é assessment de preço, publicado DEPOIS
+// que o mercado se moveu. Trocado por um modelo que estima o GAP DE ABERTURA de cada
+// coberta a partir do que Ásia, Europa e commodities negociaram de madrugada.
+// Validado em 205 pregões de holdout: IC 0,26 e 58,6% de acerto direcional.
+//
+// ⚠️ Ele antecipa a ABERTURA, não a sessão. Depois do leilão o sinal se esgota
+// (testado: IC 0,04 contra o retorno abertura→fechamento). O rodapé avisa isso.
+//
+// Os takes por notícia NÃO foram tocados — o feed e o badge +/−/= seguem iguais.
 let _pulseSector = 'all';
+let _pulseRows = [];
+let _pulseAberto = null;      // empresa com o "por quê" aberto
 
 document.getElementById('pulse-controls').addEventListener('click', e => {
   const btn = e.target.closest('.pulse-chip');
@@ -1188,94 +1220,144 @@ document.getElementById('pulse-controls').addEventListener('click', e => {
   document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   _pulseSector = btn.dataset.sector;
-  loadPulse();
+  _renderPulse();
 });
 
-// Meia-noite de HOJE no horário de Brasília (America/Sao_Paulo), em ms epoch.
-// O Market Pulse mede o sentimento do DIA CORRENTE — reseta sozinho na virada
-// do dia (cada refresh recalcula este corte), sem o dia anterior "contaminar".
-function _spDayStartMs(){
-  try {
-    const now = new Date();
-    const dateStr = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(now); // "AAAA-MM-DD" em SP
-    const off = new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',timeZoneName:'longOffset'}).formatToParts(now).find(p=>p.type==='timeZoneName');
-    const m = off && /GMT([+-])(\d{2}):?(\d{2})?/.exec(off.value);
-    const offMin = m ? (parseInt(m[2],10)*60 + (m[3]?parseInt(m[3],10):0)) * (m[1]==='-'?-1:1) : -180;
-    return Date.parse(dateStr+'T00:00:00Z') - offMin*60000;   // instante UTC da meia-noite de SP
-  } catch(e){
-    const d = new Date(Date.now() - 3*3600*1000);   // fallback UTC-3 fixo (Brasil sem horário de verão desde 2019)
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + 3*3600*1000;
-  }
+// setor de `quotes` → chip da home. Mineração e siderurgia são S&M; celulose/papel é P&P.
+const _PULSE_SEC = {iron_ore:'sm', steel:'sm', gold:'sm', copper:'sm', mining:'sm',
+                    rare_earths:'sm', pp:'pp'};
+const _pSec = r => _PULSE_SEC[r.sector] || 'sm';
+// A lista roda em 3 colunas (~59px para o nome) — dois nomes de `quotes` não cabem inteiros.
+// Encurtar é melhor que espremer a fonte ou cortar com reticências.
+const _PULSE_NOME = {'AURA33.SA':'Aura', 'CMIN3.SA':'CSN Min.'};
+const _pNome = r => _PULSE_NOME[r.company] || r.name || r.company;
+
+function _pFaixa(s){
+  return s >= 65 ? 'STRONG BULLISH' : s >= 25 ? 'BULLISH'
+       : s > -25 ? 'NEUTRAL'       : s > -65 ? 'BEARISH' : 'STRONG BEARISH';
 }
+function _pCls(s){ return s >= 25 ? 'pos' : s <= -25 ? 'neg' : 'neu'; }
+
 async function loadPulse(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
-  const dayStartMs = _spDayStartMs();
-  const cutoff = new Date(dayStartMs).toISOString();
-  // Janela = HOJE (da meia-noite de Brasília até agora), pela RECÊNCIA EFETIVA
-  // (publicação real; found_at só p/ quem não tem published_at). Notícia de ONTEM
-  // não entra — o pulse reflete só o sentimento do dia corrente, e zera na virada.
-  // Conta só relevantes (include_in_report=true): exclui cripto/política/esporte
-  // e artigos sem take de mercado que o classificador descartou.
-  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,take_llm,sentiment,published_at,found_at`
-    +`&or=(published_at.gte.${cutoff},and(published_at.is.null,found_at.gte.${cutoff}))`
-    +`&include_in_report=eq.true&limit=2000`;
-  if(_pulseSector==='sm') url += `&sector=in.(steel,mining)`;   // S&M = aço + mineração (Vale/minério/cobre/ouro contam)
-  else if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
   try {
-    const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
-    if(!r.ok) throw new Error('pulse fetch');
-    const rows = await r.json();
-    // Guarda client-side: garante a janela do DIA pelo timestamp efetivo.
-    const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= dayStartMs);
-    let pos = 0, neg = 0, neu = 0, notake = 0;
-    for(const a of recent){
-      const t = a.take_llm;   // SÓ a IA — o robô não publica take (decisão do usuário 2026-06-17)
-      if(t == null) continue; // ainda não classificada pela IA → fica pendente, não pontua o pulse
-      // "+"/"-"/"="/"no take"/"review"
-      if(t === '+') pos++;
-      else if(t === '-') neg++;
-      else if(t === '=') neu++;        // neutral take: leitura de mercado que deu flat → ANCORA o meio
-      else notake++;                   // "no take"/"review": sem leitura de mercado → fora do ponteiro
-    }
-    const tot = pos + neg + neu;   // itens PONTUADOS (no-take não entra)
-    // Ponteiro com NEUTRO ANCORANDO: + e - puxam; "=" (o mercado está calmo)
-    // dilui pro meio (entra no denominador); "no take" não baliza (fica de fora).
-    const denom = pos + neg + neu;
-    const gaugeVal = denom > 0 ? Math.round(50 + (pos - neg) / denom * 50) : 50;
-    _renderGauge(gaugeVal);
-    document.getElementById('stat-pos').textContent = pos;
-    document.getElementById('stat-neg').textContent = neg;
-    document.getElementById('stat-neu').textContent = neu;
-    document.getElementById('stat-tot').textContent = tot;
-    document.getElementById('stat-tot').title = notake > 0 ? `+ ${notake} no-take (in feed, not scored)` : '';
-    document.getElementById('bar-pos').style.flex = pos;
-    document.getElementById('bar-neu').style.flex = neu;
-    document.getElementById('bar-neg').style.flex = neg;
+    const {data, error} = await sbAuth.rpc('get_market_pulse');
+    if(error) throw error;
+    _pulseRows = data || [];
   } catch(e){
     console.warn('pulse error:', e);
+    _pulseRows = [];
   }
+  _renderPulse();
 }
 
-function _renderGauge(val){
-  val = Math.max(0, Math.min(100, val));
-  document.getElementById('gauge-val').textContent = val;
-  const arc = document.getElementById('gauge-arc');
-  const total = 188;  // length of half-circle arc with r=60 in viewBox
-  const filled = total * val / 100;
-  arc.setAttribute('stroke-dasharray', `${filled} ${total}`);
-  const label = document.getElementById('gauge-label');
-  if(val >= 65){
-    label.textContent = 'BULLISH'; label.className = 'gauge-label bullish';
-    arc.setAttribute('stroke', '#16a34a');
-  } else if(val < 35){
-    label.textContent = 'BEARISH'; label.className = 'gauge-label bearish';
-    arc.setAttribute('stroke', '#c0392b');
-  } else {
-    label.textContent = 'NEUTRAL'; label.className = 'gauge-label neutral';
-    arc.setAttribute('stroke', '#8C8C8C');
+function _renderPulse(){
+  const lista = document.getElementById('pulse-list');
+  const foot  = document.getElementById('pulse-foot');
+  const val   = document.getElementById('pulse-mkt-val');
+  const lbl   = document.getElementById('pulse-mkt-lbl');
+  const sub   = document.getElementById('pulse-mkt-sub');
+  if(!lista) return;
+
+  if(!_pulseRows.length){
+    val.textContent = '—'; val.className = 'pulse-mkt-val neu';
+    lbl.textContent = 'No reading';
+    sub.textContent = "Today's run hasn't been published yet.";
+    lista.innerHTML = ''; foot.textContent = '';
+    return;
   }
+
+  const rows = _pulseRows.filter(r => _pulseSector === 'all' || _pSec(r) === _pulseSector);
+  const ok   = rows.filter(r => r.status === 'ok' && r.score != null);
+
+  // Market/Sector Pulse = média dos scores das empresas com leitura no filtro atual
+  if(ok.length){
+    const m = ok.reduce((a,r) => a + Number(r.score), 0) / ok.length;
+    const g = ok.reduce((a,r) => a + Number(r.gap_expected), 0) / ok.length;
+    val.textContent = (m > 0 ? '+' : '') + Math.round(m);
+    val.className = 'pulse-mkt-val ' + _pCls(m);
+    lbl.textContent = _pFaixa(m);
+    sub.textContent = `expected open ${g >= 0 ? '+' : ''}${g.toFixed(2)}% `
+                    + `across ${ok.length} ${ok.length === 1 ? 'name' : 'names'}`;
+  } else {
+    val.textContent = '—'; val.className = 'pulse-mkt-val neu';
+    lbl.textContent = 'No reading'; sub.textContent = 'No name with a signal in this filter.';
+  }
+
+  // com leitura primeiro (por convicção), depois os sem sinal
+  const ordem = [...rows].sort((a,b) => {
+    const pa = a.status === 'ok' ? 0 : 1, pb = b.status === 'ok' ? 0 : 1;
+    if(pa !== pb) return pa - pb;
+    return Math.abs(Number(b.score) || 0) - Math.abs(Number(a.score) || 0);
+  });
+
+  lista.innerHTML = ordem.map(r => {
+    const nome = _esc(_pNome(r));
+    if(r.status !== 'ok' || r.score == null){
+      const motivo = (r.attribution && r.attribution.motivo)
+        || (r.status === 'sem_dado' ? 'incomplete market data in this run' : 'no signal');
+      return `<div class="pulse-row off" title="${_esc(motivo)}">
+        <span class="pulse-name">${nome}</span>
+        <span class="pulse-gap neu">—</span>
+        <span class="pscore">no signal</span>
+        <span class="pulse-conf">—</span></div>`;
+    }
+    const s = Number(r.score), gap = Number(r.gap_expected), cf = r.confidence;
+    const forte = Math.abs(s) >= 65 ? ' strong' : '';
+    const tip = `${_pFaixa(s)} · model IC ${r.ic_oos != null ? Number(r.ic_oos).toFixed(2) : '—'}`
+              + ` out-of-sample · click to see what's driving it`;
+    return `<div class="pulse-row" data-emp="${_esc(r.company)}" title="${_esc(tip)}">
+        <span class="pulse-name">${nome}</span>
+        <span class="pulse-gap ${gap > 0 ? 'pos' : gap < 0 ? 'neg' : 'neu'}">${gap >= 0 ? '+' : ''}${gap.toFixed(2)}%</span>
+        <span class="pscore ${_pCls(s)}${forte}">${s > 0 ? '+' : ''}${Math.round(s)}</span>
+        <span class="pulse-conf">${cf != null ? Math.round(cf) + '%' : '—'}</span>
+      </div>
+      <div class="pulse-attr" data-attr="${_esc(r.company)}">
+        <div class="pulse-attr-t">what's driving it</div>
+        ${_pAttr(r)}
+      </div>`;
+  }).join('');
+
+  // reabre o "por quê" que estava aberto antes do refresh
+  if(_pulseAberto){
+    const el = lista.querySelector(`[data-attr="${CSS.escape(_pulseAberto)}"]`);
+    if(el) el.classList.add('open'); else _pulseAberto = null;
+  }
+
+  const r0 = _pulseRows[0];
+  const hora = r0.snapshot_at
+    ? new Date(r0.snapshot_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+    : `${r0.cut}:00`;
+  const dia = r0.session_date
+    ? new Date(r0.session_date + 'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+    : '';
+  foot.textContent = `Expected OPEN, not the session · data as of ${hora} on ${dia}`;
 }
+
+function _pAttr(r){
+  const g = (r.attribution && r.attribution.grupos) || null;
+  if(!g) return '<div class="pulse-attr-r"><span>no breakdown</span><span></span></div>';
+  return Object.entries(g).slice(0, 5).map(([k, v]) => {
+    const n = Number(v);
+    return `<div class="pulse-attr-r"><span>${_esc(k)}</span>`
+         + `<span class="${n > 0 ? 'pulse-gap pos' : n < 0 ? 'pulse-gap neg' : 'pulse-gap neu'}">`
+         + `${n >= 0 ? '+' : ''}${n.toFixed(2)}</span></div>`;
+  }).join('');
+}
+
+// clique na linha abre/fecha a explicação (uma de cada vez)
+document.getElementById('pulse-list').addEventListener('click', e => {
+  const row = e.target.closest('.pulse-row');
+  if(!row || row.classList.contains('off')) return;
+  const emp = row.dataset.emp;
+  const alvo = document.querySelector(`.pulse-attr[data-attr="${CSS.escape(emp)}"]`);
+  if(!alvo) return;
+  const jaAberto = alvo.classList.contains('open');
+  document.querySelectorAll('.pulse-attr.open').forEach(a => a.classList.remove('open'));
+  if(!jaAberto){ alvo.classList.add('open'); _pulseAberto = emp; }
+  else _pulseAberto = null;
+});
 
 // ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
@@ -2013,7 +2095,10 @@ _initCommCarousel();
 loadCommodities();
 
 setInterval(loadNews, NEWS_INTERVAL);
-setInterval(loadPulse, NEWS_INTERVAL);   // pulse acompanha o feed (60s); antes 5min → numeros defasavam do feed
+// Pulse v2 é publicado 2x por dia (07:00 e 09:00 BRT), não acompanha o feed de notícias:
+// 60s era a cadência do ponteiro antigo, que contava manchetes. 5 min pega a rodada nova
+// logo que ela sai, sem chamar a RPC 60x por hora em cada aba aberta.
+setInterval(loadPulse, 5 * 60 * 1000);
 setInterval(loadQuotes, 60 * 1000);
 setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 setInterval(loadCommodities, 5 * 60 * 1000);
