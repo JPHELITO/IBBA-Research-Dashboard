@@ -161,7 +161,19 @@ body{height:100vh;overflow:hidden;}
 .page.has-events .pulse-mkt-val{font-size:20px;min-width:50px;}
 .page.has-events .pulse-mkt-lbl{font-size:8px;}
 .page.has-events .pulse-mkt-sub{font-size:7.5px;}
-/* espremido pelo card Events: a lista volta a UMA coluna (271px não comportam
+/* v1 espremido: o gauge grande + contadores lado a lado estouram 255px de largura
+   (medido: o painel ia a 336px e os contadores eram cortados). Empilha e encolhe. */
+.page.has-events #pulse-v1.pulse-pane.on{flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;}
+.page.has-events #pulse-v1 .gauge{margin:0 auto;width:148px;height:74px;}
+.page.has-events #pulse-v1 .gauge-val{font-size:19px;}
+.page.has-events #pulse-v1 .gauge-label{font-size:7px;}
+.page.has-events #pulse-v1 > div:not(.gauge){width:100%;flex:none;}
+.page.has-events .pulse-stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:0;}
+.page.has-events .pulse-stat-num{font-size:12.5px;}
+.page.has-events .pulse-stat-lbl{font-size:6.5px;}
+
+/* v2 espremido: a lista volta a UMA coluna (271px não comportam
    nome + gap + score + confiança lado a lado) e rola por dentro. */
 .page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);}
 .page.has-events .pulse-row{grid-template-columns:1fr 46px 36px 26px;gap:4px;padding:2px 4px;}
@@ -277,11 +289,61 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
 .pulse-chip:not(.active):hover{border-color:#aaa;color:var(--gray-dark);}
 
+/* ── v1: termômetro de notícias (o que o CLIENTE vê enquanto o v2 é validado) ──
+   ⚠️ ELE MEDE O RETORNO DE ONTEM (correlação +0,18 com D−1 e +0,013 com D, p=0,71).
+   Está no ar só para não deixar um buraco no painel durante a validação do v2;
+   a badge "Work in progress" ao lado do título existe por causa disto. */
+/* layout HORIZONTAL: gauge grande à esquerda + números à direita.
+   ⚠️ O `.pulse-body` NÃO é mais o contêiner do v1 — quem posiciona é `#pulse-v1`
+   (o body virou a pilha que troca entre os dois painéis). Por isso os antigos
+   `.pulse-body > .gauge` e `.pulse-body > div` viraram `#pulse-v1 …`: como filhos
+   diretos deixaram de casar, o gauge perdeu o `flex:none` e encolhia para 5px de
+   altura (o SVG é absoluto, então o min-content dele é ~zero). */
+#pulse-v1 > .gauge{flex:none;}
+#pulse-v1 > div:not(.gauge){flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+.gauge{width:200px;height:100px;position:relative;}
+.gauge svg{position:absolute;inset:0;width:100%;height:100%;}
+.gauge-val{position:absolute;left:0;right:0;text-align:center;bottom:28%;
+  font-size:26px;font-weight:700;color:var(--black);letter-spacing:-.02em;line-height:1;}
+.gauge-label{position:absolute;left:0;right:0;text-align:center;bottom:14%;
+  font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.gauge-label.bullish{color:var(--green);}
+.gauge-label.bearish{color:var(--red);}
+.gauge-label.neutral{color:var(--gray-mid);}
+
+.pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
+.pulse-stat{text-align:center;}
+.pulse-stat-num{font-size:16px;font-weight:700;letter-spacing:-.02em;}
+.pulse-stat-num.pos{color:var(--green);}
+.pulse-stat-num.neg{color:var(--red);}
+.pulse-stat-num.neu{color:var(--gray-mid);}
+.pulse-stat-lbl{font-size:8px;font-weight:600;color:var(--gray-mid);
+  letter-spacing:.04em;text-transform:uppercase;margin-top:1px;}
+.pulse-bar{height:5px;border-radius:3px;display:flex;overflow:hidden;
+  margin-top:6px;grid-column:1/-1;background:var(--border);}
+.pulse-bar-seg{transition:flex .3s;}
+.pulse-bar-seg.pos{background:var(--green);}
+.pulse-bar-seg.neg{background:var(--red);}
+.pulse-bar-seg.neu{background:var(--gray-mid);}
+
+/* alternância v1/v2 — o seletor só aparece para admin (`.pulse-views` fica oculto) */
+.pulse-views{display:none;gap:3px;margin-right:6px;padding-right:8px;
+  border-right:1px solid var(--border);}
+.page.pulse-admin .pulse-views{display:flex;}
+.pulse-view{font-size:8.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;
+  border-radius:20px;border:1.5px solid var(--border);background:transparent;
+  color:var(--gray-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.pulse-view.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.pulse-pane{display:none;flex:1;min-height:0;}
+.pulse-pane.on{display:flex;}
+#pulse-v1.pulse-pane.on{flex-direction:row;align-items:center;gap:24px;}
+#pulse-v2.pulse-pane.on{flex-direction:column;gap:7px;}
+.pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 16px 10px;display:flex;
+  flex-direction:column;}
+
 /* v2 (2026-08): saiu o ponteiro de sentimento de notícia, entrou a leitura por EMPRESA.
    O modelo estima o GAP DE ABERTURA de cada coberta a partir do que Ásia, Europa e
    commodities negociaram de madrugada. Layout: faixa de mercado em cima + lista embaixo. */
-.pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 16px 10px;display:flex;
-  flex-direction:column;gap:7px;}
 
 /* faixa do topo: o número da cobertura + o que ele significa */
 .pulse-mkt{display:flex;align-items:center;gap:10px;flex:none;
@@ -760,12 +822,46 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
         <span class="wip-badge">Work in progress</span>
       </span>
       <div class="pulse-controls" id="pulse-controls">
+        <div class="pulse-views">
+          <button class="pulse-view active" data-view="v1" title="Termômetro de notícias do dia (o que o cliente vê)">News</button>
+          <button class="pulse-view" data-view="v2" title="Expectativa de abertura por empresa — em validação, admin-only">Open</button>
+        </div>
         <button class="pulse-chip active" data-sector="all">All</button>
         <button class="pulse-chip" data-sector="sm">S&amp;M</button>
         <button class="pulse-chip" data-sector="pp">P&amp;P</button>
       </div>
     </div>
     <div class="pulse-body">
+      <!-- v1: termômetro de notícias (cliente). v2: expectativa de abertura (admin). -->
+      <div class="pulse-pane on" id="pulse-v1">
+        <div class="gauge" id="pulse-gauge">
+          <svg viewBox="0 15 140 70" preserveAspectRatio="xMidYMid meet">
+            <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#E3E3E3" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#FF5000" stroke-width="10" fill="none"
+                  stroke-linecap="round" stroke-dasharray="188 188" id="gauge-arc"/>
+          </svg>
+          <div class="gauge-val" id="gauge-val">—</div>
+          <div class="gauge-label neutral" id="gauge-label">LOADING</div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;">
+          <div class="pulse-stats">
+            <div class="pulse-stat"><div class="pulse-stat-num pos" id="stat-pos">—</div>
+              <div class="pulse-stat-lbl">Positive</div></div>
+            <div class="pulse-stat"><div class="pulse-stat-num neg" id="stat-neg">—</div>
+              <div class="pulse-stat-lbl">Negative</div></div>
+            <div class="pulse-stat"><div class="pulse-stat-num neu" id="stat-neu">—</div>
+              <div class="pulse-stat-lbl">Neutral</div></div>
+            <div class="pulse-stat"><div class="pulse-stat-num" id="stat-tot">—</div>
+              <div class="pulse-stat-lbl">Total (24h)</div></div>
+          </div>
+          <div class="pulse-bar">
+            <div class="pulse-bar-seg pos" id="bar-pos" style="flex:0;"></div>
+            <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
+            <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="pulse-pane" id="pulse-v2">
       <div class="pulse-mkt">
         <div class="pulse-mkt-val neu" id="pulse-mkt-val">—</div>
         <div class="pulse-mkt-txt">
@@ -775,6 +871,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       </div>
       <div class="pulse-list" id="pulse-list"></div>
       <div class="pulse-foot" id="pulse-foot"></div>
+      </div>
     </div>
   </div>
 
@@ -973,6 +1070,8 @@ async function applyDashboardConfig(){
   try{
     const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
     const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
+    // libera o seletor v1/v2 do Market Pulse só p/ admin (o cliente fica no v1)
+    if(isAdmin){ document.querySelector('.page')?.classList.add('pulse-admin'); _setPulseView(_pulseView); loadPulse(); }
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
     // Habilita a navegação p/ a aba Market (terminal de ações): admin SEMPRE; cliente só com a flag 'market' on.
     window._marketEnabled = isAdmin || (fl && !fl.error && Array.isArray(fl.data) && fl.data.some(f=>f.key==='market' && f.enabled));
@@ -1198,7 +1297,130 @@ function _updateNewsMeta(){
 }
 setInterval(_updateNewsMeta,15000);
 
-// ─── MARKET PULSE v2 ──────────────────────────────────────────────────
+// ─── MARKET PULSE ─────────────────────────────────────────────────────
+// Duas leituras convivem enquanto o v2 passa pela validação de 20 pregões:
+//   v1 "News" = termômetro de notícias do dia  -> é o que o CLIENTE vê
+//   v2 "Open" = expectativa de abertura        -> só admin, pelo seletor no cabeçalho
+// Quando o pulse_check.py aprovar, o v1 sai e o v2 vira o padrão de todo mundo.
+let _pulseSector = 'all';
+let _pulseView = 'v1';
+try { _pulseView = localStorage.getItem('ibba_pulse_view') || 'v1'; } catch(e){}
+
+document.getElementById('pulse-controls').addEventListener('click', e => {
+  const v = e.target.closest('.pulse-view');
+  if(v){ _setPulseView(v.dataset.view); return; }
+  const btn = e.target.closest('.pulse-chip');
+  if(!btn) return;
+  document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _pulseSector = btn.dataset.sector;
+  loadPulse();
+});
+
+function _setPulseView(v){
+  _pulseView = v;
+  try { localStorage.setItem('ibba_pulse_view', v); } catch(e){}
+  document.querySelectorAll('.pulse-view').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.querySelectorAll('.pulse-pane').forEach(p => p.classList.toggle('on', p.id === 'pulse-' + v));
+}
+
+// O cliente NUNCA vê o v2: o seletor só existe com .page.pulse-admin, e sem ele
+// o painel fica travado no v1 (marcado em applyDashboardConfig).
+async function loadPulse(){
+  await loadPulseV1();
+  if(document.querySelector('.page.pulse-admin')) await loadPulseV2();
+}
+
+// ─── v1: termômetro de notícias — o que o CLIENTE vê ─────────────────
+// ⚠️ Mede o retorno de ONTEM, não o de hoje (ver auditoria em Market-Pulse-Research/).
+// Está no ar para não deixar buraco no painel enquanto o v2 é validado ao vivo.
+// Meia-noite de HOJE no horário de Brasília (America/Sao_Paulo), em ms epoch.
+// O Market Pulse mede o sentimento do DIA CORRENTE — reseta sozinho na virada
+// do dia (cada refresh recalcula este corte), sem o dia anterior "contaminar".
+function _spDayStartMs(){
+  try {
+    const now = new Date();
+    const dateStr = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(now); // "AAAA-MM-DD" em SP
+    const off = new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',timeZoneName:'longOffset'}).formatToParts(now).find(p=>p.type==='timeZoneName');
+    const m = off && /GMT([+-])(\d{2}):?(\d{2})?/.exec(off.value);
+    const offMin = m ? (parseInt(m[2],10)*60 + (m[3]?parseInt(m[3],10):0)) * (m[1]==='-'?-1:1) : -180;
+    return Date.parse(dateStr+'T00:00:00Z') - offMin*60000;   // instante UTC da meia-noite de SP
+  } catch(e){
+    const d = new Date(Date.now() - 3*3600*1000);   // fallback UTC-3 fixo (Brasil sem horário de verão desde 2019)
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + 3*3600*1000;
+  }
+}
+async function loadPulseV1(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  const dayStartMs = _spDayStartMs();
+  const cutoff = new Date(dayStartMs).toISOString();
+  // Janela = HOJE (da meia-noite de Brasília até agora), pela RECÊNCIA EFETIVA
+  // (publicação real; found_at só p/ quem não tem published_at). Notícia de ONTEM
+  // não entra — o pulse reflete só o sentimento do dia corrente, e zera na virada.
+  // Conta só relevantes (include_in_report=true): exclui cripto/política/esporte
+  // e artigos sem take de mercado que o classificador descartou.
+  let url = `${SUPA_URL}/rest/v1/news_articles?select=take,take_llm,sentiment,published_at,found_at`
+    +`&or=(published_at.gte.${cutoff},and(published_at.is.null,found_at.gte.${cutoff}))`
+    +`&include_in_report=eq.true&limit=2000`;
+  if(_pulseSector==='sm') url += `&sector=in.(steel,mining)`;   // S&M = aço + mineração (Vale/minério/cobre/ouro contam)
+  else if(_pulseSector !== 'all') url += `&sector=eq.${_pulseSector}`;
+  try {
+    const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('pulse fetch');
+    const rows = await r.json();
+    // Guarda client-side: garante a janela do DIA pelo timestamp efetivo.
+    const recent = rows.filter(a => (Date.parse(a.published_at||a.found_at||'')||0) >= dayStartMs);
+    let pos = 0, neg = 0, neu = 0, notake = 0;
+    for(const a of recent){
+      const t = a.take_llm;   // SÓ a IA — o robô não publica take (decisão do usuário 2026-06-17)
+      if(t == null) continue; // ainda não classificada pela IA → fica pendente, não pontua o pulse
+      // "+"/"-"/"="/"no take"/"review"
+      if(t === '+') pos++;
+      else if(t === '-') neg++;
+      else if(t === '=') neu++;        // neutral take: leitura de mercado que deu flat → ANCORA o meio
+      else notake++;                   // "no take"/"review": sem leitura de mercado → fora do ponteiro
+    }
+    const tot = pos + neg + neu;   // itens PONTUADOS (no-take não entra)
+    // Ponteiro com NEUTRO ANCORANDO: + e - puxam; "=" (o mercado está calmo)
+    // dilui pro meio (entra no denominador); "no take" não baliza (fica de fora).
+    const denom = pos + neg + neu;
+    const gaugeVal = denom > 0 ? Math.round(50 + (pos - neg) / denom * 50) : 50;
+    _renderGauge(gaugeVal);
+    document.getElementById('stat-pos').textContent = pos;
+    document.getElementById('stat-neg').textContent = neg;
+    document.getElementById('stat-neu').textContent = neu;
+    document.getElementById('stat-tot').textContent = tot;
+    document.getElementById('stat-tot').title = notake > 0 ? `+ ${notake} no-take (in feed, not scored)` : '';
+    document.getElementById('bar-pos').style.flex = pos;
+    document.getElementById('bar-neu').style.flex = neu;
+    document.getElementById('bar-neg').style.flex = neg;
+  } catch(e){
+    console.warn('pulse error:', e);
+  }
+}
+
+function _renderGauge(val){
+  val = Math.max(0, Math.min(100, val));
+  document.getElementById('gauge-val').textContent = val;
+  const arc = document.getElementById('gauge-arc');
+  const total = 188;  // length of half-circle arc with r=60 in viewBox
+  const filled = total * val / 100;
+  arc.setAttribute('stroke-dasharray', `${filled} ${total}`);
+  const label = document.getElementById('gauge-label');
+  if(val >= 65){
+    label.textContent = 'BULLISH'; label.className = 'gauge-label bullish';
+    arc.setAttribute('stroke', '#16a34a');
+  } else if(val < 35){
+    label.textContent = 'BEARISH'; label.className = 'gauge-label bearish';
+    arc.setAttribute('stroke', '#c0392b');
+  } else {
+    label.textContent = 'NEUTRAL'; label.className = 'gauge-label neutral';
+    arc.setAttribute('stroke', '#8C8C8C');
+  }
+}
+
+// ─── v2: expectativa de abertura (admin-only enquanto valida) ──────────────────────────────────────────────────
 // O QUE MUDOU (2026-08): o ponteiro antigo contava takes de notícia do dia. A auditoria
 // mostrou que aquilo media o retorno de ONTEM (correlação +0,18) e não sabia nada sobre
 // hoje (+0,013, p=0,71) — quase todo o material é assessment de preço, publicado DEPOIS
@@ -1210,18 +1432,8 @@ setInterval(_updateNewsMeta,15000);
 // (testado: IC 0,04 contra o retorno abertura→fechamento). O rodapé avisa isso.
 //
 // Os takes por notícia NÃO foram tocados — o feed e o badge +/−/= seguem iguais.
-let _pulseSector = 'all';
 let _pulseRows = [];
 let _pulseAberto = null;      // empresa com o "por quê" aberto
-
-document.getElementById('pulse-controls').addEventListener('click', e => {
-  const btn = e.target.closest('.pulse-chip');
-  if(!btn) return;
-  document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  _pulseSector = btn.dataset.sector;
-  _renderPulse();
-});
 
 // setor de `quotes` → chip da home. Mineração e siderurgia são S&M; celulose/papel é P&P.
 const _PULSE_SEC = {iron_ore:'sm', steel:'sm', gold:'sm', copper:'sm', mining:'sm',
@@ -1238,7 +1450,7 @@ function _pFaixa(s){
 }
 function _pCls(s){ return s >= 25 ? 'pos' : s <= -25 ? 'neg' : 'neu'; }
 
-async function loadPulse(){
+async function loadPulseV2(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
@@ -1249,10 +1461,10 @@ async function loadPulse(){
     console.warn('pulse error:', e);
     _pulseRows = [];
   }
-  _renderPulse();
+  _renderPulseV2();
 }
 
-function _renderPulse(){
+function _renderPulseV2(){
   const lista = document.getElementById('pulse-list');
   const foot  = document.getElementById('pulse-foot');
   const val   = document.getElementById('pulse-mkt-val');
