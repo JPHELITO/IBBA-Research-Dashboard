@@ -177,9 +177,13 @@ async function sgLogout(){await sbAuth.auth.signOut();document.cookie='sb-access
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function n(v){return SG.toNumOrNull(v)}
 function _short(t){return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'')}  // tolera 'VALE3' vs 'VALE3.SA'
-function fmt(v,d){if(v==null||!isFinite(v))return '—';d=d==null?0:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})}
-function fmtPct(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
-function fmtX(v,d){if(v==null||!isFinite(v))return '—';d=d==null?1:d;return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'×'}
+// Separador decimal: a página INTEIRA (Comp Table + Sensitivity) exibe no padrão inglês —
+// milhar vírgula, decimal ponto (1,234.56). Só muda a EXIBIÇÃO, nunca a conta.
+// A mesma régua vale p/ SG.formatSensitivityValue (stock-guide-lib.js) — manter os dois iguais.
+const NUM_LOC='en-US';
+function fmt(v,d){if(v==null||!isFinite(v))return '—';d=d==null?0:d;return v.toLocaleString(NUM_LOC,{minimumFractionDigits:d,maximumFractionDigits:d})}
+function fmtPct(v,d){const s=fmt(v,d==null?1:d);return s==='—'?s:s+'%'}
+function fmtX(v,d){const s=fmt(v,d==null?1:d);return s==='—'?s:s+'×'}
 function signCls(v){return v==null?'':(v>0?'pos':(v<0?'neg':''))}
 
 // ── data layer ──────────────────────────────────────────────────────────────

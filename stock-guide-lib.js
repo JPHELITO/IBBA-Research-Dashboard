@@ -181,7 +181,8 @@
     let d = decimals;
     if (d == null) d = (mode === 'pe' || mode === 'ev_ebitda' || mode === 'nd_ebitda') ? 1 : ((mode === 'yield' || mode === 'upside') ? 1 : 0);
     d = Math.max(0, Math.min(6, d));
-    const num = v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    // padrão inglês (1,234.56) — mesma régua do fmt/fmtPct/fmtX da stock-guide.html
+    const num = v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
     if (mode === 'yield' || mode === 'upside') return num + '%';
     if (mode === 'pe' || mode === 'ev_ebitda' || mode === 'nd_ebitda') return num + '×'; // ×
     return unit ? (num + ' ' + unit) : num;
