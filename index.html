@@ -176,6 +176,14 @@ body{height:100vh;overflow:hidden;}
 /* v2 espremido: a lista volta a UMA coluna (271px não comportam
    nome + gap + score + confiança lado a lado) e rola por dentro. */
 .page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);}
+
+/* Overnight espremido: 3 colunas dariam 88px cada e cortariam 8 dos 9 nomes.
+   2 colunas × 4 linhas cabem sem rolar; a 9ª (a menos atípica) sai de cena. */
+.page.has-events .ov-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:1px 8px;}
+.page.has-events .ov-row{grid-template-columns:minmax(0,1fr) 46px;gap:4px;padding:1px 3px;}
+.page.has-events .ov-row:nth-child(n+9){display:none;}
+.page.has-events .ov-name,.page.has-events .ov-chg{font-size:10px;}
+.page.has-events .ov-foot{font-size:7px;}
 .page.has-events .pulse-row{grid-template-columns:1fr 46px 36px 26px;gap:4px;padding:2px 4px;}
 .page.has-events .pulse-name{font-size:10px;}
 .page.has-events .pulse-gap{font-size:10px;}
@@ -326,16 +334,41 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-bar-seg.neg{background:var(--red);}
 .pulse-bar-seg.neu{background:var(--gray-mid);}
 
-/* alternância v1/v2 — o seletor só aparece para admin (`.pulse-views` fica oculto) */
-.pulse-views{display:none;gap:3px;margin-right:6px;padding-right:8px;
+/* alternância entre os quadros. "News" e "Overnight" são para TODOS (os dois só
+   descrevem o que já aconteceu); "Open" é a previsão em validação e só o admin vê. */
+.pulse-views{display:flex;gap:3px;margin-right:6px;padding-right:8px;
   border-right:1px solid var(--border);}
-.page.pulse-admin .pulse-views{display:flex;}
+.pulse-view[data-view="v2"]{display:none;}
+.page.pulse-admin .pulse-view[data-view="v2"]{display:inline-block;}
+/* os chips de setor não se aplicam ao Overnight (não é por empresa) */
+.page.pulse-ov .pulse-chip{display:none;}
 .pulse-view{font-size:8.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;
   border-radius:20px;border:1.5px solid var(--border);background:transparent;
   color:var(--gray-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;}
 .pulse-view.active{background:var(--orange);border-color:var(--orange);color:#fff;}
 .pulse-pane{display:none;flex:1;min-height:0;}
 .pulse-pane.on{display:flex;}
+#pulse-ov.pulse-pane.on{flex-direction:column;gap:6px;}
+
+/* ── quadro OVERNIGHT: o que se moveu enquanto o Brasil dormia ──────────────
+   Mesma grade 3×3 do v2. Ordenado pelo movimento INCOMUM para cada instrumento
+   (variação ÷ desvio-padrão dele), não pelo tamanho bruto — senão VIX e petróleo
+   ocupam o topo todo dia sem dizer nada. */
+.ov-list{flex:1;min-height:0;overflow:auto;display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;
+  gap:2px 10px;align-content:start;}
+.ov-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:baseline;
+  gap:6px;padding:2px 4px;border-radius:5px;}
+.ov-row:hover{background:var(--gray-light);}
+.ov-name{font-size:10.5px;font-weight:600;color:var(--black);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.ov-chg{font-size:10.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+.ov-chg.pos{color:var(--green);} .ov-chg.neg{color:var(--red);} .ov-chg.flat{color:var(--gray-mid);}
+/* movimento atípico para aquele instrumento (|z| >= 1,5) ganha destaque */
+.ov-row.big .ov-name{font-weight:700;}
+.ov-row.big .ov-chg::after{content:"•";margin-left:3px;font-size:12px;line-height:0;}
+.ov-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:2px;
+  border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #pulse-v1.pulse-pane.on{flex-direction:row;align-items:center;gap:24px;}
 #pulse-v2.pulse-pane.on{flex-direction:column;gap:7px;}
 .pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 16px 10px;display:flex;
@@ -823,7 +856,8 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
       </span>
       <div class="pulse-controls" id="pulse-controls">
         <div class="pulse-views">
-          <button class="pulse-view active" data-view="v1" title="Termômetro de notícias do dia (o que o cliente vê)">News</button>
+          <button class="pulse-view active" data-view="v1" title="Balanço dos takes das notícias do dia">News</button>
+          <button class="pulse-view" data-view="ov" title="O que se moveu lá fora enquanto o Brasil dormia">Overnight</button>
           <button class="pulse-view" data-view="v2" title="Expectativa de abertura por empresa — em validação, admin-only">Open</button>
         </div>
         <button class="pulse-chip active" data-sector="all">All</button>
@@ -860,6 +894,10 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
             <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
           </div>
         </div>
+      </div>
+      <div class="pulse-pane" id="pulse-ov">
+        <div class="ov-list" id="ov-list"></div>
+        <div class="ov-foot" id="ov-foot"></div>
       </div>
       <div class="pulse-pane" id="pulse-v2">
       <div class="pulse-mkt">
@@ -1070,8 +1108,11 @@ async function applyDashboardConfig(){
   try{
     const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
     const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
-    // libera o seletor v1/v2 do Market Pulse só p/ admin (o cliente fica no v1)
-    if(isAdmin){ document.querySelector('.page')?.classList.add('pulse-admin'); _setPulseView(_pulseView); loadPulse(); }
+    // Market Pulse: "Open" (previsão em validação) só p/ admin; News e Overnight p/ todos.
+    if(isAdmin) document.querySelector('.page')?.classList.add('pulse-admin');
+    if(_pulseView === 'v2' && !isAdmin) _pulseView = 'v1';   // cliente nunca cai no quadro em validação
+    _setPulseView(_pulseView);                                // restaura a escolha guardada
+    if(isAdmin) loadPulse();                                  // recarrega p/ trazer o "Open"
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
     // Habilita a navegação p/ a aba Market (terminal de ações): admin SEMPRE; cliente só com a flag 'market' on.
     window._marketEnabled = isAdmin || (fl && !fl.error && Array.isArray(fl.data) && fl.data.some(f=>f.key==='market' && f.enabled));
@@ -1322,12 +1363,16 @@ function _setPulseView(v){
   try { localStorage.setItem('ibba_pulse_view', v); } catch(e){}
   document.querySelectorAll('.pulse-view').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   document.querySelectorAll('.pulse-pane').forEach(p => p.classList.toggle('on', p.id === 'pulse-' + v));
+  // os chips de setor só fazem sentido nos quadros por empresa
+  document.querySelector('.page')?.classList.toggle('pulse-ov', v === 'ov');
 }
 
-// O cliente NUNCA vê o v2: o seletor só existe com .page.pulse-admin, e sem ele
-// o painel fica travado no v1 (marcado em applyDashboardConfig).
+// News e Overnight são para TODOS (os dois só descrevem o que já aconteceu).
+// O v2 é previsão em validação: só carrega se a página estiver marcada como admin,
+// então o cliente nem chega a pedir esses dados.
 async function loadPulse(){
   await loadPulseV1();
+  await loadOvernight();
   if(document.querySelector('.page.pulse-admin')) await loadPulseV2();
 }
 
@@ -1570,6 +1615,89 @@ document.getElementById('pulse-list').addEventListener('click', e => {
   if(!jaAberto){ alvo.classList.add('open'); _pulseAberto = emp; }
   else _pulseAberto = null;
 });
+
+// ─── QUADRO OVERNIGHT ─────────────────────────────────────────────────
+// O que se moveu lá fora enquanto o Brasil dormia. É DESCRITIVO — não promete
+// prever nada, então vale para todo mundo, sem depender da validação do "Open".
+// Os mesmos 23 mercados que alimentam o modelo; 16 deles a dashboard não coletava.
+//
+// ⚠️ SINCRONIA: estes dois mapas espelham `GRUPOS` em
+// news-hunter/hunter/pulse_snapshot.py. Instrumento novo lá -> rótulo novo aqui,
+// senão ele aparece no quadro com o símbolo cru do Yahoo.
+// Rótulos CURTOS de propósito: a coluna do nome tem ~78px no painel espremido pelo
+// card Events. "Anglo American" e "BHP (Sydney)" não cabiam e saíam com reticências.
+const _OV_LABEL = {
+  'FMG.AX':'Fortescue', 'BHP.AX':'BHP AU', 'RIO.AX':'Rio Tinto AU',
+  'AAL.L':'Anglo', '^AXJO':'ASX 200',
+  '^HSI':'Hang Seng', '000001.SS':'Shanghai', '^N225':'Nikkei',
+  'HG=F':'Copper', 'GC=F':'Gold',
+  '^STOXX50E':'Euro Stoxx', '^GDAXI':'DAX', '^FTSE':'FTSE',
+  'UPM.HE':'UPM', 'STERV.HE':'Stora Enso',
+  'ES=F':'S&P fut', 'NQ=F':'Nasdaq fut', 'CL=F':'Oil',
+  'USDBRL=X':'USD/BRL', 'EURUSD=X':'EUR/USD', 'AUDUSD=X':'AUD/USD',
+  'DX-Y.NYB':'DXY', '^VIX':'VIX',
+};
+const _OV_GRUPO = {
+  'FMG.AX':'Iron ore & miners','BHP.AX':'Iron ore & miners','RIO.AX':'Iron ore & miners',
+  'AAL.L':'Iron ore & miners','^AXJO':'Iron ore & miners',
+  '^HSI':'China & Asia','000001.SS':'China & Asia','^N225':'China & Asia',
+  'HG=F':'Metals (LME/COMEX)','GC=F':'Metals (LME/COMEX)',
+  '^STOXX50E':'Europe','^GDAXI':'Europe','^FTSE':'Europe','UPM.HE':'Europe','STERV.HE':'Europe',
+  'ES=F':'US futures','NQ=F':'US futures','CL=F':'Oil',
+  'USDBRL=X':'FX & risk','EURUSD=X':'FX & risk','AUDUSD=X':'FX & risk',
+  'DX-Y.NYB':'FX & risk','^VIX':'FX & risk',
+};
+const OV_MAX = 9;      // 3 colunas x 3 linhas — o que cabe no painel sem rolar
+let _ovRows = [];
+
+async function loadOvernight(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try {
+    const {data, error} = await sbAuth.rpc('get_overnight_board');
+    if(error) throw error;
+    _ovRows = data || [];
+  } catch(e){
+    console.warn('overnight error:', e);
+    _ovRows = [];
+  }
+  _renderOvernight();
+}
+
+function _renderOvernight(){
+  const lista = document.getElementById('ov-list');
+  const foot  = document.getElementById('ov-foot');
+  if(!lista) return;
+  if(!_ovRows.length){
+    lista.innerHTML = '';
+    foot.textContent = 'No overnight reading yet.';
+    return;
+  }
+  // A RPC já devolve ordenado por movimento incomum (|z|). Ordenar por variação bruta
+  // poria VIX e petróleo no topo em quase todo pregão — medido: 84% dos dias contra 20%.
+  const rows = _ovRows.slice(0, OV_MAX);
+  lista.innerHTML = rows.map(r => {
+    const c = Number(r.chg_pct), z = r.z == null ? 0 : Number(r.z);
+    const cls = c > 0 ? 'pos' : c < 0 ? 'neg' : 'flat';
+    const atipico = Math.abs(z) >= 1.5;
+    const tip = `${_OV_GRUPO[r.symbol] || ''} · ${Math.abs(z).toFixed(1)}x this asset's typical`
+              + ` daily move${atipico ? ' — unusual day' : ''}`;
+    return `<div class="ov-row${atipico ? ' big' : ''}" title="${_esc(tip)}">
+      <span class="ov-name">${_esc(_OV_LABEL[r.symbol] || r.symbol)}</span>
+      <span class="ov-chg ${cls}">${c >= 0 ? '+' : ''}${c.toFixed(2)}%</span></div>`;
+  }).join('');
+
+  const r0 = _ovRows[0];
+  const hora = r0.captured_at
+    ? new Date(r0.captured_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+    : `${r0.cut}:00`;
+  const dia = r0.session_date
+    ? new Date(r0.session_date + 'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+    : '';
+  const n = _ovRows.filter(r => Math.abs(Number(r.z) || 0) >= 1.5).length;
+  foot.textContent = `24h change as of ${hora} on ${dia} · ranked by how unusual the move is`
+                   + (n ? ` · ${n} atypical` : '');
+}
 
 // ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
