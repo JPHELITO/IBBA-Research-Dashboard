@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -801,7 +801,7 @@ function _sgInitExport(){
   if(document.getElementById('sg-export-bar')||!window.IBBAExport) return;
   const EX=IBBAExport;
   const onPDF=()=>{ const specs=_sgExportTables(false); if(!specs.length) return alert('Nothing to print yet.');
-    EX.printStyledTables(specs,{heading:'Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(),landscape:true}); };
+    EX.printStyledTables(specs,{heading:'Stock Guide',sub:'Comparables · as of '+new Date().toLocaleString(NUM_LOC),landscape:true}); };
   const onXLS=()=>{ const specs=_sgExportTables(true); if(!specs.length) return alert('Nothing to export yet.');
     EX.xlsxFromTables(specs,'stock_guide_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
   // barra VISÍVEL logo acima da comp table (admin)
