@@ -574,7 +574,8 @@ function _recoSector(t){
 
 /* ── helpers ── */
 const _short=t=>{ if(_isComm(t)){ const m=COMM_BY_TICKER[t]; return m?m.short:String(t).slice(1); } return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,''); };
-function _fmtPrice(v,ex){if(v==null||!isFinite(v))return '—';const c=ex==='B3'||ex==='BCS';return v.toLocaleString(c?'pt-BR':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+// preço no padrão inglês (1,234.56) p/ TODA bolsa, inclusive B3/BCS — a moeda vem do badge `_ccy`
+function _fmtPrice(v,ex){if(v==null||!isFinite(v))return '—';return v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 const EX_CCY={B3:'R$',NYSE:'US$',NASDAQ:'US$',US:'US$',LSE:'GBp',ASX:'A$',TSX:'C$',BCS:'CLP$',BMV:'MX$',HEL:'€',HE:'€'};
 function _ccy(q){ return (q&&q.sector==='index')?'':((q&&EX_CCY[q.exchange])||''); }   // moeda do preço (índices = sem moeda)
 function _px(q){ if(!q)return '—';
@@ -703,7 +704,7 @@ async function loadCommodities(){
 /* ── commodity / news helpers ── */
 const FREQ_LIVE=new Set(['COPPER','GOLD']), FREQ_WEEKLY=new Set(['IOBFC04']);
 function _freqOf(c){ if(!c) return 'Daily'; if(c.freq)return c.freq; if(FREQ_LIVE.has(c.code))return 'Live'; if(FREQ_WEEKLY.has(c.code))return 'Weekly'; return 'Daily'; }
-function _fmtAssessed(iso,freq){ if(freq==='Live'||!iso)return 'live'; const d=new Date(iso+'T00:00:00'); if(isNaN(d))return ''; const t=new Date();t.setHours(0,0,0,0); const days=Math.round((t-d)/864e5); if(days<=0)return 'today'; if(days===1)return 'yesterday'; if(days<7)return days+'d ago'; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+function _fmtAssessed(iso,freq){ if(freq==='Live'||!iso)return 'live'; const d=new Date(iso+'T00:00:00'); if(isNaN(d))return ''; const t=new Date();t.setHours(0,0,0,0); const days=Math.round((t-d)/864e5); if(days<=0)return 'today'; if(days===1)return 'yesterday'; if(days<7)return days+'d ago'; return d.toLocaleDateString('en-US',{day:'2-digit',month:'short'}); }
 const _LABEL_ALIAS={'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters','Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish','Shanghai Metals Market':'SMM','World Steel Association':'World Steel','O Estado de S. Paulo':'Estadão'};
 function _label(a){const sn=a.source_name||'';if(_LABEL_ALIAS[sn])return _LABEL_ALIAS[sn];if(sn===''||sn==='Google News'){const d=(a.domain||'').replace('www.','').split('.')[0];return d?d.charAt(0).toUpperCase()+d.slice(1):'—';}return sn;}
 function _age(iso){if(!iso)return '—';const s=Math.max(0,Math.round((Date.now()-new Date(iso))/1000));if(s<60)return 'now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d';}

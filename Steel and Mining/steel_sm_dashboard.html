@@ -990,7 +990,7 @@ function toObj(stmt){
   return stmt.values.map(r=>{const o={};stmt.columns.forEach((c,i)=>{o[c]=r[i];});return o;});
 }
 function fmt(v,d=1){return v==null?'—':v.toFixed(d);}
-function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('pt-BR');}
+function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('en-US');}  // KPI/tooltip: 1,234 (= eixo)
 function fmtY(v){return v==null?'':Math.round(v).toLocaleString('en-US');}  // Y-axis: thousands separator
 function pctDelta(v){
   if(v==null)return'';

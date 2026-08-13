@@ -765,7 +765,7 @@ function toObj(stmt){
   if(!stmt||!stmt.values.length)return[];
   return stmt.values.map(r=>{const o={};stmt.columns.forEach((c,i)=>{o[c]=r[i];});return o;});
 }
-function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('pt-BR');}
+function fmtK(v){return v==null?'—':Math.round(v).toLocaleString('en-US');}  // KPI/tooltip: 1,234 (= eixo)
 function fmtY(v){return v==null?'':Math.round(v).toLocaleString('en-US');}
 function fmt2(v){return v==null?'':(+v).toFixed(2);}   // decimals (e.g. M BDMT)
 function deltaOf(arr,f,i){
