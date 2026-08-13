@@ -429,6 +429,8 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
               <button data-r="1D">1D</button><button data-r="1W">1W</button><button data-r="1M">1M</button>
               <button data-r="3M" class="active">3M</button><button data-r="6M">6M</button>
               <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button>
+              <button data-r="5Y" title="Daily history — loads on demand for the assets on the chart">5Y</button>
+              <button data-r="Max" title="The longest daily history we have for these assets">Max</button>
             </div>
             <div class="chart-dates">
               <span class="dl">From</span><input type="date" id="c-from" aria-label="From">
@@ -618,7 +620,10 @@ function _px(q){ if(!q)return '—';
   const c=_ccy(q); return (c?c+' ':'')+_fmtPrice(q.price,q.exchange); }
 function _pctStr(p,d){if(p==null||!isFinite(p))return '—';d=d==null?2:d;return (p>=0?'+':'')+p.toFixed(d)+'%';}
 function _signCls(v){return v==null?'':(v>0?'up':(v<0?'down':'flat'));}
-const _RANGE_DAYS={'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372};
+// 'Max' é um número absurdo de propósito: assim TODO lugar que faz `now - dias` (range
+// do gráfico, portfolio, datas do seletor) funciona sem caso especial — o corte cai em
+// 1916 e a série simplesmente começa onde o dado começa.
+const _RANGE_DAYS={'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372,'5Y':1860,'Max':40000};
 const byT=t=>{ if(_isComm(t)) return _commAsset(t); return _quotes.find(x=>x.ticker===t)||{}; };
 // objeto "tipo cotação" sintético p/ uma commodity (preço/série vêm de _commByCode) → reaproveita gráfico/watchlist/correlação
 function _commAsset(t){ const m=COMM_BY_TICKER[t], c=(m&&_commByCode[m.code])||null;
@@ -632,8 +637,30 @@ function _fromDateInput(s){ return s ? Date.parse(s+'T00:00:00Z')/1000 : null; }
 // Todo retorno/gráfico (1W/1M/3M/YTD/1Y) passa a terminar no preço que a ação tem AGORA — não no último
 // fechamento gravado (que fica 1-2 dias atrás e varia de ticker p/ ticker). O histórico só dá a âncora do início.
 // Descarta o fechamento de HOJE ainda em formação (bar parcial do Yahoo) p/ não duplicar a ponta.
+/* ── HISTÓRICO LONGO, sob demanda ────────────────────────────────────────────────
+   `quotes.daily` é a série LEVE (mensal antigo + 1 ano diário) que a página baixa
+   inteira para os 47 papéis: 0,18 MB. O diário COMPLETO (~40 KB por papel na rede)
+   mora na tabela `quote_history` e só é buscado para os papéis que estão no gráfico,
+   e só quando o range pedido passa do trecho diário da série leve. A home, o heatmap
+   e a watchlist nunca tocam nisto — o peso da página não mudou. */
+const _HIST_DAILY_DAYS=372;                       // até aqui a série leve já é diária
+let _histMap={}, _histPend={}, _histTried={};
+function _dailyRaw(q){ return (q&&_histMap[q.ticker]) || ((q&&Array.isArray(q.daily))?q.daily:[]); }
+function _needsHistory(){ return _rangeBounds(_range)[0] < Date.now()/1000-_HIST_DAILY_DAYS*86400; }
+async function _ensureHistory(tickers){
+  // commodities (@CODE) não vivem em quote_history — a série delas vem de commodities.daily
+  const want=(tickers||[]).filter(t=>t&&!_isComm(t)&&!_histMap[t]&&!_histPend[t]&&!_histTried[t]);
+  if(!want.length) return false;
+  want.forEach(t=>{_histPend[t]=1;});
+  try{
+    const rows=await restGet(`quote_history?ticker=in.(${want.join(',')})&select=ticker,daily`);
+    rows.forEach(r=>{ if(Array.isArray(r.daily)&&r.daily.length>1) _histMap[r.ticker]=r.daily; });
+  }catch(e){ console.warn('quote_history', e); }   // sem a tabela ainda, o gráfico segue no mensal
+  want.forEach(t=>{ delete _histPend[t]; _histTried[t]=1; });   // 1 tentativa por papel por sessão
+  return true;
+}
 function _dailyLive(q){
-  const d=(q&&Array.isArray(q.daily))?q.daily:[];
+  const d=_dailyRaw(q);
   const px=q&&q.price;
   if(px==null||!isFinite(px)) return d.slice();
   const now=Math.floor(Date.now()/1000), today0=Math.floor(now/86400)*86400;   // meia-noite UTC de hoje
@@ -654,7 +681,7 @@ function _series(q,range,mode){
     return null;
   }
   const d=_dailyLive(q);   // fechamentos + preço ao vivo como ponta
-  if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?((q&&Array.isArray(q.daily))?q.daily:[]):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }   // To fixa no passado = janela histórica (sem ponta ao vivo); To vazia = até hoje (ponta viva)
+  if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?_dailyRaw(q):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }   // To fixa no passado = janela histórica (sem ponta ao vivo); To vazia = até hoje (ponta viva)
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
   else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
   if(!arr||arr.length<2){ if(d.length>=2) arr=d.slice(-2); else return null; }
@@ -699,7 +726,8 @@ function _sparkline(closes,cls){
 }
 function _rangeLabel(r){
   if(r==='custom'){ const o={day:'2-digit',month:'short',timeZone:'UTC'}; const f=_cFrom?new Date(_cFrom*1000).toLocaleDateString('en-US',o):'…'; const t=_cTo?new Date(_cTo*1000).toLocaleDateString('en-US',o):'today'; return `${f} – ${t}`; }
-  return {'1D':'Today','1W':'1 week','1M':'1 month','3M':'3 months','6M':'6 months','YTD':'Year to date','1Y':'1 year'}[r]||r;
+  return {'1D':'Today','1W':'1 week','1M':'1 month','3M':'3 months','6M':'6 months','YTD':'Year to date',
+          '1Y':'1 year','5Y':'5 years','Max':'Full history'}[r]||r;
 }
 function _rngBadgeText(){ return _range==='custom'?_rangeLabel('custom'):_range; }   // etiqueta compacta do range por bloco
 function _setRngBadges(){ const t=_rngBadgeText(); ['rb-chart','rb-wl','rb-corr'].forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=t; }); }   // rb-thesis = "Today" fixo; rb-pf é setado no _pfRecompute
@@ -1053,12 +1081,18 @@ function _ratioFillSelects(){
 function _ratioSeries(){
   const a=_series(byT(_rLong),_range,'price'), b=_series(byT(_rShort),_range,'price');
   if(!a||!b||a.length<2||b.length<2) return null;
-  const bm=new Map(b.map(p=>[p[0],p[1]])), pts=[];
-  for(const [t,v] of a){
-    let bv=bm.get(t);
-    if(bv==null){ let bd=Infinity,bb=null; for(const p of b){ const dd=Math.abs(p[0]-t); if(dd<bd){bd=dd;bb=p[1];} } bv=bb; }   // dia sem par: usa o mais próximo
-    if(bv==null||!isFinite(bv)||bv===0||v==null||!isFinite(v)) continue;
-    pts.push([t, v/bv]);
+  // A ponta MAIS ESPARSA dá o compasso. Se o compasso fosse sempre o `a`, um papel com
+  // diário (6.681 pontos) contra uma commodity mensal (320) repetiria o mesmo valor da
+  // commodity por ~22 dias seguidos e o ratio viraria uma escada — detalhe inventado.
+  const aDenso=a.length>b.length, spine=aDenso?b:a, denso=aDenso?a:b;
+  const dm=new Map(denso.map(p=>[p[0],p[1]])), pts=[];
+  for(const [t,v] of spine){
+    let dv=dm.get(t);
+    if(dv==null){ let bd=Infinity,bb=null; for(const p of denso){ const dd=Math.abs(p[0]-t); if(dd<bd){bd=dd;bb=p[1];} } dv=bb; }   // dia sem par: o mais próximo
+    if(dv==null||!isFinite(dv)||v==null||!isFinite(v)) continue;
+    const av=aDenso?dv:v, bv=aDenso?v:dv;   // av = ponta LONG, bv = ponta SHORT
+    if(!isFinite(av)||!isFinite(bv)||bv===0) continue;
+    pts.push([t, av/bv]);
   }
   if(pts.length<2) return null;
   const vals=pts.map(p=>p[1]), n=vals.length;
@@ -1115,6 +1149,9 @@ function renderChart(){
       b.title=ratio?'Price shows one company at a time — keeps the long leg':(multi?'Price shows one company at a time':''); }
     if(b.dataset.m==='ratio'){ b.disabled=!_sel.length; b.title=_sel.length?'One pair at a time — pick the long and short legs below the header':'Select an asset first'; }
   });
+  // range longo → busca o diário completo dos papéis EM TELA (1-2) e redesenha quando chegar.
+  // Não bloqueia: o gráfico já aparece com a série leve (mensal) e é refinado depois.
+  if(_sel.length && _needsHistory()) _ensureHistory(_sel).then(ok=>{ if(ok) renderChart(); });
   if(!_sel.length){
     document.getElementById('chart-sub').textContent='';
     _mainLines=[]; _ratioBar(false); _ratioFitHost(false);
@@ -1341,8 +1378,8 @@ function _rangeBounds(range){ const now=Date.now()/1000;
   if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
   if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
   return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
-function _dataFloor(){ let f=Infinity; _sel.forEach(t=>{ const q=byT(t), d=q&&q.daily; if(d&&d.length)f=Math.min(f,d[0][0]); }); return isFinite(f)?f:(Date.now()/1000-6*372*86400); }   // 1ª data com dado (limite p/ trás no Advanced)
-function _seriesSpan(q,sSec,eSec){ const arr=(q&&q.daily||[]).filter(p=>p[0]>=sSec&&p[0]<=eSec); if(arr.length<2)return null; const base=arr[0][1]; return arr.map(p=>[p[0], base?(p[1]/base-1)*100:0]); }
+function _dataFloor(){ let f=Infinity; _sel.forEach(t=>{ const d=_dailyRaw(byT(t)); if(d&&d.length)f=Math.min(f,d[0][0]); }); return isFinite(f)?f:(Date.now()/1000-6*372*86400); }   // 1ª data com dado (limite p/ trás no Advanced)
+function _seriesSpan(q,sSec,eSec){ const arr=_dailyRaw(q).filter(p=>p[0]>=sSec&&p[0]<=eSec); if(arr.length<2)return null; const base=arr[0][1]; return arr.map(p=>[p[0], base?(p[1]/base-1)*100:0]); }
 function _schedSpan(){ const r=_pfSched.rows; if(!r||!r.length)return _rangeBounds(_range==='1D'?'1M':_range); return [Math.min(...r.map(x=>x.start)), Math.max(...r.map(_endOf))]; }
 function _pfSpanLabel(sp){ const o={day:'2-digit',month:'short',timeZone:'UTC'}, f=d=>new Date(d*1000).toLocaleDateString('en-US',o); return `${f(sp[0])} – ${f(sp[1])}`; }
 function _pfReset(){ const s=_rangeBounds(_range==='1D'?'1M':_range)[0]; _pfSched={mode:'simple',touched:false,_v3:true,rows:[{id:_pfId++,start:s,end:null,label:'',w:{}}]}; _pfSave(); }
@@ -1514,7 +1551,11 @@ function _syncDates(){
   const f=document.getElementById('c-from'), tt=document.getElementById('c-to'); if(!f)return;
   if(_range==='custom') return;   // custom: o usuário definiu — não sobrescreve
   const now=Date.now()/1000;
-  const from = _range==='1D' ? now-2*86400 : _range==='YTD' ? Date.UTC(new Date().getUTCFullYear(),0,1)/1000 : now-(_RANGE_DAYS[_range]||372)*86400;
+  // em 'Max' a caixa De mostra a 1ª data com DADO (o corte teórico cairia em 1916)
+  const from = _range==='1D' ? now-2*86400
+             : _range==='YTD' ? Date.UTC(new Date().getUTCFullYear(),0,1)/1000
+             : _range==='Max' ? _dataFloor()
+             : now-(_RANGE_DAYS[_range]||372)*86400;
   f.value=_toDateInput(from); tt.value=_toDateInput(now);
 }
 function setRange(r){ _range=r; _cFrom=null; _cTo=null;
