@@ -87,6 +87,10 @@ a{color:inherit;text-decoration:none}
 .seg button.active{background:var(--panel-3);color:var(--text)}
 .seg.rng button.active{background:var(--orange);color:#fff}
 .seg button:disabled{opacity:.4;cursor:not-allowed}
+/* seletor de MODO do gráfico central: maior e com o ativo em laranja (mesmo idioma da barra de Range) */
+.seg.mode{padding:3px;gap:3px}
+.seg.mode button{font:700 12px var(--font);padding:6px 13px;letter-spacing:.02em}
+.seg.mode button.active{background:var(--orange);color:#fff}
 .card-body{padding:13px}
 
 /* ===== P1 Asset header ===== */
@@ -165,10 +169,32 @@ body.theme-light .chart-dates input{color-scheme:light}
 .chart-dates .x:hover{color:var(--text);border-color:var(--border-2)}
 .chart-host{position:relative;width:100%;height:360px;user-select:none;-webkit-user-select:none}
 .chart-host svg{width:100%;height:100%;display:block}
+/* barra do RATIO (só no modo Ratio). A altura dela é descontada do gráfico em JS (_ratioFitHost),
+   e não por um valor fixo no CSS — a barra pode quebrar em 2 linhas em card estreito. */
+.ratio-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;box-sizing:border-box;min-height:34px;
+  margin:0 0 8px;padding:5px 9px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px}
+.ratio-bar .rb-lbl{font:700 9.5px var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+.ratio-bar select{background:var(--panel-3);color:var(--text);border:1px solid var(--border);border-radius:6px;
+  font:600 11.5px var(--font);padding:3px 6px;max-width:170px;cursor:pointer}
+.ratio-bar select:focus{outline:none;border-color:var(--orange)}
+.ratio-bar .rb-div{font:700 15px var(--font);color:var(--orange);line-height:1;padding:0 1px}
+.rb-swap{background:var(--panel-3);color:var(--dim);border:1px solid var(--border);border-radius:6px;
+  font:700 12px var(--font);padding:3px 8px;line-height:1.25;cursor:pointer}
+.rb-swap:hover{border-color:var(--orange);color:var(--orange)}
+.rb-stats{margin-left:auto;display:flex;align-items:center;gap:9px;font:600 11px var(--font);color:var(--dim);white-space:nowrap}
+.rb-stats b{color:var(--text);font-weight:700;font-family:var(--mono)}
+.rb-stats .z.hot{color:var(--orange)}
+.rb-note{font:600 10px var(--font);color:var(--mute)}
 .c-grid{stroke:var(--grid);stroke-width:1}
 .c-zero{stroke:var(--mute);stroke-dasharray:3 3;stroke-width:1}
 .c-axis{fill:var(--mute);font:500 10px var(--mono)}
 .c-cross{stroke:var(--dim);stroke-dasharray:2 2}
+/* bandas do RATIO: média + ±1σ/±2σ do período */
+.c-mean{stroke:var(--dim);stroke-width:1.2;opacity:.85}
+.c-band{stroke:var(--mute);stroke-width:1;opacity:.55}
+.c-b1{stroke-dasharray:4 3}
+.c-b2{stroke-dasharray:1 4}
+.c-blbl{fill:var(--mute);font:600 9px var(--mono);opacity:.8}
 .c-tip{position:absolute;pointer-events:none;background:var(--panel-3);border:1px solid var(--border-2);border-radius:7px;
   padding:7px 9px;font:500 11px var(--font);color:var(--text);opacity:0;transition:opacity .08s;box-shadow:0 8px 22px rgba(0,0,0,.5);z-index:5;min-width:120px}
 .c-tip b{font-family:var(--mono)} .c-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
@@ -369,6 +395,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
   .mkt-topbar{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
   .mkt-status{margin-left:0}
   .chart-host{height:280px}
+  .rb-stats{margin-left:0;width:100%}
 }
 </style>
 </head>
@@ -413,23 +440,31 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         <div class="car-next" id="car-next"></div>
       </div>
 
-      <!-- Single main chart (price / % change / spread + range + dates + compare) -->
-      <div class="card col-8">
+      <!-- Single main chart (price / % change / ratio + range + dates + compare) -->
+      <div class="card col-8" id="chart-card">
         <div class="card-head">
           <span class="card-title" id="chart-title">Price</span>
           <span class="rng-badge" id="rb-chart"></span>
           <span class="card-sub" id="chart-sub"></span>
           <div class="card-tools">
-            <div class="seg" id="chart-mode">
+            <div class="seg mode" id="chart-mode">
               <button data-m="price" class="active">Price</button>
               <button data-m="pct">% Change</button>
-              <button data-m="spread">Spread vs Index</button>
+              <button data-m="ratio">Ratio</button>
             </div>
           </div>
         </div>
         <div class="card-body">
+          <!-- pernas do ratio: só aparece no modo Ratio -->
+          <div class="ratio-bar" id="ratio-bar" hidden>
+            <span class="rb-lbl">Long</span><select id="rb-long" aria-label="Long leg"></select>
+            <span class="rb-div">÷</span>
+            <span class="rb-lbl">Short</span><select id="rb-short" aria-label="Short leg"></select>
+            <button class="rb-swap" id="rb-swap" title="Swap the long and short legs">⇄ Swap</button>
+            <span class="rb-stats" id="rb-stats"></span>
+          </div>
           <div class="chart-host" id="main-chart" title="Tip: click and drag across the chart to measure the return over that span"></div>
-          <div class="cmp-row">
+          <div class="cmp-row" id="cmp-row">
             <span class="cmp-lbl">Compare</span>
             <div class="cmp-chips" id="cmp-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
             <button class="cmp-other" id="cmp-other">+ Other…</button>
@@ -495,7 +530,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 /* =========================================================================
  * MARKET — terminal de ações (tema escuro). UI em inglês; comentários em PT.
  * Modelo de seleção LIVRE: _sel (pode esvaziar; nada congelado). _anchor = _sel[0].
- * UM gráfico central (price/%change/spread) + range + datas + compare(recommended/Other).
+ * UM gráfico central (price/%change/ratio) + range + datas + compare(recommended/Other).
  * ====================================================================== */
 const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
 const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
@@ -627,7 +662,7 @@ function _series(q,range,mode){
   return arr.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]);
 }
 function _ret(q,range){ if(range==='1D') return q.change_pct; const s=_series(q,range,'pct'); if(!s||s.length<2) return null; return s[s.length-1][1]; }
-// série diária de uma COMMODITY normalizada a 0% (p/ o spread ação×commodity) — também termina no preço ao vivo
+// série diária de uma COMMODITY normalizada a 0% (comparação multi-linha na Thesis Strip) — também termina no preço ao vivo
 function _commSeries(c, range){
   const d=_dailyLive(c); if(d.length<2) return null;   // fechamentos + preço ao vivo da commodity
   let arr;
@@ -677,6 +712,9 @@ let _sel=[];                      // ativos selecionados (chart + watchlist lara
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
 let _range='3M', _cFrom=null, _cTo=null;
 let _chartMode='price';
+let _rLong=null, _rShort=null;    // pernas do RATIO = espelho de _sel[0]/_sel[1] (no Ratio a seleção É o par)
+let _rAuto=null;                  // ponta short preenchida AUTOMATICAMENTE (benchmark do setor); null = escolha do usuário
+let _cmpH=0;                      // altura medida da linha "Compare" (escondida no Ratio; devolvida ao gráfico)
 let _wlMode='all', _wlSort={key:'tk',dir:1};   // modos: all(default)|coverage|peers; default alfabético por ticker
 let _wlCustom=[]; try{ _wlCustom=JSON.parse(localStorage.getItem('mkt_wl_custom'))||[]; }catch(e){_wlCustom=[];}
 if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
@@ -773,20 +811,34 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   const host=document.getElementById(hostId); if(!host) return;
   lines=(lines||[]).filter(l=>l.pts&&l.pts.length>=2);
   if(!lines.length){ host.innerHTML=`<div class="c-empty">${emptyMsg||'No daily history yet for this range.'}</div>`; return; }
+  const bands=(opts&&opts.bands&&isFinite(opts.bands.sd)&&opts.bands.sd>0)?opts.bands:null;
   let tMin=Infinity,tMax=-Infinity,vMin=Infinity,vMax=-Infinity;
   lines.forEach(l=>l.pts.forEach(([t,v])=>{tMin=Math.min(tMin,t);tMax=Math.max(tMax,t);vMin=Math.min(vMin,v);vMax=Math.max(vMax,v);}));
-  if(vMin===vMax){vMin-=1;vMax+=1;}
+  // as bandas ±2σ sempre cabem na escala (senão o ratio "cola" na borda e a banda some)
+  if(bands){ vMin=Math.min(vMin,bands.mean-2.1*bands.sd); vMax=Math.max(vMax,bands.mean+2.1*bands.sd); }
+  if(vMin===vMax){ const e=Math.abs(vMin)*0.02||1; vMin-=e; vMax+=e; }
   const pad=(vMax-vMin)*0.08; vMin-=pad; vMax+=pad;
   // viewBox = tamanho REAL do host (mede após reflow) → escala 1:1, sem distorcer ("puxado")
   const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)), P={l:52,r:14,t:12,b:24};
   const X=t=>P.l+(t-tMin)/((tMax-tMin)||1)*(W-P.l-P.r);
   const Y=v=>P.t+(1-(v-vMin)/((vMax-vMin)||1))*(H-P.t-P.b);
-  const fmtV=v=> mode==='pct' ? ((v>=0?'+':'')+v.toFixed(1)+'%') : v.toLocaleString('en-US',{maximumFractionDigits:2});
+  const rdec=_ratDec(vMax-vMin);   // casas decimais do eixo do ratio: pelo INTERVALO, não pela magnitude
+  const fmtV=v=> mode==='pct' ? ((v>=0?'+':'')+v.toFixed(1)+'%')
+              : mode==='ratio' ? _fmtRatio(v,rdec)
+              : v.toLocaleString('en-US',{maximumFractionDigits:2});
   let g='';
   for(let i=0;i<=4;i++){ const v=vMin+(vMax-vMin)*i/4, yy=Y(v);
     g+=`<line class="c-grid" x1="${P.l}" y1="${yy.toFixed(1)}" x2="${W-P.r}" y2="${yy.toFixed(1)}"></line>
         <text class="c-axis" x="${P.l-7}" y="${(yy+3).toFixed(1)}" text-anchor="end">${fmtV(v)}</text>`; }
   if(mode==='pct'){ const y0=Y(0); g+=`<line class="c-zero" x1="${P.l}" y1="${y0.toFixed(1)}" x2="${W-P.r}" y2="${y0.toFixed(1)}"></line>`; }
+  if(bands){   // média + ±1σ/±2σ do período (leitura de pair trade: o ratio está esticado?)
+    const bl=(v,cls,lbl)=>{ const yy=Y(v); if(yy<P.t-1||yy>H-P.b+1) return '';
+      return `<line class="${cls}" x1="${P.l}" y1="${yy.toFixed(1)}" x2="${W-P.r}" y2="${yy.toFixed(1)}"></line>`
+           + `<text class="c-blbl" x="${W-P.r-3}" y="${(yy-3).toFixed(1)}" text-anchor="end">${lbl}</text>`; };
+    g+=bl(bands.mean+2*bands.sd,'c-band c-b2','+2σ')+bl(bands.mean+bands.sd,'c-band c-b1','+1σ')
+      +bl(bands.mean,'c-mean','mean')
+      +bl(bands.mean-bands.sd,'c-band c-b1','−1σ')+bl(bands.mean-2*bands.sd,'c-band c-b2','−2σ');
+  }
   const fmtD=t=>new Date(t*1000).toLocaleDateString('en-US',{day:'2-digit',month:'short'});
   g+=`<text class="c-axis" x="${P.l}" y="${H-7}">${fmtD(tMin)}</text><text class="c-axis" x="${W-P.r}" y="${H-7}" text-anchor="end">${fmtD(tMax)}</text>`;
   const paths=lines.map((l,i)=>{ const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
@@ -798,15 +850,24 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
     ${paths}
     <line class="c-cross" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" style="display:none"></line></svg>
     <div class="c-tip"></div><div class="c-selbox"></div>`;
-  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,spread:!!(opts&&opts.spread)});
+  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands});
 }
+// casas decimais de um eixo de RATIO a partir do INTERVALO exibido (não da magnitude) — 5 linhas de grade legíveis
+function _ratDec(span){ span=Math.abs(span)||0; if(!isFinite(span)||span<=0) return 2;
+  return Math.max(0,Math.min(4, 2-Math.floor(Math.log10(span/4)))); }
+function _fmtRatio(v,dec){ if(v==null||!isFinite(v)) return '—';
+  if(dec==null){ const a=Math.abs(v); dec=a>=1000?1:a>=100?2:a>=10?3:4; }
+  return v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function _attachHover(host, lines, dom){
   const svg=host.querySelector('svg'), tip=host.querySelector('.c-tip'), cross=host.querySelector('.c-cross');
   const selR=host.querySelector('.c-sel'), se0=host.querySelector('.c-se0'), se1=host.querySelector('.c-se1'), selbox=host.querySelector('.c-selbox');
   const paths=[...host.querySelectorAll('path[data-i]')];
-  const {tMin,tMax,vMin,vMax,W,H,P,mode,spread}=dom;
+  const {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands}=dom;
   const dragEnabled = host.id==='main-chart';   // arrastar-p/-medir só no gráfico central
-  const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%'):v.toLocaleString('en-US',{maximumFractionDigits:2});
+  const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%')
+              : mode==='ratio'?_fmtRatio(v,Math.min(4,(rdec==null?2:rdec)+1))
+              : v.toLocaleString('en-US',{maximumFractionDigits:2});
+  const zAt=v=> bands?` <span class="mute">(${((v-bands.mean)/bands.sd>=0?'+':'')+((v-bands.mean)/bands.sd).toFixed(1)}σ)</span>`:'';
   const fmtDate=t=>new Date(t*1000).toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'2-digit'});
   const Xf=frac=>P.l+frac*(W-P.l-P.r);
   const xToFrac=clientX=>{ const r=svg.getBoundingClientRect(); let f=((clientX-r.left)/r.width*W - P.l)/((W-P.l-P.r)||1); return Math.max(0,Math.min(1,f)); };
@@ -821,17 +882,17 @@ function _attachHover(host, lines, dom){
     se0.setAttribute('x1',x0.toFixed(1)); se0.setAttribute('x2',x0.toFixed(1)); se0.style.display='';
     se1.setAttribute('x1',x1.toFixed(1)); se1.setAttribute('x2',x1.toFixed(1)); se1.style.display='';
     const tA=tMin+a*(tMax-tMin), tB=tMin+b*(tMax-tMin), r=svg.getBoundingClientRect();
-    const rows=lines.map(l=>{ const vA=valAt(l,tA), vB=valAt(l,tB); let pct, abs=null, pp=null;
-      if(mode!=='pct'){ pct=vA?((vB/vA-1)*100):0; abs=vB-vA; }          // PREÇO: retorno + variação absoluta
-      else if(spread){ pp=vB-vA; pct=null; }                            // SPREAD: variação em pontos percentuais
+    const rows=lines.map(l=>{ const vA=valAt(l,tA), vB=valAt(l,tB); let pct, abs=null;
+      // PREÇO e RATIO: retorno + variação absoluta (no ratio, o % é a performance relativa long−short no trecho)
+      if(mode!=='pct'){ pct=vA?((vB/vA-1)*100):0; abs=vB-vA; }
       else { const ra=1+vA/100, rb=1+vB/100; pct=ra?((rb/ra-1)*100):0; }// % CHANGE: retorno real no trecho
-      return {tk:_short(l.ticker), color:l.color, pct, abs, pp}; });
+      return {tk:_short(l.ticker), color:l.color, pct, abs}; });
     const arrow=p=>p>0.0001?'▲':p<-0.0001?'▼':'•';
     selbox.innerHTML=rows.map(r=>{
-      if(r.pp!=null){ const c=r.pp>0?'up':r.pp<0?'down':'flat';
-        return `<div class="row"><i style="background:${r.color}"></i><span class="${c}">${arrow(r.pp)} ${(r.pp>=0?'+':'')+r.pp.toFixed(2)} pp</span> <span class="mute">${r.tk}</span></div>`; }
       const c=r.pct>0?'up':r.pct<0?'down':'flat';
-      const absTxt=(r.abs!=null)?` ${r.abs>=0?'+':''}${r.abs.toLocaleString('en-US',{maximumFractionDigits:2})}`:'';
+      const absTxt=(r.abs==null)?'':(mode==='ratio'
+        ? ` ${r.abs>=0?'+':''}${_fmtRatio(r.abs,Math.min(4,(rdec==null?2:rdec)+1))}`
+        : ` ${r.abs>=0?'+':''}${r.abs.toLocaleString('en-US',{maximumFractionDigits:2})}`);
       return `<div class="row"><i style="background:${r.color}"></i><span class="${c}">${arrow(r.pct)}${absTxt} (${(r.pct>=0?'+':'')+r.pct.toFixed(2)}%)</span> <span class="mute">${r.tk}</span></div>`;
     }).join('')+`<span class="rng">${fmtDate(tA)} – ${fmtDate(tB)}</span>`;
     selbox.style.opacity='1';
@@ -854,7 +915,7 @@ function _attachHover(host, lines, dom){
     let near=-1; if(rows.length>1){ let nd=Infinity; rows.forEach(r=>{ if(r.dy<nd){nd=r.dy;near=r.i;} }); }
     paths.forEach(p=>{ const i=+p.dataset.i; p.style.opacity=(near<0||i===near)?'1':'0.22'; p.style.strokeWidth=(i===near)?'2.6':'1.9'; });
     const dt=lines[0].pts.reduce((a,p)=>Math.abs(p[0]-t)<Math.abs(a[0]-t)?p:a)[0];
-    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}`).join('');
+    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}${mode==='ratio'?zAt(r.v):''}`).join('');
     tip.style.opacity='1';
     const hx=ev.clientX-rect.left; tip.style.left=Math.min(hx+12,rect.width-150)+'px'; tip.style.top='8px';
   };
@@ -866,12 +927,15 @@ function _attachHover(host, lines, dom){
 let _carOrder=[], _carIdx=0, _carAuto=false, _lastInteract=0;   // carrossel do header (auto-play / trava por interação)
 function colorOf(t){ const i=_sel.indexOf(t); return i>=0?_MC_COLORS[i%_MC_COLORS.length]:''; }
 function _noteInteract(){ _lastInteract=Date.now(); if(_carAuto){ _carAuto=false; renderCarNext(); } }   // qualquer clique/tecla TRAVA o tour
-function toggleSel(t){ if(!t)return; _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
-function setFocus(t){ if(!t)return; _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
+function toggleSel(t){ if(!t)return; if(_chartMode==='ratio')return _ratioPick(t);   // no Ratio a seleção é o PAR (máx. 2)
+  _sel = _sel.includes(t) ? _sel.filter(x=>x!==t) : [t,..._sel]; afterSel(); }
+function setFocus(t){ if(!t)return; if(_chartMode==='ratio')return _ratioPick(t);
+  _sel=[t,..._sel.filter(x=>x!==t)]; afterSel(); }   // busca/foco: vai pro topo
 function clearSel(){ _sel=[]; afterSel(); }
 function afterSel(){
   _anchor=_sel[0]||null;
   if(_sel.length>1 && _chartMode==='price') _chartMode='pct';   // preço = 1 ativo por vez
+  _ratioEnter();                                                // no Ratio: no máximo 2 (long=_sel[0], short=_sel[1])
   if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; try{history.replaceState(null,'',`?t=${encodeURIComponent(_anchor)}`)}catch(e){} }
   renderAll();
 }
@@ -925,37 +989,159 @@ function _dayStory(q){
   return `${esc(q.name||_short(q.ticker))} is ${dir} today${peers.length>=2?`; in ${lbl}, ${lead} led and ${lag} lagged.`:'.'}${drvTxt}${pulseTxt}`;
 }
 
-/* ── O ÚNICO gráfico: price / % change / spread + range/datas + compare ── */
+/* ── RATIO (long ÷ short) ───────────────────────────────────────────────────────
+   Divide o preço da ponta LONG pelo da ponta SHORT, dia a dia. O NÍVEL do ratio é
+   arbitrário (depende do preço de cada papel) — o que interessa é onde ele está HOJE
+   contra a média do período: daí a média + bandas ±1σ/±2σ + z-score. A variação % do
+   ratio na janela = performance relativa (long − short) em MOEDA LOCAL de cada ponta
+   (não temos histórico de câmbio; quando as moedas diferem, a barra avisa).           */
+function _ratioBench(t){   // ponta short padrão quando só há 1 ativo selecionado
+  if(!t) return null;
+  const sec=_recoSector(t);
+  const drv=(SECTOR_DRIVER[sec]||[]).map(d=>COMM_CODE_TO_TICKER[d.code])   // 1) a commodity que dirige o setor
+    .find(tk=>tk&&tk!==t&&_commByCode[(COMM_BY_TICKER[tk]||{}).code]);
+  if(drv) return drv;
+  const idx=(SECTOR_INDEX[sec]||[]).find(tk=>tk&&tk!==t&&_quotes.some(q=>q.ticker===tk));   // 2) o índice do setor
+  if(idx) return idx;
+  return (t!=='IBOV'&&_quotes.some(q=>q.ticker==='IBOV'))?'IBOV':null;     // 3) Ibovespa
+}
+/* No modo Ratio a SELEÇÃO É O PAR: no máximo 2 ativos, long=_sel[0] e short=_sel[1]. Quem manda é a
+   barra de pernas; a watchlist/busca continuam funcionando, mas clicar sempre põe o ativo na LONG. */
+function _ratioEnter(){
+  if(_chartMode!=='ratio' || !_sel.length) return;
+  if(_sel.length>2) _sel=_sel.slice(0,2);                                     // entrou com vários → fica só o par
+  if(_sel.length===1){ const b=_ratioBench(_sel[0]); if(b){ _sel=[_sel[0],b]; _rAuto=b; } }
+  else if(_sel[1]===_rAuto){ const b=_ratioBench(_sel[0]);                    // as commodities carregam DEPOIS do 1º render
+    if(b&&b!==_sel[1]){ _sel=[_sel[0],b]; _rAuto=b; } }
+  _anchor=_sel[0]||null;
+}
+function _ratioPick(t){   // clicar em qualquer ativo (watchlist/busca/picker) o põe na ponta LONG
+  if(!t||t===_sel[0]) return;
+  _sel = (t===_sel[1]) ? [_sel[1],_sel[0]] : [t,_sel[0]].filter(Boolean);     // clicar na short = inverter as pontas
+  _rAuto=null; afterSel();
+}
+function _ratioSetLeg(which,t){   // seletores da barra: escolher a ponta que já está na outra = inverter
+  if(!t) return;
+  let a=_sel[0], b=_sel[1];
+  if(which==='long'){ if(t===b){ b=a; a=t; } else a=t; }
+  else              { if(t===a){ a=b; b=t; } else b=t; }
+  _sel=[a,b].filter(Boolean); _rAuto=null; afterSel();
+}
+function _ratioGroups(){   // universo dos seletores: selecionados primeiro, depois por setor
+  const seen=new Set(), out=[];
+  const ok=t=>t&&!seen.has(t)&&(_isComm(t)?!!_commByCode[(COMM_BY_TICKER[t]||{}).code]:_quotes.some(q=>q.ticker===t));
+  const push=(label,tks)=>{ const arr=tks.filter(ok); arr.forEach(t=>seen.add(t)); if(arr.length) out.push({label,tks:arr}); };
+  push('Selected',_sel.slice());
+  SECTOR_ORDER.forEach(sec=>push(SECTOR_LABEL[sec]||sec,(SECTOR_TICKERS[sec]||[]).slice()));
+  return out;
+}
+function _ratioFillSelects(){
+  const gs=_ratioGroups();
+  [['rb-long',_rLong],['rb-short',_rShort]].forEach(([id,cur])=>{
+    const el=document.getElementById(id); if(!el) return;
+    const sig=gs.map(g=>g.label+':'+g.tks.join(',')).join('|')+'#'+(cur||'');
+    if(el.dataset.sig===sig) return;   // não re-renderiza à toa (preserva foco/teclado)
+    el.dataset.sig=sig;
+    // só o ticker curto no rótulo (a caixa fechada tem que caber na barra); o nome vai no title
+    el.innerHTML=gs.map(g=>`<optgroup label="${esc(g.label)}">`+g.tks.map(t=>{
+      const q=byT(t), nm=(q&&q.name)?esc(q.name):'';
+      return `<option value="${esc(t)}"${nm?` title="${nm}"`:''}${t===cur?' selected':''}>${esc(_short(t))}</option>`;
+    }).join('')+'</optgroup>').join('');
+    if(cur) el.value=cur;
+  });
+}
+function _ratioSeries(){
+  const a=_series(byT(_rLong),_range,'price'), b=_series(byT(_rShort),_range,'price');
+  if(!a||!b||a.length<2||b.length<2) return null;
+  const bm=new Map(b.map(p=>[p[0],p[1]])), pts=[];
+  for(const [t,v] of a){
+    let bv=bm.get(t);
+    if(bv==null){ let bd=Infinity,bb=null; for(const p of b){ const dd=Math.abs(p[0]-t); if(dd<bd){bd=dd;bb=p[1];} } bv=bb; }   // dia sem par: usa o mais próximo
+    if(bv==null||!isFinite(bv)||bv===0||v==null||!isFinite(v)) continue;
+    pts.push([t, v/bv]);
+  }
+  if(pts.length<2) return null;
+  const vals=pts.map(p=>p[1]), n=vals.length;
+  const mean=vals.reduce((x,y)=>x+y,0)/n;
+  const sd=n>1?Math.sqrt(vals.reduce((s,v)=>s+(v-mean)*(v-mean),0)/(n-1)):0;
+  const first=vals[0], last=vals[n-1];
+  return {pts,mean,sd,first,last,z:sd>0?(last-mean)/sd:null,chg:first?((last/first-1)*100):null};
+}
+function _ratioBar(on){
+  const bar=document.getElementById('ratio-bar'), card=document.getElementById('chart-card');
+  if(bar) bar.hidden=!on;
+  if(card) card.classList.toggle('ratio-on',!!on);
+}
+// No Ratio: esconde a linha "Compare" (o par se escolhe na barra) e reajusta a altura do gráfico p/ o
+// CARD NÃO MUDAR DE TAMANHO — desconta a barra (que pode quebrar em 2 linhas) e devolve o espaço do Compare.
+// Chamar DEPOIS de preencher a barra e ANTES do _renderChart (que mede o host p/ montar o viewBox).
+function _ratioFitHost(on){
+  const host=document.getElementById('main-chart'), bar=document.getElementById('ratio-bar'), cmp=document.getElementById('cmp-row');
+  if(!host) return;
+  if(cmp&&!cmp.hidden){ const r=cmp.getBoundingClientRect();   // mede enquanto está visível (não dá p/ medir escondido)
+    if(r.height>0) _cmpH=Math.ceil(r.height+(parseFloat(getComputedStyle(cmp).marginTop)||0)); }
+  host.style.height='';                                        // volta ao valor do CSS (360; 280 no mobile)
+  if(cmp) cmp.hidden=!!on;
+  if(!on) return;
+  const base=parseFloat(getComputedStyle(host).height)||360;
+  const bh=(bar&&!bar.hidden)?Math.ceil(bar.getBoundingClientRect().height)+8:0;   // +8 = margin-bottom da barra
+  host.style.height=Math.max(220,Math.round(base-bh+_cmpH))+'px';
+}
+function _ratioStats(r){
+  const el=document.getElementById('rb-stats'); if(!el) return;
+  if(!r){ el.innerHTML=''; return; }
+  const zTxt=r.z==null?'—':((r.z>=0?'+':'')+r.z.toFixed(1)+'σ');
+  const hot=(r.z!=null&&Math.abs(r.z)>=2)?' hot':'';
+  const chg=r.chg==null?'—':((r.chg>=0?'+':'')+r.chg.toFixed(1)+'%');
+  const ca=_ccy(byT(_rLong)), cb=_ccy(byT(_rShort));
+  const note=(ca&&cb&&ca!==cb)?`<span class="rb-note" title="Each leg is in its own currency — the ratio is not FX-adjusted.">${ca} ÷ ${cb} · FX not adjusted</span>`:'';
+  el.innerHTML=`<span title="Latest long ÷ short">Ratio <b>${_fmtRatio(r.last)}</b></span>`
+    +`<span title="Average ratio over the selected range">mean <b>${_fmtRatio(r.mean)}</b></span>`
+    +`<span class="z${hot}" title="How far the ratio is from its average, in standard deviations. Beyond ±2σ is a stretched spread.">${zTxt}</span>`
+    +`<span title="Change in the ratio over ${esc(_rangeLabel(_range))} = relative performance of the long leg vs the short leg">${esc(_rngBadgeText())} <b>${chg}</b></span>`+note;
+}
+
+/* ── O ÚNICO gráfico: price / % change / ratio + range/datas + compare ── */
 function renderChart(){
   const multi=_sel.length>1;
   if(_chartMode==='price' && multi) _chartMode='pct';
-  const titles={price:'Price',pct:'% Change',spread:'Spread vs Index'};
+  if(_chartMode==='ratio' && !_sel.length) _chartMode='price';
+  const titles={price:'Price',pct:'% Change',ratio:'Ratio'};
   document.getElementById('chart-title').textContent=titles[_chartMode];
   document.querySelectorAll('#chart-mode button').forEach(b=>{
     b.classList.toggle('active',b.dataset.m===_chartMode);
-    if(b.dataset.m==='price'){ b.disabled=multi; b.title=multi?'Price shows one company at a time':''; }
+    // no Ratio a seleção é SEMPRE 2 → Price não pode ficar travado: sair p/ Price mantém a perna long
+    if(b.dataset.m==='price'){ const ratio=_chartMode==='ratio'; b.disabled=multi&&!ratio;
+      b.title=ratio?'Price shows one company at a time — keeps the long leg':(multi?'Price shows one company at a time':''); }
+    if(b.dataset.m==='ratio'){ b.disabled=!_sel.length; b.title=_sel.length?'One pair at a time — pick the long and short legs below the header':'Select an asset first'; }
   });
   if(!_sel.length){
     document.getElementById('chart-sub').textContent='';
-    _mainLines=[];
+    _mainLines=[]; _ratioBar(false); _ratioFitHost(false);
     _renderChart('main-chart',[], 'price', 'No assets selected — click rows in the Watchlist, use Recommended below, or search.');
     renderChips(); renderReco(); return;
   }
-  const q=_qa();
-  if(_chartMode==='spread'){
-    const sec=TICKER_SECTOR[q.ticker];
-    // prefere o DRIVER de commodity do setor SE tiver histórico (≥5 pts); senão, o índice do setor.
-    const drv=(SECTOR_DRIVER[sec]||[]).map(d=>_commByCode[d.code]).find(c=>c&&Array.isArray(c.daily)&&c.daily.length>=5);
-    const idxT=(SECTOR_INDEX[sec]||['IBOV'])[0]||'IBOV';
-    const bName=drv?(drv.name||'driver'):_short(idxT);
-    const a=_series(q,_range,'pct'), b=drv?_commSeries(drv,_range):_series(byT(idxT),_range,'pct');
-    document.getElementById('chart-sub').textContent=`${_short(q.ticker)} vs ${bName} · ${_rangeLabel(_range)}`;
-    if(!a||!b){ _mainLines=[]; _renderChart('main-chart',[],'pct',`No history yet for ${esc(bName)} — building up.`); }
-    else{ const bm=new Map(b.map(p=>[p[0],p[1]]));
-      const sp=a.map(([t,v])=>{ let bv=bm.get(t); if(bv==null){ let bd=Infinity,bb=null; for(const p of b){const dd=Math.abs(p[0]-t);if(dd<bd){bd=dd;bb=p[1];}} bv=bb; } return bv==null?[t,0]:[t, v-bv]; });
-      _mainLines=[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}];
-      _renderChart('main-chart',[{ticker:_short(q.ticker)+' − '+bName,color:'#FF5000',pts:sp}],'pct',null,{spread:true}); }
+  if(_chartMode==='ratio'){
+    _ratioBar(true);
+    _ratioEnter();                                        // garante o par: máx. 2 (+ benchmark quando só há 1 selecionado)
+    _rLong=_sel[0]||null; _rShort=_sel[1]||null;          // as pernas SÃO a seleção
+    _ratioFillSelects();
+    const an=_short(_rLong||''), bn=_short(_rShort||'');
+    document.getElementById('chart-sub').textContent=(_rLong&&_rShort)?`${an} ÷ ${bn} · ${_rangeLabel(_range)}`:'';
+    const bad=(!_rLong||!_rShort||_rLong===_rShort);
+    const r=bad?null:_ratioSeries();
+    _ratioStats(r);        // preenche a barra ANTES de medi-la (ela pode quebrar em 2 linhas)
+    _ratioFitHost(true);
+    if(r){
+      _mainLines=[{ticker:an+' / '+bn,color:'#FF5000',pts:r.pts}];
+      _renderChart('main-chart',_mainLines,'ratio',null,{bands:{mean:r.mean,sd:r.sd}});
+    } else {
+      _mainLines=[];
+      _renderChart('main-chart',[],'ratio', bad?'Pick two different assets for the long and short legs.'
+        :`No overlapping daily history for ${esc(an)} and ${esc(bn)} in this range.`);
+    }
   } else {
+    _ratioBar(false); _ratioFitHost(false);
     document.getElementById('chart-sub').textContent=(multi?`${_sel.length} assets · `:'')+_rangeLabel(_range);
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
     _mainLines=lines;
@@ -1382,13 +1568,16 @@ function _initExports(){
   const tag=()=> (_anchor?_short(_anchor):'chart');
   const png=(id,base,meta)=>{ const s=svgOf(id); if(!s)return alert('Nothing to export yet.'); EX.pngFromSVG(s,base+'_'+EX.stamp(),Object.assign({bg:bgOf(id)},meta||{})); };
   const legOf=lines=>(lines||[]).map(l=>({name:_short(l.ticker),color:l.color}));
-  const MODE_LBL={price:'Price',pct:'% Change',spread:'Spread vs Index'};
+  const MODE_LBL={price:'Price',pct:'% Change',ratio:'Ratio'};
+  const chartTitle=()=> _chartMode==='ratio'
+    ? ((_mainLines[0]&&_short(_mainLines[0].ticker))||'Ratio')+' — Ratio (long ÷ short)'
+    : _sel.map(_short).join(', ')+' — '+(MODE_LBL[_chartMode]||'');
   const xls=(lines,sheet,base)=>{ const aoa=aoaOf(lines); if(!aoa)return alert('No data to export yet.'); EX.xlsxFromAOA([{name:sheet,aoa}],base+'_'+EX.stamp()).catch(()=>alert('Could not build the Excel file.')); };
   const head=el=>el&&el.closest('.card')&&el.closest('.card').querySelector('.card-head');
   // gráfico central
   const mTools=document.getElementById('chart-mode')&&document.getElementById('chart-mode').parentElement;
   if(mTools) mTools.appendChild(EX.toolbar([
-    {label:'PNG',title:'Download chart image',onClick:()=>png('main-chart','market_'+tag(),{title:_sel.map(_short).join(', ')+' — '+(MODE_LBL[_chartMode]||''),sub:_rangeLabel(_range),legend:legOf(_mainLines)})},
+    {label:'PNG',title:'Download chart image',onClick:()=>png('main-chart','market_'+tag(),{title:chartTitle(),sub:_rangeLabel(_range),legend:legOf(_mainLines)})},
     {label:'XLS',title:'Download chart data (Excel)',onClick:()=>xls(_mainLines,_chartMode,'market_'+tag())},
   ]));
   // thesis (histórico da commodity)
@@ -1428,7 +1617,14 @@ async function init(){
   loadDaily().then(()=>{ renderChart(); renderWatchlist(); renderHeader(); renderCorr(); renderPortfolio(); });
   loadCommodities().then(()=>{ renderThesis(); renderHeader(); renderChart(); renderWatchlist(); });
   // listeners
-  document.getElementById('chart-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled)return; _chartMode=b.dataset.m; renderChart(); };
+  document.getElementById('chart-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled)return;
+    const before=_sel.join('|');
+    if(b.dataset.m==='price' && _chartMode==='ratio' && _sel.length>1) _sel=[_sel[0]];   // sair do par p/ Price: fica a perna long
+    _chartMode=b.dataset.m; _ratioEnter();
+    if(_sel.join('|')!==before) renderAll(); else renderChart(); };   // entrar no Ratio pode aparar a seleção → redesenha tudo
+  document.getElementById('rb-long').onchange=e=>{ _noteInteract(); _ratioSetLeg('long',e.target.value); };
+  document.getElementById('rb-short').onchange=e=>{ _noteInteract(); _ratioSetLeg('short',e.target.value); };
+  document.getElementById('rb-swap').onclick=()=>{ _noteInteract(); _ratioSetLeg('long',_sel[1]); };
   document.getElementById('chart-range').onclick=e=>{ const b=e.target.closest('button'); if(b)setRange(b.dataset.r); };
   document.getElementById('c-from').onchange=onDates;
   document.getElementById('c-to').onchange=onDates;
