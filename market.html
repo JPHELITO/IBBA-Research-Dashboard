@@ -655,17 +655,31 @@ function _histPlaceholder(){
   const host=document.getElementById('main-chart'); if(!host) return;
   host.innerHTML=`<div class="c-empty c-loading"><span class="spin sm"></span><span>Loading daily history…</span></div>`;
 }
+/* ⚠️ `_histPend[t]` guarda a PROMESSA do pedido em voo, não um simples "1". Motivo, que já
+   causou bug: a pré-carga do hover começa a busca e o clique chega no meio dela. Se aqui a
+   gente ignorasse os papéis "em voo" e devolvesse false, o `.then` de quem chamou não
+   redesenharia — e a tela ficava PRESA no "Loading daily history…" para sempre, justamente
+   no fluxo mais comum (mouse para no botão, clica logo em seguida). Agora quem chega no
+   meio ESPERA o mesmo pedido e é avisado quando ele termina. */
 async function _ensureHistory(tickers){
   // commodities (@CODE) não vivem em quote_history — a série delas vem de commodities.daily
-  const want=(tickers||[]).filter(t=>t&&!_isComm(t)&&!_histMap[t]&&!_histPend[t]&&!_histTried[t]);
-  if(!want.length) return false;
-  want.forEach(t=>{_histPend[t]=1;});
-  try{
-    const rows=await restGet(`quote_history?ticker=in.(${want.join(',')})&select=ticker,daily`);
-    rows.forEach(r=>{ if(Array.isArray(r.daily)&&r.daily.length>1) _histMap[r.ticker]=r.daily; });
-  }catch(e){ console.warn('quote_history', e); }   // sem a tabela ainda, o gráfico segue no mensal
-  want.forEach(t=>{ delete _histPend[t]; _histTried[t]=1; });   // 1 tentativa por papel por sessão
-  return true;
+  const alvo=(tickers||[]).filter(t=>t&&!_isComm(t)&&!_histMap[t]&&!_histTried[t]);
+  if(!alvo.length) return false;                       // todo mundo já resolvido: nada a esperar
+  const emVoo=alvo.filter(t=>_histPend[t]).map(t=>_histPend[t]);
+  const novos=alvo.filter(t=>!_histPend[t]);
+  let p=null;
+  if(novos.length){
+    p=(async()=>{
+      try{
+        const rows=await restGet(`quote_history?ticker=in.(${novos.join(',')})&select=ticker,daily`);
+        rows.forEach(r=>{ if(Array.isArray(r.daily)&&r.daily.length>1) _histMap[r.ticker]=r.daily; });
+      }catch(e){ console.warn('quote_history', e); }   // sem a tabela, o gráfico segue no mensal
+      novos.forEach(t=>{ delete _histPend[t]; _histTried[t]=1; });   // 1 tentativa por papel por sessão
+    })();
+    novos.forEach(t=>{ _histPend[t]=p; });
+  }
+  await Promise.all(emVoo.concat(p?[p]:[]));
+  return true;                                          // sempre avisa: quem chamou redesenha
 }
 function _dailyLive(q){
   const d=_dailyRaw(q);
