@@ -199,6 +199,8 @@ body.theme-light .chart-dates input{color-scheme:light}
   padding:7px 9px;font:500 11px var(--font);color:var(--text);opacity:0;transition:opacity .08s;box-shadow:0 8px 22px rgba(0,0,0,.5);z-index:5;min-width:120px}
 .c-tip b{font-family:var(--mono)} .c-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 .c-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--mute);font-size:12px;text-align:center;padding:20px}
+.c-empty.c-loading{flex-direction:column;gap:11px}
+.spin.sm{width:20px;height:20px;border-width:2px}
 /* range selection (arrastar p/ medir o retorno no trecho — estilo Google Finance) */
 .c-sel{fill:rgba(255,80,0,.12)}
 .c-seledge{stroke:var(--orange);stroke-width:1;stroke-dasharray:3 2;opacity:.65}
@@ -647,6 +649,12 @@ const _HIST_DAILY_DAYS=372;                       // até aqui a série leve já
 let _histMap={}, _histPend={}, _histTried={};
 function _dailyRaw(q){ return (q&&_histMap[q.ticker]) || ((q&&Array.isArray(q.daily))?q.daily:[]); }
 function _needsHistory(){ return _rangeBounds(_range)[0] < Date.now()/1000-_HIST_DAILY_DAYS*86400; }
+// pronto = todo papel em tela já tem o diário OU já foi tentado (aí desenha com o que houver)
+function _histReady(tickers){ return (tickers||[]).every(t=>!t||_isComm(t)||_histMap[t]||_histTried[t]); }
+function _histPlaceholder(){
+  const host=document.getElementById('main-chart'); if(!host) return;
+  host.innerHTML=`<div class="c-empty c-loading"><span class="spin sm"></span><span>Loading daily history…</span></div>`;
+}
 async function _ensureHistory(tickers){
   // commodities (@CODE) não vivem em quote_history — a série delas vem de commodities.daily
   const want=(tickers||[]).filter(t=>t&&!_isComm(t)&&!_histMap[t]&&!_histPend[t]&&!_histTried[t]);
@@ -1149,9 +1157,15 @@ function renderChart(){
       b.title=ratio?'Price shows one company at a time — keeps the long leg':(multi?'Price shows one company at a time':''); }
     if(b.dataset.m==='ratio'){ b.disabled=!_sel.length; b.title=_sel.length?'One pair at a time — pick the long and short legs below the header':'Select an asset first'; }
   });
-  // range longo → busca o diário completo dos papéis EM TELA (1-2) e redesenha quando chegar.
-  // Não bloqueia: o gráfico já aparece com a série leve (mensal) e é refinado depois.
-  if(_sel.length && _needsHistory()) _ensureHistory(_sel).then(ok=>{ if(ok) renderChart(); });
+  // Range longo → busca o diário completo dos papéis EM TELA (1-2) e desenha UMA VEZ, quando
+  // chegar. ⚠️ A 1ª versão desenhava logo a série leve (mensal) e trocava depois — no olho do
+  // usuário isso não parecia "refinamento", parecia defeito: "carrega a linha e depois carrega
+  // os preços diários". Enquanto não está pronto, mostra que está carregando e não desenha nada
+  // que vá mudar de forma. Na prática a espera quase sempre já aconteceu, por causa da pré-carga
+  // por intenção no hover dos botões 5Y/Max (ver _initRangeWarm).
+  const precisaHist=_sel.length>0 && _needsHistory();
+  if(precisaHist) _ensureHistory(_sel).then(ok=>{ if(ok) renderChart(); });
+  const carregandoHist=precisaHist && !_histReady(_sel);
   if(!_sel.length){
     document.getElementById('chart-sub').textContent='';
     _mainLines=[]; _ratioBar(false); _ratioFitHost(false);
@@ -1166,6 +1180,8 @@ function renderChart(){
     const an=_short(_rLong||''), bn=_short(_rShort||'');
     document.getElementById('chart-sub').textContent=(_rLong&&_rShort)?`${an} ÷ ${bn} · ${_rangeLabel(_range)}`:'';
     const bad=(!_rLong||!_rShort||_rLong===_rShort);
+    // _mainLines zerado junto: senão o XLS/PNG do admin exportaria a série do render anterior
+    if(carregandoHist){ _mainLines=[]; _ratioStats(null); _ratioFitHost(true); _histPlaceholder(); renderChips(); renderReco(); return; }
     const r=bad?null:_ratioSeries();
     _ratioStats(r);        // preenche a barra ANTES de medi-la (ela pode quebrar em 2 linhas)
     _ratioFitHost(true);
@@ -1180,6 +1196,7 @@ function renderChart(){
   } else {
     _ratioBar(false); _ratioFitHost(false);
     document.getElementById('chart-sub').textContent=(multi?`${_sel.length} assets · `:'')+_rangeLabel(_range);
+    if(carregandoHist){ _mainLines=[]; _histPlaceholder(); renderChips(); renderReco(); return; }
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
     _mainLines=lines;
     _renderChart('main-chart', lines, _chartMode);
@@ -1645,6 +1662,20 @@ function _initExports(){
   ]));
 }
 
+/* Pré-carga por INTENÇÃO: parar o mouse ~180 ms sobre 5Y/Max já começa a buscar o diário,
+   então quando o clique vem o dado costuma estar em mãos e o gráfico aparece pronto. Passar
+   o mouse rápido por cima NÃO dispara. Mesmo padrão do _warmDB da home. */
+function _initRangeWarm(){
+  const bar=document.getElementById('chart-range'); if(!bar) return;
+  let t=null;
+  const alvo=b=>b&&(b.dataset.r==='5Y'||b.dataset.r==='Max');
+  bar.addEventListener('mouseover', e=>{
+    const b=e.target.closest('button'); if(!alvo(b)) return;
+    clearTimeout(t); t=setTimeout(()=>{ if(_sel.length) _ensureHistory(_sel); }, 180);
+  });
+  bar.addEventListener('mouseout', ()=>clearTimeout(t));
+}
+
 /* ── boot ── */
 function _qparam(k){ try{return new URLSearchParams(location.search).get(k);}catch(e){return null;} }
 async function init(){
@@ -1667,6 +1698,7 @@ async function init(){
   document.getElementById('rb-short').onchange=e=>{ _noteInteract(); _ratioSetLeg('short',e.target.value); };
   document.getElementById('rb-swap').onclick=()=>{ _noteInteract(); _ratioSetLeg('long',_sel[1]); };
   document.getElementById('chart-range').onclick=e=>{ const b=e.target.closest('button'); if(b)setRange(b.dataset.r); };
+  _initRangeWarm();
   document.getElementById('c-from').onchange=onDates;
   document.getElementById('c-to').onchange=onDates;
   document.getElementById('c-clear').onclick=()=>setRange('3M');
