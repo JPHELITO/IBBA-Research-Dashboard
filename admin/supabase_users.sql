@@ -3,15 +3,20 @@
 -- Rodar no SQL Editor do Supabase. Idempotente. Requer is_admin() + profiles.
 --
 -- 2026-08-17 — ACESSO = LOGIN. Decisão do usuário: "acesso" é a quantidade de vezes
--- que alguém DIGITOU A SENHA e entrou com aquele login. get_users_list devolve
--- 24h / 7 dias / 30 dias / total por usuário, contados na trilha de auditoria do
--- próprio Supabase Auth (`auth.audit_log_entries`, ação 'login'), que é onde o
--- GoTrue grava cada `signInWithPassword` bem-sucedido.
+-- que alguém DIGITOU A SENHA e entrou com aquele login.
 --
--- ⚠️ NÃO usa mais `page_visits`: aquilo conta ABERTURA DE PÁGINA (a Home), então um
--- F5 somava um "acesso" sem ninguém digitar senha nenhuma. Nada a ver com a
--- definição acima. O `page_visits` continua existindo e alimentando os acessos
--- gerais da aba Visão geral (get_visit_stats) — só saiu DESTA conta.
+-- 🔴 2026-08-17 (2) — A TRILHA DE AUDITORIA DO SUPABASE ESTÁ VAZIA. A 1ª tentativa
+-- contava `auth.audit_log_entries` (ação 'login'), que é onde o GoTrue grava cada
+-- sign-in. Verificado na tela: ZERO para todo mundo, inclusive gente com
+-- `last_sign_in_at` recente → aquela tabela foi expurgada (é do Supabase, não nossa,
+-- e ele limpa quando quer). **Passamos a registrar por conta própria**: `login_events`
+-- + `log_login()`, chamado pelo `login.html` logo após o `signInWithPassword` dar certo.
+-- A auditoria continua sendo lida como HISTÓRICO — só as linhas ANTERIORES ao nosso
+-- 1º registro próprio, p/ não contar o mesmo login duas vezes se ela voltar a encher.
+--
+-- ⚠️ NÃO usa `page_visits`: aquilo conta ABERTURA DE PÁGINA (a Home), então um F5
+-- somava "acesso" sem ninguém digitar senha. O `page_visits` segue existindo e
+-- alimentando os acessos gerais da aba Visão geral (get_visit_stats).
 -- =============================================================================
 
 -- page_visits segue com user_id (usado pela Visão geral); mantido por idempotência
@@ -22,26 +27,61 @@ create or replace function public.log_visit(p_path text)
 revoke all on function public.log_visit(text) from public;
 grant execute on function public.log_visit(text) to anon, authenticated;
 
+-- ───────────── LOGINS (o "acesso" da aba Usuários) ─────────────
+create table if not exists public.login_events (
+  id         bigserial primary key,
+  user_id    uuid not null,
+  created_at timestamptz not null default now()
+);
+alter table public.login_events enable row level security;   -- sem policy: ninguém lê direto
+create index if not exists login_events_user_created_idx
+  on public.login_events(user_id, created_at desc);
+
+-- grava UM login do usuário autenticado. Sem parâmetro: quem é vem do token (auth.uid()),
+-- então ninguém consegue lançar login no nome de outro.
+-- Debounce de 10s: protege contra clique/retry duplo do front e contra alguém chamando a
+-- RPC em looping p/ inflar o próprio número. Re-login legítimo em 10s não existe na prática.
+create or replace function public.log_login()
+  returns void language plpgsql security definer set search_path = public, pg_temp as $$
+  declare v_uid uuid := auth.uid();
+  begin
+    if v_uid is null then return; end if;
+    if exists (select 1 from public.login_events
+               where user_id = v_uid and created_at > now() - interval '10 seconds') then
+      return;
+    end if;
+    insert into public.login_events(user_id) values (v_uid);
+  end; $$;
+revoke all on function public.log_login() from public, anon;
+grant execute on function public.log_login() to authenticated;
+
 -- lista de usuários (só admin): email, papel, último login, criado, LOGINS por janela
--- ⚠️ o conjunto de colunas MUDOU → precisa do drop; `create or replace` recusa trocar o
---    tipo de retorno de uma função que já existe (42P13).
+-- ⚠️ o conjunto de colunas MUDOU em relação à versão original → precisa do drop;
+--    `create or replace` recusa trocar o tipo de retorno (42P13).
 drop function if exists public.get_users_list();
 create or replace function public.get_users_list()
   returns table(id uuid, email text, role text,
                 last_sign_in_at timestamptz, created_at timestamptz,
                 visits bigint, v24h bigint, v7d bigint, v30d bigint)
   language sql stable security definer set search_path = public, pg_temp as $$
-  -- ⚠️ os apelidos aqui são `uid`/`ts` DE PROPÓSITO: numa função `language sql`, os nomes
-  --    do RETURNS TABLE (id, created_at, …) ficam visíveis no corpo e uma coluna com o
-  --    mesmo nome vira "column reference is ambiguous" em tempo de execução.
-  with l as (
-    select (a.payload->>'actor_id')::uuid as uid, a.created_at as ts
-    from auth.audit_log_entries a
+  -- ⚠️ os apelidos `uid`/`ts` são DE PROPÓSITO: numa função `language sql` os nomes do
+  --    RETURNS TABLE (id, created_at…) ficam visíveis no corpo e uma coluna homônima vira
+  --    "column reference is ambiguous" em tempo de execução.
+  with cut as (   -- desde quando nós mesmos registramos; antes disso vale a auditoria
+    select min(created_at) as t0 from public.login_events
+  ), l as (
+    select e.user_id as uid, e.created_at as ts
+    from public.login_events e
     where public.is_admin()
-      and a.payload->>'action' = 'login'      -- só login de verdade; 'token_refreshed' fica de fora
+    union all
+    select (a.payload->>'actor_id')::uuid, a.created_at
+    from auth.audit_log_entries a, cut
+    where public.is_admin()
+      and a.payload->>'action' = 'login'          -- login de verdade; 'token_refreshed' fora
+      and (cut.t0 is null or a.created_at < cut.t0)   -- sem dupla contagem
   ), agg as (
     select l.uid,
-           count(*)                                                   as n_total,
+           count(*)                                                    as n_total,
            count(*) filter (where l.ts >= now() - interval '24 hours') as n24h,
            count(*) filter (where l.ts >= now() - interval '7 days')   as n7d,
            count(*) filter (where l.ts >= now() - interval '30 days')  as n30d
@@ -71,28 +111,19 @@ create or replace function public.admin_set_user_role(p_user_id uuid, p_role tex
 revoke all on function public.admin_set_user_role(uuid, text) from public, anon;
 grant execute on function public.admin_set_user_role(uuid, text) to authenticated;
 
--- a assinatura de get_users_list MUDOU → avisa o PostgREST na hora (senão o front pode
--- levar alguns segundos vendo a assinatura velha em cache e reclamar de PGRST202)
+-- assinaturas novas/alteradas → avisa o PostgREST na hora (senão PGRST202 por cache)
 notify pgrst, 'reload schema';
 
 -- =============================================================================
--- CONFERÊNCIA (opcional) — rode isto DEPOIS, no mesmo SQL Editor, p/ ver a matéria-prima:
---
---   select date_trunc('day', created_at)::date as dia,
---          payload->>'actor_username' as quem, count(*) as logins
---   from auth.audit_log_entries
---   where payload->>'action' = 'login' and created_at >= now() - interval '30 days'
---   group by 1,2 order by 1 desc, 3 desc;
---
--- Se vier VAZIO, a trilha de auditoria do projeto foi limpa (ou o Supabase a expurgou) —
--- a aba Usuários vai avisar na tela em vez de mostrar uma coluna de zeros.
+-- CONFERÊNCIA (opcional), depois de fazer 1 logout + login:
+--   select u.email, count(e.*) as logins, max(e.created_at) as ultimo
+--   from auth.users u left join public.login_events e on e.user_id = u.id
+--   group by 1 order by 2 desc;
 -- =============================================================================
 
 -- Obs.: a função lê auth.users e auth.audit_log_entries via SECURITY DEFINER (dono =
--- postgres, que tem acesso ao schema auth). Se der erro de permissão:
---   grant usage on schema auth to postgres;  grant select on auth.audit_log_entries to postgres;
+-- postgres, que tem acesso ao schema auth).
 -- Obs. 2: NÃO criamos índice em auth.audit_log_entries de propósito — mexer no schema
--- `auth` briga com as migrações do próprio Supabase, e com este punhado de usuários a
--- varredura é irrelevante.
--- Obs. 3: o "total" é o que existe na trilha de auditoria. Login anterior a ela (ou
--- expurgado) não aparece — é o teto de história disponível, não uma escolha nossa.
+-- `auth` briga com as migrações do próprio Supabase.
+-- Obs. 3: o "total" começa do zero agora (a história anterior não existe em lugar nenhum
+-- deste projeto). Daqui p/ frente é registro nosso e não depende do Supabase.

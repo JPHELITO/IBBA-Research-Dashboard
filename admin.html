@@ -1492,16 +1492,18 @@ function _usWhen(ts){
   return `<span title="${esc(String(ts).replace('T',' ').slice(0,16))}">${esc(ago)} atrás</span>`
 }
 // Zero em TODAS as janelas de TODO mundo, mas gente que comprovadamente já logou
-// (last_sign_in_at) = a trilha de auditoria do Auth está vazia/expurgada. Nesse caso a coluna
-// de zeros MENTE — avisa em vez de deixar o admin achar que ninguém entra na dashboard.
+// (last_sign_in_at) = ainda não passou nenhum login pelo nosso registro (`login_events`) E a
+// trilha de auditoria do Supabase está vazia. Os zeros MENTEM — avisa, em vez de deixar o
+// admin achar que ninguém entra na dashboard. Some sozinho no 1º login registrado.
 function _usAudit(){
   const temJanela=_users.some(u=>_usNum(u.v7d)!==null)
   const tudoZero=_users.every(u=>(_usNum(u.visits)||0)===0)
   const jaLogou=_users.some(u=>u.last_sign_in_at)
   if(!temJanela || !tudoZero || !jaLogou) return ''
-  return '<div class="help" style="margin-top:12px">⚠️ <b>Nenhum login contabilizado</b>, mas há gente com último acesso registrado — '
-       + 'sinal de que a trilha de auditoria do Supabase Auth (<code>auth.audit_log_entries</code>) está vazia. '
-       + 'Os zeros acima não querem dizer que ninguém entrou. A contagem volta a subir a partir dos próximos logins.</div>'
+  return '<div class="help" style="margin-top:12px">⚠️ <b>Nenhum login contabilizado ainda.</b> '
+       + 'Há gente com último acesso registrado, então os zeros acima não querem dizer que ninguém entra na dashboard: '
+       + 'a contagem começa nos <b>próximos logins</b> — o histórico anterior não existe (a trilha de auditoria do Supabase foi expurgada). '
+       + 'Quem já está com a sessão aberta só entra na conta quando sair e entrar de novo.</div>'
 }
 function usSort(key){
   if(_usSort.key===key) _usSort.dir=-_usSort.dir; else _usSort={key, dir:-1}

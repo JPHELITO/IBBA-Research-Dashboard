@@ -268,7 +268,24 @@ async function handleLogin(e) {
   }
 
   setAuthCookie(data.session)
+  logLogin(data.session)
   window.location.replace('/')
+}
+
+// Registra o LOGIN — é isto que a aba Usuários do admin conta como "acesso" (alguém
+// digitou a senha e entrou). Só aqui: abrir/atualizar página NÃO é acesso.
+// ⚠️ `keepalive` é obrigatório: o replace('/') logo acima aborta requisição normal, e o
+// evento se perderia justamente no caso mais comum. Por isso é fetch cru e não sb.rpc().
+// Falhar aqui nunca pode atrapalhar o login → tudo silencioso.
+function logLogin(session){
+  try{
+    fetch(`${SUPA_URL}/rest/v1/rpc/log_login`, {
+      method:'POST', keepalive:true,
+      headers:{ apikey:SUPA_KEY, Authorization:`Bearer ${session.access_token}`,
+                'Content-Type':'application/json' },
+      body:'{}'
+    }).catch(()=>{})
+  }catch(e){}
 }
 </script>
 </body>
