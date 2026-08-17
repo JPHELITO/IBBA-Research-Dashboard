@@ -94,6 +94,47 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(max-width:760px){.wrap{padding:14px 12px 50px}.panels{grid-template-columns:1fr}}
+/* ══ CELULAR (≤900px) ═══════════════════════════════════════════════════════
+   A comp table tem 26 colunas (~990px) e não tem como caber num telefone. Ela já
+   rolava de lado dentro do .tbl-scroll, mas ao arrastar você perdia a referência de
+   QUAL empresa estava lendo. Aqui: 1ª coluna ANCORADA (fica parada enquanto o resto
+   desliza), tabela ocupando a largura inteira do cartão e sombrinha na borda direita
+   avisando que ainda tem coluna para o lado. */
+@media(max-width:900px){
+  .wrap{padding:12px 10px 44px}
+  .sec-title{font-size:14px} .sec-sub{font-size:11.5px}
+  .sg-tabs{gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .sg-tabs::-webkit-scrollbar{display:none}
+  .sg-tab{font-size:13.5px;padding:11px 14px;white-space:nowrap;flex:none}
+  .card{padding:11px 11px 12px;border-radius:10px;position:relative}
+  .card h3{font-size:12.5px} .card .csub{font-size:11px}
+  .tbl-scroll{margin:0 -11px;padding-bottom:2px}
+  table.data{font-size:11.5px}
+  table.data th,table.data td{padding:6px 7px}
+  table.data th{font-size:10px}
+  table.data th:first-child,table.data td:first-child{position:sticky;left:0;z-index:2;
+    background:var(--white);box-shadow:1px 0 0 var(--border)}
+  table.data th:first-child{z-index:3;background:var(--g-light)}
+  tr.ex td:first-child{background:#FAF8F4}
+  tr.offrow td:first-child{background:#FFF6F2}
+  tr.grp-row td:first-child,tr.agg-row td:first-child{background:var(--g-light)}
+  html.dark tr.ex td:first-child{background:#20242b}
+  html.dark tr.offrow td:first-child{background:#2a1d18}
+  html.dark tr.agg-row td:first-child{background:#212530}
+  .card:has(.tbl-scroll)::after{content:'';position:absolute;top:44px;right:0;bottom:12px;width:16px;
+    background:linear-gradient(to left,var(--white),rgba(255,255,255,0));pointer-events:none;border-radius:0 10px 10px 0}
+  /* Sensitivity: os grupos de steppers viram uma coluna e o campo cabe no dedo */
+  .panels{grid-template-columns:1fr}
+  .g6-groups{gap:10px}
+  .g6-group{padding:9px 11px 11px;width:100%}
+  .steppers{gap:10px 14px}
+  .stepper input{width:72px;padding:6px 7px;font-size:13px}
+  .stepper button{width:30px;height:30px}
+  .stepper label{font-size:11px}
+  .snap span{font-size:11px;padding:3px 8px}
+  .hbtn{padding:8px 12px}
+  .foot{font-size:11px}
+}
 /* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (Stock Guide) ═══════════ */
 html.dark{
   --black:#e8eaed;--g-dark:#c3c7cd;--g-mid:#828892;

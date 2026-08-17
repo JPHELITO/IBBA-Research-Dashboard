@@ -341,6 +341,22 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .section{padding:8px 10px 20px;}
   .chart-card{padding:10px 10px 12px;}
 }
+
+/* ══ CELULAR — convivência com a BARRA GLOBAL (topnav.js) ═══════════════════
+   Igual ao M&M: no celular o topo é a .gnav (sticky) e esta barra preta fica
+   só com o "← Sections". */
+@media (max-width:900px){
+  .sticky-header{top:54px;}   /* 52px da barra global + 2px da régua laranja */
+}
+/* Tablet (769–900px): sem seletor de seções e sem "← Sections", a barra preta da
+   página ficaria vazia — quem manda é a barra global. */
+@media (min-width:769px) and (max-width:900px){ .top-bar{display:none!important;} }
+@media (max-width:768px){
+  .brand-group,.top-home,.top-bar .logout-btn{display:none!important;}   /* repetidos no ☰ */
+  .top-bar{height:44px;padding:0 12px;gap:8px;}
+  .mob-back-btn{margin-right:auto;font-size:12px;padding:7px 10px;}
+  body.mob-picker-active .top-bar{display:none;}
+}
 /* ═══════════ DARK MODE — remap das variáveis + ajustes pontuais (Pulp & Paper) ═══════════ */
 html.dark{
   --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;

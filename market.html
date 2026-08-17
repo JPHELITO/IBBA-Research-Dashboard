@@ -399,6 +399,47 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
   .chart-host{height:280px}
   .rb-stats{margin-left:0;width:100%}
 }
+/* ══ CELULAR (≤900px) ═══════════════════════════════════════════════════════
+   Terminal de ações num telefone: tudo em UMA coluna, controles quebrando linha
+   (antes "All/Coverage/Peers", o seletor de datas e o rodapé saíam pela direita) e
+   as tabelas largas deslizando de lado com a coluna do TICKER ancorada. */
+@media(max-width:900px){
+  .mkt-wrap{padding:10px 10px 40px}
+  .mkt-grid{gap:10px}
+  .card-head{padding:9px 11px;row-gap:7px}
+  .card-tools{margin-left:0;width:100%;gap:5px}
+  /* o cabeçalho da watchlist era nowrap + overflow:hidden (desktop) → os botões
+     All/Coverage/Peers/Commodities sumiam pela direita no celular */
+  .wl-card > .card-head{flex-wrap:wrap;overflow:visible;height:auto}
+  .seg{padding:2px;flex-wrap:wrap}      /* 9 botões de range não cabem numa linha só */
+  .seg button{font-size:11.5px;padding:6px 10px}
+  .seg.mode button{font-size:12px;padding:6px 12px}
+  .card-title{font-size:11px} .card-sub{font-size:10.5px}
+  /* seletor de datas do gráfico: 3 campos + limpar não cabem numa linha só */
+  .chart-dates{flex-wrap:wrap;row-gap:7px;width:100%}
+  .chart-dates input{font-size:12px;padding:6px 7px}
+  .chart-host{height:230px}
+  .ah{gap:10px} .ah-mkts{gap:6px;margin-top:8px}
+  .ah-range{gap:8px} .ah-range .ahr-lbl{width:100%}   /* "Range" em cima, botões embaixo */
+  /* busca em linha própria: dentro do canto ela empurrava o "updated …" p/ fora da tela */
+  .ah-corner{margin-bottom:6px;flex-wrap:wrap;row-gap:6px;justify-content:flex-start}
+  .mkt-search{flex:1 1 100%;width:auto;min-width:0} .mkt-search input{font-size:13px}
+  /* WATCHLIST — 8 colunas (~434px) numa tela de 375: desliza, com o ticker parado.
+     A linha selecionada continua marcada pela barrinha laranja do box-shadow (o fundo
+     da célula ancorada precisa ser OPACO, senão o conteúdo rolado aparece por baixo). */
+  .wl-scroll{max-height:none;overflow:auto}
+  table.wl{font-size:11px}
+  table.wl th,table.wl td{padding:6px 5px}
+  table.wl th.l,table.wl td.l{position:sticky;left:0;z-index:2;background:var(--panel)}
+  table.wl th.l{z-index:3}
+  .wl-foot{padding:9px 11px;font-size:11px}
+  /* qualquer tabela larga desta página desliza dentro do próprio cartão */
+  .pf-sched-wrap,.corr-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tile{min-width:0;flex:1 1 140px}
+  .tile .t-nm{max-width:none}
+  .thesis{gap:12px}
+  .th-tiles{gap:7px}
+}
 </style>
 </head>
 <body class="market-dark">
