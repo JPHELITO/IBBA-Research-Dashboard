@@ -1,10 +1,12 @@
 /* =========================================================================
- * export-lib.js — utilitário de EXPORTAÇÃO admin-only da IBBA Dashboard.
- * Baixar gráficos (PNG + Excel/CSV), tabelas (Excel) e gerar PDF ("print").
+ * export-lib.js — utilitário de EXPORTAÇÃO da IBBA Dashboard.
+ * Baixar gráficos (PNG + Excel/CSV), tabelas (Excel), BASES BRUTAS e PDF ("print").
  * Carregado nas 4 páginas (Stock Guide, Steel & Mining, Pulp & Paper, Market).
  * UI em inglês; comentários em PT. Sem dependências obrigatórias: SheetJS é
- * carregado SOB DEMANDA (lazy) só quando o admin pede um Excel.
- * Convenção: tudo gateado por admin NO CHAMADOR (a lib não decide permissão).
+ * carregado SOB DEMANDA (lazy) só quando alguém pede um Excel.
+ * Convenção: quem decide permissão é o CHAMADOR (a lib nunca gateia sozinha).
+ *   - Steel & Mining + Pulp & Paper → liberado p/ TODO usuário (2026-08-17).
+ *   - Market + Stock Guide          → seguem admin-only no chamador.
  * ====================================================================== */
 (function () {
   if (window.IBBAExport) return;
@@ -241,14 +243,20 @@
   }
 
   // ── botãozinho PNG/XLS por gráfico Chart.js (genérico p/ M&M e P&P) ──
-  // opts: {charts, cardSelector, isAdmin, prefix, titleOf}
+  // opts: {charts, cardSelector, prefix, titleOf, fullAOA}
   //   charts     = registro global {canvasId: ChartInstance}
   //   cardSelector = seletor do "card" que envolve cada <canvas> (default '.chart-card')
   //   titleOf(id, chart) = nome amigável p/ o arquivo (default = id)
+  //   fullAOA(id) = matriz com o HISTÓRICO INTEIRO daquele gráfico (opcional).
+  //       Quando existe, o XLS ignora a janela (3M/1Y/YTD…) e baixa a série toda —
+  //       o PNG continua saindo IGUAL à tela (decisão do usuário, 2026-08-17).
+  //   alwaysVisible = botões SEMPRE à vista, em vez de aparecerem no hover.
+  //       Ligado em M&M/P&P: o hover vinha da época admin-only e o cliente,
+  //       que não sabe que o download existe, nunca ia passar o mouse p/ achar.
   // Percorre os <canvas> do DOM (estáticos) — NÃO o registro — e lê opts.charts[id]
   // AO VIVO no clique (as instâncias Chart.js são recriadas a cada filtro). Idempotente.
   function attachChartjsExports(opts) {
-    if (!opts || !opts.isAdmin || !opts.charts) return;
+    if (!opts || !opts.charts) return;   // permissão é decidida pelo chamador
     injectCSS();
     const cardSel = opts.cardSelector || '.chart-card';
     const prefix = opts.prefix || 'chart';
@@ -264,15 +272,20 @@
       const sub = () => cardText('.chart-sub');
       const name = () => safeName(prefix + '_' + ttl() + '_' + stamp());
       const getChart = () => opts.charts[id];
-      const box = document.createElement('div'); box.className = 'ibba-dl';
-      const bPng = document.createElement('button'); bPng.textContent = 'PNG'; bPng.title = 'Download image';
-      const bXls = document.createElement('button'); bXls.textContent = 'XLS'; bXls.title = 'Download data (Excel)';
+      const box = document.createElement('div'); box.className = 'ibba-dl' + (opts.alwaysVisible ? ' show' : '');
+      const bPng = document.createElement('button'); bPng.textContent = 'PNG'; bPng.title = 'Download image (as shown)';
+      const bXls = document.createElement('button'); bXls.textContent = 'XLS';
+      bXls.title = opts.fullAOA ? 'Download data (Excel) — full history' : 'Download data (Excel)';
       bPng.onclick = e => { e.stopPropagation(); e.preventDefault(); const ch = getChart();
         if (!ch || !ch.canvas) return alert('Open/refresh this chart first, then download.');
         pngFromChart(ch, name(), { bg: resolveBg(host), title: ttl(), sub: sub() }); };
-      bXls.onclick = e => { e.stopPropagation(); e.preventDefault(); const ch = getChart();
-        if (!ch) return alert('Open/refresh this chart first, then download.');
-        xlsxFromAOA([{ name: ttl(), aoa: chartToAOA(ch) }], name()).catch(() => alert('Could not build the Excel file.')); };
+      bXls.onclick = e => { e.stopPropagation(); e.preventDefault();
+        // histórico máximo quando a página souber gerar (fullAOA); senão, o que está na tela
+        let aoa = null;
+        if (opts.fullAOA) { try { aoa = opts.fullAOA(id); } catch (err) { console.warn('fullAOA falhou, usando a janela em tela:', err); } }
+        if (!aoa || aoa.length < 2) { const ch = getChart(); aoa = ch ? chartToAOA(ch) : null; }
+        if (!aoa || aoa.length < 2) return alert('Open/refresh this chart first, then download.');
+        xlsxFromAOA([{ name: ttl(), aoa: aoa }], name()).catch(() => alert('Could not build the Excel file.')); };
       box.appendChild(bPng); box.appendChild(bXls);
       host.appendChild(box);
     });
@@ -299,6 +312,178 @@
       xlsxFromAOA([{ name: opts.sheetName || 'data', aoa: aoa }], fname()).catch(() => alert('Could not build the Excel file.')); };
     box.appendChild(bPng); box.appendChild(bXls);
     host.appendChild(box);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  BASE BRUTA — modal "Download data" (2026-08-17)
+  //  Pedido do usuário: o cliente poder usar a dashboard como DOWNLOADER —
+  //  baixar a tabela inteira do jeito que ela está no banco (ex.: SECEX de
+  //  importação COMPLETO), não só o recorte que virou gráfico.
+  // ══════════════════════════════════════════════════════════════════════
+  /* Excel × CSV — MEDIDO no browser com a maior tabela (secex_country, 272 mil linhas):
+       .xlsx → 3 s montando a planilha + 24 s escrevendo = ~27 s de ABA CONGELADA e 84 MB
+       .csv  → 0,8 s e 20 MB
+     Por isso: acima do teto o painel ABRE em CSV (o Excel continua disponível, com o
+     custo escrito na tela). SheetJS é síncrono — não há como não travar. */
+  const RAW_BIG_ROWS = 120000;
+  const _xlsSecs = rows => Math.max(1, Math.round(rows / 10000));   // ~0,1 ms/linha
+  const _xlsMB = rows => Math.max(1, Math.round(rows * 0.31 / 1000));
+  function _int(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function injectRawCSS() {
+    if (document.getElementById('ibba-raw-css')) return;
+    const st = document.createElement('style'); st.id = 'ibba-raw-css';
+    st.textContent =
+      '.ibba-ov{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,Arial,Helvetica,sans-serif}' +
+      '.ibba-mod{background:#fff;color:#111;border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.3);width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden}' +
+      '.ibba-mod h3{margin:0;font-size:14px;font-weight:700;letter-spacing:.02em}' +
+      '.ibba-mh{padding:16px 18px 12px;border-bottom:1px solid #E5E7EB;position:relative}' +
+      '.ibba-mh .ibba-msub{font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5}' +
+      '.ibba-x{position:absolute;top:11px;right:12px;border:none;background:transparent;font-size:19px;line-height:1;cursor:pointer;color:#9CA3AF;padding:2px 6px}' +
+      '.ibba-x:hover{color:#FF5000}' +
+      '.ibba-mb{overflow:auto;padding:6px 8px 6px 8px;flex:1}' +
+      '.ibba-row{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer}' +
+      '.ibba-row:hover{background:rgba(255,80,0,.06)}' +
+      '.ibba-row input{margin:2px 0 0;accent-color:#FF5000;cursor:pointer;flex:none}' +
+      '.ibba-rt{font-size:12px;font-weight:600}' +
+      '.ibba-rn{font-size:10.5px;color:#6B7280;margin-top:2px;line-height:1.45}' +
+      '.ibba-rc{margin-left:auto;font-size:10.5px;color:#6B7280;white-space:nowrap;padding-top:1px}' +
+      '.ibba-mf{border-top:1px solid #E5E7EB;padding:12px 18px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}' +
+      '.ibba-mf .ibba-sel{font-size:10.5px;color:#6B7280;margin-right:auto}' +
+      '.ibba-mf .ibba-lnk{border:none;background:transparent;color:#FF5000;font:600 10.5px Inter,Arial,sans-serif;cursor:pointer;padding:0 2px}' +
+      '.ibba-fmt{display:inline-flex;border:1px solid #D1D5DB;border-radius:7px;overflow:hidden}' +
+      '.ibba-fmt button{border:none;background:transparent;font:600 10.5px Inter,Arial,sans-serif;padding:6px 12px;cursor:pointer;color:#6B7280}' +
+      '.ibba-fmt button.on{background:#FF5000;color:#fff}' +
+      '.ibba-go{border:1px solid #FF5000;background:#FF5000;color:#fff;font:700 11px Inter,Arial,sans-serif;border-radius:7px;padding:7px 16px;cursor:pointer}' +
+      '.ibba-go:disabled{opacity:.55;cursor:default}' +
+      '.ibba-st{width:100%;font-size:10.5px;color:#6B7280;min-height:14px;line-height:1.45}' +
+      '.ibba-st.warn{color:#B45309}.ibba-st.err{color:#C0392B}' +
+      'html.dark .ibba-mod{background:#161B22;color:#E6EDF3}' +
+      'html.dark .ibba-mh,html.dark .ibba-mf{border-color:#30363D}' +
+      'html.dark .ibba-mh .ibba-msub,html.dark .ibba-rn,html.dark .ibba-rc,html.dark .ibba-sel,html.dark .ibba-st{color:#9DA7B3}' +
+      'html.dark .ibba-fmt{border-color:#30363D}html.dark .ibba-fmt button{color:#9DA7B3}html.dark .ibba-fmt button.on{color:#fff}' +
+      'html.dark .ibba-row:hover{background:rgba(255,80,0,.14)}' +
+      '@media print{.ibba-ov{display:none!important}}';
+    document.head.appendChild(st);
+  }
+
+  // opts: {title, sub, prefix, tables:[{name,label,note,rows}], load(name)->Promise<AOA>, onClose}
+  //   load(name) devolve a matriz [cabeçalho, ...linhas] da tabela inteira.
+  function rawDataPanel(opts) {
+    injectCSS(); injectRawCSS();
+    const tables = (opts.tables || []).filter(Boolean);
+    const picked = new Set(tables.map(t => t.name));   // começa tudo marcado = "a base completa"
+    const _totalRows = tables.reduce((s, t) => s + (t.rows || 0), 0);
+    let fmt = _totalRows > RAW_BIG_ROWS ? 'csv' : 'xlsx';   // base grande abre em CSV (ver nota acima)
+    let busy = false;
+
+    const ov = document.createElement('div'); ov.className = 'ibba-ov';
+    ov.innerHTML =
+      '<div class="ibba-mod" role="dialog" aria-modal="true" aria-label="Download data">' +
+        '<div class="ibba-mh"><h3>' + _esc(opts.title || 'Download data') + '</h3>' +
+          '<div class="ibba-msub">' + _esc(opts.sub || '') + '</div>' +
+          '<button class="ibba-x" title="Close">×</button></div>' +
+        '<div class="ibba-mb"></div>' +
+        '<div class="ibba-mf">' +
+          '<span class="ibba-sel"></span>' +
+          '<button class="ibba-lnk" data-all="1">Select all</button>' +
+          '<button class="ibba-lnk" data-all="0">Clear</button>' +
+          '<span class="ibba-fmt"><button data-fmt="xlsx"' + (fmt === 'xlsx' ? ' class="on"' : '') + '>Excel</button>' +
+            '<button data-fmt="csv"' + (fmt === 'csv' ? ' class="on"' : '') + '>CSV</button></span>' +
+          '<button class="ibba-go">⤓ Download</button>' +
+          '<div class="ibba-st"></div>' +
+        '</div>' +
+      '</div>';
+
+    const body = ov.querySelector('.ibba-mb'), selInfo = ov.querySelector('.ibba-sel');
+    const stEl = ov.querySelector('.ibba-st'), goBtn = ov.querySelector('.ibba-go');
+    // `keep` = mensagem final (Done/erro) que o refresh() NÃO pode apagar — senão o
+    // "Done" nasce e morre no mesmo instante e o usuário não vê nada acontecer.
+    let sticky = false;
+    const status = (msg, cls, keep) => { sticky = !!keep; stEl.className = 'ibba-st' + (cls ? ' ' + cls : ''); stEl.textContent = msg || ''; };
+    const touch = () => { sticky = false; refresh(); };   // interação do usuário limpa a mensagem final
+
+    tables.forEach(t => {
+      const lab = document.createElement('label'); lab.className = 'ibba-row';
+      lab.innerHTML = '<input type="checkbox" checked>' +
+        '<span><span class="ibba-rt">' + _esc(t.label || t.name) + '</span>' +
+        (t.note ? '<div class="ibba-rn">' + _esc(t.note) + '</div>' : '') + '</span>' +
+        '<span class="ibba-rc">' + _int(t.rows) + ' rows</span>';
+      const cb = lab.querySelector('input');
+      cb.onchange = () => { cb.checked ? picked.add(t.name) : picked.delete(t.name); touch(); };
+      lab.dataset.tbl = t.name;
+      body.appendChild(lab);
+    });
+
+    function selected() { return tables.filter(t => picked.has(t.name)); }
+    function refresh() {
+      const sel = selected(), rows = sel.reduce((s, t) => s + (t.rows || 0), 0);
+      selInfo.textContent = sel.length + ' of ' + tables.length + ' selected · ' + _int(rows) + ' rows';
+      goBtn.disabled = busy || !sel.length;
+      if (!busy && !sticky) {
+        if (fmt === 'xlsx' && rows > RAW_BIG_ROWS)
+          status('Heads-up: ' + _int(rows) + ' rows in Excel takes about ' + _xlsSecs(rows) + 's with the tab frozen and produces a ~' +
+                 _xlsMB(rows) + ' MB file. CSV does the same data in a second, at a quarter of the size.', 'warn');
+        else if (fmt === 'csv' && sel.length > 1)
+          status('CSV downloads one file per table — your browser may ask you to allow multiple downloads.');
+        else status('');
+      }
+    }
+    ov.querySelectorAll('[data-all]').forEach(b => b.onclick = () => {
+      const on = b.dataset.all === '1';
+      tables.forEach(t => on ? picked.add(t.name) : picked.delete(t.name));
+      body.querySelectorAll('input').forEach(i => i.checked = on);
+      touch();
+    });
+    ov.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => {
+      fmt = b.dataset.fmt;
+      ov.querySelectorAll('[data-fmt]').forEach(x => x.classList.toggle('on', x === b));
+      touch();
+    });
+
+    function close() { if (busy) return; ov.remove(); document.removeEventListener('keydown', onKey); if (opts.onClose) opts.onClose(); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.querySelector('.ibba-x').onclick = close;
+    ov.onclick = e => { if (e.target === ov) close(); };
+    document.addEventListener('keydown', onKey);
+
+    goBtn.onclick = async () => {
+      const sel = selected(); if (!sel.length || busy) return;
+      busy = true; goBtn.disabled = true;
+      const base = safeName((opts.prefix || 'data') + '_' + stamp());
+      try {
+        // Uma tabela por vez, cedendo o fio entre elas → a mensagem PINTA e o usuário
+        // vê onde está (com tudo de uma vez, a tela congelava sem explicação).
+        if (fmt === 'xlsx') {
+          const X = await ensureXLSX();
+          const wb = X.utils.book_new();
+          let i = 0;
+          for (const t of sel) {
+            status('Reading ' + (t.label || t.name) + '… (' + (++i) + '/' + sel.length + ')'); await _sleep(0);
+            X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(await opts.load(t.name)), sheetName(t.name));
+          }
+          status('Writing the Excel file — the tab freezes while it compresses…'); await _sleep(40);
+          X.writeFile(wb, safeName(base) + '.xlsx');
+        } else {
+          let i = 0;
+          for (const t of sel) {
+            status('Reading ' + (t.label || t.name) + '… (' + (++i) + '/' + sel.length + ')'); await _sleep(0);
+            downloadCSV(await opts.load(t.name), safeName((opts.prefix || 'data') + '_' + t.name + '_' + stamp()));
+            await _sleep(350);   // navegador engasga com downloads simultâneos
+          }
+        }
+        status('Done — check your downloads folder.', '', true);
+      } catch (e) {
+        console.error(e);
+        status('Could not build the file: ' + (e && e.message ? e.message : e), 'err', true);
+      } finally { busy = false; refresh(); }
+    };
+
+    refresh();
+    document.body.appendChild(ov);
+    return { close: close, el: ov };
   }
 
   function makeButton(label, onClick) { injectCSS(); const b = document.createElement('button'); b.className = 'ibba-btn'; b.textContent = label; b.onclick = onClick; return b; }
@@ -330,7 +515,7 @@
     ensureXLSX, downloadCSV, xlsxFromAOA, xlsxFromTables,
     pngFromChart, pngFromSVG, chartToAOA, linesAOA,
     printHTML, printTables, printStyledTables,
-    attachChartjsExports, attachSvgExport,
+    attachChartjsExports, attachSvgExport, rawDataPanel,
     makeButton, toolbar, injectCSS, stamp, safeName, resolveBg,
   };
 })();

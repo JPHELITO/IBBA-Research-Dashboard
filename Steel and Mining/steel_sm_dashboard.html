@@ -112,6 +112,14 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .snav-btn.active::before{background:var(--orange);transform:scaleY(1);}
 .snav-btn.soon{opacity:.35;cursor:default;}
 .snav-btn.soon::before{display:none;}
+/* ⤓ Data — base bruta (empurrado p/ a direita da secondary-nav) */
+.dl-data-btn{margin:auto 0 auto auto;align-self:center;white-space:nowrap;
+  font:600 10px var(--font);letter-spacing:.04em;cursor:pointer;border-radius:7px;
+  padding:5px 12px;border:1px solid var(--orange);background:rgba(255,80,0,.10);color:var(--orange);
+  transition:background .15s;}
+.dl-data-btn:hover{background:rgba(255,80,0,.22);}
+.dl-data-btn:disabled{opacity:.55;cursor:default;}
+@media print{.dl-data-btn{display:none!important;}}
 
 /* ── STICKY HEADER ───────────────────────────────────────────────────────── */
 .sticky-header{position:sticky;top:0;z-index:100;
@@ -540,6 +548,9 @@ html.dark .cr-input{color-scheme:dark}
   <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
   <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
+  <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
+  <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
+          title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -921,6 +932,7 @@ html.dark .cr-input{color-scheme:dark}
   Chart.register(ChartDataLabels)
   loadDB()
   applyPredFlag()
+  initDownloads()      // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 // flag 'pred_model' (admin → Funcionalidades): off + cliente → esconde a sub-aba Predictive Model. Admin sempre vê.
@@ -928,7 +940,6 @@ async function applyPredFlag(){
   try{
     const [fl, role] = await Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])
     const isAdmin = !!(role && !role.error && role.data === 'admin')
-    if(isAdmin && window.IBBAExport) IBBAExport.attachChartjsExports({charts, isAdmin:true, prefix:'steel'})   // download PNG/Excel por gráfico (só admin)
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='pred_model') : null
     const on = f ? !!f.enabled : true
     if(on || isAdmin) return
@@ -1250,12 +1261,19 @@ async function fetchDB(){
   return await readWithProgress(r,'Loading data…');
 }
 
+/* Abre uma instância sql.js do banco. Usado no boot (loadDB) e, sob demanda, pelo
+   painel "Download data" — que reabre em vez de segurar os ~25 MB abertos a sessão
+   inteira (o .gz já está no cache do navegador, então reabrir é barato). */
+async function openDB(){
+  const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+  return new SQL.Database(await fetchDB());
+}
+
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
 async function loadDB(){
   const el=document.getElementById('loading');
   try{
-    const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
-    const db=new SQL.Database(await fetchDB());
+    const db=await openDB();
 
     PROD=toObj(db.exec(`SELECT period,year,month,crude_steel,flat,long_prod,semi FROM iabr_production ORDER BY period`)[0]);
     CONS=toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_consumption ORDER BY period`)[0]);
@@ -1310,6 +1328,90 @@ async function loadDB(){
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load steel_sm.db</div>
       <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOWNLOADS — PNG/Excel por gráfico + BASE BRUTA (todo usuário, 2026-08-17)
+//  Pedido do usuário: (1) liberar p/ todo cliente, (2) Excel sempre com o
+//  histórico MÁXIMO (o PNG continua igual à tela), (3) poder baixar a base
+//  inteira, como ela está no banco — a dashboard também serve de downloader.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/* Matriz do gráfico `id` com o histórico INTEIRO: troca a janela p/ 'all',
+   re-renderiza a seção, lê a série e devolve tudo ao lugar. Tudo síncrono →
+   o navegador não chega a pintar o estado intermediário (nenhum piscar).
+   A GRANULARIDADE escolhida (monthly/quarterly/annual) é respeitada. */
+function fullChartAOA(id){
+  const w=currentWin, cr={from:customRange.from,to:customRange.to};
+  currentWin='all'; customRange={from:null,to:null};
+  let aoa=null;
+  try{
+    render();
+    const ch=charts[id];
+    if(ch) aoa=IBBAExport.chartToAOA(ch);
+  }finally{
+    currentWin=w; customRange=cr;
+    render();
+  }
+  return aoa;
+}
+
+/* Tabelas que a página carrega = as 11 do `steel_sm_web.db.gz`
+   (allowlist do build_web_db.py). ⚠️ Tabela nova lá → adicionar aqui. */
+const RAW_TABLES=[
+  {name:'secex_imports',     label:'SECEX — imports by product',        note:'Monthly Brazilian steel imports by product category: revenue (US$ mn), volume (kton), price (US$/t), working days and YoY. Source: SECEX/MDIC.'},
+  {name:'secex_exports',     label:'SECEX — exports by product',        note:'Same fields as above, for exports. Source: SECEX/MDIC.'},
+  {name:'secex_country',     label:'SECEX — by country of origin/destination', note:'The full breakdown behind the origin charts: period × direction × product category × country, in kton and US$ mn. Country names come in Portuguese, as published by SECEX.'},
+  {name:'iabr_production',   label:'IABr — production',                 note:'Crude steel, flat, long, semi-finished, slabs, billets and pig iron (kton). Source: Instituto Aço Brasil.'},
+  {name:'iabr_domestic_sales',label:'IABr — domestic sales',            note:'Domestic sales by product family (kton).'},
+  {name:'iabr_consumption',  label:'IABr — apparent consumption',       note:'Apparent domestic consumption by product family (kton).'},
+  {name:'iabr_exports',      label:'IABr — exports',                    note:'Volume by family (kton) and total revenue (US$ mn).'},
+  {name:'iabr_imports',      label:'IABr — imports',                    note:'Volume by family (kton) and total revenue (US$ mn).'},
+  {name:'inda_distribution', label:'INDA — distribution',               note:'Inventories, months of inventory, purchases, sales, working days and derived LTM/3M averages. Source: INDA.'},
+  {name:'import_prediction', label:'Predictive model — Brazil imports', note:'Brazilian imports of HRC/CRC from Korea and China (SH6 level): US$ and kg.'},
+  {name:'pred_exports',      label:'Predictive model — exports at origin', note:'Korean/Chinese exports registered at origin customs — the series that leads Brazilian imports by ~3 months.'},
+];
+
+let _rawDB=null, _rawDBp=null;
+function _rawDBOpen(){ return _rawDBp||(_rawDBp=openDB().then(db=>(_rawDB=db))); }
+function _rawDBClose(){ try{_rawDB&&_rawDB.close();}catch(e){} _rawDB=null; _rawDBp=null; }
+
+/* sql.js → matriz [cabeçalho, ...linhas] (formato que o Excel/CSV comem direto) */
+function _tableAOA(db,name){
+  const res=db.exec(`SELECT * FROM "${name}"`);
+  if(!res||!res[0]) return [['(empty)']];
+  return [res[0].columns].concat(res[0].values);
+}
+
+async function openRawData(){
+  const btn=document.getElementById('dl-data-btn');
+  if(!window.IBBAExport){alert('Download tools are still loading — try again in a second.');return;}
+  if(btn){btn.disabled=true;btn.textContent='Loading…';}
+  try{
+    const db=await _rawDBOpen();
+    const have=new Set();
+    (db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[]).forEach(r=>have.add(r[0]));
+    const tables=RAW_TABLES.filter(t=>have.has(t.name)).map(t=>({
+      ...t, rows:db.exec(`SELECT COUNT(*) FROM "${t.name}"`)[0].values[0][0]
+    }));
+    IBBAExport.rawDataPanel({
+      title:'Download data — Steel & Mining',
+      sub:'The complete tables behind this dashboard, exactly as they are stored — full history, no chart filters applied. Pick what you need and choose Excel (one sheet per table) or CSV (one file per table).',
+      prefix:'ibba_steel',
+      tables,
+      load:async name=>_tableAOA(await _rawDBOpen(),name),
+      onClose:_rawDBClose,
+    });
+  }catch(e){
+    console.error(e);
+    alert('Could not open the database: '+(e&&e.message?e.message:e));
+    _rawDBClose();
+  }finally{ if(btn){btn.disabled=false;btn.textContent='⤓ Data';} }
+}
+
+function initDownloads(){
+  if(!window.IBBAExport) return;
+  IBBAExport.attachChartjsExports({charts, prefix:'steel', fullAOA:fullChartAOA, alwaysVisible:true});
 }
 
 // ─── ORIGIN CHARTS — sistema interativo por país ─────────────────────────────
