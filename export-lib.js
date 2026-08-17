@@ -169,6 +169,66 @@
     X.writeFile(wb, safeName(filename) + '.xlsx');
   }
 
+  // ── ZIP no navegador, sem biblioteca (2026-08-17) ───────────────────────
+  // POR QUÊ: baixar N arquivos num clique faz o Chrome perguntar "permitir vários
+  // downloads?" — o cliente vê só o 1º chegar e, se negar, o site fica BLOQUEADO
+  // p/ downloads automáticos (mata até o Excel depois). Um clique = UM arquivo.
+  // Deflate real via CompressionStream (nativo); sem ele, entra como "stored".
+  const _CRC_T = (() => { const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+    return t; })();
+  function _crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = _CRC_T[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  async function _deflateRaw(u8) {
+    if (typeof CompressionStream !== 'function') return null;
+    try {
+      const s = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(s).arrayBuffer());
+    } catch (e) { return null; }
+  }
+  function _dosTime(d) {
+    return { t: ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() / 2)) & 0xFFFF,
+             d: (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF };
+  }
+  // files = [{name, data:Uint8Array|string}] → Blob de um .zip válido
+  async function zipBlob(files, onProgress) {
+    const enc = new TextEncoder(), now = _dosTime(new Date());
+    const parts = [], central = []; let offset = 0, i = 0;
+    for (const f of files) {
+      if (onProgress) onProgress(++i, files.length, f.name);
+      const raw = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+      const nameB = enc.encode(f.name);
+      const crc = _crc32(raw);
+      const def = await _deflateRaw(raw);
+      const useDef = !!def && def.length < raw.length;
+      const body = useDef ? def : raw, method = useDef ? 8 : 0;
+
+      const lh = new Uint8Array(30 + nameB.length), lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, method, true); lv.setUint16(10, now.t, true); lv.setUint16(12, now.d, true);
+      lv.setUint32(14, crc, true); lv.setUint32(18, body.length, true); lv.setUint32(22, raw.length, true);
+      lv.setUint16(26, nameB.length, true); lv.setUint16(28, 0, true);
+      lh.set(nameB, 30);
+
+      const ch = new Uint8Array(46 + nameB.length), cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true); cv.setUint16(10, method, true);
+      cv.setUint16(12, now.t, true); cv.setUint16(14, now.d, true);
+      cv.setUint32(16, crc, true); cv.setUint32(20, body.length, true); cv.setUint32(24, raw.length, true);
+      cv.setUint16(28, nameB.length, true); cv.setUint32(42, offset, true);
+      ch.set(nameB, 46);
+
+      parts.push(lh, body); central.push(ch);
+      offset += lh.length + body.length;
+    }
+    const cdSize = central.reduce((s, c) => s + c.length, 0);
+    const end = new Uint8Array(22), ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+  function csvText(aoa) { return '﻿' + aoa.map(r => r.map(csvCell).join(',')).join('\r\n'); }
+
   // ── mecanismo de print: iframe oculto → write doc → print() (usuário salva como PDF) ──
   function _printDoc(html) {
     const ifr = document.createElement('iframe');
@@ -320,14 +380,15 @@
   //  baixar a tabela inteira do jeito que ela está no banco (ex.: SECEX de
   //  importação COMPLETO), não só o recorte que virou gráfico.
   // ══════════════════════════════════════════════════════════════════════
-  /* Excel × CSV — MEDIDO no browser com a maior tabela (secex_country, 272 mil linhas):
-       .xlsx → 3 s montando a planilha + 24 s escrevendo = ~27 s de ABA CONGELADA e 84 MB
-       .csv  → 0,8 s e 20 MB
-     Por isso: acima do teto o painel ABRE em CSV (o Excel continua disponível, com o
-     custo escrito na tela). SheetJS é síncrono — não há como não travar. */
-  const RAW_BIG_ROWS = 120000;
-  const _xlsSecs = rows => Math.max(1, Math.round(rows / 10000));   // ~0,1 ms/linha
-  const _xlsMB = rows => Math.max(1, Math.round(rows * 0.31 / 1000));
+  /* Excel × CSV — MEDIDO no browser (SheetJS é SÍNCRONO: enquanto escreve, a aba morre).
+       10 mil linhas → 0,4 s / 3 MB      50 mil → 2,1 s / 15 MB
+      100 mil linhas → 4,2 s / 30 MB    272 mil (secex_country) → 27 s / 84 MB
+      as 11 tabelas juntas (285 mil) → **178 s** e 88 MB  ← o usuário desistiu, com razão
+     Ou seja: até ~100 mil é linear e rápido; acima disso desanda (GC segurando as 11
+     planilhas + a saída ao mesmo tempo). Por isso o Excel é TRAVADO no teto abaixo e a
+     base grande sai em CSV — que faz as mesmas 272 mil linhas em 0,8 s e abre no Excel
+     igual. ⚠️ Não subir esse teto sem MEDIR de novo: a curva não é linear no topo. */
+  const RAW_EXCEL_MAX = 100000;
   function _int(n) { return Number(n || 0).toLocaleString('en-US'); }
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -356,6 +417,8 @@
       '.ibba-fmt{display:inline-flex;border:1px solid #D1D5DB;border-radius:7px;overflow:hidden}' +
       '.ibba-fmt button{border:none;background:transparent;font:600 10.5px Inter,Arial,sans-serif;padding:6px 12px;cursor:pointer;color:#6B7280}' +
       '.ibba-fmt button.on{background:#FF5000;color:#fff}' +
+      '.ibba-fmt button.off{opacity:.4;text-decoration:line-through}' +   // Excel indisponível: linhas demais
+      '.ibba-fmt button.off.on{background:#B45309;color:#fff;text-decoration:line-through}' +
       '.ibba-go{border:1px solid #FF5000;background:#FF5000;color:#fff;font:700 11px Inter,Arial,sans-serif;border-radius:7px;padding:7px 16px;cursor:pointer}' +
       '.ibba-go:disabled{opacity:.55;cursor:default}' +
       '.ibba-st{width:100%;font-size:10.5px;color:#6B7280;min-height:14px;line-height:1.45}' +
@@ -376,7 +439,7 @@
     const tables = (opts.tables || []).filter(Boolean);
     const picked = new Set(tables.map(t => t.name));   // começa tudo marcado = "a base completa"
     const _totalRows = tables.reduce((s, t) => s + (t.rows || 0), 0);
-    let fmt = _totalRows > RAW_BIG_ROWS ? 'csv' : 'xlsx';   // base grande abre em CSV (ver nota acima)
+    let fmt = _totalRows > RAW_EXCEL_MAX ? 'csv' : 'xlsx';   // base grande abre em CSV (ver nota acima)
     let busy = false;
 
     const ov = document.createElement('div'); ov.className = 'ibba-ov';
@@ -390,8 +453,8 @@
           '<span class="ibba-sel"></span>' +
           '<button class="ibba-lnk" data-all="1">Select all</button>' +
           '<button class="ibba-lnk" data-all="0">Clear</button>' +
-          '<span class="ibba-fmt"><button data-fmt="xlsx"' + (fmt === 'xlsx' ? ' class="on"' : '') + '>Excel</button>' +
-            '<button data-fmt="csv"' + (fmt === 'csv' ? ' class="on"' : '') + '>CSV</button></span>' +
+          '<span class="ibba-fmt"><button data-fmt="xlsx"' + (fmt === 'xlsx' ? ' class="on"' : '') + '>Excel (.xlsx)</button>' +
+            '<button data-fmt="csv"' + (fmt === 'csv' ? ' class="on"' : '') + '>CSV (.zip)</button></span>' +
           '<button class="ibba-go">⤓ Download</button>' +
           '<div class="ibba-st"></div>' +
         '</div>' +
@@ -420,14 +483,14 @@
     function selected() { return tables.filter(t => picked.has(t.name)); }
     function refresh() {
       const sel = selected(), rows = sel.reduce((s, t) => s + (t.rows || 0), 0);
+      const tooBig = fmt === 'xlsx' && rows > RAW_EXCEL_MAX;
       selInfo.textContent = sel.length + ' of ' + tables.length + ' selected · ' + _int(rows) + ' rows';
-      goBtn.disabled = busy || !sel.length;
+      goBtn.disabled = busy || !sel.length || tooBig;
+      ov.querySelector('[data-fmt="xlsx"]').classList.toggle('off', rows > RAW_EXCEL_MAX);
       if (!busy && !sticky) {
-        if (fmt === 'xlsx' && rows > RAW_BIG_ROWS)
-          status('Heads-up: ' + _int(rows) + ' rows in Excel takes about ' + _xlsSecs(rows) + 's with the tab frozen and produces a ~' +
-                 _xlsMB(rows) + ' MB file. CSV does the same data in a second, at a quarter of the size.', 'warn');
-        else if (fmt === 'csv' && sel.length > 1)
-          status('CSV downloads one file per table — your browser may ask you to allow multiple downloads.');
+        if (tooBig)
+          status(_int(rows) + ' rows is too much for Excel in the browser — it would freeze this tab for minutes. ' +
+                 'Switch to CSV (.zip): same data, seconds instead of minutes, and every file opens in Excel.', 'warn');
         else status('');
       }
     }
@@ -456,6 +519,7 @@
       try {
         // Uma tabela por vez, cedendo o fio entre elas → a mensagem PINTA e o usuário
         // vê onde está (com tudo de uma vez, a tela congelava sem explicação).
+        // ⚠️ SEMPRE UM ARQUIVO SÓ no fim — ver a nota do zipBlob.
         if (fmt === 'xlsx') {
           const X = await ensureXLSX();
           const wb = X.utils.book_new();
@@ -464,15 +528,19 @@
             status('Reading ' + (t.label || t.name) + '… (' + (++i) + '/' + sel.length + ')'); await _sleep(0);
             X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(await opts.load(t.name)), sheetName(t.name));
           }
-          status('Writing the Excel file — the tab freezes while it compresses…'); await _sleep(40);
+          status('Writing the Excel file — the tab freezes for a moment…'); await _sleep(40);
           X.writeFile(wb, safeName(base) + '.xlsx');
+        } else if (sel.length === 1) {
+          status('Reading ' + (sel[0].label || sel[0].name) + '…'); await _sleep(0);
+          downloadCSV(await opts.load(sel[0].name), safeName((opts.prefix || 'data') + '_' + sel[0].name + '_' + stamp()));
         } else {
-          let i = 0;
+          const files = []; let i = 0;
           for (const t of sel) {
             status('Reading ' + (t.label || t.name) + '… (' + (++i) + '/' + sel.length + ')'); await _sleep(0);
-            downloadCSV(await opts.load(t.name), safeName((opts.prefix || 'data') + '_' + t.name + '_' + stamp()));
-            await _sleep(350);   // navegador engasga com downloads simultâneos
+            files.push({ name: t.name + '.csv', data: csvText(await opts.load(t.name)) });
           }
+          const zip = await zipBlob(files, (n, tot, nm) => status('Zipping ' + nm + '… (' + n + '/' + tot + ')'));
+          downloadBlob(zip, safeName(base) + '.zip');
         }
         status('Done — check your downloads folder.', '', true);
       } catch (e) {
@@ -512,7 +580,7 @@
   }
 
   window.IBBAExport = {
-    ensureXLSX, downloadCSV, xlsxFromAOA, xlsxFromTables,
+    ensureXLSX, downloadCSV, xlsxFromAOA, xlsxFromTables, zipBlob, csvText,
     pngFromChart, pngFromSVG, chartToAOA, linesAOA,
     printHTML, printTables, printStyledTables,
     attachChartjsExports, attachSvgExport, rawDataPanel,

@@ -1058,7 +1058,7 @@ async function openRawData(){
     }));
     IBBAExport.rawDataPanel({
       title:'Download data — Pulp & Paper',
-      sub:'The complete tables behind this dashboard, exactly as they are stored — full history, no chart filters applied. Pick what you need and choose Excel (one sheet per table) or CSV (one file per table).',
+      sub:'The complete tables behind this dashboard, exactly as they are stored — full history, no chart filters applied. One click, one file: Excel gives you a single workbook with one sheet per table; CSV gives you a single .zip with one file per table (both open in Excel).',
       prefix:'ibba_pulp_paper',
       tables,
       load:async name=>_tableAOA(await _rawDBOpen(),name),
