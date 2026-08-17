@@ -28,7 +28,9 @@
     var b=document.getElementById('gnav-theme'); if(b) b.title = on?'Switch to light':'Switch to dark';
   };
 
-  var TEAM = [
+  // Time do cabeçalho: quem MANDA é a tabela do admin (RPC get_team). Esta lista é só
+  // reserva anti-flash (1º paint / RPC fora do ar) — analista novo entra pelo /admin, NÃO aqui.
+  var TEAM_FALLBACK = [
     { ini:'DS', name:'Daniel Sasson',     photo:'/assets/team-daniel.jpg',  email:'daniel.sasson@itaubba.com',    wa:'5511996741242' },
     { ini:'MF', name:'Marcelo Furlan',    photo:'/assets/team-marcelo.jpg', email:'marcelo.palhares@itaubba.com', wa:'5511974642801' },
     { ini:'JH', name:'João Paulo Helito', photo:'/assets/team-joao.jpg',    email:'joao.helito@itaubba.com',      wa:'5511934527535' },
@@ -58,6 +60,9 @@
 .gnt{display:flex;align-items:center;gap:5px;}\
 .gnt-av{width:23px;height:23px;border-radius:50%;object-fit:cover;background:#FF5000;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}\
 .gnt-name{font-size:10px;color:rgba(255,255,255,.78);font-weight:500;white-space:nowrap;}\
+.gnav-team.compact .gnt-name{display:none;}\
+.gnav-team.tight .gnt-b.wa{display:none;}\
+.gnav-team.bare .gnt-b{display:none;}\
 .gnt-b{width:19px;height:19px;border-radius:5px;border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;}\
 .gnt-b:hover{color:#fff;border-color:rgba(255,255,255,.45);}\
 .gnt-b svg{width:11px;height:11px;}\
@@ -101,15 +106,72 @@
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
-  function renderTeam(){
+  function _ini(n){ return String(n==null?'':n).trim().split(/\s+/).map(function(w){return w[0]||'';})
+    .slice(0,2).join('').toUpperCase().replace(/[^A-ZÀ-Ü]/g,'') || '–'; }
+  // A foto vem do banco RELATIVA ('assets/team-x.jpg'); as páginas em subpasta ("Steel and Mining/")
+  // resolveriam pra pasta errada → 404 e a bolinha virava iniciais. Data URI e URL absoluta passam intactas.
+  function _photo(p){ p = String(p==null?'':p); return (!p || /^(data:|https?:|\/)/i.test(p)) ? p : '/'+p; }
+
+  // Assinatura de nomes do cabeçalho MOBILE (a barra global some em ≤900px):
+  // news.html usa .brand-team; M&M e P&P usam .top-sub. Mesma fonte de dados → não desencontra.
+  function _fillBrandSub(team){
+    var txt = team.map(function(p){ return p.name; }).join(' · ');
+    ['.brand-team', '.top-sub'].forEach(function(sel){
+      var el = document.querySelector(sel); if(el) el.textContent = txt;
+    });
+  }
+
+  function renderTeam(list){
     var el = document.getElementById('gnav-team'); if(!el) return;
-    el.innerHTML = TEAM.map(function(p){ return '\
-      <div class="gnt" title="'+esc(p.name)+'">\
-        '+(p.photo ? '<img class="gnt-av" src="'+p.photo+'" alt="'+esc(p.name)+'" onerror="this.outerHTML=\'<div class=&quot;gnt-av&quot;>'+p.ini+'</div>\'">' : '<div class="gnt-av">'+p.ini+'</div>')+'\
-        <span class="gnt-name">'+esc(p.name)+'</span>\
-        <a class="gnt-b" href="mailto:'+p.email+'" title="'+p.email+'">'+SVG_EMAIL+'</a>\
-        <a class="gnt-b wa" href="https://wa.me/'+p.wa+'" target="_blank" rel="noopener" title="WhatsApp">'+SVG_WA+'</a>\
-      </div>'; }).join('');
+    var team = (list && list.length) ? list : TEAM_FALLBACK;
+    el.innerHTML = team.map(function(p){
+      var ini = esc(p.ini || _ini(p.name)), ph = _photo(p.photo);
+      return '<div class="gnt" title="'+esc(p.name)+'">'
+        + (ph ? '<img class="gnt-av" src="'+esc(ph)+'" alt="'+esc(p.name)+'" onerror="this.outerHTML=\'<div class=&quot;gnt-av&quot;>'+ini+'</div>\'">'
+              : '<div class="gnt-av">'+ini+'</div>')
+        + '<span class="gnt-name">'+esc(p.name)+'</span>'
+        + (p.email ? '<a class="gnt-b" href="mailto:'+esc(p.email)+'" title="'+esc(p.email)+'">'+SVG_EMAIL+'</a>' : '')
+        + (p.wa ? '<a class="gnt-b wa" href="https://wa.me/'+esc(p.wa)+'" target="_blank" rel="noopener" title="WhatsApp '+esc(p.name)+'">'+SVG_WA+'</a>' : '')
+        + '</div>';
+    }).join('');
+    _fillBrandSub(team); _fitTeam();
+  }
+
+  // A barra tem largura fixa e o time cresce: com 4 analistas os nomes já estouram fora de 1920 e
+  // empurram o Sign out p/ FORA da tela (a página não rola na horizontal → botão inalcançável).
+  // Degrada em degraus, cedendo o menos importante primeiro e sempre mantendo a bolinha:
+  //   nome (fica no hover, via title) → WhatsApp → e-mail. Escala p/ N analistas em qualquer tela.
+  function _fitTeam(){
+    var g = document.querySelector('.gnav'), t = document.getElementById('gnav-team');
+    if(!g || !t) return;
+    t.className = 'gnav-team';
+    ['compact','tight','bare'].forEach(function(step){
+      if(g.scrollWidth > g.clientWidth + 1) t.classList.add(step);
+    });
+  }
+  var _fitT = null;
+  window.addEventListener('resize', function(){ clearTimeout(_fitT); _fitT = setTimeout(_fitTeam, 120); });
+
+  // Time AO VIVO (mesma RPC da home): quem o admin cadastra aparece em TODAS as páginas.
+  // Cache em localStorage p/ o 1º paint já sair certo (mesmo padrão do 'ibba_is_admin').
+  function _teamCache(){ try{ var s=localStorage.getItem('ibba_team'); var a=s?JSON.parse(s):null;
+    return (a && a.length) ? a : null; }catch(e){ return null; } }
+  function loadTeam(tries){
+    tries = tries || 0;
+    var sb=_sb();
+    if(sb){ sb.rpc('get_team').then(function(r){
+      if(!r || r.error || !Array.isArray(r.data) || !r.data.length) return;   // fail-safe: mantém o que já está na tela
+      var list = r.data.map(function(m){
+        var fb = null;
+        TEAM_FALLBACK.forEach(function(t){ if(t.name === m.name) fb = t; });   // completa foto/contato de quem já era da casa
+        return { ini:_ini(m.name), name:m.name, photo:m.photo || (fb?fb.photo:''),
+                 email:m.email || (fb?fb.email:'') || '', wa:m.whatsapp || (fb?fb.wa:'') || '' };
+      });
+      try{ localStorage.setItem('ibba_team', JSON.stringify(list)); }catch(e){}
+      renderTeam(list);
+    }).catch(function(){}); return; }
+    // o sbAuth da página nasce DEPOIS do topnav → espera aparecer (mesma espera do revealAdmin)
+    if(tries < 40) setTimeout(function(){ loadTeam(tries+1); }, 150);
   }
   // acha o cliente Supabase da página: `sbAuth` é um `const/let` de topo (NÃO vai pro window) →
   // referenciar direto (typeof guarda contra ReferenceError/TDZ); window.sbAuth como reserva.
@@ -117,6 +179,7 @@
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
   function _setAdminLinks(show){
     ['gnav-admin','gnav-clipinator','gnav-scenario'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+    _fitTeam();   // os 3 botões de admin mudam a largura da barra → re-avalia se os nomes cabem
   }
   function revealAdmin(tries){
     tries = tries || 0;
@@ -139,7 +202,7 @@
     var orig=document.body.firstChild;
     var wrap=document.createElement('div'); wrap.innerHTML=NAV;
     [].slice.call(wrap.childNodes).forEach(function(n){ document.body.insertBefore(n, orig); });  // barra + régua no topo, em ordem
-    renderTeam(); revealAdmin(); if(window.__syncThemeIcon) window.__syncThemeIcon();
+    renderTeam(_teamCache()); revealAdmin(); loadTeam(); if(window.__syncThemeIcon) window.__syncThemeIcon();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
   else inject();

@@ -122,6 +122,15 @@ body{height:100vh;overflow:hidden;}
 .th-btn svg{width:11px;height:11px;}
 .th-btn.wa:hover{color:#25D366;border-color:#25D366;}
 @media(max-width:1024px){ .topnav{display:none;} .team-head{gap:8px;} }
+/* No celular este cabeçalho é o que aparece (a barra global some em ≤900px). Com 4+ analistas
+   o bloco do time empurrava o tema e o Sign out p/ fora da tela: deixa QUEBRAR LINHA em vez de
+   cortar — ninguém perde contato nem o botão de sair. */
+@media(max-width:700px){
+  .header{flex-wrap:wrap;height:auto;padding:8px 16px;row-gap:8px;}
+  .team-head{order:3;margin-left:0;width:100%;flex-wrap:wrap;}
+  .theme-btn{margin-left:auto;}          /* tema + Sign out ficam juntos à direita da 1ª linha */
+  .logout-btn{margin-left:10px;}
+}
 
 /* ── HERO ────────────────────────────────────────────────────────────── */
 .hero{flex:none;padding:8px 18px 6px;display:flex;align-items:baseline;gap:12px;}
