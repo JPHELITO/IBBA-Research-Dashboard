@@ -503,8 +503,7 @@ html.dark .ov-card{background:#20242b}
       </style>
       <div class="card">
         <h2>Usuários</h2>
-        <p class="sub">Quem tem acesso, papel e quantas vezes entrou na dashboard nas últimas 24h, 7 dias, 30 dias e no total. Promova/rebaixe admin↔cliente. Clique num cabeçalho de número para ordenar.</p>
-        <div class="help"><b>O que conta como acesso:</b> cada abertura da <b>Home</b> — que é onde o login cai, então na prática é uma entrada na dashboard. Trocar de aba (News, Market, Stock Guide…) <b>não</b> soma. O <b>total</b> só enxerga o que foi registrado depois que passamos a gravar quem visitou; visitas mais antigas ficaram sem dono e não entram em nenhuma coluna.</div>
+        <p class="sub">Quem tem acesso, papel e quantas vezes entrou com senha nas últimas 24h, 7 dias, 30 dias e no total. Promova/rebaixe admin↔cliente. Clique num cabeçalho de número para ordenar.</p>
         <div id="users-list" class="status">Carregando…</div>
       </div>
     </section>
@@ -1473,9 +1472,10 @@ async function hmDelete(sym){
 }
 
 // ── Usuários (gestão de acesso) ──────────────────────────────────────────
-// Acessos por JANELA (24h / 7d / 30d / total) vêm prontos do get_users_list — a conta é feita
-// no banco (uma varredura só, com índice), não aqui. Se a RPC ainda for a versão antiga (só
-// `visits`), as janelas chegam undefined → mostramos "—" em vez de zero mentiroso.
+// ACESSO = LOGIN (alguém digitou a senha e entrou). As janelas 24h/7d/30d/total vêm prontas
+// do get_users_list, contadas na trilha de auditoria do Supabase Auth — a conta é do banco,
+// não daqui. Se a RPC ainda for a versão antiga (só `visits`), as janelas chegam undefined
+// → mostramos "—" em vez de zero mentiroso.
 let _users=[]
 let _usSort={key:'v7d', dir:-1}
 const _US_COLS=[{k:'v24h',t:'24h'},{k:'v7d',t:'7 dias'},{k:'v30d',t:'30 dias'},{k:'visits',t:'Total'}]
@@ -1485,19 +1485,23 @@ function _usCell(v){
   if(n===null) return '<td class="n z" title="rode o admin/supabase_users.sql para ver esta coluna">—</td>'
   return n>0 ? `<td class="n"><b>${n.toLocaleString('pt-BR')}</b></td>` : '<td class="n z">0</td>'
 }
-// "último acesso" = o mais recente entre o login (auth) e a última visita registrada — os dois
-// existem porque o login cai na Home, mas usuário antigo pode ter visita sem dono (user_id nulo).
-function _usLast(u){
-  const a=u.last_visit?Date.parse(u.last_visit):NaN, b=u.last_sign_in_at?Date.parse(u.last_sign_in_at):NaN
-  if(isNaN(a)) return isNaN(b)?null:u.last_sign_in_at
-  if(isNaN(b)) return u.last_visit
-  return a>=b ? u.last_visit : u.last_sign_in_at
-}
 function _usWhen(ts){
   if(!ts) return '<span class="muted">nunca</span>'
   const d=new Date(ts), h=(Date.now()-d.getTime())/3600000
   const ago = h<1 ? Math.max(1,Math.round(h*60))+'min' : (h<48 ? Math.round(h)+'h' : Math.round(h/24)+'d')
   return `<span title="${esc(String(ts).replace('T',' ').slice(0,16))}">${esc(ago)} atrás</span>`
+}
+// Zero em TODAS as janelas de TODO mundo, mas gente que comprovadamente já logou
+// (last_sign_in_at) = a trilha de auditoria do Auth está vazia/expurgada. Nesse caso a coluna
+// de zeros MENTE — avisa em vez de deixar o admin achar que ninguém entra na dashboard.
+function _usAudit(){
+  const temJanela=_users.some(u=>_usNum(u.v7d)!==null)
+  const tudoZero=_users.every(u=>(_usNum(u.visits)||0)===0)
+  const jaLogou=_users.some(u=>u.last_sign_in_at)
+  if(!temJanela || !tudoZero || !jaLogou) return ''
+  return '<div class="help" style="margin-top:12px">⚠️ <b>Nenhum login contabilizado</b>, mas há gente com último acesso registrado — '
+       + 'sinal de que a trilha de auditoria do Supabase Auth (<code>auth.audit_log_entries</code>) está vazia. '
+       + 'Os zeros acima não querem dizer que ninguém entrou. A contagem volta a subir a partir dos próximos logins.</div>'
 }
 function usSort(key){
   if(_usSort.key===key) _usSort.dir=-_usSort.dir; else _usSort={key, dir:-1}
@@ -1532,7 +1536,7 @@ function renderUsers(){
       const isA=u.role==='admin'
       return `<tr>
         <td class="em"><b>${esc(u.email)}</b>${isA?' <span style="color:var(--orange);font-weight:700">[admin]</span>':''}</td>
-        <td>${_usWhen(_usLast(u))}</td>
+        <td>${_usWhen(u.last_sign_in_at)}</td>
         ${_US_COLS.map(c=>_usCell(u[c.k])).join('')}
         <td class="n"><button class="chip" data-uid="${esc(u.id)}" data-role="${isA?'client':'admin'}" data-email="${esc(u.email)}">${isA?'Tornar cliente':'Tornar admin'}</button></td>
       </tr>`
@@ -1542,7 +1546,7 @@ function renderUsers(){
       ${tot.map((t,i)=>anyWin||_US_COLS[i].k==='visits'?`<td class="n">${t.toLocaleString('pt-BR')}</td>`:'<td class="n z">—</td>').join('')}
       <td></td>
     </tr></tfoot>
-  </table>`
+  </table>${_usAudit()}`
   host.querySelectorAll('th.s').forEach(th=>{ th.onclick=()=>usSort(th.dataset.k) })
   host.querySelectorAll('button.chip[data-uid]').forEach(b=>{
     b.onclick=()=>setUserRole(b.dataset.uid, b.dataset.role, b.dataset.email)
