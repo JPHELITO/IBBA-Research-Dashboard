@@ -43,19 +43,38 @@
   font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;position:relative;z-index:500;}\
 .gnav-brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}\
 .gnav-brand b{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap;}\
-.gnav-mark{width:26px;height:26px;border-radius:6px;background:#FF5000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}\
-.gnav-menu{display:flex;align-items:center;gap:1px;margin-left:16px;}\
-.gn-item{font-size:11.5px;font-weight:600;letter-spacing:.03em;color:rgba(255,255,255,.72);text-decoration:none;\
-  padding:7px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;transition:color .15s,background .15s;}\
-.gn-item:hover{color:#fff;background:rgba(255,255,255,.08);}\
+.gnav-mark{width:26px;height:26px;border-radius:7px;background:#FF5000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}\
+.gnav-menu{display:flex;align-items:center;gap:2px;margin-left:16px;}\
+/* ── ITEM DA NAV: a página atual se marca com UMA barrinha laranja embaixo do nome — nada de\
+   tinte de fundo, halo ou brilho. No hover a mesma barrinha aparece apagada (35%), como\
+   ensaio do clique. Só a cor do texto e a opacidade mudam. ── */\
+.gn-item{position:relative;font-size:11.5px;font-weight:600;letter-spacing:.03em;color:rgba(255,255,255,.62);text-decoration:none;\
+  padding:7px 12px 8px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;\
+  transition:color .15s ease;}\
+.gn-item::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;background:#FF5000;\
+  opacity:0;transition:opacity .15s ease;}\
+.gn-item:hover{color:#fff;}\
+.gn-item:hover::after{opacity:.35;}\
+.gn-item.on{color:#fff;}\
+.gn-item.on::after{opacity:1;}\
 .gn-group{position:relative;}\
-.gn-drop{position:absolute;top:100%;left:0;min-width:210px;background:#fff;border:1px solid #E3E3E3;border-radius:9px;\
-  box-shadow:0 12px 34px rgba(0,0,0,.20);padding:6px;display:none;z-index:600;}\
+.gn-drop{position:absolute;top:calc(100% + 6px);left:0;min-width:214px;background:#fff;border:1px solid #E8E6E1;border-radius:12px;\
+  box-shadow:0 10px 26px -10px rgba(17,17,17,.22);padding:7px;display:none;z-index:600;}\
 .gn-group:hover .gn-drop{display:block;}\
-.gn-drop a{display:block;font-size:11.5px;color:#2C2C2C;text-decoration:none;padding:8px 12px;border-radius:6px;font-weight:500;white-space:nowrap;}\
-.gn-drop a:hover{background:#F4F3F0;color:#FF5000;}\
+/* ponte invisível: o vão de 6px entre o item e a lista não pode fechar o menu */\
+.gn-drop::before{content:"";position:absolute;left:0;right:0;top:-8px;height:8px;}\
+.gn-drop a{display:block;font-size:11.5px;color:#2C2C2C;text-decoration:none;padding:8px 12px;border-radius:9px;font-weight:500;white-space:nowrap;transition:background .15s,color .15s;}\
+.gn-drop a:hover{background:#F7F5F1;color:#FF5000;}\
+.gn-drop a.on{background:rgba(255,80,0,.09);color:#FF5000;font-weight:600;}\
 .gn-cat{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#8C8C8C;padding:5px 12px 3px;}\
-.gn-admin{color:#ff7a45!important;border:1px solid rgba(255,80,0,.45);margin-left:4px;}\
+html.dark .gn-drop{background:#1c2026;border-color:#2E343E;box-shadow:0 10px 28px -10px rgba(0,0,0,.6);}\
+html.dark .gn-drop a{color:#e8eaed;}\
+html.dark .gn-drop a:hover{background:rgba(255,255,255,.06);color:#ff7a45;}\
+html.dark .gn-drop a.on{background:rgba(255,80,0,.16);color:#ff7a45;}\
+html.dark .gn-cat{color:#828892;}\
+/* abas internas (admin): distinguem-se só pela cor do texto — sem moldura, sem selo */\
+.gn-admin{color:#ff7a45!important;margin-left:6px;}\
+.gn-admin:hover,.gn-admin.on{color:#ff9166!important;}\
 .gnav-team{display:flex;align-items:center;gap:13px;margin-left:auto;}\
 .gnt{display:flex;align-items:center;gap:5px;}\
 .gnt-av{width:23px;height:23px;border-radius:50%;object-fit:cover;background:#FF5000;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}\
@@ -63,14 +82,14 @@
 .gnav-team.compact .gnt-name{display:none;}\
 .gnav-team.tight .gnt-b.wa{display:none;}\
 .gnav-team.bare .gnt-b{display:none;}\
-.gnt-b{width:19px;height:19px;border-radius:5px;border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;}\
-.gnt-b:hover{color:#fff;border-color:rgba(255,255,255,.45);}\
+.gnt-b{width:19px;height:19px;border-radius:7px;border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;transition:color .15s,border-color .15s,background .15s;}\
+.gnt-b:hover{color:#fff;border-color:rgba(255,255,255,.45);background:rgba(255,255,255,.06);}\
 .gnt-b svg{width:11px;height:11px;}\
 .gnt-b.wa:hover{color:#25D366;border-color:#25D366;}\
-.gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:14px;}\
-.gnav-out:hover{color:#fff;border-color:rgba(255,255,255,.4);}\
-.gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s;}\
-.gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);}\
+.gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:6px 13px;cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-out:hover{color:#fff;border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);}\
+.gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.06);}\
 .gnav-theme svg{width:15px;height:15px;display:block;}\
 .gnav-rule{height:2px;background:#FF5000;}\
 /* Cabeçalhos PRÓPRIOS das páginas: a barra de verdade é esta (.gnav), em QUALQUER largura.\
@@ -98,11 +117,13 @@
   font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;}\
 .gnm-cat{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8C8C8C;\
   padding:14px 18px 4px;}\
+.gnm-cat.on{color:#FF5000;}\
 .gnm-a{display:flex;align-items:center;min-height:46px;padding:11px 18px;text-decoration:none;\
   font-size:15px;font-weight:600;color:#2C2C2C;border-bottom:1px solid #EEEDEA;}\
 .gnm-a.sub{font-size:14px;font-weight:500;color:#5A5A5A;padding-left:30px;min-height:42px;}\
 .gnm-a:active{background:#F4F3F0;}\
-.gnm-a.on{color:#FF5000;}\
+/* mesma marca do desktop, no idioma do celular: um traço laranja na borda, sem tinte */\
+.gnm-a.on{color:#FF5000;box-shadow:inset 2px 0 0 #FF5000;}\
 .gnm-a.adm{color:#FF5000;}\
 .gnm-team{padding:2px 18px 0;}\
 .gnm-p{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid #EEEDEA;}\
@@ -330,15 +351,49 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       var a = e.target && e.target.closest ? e.target.closest('a') : null;
       if(a) window.__gnavMob(0);                                   // escolheu um destino → fecha a folha
     });
+    window.addEventListener('hashchange', _markCurrent);   // trocou de seção → a luz acompanha
     document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.__gnavMob(0); });
     window.addEventListener('resize', function(){ if(window.innerWidth > 900) window.__gnavMob(0); });
   }
-  // marca em laranja a página em que o usuário já está
+  // ── "LUZ LARANJA" NA ABA ATUAL ────────────────────────────────────────────
+  // Acende (classe .on) o item da barra do desktop, o item da folha do celular E, quando a
+  // página mora dentro de um menu (M&M / P&P / Stock Guide), o PAI do menu + a linha certa
+  // da lista. Compara só o PATHNAME (as âncoras #prices/#pulp são seções da mesma página).
+  function _path(url){
+    try{ return decodeURIComponent(new URL(url, location.href).pathname).toLowerCase(); }
+    catch(e){ try{ return new URL(url, location.href).pathname.toLowerCase(); }catch(_){ return ''; } }
+  }
   function _markCurrent(){
-    var here; try{ here = decodeURIComponent(location.pathname).toLowerCase(); }catch(e){ here = location.pathname.toLowerCase(); }
+    var here = _path(location.href);
+    if(here === '/' || here === '') here = '/index.html';    // a raiz É a home
+    var hash0 = (location.hash || '').toLowerCase();
+    // folha do celular: mesma régua do desktop — link de seção acende só com a #âncora igual
+    // (senão as 4 linhas do M&M acendiam juntas); o TÍTULO do grupo marca "você está aqui".
     [].slice.call(document.querySelectorAll('.gnm-a')).forEach(function(a){
-      var p; try{ p = decodeURIComponent(new URL(a.href, location.href).pathname).toLowerCase(); }catch(e){ return; }
-      if(p === here) a.classList.add('on');
+      if(_path(a.href) !== here) return;
+      var h = ''; try{ h = (new URL(a.href, location.href).hash || '').toLowerCase(); }catch(e){}
+      a.classList.toggle('on', !h || h === hash0);
+      var cat = a.previousElementSibling;                    // sobe até o rótulo do grupo
+      while(cat && !cat.classList.contains('gnm-cat')) cat = cat.previousElementSibling;
+      if(cat && a.classList.contains('sub')) cat.classList.add('on');
+    });
+    // barra do desktop: links diretos (Home, News Hunter, Market, Calendar, Admin…)
+    [].slice.call(document.querySelectorAll('.gnav-menu a.gn-item')).forEach(function(a){
+      if(_path(a.href) === here) a.classList.add('on');
+    });
+    // menus: o PAI acende se qualquer destino dele for esta página; DENTRO da lista acende só
+    // a linha da seção aberta (mesma #âncora) — senão as 4 linhas do M&M acendiam juntas.
+    var hash = (location.hash || '').toLowerCase();
+    [].slice.call(document.querySelectorAll('.gn-group')).forEach(function(g){
+      var hit = false;
+      [].slice.call(g.querySelectorAll('.gn-drop a')).forEach(function(a){
+        var same = _path(a.href) === here;
+        if(same) hit = true;
+        var h = '';
+        try{ h = (new URL(a.href, location.href).hash || '').toLowerCase(); }catch(e){}
+        a.classList.toggle('on', same && !!hash && h === hash);
+      });
+      var head = g.querySelector('.gn-item'); if(head) head.classList.toggle('on', hit);
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
