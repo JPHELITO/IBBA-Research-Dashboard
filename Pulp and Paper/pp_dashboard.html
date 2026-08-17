@@ -83,6 +83,14 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .snav-btn:hover::before{transform:scaleY(1);}
 .snav-btn.active{color:#fff;font-weight:600;}
 .snav-btn.active::before{background:var(--orange);transform:scaleY(1);}
+/* ⤓ Data — base bruta (empurrado p/ a direita da secondary-nav) */
+.dl-data-btn{margin:auto 0 auto auto;align-self:center;white-space:nowrap;
+  font:600 10px var(--font);letter-spacing:.04em;cursor:pointer;border-radius:7px;
+  padding:5px 12px;border:1px solid var(--orange);background:rgba(255,80,0,.10);color:var(--orange);
+  transition:background .15s;}
+.dl-data-btn:hover{background:rgba(255,80,0,.22);}
+.dl-data-btn:disabled{opacity:.55;cursor:default;}
+@media print{.dl-data-btn{display:none!important;}}
 
 /* ── STICKY HEADER ───────────────────────────────────────────────────────── */
 .sticky-header{position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.09);}
@@ -383,6 +391,9 @@ html.dark .cr-input{color-scheme:dark}
 <div class="secondary-nav" id="pp-subnav">
   <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp')">Pulp</button>
   <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper')">Paper &amp; Packaging</button>
+  <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
+  <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
+          title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -693,10 +704,7 @@ html.dark .cr-input{color-scheme:dark}
   })
   Chart.register(ChartDataLabels)
   loadDB()
-  // download PNG/Excel por gráfico — SÓ admin (esta página não tinha checagem de role)
-  try{ const role=await sbAuth.rpc('get_my_role')
-    if(role && !role.error && role.data==='admin' && window.IBBAExport)
-      IBBAExport.attachChartjsExports({charts, isAdmin:true, prefix:'pp'}) }catch(e){}
+  initDownloads()   // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 
@@ -941,16 +949,22 @@ const YINT={scales:{y:{ticks:{callback:fmtY}}}};
 const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}};
 const PCT_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}};
 
+/* Abre uma instância sql.js do banco. Usado no boot (loadDB) e, sob demanda, pelo
+   painel "Download data" (o arquivo tem ~420 KB e fica no cache → reabrir é barato). */
+async function openDB(){
+  const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+  /* SEM cache-buster (era `?v=AAAAMMDD`) — ver a nota no steel_sm_dashboard.html:
+     o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou. */
+  const resp=await fetch('pulp_paper.db');
+  if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+  return new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+}
+
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
 async function loadDB(){
   const el=document.getElementById('loading');
   try{
-    const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
-    /* SEM cache-buster (era `?v=AAAAMMDD`) — ver a nota no steel_sm_dashboard.html:
-       o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou. */
-    const resp=await fetch('pulp_paper.db');
-    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-    const db=new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+    const db=await openDB();
 
     PAPER=toObj(db.exec(`SELECT * FROM iba_paper ORDER BY period`)[0]);
     PULP =toObj(db.exec(`SELECT * FROM iba_pulp ORDER BY period`)[0]);
@@ -983,6 +997,83 @@ async function loadDB(){
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load pulp_paper.db</div>
       <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOWNLOADS — PNG/Excel por gráfico + BASE BRUTA (todo usuário, 2026-08-17)
+//  Espelha o steel_sm_dashboard.html: Excel sempre com o histórico MÁXIMO,
+//  PNG igual à tela, e o painel "⤓ Data" com as tabelas inteiras do banco.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/* Matriz do gráfico `id` com o histórico INTEIRO: troca a janela p/ 'all',
+   re-renderiza a seção, lê a série e devolve tudo ao lugar (síncrono → sem piscar).
+   A granularidade escolhida (monthly/quarterly/annual) é respeitada. */
+function fullChartAOA(id){
+  const w=currentWin, cr={from:customRange.from,to:customRange.to};
+  currentWin='all'; customRange={from:null,to:null};
+  let aoa=null;
+  try{
+    render();
+    const ch=charts[id];
+    if(ch) aoa=IBBAExport.chartToAOA(ch);
+  }finally{
+    currentWin=w; customRange=cr;
+    render();
+  }
+  return aoa;
+}
+
+/* Tabelas do `pulp_paper.db` (o arquivo inteiro vai p/ o navegador — nenhuma fica de fora). */
+const RAW_TABLES=[
+  {name:'secex_pulp_port', label:'SECEX — pulp exports by port',        note:'Monthly Brazilian pulp exports by port of clearance: volume (kton) and revenue (US$ mn). Source: SECEX/MDIC.'},
+  {name:'gacc_woodchips',  label:'China customs (GACC) — woodchips',    note:'Monthly Chinese woodchip imports by fibre and country of origin: volume (BDMT) and revenue (US$ mn).'},
+  {name:'iba_pulp',        label:'Ibá — pulp',                          note:'Production, domestic sales, exports, imports and apparent consumption by fibre, plus export revenue by region.'},
+  {name:'iba_paper',       label:'Ibá — paper',                         note:'Same structure by paper grade (packaging, P&W, newsprint, cardboard, other).'},
+  {name:'empapel',         label:'Empapel — corrugated shipments',      note:'Monthly corrugated box shipments (kton), working days, shipments per day and LTM.'},
+  {name:'company_q',       label:'Companies — quarterly volumes',       note:'Klabin and Suzano quarterly volumes by product and market, with Ibá totals alongside.'},
+  {name:'calendar',        label:'Calendar — working days',             note:'Working days per month — the denominator behind every per-day series.'},
+];
+
+let _rawDB=null, _rawDBp=null;
+function _rawDBOpen(){ return _rawDBp||(_rawDBp=openDB().then(db=>(_rawDB=db))); }
+function _rawDBClose(){ try{_rawDB&&_rawDB.close();}catch(e){} _rawDB=null; _rawDBp=null; }
+
+/* sql.js → matriz [cabeçalho, ...linhas] (formato que o Excel/CSV comem direto) */
+function _tableAOA(db,name){
+  const res=db.exec(`SELECT * FROM "${name}"`);
+  if(!res||!res[0]) return [['(empty)']];
+  return [res[0].columns].concat(res[0].values);
+}
+
+async function openRawData(){
+  const btn=document.getElementById('dl-data-btn');
+  if(!window.IBBAExport){alert('Download tools are still loading — try again in a second.');return;}
+  if(btn){btn.disabled=true;btn.textContent='Loading…';}
+  try{
+    const db=await _rawDBOpen();
+    const have=new Set();
+    (db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[]).forEach(r=>have.add(r[0]));
+    const tables=RAW_TABLES.filter(t=>have.has(t.name)).map(t=>({
+      ...t, rows:db.exec(`SELECT COUNT(*) FROM "${t.name}"`)[0].values[0][0]
+    }));
+    IBBAExport.rawDataPanel({
+      title:'Download data — Pulp & Paper',
+      sub:'The complete tables behind this dashboard, exactly as they are stored — full history, no chart filters applied. Pick what you need and choose Excel (one sheet per table) or CSV (one file per table).',
+      prefix:'ibba_pulp_paper',
+      tables,
+      load:async name=>_tableAOA(await _rawDBOpen(),name),
+      onClose:_rawDBClose,
+    });
+  }catch(e){
+    console.error(e);
+    alert('Could not open the database: '+(e&&e.message?e.message:e));
+    _rawDBClose();
+  }finally{ if(btn){btn.disabled=false;btn.textContent='⤓ Data';} }
+}
+
+function initDownloads(){
+  if(!window.IBBAExport) return;
+  IBBAExport.attachChartjsExports({charts, prefix:'pp', fullAOA:fullChartAOA, alwaysVisible:true});
 }
 
 // ─── SECEX TOTALS (sum across ports per period, with working days) ───────────
