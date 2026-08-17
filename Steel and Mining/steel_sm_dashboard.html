@@ -408,6 +408,26 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   .mob-back-btn{display:none !important;}
 }
 
+/* ══ CELULAR — convivência com a BARRA GLOBAL (topnav.js) ═══════════════════
+   No celular quem manda no topo é a .gnav (marca, tema, menu ☰, time, Sign out),
+   e ela é sticky. Esta barra preta da página vira só o "← Sections". */
+@media (max-width:900px){
+  .sticky-header{top:54px;}   /* 52px da barra global + 2px da régua laranja */
+}
+/* Tablet (769–900px): não existe nem o seletor de seções nem o "← Sections", então a
+   barra preta da página não teria conteúdo próprio — quem manda é a barra global. */
+@media (min-width:769px) and (max-width:900px){ .top-bar{display:none!important;} }
+@media (max-width:768px){
+  /* ⚠️ a linha de nomes do time é `.top-sub` (o CSS antigo escondia `.brand-sub`, que não
+     existe aqui) — com 4 analistas ela empurrava o Sign out p/ fora e a página passava a
+     ROLAR DE LADO 85px. O P&P já escondia; o M&M não. */
+  .top-sub{display:none!important;}
+  .brand-group,.top-home,.top-bar .logout-btn{display:none!important;}   /* repetidos no ☰ */
+  .top-bar{height:44px;padding:0 12px;gap:8px;}
+  .mob-back-btn{margin-right:auto;font-size:12px;padding:7px 10px;}
+  body.mob-picker-active .top-bar{display:none;}   /* no seletor de seções ela ficaria vazia */
+}
+
 /* ── LOADING ─────────────────────────────────────────────────────────────── */
 #loading{position:fixed;inset:0;background:rgba(255,255,255,.97);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}

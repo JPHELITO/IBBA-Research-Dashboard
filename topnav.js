@@ -73,8 +73,66 @@
 .gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);}\
 .gnav-theme svg{width:15px;height:15px;display:block;}\
 .gnav-rule{height:2px;background:#FF5000;}\
-@media(max-width:900px){.gnav,.gnav-rule{display:none!important;}}\
-@media(min-width:901px){.header,.top-bar,.orange-rule,#app>.sticky-header{display:none!important;}}';
+/* Cabeçalhos PRÓPRIOS das páginas: a barra de verdade é esta (.gnav), em QUALQUER largura.\
+   Home/News/Stock Guide só repetiam marca+time+Sign out → somem sempre. O .top-bar de M&M e P&P\
+   sobrevive no celular porque carrega o "← Sections" (a página compacta ele por conta própria).\
+   ⚠️ Estas regras moram no CSS que o topnav.js injeta: se o arquivo não carregar, cada página\
+   volta a mostrar o cabeçalho antigo em vez de ficar sem nenhum. */\
+.header,.orange-rule,#app>.sticky-header{display:none!important;}\
+@media(min-width:901px){.top-bar{display:none!important;}}\
+\
+/* ═══ CELULAR (≤900px) — a MESMA barra vira compacta + botão ☰ ═══════════════\
+   Antes a .gnav era escondida e NADA entrava no lugar: quem abrisse a dash no\
+   telefone não tinha como chegar na Market (só existia no menu do desktop).\
+   Agora: barra fixa no topo (marca + tema + ☰) e uma folha que desce com o menu\
+   inteiro, o time (nome + e-mail + WhatsApp) e o Sign out. */\
+.gnav-burger{display:none;width:36px;height:32px;align-items:center;justify-content:center;\
+  background:none;border:1px solid rgba(255,255,255,.22);border-radius:7px;color:#fff;cursor:pointer;\
+  margin-left:10px;flex-shrink:0;padding:0;}\
+.gnav-burger svg{width:18px;height:18px;display:block;}\
+.gnav-mob{display:none;position:fixed;left:0;right:0;top:52px;bottom:0;z-index:1900;\
+  background:rgba(0,0,0,.45);}\
+.gnav-mob.open{display:block;}\
+.gnav-sheet{background:#fff;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;\
+  padding:6px 0 26px;box-shadow:0 18px 44px rgba(0,0,0,.34);\
+  font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;}\
+.gnm-cat{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8C8C8C;\
+  padding:14px 18px 4px;}\
+.gnm-a{display:flex;align-items:center;min-height:46px;padding:11px 18px;text-decoration:none;\
+  font-size:15px;font-weight:600;color:#2C2C2C;border-bottom:1px solid #EEEDEA;}\
+.gnm-a.sub{font-size:14px;font-weight:500;color:#5A5A5A;padding-left:30px;min-height:42px;}\
+.gnm-a:active{background:#F4F3F0;}\
+.gnm-a.on{color:#FF5000;}\
+.gnm-a.adm{color:#FF5000;}\
+.gnm-team{padding:2px 18px 0;}\
+.gnm-p{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid #EEEDEA;}\
+.gnm-av{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#FF5000;color:#fff;\
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}\
+.gnm-nm{flex:1;min-width:0;font-size:14px;font-weight:600;color:#2C2C2C;\
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+.gnm-b{width:36px;height:36px;border-radius:8px;border:1px solid #E3E3E3;display:flex;align-items:center;\
+  justify-content:center;color:#8C8C8C;text-decoration:none;flex-shrink:0;}\
+.gnm-b svg{width:16px;height:16px;}\
+.gnm-b.wa{color:#25D366;border-color:rgba(37,211,102,.45);}\
+.gnm-out{display:block;width:calc(100% - 36px);margin:18px 18px 0;padding:13px;border-radius:9px;\
+  border:1px solid #E3E3E3;background:#F4F3F0;color:#2C2C2C;font:700 14px Inter,sans-serif;cursor:pointer;}\
+html.dark .gnav-sheet{background:#1c2026;}\
+html.dark .gnm-a{color:#e8eaed;border-bottom-color:#2b3038;}\
+html.dark .gnm-a.sub{color:#a9b0ba;}\
+html.dark .gnm-a:active{background:#15171b;}\
+html.dark .gnm-p{border-bottom-color:#2b3038;}\
+html.dark .gnm-nm{color:#e8eaed;}\
+html.dark .gnm-b{border-color:#2b3038;}\
+html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
+@media(max-width:900px){\
+  .gnav{position:sticky;top:0;height:52px;padding:0 12px;gap:8px;z-index:1800;}\
+  .gnav-menu,.gnav-team,.gnav-out{display:none!important;}\
+  .gnav-theme{margin-left:auto;}\
+  .gnav-burger{display:inline-flex;}\
+  .gnav-rule{position:sticky;top:52px;z-index:1799;}\
+  body.gnav-locked{overflow:hidden;}\
+}\
+@media(min-width:901px){.gnav-mob{display:none!important;}}';
 
   var NAV = '\
 <div class="gnav">\
@@ -101,8 +159,36 @@
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
   <button class="gnav-theme" id="gnav-theme" onclick="__toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="gnav-theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>\
-  <button class="gnav-out" onclick="(window.sbAuth?sbAuth.auth.signOut():0); try{localStorage.removeItem(\'ibba_is_admin\')}catch(e){}; document.cookie=\'sb-access-token=; Max-Age=0; Path=/\'; location.replace(\'/login.html\');">Sign out</button>\
-</div><div class="gnav-rule"></div>';
+  <button class="gnav-out" onclick="__gnavOut()">Sign out</button>\
+  <button class="gnav-burger" id="gnav-burger" onclick="__gnavMob()" aria-label="Menu" aria-expanded="false" aria-controls="gnav-mob">\
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>\
+</div><div class="gnav-rule"></div>\
+<div class="gnav-mob" id="gnav-mob" onclick="if(event.target===this)__gnavMob(0)">\
+  <div class="gnav-sheet">\
+    <a class="gnm-a" href="/index.html">Home</a>\
+    <div class="gnm-cat">Metals &amp; Mining</div>\
+    <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
+    <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
+    <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
+    <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
+    <div class="gnm-cat">Pulp &amp; Paper</div>\
+    <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
+    <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>\
+    <div class="gnm-cat">Stock Guide</div>\
+    <a class="gnm-a sub" href="/stock-guide.html#comp">Comp Table</a>\
+    <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
+    <div class="gnm-cat">More</div>\
+    <a class="gnm-a" href="/news.html">News Hunter</a>\
+    <a class="gnm-a" href="/market.html">Market</a>\
+    <a class="gnm-a" href="/agenda.html">Calendar</a>\
+    <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
+    <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
+    <a class="gnm-a adm gnm-admin" href="/admin.html" style="display:none">Admin</a>\
+    <div class="gnm-cat">Equity Research</div>\
+    <div class="gnm-team" id="gnav-mteam"></div>\
+    <button class="gnm-out" onclick="__gnavOut()">Sign out</button>\
+  </div>\
+</div>';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
@@ -121,9 +207,43 @@
     });
   }
 
+  // ── MENU DE CELULAR (☰) ───────────────────────────────────────────────────
+  // Sai fechado; abre por cima da página (fixed). Fecha ao clicar num link, no
+  // fundo escuro, no Esc, e sozinho se a tela voltar a ser de desktop.
+  window.__gnavMob = function(open){
+    var m = document.getElementById('gnav-mob'), b = document.getElementById('gnav-burger');
+    if(!m) return;
+    var on = (open === undefined) ? !m.classList.contains('open') : !!open;
+    m.classList.toggle('open', on);
+    if(b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if(document.body) document.body.classList.toggle('gnav-locked', on);   // trava a rolagem do fundo
+  };
+  window.__gnavOut = function(){
+    try{ var sb=_sb(); if(sb && sb.auth) sb.auth.signOut(); }catch(e){}   // mesmo achador do cliente da página usado pelo revealAdmin
+    try{ localStorage.removeItem('ibba_is_admin'); }catch(e){}
+    document.cookie = 'sb-access-token=; Max-Age=0; Path=/';
+    location.replace('/login.html');
+  };
+
+  // Time DENTRO da folha do ☰: aqui cabe o nome inteiro (na barra do desktop ele vira hover).
+  function renderMobTeam(team){
+    var el = document.getElementById('gnav-mteam'); if(!el) return;
+    el.innerHTML = team.map(function(p){
+      var ini = esc(p.ini || _ini(p.name)), ph = _photo(p.photo);
+      return '<div class="gnm-p">'
+        + (ph ? '<img class="gnm-av" src="'+esc(ph)+'" alt="" onerror="this.outerHTML=\'<div class=&quot;gnm-av&quot;>'+ini+'</div>\'">'
+              : '<div class="gnm-av">'+ini+'</div>')
+        + '<span class="gnm-nm">'+esc(p.name)+'</span>'
+        + (p.email ? '<a class="gnm-b" href="mailto:'+esc(p.email)+'" aria-label="E-mail '+esc(p.name)+'">'+SVG_EMAIL+'</a>' : '')
+        + (p.wa ? '<a class="gnm-b wa" href="https://wa.me/'+esc(p.wa)+'" target="_blank" rel="noopener" aria-label="WhatsApp '+esc(p.name)+'">'+SVG_WA+'</a>' : '')
+        + '</div>';
+    }).join('');
+  }
+
   function renderTeam(list){
     var el = document.getElementById('gnav-team'); if(!el) return;
     var team = (list && list.length) ? list : TEAM_FALLBACK;
+    renderMobTeam(team);
     el.innerHTML = team.map(function(p){
       var ini = esc(p.ini || _ini(p.name)), ph = _photo(p.photo);
       return '<div class="gnt" title="'+esc(p.name)+'">'
@@ -179,6 +299,7 @@
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
   function _setAdminLinks(show){
     ['gnav-admin','gnav-clipinator','gnav-scenario'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+    [].slice.call(document.querySelectorAll('.gnm-admin')).forEach(function(a){ a.style.display = show ? 'flex' : 'none'; });
     _fitTeam();   // os 3 botões de admin mudam a largura da barra → re-avalia se os nomes cabem
   }
   function revealAdmin(tries){
@@ -203,6 +324,22 @@
     var wrap=document.createElement('div'); wrap.innerHTML=NAV;
     [].slice.call(wrap.childNodes).forEach(function(n){ document.body.insertBefore(n, orig); });  // barra + régua no topo, em ordem
     renderTeam(_teamCache()); revealAdmin(); loadTeam(); if(window.__syncThemeIcon) window.__syncThemeIcon();
+    _markCurrent();
+    var mob = document.getElementById('gnav-mob');
+    if(mob) mob.addEventListener('click', function(e){
+      var a = e.target && e.target.closest ? e.target.closest('a') : null;
+      if(a) window.__gnavMob(0);                                   // escolheu um destino → fecha a folha
+    });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.__gnavMob(0); });
+    window.addEventListener('resize', function(){ if(window.innerWidth > 900) window.__gnavMob(0); });
+  }
+  // marca em laranja a página em que o usuário já está
+  function _markCurrent(){
+    var here; try{ here = decodeURIComponent(location.pathname).toLowerCase(); }catch(e){ here = location.pathname.toLowerCase(); }
+    [].slice.call(document.querySelectorAll('.gnm-a')).forEach(function(a){
+      var p; try{ p = decodeURIComponent(new URL(a.href, location.href).pathname).toLowerCase(); }catch(e){ return; }
+      if(p === here) a.classList.add('on');
+    });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
   else inject();

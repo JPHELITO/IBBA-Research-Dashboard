@@ -158,7 +158,46 @@ html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba
 .cm-x{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:var(--gray-mid);cursor:pointer;line-height:1;}
 .cm-card{position:relative;}
 .cal-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--gray-mid);font-size:14px;}
+/* ── LISTA (agenda do mês) — visão padrão no celular ──────────────────────────
+   A grade do mês tem 5 colunas: num telefone cada dia fica com ~65px e o título do
+   evento não cabe de jeito nenhum. Aqui a mesma informação vira uma lista por dia. */
+.cal-list{flex:1;min-height:0;overflow-y:auto;border:1px solid var(--border);border-radius:10px;background:var(--card);}
+.cl-day{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);}
+.cl-day:last-child{border-bottom:none;}
+.cl-day.today{background:rgba(255,80,0,.05);}
+.cl-date{flex:none;width:38px;text-align:center;padding-top:2px;}
+.cl-date b{display:block;font-size:19px;font-weight:700;color:var(--gray-dark);line-height:1;letter-spacing:-.02em;}
+.cl-date span{display:block;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);margin-top:3px;}
+.cl-day.today .cl-date b{color:var(--orange);}
+.cl-evs{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.cl-ev{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;background:none;border:none;
+  padding:5px 4px;border-radius:8px;cursor:pointer;font:inherit;}
+.cl-ev:active{background:var(--gray-light);}
+.cl-dot{width:10px;height:10px;border-radius:3px;flex:none;margin-top:4px;}
+.cl-txt{min-width:0;flex:1;}
+.cl-name{display:block;font-size:13.5px;font-weight:600;color:var(--black);line-height:1.35;}
+.cl-ev.hl .cl-name{font-weight:800;}
+.cl-meta{display:block;font-size:11px;color:var(--gray-mid);font-weight:600;margin-top:2px;}
+.cl-empty{padding:34px 16px;text-align:center;color:var(--gray-mid);font-size:14px;}
+#seg-list{display:none;}
 @media(max-width:640px){.cal-title{font-size:17px;min-width:0;}#app{padding:10px 10px 14px;}.cal-filters{width:100%;}}
+@media(max-width:900px){
+  #seg-list{display:inline-block;}
+  .cal-top{gap:8px;row-gap:8px;}
+  .cal-seg button{padding:7px 12px;font-size:12.5px;}
+  .cal-arrow,.cal-today-btn{padding:7px 11px;font-size:12.5px;}
+  .cal-company{font-size:12.5px;padding:7px 9px;}
+  .cchip{font-size:11.5px;padding:5px 10px;}
+  /* mês/semana continuam disponíveis pelo seletor, só ficam mais compactos */
+  .cal-wk{min-height:62px;}
+  .ev,.band,.more{font-size:9px;padding:0 3px;}
+  .cal-dnum{font-size:11px;margin:3px 5px 0 0;}
+  .wk-head,.wk-allday,.wk-grid{grid-template-columns:38px repeat(5,minmax(0,1fr));}
+  .wk-allday .lanes{grid-column:2/7;}
+  .wk-date{font-size:14px;}
+  .cm-card{max-height:92vh;}
+  .cm-body{padding:16px 16px 20px;}
+}
 </style>
 </head>
 <body>
@@ -182,6 +221,7 @@ html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba
     </div>
     <div class="cal-title" id="cal-title">—</div>
     <div class="cal-seg">
+      <button id="seg-list">List</button>
       <button id="seg-month" class="on">Month</button>
       <button id="seg-week">Week</button>
     </div>
@@ -193,6 +233,7 @@ html.dark .cal-col.blocked{background-image:repeating-linear-gradient(45deg,rgba
   <div class="cal-dow" id="cal-dow"></div>
   <div class="cal-month" id="cal-month"></div>
   <div class="cal-week" id="cal-week" hidden></div>
+  <div class="cal-list" id="cal-list" hidden></div>
 </div>
 
 <div class="cal-modal" id="cal-modal"><div class="cm-card">
@@ -487,24 +528,68 @@ function renderChips(){
   host.querySelectorAll('.cchip').forEach(ch=>ch.onclick=()=>{ const id=ch.getAttribute('data-id');
     if(S.activeCats.has(id))S.activeCats.delete(id); else S.activeCats.add(id); render(); });
 }
+// ── render: LISTA (agenda do mês) ───────────────────────────────────────────────
+// Mesmos dados do mês, empilhados por dia. Cada linha abre o MESMO modal do grid.
+function renderList(){
+  const [y,m]=S.cursor.split('-').map(Number);
+  const first=CAL.mkYMD(y,m,1), last=CAL.mkYMD(y,m,CAL.daysInMonth(y,m));
+  const occ=occurrencesIn(first,last).filter(o=>o.end>=first&&o.start<=last);
+  const host=document.getElementById('cal-list'); host.innerHTML='';
+  // cada ocorrência aparece UMA vez, no dia em que começa (as que vêm do mês anterior, no dia 1º)
+  const byDay={};
+  occ.forEach(o=>{ const k=o.start<first?first:o.start; (byDay[k]||(byDay[k]=[])).push(o); });
+  const days=Object.keys(byDay).sort();
+  if(!days.length){ host.innerHTML='<div class="cal-empty">No events this month.</div>'; return; }
+  for(const d of days){
+    const items=byDay[d].sort((a,b)=>(calLaneRank(a)-calLaneRank(b))
+      || (((a.allDay||a.multi)?0:1)-((b.allDay||b.multi)?0:1))
+      || (evMin(a)-evMin(b)) || (a.title>b.title?1:-1));
+    const dt=CAL.parseYMD(d);
+    const day=document.createElement('div'); day.className='cl-day'+(d===S.today?' today':'');
+    const head=document.createElement('div'); head.className='cl-date';
+    head.innerHTML='<b>'+dt.getUTCDate()+'</b><span>'+esc(CAL.WEEKDAYS_SHORT[dt.getUTCDay()])+'</span>';
+    const box=document.createElement('div'); box.className='cl-evs';
+    for(const it of items){
+      const b=document.createElement('button');
+      b.className='cl-ev'+(calKind(it)==='highlight'?' hl':'');
+      const dot=document.createElement('span'); dot.className='cl-dot'; dot.style.background=it.color;
+      const txt=document.createElement('div'); txt.className='cl-txt';
+      const nm=document.createElement('span'); nm.className='cl-name'; nm.textContent=it.title;
+      const meta=[];
+      if(!it.allDay && it.st) meta.push(CAL.fmtTimeRange(it.st,it.et));
+      else if(it.multi){ const e=CAL.parseYMD(it.end); meta.push('until '+CAL.MONTHS_SHORT[e.getUTCMonth()]+' '+e.getUTCDate()); }
+      else meta.push('All day');
+      if(it.company) meta.push(it.company);
+      const cat=S.catById[it.ev&&it.ev.category_id]; if(cat&&cat.name) meta.push(cat.name);
+      const mt=document.createElement('span'); mt.className='cl-meta'; mt.textContent=meta.filter(Boolean).join(' · ');
+      txt.appendChild(nm); txt.appendChild(mt);
+      b.appendChild(dot); b.appendChild(txt);
+      b.onclick=()=>openDetail(it);
+      box.appendChild(b);
+    }
+    day.appendChild(head); day.appendChild(box); host.appendChild(day);
+  }
+}
 function renderDow(){
   document.getElementById('cal-dow').style.display = S.view==='month'?'grid':'none';
   document.getElementById('cal-dow').innerHTML=DOW_ORDER.map(d=>`<div>${CAL.WEEKDAYS_SHORT[d]}</div>`).join('');
 }
 function updateTitle(){
   const [y,m]=S.cursor.split('-').map(Number);
-  document.getElementById('cal-title').textContent = S.view==='month'?CAL.monthTitle(y,m):CAL.weekLabel(S.cursor,WEEK_START,DPW);
+  document.getElementById('cal-title').textContent = S.view==='week'?CAL.weekLabel(S.cursor,WEEK_START,DPW):CAL.monthTitle(y,m);
 }
 function render(){
   document.getElementById('cal-month').hidden = S.view!=='month';
   document.getElementById('cal-week').hidden  = S.view!=='week';
+  document.getElementById('cal-list').hidden  = S.view!=='list';
   renderDow(); updateTitle();
-  if(S.view==='month') renderMonth(); else renderWeek();
+  if(S.view==='month') renderMonth(); else if(S.view==='week') renderWeek(); else renderList();
 }
 async function setView(v){
   S.view=v;
   document.getElementById('seg-month').classList.toggle('on',v==='month');
   document.getElementById('seg-week').classList.toggle('on',v==='week');
+  document.getElementById('seg-list').classList.toggle('on',v==='list');
   await loadEvents(); render();
 }
 function shift(dir){
@@ -518,6 +603,7 @@ function wire(){
   document.getElementById('cal-today').onclick=()=>{ S.cursor=S.today; loadEvents().then(render); };
   document.getElementById('seg-month').onclick=()=>setView('month');
   document.getElementById('seg-week').onclick=()=>setView('week');
+  document.getElementById('seg-list').onclick=()=>setView('list');
   document.getElementById('cal-company').onchange=e=>{ S.company=e.target.value; render(); };
   document.getElementById('cm-x').onclick=closeModal;
   document.getElementById('cal-modal').onclick=e=>{ if(e.target.id==='cal-modal') closeModal(); };
@@ -527,6 +613,11 @@ function wire(){
 // ── boot ────────────────────────────────────────────────────────────────────────
 async function calStart(){
   if(!S.today){ S.today=CAL.todayISO(); S.cursor=S.today; }
+  // No celular a grade do mês não é legível → a LISTA é a visão de entrada
+  // (Month e Week continuam a um toque no seletor).
+  if(window.innerWidth<=700){ S.view='list';
+    document.getElementById('seg-month').classList.remove('on');
+    document.getElementById('seg-list').classList.add('on'); }
   await loadStatic(); renderChips(); await loadEvents(); render();
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{

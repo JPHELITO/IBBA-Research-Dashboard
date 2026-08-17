@@ -278,12 +278,37 @@ html.dark .tl-tip{background:#0d0e11;border:1px solid var(--border);}
 .day-divider .dd-c{font-weight:600;color:var(--gray-mid);letter-spacing:.02em;}
 
 @media(max-width:900px){
-  .h-layout{grid-template-columns:1fr;}
+  .h-layout{grid-template-columns:minmax(0,1fr);}
   .rail{position:static;max-height:none;overflow:visible;}
   .facet{max-height:260px;}
   .stat-row{grid-template-columns:repeat(3,1fr);}
 }
 @media(max-width:560px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+
+/* ══ CELULAR: filtros recolhidos ═══════════════════════════════════════════
+   Empilhados, os 6 blocos de filtro somavam 617px — a primeira manchete só
+   aparecia depois de 1266px de rolagem. Agora eles ficam atrás do botão
+   "Filters" (com o número de filtros ativos), fechado por padrão. */
+.rail-toggle{display:none;}
+@media(max-width:900px){
+  .rail-toggle{display:flex;align-items:center;gap:8px;width:100%;margin-bottom:12px;
+    padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);
+    font:700 13.5px var(--font);color:var(--black);cursor:pointer;box-shadow:var(--shadow);}
+  .rail-toggle .rt-ic{font-size:15px;line-height:1;}
+  .rail-toggle .rt-caret{margin-left:auto;color:var(--gray-mid);transition:transform .18s;}
+  .rail-toggle .rt-n{background:var(--orange);color:#fff;font-size:11px;font-weight:700;
+    border-radius:20px;padding:1px 8px;}
+  body.rail-open .rail-toggle .rt-caret{transform:rotate(180deg);}
+  .rail{display:none;}
+  body.rail-open .rail{display:flex;}
+  .page{padding:14px 12px 40px;}
+  .page-title{font-size:19px;}
+  .hist-head{gap:8px;margin-bottom:12px;}
+  .item{padding:12px 13px;}
+  .i-title{font-size:14px;line-height:1.4;}
+  .search-input{font-size:14px;padding:9px 10px;}
+  .chip{font-size:12px;padding:6px 11px;}
+}
 </style>
 </head>
 <body>
@@ -316,8 +341,13 @@ html.dark .tl-tip{background:#0d0e11;border:1px solid var(--border);}
   </div>
 
   <div class="h-layout">
+    <!-- Celular: os filtros ocupavam 617px ANTES da 1ª manchete. Viram um botão. -->
+    <button class="rail-toggle" id="rail-toggle" aria-expanded="false" aria-controls="rail">
+      <span class="rt-ic">☰</span><span>Filters</span><span class="rt-n" id="rail-count" hidden></span>
+      <span class="rt-caret">▾</span>
+    </button>
     <!-- ░░░ FILTER RAIL ░░░ -->
-    <aside class="rail">
+    <aside class="rail" id="rail">
       <div class="card fblock">
         <div class="fblock-h">Search <span class="mini" id="search-clear" style="display:none">reset</span></div>
         <input type="search" class="search-input" id="search-input" placeholder="Search headline…"/>
@@ -614,7 +644,21 @@ function _renderSearchChips(){
 }
 
 // ─── Orquestrador ───────────────────────────────────────────────────────
-function renderAll(){ _renderHeadSub(); _renderSearchChips(); _renderStats(); _renderTimeline(); _renderFacets(); _renderMetaExtras(); _renderFeed(); }
+function renderAll(){ _renderHeadSub(); _renderSearchChips(); _renderStats(); _renderTimeline(); _renderFacets(); _renderMetaExtras(); _renderFeed(); _renderRailCount(); }
+
+// Celular: quantos filtros estão ligados (o rail fica fechado, então o número é
+// o único aviso de que a lista está filtrada). 'all' e o período padrão não contam.
+function _renderRailCount(){
+  const b=document.getElementById('rail-count'); if(!b) return;
+  let n=0;
+  if(_periodPreset!=='all') n++;
+  if(_dateFrom||_dateTo) n++;
+  if(_sectorFilter!=='all') n++;
+  if(_takeFilter!=='all') n++;
+  if(_srcFilter.size) n++;
+  if(_searchTerms.length||_searchText) n++;
+  b.textContent=n; b.hidden = n===0;
+}
 
 function _renderHeadSub(){
   const sub=document.getElementById('hist-sub'); if(!sub) return;
@@ -813,6 +857,12 @@ function _onDateInput(){
 }
 document.getElementById('date-from').addEventListener('change',_onDateInput);
 document.getElementById('date-to').addEventListener('change',_onDateInput);
+// ☰ Filters (só existe no celular): abre/fecha o rail
+document.getElementById('rail-toggle').addEventListener('click',function(){
+  const on=!document.body.classList.contains('rail-open');
+  document.body.classList.toggle('rail-open',on);
+  this.setAttribute('aria-expanded',on?'true':'false');
+});
 document.getElementById('sector-seg').addEventListener('click',e=>{
   const btn=e.target.closest('.chip'); if(!btn) return;
   _sectorFilter=btn.dataset.sec; _setSegActive('sector-seg','sec',_sectorFilter);
