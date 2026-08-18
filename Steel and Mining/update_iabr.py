@@ -209,6 +209,10 @@ def _fmt(v):
     return "—" if v is None else f"{v:,.3f}"
 
 
+def _plural(n):
+    return f"{n} valor revisado" if n == 1 else f"{n} valores revisados"
+
+
 def revision_table(revs, limit=None):
     """Linhas legíveis das revisões (mesmo texto p/ o log e p/ o e-mail)."""
     out = [f"{'mês':9} {'tabela':22} {'campo':14} {'antes':>13} {'depois':>13} {'dif':>8}"]
@@ -291,7 +295,7 @@ def notice_file(novo, period, revs):
          if novo else
          f"O Aço Brasil REVISOU números de meses já publicados (arquivo de {period})."]
     if revs:
-        L += ["", f"{len(revs)} valores revisados retroativamente:", ""] + revision_table(revs, limit=60)
+        L += ["", _plural(len(revs)) + " retroativamente:", ""] + revision_table(revs, limit=60)
     L += ["", "https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"]
     with open(NOTICE, "w", encoding="utf-8") as f:
         f.write(chr(10).join(L))
@@ -420,7 +424,7 @@ def main():
         revise_from = _months_back(prodmax, args.revise_months)
         n, revs = write(conn, parsed, revise_from=revise_from, all_rows=args.force)
         novo = dbmax is None or (prodmax and prodmax > dbmax)
-        print(f"[UPDATE] {n} linhas | até {prodmax} | {len(revs)} valores revisados "
+        print(f"[UPDATE] {n} linhas | até {prodmax} | {_plural(len(revs))} "
               f"(janela desde {revise_from})")
         if revs:
             print("\n".join(revision_table(revs, limit=40)))
@@ -429,7 +433,7 @@ def main():
             revised=len(revs),
             kind="updated" if novo else f"revised-{len(revs)}",
             subject=(f"✅ IABr {prodmax} publicado no dashboard" if novo else
-                     f"♻️ IABr — {len(revs)} números revisados pelo Aço Brasil"))
+                     f"♻️ IABr — {_plural(len(revs))} pelo Aço Brasil"))
         _overdue_check(dbmax)
     else:
         print("Use --check, --update, --backfill ou --reconcile.")
