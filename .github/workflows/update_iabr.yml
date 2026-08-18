@@ -6,6 +6,10 @@ name: 🔄 Auto-Update IABr (Aço Brasil) — estatística mensal
 # em iabr_* → e-mails (saiu o dado / atualizado / descompasso-atraso), 1×/mês.
 # Separado do SECEX; as duas dividem a TRAVA do steel_sm.db (concurrency) p/ não commitar juntas.
 #
+# Grava o mês NOVO **e as REVISÕES**: o IABr reajusta os ~12 meses anteriores a cada
+# publicação, então o updater reconfere os últimos 18 meses contra o Excel e regrava o
+# que mudou (antes só o mês novo entrava e o dashboard congelava no 1º número divulgado).
+#
 # Secrets: SMTP_USER, SMTP_PASS, SUPABASE_URL, SUPABASE_SERVICE_KEY.
 
 on:
@@ -17,13 +21,49 @@ on:
         description: "Reconstruir iabr_* do zero (--backfill)"
         required: false
         default: "false"
+      test_email:
+        description: "SÓ mandar um e-mail de teste (não mexe na base)"
+        required: false
+        default: "false"
 
 concurrency:
   group: steel-sm-db          # MESMA trava do update_secex → não commitam o steel_sm.db juntos
   cancel-in-progress: false
 
 jobs:
+  # Botão de teste do e-mail: aba Actions > este workflow > "Run workflow" > test_email = true.
+  # Confere SMTP_USER/SMTP_PASS sem precisar esperar o IABr publicar. Fica VERMELHO (--require)
+  # se o e-mail não sair — é o retorno visível do teste.
+  test-email:
+    if: github.event.inputs.test_email == 'true'
+    runs-on: ubuntu-latest
+    env:
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Manda o e-mail de teste
+        run: |
+          cat > /tmp/teste.txt <<'FIM'
+          Deu certo: o e-mail automático do dashboard voltou a funcionar.
+
+          Daqui pra frente chega um aviso sempre que a base do Aço Brasil (IABr) mudar:
+            - quando sai um mês novo;
+            - quando o IABr REVISA retroativamente meses já publicados (o e-mail lista
+              cada número que mudou, de quanto pra quanto).
+
+          -- robô IBBA
+          FIM
+          python _shared/notify.py --require \
+            --subject "🧪 Teste — e-mail automático do dashboard IBBA" \
+            --body-file /tmp/teste.txt
+
   update:
+    if: github.event.inputs.test_email != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,18 +110,26 @@ jobs:
           if git diff --staged --quiet; then
             echo "::warning::sem mudança no .db"
           else
-            git commit -m "data: IABr (Aço Brasil) -> ${IABR_LATEST}"
+            if [ "${IABR_KIND}" = "updated" ]; then
+              MSG="data: IABr (Aço Brasil) -> ${IABR_LATEST}"
+            else
+              MSG="data: IABr — ${IABR_REVISED} números revisados retroativamente (arquivo ${IABR_LATEST})"
+            fi
+            git commit -m "$MSG"
             git pull --rebase --autostash || true
             git push
           fi
 
-      - name: E-mail — base atualizada
-        if: env.IABR_NEW_DATA == 'true'
-        run: |
-          python _shared/notify.py --source iabr --period "${IABR_LATEST}" --kind updated \
-            --subject "✅ IABr ${IABR_LATEST} publicado no dashboard" \
-            --body "A estatística mensal do Aço Brasil de ${IABR_LATEST} foi lida e publicada. https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"
-
       - name: Log update
         if: env.IABR_NEW_DATA == 'true'
-        run: python _shared/log_update.py "IABr" auto "cron acobrasil ${IABR_LATEST}"
+        run: python _shared/log_update.py "IABr" auto "cron acobrasil ${IABR_LATEST} rev=${IABR_REVISED}"
+
+      # Assunto e corpo saem do próprio update_iabr.py (mês novo OU a lista das revisões).
+      # --require deixa o job VERMELHO se o e-mail não sair: a senha de app do Gmail já
+      # expirou uma vez sem ninguém perceber, porque o notify engole erro de SMTP de propósito.
+      - name: E-mail — base atualizada / revisada
+        if: env.IABR_NEW_DATA == 'true'
+        run: |
+          python _shared/notify.py --source iabr --period "${IABR_LATEST}" --kind "${IABR_KIND}" \
+            --subject "${IABR_SUBJECT}" \
+            --body-file "Steel and Mining/_iabr_notice.txt" --require

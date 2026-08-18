@@ -11,11 +11,14 @@ Arquivo: .../uploads/{AAAA}/{MM}/Performance-Mensal_{AAAA}.{MM}.xls (aba única
 "Perfomance Mensal-Monthly"): coluna 0 = rótulo PT/EN; col 1 = Jan/2013, mensal contíguo;
 a última coluna é % MoM (ignorada).
 
+O IABr REVISA os ~12 meses anteriores a cada publicação; por isso o --update reconfere
+os últimos REVISE_MONTHS meses contra o Excel e regrava o que mudou (não só o mês novo).
+
 Modos:
   python update_iabr.py --check
-  python update_iabr.py --update [--force]      # grava meses novos
+  python update_iabr.py --update [--force]      # meses novos + revisões dos últimos 18
   python update_iabr.py --backfill              # reconstrói iabr_* a partir do Excel
-  python update_iabr.py --reconcile [--months N] # compara Excel x dashboard (validação)
+  python update_iabr.py --reconcile [--months N] # audita TODOS os campos (sai 1 se divergir)
 
 SECEX_DB=<caminho> p/ testar em cópia. Requer xlrd (lê .xls).
 """
@@ -35,8 +38,10 @@ warnings.filterwarnings("ignore")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("SECEX_DB") or os.path.join(HERE, "steel_sm.db")
+NOTICE = os.path.join(HERE, "_iabr_notice.txt")   # corpo do e-mail (não versionado)
 PAGE = "https://www.acobrasil.org.br/site/estatistica-mensal/"
 SHEET = "Perfomance Mensal-Monthly"   # (sic — typo no arquivo da fonte)
+REVISE_MONTHS = 18   # o IABr revisa ~12 meses p/ trás a cada publicação (margem de folga)
 UA = {"User-Agent": "Mozilla/5.0"}
 NOW = datetime.utcnow().isoformat()
 
@@ -183,25 +188,80 @@ def _table_exists(conn, t):
     return bool(conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (t,)).fetchone())
 
 
-def write(conn, parsed, only_after=None):
+def _months_back(period, n):
+    """'2026-07', 18 -> '2025-02' (começo da janela de revisão)."""
+    if not period:
+        return None
+    y, m = _shift(int(period[:4]), int(period[5:7]), -n)
+    return f"{y}-{m:02d}"
+
+
+def _differs(a, b):
+    """Excel x banco, tolerante a None e a arredondamento."""
+    if a is None and b is None:
+        return False
+    if a is None or b is None:
+        return True
+    return abs(float(a) - float(b)) > 1e-4
+
+
+def _fmt(v):
+    return "—" if v is None else f"{v:,.3f}"
+
+
+def revision_table(revs, limit=None):
+    """Linhas legíveis das revisões (mesmo texto p/ o log e p/ o e-mail)."""
+    out = [f"{'mês':9} {'tabela':22} {'campo':14} {'antes':>13} {'depois':>13} {'dif':>8}"]
+    rs = sorted(revs, key=lambda r: (r[1], r[0], r[2]))
+    for t, p, c, o, n in (rs[:limit] if limit else rs):
+        d = (n - o) / o * 100 if (o not in (None, 0) and n is not None) else float("nan")
+        out.append(f"{p:9} {t:22} {c:14} {_fmt(o):>13} {_fmt(n):>13} {d:+7.2f}%")
+    if limit and len(rs) > limit:
+        out.append(f"... (+{len(rs) - limit} linhas)")
+    return out
+
+
+def write(conn, parsed, revise_from=None, all_rows=False):
+    """Grava (1) os meses que ainda NÃO existem e (2) as REVISÕES dos meses a partir de
+    `revise_from` cujo valor mudou. `all_rows=True` reescreve tudo (backfill/--force).
+
+    ⚠️ O IABr REVISA os ~12 meses anteriores a cada publicação. Até 2026-08 o updater só
+    gravava o mês NOVO (`only_after=dbmax`) e as revisões eram descartadas caladas — o
+    dashboard congelava no número da 1ª divulgação (medido em 2026-08-18: 65 valores
+    defasados entre 2026-02 e 2026-06, até -10,3% em exportações de planos).
+
+    ⚠️ Só toca em linha que mudou DE VERDADE: reescrever valor igual mexeria no
+    `updated_at`, o .db viraria "arquivo alterado" e o robô commitaria de hora em hora à toa.
+
+    Devolve (n_linhas, revisões); revisões = [(tabela, período, campo, antes, depois)].
+    """
     n_total = 0
+    revisions = []
     for t, spec in TABLES.items():
         if not _table_exists(conn, t):
             print(f"  (tabela {t} não existe — pulando)")
             continue
         cols = ["period", "year", "month"] + spec["cols"] + ["updated_at"]
         ph = ",".join("?" * len(cols))
+        cur = {r[0]: r[1:] for r in
+               conn.execute(f"SELECT period,{','.join(spec['cols'])} FROM {t}")}
         rows = []
         for period, rec in sorted(parsed[t].items()):
-            if only_after and period <= only_after:
-                continue
-            rows.append(tuple([rec["period"], rec["year"], rec["month"]] +
-                              [rec[c] for c in spec["cols"]] + [NOW]))
+            new = [rec[c] for c in spec["cols"]]
+            old = cur.get(period)
+            if old is not None and not all_rows:
+                if revise_from and period < revise_from:
+                    continue                                    # fora da janela de revisão
+                changed = [(c, o, v) for c, o, v in zip(spec["cols"], old, new) if _differs(o, v)]
+                if not changed:
+                    continue                                    # idêntico — não mexe
+                revisions += [(t, period, c, o, v) for c, o, v in changed]
+            rows.append(tuple([rec["period"], rec["year"], rec["month"]] + new + [NOW]))
         if rows:
             conn.executemany(f"INSERT OR REPLACE INTO {t} ({','.join(cols)}) VALUES ({ph})", rows)
             n_total += len(rows)
     conn.commit()
-    return n_total
+    return n_total, revisions
 
 
 def latest_db(conn):
@@ -211,7 +271,7 @@ def latest_db(conn):
     return r[0] if r and r[0] else None
 
 
-def _gh(new, period):
+def _gh(new, period, revised=0, kind="updated", subject=""):
     gh = os.environ.get("GITHUB_ENV")
     if not gh:
         return
@@ -219,6 +279,23 @@ def _gh(new, period):
         f.write(f"IABR_NEW_DATA={new}\n")
         if period:
             f.write(f"IABR_LATEST={period}\n")
+        f.write(f"IABR_REVISED={revised}\n")
+        f.write(f"IABR_KIND={kind}\n")
+        if subject:
+            f.write(f"IABR_SUBJECT={subject}\n")
+
+
+def notice_file(novo, period, revs):
+    """Escreve o corpo do e-mail (o workflow envia com --body-file)."""
+    L = [f"A estatística mensal do Aço Brasil de {period} foi lida e publicada no dashboard."
+         if novo else
+         f"O Aço Brasil REVISOU números de meses já publicados (arquivo de {period})."]
+    if revs:
+        L += ["", f"{len(revs)} valores revisados retroativamente:", ""] + revision_table(revs, limit=60)
+    L += ["", "https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"]
+    with open(NOTICE, "w", encoding="utf-8") as f:
+        f.write(chr(10).join(L))
+    return NOTICE
 
 
 def _shift(y, m, d):
@@ -260,6 +337,8 @@ def main():
     ap.add_argument("--reconcile", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--months", type=int, default=6)
+    ap.add_argument("--revise-months", type=int, default=REVISE_MONTHS,
+                    help="quantos meses p/ trás reconferir contra o Excel (revisões do IABr)")
     args = ap.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
@@ -306,29 +385,51 @@ def main():
     print(f"  Excel parseado: produção até {prodmax}")
 
     if args.reconcile:
-        print(f"{'period':9} {'campo':14} {'excel':>11} {'dash':>11} {'dif%':>8}")
+        # Auditoria COMPLETA: todas as 6 tabelas, todos os campos, últimos N meses.
+        # Sai com código 1 se achar divergência → serve de "prova" e de check automático.
         periods = sorted(parsed["iabr_production"])[-args.months:]
-        for p in periods:
-            for fld in ("crude_steel", "flat", "long_prod"):
-                ex = parsed["iabr_production"][p].get(fld)
-                row = conn.execute(f"SELECT {fld} FROM iabr_production WHERE period=?", (p,)).fetchone()
-                db = row[0] if row else None
-                dif = (ex - db) / db * 100 if (ex and db) else float("nan")
-                print(f"{p:9} {fld:14} {('' if ex is None else f'{ex:11.1f}')} "
-                      f"{('' if db is None else f'{db:11.1f}')} {dif:8.2f}")
+        ncampos = sum(len(sp["cols"]) for sp in TABLES.values())
+        print(f"Conferindo {len(periods)} meses ({periods[0]}..{periods[-1]}) x {ncampos} campos\n")
+        print(f"{'mês':9} {'tabela':22} {'campo':14} {'excel':>13} {'dash':>13} {'dif':>8}")
+        bad = 0
+        for t, spec in TABLES.items():
+            if not _table_exists(conn, t):
+                continue
+            dbv = {r[0]: dict(zip(spec["cols"], r[1:])) for r in
+                   conn.execute(f"SELECT period,{','.join(spec['cols'])} FROM {t}")}
+            for p in periods:
+                for fld in spec["cols"]:
+                    ex = parsed[t].get(p, {}).get(fld)
+                    dv = dbv.get(p, {}).get(fld)
+                    if not _differs(ex, dv):
+                        continue
+                    bad += 1
+                    d = (dv - ex) / ex * 100 if (ex not in (None, 0) and dv is not None) else float("nan")
+                    print(f"{p:9} {t:22} {fld:14} {_fmt(ex):>13} {_fmt(dv):>13} {d:+7.2f}%")
+        print(f"\n=> {bad} divergência(s).")
         conn.close()
-        return
+        sys.exit(1 if bad else 0)
 
     if args.backfill:
-        n = write(conn, parsed)
+        n, _ = write(conn, parsed, all_rows=True)
         print(f"[BACKFILL] {n} linhas gravadas (todas as iabr_*).")
-        _gh("true", prodmax)
+        notice_file(True, prodmax, [])
+        _gh("true", prodmax, kind="updated",
+            subject=f"✅ IABr {prodmax} publicado no dashboard")
     elif args.update:
-        only_after = None if args.force else dbmax
-        n = write(conn, parsed, only_after=only_after)
+        revise_from = _months_back(prodmax, args.revise_months)
+        n, revs = write(conn, parsed, revise_from=revise_from, all_rows=args.force)
         novo = dbmax is None or (prodmax and prodmax > dbmax)
-        print(f"[UPDATE] {n} linhas | até {prodmax}")
-        _gh("true" if (novo or args.force) else "false", prodmax if novo else None)
+        print(f"[UPDATE] {n} linhas | até {prodmax} | {len(revs)} valores revisados "
+              f"(janela desde {revise_from})")
+        if revs:
+            print("\n".join(revision_table(revs, limit=40)))
+        notice_file(novo, prodmax, revs)
+        _gh("true" if (novo or revs or args.force) else "false", prodmax,
+            revised=len(revs),
+            kind="updated" if novo else f"revised-{len(revs)}",
+            subject=(f"✅ IABr {prodmax} publicado no dashboard" if novo else
+                     f"♻️ IABr — {len(revs)} números revisados pelo Aço Brasil"))
         _overdue_check(dbmax)
     else:
         print("Use --check, --update, --backfill ou --reconcile.")
