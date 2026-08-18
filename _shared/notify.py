@@ -127,10 +127,14 @@ def _mark_sent(source, kind, period):
 
 def once(source: str, period: str, kind: str, subject: str, body: str,
          to: list[str] | None = None, html: bool = False) -> bool:
-    """Envia UMA vez por (source, period, kind). Repetições no mesmo mês são ignoradas."""
+    """Envia UMA vez por (source, period, kind). Repetições no mesmo mês são ignoradas.
+
+    Devolve True tanto quando ENVIA quanto quando PULA por dedup — nos dois casos o aviso
+    está resolvido. Só False quando o envio realmente falhou (é o que o --require observa).
+    """
     if period and _already_sent(source, kind, period):
         print(f"notify.once: já enviei '{kind}' de {source} {period} — pulando.")
-        return False
+        return True
     ok = send(subject, body, to, html)
     if ok and period:
         _mark_sent(source, kind, period)
@@ -142,6 +146,10 @@ def main():
     ap.add_argument("--source"); ap.add_argument("--period"); ap.add_argument("--kind")
     ap.add_argument("--subject"); ap.add_argument("--body"); ap.add_argument("--body-file")
     ap.add_argument("--to"); ap.add_argument("--html", action="store_true")
+    ap.add_argument("--require", action="store_true",
+                    help="sai com erro se o e-mail NÃO for enviado — deixa o job VERMELHO e o "
+                         "GitHub avisa. Sem isso, falha de SMTP é engolida (default histórico) e "
+                         "some no log: foi assim que a senha do Gmail expirou sem ninguém ver.")
     a = ap.parse_args()
     to = [x.strip() for x in a.to.split(",")] if a.to else None
     body = a.body
@@ -150,12 +158,17 @@ def main():
             body = f.read()
     if a.source and a.period and a.kind:
         # e-mail com DEDUP (1× por fonte+mês+tipo) — p/ os workflows horários não spammarem.
-        once(a.source, a.period, a.kind, a.subject or f"{a.kind} {a.source} {a.period}", body or "", to, a.html)
+        ok = once(a.source, a.period, a.kind, a.subject or f"{a.kind} {a.source} {a.period}",
+                  body or "", to, a.html)
     elif a.subject and body is not None:
-        send(a.subject, body, to, a.html)
+        ok = send(a.subject, body, to, a.html)
     else:
         sys.exit("uso: --source/--period/--kind (dedup) OU --subject/--body")
-    sys.exit(0)   # nunca falha o workflow por causa de e-mail
+    if a.require and not ok:
+        print("::error::e-mail NÃO enviado — confira os secrets SMTP_USER / SMTP_PASS "
+              "(senha de app do Gmail).", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)   # sem --require, nunca derruba o workflow por causa de e-mail
 
 
 if __name__ == "__main__":
