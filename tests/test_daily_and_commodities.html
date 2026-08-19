@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><title>itens 4 e 5 — commodities e série diária</title>
+<body><pre id="out">rodando…</pre><script>
+/* Extrai loadQuotesDaily e loadCommodities do próprio index.html e conta as requisições. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+
+window.__RUN__=async function(){
+  const t=await (await fetch('/index.html?v='+Date.now())).text();
+  const DAILY=cut(t,'async function loadQuotesDaily(){',"} catch(e){ console.warn('daily error:', e); }\n}");
+  const COMM =cut(t,'async function loadCommodities(){',"} catch(e){console.warn('commodities error:', e);}\n}");
+
+  let pedidos=[], stamp='2026-08-19T02:00:00Z', falhaCheck=false, falhaSerie=false, renders=0;
+  const ctx={
+    SUPA_URL:'https://X', SUPA_KEY:'k',
+    sbAuth:{auth:{getSession:async()=>({data:{session:{access_token:'t'}}})}},
+    fetch:async(u)=>{ pedidos.push(u);
+      if(u.includes('daily_updated_at')){ if(falhaCheck) throw new Error('rede');
+        return {ok:true, json:async()=>[{ticker:'VALE3',daily_updated_at:stamp}]}; }
+      if(u.includes('ticker,daily')){ if(falhaSerie) return {ok:false};
+        return {ok:true, json:async()=>[{ticker:'VALE3',daily:[[1,2],[3,4]]}]}; }
+      return {ok:true, json:async()=>[{code:'IRON_ORE',name:'Iron Ore',unit:'USD/t',price:100,
+                                       change_pct:1,updated_at:'2026-08-19T14:00:00Z',assessed_at:'2026-08-19'}]}; },
+    _quotes:[{ticker:'VALE3'}], _dailyMap:{}, _dailyStamp:'', _range:'M', _renderHeatmap:()=>{renders++},
+    _commByCode:{}, _commUpdated:null, _freqOf:()=>'Daily', _renderCommPage:()=>{renders++},
+    document:{getElementById:()=>null}, console, Object, Error,
+  };
+  const M=new Function('ctx',`with(ctx){ ${DAILY}\n${COMM}\n return {loadQuotesDaily,loadCommodities}; }`)(ctx);
+
+  // ── item 5
+  pedidos=[]; await M.loadQuotesDaily();
+  ok('1ª vez: pergunta barata + baixa a série', pedidos.length===2, 'n='+pedidos.length);
+  ok('a pergunta barata vem PRIMEIRO', pedidos[0].includes('daily_updated_at'));
+  ok('a série entra no cache', (ctx._dailyMap.VALE3||[]).length===2);
+  ok('e a série gruda no papel', (ctx._quotes[0].daily||[]).length===2);
+
+  pedidos=[]; await M.loadQuotesDaily();
+  ok('nada mudou: só a pergunta barata', pedidos.length===1 && pedidos[0].includes('daily_updated_at'), 'n='+pedidos.length);
+  ok('NÃO baixou os 207,8 KB', !pedidos.some(u=>/select=ticker,daily$/.test(u)));
+
+  stamp='2026-08-20T02:00:00Z'; pedidos=[]; await M.loadQuotesDaily();
+  ok('mudou de dia: baixa de novo', pedidos.length===2, 'n='+pedidos.length);
+
+  falhaCheck=true; pedidos=[]; await M.loadQuotesDaily();
+  ok('pergunta barata falhou → baixa mesmo assim', pedidos.length===2, 'n='+pedidos.length);
+  falhaCheck=false;
+
+  falhaSerie=true; stamp='2026-08-21T02:00:00Z'; await M.loadQuotesDaily();
+  falhaSerie=false; pedidos=[]; await M.loadQuotesDaily();
+  ok('série falhou → tenta de novo no ciclo seguinte', pedidos.length===2, 'n='+pedidos.length);
+
+  // ── item 4
+  pedidos=[]; await M.loadCommodities();
+  const u=pedidos[0]||'';
+  ok('commodities NÃO usa select=*', !u.includes('select=*'), u.split('select=')[1]);
+  ok('não pede o histórico (daily)', !/[?&,]daily/.test(u));
+  ok('não pede o spark', !u.includes('spark'));
+  ['code','name','unit','price','change_pct','updated_at','assessed_at'].forEach(c=>
+    ok('pede a coluna '+c, u.includes(c)));
+  ok('o painel recebe os dados', !!ctx._commByCode.IRON_ORE);
+  ok('e o "updated" é calculado', ctx._commUpdated==='2026-08-19T14:00:00Z', String(ctx._commUpdated));
+
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+</script></body>
