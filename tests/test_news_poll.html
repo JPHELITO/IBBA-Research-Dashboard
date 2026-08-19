@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><title>news.html — poll incremental</title>
+<body><pre id="out">rodando…</pre><script>
+/* Testa o poll REAL: extrai o texto das funções do próprio news.html (não copia código,
+   então o teste quebra se alguém mudar a lógica lá) e roda com fetch/sessão de mentira. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini); const j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('não achei o trecho: '+ini); return src.slice(i,j+fim.length); }
+
+window.__RUN__=async function(){
+  const t=await (await fetch('/news.html')).text();
+  const A=cut(t,'async function _fetchPages(','\n  return rows;\n}');
+  const B=cut(t,'const POLL_MARGIN_MS','}catch(e){}\n}');
+
+  let urls=[], resposta=[];
+  const ctx={
+    SUPA_URL:'https://X', SUPA_KEY:'k',
+    sbAuth:{auth:{getSession:async()=>({data:{session:{access_token:'t'}}})}},
+    fetch:async(u,o)=>{ urls.push(u); return {ok:true, headers:{get:k=>k==='content-range'?('0-'+Math.max(0,resposta.length-1)+'/'+resposta.length):null}, json:async()=>resposta}; },
+    encodeURIComponent, Date, Array, JSON, Math, console, Number, Set, parseInt,
+    _dedupInto:r=>r, renderAll:()=>{}, _renderMetaExtras:()=>{}, _applyPreset:()=>{},
+    document:{getElementById:()=>null},
+    _allArticles:[], _seenUrls:new Set(), _lastUpdate:0,
+  };
+  const mk=new Function('ctx',`with(ctx){ ${A}\n${B}\n return {
+     _fetchPages,_poll,_noteFound, POLL_MARGIN_MS, SWEEP_EVERY_MS,
+     get maxFound(){return _maxFound}, set maxFound(v){_maxFound=v},
+     get lastSweep(){return _lastSweep}, set lastSweep(v){_lastSweep=v} }; }`);
+  const M=mk(ctx);
+  const art=(u,f,p=null)=>({url:u,found_at:f,published_at:p,title:u});
+  const T='2026-08-19T12:00:00.000Z';
+
+  // 1) marca d'água sai das linhas CRUAS e pega a MAIOR
+  M._noteFound([art('a','2026-08-19T10:00:00.000Z'),art('b',T),art('c','2026-08-19T09:00:00.000Z')]);
+  ok('marca d\'água = maior found_at', M.maxFound===T, M.maxFound);
+
+  // 2) com marca d'água → INCREMENTAL por found_at, com 30 min de margem
+  ctx._allArticles=[]; ctx._seenUrls=new Set(); M.lastSweep=Date.now();
+  urls=[]; resposta=[]; await M._poll();
+  const u1=urls[0]||'';
+  ok('usa found_at=gte (incremental)', u1.includes('found_at=gte.'), u1.slice(-90));
+  ok('NÃO arrasta o "published_at is null"', !u1.includes('or=(published_at'));
+  ok('margem de 30 min aplicada',
+     decodeURIComponent(u1).includes('found_at=gte.2026-08-19T11:30:00.000Z'), decodeURIComponent(u1).slice(-60));
+  ok('uma requisição só', urls.length===1, 'n='+urls.length);
+
+  // 3) notícia que entrou FORA DE ORDEM (10 min antes da marca) é capturada
+  const dentro=new Date(Date.parse(T)-10*60*1000).toISOString();
+  ok('found_at fora de ordem cai dentro da margem', dentro > '2026-08-19T11:30:00.000Z', dentro);
+
+  // 4) 1× por hora → volta a varredura larga (a busca de antes)
+  M.lastSweep=Date.now()-61*60*1000; urls=[]; resposta=[]; await M._poll();
+  ok('após 1h faz a varredura de 48h', (urls[0]||'').includes('or=(published_at'), (urls[0]||'').slice(-70));
+  ok('e reinicia o relógio da varredura', Date.now()-M.lastSweep < 5000);
+
+  // 5) logo depois volta a ser incremental
+  urls=[]; resposta=[]; await M._poll();
+  ok('próximo ciclo volta ao incremental', (urls[0]||'').includes('found_at=gte.'));
+
+  // 6) sem marca d'água (abertura falhou) → busca larga, nunca "nada"
+  M.maxFound=''; M.lastSweep=Date.now(); urls=[]; resposta=[]; await M._poll();
+  ok('sem marca d\'água cai na janela de 48h', (urls[0]||'').includes('or=(published_at'));
+
+  // 7) notícia nova ENTRA; repetida é ignorada
+  ctx._allArticles=[]; ctx._seenUrls=new Set(); M.maxFound=T; M.lastSweep=Date.now();
+  resposta=[art('nova','2026-08-19T12:05:00.000Z')]; await M._poll();
+  ok('notícia nova entra na lista', ctx._allArticles.length===1, 'n='+ctx._allArticles.length);
+  ok('marca d\'água avança', M.maxFound==='2026-08-19T12:05:00.000Z', M.maxFound);
+  await M._poll();   // mesma resposta de novo
+  ok('a mesma notícia não duplica', ctx._allArticles.length===1, 'n='+ctx._allArticles.length);
+
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+</script></body>
