@@ -78,6 +78,7 @@ def init_db(conn):
         period TEXT PRIMARY KEY,
         year INTEGER, month INTEGER,
         total REAL, flat REAL, long_prod REAL, semi REAL,
+        slabs REAL, billets REAL,
         updated_at TEXT
     );
     CREATE TABLE IF NOT EXISTS iabr_foreign_market (
@@ -240,16 +241,17 @@ def load_iabr(path, conn):
     prod_rows, dom_rows, for_rows, exp_rows, imp_rows, cons_rows = [], [], [], [], [], []
     for period, d in sorted(data.items()):
         y, m = d.get('year'), d.get('month')
-        # Domestic Sales:
-        #   Flat  = Laminados Planos + Placas (Slabs)
-        #   Long  = Laminados Longos + Blocos/Tarugos (Ingots, Blooms & Billets)
-        #   Semi  = not stored separately (absorbed into Flat and Long)
-        _df = d.get('dom_flat');    _ds = d.get('dom_slabs')
-        _dl = d.get('dom_long_prod'); _db = d.get('dom_billets')
-        dom_flat  = (_df or 0) + (_ds or 0) if (_df is not None or _ds is not None) else None
-        dom_long  = (_dl or 0) + (_db or 0) if (_dl is not None or _db is not None) else None
-        dom_semi  = None  # absorbed into flat and long above
-        dom_total = (dom_flat + dom_long) if (dom_flat is not None and dom_long is not None) else None
+        # Domestic Sales — guarda as linhas CRUAS do IABr (Planos, Longos, Semiacabados) e
+        # também a quebra Placas/Blocos. Quem soma "Flat = Planos + Placas" é a DASHBOARD.
+        # ⚠️ Até 2026-08 este extractor já entregava flat JÁ SOMADO com placas e semi=None,
+        # enquanto o update_iabr.py (updater ao vivo, que hoje manda na tabela) grava a linha
+        # crua — duas definições para a mesma coluna. Alinhado aqui com o updater.
+        dom_flat  = d.get('dom_flat')
+        dom_long  = d.get('dom_long_prod')
+        dom_semi  = d.get('dom_semi')
+        dom_slabs = d.get('dom_slabs')
+        dom_bill  = d.get('dom_billets')
+        dom_total = d.get('dom_total')
 
         # Foreign Market:
         #   Flat  = Laminados Planos + Placas (Slabs)
@@ -267,7 +269,8 @@ def load_iabr(path, conn):
             d.get('prod_semi'), d.get('prod_slabs'), d.get('prod_billets'),
             d.get('prod_pig_iron'), NOW
         ))
-        dom_rows.append((period, y, m, dom_total, dom_flat, dom_long, dom_semi, NOW))
+        dom_rows.append((period, y, m, dom_total, dom_flat, dom_long, dom_semi,
+                         dom_slabs, dom_bill, NOW))
         for_rows.append((period, y, m, for_total, for_flat, for_long, for_semi, NOW))
         exp_rows.append((
             period, y, m,
@@ -282,7 +285,9 @@ def load_iabr(path, conn):
         cons_rows.append((period, y, m, d.get('cons_total'), d.get('cons_flat'), d.get('cons_long_prod'), NOW))
 
     conn.executemany("INSERT OR REPLACE INTO iabr_production VALUES (?,?,?,?,?,?,?,?,?,?,?)", prod_rows)
-    conn.executemany("INSERT OR REPLACE INTO iabr_domestic_sales VALUES (?,?,?,?,?,?,?,?)", dom_rows)
+    conn.executemany("INSERT OR REPLACE INTO iabr_domestic_sales "
+                     "(period,year,month,total,flat,long_prod,semi,slabs,billets,updated_at) "
+                     "VALUES (?,?,?,?,?,?,?,?,?,?)", dom_rows)
     conn.executemany("INSERT OR REPLACE INTO iabr_foreign_market VALUES (?,?,?,?,?,?,?,?)", for_rows)
     conn.executemany("INSERT OR REPLACE INTO iabr_exports VALUES (?,?,?,?,?,?,?,?,?)", exp_rows)
     conn.executemany("INSERT OR REPLACE INTO iabr_imports VALUES (?,?,?,?,?,?,?,?,?)", imp_rows)

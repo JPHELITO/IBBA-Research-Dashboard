@@ -59,7 +59,11 @@ _MESES_PT = {"janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4, 
 TABLES = {
     "iabr_production":     {"cols": ["crude_steel", "flat", "long_prod", "semi", "slabs", "billets", "pig_iron"],
                             "rows": [7, 9, 10, 11, 12, 13, 14]},
-    "iabr_domestic_sales": {"cols": ["total", "flat", "long_prod", "semi"], "rows": [15, 17, 18, 19]},
+    # slabs/billets = a quebra de "Semiacabados": a dashboard soma placas em Flat e blocos em
+    # Long (convenção do relatório: "* Flat Steel + Slabs, ** Long Steel + Billets"), que é a
+    # MESMA base do consumo aparente do IABr ("Planos — Inclui Placas").
+    "iabr_domestic_sales": {"cols": ["total", "flat", "long_prod", "semi", "slabs", "billets"],
+                            "rows": [15, 17, 18, 19, 20, 21]},
     "iabr_foreign_market": {"cols": ["total", "flat", "long_prod", "semi"], "rows": [22, 24, 25, 26]},
     "iabr_exports":        {"cols": ["flat_ktons", "long_ktons", "semi_ktons", "total_ktons", "total_usd_mn"],
                             "rows": [32, 33, 34, 37, 38]},
@@ -126,7 +130,8 @@ LABEL_SECTIONS = [
       "semi": r"Semiacabados", "slabs": r"Placas", "billets": r"Blocos e Tarugos",
       "pig_iron": r"Ferro-Gusa"}),
     ("iabr_domestic_sales", r"Vendas Internas",
-     {"total": None, "flat": r"Planos", "long_prod": r"Longos", "semi": r"Semiacabados"}),
+     {"total": None, "flat": r"Planos", "long_prod": r"Longos", "semi": r"Semiacabados",
+      "slabs": r"Placas", "billets": r"Blocos e Tarugos"}),
     ("iabr_foreign_market", r"Vendas Externas",
      {"total": None, "flat": r"Planos", "long_prod": r"Longos", "semi": r"Semiacabados"}),
     ("iabr_exports", r"Exporta[çc][õo]es\s*/\s*Exports",
@@ -186,6 +191,20 @@ def parse_xls(content):
 
 def _table_exists(conn, t):
     return bool(conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (t,)).fetchone())
+
+
+def ensure_columns(conn):
+    """ALTER TABLE p/ colunas novas do TABLES que o banco ainda não tem (ex.: slabs/billets
+    em iabr_domestic_sales). Sem isso o INSERT nomeado quebra num banco antigo."""
+    for t, spec in TABLES.items():
+        if not _table_exists(conn, t):
+            continue
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({t})")}
+        for col in spec["cols"]:
+            if col not in have:
+                conn.execute(f"ALTER TABLE {t} ADD COLUMN {col} REAL")
+                print(f"  [migração] {t}.{col} criada")
+    conn.commit()
 
 
 def _months_back(period, n):
@@ -346,6 +365,7 @@ def main():
     args = ap.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
+    ensure_columns(conn)
     dbmax = latest_db(conn)
     html = fetch_page()
     url, xls_period = file_link(html) if html else (None, None)
