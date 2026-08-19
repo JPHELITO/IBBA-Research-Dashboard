@@ -1,0 +1,90 @@
+<!doctype html><meta charset="utf-8"><title>intraday fora do poll de 60s</title>
+<body><pre id="out">rodando…</pre>
+<div id="hm-range" style="display:none"><button data-r="D"></button><button data-r="M"></button></div>
+<script>
+/* Extrai as funções REAIS de index.html e market.html (não copia código) e roda com um
+   fetch de mentira, contando quantas requisições cada ciclo faz e o que elas pedem. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const sess={data:{session:{access_token:'t'}}};
+const quote=(t,upd)=>({ticker:t,name:t,sector:'steel',exchange:'B3',price:10,change_pct:1,change_abs:.1,updated_at:upd});
+const intra=(t,n)=>({ticker:t,intraday:{prev:9,pts:Array.from({length:n},(_,i)=>[i,10+i])}});
+
+window.__RUN__=async function(){
+ // ─────────────────────────── HOME (index.html) ───────────────────────────
+ {
+  const t=await (await fetch('/index.html')).text();
+  const SRC=cut(t,'async function loadQuotes(){','  _intraStamp = stamp;\n}');
+  const HANDLER=cut(t,"document.getElementById('hm-range')?.addEventListener('click', e=>{",'\n});');
+  let pedidos=[], upd='2026-08-19T13:40:00Z', falhaIntra=false, renders=0;
+  const ctx={
+    SUPA_URL:'https://X', SUPA_KEY:'k', sbAuth:{auth:{getSession:async()=>sess}},
+    fetch:async(u)=>{ pedidos.push(u);
+      const isIntra=u.includes('ticker,intraday');
+      if(isIntra&&falhaIntra) return {ok:false};
+      return {ok:true, json:async()=> isIntra ? ['VALE3','GGBR4'].map(x=>intra(x,5))
+                                              : ['VALE3','GGBR4'].map(x=>quote(x,upd))}; },
+    _quotes:[], _dailyMap:{}, _range:'D', _renderHeatmap:()=>{renders++}, _updateMeta:()=>{},
+    document, console, Object, Error, Date, Array, Set,
+  };
+  const M=new Function('ctx',`with(ctx){ ${SRC}\n${HANDLER}\n return {loadQuotes,_loadIntraday,
+      get stamp(){return _intraStamp}, get map(){return _intraMap}}; }`)(ctx);
+
+  pedidos=[]; await M.loadQuotes();
+  ok('D · 1ª volta busca leve + intraday', pedidos.length===2, 'n='+pedidos.length);
+  ok('D · a consulta leve NÃO pede intraday', !pedidos[0].includes('intraday'), pedidos[0].split('select=')[1]);
+  ok('D · o risquinho chega em _quotes', (ctx._quotes[0].intraday||{}).pts?.length===5);
+
+  pedidos=[]; await M.loadQuotes();
+  ok('D · nada mudou → só a leve', pedidos.length===1, 'n='+pedidos.length);
+  ok('D · risquinho continua na tela', (ctx._quotes[0].intraday||{}).pts?.length===5);
+
+  upd='2026-08-19T13:45:00Z'; pedidos=[]; await M.loadQuotes();
+  ok('D · updated_at avançou → busca de novo', pedidos.length===2, 'n='+pedidos.length);
+
+  ctx._range='M'; upd='2026-08-19T13:50:00Z'; pedidos=[]; await M.loadQuotes();
+  ok('fora do "D" nunca pede intraday', pedidos.length===1 && !pedidos[0].includes('ticker,intraday'), 'n='+pedidos.length);
+
+  // clique de volta em "D" → busca na hora
+  ctx._range='M'; pedidos=[]; renders=0;
+  document.querySelector('#hm-range button[data-r="D"]').click();
+  await new Promise(r=>setTimeout(r,30));
+  ok('clicar em "D" busca o risquinho na hora', pedidos.some(u=>u.includes('ticker,intraday')), 'n='+pedidos.length);
+  ok('e redesenha depois que chega', renders>=2, 'renders='+renders);
+
+  // falha do intraday não pode segurar o preço
+  ctx._range='D'; upd='2026-08-19T14:00:00Z'; falhaIntra=true; const antes=M.stamp;
+  pedidos=[]; await M.loadQuotes();
+  ok('intraday falhou → preço ainda atualiza', ctx._quotes[0].updated_at==='2026-08-19T14:00:00Z');
+  ok('e a marca não avança (tenta de novo)', M.stamp===antes, M.stamp);
+  falhaIntra=false; pedidos=[]; await M.loadQuotes();
+  ok('próximo ciclo se recupera sozinho', pedidos.length===2, 'n='+pedidos.length);
+ }
+ // ─────────────────────────── MARKET (market.html) ───────────────────────────
+ {
+  const t=await (await fetch('/market.html')).text();
+  const SRC=cut(t,'async function loadQuotes(){','  _intraStamp=stamp;\n}');
+  let pedidos=[], upd='2026-08-19T13:40:00Z';
+  const ctx={
+    restGet:async(p)=>{ pedidos.push(p);
+      return p.includes('ticker,intraday') ? ['VALE3'].map(x=>intra(x,7)) : ['VALE3'].map(x=>quote(x,upd)); },
+    _quotes:[], _dailyMap:{}, _intraMap:{}, _intraStamp:'', _updatedAt:'',
+    KNOWN:new Set(['VALE3']), console, Object, Set,
+  };
+  const M=new Function('ctx',`with(ctx){ ${SRC}\n return {loadQuotes}; }`)(ctx);
+  pedidos=[]; await M.loadQuotes();
+  ok('Market · 1ª volta busca leve + intraday', pedidos.length===2, 'n='+pedidos.length);
+  ok('Market · leve sem intraday', !pedidos[0].includes('intraday'));
+  ok('Market · sparkline do cabeçalho tem dado', (ctx._quotes[0].intraday||{}).pts?.length===7);
+  pedidos=[]; await M.loadQuotes();
+  ok('Market · nada mudou → só a leve', pedidos.length===1, 'n='+pedidos.length);
+  ok('Market · sparkline continua preenchido', (ctx._quotes[0].intraday||{}).pts?.length===7);
+  upd='2026-08-19T13:45:00Z'; pedidos=[]; await M.loadQuotes();
+  ok('Market · avançou → busca de novo', pedidos.length===2, 'n='+pedidos.length);
+  ok('Market · SEM trava de período (sempre precisa)', true);
+ }
+ document.getElementById('out').textContent=R.join('\n');
+ return R.join('\n');
+};
+</script></body>
