@@ -1,0 +1,88 @@
+<!doctype html><meta charset="utf-8"><title>news.html — abre em 30d, resto sob demanda</title>
+<body><pre id="out">rodando…</pre><script>
+/* Extrai as funções REAIS de news.html e exercita a carga inicial + a busca sob demanda. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+function cutX(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j);}
+
+window.__RUN__=async function(){
+  const t=await (await fetch('/news.html')).text();
+  const FETCH =cut (t,'async function _fetchPages(','\n  return rows;\n}');
+  const DATES =cutX(t,'function _todayStr(){','\nfunction _niceDate');
+  const PRESET=cut (t,'function _applyPreset(days){','if(_needFull(_dateFrom)) _ensureFull();     // data anterior ao carregado → busca o resto\n}');
+  const CORE  =cut (t,'const POLL_MARGIN_MS','}catch(e){}\n}');
+
+  let pedidos=[], falhaFull=false, atraso=0, renders=0;
+  const linha=(u,f,p)=>({url:u,found_at:f,published_at:p,title:u});
+  const ctx={
+    SUPA_URL:'https://X', SUPA_KEY:'k',
+    sbAuth:{auth:{getSession:async()=>({data:{session:{access_token:'t'}}})}},
+    fetch:async(u)=>{ pedidos.push(u);
+      const cheio = !u.includes('published_at.gte') && !u.includes('found_at=gte');
+      if(cheio && falhaFull) return {ok:false};
+      if(atraso) await new Promise(r=>setTimeout(r,atraso));
+      const rows = cheio ? [linha('velha','2026-06-05T10:00:00Z','2026-06-05T09:00:00Z'),
+                            linha('nova','2026-08-19T10:00:00Z','2026-08-19T09:00:00Z')]
+                         : [linha('nova','2026-08-19T10:00:00Z','2026-08-19T09:00:00Z')];
+      return {ok:true, headers:{get:k=>k==='content-range'?('0-'+(rows.length-1)+'/'+rows.length):null}, json:async()=>rows}; },
+    _dedupInto:r=>r, renderAll:()=>{renders++}, _renderMetaExtras:()=>{},
+    _syncDateInputs:()=>{}, _setSegActive:(a,b,v)=>{ctx.__preset=v}, _clearSegActive:()=>{},
+    document:{getElementById:()=>null}, console, Object, Set, Date, Array, Number, String, parseInt, JSON, Math, Promise,
+    _allArticles:[], _seenUrls:new Set(), _lastUpdate:0, _displayLimit:0, PAGE_SIZE:50,
+    _periodPreset:null, _dateFrom:null, _dateTo:null, __preset:null,
+  };
+  const M=new Function('ctx',`with(ctx){ ${DATES}\n${FETCH}\n${PRESET}\n${CORE}\n return {
+      boot,_poll,_applyPreset,_setRange,_ensureFull,_needFull,_todayStr,_dateAdd,
+      get full(){return _fullLoaded}, get from(){return _loadedFrom}, get pend(){return _fullPend} }; }`)(ctx);
+
+  // ── abertura
+  pedidos=[]; await M.boot();
+  ok('abre com UMA busca só', pedidos.length===1, 'n='+pedidos.length);
+  ok('e ela é a janela de 32 dias', pedidos[0].includes('published_at.gte.'), pedidos[0].slice(-120,-40));
+  ok('com o "sem data" AMARRADO ao found_at',
+     decodeURIComponent(pedidos[0]).includes('and(published_at.is.null,found_at.gte.'));
+  ok('período ativo na tela = 30 (não All)', ctx.__preset==='30', String(ctx.__preset));
+  ok('ainda não tem o arquivo inteiro', M.full===false);
+
+  // ── períodos DENTRO do que já está carregado não buscam nada
+  pedidos=[]; M._applyPreset('7'); M._applyPreset('1'); M._applyPreset('30');
+  await new Promise(r=>setTimeout(r,20));
+  ok('24h/7d/30d não buscam nada', pedidos.length===0, 'n='+pedidos.length);
+
+  // ── "All" busca o resto, uma vez só
+  pedidos=[]; renders=0; M._applyPreset('all'); await new Promise(r=>setTimeout(r,30));
+  ok('"All" busca o arquivo inteiro', pedidos.length===1, 'n='+pedidos.length);
+  ok('e a busca não tem filtro de data', !pedidos[0].includes('gte.'), pedidos[0].slice(-70));
+  ok('a notícia antiga entra na lista', ctx._allArticles.some(a=>a.url==='velha'));
+  ok('e a tela redesenha', renders>=1, 'renders='+renders);
+  ok('marca que já tem tudo', M.full===true);
+
+  pedidos=[]; M._applyPreset('all'); M._setRange('2026-06-01',null);
+  await new Promise(r=>setTimeout(r,20));
+  ok('depois de carregado não busca de novo', pedidos.length===0, 'n='+pedidos.length);
+ 
+  // ── dois pedidos ao mesmo tempo compartilham a MESMA busca
+  {
+    const c2={...ctx, _allArticles:[], _seenUrls:new Set()};
+    const M2=new Function('ctx',`with(ctx){ ${DATES}\n${FETCH}\n${PRESET}\n${CORE}\n return {
+        boot,_applyPreset,_setRange,_ensureFull, get full(){return _fullLoaded} }; }`)(c2);
+    await M2.boot(); pedidos=[]; atraso=40;
+    const a=M2._ensureFull(), b=M2._ensureFull(), c=M2._ensureFull();
+    const res=await Promise.all([a,b,c]); atraso=0;
+    ok('3 pedidos simultâneos = 1 busca só', pedidos.length===1, 'n='+pedidos.length);
+    ok('e todos recebem a mesma resposta', res.every(x=>x===true), JSON.stringify(res));
+  }
+  // ── falha ao buscar o arquivo: continua dando p/ tentar de novo
+  {
+    const c3={...ctx, _allArticles:[], _seenUrls:new Set()};
+    const M3=new Function('ctx',`with(ctx){ ${DATES}\n${FETCH}\n${PRESET}\n${CORE}\n return {
+        boot,_ensureFull, get full(){return _fullLoaded} }; }`)(c3);
+    await M3.boot(); falhaFull=true; await M3._ensureFull();
+    ok('busca falhou → NÃO marca como carregado', M3.full===false);
+    falhaFull=false; pedidos=[]; const r2=await M3._ensureFull();
+    ok('e a tentativa seguinte funciona', r2===true && M3.full===true, 'n='+pedidos.length);
+  }
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+</script></body>
