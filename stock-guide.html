@@ -258,10 +258,11 @@ async function sgLoadData(){
     rpc('get_stock_guide_comps'), rpc('get_stock_guide_config'),
     rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables'),
     rpc('get_stock_guide_global_peers').catch(()=>[])]);
-  // Aura: AURA33 é BDR (negocia em R$) de empresa que MODELA em US$; o modelo lista preço/mktcap na
-  // linha AUGO (US$) → a detecção de moeda a rotularia como R$ por engano. Normaliza p/ US$/AUGO (moeda
-  // do modelo) ANTES do fetch e dos múltiplos, p/ EV/EBITDA, yields e upside baterem. Idempotente.
-  (comps||[]).forEach(c=>{ if(c&&c.ticker==='AURA33'){ c.yahoo_symbol='AUGO'; c.trade_ccy='USD'; c.base_ccy='USD'; c.fx_to_base=1; c.fx_to_usd=1; } });
+  // Aura: o ticker do Stock Guide é AUGO (Nasdaq, US$), NÃO o BDR AURA33 (negocia em R$) — o modelo
+  // lista preço/mktcap na linha AUGO (US$); pelo BDR a detecção de moeda rotularia R$ por engano.
+  // Normaliza p/ US$/AUGO (moeda do modelo) ANTES do fetch e dos múltiplos, p/ EV/EBITDA, yields e
+  // upside baterem. 'AURA33' segue aceito p/ a linha legada do banco (antes do renomeio). Idempotente.
+  (comps||[]).forEach(c=>{ if(c&&(c.ticker==='AUGO'||c.ticker==='AURA33')){ c.yahoo_symbol='AUGO'; c.trade_ccy='USD'; c.base_ccy='USD'; c.fx_to_base=1; c.fx_to_usd=1; } });
   const role=await rpc('get_my_role').catch(()=>null);
   const isAdmin=!!(role&&role==='admin');
   const peerSyms=(peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
@@ -291,7 +292,8 @@ const MODEL_URL={
   CMIN3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CMIN3',
   GMEXICOB:'https://www.itau.com.br/itaubba-pt/portal/equity/company/GMEXICOB',
   SCCO:'https://www.itau.com.br/itaubba-pt/portal/equity/company/SCCO',
-  AURA33:'https://www.itau.com.br/itaubba-pt/portal/equity/company/AURA33',
+  AUGO:'https://www.itau.com.br/itaubba-pt/portal/equity/company/AURA33',   // slug do portal segue AURA33
+  AURA33:'https://www.itau.com.br/itaubba-pt/portal/equity/company/AURA33',  // chave legada (linha antiga do banco)
   CSNA3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CSNA3',
   GGBR4:'https://www.itau.com.br/itaubba-pt/portal/equity/company/GGBR4',
   TX:'https://www.itau.com.br/itaubba-pt/portal/equity/company/TX',

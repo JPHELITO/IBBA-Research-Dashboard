@@ -20,7 +20,7 @@
 | KLABIN | KLBN11.SA | pulp_paper | BRL |
 | SUZANO | SUZB3.SA | pulp_paper | BRL |
 | IRANI | RANI3.SA | pulp_paper | BRL |
-| AURA | AURA33.SA | gold | BRL |
+| AURA | AUGO | gold | USD |
 | SOUTHERN COPPER | SCCO | copper | USD |
 | TERNIUM | TX | steel | USD |
 | CMPC | CMPC.SN | pulp_paper | CLP |

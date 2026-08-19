@@ -1713,8 +1713,10 @@ async function loadSGCompanies(){
     const info=document.createElement('span'); info.innerHTML=`<b>${esc(c.ticker)}</b> — ${esc(c.company_name)} ${c.is_visible?'':'<span class="muted">(oculta)</span>'}`;
     const acts=document.createElement('span'); acts.className='acts';
     const vis=document.createElement('button'); vis.className='chip'; vis.textContent=c.is_visible?'👁 Esconder':'🚫 Mostrar'; vis.onclick=()=>sgCoToggleVis(c.ticker,!c.is_visible);
+    const rn=document.createElement('button'); rn.className='chip'; rn.textContent='Renomear';
+    rn.title='Trocar o ticker em toda a área (comps, sensibilidades e mesh)'; rn.onclick=()=>sgCoRenameOpen(acts,c.ticker);
     const dl=document.createElement('button'); dl.className='chip'; dl.textContent='Excluir'; dl.onclick=()=>sgCoDelete(c.ticker);
-    acts.append(vis,dl); row.append(info,acts); host.appendChild(row); });
+    acts.append(vis,rn,dl); row.append(info,acts); host.appendChild(row); });
 }
 async function sgCoToggleVis(ticker,makeVisible){
   const {error}=await sbAuth.rpc('admin_set_stock_guide_visibility',{p_ticker:ticker,p_is_visible:makeVisible});
@@ -1723,6 +1725,30 @@ async function sgCoToggleVis(ticker,makeVisible){
 async function sgCoDelete(ticker){ if(!confirm('Excluir '+ticker+'? (remove também sensibilidades ligadas)'))return;
   const {error}=await sbAuth.rpc('admin_delete_stock_guide_company',{p_ticker:ticker});
   if(error){alert('Erro: '+error.message);return} loadSGCompanies();
+}
+// ── Renomear ticker ────────────────────────────────────────────────────────────
+// O ticker É a identidade da empresa (PK de stock_guide_companies) e é o texto que
+// amarra a empresa ao mesh de cenários e às sensibilidades — por isso renomear é uma
+// RPC própria (admin_rename_stock_guide_company), que troca nos 3 lugares numa
+// transação só. Requer admin/supabase_stock_guide_rename_ticker.sql rodado.
+function sgCoRenameOpen(acts,from){
+  acts.innerHTML='';
+  const inp=document.createElement('input'); inp.className='in'; inp.value=from; inp.maxLength=12;
+  inp.style.cssText='width:110px;text-transform:uppercase';
+  const ok=document.createElement('button'); ok.className='chip'; ok.textContent='Salvar'; ok.onclick=()=>sgCoRenameSave(from,inp.value);
+  const no=document.createElement('button'); no.className='chip'; no.textContent='Cancelar'; no.onclick=()=>loadSGCompanies();
+  inp.onkeydown=e=>{ if(e.key==='Enter'){e.preventDefault();ok.onclick()} else if(e.key==='Escape')no.onclick() };
+  acts.append(inp,ok,no); inp.focus(); inp.select();
+}
+async function sgCoRenameSave(from,raw){
+  const to=String(raw||'').trim().toUpperCase();
+  if(!to||to===from){ loadSGCompanies(); return }
+  if(!/^[A-Z0-9]{1,12}$/.test(to)){ alert('Ticker inválido: use só letras e números (até 12).'); return }
+  if(!confirm('Renomear '+from+' → '+to+'?\n\nTroca o ticker em toda a área: tabela de comps, sensibilidades e mesh de cenários.')) return;
+  const {error}=await sbAuth.rpc('admin_rename_stock_guide_company',{p_from:from,p_to:to});
+  if(error){ alert('Erro: '+error.message+(/could not find|does not exist|schema cache/i.test(error.message)
+    ? '\n\n(rodou o admin/supabase_stock_guide_rename_ticker.sql?)' : '')); return }
+  loadSGCompanies();
 }
 // ── Upload do modelo .xlsm (parser em stock-guide-lib.js → preview/diff → bulk upsert) ──
 let _sgParsed=null;
@@ -1832,7 +1858,7 @@ function genCopy(){ const t=_v('gen-out'); if(!t.value){ alert('Gere a lista pri
 // ── IMPORTA a aba "Sensitivity (cenarios)" gerada no Excel (build_scenario.py) ──
 // Le a aba, monta UM grid sensitivity por empresa (eixos = drivers; outputs = EV/EBITDA·FCF yield·Div yield·
 // Preco-alvo, ao vivo) + o mesh, reutilizando os RPCs existentes. Sem SQL novo, sem mudar o cliente.
-const _SGI_PANEL={VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AURA33:'Gold'};
+const _SGI_PANEL={VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AUGO:'Gold',AURA33:'Gold'};
 function _sgiNum(v){ if(v==null||v==='')return null; if(typeof v==='number')return isFinite(v)?v:null;
   const n=Number(String(v).replace(/[^0-9eE+\-.,]/g,'').replace(',','.')); return isFinite(n)?n:null; }
 function _sgiNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
