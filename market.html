@@ -797,7 +797,7 @@ function _setRngBadges(){ const t=_rngBadgeText(); ['rb-chart','rb-wl','rb-corr'
 
 /* ── estado central ── */
 const _MC_COLORS=['#FF5000','#3B82F6','#22C55E','#A855F7','#06B6D4','#EAB308','#EC4899','#F97316'];
-let _quotes=[], _dailyMap={}, _commByCode={};
+let _quotes=[], _dailyMap={}, _commByCode={}, _intraMap={}, _intraStamp='';
 let _mainLines=[], _thesisLines=[], _pfLines=[];   // últimas séries renderizadas (p/ export admin)
 let _sel=[];                      // ativos selecionados (chart + watchlist laranja). LIVRE, pode esvaziar.
 let _anchor=null;                 // = _sel[0] (primário: header/thesis/news/recommended)
@@ -815,11 +815,25 @@ let _updatedAt='';
 
 /* ── data layer ── */
 async function loadQuotes(){
-  const cols='ticker,name,sector,exchange,price,change_pct,change_abs,updated_at,intraday';
+  // payload leve, sem o `intraday` (a série de 5 em 5 min do pregão): ele só muda quando o
+  // robô grava, ~a cada 5 min, e vinha de volta inteiro 60x por hora. Aqui NÃO tem trava por
+  // range: o sparkline do cabeçalho do papel usa o intraday em QUALQUER período.
+  const cols='ticker,name,sector,exchange,price,change_pct,change_abs,updated_at';
   const rows=await restGet(`quotes?select=${cols}`);
+  const stamp=rows.reduce((m,q)=>(q.updated_at>m?q.updated_at:m),'');
+  // `updated_at` avançou = o robô gravou preço novo, e o intraday vem na MESMA linha
+  // (prices.py). try/catch próprio: falha no risquinho não segura a atualização do preço.
+  if(stamp && stamp!==_intraStamp){ try{ await loadIntraday(stamp); }catch(e){ console.warn('intraday',e); } }
   const prev=Object.fromEntries(_quotes.map(q=>[q.ticker,q]));
-  _quotes=rows.filter(q=>KNOWN.has(q.ticker)).map(q=>({...prev[q.ticker],...q,daily:_dailyMap[q.ticker]}));
-  _updatedAt=rows.reduce((m,q)=>(q.updated_at>m?q.updated_at:m),'');
+  _quotes=rows.filter(q=>KNOWN.has(q.ticker)).map(q=>({...prev[q.ticker],...q,daily:_dailyMap[q.ticker],intraday:_intraMap[q.ticker]}));
+  _updatedAt=stamp;
+}
+// `_intraStamp` guarda o updated_at que o cache reflete; se falhar ele não avança e o
+// próximo ciclo (60s) tenta de novo sozinho.
+async function loadIntraday(stamp){
+  const rows=await restGet('quotes?select=ticker,intraday');
+  _intraMap=Object.fromEntries(rows.map(q=>[q.ticker,q.intraday]));
+  _intraStamp=stamp;
 }
 async function loadDaily(){
   const rows=await restGet('quotes?select=ticker,daily');

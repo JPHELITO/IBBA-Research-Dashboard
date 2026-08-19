@@ -1883,17 +1883,41 @@ async function loadQuotes(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
-    // payload leve (sem o `daily`, que é pesado e muda 1x/dia → loadQuotesDaily)
-    const cols = 'ticker,name,sector,exchange,price,change_pct,change_abs,updated_at,intraday';
+    // payload leve: sem o `daily` (pesado, muda 1x/dia → loadQuotesDaily) e sem o `intraday`
+    // (a série de 5 em 5 min do pregão → _loadIntraday, só quando muda). 5,8 KB → 2,0 KB.
+    const cols = 'ticker,name,sector,exchange,price,change_pct,change_abs,updated_at';
     const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('quotes fetch');
     const rows = await r.json();
+    const stamp = rows.reduce((m,q)=> (q.updated_at>m?q.updated_at:m), '');
+    // `updated_at` é o aviso, de graça, de que o intraday mudou: prices.py grava os dois na
+    // MESMA linha, no mesmo instante. O robô escreve a cada ~5 min, então das 60 buscas por
+    // hora ~45 traziam a mesma série de volta. Só no período "D": nos demais o sparkline sai
+    // do `daily` e o intraday era baixado para ser jogado fora.
+    if(_range === 'D' && stamp && stamp !== _intraStamp){
+      // try/catch próprio: falha no risquinho NÃO pode segurar a atualização do preço
+      try { await _loadIntraday(stamp); } catch(e){ console.warn('intraday error:', e); }
+    }
     const prev = Object.fromEntries(_quotes.map(q=>[q.ticker,q]));
-    _quotes = rows.map(q => ({...prev[q.ticker], ...q, daily:_dailyMap[q.ticker]}));
+    _quotes = rows.map(q => ({...prev[q.ticker], ...q, daily:_dailyMap[q.ticker], intraday:_intraMap[q.ticker]}));
     _renderHeatmap();
-    _updateMeta('quotes-meta', rows.reduce((m,q)=> (q.updated_at>m?q.updated_at:m), ''));
+    _updateMeta('quotes-meta', stamp);
   } catch(e){ console.warn('quotes error:', e); }
+}
+
+// Série intradiária (o "risquinho" do dia, de 5 em 5 min) — só o período "D" desenha ela.
+// `_intraStamp` guarda o `updated_at` que o cache já reflete; se a busca falhar ele NÃO
+// avança, então o próximo ciclo tenta de novo sozinho.
+let _intraMap = {}, _intraStamp = '';
+async function _loadIntraday(stamp){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=ticker,intraday`,
+    {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+  if(!r.ok) throw new Error('intraday fetch');
+  _intraMap = Object.fromEntries((await r.json()).map(q=>[q.ticker, q.intraday]));
+  _intraStamp = stamp;
 }
 
 // Série diária (~1 ano) — muda 1x/dia. Carrega no init + a cada 1h; mescla no cache por ticker.
@@ -2014,6 +2038,16 @@ document.getElementById('hm-range')?.addEventListener('click', e=>{
   _range = b.dataset.r;
   document.querySelectorAll('#hm-range button').forEach(x=> x.classList.toggle('active', x===b));
   _renderHeatmap();
+  // Entrando no "D" sem a série do dia em mão (ela não é buscada nos outros períodos):
+  // busca agora e redesenha. Nos demais períodos não há o que buscar.
+  if(_range === 'D'){
+    const stamp = _quotes.reduce((m,q)=> (q.updated_at>m?q.updated_at:m), '');
+    if(stamp && stamp !== _intraStamp){
+      _loadIntraday(stamp)
+        .then(()=>{ _quotes.forEach(q=> { q.intraday = _intraMap[q.ticker]; }); _renderHeatmap(); })
+        .catch(e=> console.warn('intraday error:', e));
+    }
+  }
 });
 // Clique num card → abre o terminal de ações (aba Market) com o ticker.
 // Fallback: enquanto a flag 'market' não estiver ligada p/ o cliente, mantém o modal (sem regressão).
