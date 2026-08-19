@@ -1803,6 +1803,7 @@ function _renderOvernight(){
 // ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
 let _dailyMap = {};                            // ticker -> série diária (robusto à ordem de carga)
+let _dailyStamp = '';                          // maior daily_updated_at que o _dailyMap reflete
 let _range  = 'D';                             // período ativo do heatmap
 const _RANGE_LABEL = {D:'Daily', W:'WoW', M:'MoM', YTD:'YTD', Y:'YoY'};
 const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (heatmap)
@@ -1920,15 +1921,24 @@ async function _loadIntraday(stamp){
   _intraStamp = stamp;
 }
 
-// Série diária (~1 ano) — muda 1x/dia. Carrega no init + a cada 1h; mescla no cache por ticker.
+// Série diária (~1 ano) — muda 1x/dia, mas era rebaixada de hora em hora: 207,8 KB por vez
+// para receber conteúdo novo em 1 das 8 buscas de uma jornada. Agora pergunta antes:
+// `daily_updated_at` custa 0,8 KB e diz se a série mudou de verdade.
 async function loadQuotesDaily(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
+  const H = {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}};
   try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=ticker,daily`,
-      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    let stamp = '';
+    try {   // se a pergunta barata falhar, segue e baixa — degrada para o comportamento antigo
+      const chk = await fetch(`${SUPA_URL}/rest/v1/quotes?select=ticker,daily_updated_at`, H);
+      if(chk.ok) stamp = (await chk.json()).reduce((m,q)=> (q.daily_updated_at>m?q.daily_updated_at:m), '');
+    } catch(e){ console.warn('daily check:', e); }
+    if(stamp && stamp === _dailyStamp) return;   // nada mudou → não baixa os 207,8 KB
+    const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=ticker,daily`, H);
     if(!r.ok) throw new Error('daily fetch');
     _dailyMap = Object.fromEntries((await r.json()).map(q=>[q.ticker, q.daily]));
+    _dailyStamp = stamp;                         // só avança quando a série foi de fato baixada
     _quotes.forEach(q=> { if(_dailyMap[q.ticker]) q.daily = _dailyMap[q.ticker]; });
     if(_range !== 'D') _renderHeatmap();         // re-render se o período usa o diário
   } catch(e){ console.warn('daily error:', e); }
@@ -2451,7 +2461,12 @@ async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=*`,
+    // colunas PELO NOME, não `select=*`: o `*` trazia junto o `daily` (histórico de cada
+    // commodity, 9,3 KB por linha) e o `spark` — nenhum dos dois é usado nesta página, que
+    // mostra só preço/unidade/variação/data. 30,1 KB → 0,9 KB, de 5 em 5 min.
+    // (Na aba Market o `daily` da commodity é usado de verdade e a busca é 1x por visita.)
+    const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at';
+    const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('commodities');
     const rows = await r.json();
