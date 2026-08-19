@@ -528,11 +528,12 @@ function _effDate(a){                       // 'YYYY-MM-DD' local do timestamp e
 // Três modos:
 //   _fetchPages(null)            → histórico INTEIRO (1× na abertura)
 //   _fetchPages(48)              → janela por DATA DE PUBLICAÇÃO (a varredura de segurança)
+//   _fetchPages(h, null, true)   → janela por DATA EFETIVA (= o que a tela filtra) — carga inicial
 //   _fetchPages(null, sinceISO)  → INCREMENTAL: só o que ENTROU no banco depois de `sinceISO`
 // O incremental filtra por `found_at` (quando a notícia chegou ao nosso banco), não por
 // `published_at`: é a pergunta certa para "o que há de novo para MIM" e ainda pega o caso
 // que a janela de 48h perde — matéria publicada há dias e descoberta agora.
-async function _fetchPages(windowHours, sinceISO){
+async function _fetchPages(windowHours, sinceISO, boundNull){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session) return [];
   const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,sector';
@@ -541,7 +542,13 @@ async function _fetchPages(windowHours, sinceISO){
     base+=`&found_at=gte.${encodeURIComponent(sinceISO)}`;
   }else if(windowHours){
     const cutoff=new Date(Date.now()-windowHours*3600*1000).toISOString();
-    base+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
+    // boundNull: amarra o "sem data de publicação" ao found_at — é o predicado que casa
+    // EXATAMENTE com o `_effDate` da tela (published_at || found_at), usado na carga inicial.
+    // Sem ele o ramo do nulo é ilimitado e traz o arquivo inteiro (é o da varredura horária,
+    // que quer justamente a rede larga).
+    base+= boundNull
+      ? `&or=(published_at.gte.${encodeURIComponent(cutoff)},and(published_at.is.null,found_at.gte.${encodeURIComponent(cutoff)}))`
+      : `&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
   const hdr={'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`};
   const PAGE=1000, SAFETY=40000;             // teto por request / trava de segurança
@@ -847,10 +854,12 @@ function _applyPreset(days){
   if(days==='all'){ _dateFrom=null; _dateTo=null; }
   else{ const n=parseInt(days,10); _dateTo=null; _dateFrom=_dateAdd(_todayStr(),-(n-1)); }
   _syncDateInputs(); _setSegActive('period-seg','days',days); _displayLimit=PAGE_SIZE;
+  if(_needFull(_dateFrom)) _ensureFull();     // "All" (ou período além do carregado) → busca o resto
 }
 function _setRange(from,to){    // usado pela timeline (clique/arraste) e inputs custom
   _dateFrom=from||null; _dateTo=to||null; _periodPreset='custom';
   _clearSegActive('period-seg'); _syncDateInputs(); _displayLimit=PAGE_SIZE;
+  if(_needFull(_dateFrom)) _ensureFull();     // data anterior ao carregado → busca o resto
 }
 
 // ─── Event listeners ────────────────────────────────────────────────────
@@ -976,12 +985,43 @@ function _noteFound(rows){                     // marca d'água vem das linhas C
     if(f && f>_maxFound) _maxFound=f;
   }
 }
-async function boot(){
-  _applyPreset('all');                        // view padrão = histórico INTEIRO
+/* A aba abria com o ARQUIVO INTEIRO (1,88 MB medidos) — e como cada página é um
+   carregamento próprio, isso acontecia a CADA visita, não uma vez por dia. E o arquivo
+   cresce ~0,75 MB/mês (~165 notícias/dia desde 02/06). Agora abre com os últimos 30 dias
+   (0,84 MB) e o resto vem SÓ quando alguém pede: "All", uma data mais antiga, ou arrastar a
+   timeline para trás. Uma vez por sessão; depois fica na memória. */
+const INITIAL_DAYS=30;                         // período que a aba mostra ao abrir
+const INITIAL_MARGIN_DAYS=2;                   // folga de fuso: carrega um pouco além do que mostra
+let _fullLoaded=false, _fullPend=null;
+let _loadedFrom=_dateAdd(_todayStr(),-(INITIAL_DAYS-1));   // data mais antiga que a tela já tem
+function _needFull(fromISO){                   // vazio = sem limite inferior = precisa de tudo
+  return !_fullLoaded && (!fromISO || fromISO<_loadedFrom);
+}
+/* Guarda a PROMESSA, não uma marca: quem pede no meio do caminho ESPERA a mesma busca em vez
+   de disparar outra (ou de receber "não fiz nada" e ficar com a tela pela metade). */
+function _ensureFull(){
+  if(_fullLoaded) return Promise.resolve(false);
+  if(_fullPend) return _fullPend;
   const meta=document.getElementById('results-meta'); if(meta) meta.textContent='Loading full history…';
-  const rows=await _fetchPages(null);         // histórico INTEIRO, 1×
+  _fullPend=_fetchPages(null).then(rows=>{
+    if(!rows.length) return false;             // falhou: não marca como carregado, dá p/ tentar de novo
+    _noteFound(rows);
+    const novas=rows.filter(a=>a.url && !_seenUrls.has(a.url));
+    novas.forEach(a=>_seenUrls.add(a.url));
+    _fullLoaded=true; _loadedFrom='';
+    if(novas.length) _allArticles=_dedupInto(_allArticles.concat(novas));
+    renderAll();
+    return true;
+  }).catch(e=>{ console.warn('full history:', e); return false; })
+    .finally(()=>{ _fullPend=null; });
+  return _fullPend;
+}
+async function boot(){
+  _applyPreset(String(INITIAL_DAYS));          // view padrão = últimos 30 dias
+  const meta=document.getElementById('results-meta'); if(meta) meta.textContent=`Loading last ${INITIAL_DAYS} days…`;
+  const rows=await _fetchPages((INITIAL_DAYS+INITIAL_MARGIN_DAYS)*24, null, true);
   _noteFound(rows);
-  _lastSweep=Date.now();                      // a abertura JÁ é a varredura mais completa possível
+  _lastSweep=Date.now();                      // a abertura conta como varredura
   _allArticles=_dedupInto(rows);
   _seenUrls=new Set(_allArticles.map(a=>a.url));
   _lastUpdate=Date.now();
