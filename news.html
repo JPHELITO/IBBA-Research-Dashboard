@@ -525,13 +525,21 @@ function _effDate(a){                       // 'YYYY-MM-DD' local do timestamp e
 }
 
 // Busca por limit/offset em QUERY PARAMS (à prova de CORS), páginas em PARALELO.
-// windowHours = janela recente (polling incremental) OU null = histórico INTEIRO.
-async function _fetchPages(windowHours){
+// Três modos:
+//   _fetchPages(null)            → histórico INTEIRO (1× na abertura)
+//   _fetchPages(48)              → janela por DATA DE PUBLICAÇÃO (a varredura de segurança)
+//   _fetchPages(null, sinceISO)  → INCREMENTAL: só o que ENTROU no banco depois de `sinceISO`
+// O incremental filtra por `found_at` (quando a notícia chegou ao nosso banco), não por
+// `published_at`: é a pergunta certa para "o que há de novo para MIM" e ainda pega o caso
+// que a janela de 48h perde — matéria publicada há dias e descoberta agora.
+async function _fetchPages(windowHours, sinceISO){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session) return [];
   const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,sector';
   let base=`${SUPA_URL}/rest/v1/news_articles?select=${q}&include_in_report=eq.true&order=found_at.desc`;
-  if(windowHours){
+  if(sinceISO){
+    base+=`&found_at=gte.${encodeURIComponent(sinceISO)}`;
+  }else if(windowHours){
     const cutoff=new Date(Date.now()-windowHours*3600*1000).toISOString();
     base+=`&or=(published_at.gte.${encodeURIComponent(cutoff)},published_at.is.null)`;
   }
@@ -946,18 +954,51 @@ let _rzTL=null;
 window.addEventListener('resize',()=>{ clearTimeout(_rzTL); _rzTL=setTimeout(()=>{ if(_allArticles.length) _renderTimeline(); },150); });
 
 // ─── Boot + polling incremental ─────────────────────────────────────────
+/* O poll pedia "publicadas nas últimas 48h OU SEM data de publicação". O segundo pedaço não
+   tinha limite de tempo e 55% do arquivo não traz `published_at` → o poll arrastava ~6.600
+   notícias inteiras (877 KB MEDIDOS) a cada 90s para aproveitar zero ou uma: 34,3 MB/hora
+   por aba aberta, sozinho a maior fonte de egress do Supabase.
+   Agora pergunta pelo que ENTROU depois da última que já temos (`found_at`), com MARGEM de
+   30 min: o `found_at` é carimbado pelo raspador, não pelo banco, então dois hunts em
+   paralelo (a corrente + o botão "Buscar novas agora") podem inserir fora de ordem por
+   alguns segundos. A margem cobre isso de sobra e custa alguns KB — na última hora entram
+   ~7 notícias. O `_seenUrls` segue como rede de segurança contra repetida.
+   E 1× por hora roda a VARREDURA de antes, inteira: rede de segurança para o caso raro de
+   um artigo ANTIGO virar elegível depois (reclassificação com regra nova de filtro), que o
+   incremental não pega porque o `found_at` dele é velho. */
+const POLL_MARGIN_MS = 30*60*1000;             // margem contra inserção fora de ordem
+const SWEEP_EVERY_MS = 60*60*1000;             // varredura de segurança (a busca de antes)
+let _maxFound='';                              // maior `found_at` já visto (marca d'água)
+let _lastSweep=0;
+function _noteFound(rows){                     // marca d'água vem das linhas CRUAS: o dedup por
+  for(const a of rows){                        // título descarta linhas que ainda assim são as
+    const f=a&&a.found_at;                     // mais recentes do banco
+    if(f && f>_maxFound) _maxFound=f;
+  }
+}
 async function boot(){
   _applyPreset('all');                        // view padrão = histórico INTEIRO
   const meta=document.getElementById('results-meta'); if(meta) meta.textContent='Loading full history…';
   const rows=await _fetchPages(null);         // histórico INTEIRO, 1×
+  _noteFound(rows);
+  _lastSweep=Date.now();                      // a abertura JÁ é a varredura mais completa possível
   _allArticles=_dedupInto(rows);
   _seenUrls=new Set(_allArticles.map(a=>a.url));
   _lastUpdate=Date.now();
   renderAll();
 }
-async function _poll(){                        // incremental: só as últimas 48h → sem flicker
+async function _poll(){                        // incremental por found_at → sem flicker
   try{
-    const recent=await _fetchPages(48);
+    const sweep = (Date.now()-_lastSweep) >= SWEEP_EVERY_MS;
+    let recent;
+    if(sweep || !_maxFound){                   // sem marca d'água (abertura falhou) → busca larga
+      recent=await _fetchPages(48);
+      _lastSweep=Date.now();
+    }else{
+      const since=new Date(Date.parse(_maxFound)-POLL_MARGIN_MS).toISOString();
+      recent=await _fetchPages(null, since);
+    }
+    _noteFound(recent);
     const fresh=recent.filter(a=>a.url && !_seenUrls.has(a.url));
     fresh.forEach(a=>_seenUrls.add(a.url));
     _lastUpdate=Date.now();
