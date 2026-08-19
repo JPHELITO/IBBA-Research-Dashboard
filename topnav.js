@@ -9,6 +9,38 @@
 ;(function () {
   if (window.__TOPNAV_LOADED__) return; window.__TOPNAV_LOADED__ = true;
 
+  /* ── everyVisible(fn, ms) — RELÓGIO QUE DORME COM A ABA ────────────────────
+     Entra no lugar de setInterval nas buscas de REDE. Enquanto a aba está
+     escondida (outra aba na frente, janela minimizada) o ciclo PARA: ninguém
+     está olhando e cada volta custa egress do Supabase — uma aba esquecida
+     aberta a madrugada inteira consumia o mesmo que uma em uso.
+     INVARIANTE: o dado na tela NUNCA fica mais velho do que ficaria com
+     setInterval puro. Ao voltar para a aba, o ciclo que já venceu roda NA HORA
+     (hoje se esperaria até o próximo tique, então na volta fica mais NOVO);
+     se ainda não venceu, espera só o que falta — alt-tab curto não vira busca
+     nova, senão alternar janelas geraria MAIS tráfego, não menos.
+     Navegador sem Page Visibility cai no setInterval de sempre. */
+  window.everyVisible = function (fn, ms) {
+    if (typeof document.visibilityState !== 'string') { setInterval(fn, ms); return; }
+    var timer = null, last = Date.now();                 // `last` = hora da última execução
+    function hidden(){ return document.visibilityState === 'hidden'; }
+    function clear(){ if (timer) { clearTimeout(timer); timer = null; } }
+    function arm(delay){ clear(); timer = setTimeout(tick, Math.max(0, delay)); }
+    function tick(){
+      timer = null;
+      if (hidden()) return;                              // dorme — quem rearma é o visibilitychange
+      last = Date.now();
+      try { fn(); } catch (e) { console.warn('everyVisible:', e); }
+      arm(ms);
+    }
+    arm(ms);
+    document.addEventListener('visibilitychange', function () {
+      if (hidden()) { clear(); return; }                 // escondeu → para o relógio
+      var due = ms - (Date.now() - last);
+      if (due <= 0) tick(); else arm(due);               // venceu → busca AGORA; senão espera o resto
+    });
+  };
+
   // ── NIGHT MODE (tema global: mesma chave localStorage 'ibba_theme' + classe html.dark de todas as páginas) ──
   function applyTheme(){ try{ if(localStorage.getItem('ibba_theme')==='dark') document.documentElement.classList.add('dark'); }catch(e){} }
   applyTheme();

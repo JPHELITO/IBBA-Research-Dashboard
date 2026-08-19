@@ -2534,15 +2534,20 @@ loadQuotesDaily();
 _initCommCarousel();
 loadCommodities();
 
-setInterval(loadNews, NEWS_INTERVAL);
+// Relógios de REDE via everyVisible (topnav.js): dormem enquanto a aba está escondida
+// e, ao voltar, refazem NA HORA o ciclo que venceu — a tela nunca fica mais velha do que
+// ficaria com setInterval, e o egress do Supabase para quando ninguém está olhando.
+// Fallback p/ setInterval se o topnav não carregar (a home não pode ficar sem atualizar).
+const _every = window.everyVisible || ((fn, ms)=>{ setInterval(fn, ms); });
+_every(loadNews, NEWS_INTERVAL);
 // Pulse v2 é publicado 2x por dia (07:00 e 09:00 BRT), não acompanha o feed de notícias:
 // 60s era a cadência do ponteiro antigo, que contava manchetes. 5 min pega a rodada nova
 // logo que ela sai, sem chamar a RPC 60x por hora em cada aba aberta.
-setInterval(loadPulse, 5 * 60 * 1000);
-setInterval(loadQuotes, 60 * 1000);
-setInterval(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
-setInterval(loadCommodities, 5 * 60 * 1000);
-setInterval(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 * 60 * 1000);
+_every(loadPulse, 5 * 60 * 1000);
+_every(loadQuotes, 60 * 1000);
+_every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
+_every(loadCommodities, 5 * 60 * 1000);
+_every(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 * 60 * 1000);
 </script>
 
 <!-- STAGING BADGE -->
