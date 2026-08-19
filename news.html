@@ -966,7 +966,9 @@ async function _poll(){                        // incremental: só as últimas 4
   }catch(e){}
 }
 boot();
-setInterval(_poll, 90*1000);                   // puxa novidades a cada 1min30 (leve: 1 requisição)
+// everyVisible (topnav.js): o poll PARA com a aba escondida e, ao voltar, roda NA HORA se o
+// ciclo venceu — nunca mais velho que o setInterval de antes. Fallback se o topnav não carregar.
+(window.everyVisible || ((fn,ms)=>{setInterval(fn,ms);}))(_poll, 90*1000);   // puxa novidades a cada 1min30
 </script>
 
 <!-- STAGING BADGE -->

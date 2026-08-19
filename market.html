@@ -1777,7 +1777,10 @@ async function init(){
   document.addEventListener('click', e=>{ if(!e.target.closest('#car-auto')) _noteInteract(); }, true);   // qualquer clique TRAVA o tour (botão Auto isento)
   document.addEventListener('keydown', _noteInteract, true);
   setInterval(_carIdleCheck, 20000);   // 5 min sem interação → retoma o tour
-  setInterval(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); renderChart(); }); loadMacro().then(renderHeader); }, 60000);   // renderChart: a ponta ao vivo do gráfico acompanha o preço ao longo do dia
+  // everyVisible (topnav.js): as buscas de rede dormem com a aba escondida e, ao voltar, refazem
+  // NA HORA o ciclo vencido. renderMarkets/_carIdleCheck acima seguem em setInterval — são relógio
+  // local e tour da tela, não tocam na rede. Fallback se o topnav não carregar.
+  (window.everyVisible || ((fn,ms)=>{setInterval(fn,ms);}))(()=>{ loadQuotes().then(()=>{ renderHeader(); renderWatchlist(); renderThesis(); renderChart(); }); loadMacro().then(renderHeader); }, 60000);   // renderChart: a ponta ao vivo do gráfico acompanha o preço ao longo do dia
   if(_isAdmin) _initExports();   // controles de download (PNG/Excel) só p/ admin
 }
 function showApp(){ document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }

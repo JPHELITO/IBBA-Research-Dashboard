@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>everyVisible test</title>
+<body><pre id="out">rodando…</pre>
+<script>
+// stub de visibilidade: visibilityState é read-only -> redefinimos e emitimos o evento à mão
+let _vis='visible';
+Object.defineProperty(document,'visibilityState',{get:()=>_vis,configurable:true});
+function setVis(v){ _vis=v; document.dispatchEvent(new Event('visibilitychange')); }
+window.__setVis=setVis;
+</script>
+<script src="/topnav.js"></script>
+<script>
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const R=[]; const ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+window.__RUN__=async function(){
+  const MS=200;
+  // 1) visível: bate como setInterval
+  let n1=0; everyVisible(()=>n1++, MS);
+  await sleep(MS*3.4); ok('visível roda ~3x em 3,4 ciclos', n1===3, 'n='+n1);
+
+  // 2) escondida: PARA de rodar
+  let n2=0; everyVisible(()=>n2++, MS);
+  await sleep(MS*1.5); const a=n2; setVis('hidden');
+  await sleep(MS*5); const b=n2;
+  ok('escondida não roda nenhuma vez', b===a, a+' -> '+b);
+
+  // 3) voltando DEPOIS do ciclo vencer: roda NA HORA (0 espera)
+  const t0=performance.now(); setVis('visible'); await sleep(30);
+  ok('ao voltar (vencido) busca imediata', n2===b+1, 'n='+n2+' em '+Math.round(performance.now()-t0)+'ms');
+
+  // 4) alt-tab CURTO não gera busca extra
+  let n4=0; everyVisible(()=>n4++, MS);
+  await sleep(30); setVis('hidden'); await sleep(20); setVis('visible');
+  await sleep(30); ok('alt-tab curto não dispara busca', n4===0, 'n='+n4);
+  await sleep(MS);  ok('e o ciclo original continua no horário', n4===1, 'n='+n4);
+
+  // 5) INVARIANTE: nunca mais velho que setInterval — comparação lado a lado
+  let vLast=0, iLast=0;
+  everyVisible(()=>vLast=Date.now(), MS); setInterval(()=>iLast=Date.now(), MS);
+  await sleep(MS*2); setVis('hidden'); await sleep(MS*6); setVis('visible'); await sleep(40);
+  ok('na volta, everyVisible >= setInterval', vLast>=iLast, 'delta='+(vLast-iLast)+'ms');
+
+  // 6) sem suporte a Page Visibility -> cai no setInterval
+  const g=Object.getOwnPropertyDescriptor(document,'visibilityState');
+  Object.defineProperty(document,'visibilityState',{value:undefined,configurable:true});
+  let n6=0; everyVisible(()=>n6++, MS); await sleep(MS*2.4);
+  Object.defineProperty(document,'visibilityState',g);
+  ok('sem Page Visibility usa setInterval', n6===2, 'n='+n6);
+
+  document.getElementById('out').textContent=R.join('\n');
+  return R;
+};
+</script></body>
