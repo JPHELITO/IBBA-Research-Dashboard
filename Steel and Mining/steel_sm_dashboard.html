@@ -846,36 +846,37 @@ html.dark .cr-input{color-scheme:dark}
     </div>
   </div>
 
-  <!-- IABr — always shown -->
-  <div class="sec-block-header" id="iabr-block-header">Domestic Market — IABr</div>
+  <!-- IABr — always shown. Títulos/legendas são reescritos por _iabrScope() conforme
+       a aba (Total/Flat/Long/Semi): dentro de uma família, TODO gráfico é daquela família. -->
+  <div class="sec-block-header" id="iabr-block-header">Domestic Market — IABr <span id="iabr-scope-tag"></span></div>
   <div class="charts-row c2">
     <div class="chart-card">
-      <div class="chart-title">IABr Domestic Sales (kton)</div>
-      <div class="chart-sub">IABr · Flat + Long · filter by product</div>
+      <div class="chart-title" id="dom-sales-title">IABr Domestic Sales (kton)</div>
+      <div class="chart-sub" id="dom-sales-sub">IABr · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-sales"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">IABr Crude Steel Production (kton)</div>
-      <div class="chart-sub">IABr · total</div>
+      <div class="chart-title" id="dom-crude-title">IABr Crude Steel Production (kton)</div>
+      <div class="chart-sub" id="dom-crude-sub">IABr · total</div>
       <div class="chart-wrap h240"><canvas id="dom-crude"></canvas></div>
     </div>
   </div>
-  <div class="charts-row c1">
+  <div class="charts-row c1" id="dom-cons-row">
     <div class="chart-card">
-      <div class="chart-title">IABr Apparent Consumption (kton) + Import Penetration (%)</div>
-      <div class="chart-sub">IABr · area = consumption (left) · line = imports ÷ apparent consumption (right) · filter by product</div>
+      <div class="chart-title" id="dom-cons-title">IABr Apparent Consumption (kton) + Import Penetration (%)</div>
+      <div class="chart-sub" id="dom-cons-sub">IABr · area = consumption (left) · line = imports ÷ apparent consumption (right) · filter by product</div>
       <div class="chart-wrap h240"><canvas id="dom-cons"></canvas></div>
     </div>
   </div>
-  <div class="charts-row c2">
+  <div class="charts-row c2" id="dom-seas-row">
     <div class="chart-card">
-      <div class="chart-title">Seasonality — Domestic Sales (kton/month)</div>
-      <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
+      <div class="chart-title" id="dom-seasdom-title">Seasonality — Domestic Sales (kton/month)</div>
+      <div class="chart-sub" id="dom-seasdom-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years</div>
       <div class="chart-wrap h260"><canvas id="dom-seasdom"></canvas></div>
     </div>
-    <div class="chart-card">
-      <div class="chart-title">Seasonality — Apparent Consumption (kton/month)</div>
-      <div class="chart-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years · Flat/Long filter</div>
+    <div class="chart-card" id="dom-seascons-card">
+      <div class="chart-title" id="dom-seascons-title">Seasonality — Apparent Consumption (kton/month)</div>
+      <div class="chart-sub" id="dom-seascons-sub">IABr · each line = 1 year · orange = current · black = prior · colors = other years</div>
       <div class="chart-wrap h260"><canvas id="dom-seascons"></canvas></div>
     </div>
   </div>
@@ -1166,16 +1167,56 @@ function shiftPeriod(p,months){
 }
 function secat(){return{total:'total',flat:'flat',long:'long',semi:'semi'}[currentProd]||'total';}
 function domField(){
-  // field in iabr_domestic_sales
-  if(currentProd==='flat')return'flat';
-  if(currentProd==='long')return'long_prod';
+  // field in iabr_domestic_sales — cada aba lê a PRÓPRIA família (Semi lia 'total' antes).
+  // flat_incl/long_incl são derivados no carregamento (Planos+Placas / Longos+Blocos).
+  if(currentProd==='flat')return'flat_incl';
+  if(currentProd==='long')return'long_incl';
+  if(currentProd==='semi')return'semi';
   return'total';
 }
 function consField(){
-  // field in iabr_consumption
+  // field in iabr_consumption. ⚠️ O IABr só publica consumo aparente de Total/Planos/Longos —
+  // NÃO existe consumo aparente de semiacabados. Em Semi devolve null e a dashboard esconde os
+  // gráficos de consumo, em vez de mostrar o TOTAL disfarçado de Semi (era o que acontecia).
   if(currentProd==='flat')return'flat';
   if(currentProd==='long')return'long_prod';
+  if(currentProd==='semi')return null;
   return'total';
+}
+
+// Rótulos do bloco IABr por aba — a legenda tem que dizer exatamente o que o gráfico mostra.
+const IABR_SCOPE={
+  total:{tag:'Total',            sales:'Flat + Long (stacked) = total domestic sales',
+         prodTitle:'IABr Crude Steel Production (kton)',   prodSub:'IABr · crude steel (upstream — no flat/long split)',
+         fam:'Total'},
+  flat: {tag:'Flat incl. slabs', sales:'flat products + slabs — same basis as IABr apparent consumption',
+         prodTitle:'IABr Flat Production (kton)',          prodSub:'IABr · rolled flat products',
+         fam:'Flat'},
+  long: {tag:'Long incl. billets', sales:'long products + billets, blocks and ingots — same basis as IABr apparent consumption',
+         prodTitle:'IABr Long Production (kton)',          prodSub:'IABr · rolled long products',
+         fam:'Long'},
+  semi: {tag:'Semi only',        sales:'semi-finished for sale (slabs + billets) — the raw IABr line',
+         prodTitle:'IABr Semi-Finished Production (kton)', prodSub:'IABr · semi-finished for sale (slabs + billets)',
+         fam:'Semi'},
+};
+function _txt(id,t){const e=document.getElementById(id);if(e)e.textContent=t;}
+function _iabrScope(){
+  const S=IABR_SCOPE[currentProd]||IABR_SCOPE.total, fam=S.fam;
+  _txt('iabr-scope-tag',S.tag);
+  _txt('dom-sales-title',`IABr Domestic Sales — ${fam} (kton)`);
+  _txt('dom-sales-sub',`IABr · ${S.sales}`);
+  _txt('dom-crude-title',S.prodTitle);
+  _txt('dom-crude-sub',S.prodSub);
+  _txt('dom-cons-title',`IABr Apparent Consumption — ${fam} (kton) + Import Penetration (%)`);
+  _txt('dom-cons-sub',`IABr · area = ${fam.toLowerCase()} apparent consumption (left) · line = ${fam.toLowerCase()} imports ÷ ${fam.toLowerCase()} apparent consumption (right)`);
+  _txt('dom-seasdom-title',`Seasonality — Domestic Sales ${fam} (kton/month)`);
+  _txt('dom-seascons-title',`Seasonality — Apparent Consumption ${fam} (kton/month)`);
+  // Sem consumo aparente de semiacabados: esconde os 2 gráficos e deixa a sazonalidade em 1 coluna
+  const hasCons=consField()!=null;
+  const row=document.getElementById('dom-cons-row');       if(row)row.style.display=hasCons?'':'none';
+  const card=document.getElementById('dom-seascons-card'); if(card)card.style.display=hasCons?'':'none';
+  const seas=document.getElementById('dom-seas-row');
+  if(seas){seas.classList.toggle('c2',hasCons);seas.classList.toggle('c1',!hasCons);}
 }
 
 // ─── CHART FACTORY ───────────────────────────────────────────────────────────
@@ -1213,6 +1254,10 @@ function baseOpts(ov={}){
   };
 }
 // tema dos gráficos (Chart.js) segue o night mode global (ibba_theme / classe html.dark)
+// ⚠️ Chart.js formata tooltip/eixo com `options.locale`; sem definir, ele cai no idioma do
+// NAVEGADOR — num Windows em português vira 1.234,5 (padrão BR). A dashboard é em inglês e o
+// cliente lê no padrão americano, então fixamos en-US: milhar com vírgula, decimal com ponto.
+if(window.Chart)Chart.defaults.locale='en-US';
 function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
   Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)';
   C_BK=d?'#e6e6e6':'#1A1A1A'; C_BK_RGB=d?'230,230,230':'26,26,26'; }   // série "preta" -> branca no dark (distinta do cinza C_GR)
@@ -1299,7 +1344,16 @@ async function loadDB(){
     CONS=toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_consumption ORDER BY period`)[0]);
     EXPI=toObj(db.exec(`SELECT period,year,month,flat_ktons,long_ktons,semi_ktons,total_ktons,total_usd_mn FROM iabr_exports ORDER BY period`)[0]);
     IMPI=toObj(db.exec(`SELECT period,year,month,flat_ktons,long_ktons,semi_ktons,total_ktons,total_usd_mn FROM iabr_imports ORDER BY period`)[0]);
-    DOM =toObj(db.exec(`SELECT period,year,month,total,flat,long_prod,semi FROM iabr_domestic_sales ORDER BY period`)[0]);
+    DOM =toObj(db.exec(`SELECT period,year,month,total,flat,long_prod,semi,slabs,billets FROM iabr_domestic_sales ORDER BY period`)[0]);
+    // Convenção do relatório ("* Flat Steel + Slabs, ** Long Steel + Billets, Blocks and Ingots"):
+    // placa entra em Flat, bloco/tarugo entra em Long. É a MESMA base do consumo aparente do IABr
+    // ("Planos — Inclui Placas"), então a penetração de importado compara igual com igual — antes
+    // comparava consumo COM placa contra venda SEM placa e inflava a penetração em 0,6–2 p.p.
+    // Identidade conferida nos 163 meses: (flat+slabs) + (long_prod+billets) == total.
+    for(const r of DOM){
+      r.flat_incl=(r.flat==null&&r.slabs==null)?null:((r.flat||0)+(r.slabs||0));
+      r.long_incl=(r.long_prod==null&&r.billets==null)?null:((r.long_prod||0)+(r.billets||0));
+    }
     INDA=toObj(db.exec(`SELECT period,year,month,inventories,inv_months,purchases,sales,inv_yoy,hist_avg,sales_ltm,sales_ma3 FROM inda_distribution ORDER BY period`)[0]);
 
     const rExp=toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,yoy_revenue,yoy_volume FROM secex_exports ORDER BY period,category`)[0]);
@@ -2039,30 +2093,38 @@ function renderDomestic(){
   }
 
   // ── IABr always shown ──
-  const df=domField();   // flat | long_prod | total
-  const cf=consField();  // flat | long_prod | total
+  _iabrScope();          // títulos/legendas seguem a aba ANTES de desenhar
+  const df=domField();   // flat | long_prod | semi | total
+  const cf=consField();  // flat | long_prod | total | null (Semi não tem consumo aparente)
 
-  // Vendas Domésticas
+  // Vendas Domésticas — em Total empilha as 3 famílias (flat+long+semi = total do IABr);
+  // nas demais, só a família da aba.
   if(currentProd==='total'){
-    const domArr=tx(DOM,['flat','long_prod']);
+    // Flat (c/ placas) + Long (c/ blocos) = TOTAL do IABr, sem sobra nem dupla contagem
+    const domArr=tx(DOM,['flat_incl','long_incl']);
     const lbs=domArr.map(r=>r.period);
     mkChart('dom-sales','bar',lbs,[
-      stackDs(domArr.map(r=>r.flat),C_OR,'Flat'),
-      stackDs(domArr.map(r=>r.long_prod),C_BK,'Long'),
+      stackDs(domArr.map(r=>r.flat_incl),C_OR,'Flat'),
+      stackDs(domArr.map(r=>r.long_incl),C_BK,'Long'),
     ],{...LEG,...STACKED});
   } else {
     const domArr=tx(DOM.filter(r=>r[df]!=null),[df]);
     const lbs=domArr.map(r=>r.period);
-    const label=currentProd==='flat'?'Flat (kton)':'Long (kton)';
+    const label=`${IABR_SCOPE[currentProd].fam} (kton)`;
     mkChart('dom-sales','line',lbs,[areaDs(domArr.map(r=>r[df]),C_OR,0.12,label)],YINT);
   }
 
-  // Produção Aço Bruto (always total crude_steel)
-  const prodArr=tx(PROD.filter(r=>r.crude_steel!=null),['crude_steel']);
+  // Produção — Total = aço bruto (não tem quebra flat/long); Flat/Long/Semi = laminados da família
+  const pf=currentProd==='flat'?'flat':currentProd==='long'?'long_prod':currentProd==='semi'?'semi':'crude_steel';
+  const prodArr=tx(PROD.filter(r=>r[pf]!=null),[pf]);
   mkChart('dom-crude','line',prodArr.map(r=>r.period),
-    [areaDs(prodArr.map(r=>r.crude_steel),C_BK,0.10,'Production (kton)')],YINT);
+    [areaDs(prodArr.map(r=>r[pf]),C_BK,0.10,'Production (kton)')],YINT);
 
-  // Consumo Aparente + Penetração (dual Y-axis)
+  // Consumo Aparente + Penetração (dual Y-axis). Semi não tem → nada a desenhar.
+  if(cf==null){destroyChart('dom-cons');destroyChart('dom-seascons');
+    const seasFieldS=df;
+    _renderSeasonality('dom-seasdom',DOM.filter(r=>r[seasFieldS]!=null),seasFieldS);
+    return;}
   const consArr=tx(CONS.filter(r=>r[cf]!=null),[cf]);
   const consLbs=consArr.map(r=>r.period);
 
@@ -2115,8 +2177,8 @@ function renderDomestic(){
     });
   }
 
-  // Seasonality — Vendas Domésticas
-  const seasField=currentProd==='long'?'long_prod':currentProd==='flat'?'flat':'total';
+  // Seasonality — Vendas Domésticas (mesmo campo dos outros gráficos da aba)
+  const seasField=df;
   const domAll=DOM.filter(r=>r[seasField]!=null);
   _renderSeasonality('dom-seasdom',domAll,seasField);
 

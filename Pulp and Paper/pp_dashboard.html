@@ -940,6 +940,10 @@ function baseOpts(ov={}){
   };
 }
 // tema dos gráficos (Chart.js) segue o night mode global (ibba_theme / classe html.dark)
+// ⚠️ Chart.js formata tooltip/eixo com `options.locale`; sem definir, ele cai no idioma do
+// NAVEGADOR — num Windows em português vira 1.234,5 (padrão BR). A dashboard é em inglês e o
+// cliente lê no padrão americano, então fixamos en-US: milhar com vírgula, decimal com ponto.
+if(window.Chart)Chart.defaults.locale='en-US';
 function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
   Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)';
   C_BK=d?'#e6e6e6':'#1A1A1A'; C_BK_RGB=d?'230,230,230':'26,26,26'; }   // série "preta" -> branca no dark (distinta do cinza C_GR)
