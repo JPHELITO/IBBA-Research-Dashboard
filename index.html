@@ -52,13 +52,22 @@ async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem(
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   /* --gray-mid escureceu de #8C8C8C p/ #767676 em 2026-08-25: era 3,03:1 no branco e
-     carrega ~100 textos miúdos (unidades, datas, legendas). Agora 4,54:1. Trocado nas
-     8 páginas que definem o token. NÃO voltar pro claro. */
-  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#767676;
-  --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
+     carrega ~100 textos miúdos (unidades, datas, legendas). NÃO voltar pro claro.
+     ⚠️ 2ª rodada do mesmo dia: com o painel em off-white ele foi p/ #737373 (o branco
+     puro dava 4,54:1; sobre #FDFCFA cairia p/ 4,40 — abaixo do mínimo). */
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  /* Superfícies do tema claro (2026-08-25): o painel deixou de ser BRANCO PURO e o
+     canvas desceu um degrau. Motivo medido: o branco puro é a coisa mais luminosa da
+     tela, ofusca e faz a borda desaparecer — o painel se destacava do fundo por só
+     1,11:1 e a borda por 1,28:1. Agora 1,19:1 e 1,49:1, e a diferença ABSOLUTA de
+     luminância da borda (que é o que o olho usa perto do branco, por Weber) subiu
+     0,232 → 0,313. */
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
   --radius:10px;
-  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
+  /* a sombra larga era invisível sobre branco (0,05 de alfa) e só sujava a borda;
+     quem define a caixa agora é o fio de borda */
+  --shadow:0 1px 2px rgba(0,0,0,.06);
   --shadow-hover:0 4px 12px rgba(0,0,0,0.08),0 16px 40px rgba(0,0,0,0.10);
 }
 html,body{
@@ -602,13 +611,25 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
    opostos), todo texto ≥ 4,5:1. Medido depois: 11,8 · 31,1 · 4,85.
    As faixas FORTES (≥5%, movimento raro) viram COR CHEIA com texto invertido: é onde o olho
    precisa bater primeiro, e dá o salto de ΔE 30+ contra a faixa média. */
-.hm-card.up-strong{background:#157E39;box-shadow:inset 0 0 0 1px #0D6B2E;color:#fff;}
-.hm-card.up-mid{background:#9BDBA9;box-shadow:inset 0 0 0 1px #7CC78D;}
-.hm-card.up{background:#D7F4DC;box-shadow:inset 0 0 0 1px #B4E3BE;}
-.hm-card.flat{background:var(--gray-light);box-shadow:inset 0 0 0 1px var(--border);}
-.hm-card.down{background:#FFD9D3;box-shadow:inset 0 0 0 1px #F7BCB2;}
-.hm-card.down-mid{background:#FFACA0;box-shadow:inset 0 0 0 1px #EE8F81;}
-.hm-card.down-strong{background:#B33630;box-shadow:inset 0 0 0 1px #9A2A25;color:#fff;}
+/* Degradê + aresta iluminada, como no escuro (2026-08-25). Antes as faixas do claro
+   eram COR LISA com um anel — o escuro tinha modelagem e o claro não, e era metade do
+   motivo de "o noturno parece mais profissional". ±3 L* do topo à base, calculado em
+   CIELAB; contraste conferido no TOPO (a parte mais clara, onde ficam ticker e
+   variação): pior caso 4,68:1. */
+.hm-card.up-strong{background:linear-gradient(180deg,#218640,#037632);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 0 0 1px rgba(22,163,74,.55);color:#fff;}
+.hm-card.up-mid{background:linear-gradient(180deg,#A3E4B1,#93D3A1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.50),inset 0 0 0 1px rgba(22,163,74,.32);}
+.hm-card.up{background:linear-gradient(180deg,#DFFDE4,#CFEBD4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 1px rgba(22,163,74,.20);}
+.hm-card.flat{background:linear-gradient(180deg,#F4F1EB,#E2DFDA);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 1px var(--border);}
+.hm-card.down{background:linear-gradient(180deg,#FFE1DB,#F6D1CB);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 1px rgba(192,57,43,.20);}
+.hm-card.down-mid{background:linear-gradient(180deg,#FFB4A8,#F6A498);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.50),inset 0 0 0 1px rgba(192,57,43,.32);}
+.hm-card.down-strong{background:linear-gradient(180deg,#BC3E37,#AA2D29);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 0 0 1px rgba(192,57,43,.55);color:#fff;}
 /* Número e risquinho usam o MESMO acento por faixa: o risquinho é o gráfico do tile e,
    no verde-médio, o verde da casa caía para 2,1:1 e sumia. */
 .hm-card.up .hm-change,.hm-card.up-mid .hm-change,
@@ -742,7 +763,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .kv-badge{flex:none;font-size:7px;font-weight:700;text-transform:uppercase;
   letter-spacing:.03em;padding:1px 4px;border-radius:3px;line-height:1.1;
   display:inline-flex;align-items:center;gap:3px;}
-.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:#6E6E6E;}
+.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:#686868;}
 .kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
 .kv-badge.live::before{content:'';width:4px;height:4px;border-radius:50%;
   background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
@@ -773,25 +794,25 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   transition:border-color .15s,transform .15s;}
 .cm-card:hover{border-color:var(--gray-mid);transform:translateY(-1px);}
 /* altura fixa de 2 linhas: sem isso os nomes curtos e longos desalinham os números */
-.cm-name{font-size:9.5px;font-weight:600;color:#6E6E6E;letter-spacing:.02em;
+.cm-name{font-size:9.5px;font-weight:600;color:#686868;letter-spacing:.02em;
   line-height:1.25;height:2.5em;overflow:hidden;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .cm-top{display:flex;align-items:flex-start;gap:4px;min-width:0;}
 .cm-top .cm-name{flex:1;min-width:0;}
 .cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
-.cm-unit{font-size:7.5px;font-weight:500;color:#6E6E6E;margin-left:3px;letter-spacing:0;}
+.cm-unit{font-size:7.5px;font-weight:500;color:#686868;margin-left:3px;letter-spacing:0;}
 .cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-top:1px;}
 .cm-chg{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.cm-date{font-size:8px;font-weight:500;color:#6E6E6E;font-variant-numeric:tabular-nums;
+.cm-date{font-size:8px;font-weight:500;color:#686868;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
-/* o verde da casa (#16a34a) dá só 3,0:1 em texto de 10,5px sobre o cartão claro;
-   o NÚMERO usa um verde mais fechado (5,3:1) e o risquinho fica no verde da casa
-   (desenho, não texto). No escuro o bloco DARK v2 devolve o verde claro. */
-.cm-card.up .cm-chg{color:#15803d;}
-.cm-card.up .cm-spark{color:var(--green);}
-.cm-card.down .cm-chg,.cm-card.down .cm-spark{color:var(--red);}
+/* Mesmos acentos do heatmap — uma cor por lado no tema todo. O verde/vermelho da casa
+   não serve aqui: sobre a chapa do cartão o #16a34a dá 4,1:1 no número e 2,7:1 no
+   risquinho (abaixo do mínimo até para desenho). Estes dão 6,6:1 e 7,1:1.
+   No escuro o bloco DARK v2 devolve os tons claros. */
+.cm-card.up .cm-chg,.cm-card.up .cm-spark{color:#0F5C2B;}
+.cm-card.down .cm-chg,.cm-card.down .cm-spark{color:#8E2318;}
 .cm-card.flat .cm-chg{color:#5F6773;}   /* mesmo cinza do tile neutro do heatmap (4,4:1) */
 .cm-card.flat .cm-spark{color:var(--gray-mid);}
 
