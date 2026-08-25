@@ -1091,7 +1091,14 @@ html.dark .cm-card.up .cm-chg{color:#4ADE80;}
 html.dark .cm-card.down .cm-chg{color:#F87171;}
 html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
 html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
-html.dark .comm-dot{background:#262D39;}
+/* ⚠️ `html.dark .comm-dot` tem especificidade (0,2,1) e ganhava de `.comm-dot.on` e
+   `.comm-dot:hover`, que são (0,2,0) — no escuro a bolinha ATIVA ficava cinza igual às
+   outras e não dava para saber em que grupo o carrossel estava. Precisa repetir os dois
+   estados com o mesmo prefixo. */
+html.dark .comm-dot{background:#2C3442;}
+html.dark .comm-dot:hover{background:#49535F;}
+html.dark .comm-dot.on,html.dark .comm-dot.on:hover{background:var(--orange);
+  box-shadow:0 0 0 2px rgba(255,80,0,.22);}
 html.dark .comm-prog-track{background:#1A1F28;}
 
 /* ── EVENTS ──────────────────────────────────────────────────────────────── */
