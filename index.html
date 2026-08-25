@@ -2789,16 +2789,25 @@ async function loadCommodities(){
     if(!r.ok) throw new Error('commodities');
     const rows = await r.json();
     if(!rows.length){ const l=document.getElementById('comm-list'); if(l) l.innerHTML='<div class="kv-loading">No data.</div>'; return; }
-    _commByCode={}; let latest='';
+    const anterior=_commByCode; _commByCode={}; let latest='';
     // O "updated Xm ago" do painel reflete SÓ os dados Platts (maioria da informação).
     // Copper/Gold vêm do Yahoo (ao vivo, ~5min) e, se entrassem na conta, mascarariam
     // a cadência real do Platts (~30min) — o painel diria "updated now" o tempo todo.
     rows.forEach(c=>{
+      // ⚠️ ESTA BUSCA NÃO PEDE O `spark` (1,5 KB/linha, muda 1×/dia) → a resposta vem SEM
+      // ele. Sem preservar o que já estava em memória, cada refresh de 5 minutos — e cada
+      // volta para a aba — APAGAVA os gráficos do carrossel, e só recarregando a página
+      // eles voltavam (a busca das formas só roda no init). Era o bug que o usuário viu.
+      if(c.spark === undefined && anterior[c.code] && anterior[c.code].spark !== undefined)
+        c.spark = anterior[c.code].spark;
       _commByCode[c.code]=c;
       if(_freqOf(c)!=='Live' && (c.updated_at||'')>latest) latest=c.updated_at;
     });
     _commUpdated=latest;
     _renderCommPage();
+    // Rede de segurança: se as formas nunca chegaram (1ª busca falhou, sessão ainda não
+    // existia), o próximo refresh tenta de novo em vez de deixar o painel sem gráfico.
+    if(!Object.values(_commByCode).some(c=>c.spark)) loadCommSparks();
   } catch(e){console.warn('commodities error:', e);}
 }
 
@@ -2938,6 +2947,7 @@ _every(loadPulse, 5 * 60 * 1000);
 _every(loadQuotes, 60 * 1000);
 _every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 _every(loadCommodities, 5 * 60 * 1000);
+_every(loadCommSparks, 60 * 60 * 1000);   // as formas mudam ~1x/dia (27 KB por busca)
 _every(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 * 60 * 1000);
 </script>
 
