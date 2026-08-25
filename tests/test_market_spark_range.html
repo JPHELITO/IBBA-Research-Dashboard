@@ -1,0 +1,88 @@
+<!doctype html><meta charset="utf-8"><title>risquinho da watchlist × range</title>
+<body><pre id="out">rodando…</pre><script>
+/* Extrai do proprio market.html as funcoes do risquinho e confere que ele desenha
+   EXATAMENTE a janela do range escolhido na barra do grafico. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+const xs=svg=>{const m=/points="([^"]+)"/.exec(svg); return m?m[1].trim().split(' ').map(p=>+p.split(',')[0]):[];};
+
+window.__RUN__=async function(){
+ try{
+  const t=await (await fetch('/market.html?v='+Date.now())).text();
+  const SRC=[
+    cut(t,'const _RANGE_DAYS=','};'),
+    cut(t,'function _dailyRaw(q){','}'),
+    cut(t,'function _dailyLive(q){','  return out;\n}'),
+    cut(t,'function _series(q,range,mode){','\n}'),
+    cut(t,'function _sparkline(pts,cls,span){','\n}'),
+    cut(t,'function _rangeBounds(range){','return [now-(_RANGE_DAYS[range]||372)*86400, now]; }'),
+    cut(t,'function _wlSpark(q){','\n}'),
+    cut(t,'function _wlSparkTitle(sp){','\n}'),
+    cut(t,'function _rangeLabel(r){',"'1Y':'1 year','5Y':'5 years','Max':'Full history'}[r]||r;\n}"),
+    cut(t,'function _pfSpanLabel(sp){','\n}'),
+  ].join('\n');
+  const ctx={_histMap:{},_cFrom:null,_cTo:null,_range:'3M',Date,Math,Array,isFinite,console};
+  const M=new Function('ctx',`with(ctx){ ${SRC}\n return {_wlSpark,_wlSparkTitle,_sparkline,_series}; }`)(ctx);
+  const draw=q=>{const sp=M._wlSpark(q); return {sp, svg:sp?M._sparkline(sp.pts,'wl-spark',sp.span):''};};
+
+  // `quotes.daily` REAL: mensal ate 1 ano atras + diario no ultimo ano (supabase_quote_history.sql)
+  const now=Math.floor(Date.now()/1000), D=86400, d=[];
+  for(let m=118;m>=13;m--) d.push([now-m*30*D, 100+m*0.3+Math.sin(m/5)*7]);   // com relevo: senao 5Y e Max sao a mesma reta
+  for(let k=372;k>=1;k--){ const dt=new Date((now-k*D)*1000); if(dt.getUTCDay()%6===0) continue; d.push([now-k*D, 100+Math.sin(k/9)*8]); }
+  const q={ticker:'VALE3', price:107.5, daily:d,
+           intraday:{prev:106, pts:Array.from({length:40},(_,i)=>[now-(40-i)*300, 106+i*0.04])}};
+
+  // ── 1) cada range desenha a SUA janela
+  const dias=r=>{ctx._range=r; const s=M._wlSpark(q); if(!s)return null; const p=s.pts; return Math.round((p[p.length-1][0]-p[0][0])/D);};
+  [['1W',7],['1M',31],['3M',93],['6M',186],['1Y',372]].forEach(([r,alvo])=>
+    ok('range '+r+' desenha ~'+alvo+' dias', Math.abs(dias(r)-alvo)<=Math.max(4,alvo*0.12), dias(r)+'d'));   // fim de semana/feriado encurta a ponta
+
+  // ── 2) 1D usa o INTRADAY (antes trocava 1D por 1M na marra)
+  ctx._range='1D'; const s1d=M._wlSpark(q);
+  ok('1D = intraday, nao 1 mes', s1d && (s1d.pts[s1d.pts.length-1][0]-s1d.pts[0][0]) < D, ((s1d.pts[s1d.pts.length-1][0]-s1d.pts[0][0])/3600).toFixed(1)+'h');
+  ok('1D: titulo diz intraday', M._wlSparkTitle(s1d).indexOf('intraday')>=0, M._wlSparkTitle(s1d));
+
+  // ── 3) o eixo x eh TEMPO: em 5Y o ultimo ano nao pode comer a largura toda
+  const fatia12m=r=>{ctx._range=r; const {sp,svg}=draw(q); const X=xs(svg);
+    const i=sp.pts.findIndex(p=>p[0]>=now-372*D); return Math.round(100-X[i]);};
+  ok('5Y: ultimos 12m ocupam ~20% da largura (era 84%)', Math.abs(fatia12m('5Y')-20)<=6, fatia12m('5Y')+'%');
+  ok('Max: ultimos 12m ocupam ~10% da largura (era 71%)', Math.abs(fatia12m('Max')-11)<=6, fatia12m('Max')+'%');
+
+  // ── 4) 1Y, 5Y e Max nao saem mais quase iguais
+  const forma=r=>{ctx._range=r; const {sp,svg}=draw(q); const m=/points="([^"]+)"/.exec(svg)[1];
+    const pt=m.trim().split(' ').map(p=>p.split(',').map(Number));
+    const ys=Array.from({length:16},(_,i)=>{const x=i/15*100; let b=pt[0];
+      for(const P of pt){ if(P[0]<=x)b=P; else break; } return b[1];});
+    return ys;};
+  const dif=(a,b)=>a.reduce((s,v,i)=>s+Math.abs(v-b[i]),0)/a.length;
+  ok('1Y e 5Y desenham formas diferentes', dif(forma('1Y'),forma('5Y'))>2, dif(forma('1Y'),forma('5Y')).toFixed(2));
+  ok('5Y e Max desenham formas diferentes', dif(forma('5Y'),forma('Max'))>2, dif(forma('5Y'),forma('Max')).toFixed(2));
+
+  // ── 5) Max nao espreme a linha no canto (o corte teorico cai em 1917)
+  ctx._range='Max'; const mx=draw(q);
+  ok('Max: a linha comeca na 1a data COM DADO', xs(mx.svg)[0]<=1, 'x0='+xs(mx.svg)[0]);
+  ok('Max: e vai ate a borda direita', xs(mx.svg).slice(-1)[0]>=99, 'x1='+xs(mx.svg).slice(-1)[0]);
+
+  // ── 6) papel com a serie parada ha 45 dias: NAO inventa uma reta esticada
+  const parado={ticker:'PARADO', price:null, daily:d.filter(p=>p[0]<now-45*D)};
+  ctx._range='1M'; const pm=M._wlSpark(parado);
+  ok('serie parada + 1M: nao desenha nada', pm===null, String(pm));
+  ok('e o titulo explica', M._wlSparkTitle(pm).indexOf('No data')>=0, M._wlSparkTitle(pm));
+  ctx._range='3M';
+  ok('serie parada + 3M: desenha o que existe', !!M._wlSpark(parado));
+  const p3=M._wlSpark(parado), X3=xs(M._sparkline(p3.pts,'',p3.span));
+  ok('e o pedaco sem dado fica em BRANCO na direita', X3.slice(-1)[0]<=60, 'x1='+X3.slice(-1)[0]);
+
+  // ── 7) titulo diz as datas de verdade
+  ctx._range='1M'; const tt=M._wlSparkTitle(M._wlSpark(q));
+  ok('titulo do risquinho: periodo + datas', /^1 month · \w\w\w \d\d – \w\w\w \d\d$/.test(tt), tt);
+
+  // ── 8) commodity (sem intraday) em 1D
+  const comm={ticker:'@IRON', isComm:true, price:101, daily:d};
+  ctx._range='1D'; ok('commodity em 1D: fechamento de ontem -> preco agora', (M._wlSpark(comm)||{}).pts?.length===2);
+ }catch(e){ R.push('FAIL · exceção: '+e.message); }
+ const bad=R.filter(x=>x.startsWith('FAIL')).length;
+ const txt=R.join('\n')+'\n\n'+(bad?bad+' FALHA(S)':'TUDO PASSOU ('+R.length+')');
+ document.getElementById('out').textContent=txt; return txt;
+};
+</script></body>

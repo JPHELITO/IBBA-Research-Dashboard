@@ -255,6 +255,8 @@ table.wl th{position:sticky;top:0;background:var(--panel);color:var(--mute);font
   text-transform:uppercase;letter-spacing:.05em;cursor:pointer;user-select:none;z-index:1}
 table.wl th.l,table.wl td.l{text-align:left}
 table.wl th:hover{color:var(--dim)}
+table.wl th.nos{cursor:default}
+table.wl th.nos:hover{color:var(--mute)}
 table.wl th .ar{color:var(--orange)}
 table.wl td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 table.wl tbody tr{cursor:pointer}
@@ -779,13 +781,24 @@ function _maxDD(q){
   for(const c of w){ if(c>peak)peak=c; if(peak>0){const cur=c/peak-1; if(cur<dd)dd=cur;} }
   return dd*100;
 }
-function _sparkline(closes,cls){
-  if(!closes||closes.length<2) return `<span class="${cls||''}"></span>`;
-  const W=100,H=26,pad=2; let lo=Math.min(...closes),hi=Math.max(...closes); if(hi===lo){hi+=1;lo-=1;}
-  const n=closes.length, yy=v=>(pad+(1-(v-lo)/(hi-lo))*(H-2*pad)).toFixed(1);
-  const pts=closes.map((c,i)=>`${((i/(n-1))*W).toFixed(1)},${yy(c)}`).join(' ');
+/* Sparkline. `pts` = [[epoch,valor],…] e o x é TEMPO, não o índice do ponto.
+   POR QUÊ: `quotes.daily` é a série LEVE (mensal até 1 ano atrás + diário no último ano,
+   ver admin/supabase_quote_history.sql). Com x = índice, cada ponto ganhava a mesma largura
+   e os últimos 12 meses ocupavam 84% do risquinho em 5Y e 71% em Max (medido) — 1Y, 5Y e Max
+   saíam quase iguais na tela. `span=[de,até]` prende o desenho à janela do range escolhido:
+   trecho sem dado fica em BRANCO em vez de virar reta esticada. Sem `span`, escala a série. */
+function _sparkline(pts,cls,span){
+  if(!pts||pts.length<2) return `<span class="${cls||''}"></span>`;
+  const W=100,H=26,pad=2;
+  const vs=pts.map(p=>p[1]); let lo=Math.min(...vs),hi=Math.max(...vs); if(hi===lo){hi+=1;lo-=1;}
+  let x0=span?span[0]:pts[0][0], x1=span?span[1]:pts[pts.length-1][0];
+  if(!(x1>x0)){ x0=pts[0][0]; x1=pts[pts.length-1][0]; }
+  const dx=(x1-x0)||1;
+  const yy=v=>(pad+(1-(v-lo)/(hi-lo))*(H-2*pad)).toFixed(1);
+  const xx=t=>(Math.min(1,Math.max(0,(t-x0)/dx))*W).toFixed(1);
+  const line=pts.map(p=>`${xx(p[0])},${yy(p[1])}`).join(' ');
   return `<svg class="${cls||''}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.95"></polyline></svg>`;
+    <polyline points="${line}" fill="none" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.95"></polyline></svg>`;
 }
 function _rangeLabel(r){
   if(r==='custom'){ const o={day:'2-digit',month:'short',timeZone:'UTC'}; const f=_cFrom?new Date(_cFrom*1000).toLocaleDateString('en-US',o):'…'; const t=_cTo?new Date(_cTo*1000).toLocaleDateString('en-US',o):'today'; return `${f} – ${t}`; }
@@ -1069,7 +1082,7 @@ function renderHeader(){
       <span class="ah-chg ${_signCls(q.change_pct)}">${q.change_pct>=0?'▲':'▼'} ${_pctStr(q.change_pct)} <span class="mute" style="font-weight:500">today</span></span>
     </div>
     <div class="ah-vsep"></div>
-    <div class="ah-spark-wrap"><div class="ah-spark ${_signCls(q.change_pct)}">${_sparkline(intr.map(p=>p[1]),'')}</div>
+    <div class="ah-spark-wrap"><div class="ah-spark ${_signCls(q.change_pct)}">${_sparkline(intr,'')}</div>
       <div class="ah-cap">Today · intraday (5-min)</div></div>
     <div class="ah-vsep"></div>
     <div class="ah-rets">
@@ -1326,18 +1339,44 @@ function _wlUniverse(){
   return _quotes.filter(q=>set.has(q.ticker));
 }
 function _wlVal(q,k){ if(k==='px')return q.price; if(k==='custom')return _ret(q,_range); if(['1D','1W','1M','YTD','1Y'].includes(k))return _ret(q,k); return null; }
+/* Risquinho da linha = MESMA janela do range escolhido na barra do grafico.
+   Antes ele trocava 1D por 1M na marra (marcar "Today" desenhava um mês inteiro) e não
+   recortava nada: o `_series` tem um fallback silencioso (`d.slice(-2)`) que, num papel com
+   a série parada, esticava os 2 últimos fechamentos como se fossem o período todo. Agora o
+   que não tem dado na janela simplesmente NÃO desenha.
+   A borda esquerda respeita a 1ª data com dado do papel (senão, em Max, o corte teórico cai
+   em 1917 e a linha inteira era espremida no canto direito). */
+function _wlSpark(q){
+  const s=_series(q,_range,'price');
+  if(_range==='1D'){                                    // pregão: a própria série intraday é a janela
+    if(s&&s.length>=2) return {pts:s,span:null};
+    const d=_dailyLive(q); return d.length>=2?{pts:d.slice(-2),span:null}:null;   // sem intraday: fechamento de ontem → preço agora
+  }
+  if(!s||s.length<2) return null;
+  const span=_rangeBounds(_range), pts=s.filter(p=>p[0]>=span[0]&&p[0]<=span[1]);
+  if(pts.length<2) return null;
+  const all=_dailyRaw(q), ini=(all&&all.length)?all[0][0]:span[0];
+  return {pts, span:[Math.max(span[0],Math.min(ini,pts[0][0])), span[1]]};
+}
+function _wlSparkTitle(sp){
+  if(!sp) return 'No data in the selected period';
+  if(_range==='1D') return 'Today · intraday';
+  const p=sp.pts;
+  return `${_rangeLabel(_range)} · ${_pfSpanLabel([p[0][0],p[p.length-1][0]])}`;   // datas REAIS desenhadas
+}
 function renderWatchlist(){
   const t=document.getElementById('wl-table'); if(!t)return;
   let rows=_wlUniverse().map(q=>({q, v:Object.fromEntries(WL_COLS.filter(c=>!['tk','spark'].includes(c.k)).map(c=>[c.k,_wlVal(q,c.k)]))}));
   const sk=_wlSort.key, dir=_wlSort.dir;
   rows.sort((a,b)=>{ let av,bv; if(sk==='tk'){av=_short(a.q.ticker);bv=_short(b.q.ticker);return dir*av.localeCompare(bv);} av=a.v[sk];bv=b.v[sk]; av=av==null?-Infinity:av; bv=bv==null?-Infinity:bv; return dir*(av-bv); });
-  const head=`<thead><tr>${WL_COLS.map(c=>{const lbl=c.k==='custom'?(_range==='custom'?'Custom':_range):c.l;return `<th class="${c.cls||''}" data-k="${c.k}">${lbl}${_wlSort.key===c.k?` <span class="ar">${dir<0?'▾':'▴'}</span>`:''}</th>`;}).join('')}</tr></thead>`;
+  const rlbl=_range==='custom'?'Custom':_range;   // a coluna do risquinho DIZ o período (era em branco: ninguém sabia de quando era)
+  const head=`<thead><tr>${WL_COLS.map(c=>{const lbl=(c.k==='custom'||c.k==='spark')?rlbl:c.l;return `<th class="${c.cls||''}${c.k==='spark'?' nos':''}" data-k="${c.k}">${lbl}${_wlSort.key===c.k?` <span class="ar">${dir<0?'▾':'▴'}</span>`:''}</th>`;}).join('')}</tr></thead>`;
   const body='<tbody>'+rows.map(({q,v})=>{
-    const on=_sel.includes(q.ticker), col=colorOf(q.ticker);
+    const on=_sel.includes(q.ticker), col=colorOf(q.ticker), sp=_wlSpark(q);
     const cell=(k)=>{ const x=v[k]; return `<td class="num ${_signCls(x)}">${_pctStr(x,1)}</td>`; };
     return `<tr class="${on?'sel':''}" data-t="${q.ticker}">
       <td class="l"><span class="wl-tk"><span class="wl-dot ${on?'':'off'}" style="${on?`background:${col};border-color:${col}`:''}"></span>${_short(q.ticker)}</span></td>
-      <td class="${_signCls(_ret(q,_range==='1D'?'1M':_range))}"><span class="wl-spark">${_sparkline((_series(q,_range==='1D'?'1M':_range,'price')||[]).map(p=>p[1]),'wl-spark')}</span></td>
+      <td class="${_signCls(v.custom)}" title="${esc(_wlSparkTitle(sp))}"><span class="wl-spark">${sp?_sparkline(sp.pts,'wl-spark',sp.span):''}</span></td>
       <td class="num">${_px(q)}</td>
       ${cell('custom')}${cell('1D')}${cell('1W')}${cell('1M')}${cell('YTD')}
     </tr>`;
