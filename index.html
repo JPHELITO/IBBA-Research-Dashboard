@@ -541,29 +541,34 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;
   transition:transform .15s,box-shadow .15s;}
 .hm-card:hover{transform:translateY(-1px);box-shadow:inset 0 0 0 1px var(--gray-mid);}
-/* Escala de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
-.hm-card.up-strong{background-image:linear-gradient(rgba(22,163,74,.24),rgba(22,163,74,.24));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.55);}
-.hm-card.up-mid{background-image:linear-gradient(rgba(22,163,74,.14),rgba(22,163,74,.14));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.32);}
-.hm-card.up{background-image:linear-gradient(rgba(22,163,74,.06),rgba(22,163,74,.06));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.15);}
-.hm-card.flat{background-image:none;box-shadow:inset 0 0 0 1px var(--border);}
-.hm-card.down{background-image:linear-gradient(rgba(192,57,43,.06),rgba(192,57,43,.06));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.15);}
-.hm-card.down-mid{background-image:linear-gradient(rgba(192,57,43,.14),rgba(192,57,43,.14));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.32);}
-.hm-card.down-strong{background-image:linear-gradient(rgba(192,57,43,.24),rgba(192,57,43,.24));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.55);}
-/* O verde/vermelho da casa é claro demais para texto de 9px sobre a tinta: o NÚMERO
-   usa tons mais fechados (5,1:1 e 5,4:1 na faixa mais forte). O risquinho, que é
-   desenho e não texto, fica na cor da casa. */
-.hm-card.up-strong .hm-change,.hm-card.up-mid .hm-change,.hm-card.up .hm-change{color:#146c33;}
-.hm-card.down-strong .hm-change,.hm-card.down-mid .hm-change,.hm-card.down .hm-change{color:#a3271b;}
-.hm-card.flat .hm-change{color:#5F6773;}   /* var(--gray-mid) dava 3,0:1 em 9px */
-.hm-card.up-strong .hm-spark,.hm-card.up-mid .hm-spark,.hm-card.up .hm-spark{color:var(--green);}
-.hm-card.down-strong .hm-spark,.hm-card.down-mid .hm-spark,.hm-card.down .hm-spark{color:var(--red);}
-.hm-card.flat .hm-spark{color:var(--gray-mid);}
+/* Escala de 7 faixas (±5 / ±2 / ±0.5 — limiares em `_heatClass`, intocados).
+   ⚠️ CORES CALCULADAS, não escolhidas no olho (2026-08-25). O desenho anterior pintava as
+   faixas com tinta translúcida sobre a chapa clara: o cinza da base dominava e as faixas
+   leves ficavam com croma ~4, ou seja, CINZA. Medido em ΔE2000 (a métrica que corresponde
+   ao que o olho separa), "+0,6%" e "−0,6%" ficavam a ΔE 8,6 um do outro — praticamente a
+   mesma cor numa grade de 15 cotações.
+   Alvos: ΔE ≥ 10 entre faixas vizinhas, ΔE ≥ 25 entre as espelhadas (mesmo nível, sinais
+   opostos), todo texto ≥ 4,5:1. Medido depois: 11,8 · 31,1 · 4,85.
+   As faixas FORTES (≥5%, movimento raro) viram COR CHEIA com texto invertido: é onde o olho
+   precisa bater primeiro, e dá o salto de ΔE 30+ contra a faixa média. */
+.hm-card.up-strong{background:#157E39;box-shadow:inset 0 0 0 1px #0D6B2E;color:#fff;}
+.hm-card.up-mid{background:#9BDBA9;box-shadow:inset 0 0 0 1px #7CC78D;}
+.hm-card.up{background:#D7F4DC;box-shadow:inset 0 0 0 1px #B4E3BE;}
+.hm-card.flat{background:var(--gray-light);box-shadow:inset 0 0 0 1px var(--border);}
+.hm-card.down{background:#FFD9D3;box-shadow:inset 0 0 0 1px #F7BCB2;}
+.hm-card.down-mid{background:#FFACA0;box-shadow:inset 0 0 0 1px #EE8F81;}
+.hm-card.down-strong{background:#B33630;box-shadow:inset 0 0 0 1px #9A2A25;color:#fff;}
+/* Número e risquinho usam o MESMO acento por faixa: o risquinho é o gráfico do tile e,
+   no verde-médio, o verde da casa caía para 2,1:1 e sumia. */
+.hm-card.up .hm-change,.hm-card.up-mid .hm-change,
+.hm-card.up .hm-spark,.hm-card.up-mid .hm-spark{color:#0F5C2B;}
+.hm-card.down .hm-change,.hm-card.down-mid .hm-change,
+.hm-card.down .hm-spark,.hm-card.down-mid .hm-spark{color:#8E2318;}
+.hm-card.flat .hm-change{color:#5F6773;}
+.hm-card.flat .hm-spark{color:#78787A;}
+/* faixa forte: número e risquinho em branco, como o resto do texto do cartão */
+.hm-card.up-strong .hm-change,.hm-card.down-strong .hm-change,
+.hm-card.up-strong .hm-spark,.hm-card.down-strong .hm-spark{color:#fff;}
 .hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;}
 .hm-ticker{font-size:10px;font-weight:700;letter-spacing:.02em;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -959,43 +964,30 @@ html.dark ::-webkit-scrollbar-thumb:hover{background:#39424F;background-clip:con
    ⚠️ borda feita com `inset box-shadow` e não `border`: com box-sizing:border-box
    uma borda de 1px comeria 2px da altura do cartão (que já é apertada: 46px). */
 html.dark .hm-card{background:#141821;color:#D7DCE4;box-shadow:inset 0 0 0 1px #1F2532;}
-/* ⚠️ a tinta vai em `background-image` e a chapa em `background-color`: escrever o
-   atalho `background:` nas faixas zerava a chapa #141821 e o verde/vermelho
-   translúcido caía direto sobre o painel (as faixas ficavam de tom diferente). */
-html.dark .hm-card.up-strong{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(34,197,94,.34),rgba(34,197,94,.08));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.55);color:#DCEFE3;}
-html.dark .hm-card.up-mid{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(34,197,94,.18),rgba(34,197,94,.05));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.34);color:#D6EBDD;}
-html.dark .hm-card.up{background-color:#141821;
-  background-image:linear-gradient(rgba(34,197,94,.08),rgba(34,197,94,.08));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.18);color:#D2E7D9;}
-html.dark .hm-card.flat{background-color:#141821;background-image:none;
-  box-shadow:inset 0 0 0 1px #232A36;color:#AFB7C3;}
-html.dark .hm-card.down{background-color:#141821;
-  background-image:linear-gradient(rgba(239,68,68,.08),rgba(239,68,68,.08));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.18);color:#EBD5D5;}
-html.dark .hm-card.down-mid{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(239,68,68,.18),rgba(239,68,68,.05));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.34);color:#F0D6D6;}
-html.dark .hm-card.down-strong{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(239,68,68,.34),rgba(239,68,68,.08));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.55);color:#F6DADA;}
+/* Mesma paleta calculada, resolvida para a chapa quase preta.
+   Medido: vizinhas ΔE 10,5 · espelhadas ΔE 38,4 · pior contraste 4,70. */
+html.dark .hm-card.up-strong{background:#369B50;box-shadow:inset 0 0 0 1px #47B063;color:#062412;}
+html.dark .hm-card.up-mid{background:#13542D;box-shadow:inset 0 0 0 1px #1C6B3B;color:#D6EBDD;}
+html.dark .hm-card.up{background:#153723;box-shadow:inset 0 0 0 1px #1F4A31;color:#D2E7D9;}
+html.dark .hm-card.flat{background:#141821;box-shadow:inset 0 0 0 1px #232A36;color:#AFB7C3;}
+html.dark .hm-card.down{background:#4E2423;box-shadow:inset 0 0 0 1px #663030;color:#EBD5D5;}
+html.dark .hm-card.down-mid{background:#7E2F2D;box-shadow:inset 0 0 0 1px #9A403C;color:#F0D6D6;}
+html.dark .hm-card.down-strong{background:#E15A50;box-shadow:inset 0 0 0 1px #F07A70;color:#2A0705;}
 html.dark .hm-ticker{color:#F2F4F8;}
 html.dark .hm-name{opacity:.6;}
 html.dark .hm-price{opacity:.8;}
-html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-mid .hm-change,
-html.dark .hm-card.up .hm-change{color:#4ADE80;}
-html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-mid .hm-change,
-html.dark .hm-card.down .hm-change{color:#FA9494;}
+html.dark .hm-card.up .hm-change,html.dark .hm-card.up-mid .hm-change,
+html.dark .hm-card.up .hm-spark,html.dark .hm-card.up-mid .hm-spark{color:#4ADE80;}
+html.dark .hm-card.down .hm-change,html.dark .hm-card.down-mid .hm-change,
+html.dark .hm-card.down .hm-spark,html.dark .hm-card.down-mid .hm-spark{color:#FCA5A5;}
 html.dark .hm-card.flat .hm-change{color:#98A1AF;}
-/* o risquinho usa currentColor → basta trocar a `color` do próprio SVG */
-html.dark .hm-card.up-strong .hm-spark,html.dark .hm-card.up-mid .hm-spark,
-html.dark .hm-card.up .hm-spark{color:#22C55E;}
-html.dark .hm-card.down-strong .hm-spark,html.dark .hm-card.down-mid .hm-spark,
-html.dark .hm-card.down .hm-spark{color:#EF4444;}
 html.dark .hm-card.flat .hm-spark{color:#7A8494;}
+/* Faixa forte no escuro: cor cheia e TUDO escrito em quase-preto — inclusive o ticker,
+   que tem cor própria (#F2F4F8) e ficaria branco sobre verde/vermelho claro. */
+html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-strong .hm-spark,
+html.dark .hm-card.up-strong .hm-ticker{color:#062412;}
+html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-strong .hm-spark,
+html.dark .hm-card.down-strong .hm-ticker{color:#2A0705;}
 
 /* ── MARKET PULSE ────────────────────────────────────────────────────────── */
 /* o trilho do ponteiro está no HTML (stroke="#E3E3E3") → no escuro virava um
@@ -1058,8 +1050,8 @@ html.dark .pulse-chip.active,html.dark .pulse-view.active,
 html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
-html.dark .hm-name{opacity:.72;}
-html.dark .hm-ccy{opacity:.72;}
+html.dark .hm-name{opacity:.84;}
+html.dark .hm-ccy{opacity:.86;}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 /* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
