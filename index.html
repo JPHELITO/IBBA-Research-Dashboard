@@ -51,7 +51,10 @@ async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem(
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  /* --gray-mid escureceu de #8C8C8C p/ #767676 em 2026-08-25: era 3,03:1 no branco e
+     carrega ~100 textos miúdos (unidades, datas, legendas). Agora 4,54:1. Trocado nas
+     8 páginas que definem o token. NÃO voltar pro claro. */
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#767676;
   --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
   --radius:10px;
@@ -271,6 +274,7 @@ body{height:100vh;overflow:hidden;}
   background:linear-gradient(120deg,rgba(0,0,0,.62),rgba(0,0,0,.34) 48%,rgba(0,0,0,.12));}
 .sector-bg-steel{background-color:#1a232c;background-image:url('assets/sector-steel.jpg');}
 .sector-bg-pp{background-color:#11401f;background-image:url('assets/sector-pp.jpg');}
+.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;}
 .sector-card.has-bg > :not(.sector-bg){position:relative;z-index:1;}
 .sector-card.has-bg .sector-card-title{color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.4);}
 .sector-card.has-bg .sector-card-desc{color:rgba(255,255,255,.86);}
@@ -285,9 +289,59 @@ body{height:100vh;overflow:hidden;}
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 .sc-main{flex:1;display:flex;align-items:flex-start;text-decoration:none;color:inherit;position:relative;z-index:1;}
 .sector-card .sector-card-title{font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.15;}
-.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;}
 a.sector-tab{text-decoration:none;cursor:pointer;transition:background .15s,color .15s;}
 .sector-card.has-bg a.sector-tab:hover{background:rgba(255,255,255,.42);color:#fff;border-color:transparent;}
+
+/* ── Cards de setor: menos foto, mais marca (2026-08-25) ─────────────────────
+   Pedido: "menos colorido, mais próximo da nossa identidade visual, com contornos
+   em laranja — sutil, moderno". Sem ícones (o usuário descartou os do mockup).
+   A foto deixa de ser informação de cor e vira TEXTURA em grafite; o laranja entra
+   como CONTORNO em três escalas — moldura do card, régua do título e chips.
+   ⚠️ O banho de laranja mora no `::after` do CARD, não no `.sector-bg`: `filter`
+   aplica-se também aos filhos/pseudos, então dentro do elemento filtrado o
+   grayscale comeria o próprio laranja. */
+/* ── Foto em DUOTONE com degradê para o laranja ──────────────────────────────
+   Caminho até aqui: foto em grafite ("macabra") → contorno automático ("muito feio")
+   → desenho vetorial → e a escolha do usuário: **a foto de volta**, com um degradê da
+   cor ORIGINAL para o laranja da marca.
+   `mix-blend-mode:color` troca o MATIZ e preserva a LUMINÂNCIA da foto — é duotone de
+   verdade, não um filtro por cima; quem faz a transição é a MÁSCARA em degradê: opaca
+   do lado do texto (100% na cor da marca) e translúcida à direita, deixando a cor
+   original da foto voltar.
+   ⚠️ `isolation:isolate` no `.sector-bg` é obrigatório: sem ele o blend sobe pelo
+   contexto de empilhamento e pinta o título e os chips junto. */
+.sector-card.has-bg{background:#0C0F14;}
+.sector-card.has-bg .sector-bg{isolation:isolate;}
+.sector-card.has-bg .sector-bg::before{content:'';position:absolute;inset:0;
+  background:var(--orange);mix-blend-mode:color;
+  -webkit-mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);
+  mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);}
+/* ⚠️ O véu tem de ficar FORA do elemento filtrado: `.sector-bg::after` é pseudo do
+   próprio elemento, então o filtro de bordas passaria nele também — e um degradê liso
+   não tem borda nenhuma, ou seja, sumiria. Vai no ::after do CARD. */
+.sector-bg::after{display:none;}
+/* Véu do texto em 3 camadas, cada uma protegendo UM lugar — em vez de escurecer o
+   card inteiro. Medido caixa a caixa (título e cada chip) reproduzindo em canvas o
+   `cover`/`center 28%` + duotone + máscara: a foto do Stock Guide tem um brilho quase
+   branco justo atrás do título (branco caía p/ 3,5:1) e a do aço tem um estouro atrás
+   de um chip (4,4:1). Faixa lateral sozinha não resolvia — o brilho varia com a ALTURA. */
+.sector-card.has-bg::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    linear-gradient(155deg,rgba(8,10,14,.62) 0%,rgba(8,10,14,0) 42%),      /* topo-esquerda: título */
+    linear-gradient(0deg,rgba(8,10,14,.48) 0%,rgba(8,10,14,0) 28%),        /* rodapé: chips */
+    linear-gradient(100deg,rgba(8,10,14,.58) 0%,rgba(8,10,14,.20) 44%,rgba(8,10,14,0) 72%);}
+/* 1) moldura */
+.sector-card.has-bg{border:1px solid rgba(255,80,0,.32);}
+.sector-card.has-bg.live:hover{border-color:rgba(255,80,0,.9);}
+/* 2) régua do título — a marca aparece sem pintar nada */
+.sector-card.has-bg .sector-card-title::after{content:'';display:block;width:28px;height:2px;
+  border-radius:1px;background:var(--orange);margin-top:8px;
+  transition:width .25s ease;}
+.sector-card.has-bg.live:hover .sector-card-title::after{width:46px;}
+/* 3) chips: contorno em vez de preenchimento */
+.sector-card.has-bg .sector-tab{background:transparent;color:rgba(255,255,255,.94);
+  border:1px solid rgba(255,122,69,.55);}
+.sector-card.has-bg a.sector-tab:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
 
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
 .team-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:2px 0;}
@@ -344,7 +398,7 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
 .pulse-stat{text-align:center;}
 .pulse-stat-num{font-size:16px;font-weight:700;letter-spacing:-.02em;}
-.pulse-stat-num.pos{color:var(--green);}
+.pulse-stat-num.pos{color:#15803d;}
 .pulse-stat-num.neg{color:var(--red);}
 .pulse-stat-num.neu{color:var(--gray-mid);}
 .pulse-stat-lbl{font-size:8px;font-weight:600;color:var(--gray-mid);
@@ -523,17 +577,49 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 /* Cartões têm ALTURA MÍNIMA legível; se a tela for baixa, o painel ROLA por dentro
    (em tela cheia nada muda: as linhas esticam e preenchem como antes, sem rolagem) */
 .heatmap-grid{flex:1;min-height:0;overflow:hidden auto;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(46px,1fr);gap:5px;}
-.hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:#fff;
-  display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;transition:transform .15s;}
-.hm-card:hover{transform:translateY(-1px);}
-/* Escala graduada de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
-.hm-card.up-strong{background:#178a3e;color:#fff;}      /* ≥ +5%  verde escuro */
-.hm-card.up-mid{background:#57bd6a;color:#0c3a1a;}      /* +2..5% verde médio */
-.hm-card.up{background:#bfe6c3;color:#14532d;}          /* +0.5..2% verde claro */
-.hm-card.flat{background:#d3d3d0;color:#444;}           /* −0.5..+0.5% cinza */
-.hm-card.down{background:#f6bcbc;color:#7f1d1d;}        /* −0.5..−2% vermelho claro */
-.hm-card.down-mid{background:#e26b62;color:#46100c;}    /* −2..−5% vermelho médio */
-.hm-card.down-strong{background:#a81f1f;color:#fff;}    /* ≤ −5%  vermelho escuro */
+/* ── Cartão do heatmap: a COR fica no DADO, não no bloco (2026-08-25) ────────
+   Era um retângulo chapado de verde/vermelho por cotação — 15 blocos saturados
+   competindo entre si e engolindo o número. Agora o cartão é uma superfície neutra
+   (a mesma dos cartões do carrossel) e quem carrega a cor é a VARIAÇÃO e o risquinho.
+   A intensidade do movimento não se perdeu: continua em 3 níveis por lado, agora na
+   tinta de fundo e no fio da borda.
+   ⚠️ Borda por `inset box-shadow` e não `border`: com box-sizing:border-box, 1px de
+   borda comeria 2px da altura útil do cartão (que tem mínimo de 46px).
+   ⚠️ A tinta vai em `background-image` e a chapa em `background-color` — escrever o
+   atalho `background:` nas faixas zeraria a chapa. */
+.hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:var(--gray-dark);
+  background-color:var(--gray-light);box-shadow:inset 0 0 0 1px var(--border);
+  display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;
+  transition:transform .15s,box-shadow .15s;}
+.hm-card:hover{transform:translateY(-1px);box-shadow:inset 0 0 0 1px var(--gray-mid);}
+/* Escala de 7 faixas (±5 / ±2 / ±0.5 — limiares em `_heatClass`, intocados).
+   ⚠️ CORES CALCULADAS, não escolhidas no olho (2026-08-25). O desenho anterior pintava as
+   faixas com tinta translúcida sobre a chapa clara: o cinza da base dominava e as faixas
+   leves ficavam com croma ~4, ou seja, CINZA. Medido em ΔE2000 (a métrica que corresponde
+   ao que o olho separa), "+0,6%" e "−0,6%" ficavam a ΔE 8,6 um do outro — praticamente a
+   mesma cor numa grade de 15 cotações.
+   Alvos: ΔE ≥ 10 entre faixas vizinhas, ΔE ≥ 25 entre as espelhadas (mesmo nível, sinais
+   opostos), todo texto ≥ 4,5:1. Medido depois: 11,8 · 31,1 · 4,85.
+   As faixas FORTES (≥5%, movimento raro) viram COR CHEIA com texto invertido: é onde o olho
+   precisa bater primeiro, e dá o salto de ΔE 30+ contra a faixa média. */
+.hm-card.up-strong{background:#157E39;box-shadow:inset 0 0 0 1px #0D6B2E;color:#fff;}
+.hm-card.up-mid{background:#9BDBA9;box-shadow:inset 0 0 0 1px #7CC78D;}
+.hm-card.up{background:#D7F4DC;box-shadow:inset 0 0 0 1px #B4E3BE;}
+.hm-card.flat{background:var(--gray-light);box-shadow:inset 0 0 0 1px var(--border);}
+.hm-card.down{background:#FFD9D3;box-shadow:inset 0 0 0 1px #F7BCB2;}
+.hm-card.down-mid{background:#FFACA0;box-shadow:inset 0 0 0 1px #EE8F81;}
+.hm-card.down-strong{background:#B33630;box-shadow:inset 0 0 0 1px #9A2A25;color:#fff;}
+/* Número e risquinho usam o MESMO acento por faixa: o risquinho é o gráfico do tile e,
+   no verde-médio, o verde da casa caía para 2,1:1 e sumia. */
+.hm-card.up .hm-change,.hm-card.up-mid .hm-change,
+.hm-card.up .hm-spark,.hm-card.up-mid .hm-spark{color:#0F5C2B;}
+.hm-card.down .hm-change,.hm-card.down-mid .hm-change,
+.hm-card.down .hm-spark,.hm-card.down-mid .hm-spark{color:#8E2318;}
+.hm-card.flat .hm-change{color:#5F6773;}
+.hm-card.flat .hm-spark{color:#78787A;}
+/* faixa forte: número e risquinho em branco, como o resto do texto do cartão */
+.hm-card.up-strong .hm-change,.hm-card.down-strong .hm-change,
+.hm-card.up-strong .hm-spark,.hm-card.down-strong .hm-spark{color:#fff;}
 .hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;}
 .hm-ticker{font-size:10px;font-weight:700;letter-spacing:.02em;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -541,7 +627,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
-.hm-ccy{font-weight:500;opacity:.6;font-size:.85em;margin-left:2px;}
+.hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
@@ -556,7 +642,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;
   display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
 .hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
-.hm-filter-btn .hm-count{font-weight:600;opacity:.7;}
+.hm-filter-btn .hm-count{font-weight:600;}
 /* Popover do heatmap = DUAS COLUNAS: grupos à esquerda (rail), empresas do grupo aberto à direita.
    Antes era uma lista única (presets em cima + TODOS os setores empilhados) → rolagem longa. */
 .hm-pop{position:fixed;z-index:4000;width:min(440px,92vw);
@@ -656,7 +742,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .kv-badge{flex:none;font-size:7px;font-weight:700;text-transform:uppercase;
   letter-spacing:.03em;padding:1px 4px;border-radius:3px;line-height:1.1;
   display:inline-flex;align-items:center;gap:3px;}
-.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:var(--gray-mid);}
+.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:#6E6E6E;}
 .kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
 .kv-badge.live::before{content:'';width:4px;height:4px;border-radius:50%;
   background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
@@ -670,6 +756,45 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .kv-change.flat{color:var(--gray-mid);}
 .kv-date{font-size:8.5px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;
   flex:none;min-width:40px;text-align:right;}
+/* ── Commodities = CARTÕES com risquinho (2026-08-25) ───────────────────────
+   Antes era uma linha de texto por commodity. Agora cada assessment é um cartão
+   com nome, número grande, variação e o MESMO desenho de risquinho do heatmap
+   (`_commSpark` espelha `_sparkline`). A curva vem da coluna `spark` — forma
+   normalizada, sem escala e sem datas: o cliente vê o desenho, não a série.
+   A grade é `grid-auto-flow:column`, então serve tanto os grupos de 4 quanto os de 5. */
+/* `align-content:stretch` + `grid-auto-rows:1fr` sobrescrevem o `align-content:start`
+   da regra de cima: sem isso a fileira ficava com a altura do conteúdo (99px) e sobravam
+   30px de painel vazio embaixo — o risquinho é quem cresce com a folga. */
+.area-comm .kv-list{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+  grid-auto-rows:minmax(0,1fr);align-content:stretch;gap:8px;padding:8px 12px 6px;}
+/* no claro o cartão usa a cor do canvas: branco sobre branco sumiria dentro do painel */
+.cm-card{display:flex;flex-direction:column;min-width:0;background:var(--gray-light);
+  border:1px solid var(--border);border-radius:8px;padding:7px 8px 2px;
+  transition:border-color .15s,transform .15s;}
+.cm-card:hover{border-color:var(--gray-mid);transform:translateY(-1px);}
+/* altura fixa de 2 linhas: sem isso os nomes curtos e longos desalinham os números */
+.cm-name{font-size:9.5px;font-weight:600;color:#6E6E6E;letter-spacing:.02em;
+  line-height:1.25;height:2.5em;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cm-top{display:flex;align-items:flex-start;gap:4px;min-width:0;}
+.cm-top .cm-name{flex:1;min-width:0;}
+.cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
+.cm-unit{font-size:7.5px;font-weight:500;color:#6E6E6E;margin-left:3px;letter-spacing:0;}
+.cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-top:1px;}
+.cm-chg{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cm-date{font-size:8px;font-weight:500;color:#6E6E6E;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
+/* o verde da casa (#16a34a) dá só 3,0:1 em texto de 10,5px sobre o cartão claro;
+   o NÚMERO usa um verde mais fechado (5,3:1) e o risquinho fica no verde da casa
+   (desenho, não texto). No escuro o bloco DARK v2 devolve o verde claro. */
+.cm-card.up .cm-chg{color:#15803d;}
+.cm-card.up .cm-spark{color:var(--green);}
+.cm-card.down .cm-chg,.cm-card.down .cm-spark{color:var(--red);}
+.cm-card.flat .cm-chg{color:#5F6773;}   /* mesmo cinza do tile neutro do heatmap (4,4:1) */
+.cm-card.flat .cm-spark{color:var(--gray-mid);}
+
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
 .comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
 .comm-dots{display:flex;gap:5px;}
@@ -709,7 +834,10 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
   .heatmap-grid{grid-auto-rows:auto;}
   .team-row{flex:none;padding:8px 16px;}
-  .area-comm .kv-list{overflow:visible;column-count:1;}
+  .area-comm .kv-list{overflow:visible;column-count:1;
+    grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(96px,auto);padding:10px;}
+  .cm-name{font-size:10.5px;}
+  .cm-val{font-size:20px;}
   .news-feed{grid-template-columns:1fr 1fr;}
   .hero{display:block;}
   .sec{overflow:visible;}     /* nada de cartão cortando o próprio conteúdo no celular */
@@ -841,9 +969,166 @@ html.dark .tn-menu{background:#1c2026;}
 html.dark .tn-menu a:hover{background:rgba(255,255,255,.06);}
 html.dark .mc-reco-chip{background:#2a1d15;}
 html.dark .hm-rail-item:hover,html.dark .hm-rail-item.open{background:rgba(255,255,255,.07);}
-html.dark .hm-card.flat{background:#3a3f47;color:#cfd3d9;}
+/* .hm-card.flat antigo saiu: as 7 faixas do heatmap sao redefinidas no bloco DARK v2 */
 html.dark .footer-text{color:rgba(255,255,255,.4);}
 html.dark .footer-dot{background:rgba(255,255,255,.22);}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DARK v2 — repaginação "terminal" (2026-08-25)
+   Referência: mockup enviado pelo usuário — fundo quase preto, painéis de
+   grafite separados por um fio de borda, e COR SÓ ONDE ELA É INFORMAÇÃO.
+   ⚠️ Tudo aqui está sob `html.dark` de propósito: o tema CLARO continua sendo
+   o padrão do cliente e não pode mudar de aparência (decisão do usuário).
+   ⚠️ Este bloco vem DEPOIS do `html.dark` original (~l.818) — é ele que manda.
+   ══════════════════════════════════════════════════════════════════════════ */
+html.dark{
+  color-scheme:dark;        /* rolagem, campos e seletores nativos no escuro */
+  --gray-light:#0A0C11;     /* canvas (era #15171b: cinza-chumbo, "lavava" a tela) */
+  --white:#111419;          /* superfície dos painéis */
+  --border:#1E232C;         /* fio de borda / divisória */
+  --black:#E9ECF2;          /* títulos e números fortes */
+  --gray-dark:#C4CAD4;      /* texto corrente */
+  --gray-mid:#79818F;       /* apoio / legenda */
+  /* no quase-preto sombra grande vira borrão: o relevo passa a ser o fio da borda */
+  --shadow:0 1px 2px rgba(0,0,0,.55);
+  --shadow-hover:0 8px 26px rgba(0,0,0,.6);
+}
+
+/* ── Painéis: cabeçalho um fio mais claro que o corpo (dá "chapa" sem caixa) ── */
+html.dark .sec-head{background:rgba(255,255,255,.022);}
+html.dark .sec-title{color:#EDF0F5;}
+html.dark .sec-meta{color:#7E8896;}
+html.dark .sec-meta::before{background:#22C55E;box-shadow:0 0 6px rgba(34,197,94,.5);}
+
+/* Rolagem discreta (a barra clara do sistema cortava o painel ao meio) */
+html.dark ::-webkit-scrollbar{width:9px;height:9px;}
+html.dark ::-webkit-scrollbar-track{background:transparent;}
+html.dark ::-webkit-scrollbar-thumb{background:#232A36;border-radius:6px;
+  border:2px solid transparent;background-clip:content-box;}
+html.dark ::-webkit-scrollbar-thumb:hover{background:#39424F;background-clip:content-box;}
+
+/* ── HEATMAP: fim dos blocos chapados ───────────────────────────────────────
+   No claro o verde/vermelho sólido funciona. No escuro ele vira 15 retângulos
+   fluorescentes que gritam mais alto que o dado. Aqui o cartão vira superfície
+   escura e QUEM CARREGA A COR é a variação (número + risquinho); a intensidade
+   do movimento aparece na tinta de fundo e no fio da borda.
+   ⚠️ borda feita com `inset box-shadow` e não `border`: com box-sizing:border-box
+   uma borda de 1px comeria 2px da altura do cartão (que já é apertada: 46px). */
+html.dark .hm-card{background:#141821;color:#D7DCE4;box-shadow:inset 0 0 0 1px #1F2532;}
+/* ── Faixas do escuro, 3ª e última versão (2026-08-25) ──────────────────────
+   O usuário preferiu a linguagem da PRIMEIRA versão — tinta translúcida sobre a
+   chapa, em degradê, discreta — só que com mais diferença de cor e com os EXTREMOS
+   na cor cheia e funda que a versão anterior trouxe.
+   Então: faixas leve e média = tinta em degradê (topo mais tingido que a base);
+   extremos (≥5%) = verde/vermelho fundo, com degradê mais largo, que é onde o olho
+   tem que bater primeiro. Rampa em L*: neutro 9 · leve 17/14 · média 25/19 · forte 35/32.
+   Ganho medido contra a 1ª versão, que era "quase imperceptível":
+     alta-fraca vs queda-fraca (o par que mais importa)  ΔE 18,1 → 26,2
+     vizinhas                                            ΔE 8,0 → 8,5 (mín.), 9-16 no resto
+   Contraste medido no TOPO do degradê (onde ficam ticker e variação): mínimo 4,97. */
+html.dark .hm-card.up{background:linear-gradient(180deg,#16342B,#152826);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 0 1px rgba(34,197,94,.20);}
+html.dark .hm-card.up-mid{background:linear-gradient(180deg,#184C33,#17392D);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(34,197,94,.34);}
+html.dark .hm-card.up-strong{background:linear-gradient(180deg,#14703C,#004C22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(34,197,94,.58);}
+html.dark .hm-card.flat{background:linear-gradient(180deg,#1E1F25,#14151B);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),inset 0 0 0 1px #232A36;}
+html.dark .hm-card.down{background:linear-gradient(180deg,#371F27,#281C24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 0 1px rgba(239,68,68,.20);}
+html.dark .hm-card.down-mid{background:linear-gradient(180deg,#56252C,#3E2028);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(239,68,68,.34);}
+html.dark .hm-card.down-strong{background:linear-gradient(180deg,#A62B36,#7A1220);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(239,68,68,.58);}
+/* todas as faixas voltaram a ser escuras → o texto volta a ser claro em todas */
+html.dark .hm-ticker{color:#F2F4F8;}
+html.dark .hm-price{opacity:.86;}
+html.dark .hm-card.up .hm-change,html.dark .hm-card.up .hm-spark,
+html.dark .hm-card.up-mid .hm-change,html.dark .hm-card.up-mid .hm-spark{color:#4ADE80;}
+html.dark .hm-card.down .hm-change,html.dark .hm-card.down .hm-spark,
+html.dark .hm-card.down-mid .hm-change,html.dark .hm-card.down-mid .hm-spark{color:#FCA5A5;}
+/* no extremo o verde/vermelho vivo cai para 3,7:1 sobre a cor cheia: vai branco */
+html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-strong .hm-spark,
+html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-strong .hm-spark{color:#fff;}
+html.dark .hm-card.flat .hm-change{color:#98A1AF;}
+html.dark .hm-card.flat .hm-spark{color:#7A8494;}
+
+/* ── MARKET PULSE ────────────────────────────────────────────────────────── */
+/* o trilho do ponteiro está no HTML (stroke="#E3E3E3") → no escuro virava um
+   anel BRANCO em volta do painel. CSS ganha de atributo de apresentação. */
+html.dark #pulse-gauge svg path:not(#gauge-arc){stroke:#1E232C;}
+html.dark .pulse-bar{background:#1A1F28;}
+html.dark .pulse-stat-num.pos{color:#4ADE80;}
+html.dark .pulse-stat-num.neg{color:#F87171;}
+html.dark .gauge-label.bullish{color:#4ADE80;}
+html.dark .gauge-label.bearish{color:#F87171;}
+html.dark .wip-badge{background:rgba(253,230,138,.16);color:#FCD34D;}
+/* `.ov-row:hover` usava var(--gray-light), que agora é a cor do CANVAS → sumia */
+html.dark .ov-row:hover{background:rgba(255,255,255,.05);}
+
+/* ── NEWS HUNTER ─────────────────────────────────────────────────────────── */
+html.dark .news-item-title{color:#DDE2EA;}
+html.dark .news-take.pos{background:rgba(34,197,94,.16);color:#4ADE80;}
+html.dark .news-take.neg{background:rgba(239,68,68,.16);color:#F87171;}
+html.dark .news-take.neu{background:rgba(255,255,255,.07);color:#98A1AF;}
+html.dark .news-take.rev{background:rgba(245,158,11,.16);color:#FBBF24;}
+html.dark .news-take.nt{background:rgba(255,255,255,.045);color:#6B7484;}
+/* a linha de baixo era laranja INTEIRA (fonte + hora + separador) e, em 20 notícias,
+   virava um borrão. Laranja fica só na FONTE; hora e separador em cinza. */
+html.dark .news-item-age{color:#7E8896;}
+html.dark .news-item-meta .sep{color:#39414E;}
+html.dark .news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.10),transparent 60%);}
+
+/* ── COMMODITIES (cartões do carrossel) ──────────────────────────────────── */
+/* mesma chapa dos tiles do heatmap, para os dois painéis da coluna direita
+   ficarem do mesmo material */
+html.dark .cm-card{background:#141821;border-color:#1F2532;}
+html.dark .cm-card:hover{border-color:#3A4351;}
+html.dark .cm-name{color:#8A93A2;}
+html.dark .cm-unit,html.dark .cm-date{color:var(--gray-mid);}
+html.dark .cm-val{color:#F2F4F8;}
+html.dark .cm-card.up .cm-chg{color:#4ADE80;}
+html.dark .cm-card.down .cm-chg{color:#F87171;}
+html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
+html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
+/* ⚠️ `html.dark .comm-dot` tem especificidade (0,2,1) e ganhava de `.comm-dot.on` e
+   `.comm-dot:hover`, que são (0,2,0) — no escuro a bolinha ATIVA ficava cinza igual às
+   outras e não dava para saber em que grupo o carrossel estava. Precisa repetir os dois
+   estados com o mesmo prefixo. */
+html.dark .comm-dot{background:#2C3442;}
+html.dark .comm-dot:hover{background:#49535F;}
+html.dark .comm-dot.on,html.dark .comm-dot.on:hover{background:var(--orange);
+  box-shadow:0 0 0 2px rgba(255,80,0,.22);}
+html.dark .comm-prog-track{background:#1A1F28;}
+
+/* ── EVENTS ──────────────────────────────────────────────────────────────── */
+html.dark .ev-t{color:#DDE2EA;}
+html.dark .ev-when{color:#8A93A2;}
+
+/* ── Botõezinhos (período do heatmap, filtro de empresas, chips) ──────────── */
+html.dark .hm-range button,html.dark .hm-filter-btn{background:#161B23;border-color:#242B37;color:#8A93A2;}
+html.dark .hm-range button:hover,html.dark .hm-filter-btn:hover{color:#E9ECF2;border-color:#3A4351;}
+html.dark .pulse-chip{border-color:#242B37;}
+html.dark .pulse-chip:not(.active):hover{border-color:#3A4351;color:#E9ECF2;}
+html.dark .pulse-view{border-color:#242B37;}
+html.dark .news-filter-chip{border-color:#242B37;}
+
+/* ── Legibilidade do texto miúdo (medido no browser, alvo 4,5:1) ───────────
+   Sete pontos ficavam abaixo do mínimo no fundo quase preto — todos com fonte
+   de 7,5 a 10px, que é justo onde o olho não perdoa. */
+/* branco sobre laranja dá 3,3:1 em 8,5px; texto quase preto sobre o mesmo laranja dá 6,5:1 */
+html.dark .pulse-chip.active,html.dark .pulse-view.active,
+html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
+html.dark .modal-ranges button.active{color:#0A0C11;}
+html.dark .hm-filter-btn .hm-count{opacity:.88;}
+html.dark .hm-name{opacity:.95;}
+html.dark .hm-ccy{opacity:.95;}
+html.dark .footer-text{color:rgba(255,255,255,.52);}
+
+/* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
+   redesenhado). Só o véu das fotos foi aprofundado, senão três retratos claros
+   flutuavam sozinhos sobre o canvas quase preto. Reverter = apagar esta regra. */
+/* véu do card é o mesmo nos dois temas (o card é escuro em ambos) — regra única acima */
 </style>
 </head>
 <body>
@@ -915,28 +1200,7 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
     </div>
 
     <div class="sector-card live has-bg sc-card" data-flag="stock_guide">
-      <div class="sector-bg" style="background:linear-gradient(180deg,#0a0e15,#05070a)">
-        <svg viewBox="0 0 420 150" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;opacity:.95">
-          <g stroke="#1b2430" stroke-width="1"><line x1="0" y1="40" x2="420" y2="40"/><line x1="0" y1="78" x2="420" y2="78"/><line x1="0" y1="116" x2="420" y2="116"/></g>
-          <polyline fill="none" stroke="#3b82f6" stroke-width="2.2" opacity=".85" points="0,40 70,47 140,61 210,80 280,99 350,116 420,129"/>
-          <polyline fill="none" stroke="#eab308" stroke-width="2.2" opacity=".8" points="0,47 70,52 140,67 210,87 280,105 350,121 420,135"/>
-          <g stroke-width="1.4">
-            <line x1="24" y1="26" x2="24" y2="52" stroke="#22c55e"/><rect x="20" y="31" width="8" height="16" fill="#22c55e"/>
-            <line x1="58" y1="34" x2="58" y2="62" stroke="#ef4444"/><rect x="54" y="39" width="8" height="18" fill="#ef4444"/>
-            <line x1="92" y1="40" x2="92" y2="64" stroke="#22c55e"/><rect x="88" y="44" width="8" height="13" fill="#22c55e"/>
-            <line x1="126" y1="48" x2="126" y2="78" stroke="#ef4444"/><rect x="122" y="52" width="8" height="20" fill="#ef4444"/>
-            <line x1="160" y1="58" x2="160" y2="82" stroke="#ef4444"/><rect x="156" y="62" width="8" height="14" fill="#ef4444"/>
-            <line x1="194" y1="64" x2="194" y2="88" stroke="#22c55e"/><rect x="190" y="68" width="8" height="13" fill="#22c55e"/>
-            <line x1="228" y1="72" x2="228" y2="100" stroke="#ef4444"/><rect x="224" y="76" width="8" height="19" fill="#ef4444"/>
-            <line x1="262" y1="82" x2="262" y2="106" stroke="#ef4444"/><rect x="258" y="86" width="8" height="14" fill="#ef4444"/>
-            <line x1="296" y1="88" x2="296" y2="112" stroke="#22c55e"/><rect x="292" y="92" width="8" height="13" fill="#22c55e"/>
-            <line x1="330" y1="96" x2="330" y2="124" stroke="#ef4444"/><rect x="326" y="100" width="8" height="19" fill="#ef4444"/>
-            <line x1="364" y1="106" x2="364" y2="130" stroke="#ef4444"/><rect x="360" y="110" width="8" height="14" fill="#ef4444"/>
-            <line x1="398" y1="112" x2="398" y2="136" stroke="#22c55e"/><rect x="394" y="116" width="8" height="13" fill="#22c55e"/>
-          </g>
-        </svg>
-        <div style="position:absolute;inset:0;background:url('assets/sector-stockguide.jpg') center/cover no-repeat"></div>
-      </div>
+      <div class="sector-bg sector-bg-sg"></div>
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
       <div class="sector-tabs">
         <a class="sector-tab" href="stock-guide.html">Comps</a>
@@ -1082,7 +1346,17 @@ html.dark .footer-dot{background:rgba(255,255,255,.22);}
   <div class="sec area-comm">
     <div class="sec-head">
       <span class="sec-title" id="comm-title">Commodities</span>
-      <span class="sec-meta" id="comm-meta">—</span>
+      <div class="hm-head-right">
+        <!-- mesma classe/rótulos do seletor do heatmap: um idioma só na home -->
+        <div class="hm-range" id="comm-range">
+          <button data-p="d" class="active">D</button>
+          <button data-p="w">WoW</button>
+          <button data-p="m">MoM</button>
+          <button data-p="ytd">YTD</button>
+          <button data-p="y">YoY</button>
+        </div>
+        <span class="sec-meta" id="comm-meta">—</span>
+      </div>
     </div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
@@ -2422,8 +2696,29 @@ function _fmtAssessed(iso, freq){
   return d.toLocaleDateString(NUM_LOC, {day:'2-digit', month:'short'});
 }
 
-function _kvRow(c){
-  const value = c.price, unit = c.unit || '', pct = c.change_pct;
+// Risquinho do cartão de commodity. Recebe a FORMA (`spark`: inteiros 0..1000,
+// sem escala e sem datas — o histórico em números não sai do banco) e desenha
+// exatamente como `_sparkline` do heatmap: área a 12% + linha em currentColor.
+function _commSpark(sp){
+  if(!Array.isArray(sp) || sp.length < 3) return '<div class="cm-spark"></div>';
+  const W=100, H=28, pad=3, n=sp.length;
+  const pts = sp.map((v,i)=> `${((i/(n-1))*W).toFixed(1)},${(pad+(1-v/1000)*(H-2*pad)).toFixed(1)}`).join(' ');
+  return `<svg class="cm-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polygon points="0,${H} ${pts} ${W},${H}" fill="currentColor" opacity="0.12"></polygon>
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"></polyline>
+  </svg>`;
+}
+
+function _kvCard(c){
+  // `spark` é um objeto {d,w,m,ytd,y} → {c: variação%, s: forma}. Array = formato antigo
+  // (uma janela só), aceito como reserva enquanto o robô não recalcula.
+  const per = (c.spark && !Array.isArray(c.spark)) ? c.spark[_commPeriod] : null;
+  const forma = per ? per.s : (Array.isArray(c.spark) ? c.spark : null);
+  // No D vale o `change_pct` do PLATTS, não o calculado: é o número autoritativo da fonte
+  // e o que o painel já mostrava. Nos demais períodos vem da janela.
+  const value = c.price, unit = c.unit || '',
+        pct = _commPeriod === 'd' ? c.change_pct : (per ? per.c : null);
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : value.toFixed(2))
     : '—';
@@ -2435,12 +2730,13 @@ function _kvRow(c){
   const freq = _freqOf(c);
   const fcls = freq === 'Weekly' ? 'wk' : freq === 'Live' ? 'live' : 'daily';
   const dateStr = _fmtAssessed(c.assessed_at, freq);
-  return `<div class="kv-row">
-    <span class="kv-name" title="${c.name||''}">${c.name||''}</span>
-    <span class="kv-badge ${fcls}">${freq}</span>
-    <span class="kv-value">${valStr}</span>${unit?`<span class="kv-unit">${unit}</span>`:''}
-    <span class="kv-change ${pctCls}">${pctStr}</span>
-    <span class="kv-date">${dateStr}</span>
+  // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
+  const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
+  return `<div class="cm-card ${pctCls}" title="${(c.name||'').replace(/"/g,'&quot;')}">
+    <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
+    <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
+    <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
+    ${_commSpark(forma)}
   </div>`;
 }
 
@@ -2461,9 +2757,10 @@ async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
-    // colunas PELO NOME, não `select=*`: o `*` trazia junto o `daily` (histórico de cada
-    // commodity, 9,3 KB por linha) e o `spark` — nenhum dos dois é usado nesta página, que
-    // mostra só preço/unidade/variação/data. 30,1 KB → 0,9 KB, de 5 em 5 min.
+    // colunas PELO NOME, não `select=*`: o `*` traz junto o `daily` (histórico em NÚMEROS
+    // de cada commodity, 9,3 KB por linha), que esta página não usa.
+    // ⚠️ O `spark` (as 5 janelas do seletor, ~1,5 KB por linha) também NÃO entra aqui: ele
+    // muda ~1×/dia e esta busca roda de 5 em 5 min. Vem uma vez só, em `loadCommSparks()`.
     // (Na aba Market o `daily` da commodity é usado de verdade e a busca é 1x por visita.)
     const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at';
     const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=${cols}`,
@@ -2484,6 +2781,30 @@ async function loadCommodities(){
   } catch(e){console.warn('commodities error:', e);}
 }
 
+// As 5 janelas (D/WoW/MoM/YTD/YoY) de cada commodity: variação do período + forma da
+// curva. ~1,5 KB por linha, então vem UMA vez por visita — só muda quando o robô
+// recalcula, 1×/dia.
+async function loadCommSparks(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try{
+    const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=code,spark`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) return;
+    (await r.json()).forEach(row=>{ if(_commByCode[row.code]) _commByCode[row.code].spark = row.spark; });
+    _renderCommPage();
+  }catch(e){ console.warn('commodity sparks:', e); }
+}
+
+// Período ativo do carrossel — mesmos rótulos e mesmo visual do seletor do heatmap.
+let _commPeriod = 'd';
+document.getElementById('comm-range')?.addEventListener('click', e=>{
+  const b = e.target.closest('button[data-p]'); if(!b) return;
+  _commPeriod = b.dataset.p;
+  document.querySelectorAll('#comm-range button').forEach(x=>x.classList.toggle('active', x===b));
+  _renderCommPage();
+});
+
 function _commPageCount(){ return COMM_GROUPS.length; }
 
 // Renderiza o grupo atual (título dinâmico + itens na ordem do grupo) + dots + barra de progresso.
@@ -2491,7 +2812,7 @@ function _renderCommPage(){
   const list=document.getElementById('comm-list'); if(!list) return;
   const g=COMM_GROUPS[_commPage] || COMM_GROUPS[0];
   const items=g.codes.map(code=>_commByCode[code]).filter(Boolean);
-  list.innerHTML=items.length ? items.map(c=>_kvRow(c)).join('') : '<div class="kv-loading">—</div>';
+  list.innerHTML=items.length ? items.map(c=>_kvCard(c)).join('') : '<div class="kv-loading">—</div>';
   const titleEl=document.getElementById('comm-title'); if(titleEl) titleEl.textContent=g.title;
   _updateMeta('comm-meta', _commUpdated);
   const n=_commPageCount();
@@ -2581,7 +2902,7 @@ loadPulse();
 loadQuotes();
 loadQuotesDaily();
 _initCommCarousel();
-loadCommodities();
+loadCommodities().then(loadCommSparks);
 
 // Relógios de REDE via everyVisible (topnav.js): dormem enquanto a aba está escondida
 // e, ao voltar, refazem NA HORA o ciclo que venceu — a tela nunca fica mais velha do que
