@@ -523,17 +523,44 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 /* Cartões têm ALTURA MÍNIMA legível; se a tela for baixa, o painel ROLA por dentro
    (em tela cheia nada muda: as linhas esticam e preenchem como antes, sem rolagem) */
 .heatmap-grid{flex:1;min-height:0;overflow:hidden auto;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(46px,1fr);gap:5px;}
-.hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:#fff;
-  display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;transition:transform .15s;}
-.hm-card:hover{transform:translateY(-1px);}
-/* Escala graduada de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
-.hm-card.up-strong{background:#178a3e;color:#fff;}      /* ≥ +5%  verde escuro */
-.hm-card.up-mid{background:#57bd6a;color:#0c3a1a;}      /* +2..5% verde médio */
-.hm-card.up{background:#bfe6c3;color:#14532d;}          /* +0.5..2% verde claro */
-.hm-card.flat{background:#d3d3d0;color:#444;}           /* −0.5..+0.5% cinza */
-.hm-card.down{background:#f6bcbc;color:#7f1d1d;}        /* −0.5..−2% vermelho claro */
-.hm-card.down-mid{background:#e26b62;color:#46100c;}    /* −2..−5% vermelho médio */
-.hm-card.down-strong{background:#a81f1f;color:#fff;}    /* ≤ −5%  vermelho escuro */
+/* ── Cartão do heatmap: a COR fica no DADO, não no bloco (2026-08-25) ────────
+   Era um retângulo chapado de verde/vermelho por cotação — 15 blocos saturados
+   competindo entre si e engolindo o número. Agora o cartão é uma superfície neutra
+   (a mesma dos cartões do carrossel) e quem carrega a cor é a VARIAÇÃO e o risquinho.
+   A intensidade do movimento não se perdeu: continua em 3 níveis por lado, agora na
+   tinta de fundo e no fio da borda.
+   ⚠️ Borda por `inset box-shadow` e não `border`: com box-sizing:border-box, 1px de
+   borda comeria 2px da altura útil do cartão (que tem mínimo de 46px).
+   ⚠️ A tinta vai em `background-image` e a chapa em `background-color` — escrever o
+   atalho `background:` nas faixas zeraria a chapa. */
+.hm-card{padding:5px 7px;border-radius:6px;text-decoration:none;color:var(--gray-dark);
+  background-color:var(--gray-light);box-shadow:inset 0 0 0 1px var(--border);
+  display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden;
+  transition:transform .15s,box-shadow .15s;}
+.hm-card:hover{transform:translateY(-1px);box-shadow:inset 0 0 0 1px var(--gray-mid);}
+/* Escala de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
+.hm-card.up-strong{background-image:linear-gradient(rgba(22,163,74,.20),rgba(22,163,74,.20));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.45);}
+.hm-card.up-mid{background-image:linear-gradient(rgba(22,163,74,.13),rgba(22,163,74,.13));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.30);}
+.hm-card.up{background-image:linear-gradient(rgba(22,163,74,.07),rgba(22,163,74,.07));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.18);}
+.hm-card.flat{background-image:none;box-shadow:inset 0 0 0 1px var(--border);}
+.hm-card.down{background-image:linear-gradient(rgba(192,57,43,.07),rgba(192,57,43,.07));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.18);}
+.hm-card.down-mid{background-image:linear-gradient(rgba(192,57,43,.13),rgba(192,57,43,.13));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.30);}
+.hm-card.down-strong{background-image:linear-gradient(rgba(192,57,43,.20),rgba(192,57,43,.20));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.45);}
+/* O verde/vermelho da casa é claro demais para texto de 9px sobre a tinta: o NÚMERO
+   usa tons mais fechados (5,1:1 e 5,4:1 na faixa mais forte). O risquinho, que é
+   desenho e não texto, fica na cor da casa. */
+.hm-card.up-strong .hm-change,.hm-card.up-mid .hm-change,.hm-card.up .hm-change{color:#146c33;}
+.hm-card.down-strong .hm-change,.hm-card.down-mid .hm-change,.hm-card.down .hm-change{color:#a3271b;}
+.hm-card.flat .hm-change{color:#6b7280;}   /* var(--gray-mid) dava 3,0:1 em 9px */
+.hm-card.up-strong .hm-spark,.hm-card.up-mid .hm-spark,.hm-card.up .hm-spark{color:var(--green);}
+.hm-card.down-strong .hm-spark,.hm-card.down-mid .hm-spark,.hm-card.down .hm-spark{color:var(--red);}
+.hm-card.flat .hm-spark{color:var(--gray-mid);}
 .hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;}
 .hm-ticker{font-size:10px;font-weight:700;letter-spacing:.02em;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -556,7 +583,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;
   display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
 .hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
-.hm-filter-btn .hm-count{font-weight:600;opacity:.7;}
+.hm-filter-btn .hm-count{font-weight:600;opacity:.88;}
 /* Popover do heatmap = DUAS COLUNAS: grupos à esquerda (rail), empresas do grupo aberto à direita.
    Antes era uma lista única (presets em cima + TODOS os setores empilhados) → rolagem longa. */
 .hm-pop{position:fixed;z-index:4000;width:min(440px,92vw);
@@ -706,7 +733,8 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .cm-card.up .cm-chg{color:#15803d;}
 .cm-card.up .cm-spark{color:var(--green);}
 .cm-card.down .cm-chg,.cm-card.down .cm-spark{color:var(--red);}
-.cm-card.flat .cm-chg,.cm-card.flat .cm-spark{color:var(--gray-mid);}
+.cm-card.flat .cm-chg{color:#6b7280;}   /* mesmo cinza do tile neutro do heatmap (4,4:1) */
+.cm-card.flat .cm-spark{color:var(--gray-mid);}
 
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
 .comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
