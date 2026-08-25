@@ -1346,7 +1346,17 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <div class="sec area-comm">
     <div class="sec-head">
       <span class="sec-title" id="comm-title">Commodities</span>
-      <span class="sec-meta" id="comm-meta">—</span>
+      <div class="hm-head-right">
+        <!-- mesma classe/rótulos do seletor do heatmap: um idioma só na home -->
+        <div class="hm-range" id="comm-range">
+          <button data-p="d" class="active">D</button>
+          <button data-p="w">WoW</button>
+          <button data-p="m">MoM</button>
+          <button data-p="ytd">YTD</button>
+          <button data-p="y">YoY</button>
+        </div>
+        <span class="sec-meta" id="comm-meta">—</span>
+      </div>
     </div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
@@ -2701,7 +2711,14 @@ function _commSpark(sp){
 }
 
 function _kvCard(c){
-  const value = c.price, unit = c.unit || '', pct = c.change_pct;
+  // `spark` é um objeto {d,w,m,ytd,y} → {c: variação%, s: forma}. Array = formato antigo
+  // (uma janela só), aceito como reserva enquanto o robô não recalcula.
+  const per = (c.spark && !Array.isArray(c.spark)) ? c.spark[_commPeriod] : null;
+  const forma = per ? per.s : (Array.isArray(c.spark) ? c.spark : null);
+  // No D vale o `change_pct` do PLATTS, não o calculado: é o número autoritativo da fonte
+  // e o que o painel já mostrava. Nos demais períodos vem da janela.
+  const value = c.price, unit = c.unit || '',
+        pct = _commPeriod === 'd' ? c.change_pct : (per ? per.c : null);
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : value.toFixed(2))
     : '—';
@@ -2719,7 +2736,7 @@ function _kvCard(c){
     <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
     <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
     <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
-    ${_commSpark(c.spark)}
+    ${_commSpark(forma)}
   </div>`;
 }
 
@@ -2741,11 +2758,11 @@ async function loadCommodities(){
   if(!session) return;
   try {
     // colunas PELO NOME, não `select=*`: o `*` traz junto o `daily` (histórico em NÚMEROS
-    // de cada commodity, 9,3 KB por linha), que esta página não usa — e que o cliente não
-    // pode ver. Vem o `spark`, que é só a FORMA da curva (~90 inteiros, ~0,4 KB).
-    // Total ~9 KB de 5 em 5 min, contra os 30,1 KB do `select=*`.
+    // de cada commodity, 9,3 KB por linha), que esta página não usa.
+    // ⚠️ O `spark` (as 5 janelas do seletor, ~1,5 KB por linha) também NÃO entra aqui: ele
+    // muda ~1×/dia e esta busca roda de 5 em 5 min. Vem uma vez só, em `loadCommSparks()`.
     // (Na aba Market o `daily` da commodity é usado de verdade e a busca é 1x por visita.)
-    const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at,spark';
+    const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at';
     const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('commodities');
@@ -2763,6 +2780,30 @@ async function loadCommodities(){
     _renderCommPage();
   } catch(e){console.warn('commodities error:', e);}
 }
+
+// As 5 janelas (D/WoW/MoM/YTD/YoY) de cada commodity: variação do período + forma da
+// curva. ~1,5 KB por linha, então vem UMA vez por visita — só muda quando o robô
+// recalcula, 1×/dia.
+async function loadCommSparks(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try{
+    const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=code,spark`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) return;
+    (await r.json()).forEach(row=>{ if(_commByCode[row.code]) _commByCode[row.code].spark = row.spark; });
+    _renderCommPage();
+  }catch(e){ console.warn('commodity sparks:', e); }
+}
+
+// Período ativo do carrossel — mesmos rótulos e mesmo visual do seletor do heatmap.
+let _commPeriod = 'd';
+document.getElementById('comm-range')?.addEventListener('click', e=>{
+  const b = e.target.closest('button[data-p]'); if(!b) return;
+  _commPeriod = b.dataset.p;
+  document.querySelectorAll('#comm-range button').forEach(x=>x.classList.toggle('active', x===b));
+  _renderCommPage();
+});
 
 function _commPageCount(){ return COMM_GROUPS.length; }
 
@@ -2861,7 +2902,7 @@ loadPulse();
 loadQuotes();
 loadQuotesDaily();
 _initCommCarousel();
-loadCommodities();
+loadCommodities().then(loadCommSparks);
 
 // Relógios de REDE via everyVisible (topnav.js): dormem enquanto a aba está escondida
 // e, ao voltar, refazem NA HORA o ciclo que venceu — a tela nunca fica mais velha do que
