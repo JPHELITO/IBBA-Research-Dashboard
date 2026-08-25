@@ -841,9 +841,153 @@ html.dark .tn-menu{background:#1c2026;}
 html.dark .tn-menu a:hover{background:rgba(255,255,255,.06);}
 html.dark .mc-reco-chip{background:#2a1d15;}
 html.dark .hm-rail-item:hover,html.dark .hm-rail-item.open{background:rgba(255,255,255,.07);}
-html.dark .hm-card.flat{background:#3a3f47;color:#cfd3d9;}
+/* .hm-card.flat antigo saiu: as 7 faixas do heatmap sao redefinidas no bloco DARK v2 */
 html.dark .footer-text{color:rgba(255,255,255,.4);}
 html.dark .footer-dot{background:rgba(255,255,255,.22);}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DARK v2 — repaginação "terminal" (2026-08-25)
+   Referência: mockup enviado pelo usuário — fundo quase preto, painéis de
+   grafite separados por um fio de borda, e COR SÓ ONDE ELA É INFORMAÇÃO.
+   ⚠️ Tudo aqui está sob `html.dark` de propósito: o tema CLARO continua sendo
+   o padrão do cliente e não pode mudar de aparência (decisão do usuário).
+   ⚠️ Este bloco vem DEPOIS do `html.dark` original (~l.818) — é ele que manda.
+   ══════════════════════════════════════════════════════════════════════════ */
+html.dark{
+  color-scheme:dark;        /* rolagem, campos e seletores nativos no escuro */
+  --gray-light:#0A0C11;     /* canvas (era #15171b: cinza-chumbo, "lavava" a tela) */
+  --white:#111419;          /* superfície dos painéis */
+  --border:#1E232C;         /* fio de borda / divisória */
+  --black:#E9ECF2;          /* títulos e números fortes */
+  --gray-dark:#C4CAD4;      /* texto corrente */
+  --gray-mid:#79818F;       /* apoio / legenda */
+  /* no quase-preto sombra grande vira borrão: o relevo passa a ser o fio da borda */
+  --shadow:0 1px 2px rgba(0,0,0,.55);
+  --shadow-hover:0 8px 26px rgba(0,0,0,.6);
+}
+
+/* ── Painéis: cabeçalho um fio mais claro que o corpo (dá "chapa" sem caixa) ── */
+html.dark .sec-head{background:rgba(255,255,255,.022);}
+html.dark .sec-title{color:#EDF0F5;}
+html.dark .sec-meta{color:#7E8896;}
+html.dark .sec-meta::before{background:#22C55E;box-shadow:0 0 6px rgba(34,197,94,.5);}
+
+/* Rolagem discreta (a barra clara do sistema cortava o painel ao meio) */
+html.dark ::-webkit-scrollbar{width:9px;height:9px;}
+html.dark ::-webkit-scrollbar-track{background:transparent;}
+html.dark ::-webkit-scrollbar-thumb{background:#232A36;border-radius:6px;
+  border:2px solid transparent;background-clip:content-box;}
+html.dark ::-webkit-scrollbar-thumb:hover{background:#39424F;background-clip:content-box;}
+
+/* ── HEATMAP: fim dos blocos chapados ───────────────────────────────────────
+   No claro o verde/vermelho sólido funciona. No escuro ele vira 15 retângulos
+   fluorescentes que gritam mais alto que o dado. Aqui o cartão vira superfície
+   escura e QUEM CARREGA A COR é a variação (número + risquinho); a intensidade
+   do movimento aparece na tinta de fundo e no fio da borda.
+   ⚠️ borda feita com `inset box-shadow` e não `border`: com box-sizing:border-box
+   uma borda de 1px comeria 2px da altura do cartão (que já é apertada: 46px). */
+html.dark .hm-card{background:#141821;color:#D7DCE4;box-shadow:inset 0 0 0 1px #1F2532;}
+/* ⚠️ a tinta vai em `background-image` e a chapa em `background-color`: escrever o
+   atalho `background:` nas faixas zerava a chapa #141821 e o verde/vermelho
+   translúcido caía direto sobre o painel (as faixas ficavam de tom diferente). */
+html.dark .hm-card.up-strong{background-color:#141821;
+  background-image:linear-gradient(180deg,rgba(34,197,94,.22),rgba(34,197,94,.05));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.34);color:#DCEFE3;}
+html.dark .hm-card.up-mid{background-color:#141821;
+  background-image:linear-gradient(180deg,rgba(34,197,94,.14),rgba(34,197,94,.035));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.24);color:#D6EBDD;}
+html.dark .hm-card.up{background-color:#141821;
+  background-image:linear-gradient(rgba(34,197,94,.075),rgba(34,197,94,.075));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.16);color:#D2E7D9;}
+html.dark .hm-card.flat{background-color:#141821;background-image:none;
+  box-shadow:inset 0 0 0 1px #232A36;color:#AFB7C3;}
+html.dark .hm-card.down{background-color:#141821;
+  background-image:linear-gradient(rgba(239,68,68,.075),rgba(239,68,68,.075));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.16);color:#EBD5D5;}
+html.dark .hm-card.down-mid{background-color:#141821;
+  background-image:linear-gradient(180deg,rgba(239,68,68,.14),rgba(239,68,68,.035));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.26);color:#F0D6D6;}
+html.dark .hm-card.down-strong{background-color:#141821;
+  background-image:linear-gradient(180deg,rgba(239,68,68,.24),rgba(239,68,68,.06));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.38);color:#F6DADA;}
+html.dark .hm-ticker{color:#F2F4F8;}
+html.dark .hm-name{opacity:.6;}
+html.dark .hm-price{opacity:.8;}
+html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-mid .hm-change,
+html.dark .hm-card.up .hm-change{color:#4ADE80;}
+html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-mid .hm-change,
+html.dark .hm-card.down .hm-change{color:#F87171;}
+html.dark .hm-card.flat .hm-change{color:#98A1AF;}
+/* o risquinho usa currentColor → basta trocar a `color` do próprio SVG */
+html.dark .hm-card.up-strong .hm-spark,html.dark .hm-card.up-mid .hm-spark,
+html.dark .hm-card.up .hm-spark{color:#22C55E;}
+html.dark .hm-card.down-strong .hm-spark,html.dark .hm-card.down-mid .hm-spark,
+html.dark .hm-card.down .hm-spark{color:#EF4444;}
+html.dark .hm-card.flat .hm-spark{color:#7A8494;}
+
+/* ── MARKET PULSE ────────────────────────────────────────────────────────── */
+/* o trilho do ponteiro está no HTML (stroke="#E3E3E3") → no escuro virava um
+   anel BRANCO em volta do painel. CSS ganha de atributo de apresentação. */
+html.dark #pulse-gauge svg path:not(#gauge-arc){stroke:#1E232C;}
+html.dark .pulse-bar{background:#1A1F28;}
+html.dark .pulse-stat-num.pos{color:#4ADE80;}
+html.dark .pulse-stat-num.neg{color:#F87171;}
+html.dark .gauge-label.bullish{color:#4ADE80;}
+html.dark .gauge-label.bearish{color:#F87171;}
+html.dark .wip-badge{background:rgba(253,230,138,.16);color:#FCD34D;}
+/* `.ov-row:hover` usava var(--gray-light), que agora é a cor do CANVAS → sumia */
+html.dark .ov-row:hover{background:rgba(255,255,255,.05);}
+
+/* ── NEWS HUNTER ─────────────────────────────────────────────────────────── */
+html.dark .news-item-title{color:#DDE2EA;}
+html.dark .news-take.pos{background:rgba(34,197,94,.16);color:#4ADE80;}
+html.dark .news-take.neg{background:rgba(239,68,68,.16);color:#F87171;}
+html.dark .news-take.neu{background:rgba(255,255,255,.07);color:#98A1AF;}
+html.dark .news-take.rev{background:rgba(245,158,11,.16);color:#FBBF24;}
+html.dark .news-take.nt{background:rgba(255,255,255,.045);color:#6B7484;}
+/* a linha de baixo era laranja INTEIRA (fonte + hora + separador) e, em 20 notícias,
+   virava um borrão. Laranja fica só na FONTE; hora e separador em cinza. */
+html.dark .news-item-age{color:#7E8896;}
+html.dark .news-item-meta .sep{color:#39414E;}
+html.dark .news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.10),transparent 60%);}
+
+/* ── COMMODITIES (carrossel) ─────────────────────────────────────────────── */
+html.dark .kv-name{color:#C4CAD4;}
+html.dark .kv-value{color:#F2F4F8;}
+html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
+html.dark .kv-change.up{color:#4ADE80;}
+html.dark .kv-change.down{color:#F87171;}
+html.dark .comm-dot{background:#262D39;}
+html.dark .comm-prog-track{background:#1A1F28;}
+
+/* ── EVENTS ──────────────────────────────────────────────────────────────── */
+html.dark .ev-t{color:#DDE2EA;}
+html.dark .ev-when{color:#8A93A2;}
+
+/* ── Botõezinhos (período do heatmap, filtro de empresas, chips) ──────────── */
+html.dark .hm-range button,html.dark .hm-filter-btn{background:#161B23;border-color:#242B37;color:#8A93A2;}
+html.dark .hm-range button:hover,html.dark .hm-filter-btn:hover{color:#E9ECF2;border-color:#3A4351;}
+html.dark .pulse-chip{border-color:#242B37;}
+html.dark .pulse-chip:not(.active):hover{border-color:#3A4351;color:#E9ECF2;}
+html.dark .pulse-view{border-color:#242B37;}
+html.dark .news-filter-chip{border-color:#242B37;}
+
+/* ── Legibilidade do texto miúdo (medido no browser, alvo 4,5:1) ───────────
+   Sete pontos ficavam abaixo do mínimo no fundo quase preto — todos com fonte
+   de 7,5 a 10px, que é justo onde o olho não perdoa. */
+/* branco sobre laranja dá 3,3:1 em 8,5px; texto quase preto sobre o mesmo laranja dá 6,5:1 */
+html.dark .pulse-chip.active,html.dark .pulse-view.active,
+html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
+html.dark .modal-ranges button.active{color:#0A0C11;}
+html.dark .hm-filter-btn .hm-count{opacity:.88;}
+html.dark .hm-name{opacity:.72;}
+html.dark .hm-ccy{opacity:.72;}
+html.dark .footer-text{color:rgba(255,255,255,.52);}
+
+/* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
+   redesenhado). Só o véu das fotos foi aprofundado, senão três retratos claros
+   flutuavam sozinhos sobre o canvas quase preto. Reverter = apagar esta regra. */
+html.dark .sector-bg::after{background:linear-gradient(120deg,rgba(6,8,12,.80),rgba(6,8,12,.55) 48%,rgba(6,8,12,.34));}
 </style>
 </head>
 <body>
