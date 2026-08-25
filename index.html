@@ -292,6 +292,32 @@ body{height:100vh;overflow:hidden;}
 a.sector-tab{text-decoration:none;cursor:pointer;transition:background .15s,color .15s;}
 .sector-card.has-bg a.sector-tab:hover{background:rgba(255,255,255,.42);color:#fff;border-color:transparent;}
 
+/* ── Cards de setor: menos foto, mais marca (2026-08-25) ─────────────────────
+   Pedido: "menos colorido, mais próximo da nossa identidade visual, com contornos
+   em laranja — sutil, moderno". Sem ícones (o usuário descartou os do mockup).
+   A foto deixa de ser informação de cor e vira TEXTURA em grafite; o laranja entra
+   como CONTORNO em três escalas — moldura do card, régua do título e chips.
+   ⚠️ O banho de laranja mora no `::after` do CARD, não no `.sector-bg`: `filter`
+   aplica-se também aos filhos/pseudos, então dentro do elemento filtrado o
+   grayscale comeria o próprio laranja. */
+.sector-card.has-bg .sector-bg{filter:grayscale(1) contrast(1.14) brightness(.55);}
+.sector-card.has-bg::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(118deg,rgba(255,80,0,.26) 0%,rgba(255,80,0,.08) 45%,transparent 74%);}
+/* o véu escuro pode afrouxar: a foto já vem escura do filtro, e assim a textura aparece */
+.sector-bg::after{background:linear-gradient(120deg,rgba(0,0,0,.52),rgba(0,0,0,.36) 52%,rgba(0,0,0,.16));}
+/* 1) moldura */
+.sector-card.has-bg{border:1px solid rgba(255,80,0,.32);}
+.sector-card.has-bg.live:hover{border-color:rgba(255,80,0,.9);}
+/* 2) régua do título — a marca aparece sem pintar nada */
+.sector-card.has-bg .sector-card-title::after{content:'';display:block;width:28px;height:2px;
+  border-radius:1px;background:var(--orange);margin-top:8px;
+  transition:width .25s ease;}
+.sector-card.has-bg.live:hover .sector-card-title::after{width:46px;}
+/* 3) chips: contorno em vez de preenchimento */
+.sector-card.has-bg .sector-tab{background:transparent;color:rgba(255,255,255,.94);
+  border:1px solid rgba(255,122,69,.55);}
+.sector-card.has-bg a.sector-tab:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
+
 /* ── TEAM ─────────────────────────────────────────────────────────────── */
 .team-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:2px 0;}
 .team-row{flex:1;min-height:0;display:flex;align-items:center;gap:10px;padding:0 16px;
@@ -1069,7 +1095,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
 /* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
    redesenhado). Só o véu das fotos foi aprofundado, senão três retratos claros
    flutuavam sozinhos sobre o canvas quase preto. Reverter = apagar esta regra. */
-html.dark .sector-bg::after{background:linear-gradient(120deg,rgba(6,8,12,.80),rgba(6,8,12,.55) 48%,rgba(6,8,12,.34));}
+html.dark .sector-bg::after{background:linear-gradient(120deg,rgba(6,8,12,.66),rgba(6,8,12,.44) 52%,rgba(6,8,12,.20));}
 </style>
 </head>
 <body>
