@@ -421,7 +421,148 @@
     return { rows: rows, warnings: warnings };
   }
 
+  // ══════════ TABELAS PUBLICADAS DO ANALISTA (definition.kind==='sens2d') ══════════
+  // São as grades 9×9 que o analista publica no próprio modelo (_Sensitivity.xlsx): dois
+  // drivers nos eixos, um indicador por tabela. O cliente NÃO mexe nelas — o que muda é o
+  // PREÇO DE TELA. EBITDA e FCF não dependem do preço da ação; múltiplos e yields dependem,
+  // e foram calculados com o preço do dia da publicação. Aqui são reescritos no de agora.
+  //
+  // A chave é separar, em cada célula, valor de mercado de dívida líquida dentro do EV.
+  // Isso não está escrito na planilha, mas sai dos próprios números publicados:
+  //   mktcapModel = FCF ÷ FCF yield      (constante nas 81 células — conferido nas 7 empresas)
+  //   dívida      = EV/EBITDA × EBITDA − mktcapModel
+  // Daí EV/EBITDA ao vivo = (mktcapLive + dívida) ÷ EBITDA.
+  const SENS2D_METRICS = {
+    ebitda:     { live: false, unit: '',  dec: 0 },
+    fcf:        { live: false, unit: '',  dec: 0 },
+    margin:     { live: false, unit: '%', dec: 1 },
+    ev_ebitda:  { live: true,  unit: 'x', dec: 2 },
+    fcf_yield:  { live: true,  unit: '%', dec: 1 },
+    div_yield:  { live: true,  unit: '%', dec: 1 },
+    upside:     { live: true,  unit: '%', dec: 0 },
+    p_nav:      { live: true,  unit: 'x', dec: 2 },
+  };
+
+  // classifica a tabela pelo TÍTULO que o analista escreveu. A ORDEM importa: "FCF Yield"
+  // tem de ser testado antes de "FCF", e "EV/EBITDA" antes de "EBITDA".
+  function sens2dMetricFromTitle(title) {
+    const t = String(title == null ? '' : title).toLowerCase();
+    const has = function (s) { return t.indexOf(s) >= 0; };
+    if (has('p/nav') || has('p / nav')) return 'p_nav';
+    if (has('upside')) return 'upside';
+    if (has('dividend yield')) return 'div_yield';
+    if (has('fcf yield')) return 'fcf_yield';
+    if (has('ev/ebitda')) return 'ev_ebitda';
+    if (has('margin')) return 'margin';
+    if (has('fcf') || has('free cash')) return 'fcf';
+    if (has('ebitda')) return 'ebitda';
+    return null;
+  }
+
+  // moeda a partir do título: "(BRL million)" / "(USD million)"
+  function sens2dCurrencyFromTitle(title) {
+    const t = String(title == null ? '' : title).toUpperCase();
+    if (t.indexOf('BRL') >= 0) return 'BRL';
+    if (t.indexOf('USD') >= 0) return 'USD';
+    return null;
+  }
+
+  // valor de UMA célula no preço de tela.
+  //   metric      — chave de SENS2D_METRICS
+  //   published   — número como está na planilha
+  //   ebitda      — EBITDA da MESMA célula (só p/ ev_ebitda)
+  //   mktcapModel — valor de mercado embutido no modelo (FCF÷FCFy)
+  //   mktcapLive  — valor de mercado agora, na MESMA moeda
+  // Sem preço ao vivo devolve o publicado: a tabela nunca fica vazia.
+  function sens2dLiveValue(o) {
+    o = o || {};
+    const m = SENS2D_METRICS[o.metric];
+    const pub = toNumOrNull(o.published);
+    if (!m || pub == null) return pub;
+    if (!m.live) return pub;
+    const mcM = toNumOrNull(o.mktcapModel), mcL = toNumOrNull(o.mktcapLive);
+    if (mcM == null || mcL == null || mcM <= 0 || mcL <= 0) return pub;
+    if (o.metric === 'ev_ebitda') {
+      const eb = toNumOrNull(o.ebitda);
+      if (eb == null || eb === 0) return null;   // sem o EBITDA pareado não dá p/ separar a dívida
+      return (mcL + (pub * eb - mcM)) / eb;
+    }
+    if (o.metric === 'fcf_yield' || o.metric === 'div_yield') return pub * (mcM / mcL);
+    if (o.metric === 'upside') return (1 + pub) * (mcM / mcL) - 1;
+    if (o.metric === 'p_nav') return pub * (mcL / mcM);
+    return pub;
+  }
+
+  // dívida líquida implícita da célula (auditoria)
+  function sens2dNetDebt(evEbitda, ebitda, mktcapModel) {
+    const v = toNumOrNull(evEbitda), eb = toNumOrNull(ebitda), mc = toNumOrNull(mktcapModel);
+    if (v == null || eb == null || mc == null) return null;
+    return v * eb - mc;
+  }
+
+  function sens2dFormat(v, metric, numLoc) {
+    const m = SENS2D_METRICS[metric] || { unit: '', dec: 0 };
+    if (v == null || !isFinite(v)) return '–';
+    const loc = numLoc || 'en-US';
+    const opt = { minimumFractionDigits: m.dec, maximumFractionDigits: m.dec };
+    if (m.unit === '%') return (v * 100).toLocaleString(loc, opt) + '%';
+    if (m.unit === 'x') return v.toLocaleString(loc, opt) + '×';
+    return v.toLocaleString(loc, opt);
+  }
+
+  // Eixos de CRESCIMENTO vêm como fração (-0,085) e têm de aparecer como -8,5%; eixos de
+  // PREÇO vêm em nível (87,5 / 8789) e aparecem como número.
+  function sens2dAxisIsPct(label, levels) {
+    const L = String(label == null ? '' : label).toLowerCase();
+    if (L.indexOf('(%)') >= 0 || L.indexOf('growth') >= 0 || L.indexOf('margin') >= 0) return true;
+    const ls = (levels || []).filter(function (x) { return typeof x === 'number'; });
+    if (!ls.length) return false;
+    return ls.every(function (x) { return Math.abs(x) <= 1.5; }) &&
+           ls.some(function (x) { return x !== Math.round(x); });
+  }
+  // Casas decimais do EIXO INTEIRO, nao de cada valor: pela regra por valor um eixo de
+  // minerio 87,5..107,5 saia "87.5, 90, 92.5, 95, 97.5, 100, 103, 105, 108" — os niveis
+  // grandes perdiam a casa e passavam a MENTIR (102,5 virando 103).
+  // O criterio e FIDELIDADE, nao distincao: usa-se o menor numero de casas que ainda
+  // representa TODOS os niveis sem arredondar, com teto (o eixo de cambio tem 5.03125 e
+  // nao faz sentido mostrar 5 casas).
+  function sens2dAxisDecimals(levels, isPct) {
+    const ls = (levels || []).filter(function (x) { return typeof x === 'number' && isFinite(x); });
+    if (!ls.length) return isPct ? 1 : 0;
+    const cap = isPct ? 1 : 2;
+    let need = 0;
+    for (let i = 0; i < ls.length; i++) {
+      const v = isPct ? ls[i] * 100 : ls[i];
+      const tol = 1e-6 * Math.max(1, Math.abs(v));
+      let d = 0;
+      for (; d < cap; d++) {
+        const p = Math.pow(10, d);
+        if (Math.abs(v * p - Math.round(v * p)) < tol * p) break;
+      }
+      if (d > need) need = d;
+    }
+    return need;
+  }
+  function sens2dAxisFormat(v, isPct, numLoc, dec) {
+    if (v == null || !isFinite(v)) return '';
+    const loc = numLoc || 'en-US';
+    let d = dec;
+    if (d == null) { const abs = Math.abs(v); d = isPct ? 1 : (abs >= 100 ? 0 : (abs >= 10 ? 1 : 2)); }
+    const opt = { minimumFractionDigits: d, maximumFractionDigits: d };
+    if (isPct) return (v * 100).toLocaleString(loc, opt) + '%';
+    return v.toLocaleString(loc, opt);
+  }
+
   const SG = {
+    sens2dMetricFromTitle: sens2dMetricFromTitle,
+    sens2dCurrencyFromTitle: sens2dCurrencyFromTitle,
+    sens2dLiveValue: sens2dLiveValue,
+    sens2dNetDebt: sens2dNetDebt,
+    sens2dFormat: sens2dFormat,
+    sens2dAxisIsPct: sens2dAxisIsPct,
+    sens2dAxisDecimals: sens2dAxisDecimals,
+    sens2dAxisFormat: sens2dAxisFormat,
+    SENS2D_METRICS: SENS2D_METRICS,
     toNumOrNull: toNumOrNull,
     SG_COVERAGE: SG_COVERAGE,
     parseStockGuideWorkbook: parseStockGuideWorkbook,

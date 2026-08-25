@@ -14,8 +14,8 @@
 <script src="/topnav.js"></script>
 <script src="/export-lib.js"></script>
 <style>
-:root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#F4F3F0;--border:#E3E3E3;
-  --white:#fff;--green:#1E8E4E;--red:#C0392B;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+:root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#EBE8E2;--border:#D6D1C9;
+  --white:#FDFCFA;--green:#1E8E4E;--red:#C0392B;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
   --shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);color:var(--black);background:var(--g-light);font-size:13px;line-height:1.4}
@@ -87,6 +87,43 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .g6-gname{font:700 11px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
 .g6-group .steppers{margin:0}
 .g6-actions{margin:0 0 12px}
+/* ── tabelas publicadas do analista (sens2d): só leitura, sem controle nenhum ── */
+.s2-top{margin:2px 0 14px}
+.s2-meta{font:600 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.s2-kpis{display:flex;flex-wrap:wrap;gap:10px}
+.s2-kpi{border:1px solid var(--border);border-radius:10px;padding:7px 11px;min-width:132px}
+.s2-k{font:700 9.5px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px}
+.s2-v{font:600 13px var(--font);margin-top:2px}
+.s2-sub{font-size:9.5px;color:var(--g-mid);margin-top:1px}
+.s2-arrow{color:var(--g-mid);font-weight:400}
+.s2-warn{margin-top:9px;font-size:11px;color:#8a6d1f;background:rgba(214,168,42,.13);
+  border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:6px 9px}
+.s2-sheet{font:700 11px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px}
+.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+.s2-card{border:1px solid var(--border);border-radius:10px;padding:9px 10px 7px;min-width:0}
+.s2-head{display:flex;align-items:baseline;gap:7px;margin-bottom:6px}
+.s2-title{font:700 11.5px var(--font);flex:1;min-width:0}
+.s2-badge{font:700 8.5px var(--font);text-transform:uppercase;letter-spacing:.4px;color:var(--g-mid);
+  border:1px solid var(--border);border-radius:20px;padding:1px 6px;white-space:nowrap}
+.s2-badge.s2-live{color:#1E8E4E;border-color:rgba(30,142,78,.45);background:rgba(30,142,78,.09)}
+.s2-scroll{overflow-x:auto}
+.s2-tbl{border-collapse:collapse;font-size:10.5px;width:100%}
+.s2-tbl th,.s2-tbl td{padding:3px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border)}
+.s2-tbl thead th{font-weight:700;color:var(--g-mid);border-bottom:1px solid var(--border)}
+.s2-tbl tbody th{font-weight:700;color:var(--g-mid);text-align:left}
+.s2-tbl th.s2-corner{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px;max-width:96px;white-space:normal}
+.s2-tbl th.s2-hit{color:var(--orange)}
+.s2-num{font-variant-numeric:tabular-nums}
+.s2-cell-near{background:rgba(230,125,34,.07)}
+.s2-cell-hit{background:rgba(230,125,34,.20);font-weight:700;box-shadow:inset 0 0 0 1px rgba(230,125,34,.55)}
+.s2-foot{font-size:9.5px;color:var(--g-mid);margin-top:5px}
+.s2-note{font-size:10.5px;color:var(--g-mid);margin-top:14px;line-height:1.45}
+@media(max-width:760px){
+  .s2-grid{grid-template-columns:1fr}
+  .s2-kpi{min-width:0;flex:1 1 132px}
+  .s2-tbl{font-size:10px}
+}
+
 .g6d{font-size:9.5px;color:var(--g-mid);font-weight:600;margin-left:3px}
 .g6-scnhead{background:var(--g-light)}
 .foot{font-size:10.5px;color:var(--g-mid);margin-top:8px}
@@ -486,6 +523,181 @@ function sgRenderPeers(peers,priceByKey){
   document.getElementById('peers-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No peers — upload the model in /admin.</td></tr>')+'</tbody>';
 }
 
+
+// ══════════ TABELAS PUBLICADAS DO ANALISTA (definition.kind==='sens2d') ══════════
+// O cliente NAO mexe: sao as grades que o analista publica no modelo. O que muda e o
+// PRECO DE TELA -> EV/EBITDA, FCF yield, dividend yield, upside e P/NAV sao reescritos.
+// EBITDA, FCF e margens aparecem como publicados (nao dependem do preco da acao).
+let _S2_TABS=[];
+function _s2Def(t){ return (t&&t.definition)||{}; }
+function _s2Label(t){ const tk=_s2Def(t).ticker||''; const c=compByTicker(tk);
+  return (c&&c.company_name)?c.company_name:(tk||t.title); }
+
+// eixo -> serie ao vivo. Eixos de CRESCIMENTO/VOLUME/celulose nao tem equivalente na tela:
+// devolvem null e a tabela sai sem marcador de spot (em vez de fingir uma leitura).
+function _s2DriverKey(label){
+  const L=String(label==null?'':label).toLowerCase();
+  if(L.indexOf('lt ')===0||L.indexOf('long term')>=0||L.indexOf('long-term')>=0) return null;  // premissa de longo prazo
+  if(L.indexOf('growth')>=0||L.indexOf('volume')>=0||L.indexOf('margin')>=0) return null;
+  if(L.indexOf('iron ore')>=0) return 'iron_ore_62';   // codigo IRON_ORE = Platts 61%, que e o eixo do analista
+  if(L.indexOf('copper')>=0) return 'copper';
+  if(L.indexOf('gold')>=0) return 'gold';
+  if(L.indexOf('fx')>=0||L.indexOf('usd/brl')>=0) return 'fx_usdbrl';
+  return null;
+}
+// valor do eixo AO VIVO, ja na unidade do eixo (o catalogo tem cobre em USD/lb; ha modelo
+// com o eixo em USD/ton).
+function _s2LiveAxis(label,mv){
+  const k=_s2DriverKey(label); if(!k||!mv) return null;
+  let v=n(mv[k]); if(v==null) return null;
+  const L=String(label==null?'':label).toLowerCase();
+  if(k==='copper'&&(L.indexOf('/ton')>=0||L.indexOf('usd/t)')>=0)) v=v*2204.62262;
+  return v;
+}
+// indice do nivel mais proximo, so se o valor cair DENTRO da faixa da grade
+function _s2NearIdx(levels,v){
+  if(v==null||!levels||!levels.length) return -1;
+  const mn=Math.min.apply(null,levels), mx=Math.max.apply(null,levels);
+  if(v<mn||v>mx) return -1;
+  let best=-1,bd=Infinity;
+  levels.forEach(function(x,i){ const d=Math.abs(x-v); if(d<bd){bd=d;best=i;} });
+  return best;
+}
+
+// contexto ao vivo de UMA empresa
+function _s2Ctx(t){
+  const d=_s2Def(t); const comp=compByTicker(d.ticker);
+  const mcModel=n(d.mktcap_model);
+  let mcLive=comp?n(comp.marketCapBrlMn):null;
+  let price=comp?n(comp.livePrice):null;
+  // guarda de moeda: a grade e o comp tem de estar na MESMA moeda-base. Se destoar por mais
+  // de 5x, algo esta trocado -> cai para o publicado em vez de mostrar numero errado.
+  let mismatch=false;
+  if(mcModel&&mcLive&&(mcLive/mcModel>5||mcModel/mcLive>5)){ mismatch=true; mcLive=null; }
+  return {def:d, comp:comp, mcModel:mcModel, mcLive:mcLive, price:price, mismatch:mismatch,
+          mv:(_SENS_CTX&&_SENS_CTX.marketValues)||{}};
+}
+
+// uma tabela 2-D (ou 1-D) em HTML, so leitura
+function _s2TableHtml(tab,byId,ctx){
+  const met=tab.metric; const live=SG.SENS2D_METRICS[met]&&SG.SENS2D_METRICS[met].live;
+  const pair=tab.pairId?byId[tab.pairId]:null;
+  const colPct=SG.sens2dAxisIsPct(tab.colLabel,tab.colLevels);
+  const rowPct=tab.rowLevels?SG.sens2dAxisIsPct(tab.rowLabel,tab.rowLevels):false;
+  const colDec=SG.sens2dAxisDecimals(tab.colLevels,colPct);
+  const rowDec=tab.rowLevels?SG.sens2dAxisDecimals(tab.rowLevels,rowPct):0;
+  const colLive=_s2LiveAxis(tab.colLabel,ctx.mv), rowLive=tab.rowLevels?_s2LiveAxis(tab.rowLabel,ctx.mv):null;
+  const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
+  const canLive=live&&ctx.mcLive!=null&&ctx.mcModel!=null&&(met!=='ev_ebitda'||!!pair);
+  const badge=live
+    ? (canLive?'<span class="s2-badge s2-live">live</span>':'<span class="s2-badge">as published</span>')
+    : '<span class="s2-badge">as published</span>';
+  let h='<div class="s2-card"><div class="s2-head"><span class="s2-title">'+esc(tab.title)+'</span>'+badge+'</div>';
+  h+='<div class="s2-scroll"><table class="s2-tbl"><thead><tr>';
+  h+='<th class="s2-corner">'+esc(tab.rowLabel?_s2Short(tab.rowLabel):'')+'</th>';
+  tab.colLevels.forEach(function(v,j){
+    h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
+  h+='</tr></thead><tbody>';
+  const rows=tab.rowLevels||[null];
+  rows.forEach(function(rv,i){
+    h+='<tr>'+'<th'+(i===ri?' class="s2-hit"':'')+'>'+
+       (rv==null?'':esc(SG.sens2dAxisFormat(rv,rowPct,NUM_LOC,rowDec)))+'</th>';
+    tab.colLevels.forEach(function(cv,j){
+      const pub=tab.values[i]?tab.values[i][j]:null;
+      const v=canLive?SG.sens2dLiveValue({metric:met,published:pub,
+              ebitda:pair&&pair.values[i]?pair.values[i][j]:null,
+              mktcapModel:ctx.mcModel,mktcapLive:ctx.mcLive}):pub;
+      const hit=(i===ri&&j===cj)?' s2-cell-hit':((i===ri||j===cj)?' s2-cell-near':'');
+      h+='<td class="s2-num'+hit+'">'+esc(SG.sens2dFormat(v,met,NUM_LOC))+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  const foot=[];
+  if(tab.colLabel) foot.push(esc(_s2Short(tab.colLabel))+' →');
+  if(tab.rowLabel) foot.push('↓ '+esc(_s2Short(tab.rowLabel)));
+  if(cj>=0||ri>=0) foot.push('<b>spot marcado</b>');
+  h+='<div class="s2-foot">'+foot.join(' · ')+'</div></div>';
+  return h;
+}
+// encurta o rotulo do driver (os do modelo sao longos demais p/ cabecalho)
+function _s2Short(s){ const t=String(s==null?'':s); const i=t.indexOf('(');
+  const head=(i>0?t.slice(0,i):t).trim(); return head.length>34?head.slice(0,33)+'…':head; }
+
+// faixa de cada driver da empresa + onde o spot esta hoje
+function _s2DriverStrip(d,ctx){
+  const seen={}; const out=[];
+  (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
+    [[t.colLabel,t.colLevels],[t.rowLabel,t.rowLevels]].forEach(function(p){
+      const lab=p[0], lv=p[1]; if(!lab||!lv||!lv.length||seen[lab]) return; seen[lab]=1;
+      const pct=SG.sens2dAxisIsPct(lab,lv);
+      const mn=Math.min.apply(null,lv), mx=Math.max.apply(null,lv);
+      const live=_s2LiveAxis(lab,ctx.mv);
+      out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:SG.sens2dAxisDecimals(lv,pct),
+                inside:live!=null&&live>=mn&&live<=mx});
+    }); }); });
+  return out;
+}
+
+function _s2RenderPane(t,pane){
+  const d=_s2Def(t); const ctx=_s2Ctx(t);
+  const byId={}; (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(x){ byId[x.id]=x; }); });
+  const ccy=d.currency||'';
+  let h='<div class="s2-top">';
+  h+='<div class="s2-meta">'+esc(d.source_file||'model')+(d.model_date?' · '+esc(d.model_date):'')+
+     (ccy?' · '+esc(ccy)+' mn':'')+'</div>';
+  // preco do modelo x preco de tela
+  const pm=n(d.model_price), pl=ctx.price;
+  h+='<div class="s2-kpis">';
+  h+='<div class="s2-kpi"><div class="s2-k">Share price</div><div class="s2-v">'+
+     (pm!=null?pm.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2}):'–')+
+     ' <span class="s2-arrow">→</span> '+
+     (pl!=null?'<b>'+pl.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>':'<span class="muted">no quote</span>')+
+     '</div><div class="s2-sub">'+(pm&&pl?((pl/pm-1)*100).toLocaleString(NUM_LOC,{minimumFractionDigits:1,maximumFractionDigits:1})+'% vs model':'model → live')+'</div></div>';
+  _s2DriverStrip(d,ctx).forEach(function(x){
+    h+='<div class="s2-kpi"><div class="s2-k">'+esc(_s2Short(x.label))+'</div><div class="s2-v">'+
+       esc(SG.sens2dAxisFormat(x.min,x.pct,NUM_LOC,x.dec))+'–'+esc(SG.sens2dAxisFormat(x.max,x.pct,NUM_LOC,x.dec))+
+       (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(SG.sens2dAxisFormat(x.live,x.pct,NUM_LOC,x.dec))+'</b>':'')+
+       '</div><div class="s2-sub">'+(x.live==null?'grid range · no screen price':(x.inside?'grid range · spot':'spot fora da grade'))+'</div></div>';
+  });
+  h+='</div>';
+  if(ctx.mismatch) h+='<div class="s2-warn">Moeda do modelo e do preço ao vivo não batem — mostrando os números como publicados.</div>';
+  else if(ctx.mcLive==null) h+='<div class="s2-warn">Sem cotação ao vivo agora — múltiplos e yields aparecem como publicados.</div>';
+  h+='</div>';
+  (d.sheets||[]).forEach(function(sh){
+    if((d.sheets||[]).length>1) h+='<div class="s2-sheet">'+esc(sh.name)+'</div>';
+    h+='<div class="s2-grid">';
+    (sh.tables||[]).forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
+    h+='</div>';
+  });
+  h+='<div class="s2-note">EBITDA, FCF e margens saem como o analista publicou. EV/EBITDA, yields, upside e P/NAV são recalculados no preço de tela: a dívida líquida de cada célula é a que está embutida no EV publicado.</div>';
+  pane.innerHTML=h;
+}
+
+function sgRenderSens2dTabs(list,others,host){
+  _S2_TABS=list.map(function(t){ return {key:'s2-'+t.id,t:t,label:_s2Label(t)}; });
+  if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Outras'});
+  const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs';
+  _S2_TABS.forEach(function(tab,i){ const b=document.createElement('button');
+    b.className='sg-tab'+(i===0?' active':''); b.id='s2tab-'+i; b.textContent=tab.label;
+    b.onclick=function(){_s2ShowTab(i);}; bar.appendChild(b); });
+  host.appendChild(bar);
+  const pane=document.createElement('div'); pane.id='s2-pane'; host.appendChild(pane);
+  _s2ShowTab(0);
+}
+function _s2ShowTab(i){
+  _S2_TABS.forEach(function(tab,j){ const b=document.getElementById('s2tab-'+j); if(b)b.classList.toggle('active',j===i); });
+  const pane=document.getElementById('s2-pane'); if(!pane)return;
+  const tab=_S2_TABS[i]; if(!tab)return;
+  if(tab.others){ pane.innerHTML=''; _sgRenderPanels(tab.others,pane); return; }
+  _s2RenderPane(tab.t,pane);
+}
+function _s2Cur(){ for(let j=0;j<_S2_TABS.length;j++){ const b=document.getElementById('s2tab-'+j);
+  if(b&&b.classList.contains('active')) return j; } return 0; }
+// o auto-refresh de preco chama isto: redesenha so a aba aberta
+function _s2Tick(){ const i=_s2Cur(); const tab=_S2_TABS[i];
+  if(tab&&tab.t&&document.getElementById('s2-pane')) _s2RenderPane(tab.t,document.getElementById('s2-pane')); }
+
 // ── render: sensitivity (estático + grid interpolado) ──────────────────────
 const _gridMeshCache={};   // tableId -> {ticker -> {metric -> GridMesh}}
 const _gridState={};       // tableId -> {axisVals:[], loading, error}
@@ -498,9 +710,22 @@ function sgRenderSensitivity(tables,drivers,marketValues,computedComps,config){
   _SENS_CTX={drivers:drivers||[],marketValues:marketValues||{},comps:computedComps||[],config:config||{}};
   const host=document.getElementById('sens-host'); host.innerHTML='';
   if(!tables||!tables.length){host.innerHTML='<div class="card"><span class="muted">No sensitivity tables configured.</span></div>';return}
+  const s2=tables.filter(t=>t.definition&&t.definition.kind==='sens2d');
   const g6=tables.filter(t=>t.definition&&t.definition.kind==='grid6');
-  const others=tables.filter(t=>!(t.definition&&t.definition.kind==='grid6'));
-  if(g6.length){ sgRenderGrid6Tabs(g6,others,host); }   // grade 6-D por empresa = abinhas no topo
+  const others=tables.filter(t=>{const k=t.definition&&t.definition.kind;return k!=='sens2d'&&k!=='grid6';});
+  // TABELAS PUBLICADAS mandam na aba: é o que o cliente deve ver, e ele não mexe em nada.
+  // A grade 6-D (controles deslizantes) vira ferramenta de ADMIN — some para o cliente.
+  if(s2.length){
+    sgRenderSens2dTabs(s2,others,host);
+    // a grade interativa (grid6) nao passa pelo renderizador antigo — ele nao sabe desenha-la.
+    // Para o ADMIN ela vai num bloco proprio embaixo; para o cliente, simplesmente nao existe.
+    if(g6.length&&typeof _SG!=='undefined'&&_SG&&_SG.isAdmin){
+      const wrap=document.createElement('div'); wrap.style.marginTop='26px';
+      wrap.innerHTML='<div class="s2-sheet">Admin · grade interativa (o cliente não vê)</div>';
+      host.appendChild(wrap); sgRenderGrid6Tabs(g6,[],wrap);
+    }
+  }
+  else if(g6.length){ sgRenderGrid6Tabs(g6,others,host); }
   else { _sgRenderPanels(others,host); }                 // formato antigo (estático / grid 1-3D)
 }
 // formato antigo: agrupa por painel (definition.panel); cada painel é um card
@@ -869,6 +1094,8 @@ async function sgTickLive(){
     // grade 6-D: recalcula os múltiplos vivos (market cap) da abinha aberta — sem rebuild/refetch
     if(typeof _G6_TABS!=='undefined'&&_G6_TABS.length){ const tab=_G6_TABS[_curG6()];
       if(tab&&tab.t&&_grid6State[tab.t.id]&&_grid6State[tab.t.id].loaded) _g6RenderBody(tab.t); }
+    // tabelas publicadas: reescreve múltiplos e yields no preço novo
+    if(typeof _S2_TABS!=='undefined'&&_S2_TABS.length) _s2Tick();
     updatePxFresh(live.pricesUpdatedAt,live.fxRates);
   }catch(e){console.warn('tick',e)}
 }
