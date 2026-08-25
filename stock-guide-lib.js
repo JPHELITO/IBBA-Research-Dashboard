@@ -432,11 +432,14 @@
   //   mktcapModel = FCF ÷ FCF yield      (constante nas 81 células — conferido nas 7 empresas)
   //   dívida      = EV/EBITDA × EBITDA − mktcapModel
   // Daí EV/EBITDA ao vivo = (mktcapLive + dívida) ÷ EBITDA.
+  // Unidades e casas COPIADAS do formato de numero que o analista usa no Excel, p/ a tela
+  // sair igual ao arquivo: #,##0 no EBITDA/FCF, #,##0.0"x" no EV/EBITDA, 0.0% nos yields,
+  // 0% no upside e #,##0.00"x" no P/NAV. O "x" e a letra minuscula mesmo, como no Excel.
   const SENS2D_METRICS = {
     ebitda:     { live: false, unit: '',  dec: 0 },
     fcf:        { live: false, unit: '',  dec: 0 },
     margin:     { live: false, unit: '%', dec: 1 },
-    ev_ebitda:  { live: true,  unit: 'x', dec: 2 },
+    ev_ebitda:  { live: true,  unit: 'x', dec: 1 },
     fcf_yield:  { live: true,  unit: '%', dec: 1 },
     div_yield:  { live: true,  unit: '%', dec: 1 },
     upside:     { live: true,  unit: '%', dec: 0 },
@@ -506,7 +509,7 @@
     const loc = numLoc || 'en-US';
     const opt = { minimumFractionDigits: m.dec, maximumFractionDigits: m.dec };
     if (m.unit === '%') return (v * 100).toLocaleString(loc, opt) + '%';
-    if (m.unit === 'x') return v.toLocaleString(loc, opt) + '×';
+    if (m.unit === 'x') return v.toLocaleString(loc, opt) + 'x';
     return v.toLocaleString(loc, opt);
   }
 
