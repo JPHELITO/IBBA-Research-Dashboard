@@ -670,6 +670,44 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .kv-change.flat{color:var(--gray-mid);}
 .kv-date{font-size:8.5px;color:var(--gray-mid);font-weight:500;font-variant-numeric:tabular-nums;
   flex:none;min-width:40px;text-align:right;}
+/* ── Commodities = CARTÕES com risquinho (2026-08-25) ───────────────────────
+   Antes era uma linha de texto por commodity. Agora cada assessment é um cartão
+   com nome, número grande, variação e o MESMO desenho de risquinho do heatmap
+   (`_commSpark` espelha `_sparkline`). A curva vem da coluna `spark` — forma
+   normalizada, sem escala e sem datas: o cliente vê o desenho, não a série.
+   A grade é `grid-auto-flow:column`, então serve tanto os grupos de 4 quanto os de 5. */
+/* `align-content:stretch` + `grid-auto-rows:1fr` sobrescrevem o `align-content:start`
+   da regra de cima: sem isso a fileira ficava com a altura do conteúdo (99px) e sobravam
+   30px de painel vazio embaixo — o risquinho é quem cresce com a folga. */
+.area-comm .kv-list{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+  grid-auto-rows:minmax(0,1fr);align-content:stretch;gap:8px;padding:8px 12px 6px;}
+/* no claro o cartão usa a cor do canvas: branco sobre branco sumiria dentro do painel */
+.cm-card{display:flex;flex-direction:column;min-width:0;background:var(--gray-light);
+  border:1px solid var(--border);border-radius:8px;padding:7px 8px 2px;
+  transition:border-color .15s,transform .15s;}
+.cm-card:hover{border-color:var(--gray-mid);transform:translateY(-1px);}
+/* altura fixa de 2 linhas: sem isso os nomes curtos e longos desalinham os números */
+.cm-name{font-size:9.5px;font-weight:600;color:var(--gray-mid);letter-spacing:.02em;
+  line-height:1.25;height:2.5em;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cm-top{display:flex;align-items:flex-start;gap:4px;min-width:0;}
+.cm-top .cm-name{flex:1;min-width:0;}
+.cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
+.cm-unit{font-size:7.5px;font-weight:500;color:var(--gray-mid);margin-left:3px;letter-spacing:0;}
+.cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-top:1px;}
+.cm-chg{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cm-date{font-size:8px;font-weight:500;color:var(--gray-mid);font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
+/* o verde da casa (#16a34a) dá só 3,0:1 em texto de 10,5px sobre o cartão claro;
+   o NÚMERO usa um verde mais fechado (5,3:1) e o risquinho fica no verde da casa
+   (desenho, não texto). No escuro o bloco DARK v2 devolve o verde claro. */
+.cm-card.up .cm-chg{color:#15803d;}
+.cm-card.up .cm-spark{color:var(--green);}
+.cm-card.down .cm-chg,.cm-card.down .cm-spark{color:var(--red);}
+.cm-card.flat .cm-chg,.cm-card.flat .cm-spark{color:var(--gray-mid);}
+
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
 .comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
 .comm-dots{display:flex;gap:5px;}
@@ -709,7 +747,10 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   .news-feed,.heatmap-grid,.team-list,.pulse-body{overflow:visible;}
   .heatmap-grid{grid-auto-rows:auto;}
   .team-row{flex:none;padding:8px 16px;}
-  .area-comm .kv-list{overflow:visible;column-count:1;}
+  .area-comm .kv-list{overflow:visible;column-count:1;
+    grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(96px,auto);padding:10px;}
+  .cm-name{font-size:10.5px;}
+  .cm-val{font-size:20px;}
   .news-feed{grid-template-columns:1fr 1fr;}
   .hero{display:block;}
   .sec{overflow:visible;}     /* nada de cartão cortando o próprio conteúdo no celular */
@@ -951,12 +992,17 @@ html.dark .news-item-age{color:#7E8896;}
 html.dark .news-item-meta .sep{color:#39414E;}
 html.dark .news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.10),transparent 60%);}
 
-/* ── COMMODITIES (carrossel) ─────────────────────────────────────────────── */
-html.dark .kv-name{color:#C4CAD4;}
-html.dark .kv-value{color:#F2F4F8;}
+/* ── COMMODITIES (cartões do carrossel) ──────────────────────────────────── */
+/* mesma chapa dos tiles do heatmap, para os dois painéis da coluna direita
+   ficarem do mesmo material */
+html.dark .cm-card{background:#141821;border-color:#1F2532;}
+html.dark .cm-card:hover{border-color:#3A4351;}
+html.dark .cm-name{color:#8A93A2;}
+html.dark .cm-val{color:#F2F4F8;}
+html.dark .cm-card.up .cm-chg{color:#4ADE80;}
+html.dark .cm-card.down .cm-chg{color:#F87171;}
+html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
 html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
-html.dark .kv-change.up{color:#4ADE80;}
-html.dark .kv-change.down{color:#F87171;}
 html.dark .comm-dot{background:#262D39;}
 html.dark .comm-prog-track{background:#1A1F28;}
 
@@ -2566,7 +2612,21 @@ function _fmtAssessed(iso, freq){
   return d.toLocaleDateString(NUM_LOC, {day:'2-digit', month:'short'});
 }
 
-function _kvRow(c){
+// Risquinho do cartão de commodity. Recebe a FORMA (`spark`: inteiros 0..1000,
+// sem escala e sem datas — o histórico em números não sai do banco) e desenha
+// exatamente como `_sparkline` do heatmap: área a 12% + linha em currentColor.
+function _commSpark(sp){
+  if(!Array.isArray(sp) || sp.length < 3) return '<div class="cm-spark"></div>';
+  const W=100, H=28, pad=3, n=sp.length;
+  const pts = sp.map((v,i)=> `${((i/(n-1))*W).toFixed(1)},${(pad+(1-v/1000)*(H-2*pad)).toFixed(1)}`).join(' ');
+  return `<svg class="cm-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polygon points="0,${H} ${pts} ${W},${H}" fill="currentColor" opacity="0.12"></polygon>
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"></polyline>
+  </svg>`;
+}
+
+function _kvCard(c){
   const value = c.price, unit = c.unit || '', pct = c.change_pct;
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : value.toFixed(2))
@@ -2579,12 +2639,13 @@ function _kvRow(c){
   const freq = _freqOf(c);
   const fcls = freq === 'Weekly' ? 'wk' : freq === 'Live' ? 'live' : 'daily';
   const dateStr = _fmtAssessed(c.assessed_at, freq);
-  return `<div class="kv-row">
-    <span class="kv-name" title="${c.name||''}">${c.name||''}</span>
-    <span class="kv-badge ${fcls}">${freq}</span>
-    <span class="kv-value">${valStr}</span>${unit?`<span class="kv-unit">${unit}</span>`:''}
-    <span class="kv-change ${pctCls}">${pctStr}</span>
-    <span class="kv-date">${dateStr}</span>
+  // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
+  const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
+  return `<div class="cm-card ${pctCls}" title="${(c.name||'').replace(/"/g,'&quot;')}">
+    <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
+    <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
+    <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
+    ${_commSpark(c.spark)}
   </div>`;
 }
 
@@ -2605,11 +2666,12 @@ async function loadCommodities(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   try {
-    // colunas PELO NOME, não `select=*`: o `*` trazia junto o `daily` (histórico de cada
-    // commodity, 9,3 KB por linha) e o `spark` — nenhum dos dois é usado nesta página, que
-    // mostra só preço/unidade/variação/data. 30,1 KB → 0,9 KB, de 5 em 5 min.
+    // colunas PELO NOME, não `select=*`: o `*` traz junto o `daily` (histórico em NÚMEROS
+    // de cada commodity, 9,3 KB por linha), que esta página não usa — e que o cliente não
+    // pode ver. Vem o `spark`, que é só a FORMA da curva (~90 inteiros, ~0,4 KB).
+    // Total ~9 KB de 5 em 5 min, contra os 30,1 KB do `select=*`.
     // (Na aba Market o `daily` da commodity é usado de verdade e a busca é 1x por visita.)
-    const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at';
+    const cols = 'code,name,unit,price,change_pct,updated_at,assessed_at,spark';
     const r = await fetch(`${SUPA_URL}/rest/v1/commodities?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('commodities');
@@ -2635,7 +2697,7 @@ function _renderCommPage(){
   const list=document.getElementById('comm-list'); if(!list) return;
   const g=COMM_GROUPS[_commPage] || COMM_GROUPS[0];
   const items=g.codes.map(code=>_commByCode[code]).filter(Boolean);
-  list.innerHTML=items.length ? items.map(c=>_kvRow(c)).join('') : '<div class="kv-loading">—</div>';
+  list.innerHTML=items.length ? items.map(c=>_kvCard(c)).join('') : '<div class="kv-loading">—</div>';
   const titleEl=document.getElementById('comm-title'); if(titleEl) titleEl.textContent=g.title;
   _updateMeta('comm-meta', _commUpdated);
   const n=_commPageCount();
