@@ -59,8 +59,8 @@ function showDenied(msg){
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}   /* o atributo hidden PRECISA vencer regras de display (ex.: #gate/#denied usam display:flex) — sem isto, as telas vazavam empilhadas */
-:root{--orange:#FF5000;--black:#111;--gray-dark:#2C2C2C;--gray-mid:#767676;--gray-light:#F4F3F0;
-  --border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;--font:'Inter','Segoe UI',Arial,sans-serif;--radius:10px}
+:root{--orange:#FF5000;--black:#111;--gray-dark:#2C2C2C;--gray-mid:#737373;--gray-light:#EBE8E2;
+  --border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;--font:'Inter','Segoe UI',Arial,sans-serif;--radius:10px}
 html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);-webkit-font-smoothing:antialiased}
 body{min-height:100vh}
 header{background:var(--black);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 22px}
@@ -1814,8 +1814,10 @@ function renderSensList(){
   const host=_v('sg-sens-host');
   let h='<div class="row" style="margin-bottom:10px">'
     +'<label class="btn" style="cursor:pointer">⬆ Importar cenários (por ano)<input type="file" accept=".xlsx" style="display:none" onchange="sgImportModel(this.files[0]);this.value=\'\'"></label>'
-    +'<label class="btn" style="cursor:pointer;margin-left:8px">⬆ Importar grade 6-D (abas = tickers)<input type="file" accept=".xlsx" style="display:none" onchange="sgGrid6Pick(this.files[0]);this.value=\'\'"></label>'
+    +'<label class="btn" style="cursor:pointer;margin-left:8px">⬆ Importar grade de cenários (abas = tickers)<input type="file" accept=".xlsx" style="display:none" onchange="sgGrid6Pick(this.files[0]);this.value=\'\'"></label>'
+    +'<label class="btn" style="cursor:pointer;margin-left:8px">⬆ Importar tabelas do modelo (_Sensitivity.xlsx)<input type="file" accept=".xlsx" style="display:none" onchange="sgSens2dPick(this.files[0]);this.value=\'\'"></label>'
     +'</div>'
+    +'<div id="sg-s2-form"></div>'
     +'<div id="sg-g6-form"></div>'
     +'<div id="sg-import-status" class="foot" style="margin-bottom:8px"></div>';
   if(!_sgSens.length) h+='<span class="muted">Nenhuma sensibilidade importada ainda.</span>';
@@ -1954,14 +1956,240 @@ async function sgImportModel(file){ if(!file)return; const setS=h=>{ const el=_v
     loadSGSens();
   }catch(e){ setS('<b style="color:#C0392B">Falha:</b> '+esc(e.message||e)); } }
 
-// ════════════ GRADE 6-D por empresa (aba por TICKER: A:I) ════════════
+
+// ════════ TABELAS PUBLICADAS DO ANALISTA (_Sensitivity.xlsx) — leitura direta ════════
+// Le o arquivo do analista COMO ELE JA PUBLICA, sem preparo nenhum. Cada aba "Sensitivity*"
+// tem blocos de Tabela de Dados 2-D do Excel:
+//     titulo(r,c)
+//     driver-da-LINHA(r+1,c)       driver-da-COLUNA(r+1,c+1)
+//     canto(r+2,c+1)               niveis-da-coluna(r+2,c+2..)
+//     niveis-da-linha(r+3..,c+1)   dados(r+3..,c+2..)
+// e, em alguns modelos, blocos 1-D (titulo / driver / niveis / valores).
+// O canto NAO e confiavel em todos os modelos (no Gerdau aponta para celula errada), entao
+// fica guardado como informacao mas nunca e usado como caso-base.
+function _s2Txt(v){ if(typeof v!=='string')return null; const s=v.trim(); return s?s:null; }
+function _s2At(aoa,r,c){ const row=aoa[r]; return row?row[c]:undefined; }
+function _s2IsNum(v){ return typeof v==='number' && isFinite(v); }
+function _s2RunRight(aoa,r,c0){ const o=[]; let c=c0; while(_s2IsNum(_s2At(aoa,r,c))){ o.push(_s2At(aoa,r,c)); c++; } return o; }
+function _s2RunDown(aoa,r0,c){ const o=[]; let r=r0; while(_s2IsNum(_s2At(aoa,r,c))){ o.push(_s2At(aoa,r,c)); r++; } return o; }
+function _s2Year(s){ const t=String(s==null?'':s); const D='0123456789';
+  for(let i=0;i+4<=t.length;i++){ const q=t.substr(i,4);
+    if(q.charAt(0)==='2'&&q.charAt(1)==='0'&&D.indexOf(q.charAt(2))>=0&&D.indexOf(q.charAt(3))>=0) return q; }
+  return null; }
+function _s2Round(v,p){ return v==null?null:Math.round(v*p)/p; }
+
+// blocos de tabela de UMA aba
+function sgFindSens2dTables(aoa){
+  const out=[];
+  for(let r=0;r<aoa.length;r++){
+    const row=aoa[r]||[];
+    for(let c=0;c<row.length;c++){
+      const t=_s2Txt(row[c]); if(!t) continue;
+      const dRow=_s2Txt(_s2At(aoa,r+1,c)), dCol=_s2Txt(_s2At(aoa,r+1,c+1));
+      if(dRow&&dCol){                                  // candidato 2-D
+        if(!_s2IsNum(_s2At(aoa,r+2,c+1))) continue;
+        const colLevels=_s2RunRight(aoa,r+2,c+2), rowLevels=_s2RunDown(aoa,r+3,c+1);
+        if(colLevels.length<3||rowLevels.length<3) continue;
+        const M=[];
+        for(let i=0;i<rowLevels.length;i++){ const ln=[];
+          for(let j=0;j<colLevels.length;j++){ const v=_s2At(aoa,r+3+i,c+2+j); ln.push(_s2IsNum(v)?v:null); }
+          M.push(ln); }
+        out.push({kind:'2d',title:t,at:{r:r,c:c},corner:_s2At(aoa,r+2,c+1),
+          rowLabel:dRow,colLabel:dCol,rowLevels:rowLevels,colLevels:colLevels,values:M});
+        continue;
+      }
+      const d1=_s2Txt(_s2At(aoa,r+1,c+2));
+      if(d1){                                          // candidato 1-D
+        const lv=_s2RunRight(aoa,r+2,c+2), vals=_s2RunRight(aoa,r+3,c+2);
+        if(lv.length>=3&&vals.length===lv.length)
+          out.push({kind:'1d',title:t,at:{r:r,c:c},colLabel:d1,colLevels:lv,values:[vals]});
+      }
+    }
+  }
+  return out;
+}
+
+// premissas do modelo: rotulo de TEXTO com UM numero a direita (e nada na coluna seguinte)
+function sgFindSens2dAssumptions(aoa){
+  const out=[];
+  for(let r=0;r<aoa.length;r++){ const row=aoa[r]||[];
+    for(let c=0;c<row.length;c++){ const t=_s2Txt(row[c]); if(!t)continue;
+      if(_s2IsNum(_s2At(aoa,r,c+1)) && !_s2IsNum(_s2At(aoa,r,c+2))) out.push({label:t,value:_s2At(aoa,r,c+1)}); } }
+  return out;
+}
+
+// identidade dos EIXOS: e o que pareia EV/EBITDA com o EBITDA da mesma grade (e FCF com FCF
+// yield). Pareia por EIXO, nao por posicao: o Gerdau tem dois blocos com os mesmos
+// indicadores e eixos diferentes, e por posicao eles se cruzariam.
+function _s2AxesKey(t){
+  return [t.rowLabel||'', t.colLabel||'',
+          (t.rowLevels||[]).map(function(x){return _s2Round(x,1e6);}).join(','),
+          (t.colLevels||[]).map(function(x){return _s2Round(x,1e6);}).join(',')].join('|');
+}
+
+// mediana (nao media: imune a uma celula estragada)
+function _s2Median(a){ const s=a.slice().sort(function(x,y){return x-y;}); const n=s.length;
+  if(!n) return null; return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2; }
+
+// PARSE do arquivo inteiro. sheets=[{name,aoa}] -> {def, info, warnings}
+function sgParseSens2d(sheets, opts){
+  opts=opts||{};
+  const warnings=[]; const outSheets=[]; let currency=null; let modelPrice=null; let allAssum=[]; let tid=0;
+  (sheets||[]).forEach(function(sh){
+    const nm=String(sh.name||'');
+    if(nm.trim().toLowerCase().indexOf('sensitivity')!==0) return;
+    const tabs=sgFindSens2dTables(sh.aoa||[]);
+    if(!tabs.length){ warnings.push('aba '+nm+': nenhum bloco de tabela reconhecido'); return; }
+    const assum=sgFindSens2dAssumptions(sh.aoa||[]);
+    allAssum=allAssum.concat(assum);
+    assum.forEach(function(a){ if(String(a.label).toLowerCase().indexOf('stock price')>=0 && modelPrice==null) modelPrice=a.value; });
+    tabs.forEach(function(t){
+      t.id='t'+(++tid);
+      t.metric=SG.sens2dMetricFromTitle(t.title);
+      t.year=_s2Year(t.title);
+      if(!currency) currency=SG.sens2dCurrencyFromTitle(t.title);
+      if(!t.metric) warnings.push('aba '+nm+': nao reconheci o indicador de '+t.title+' (fica de fora)');
+    });
+    outSheets.push({name:nm, tables:tabs.filter(function(t){return !!t.metric;}), assumptions:assum});
+  });
+  if(!outSheets.length) return {error:'Nenhuma aba Sensitivity com tabelas reconheciveis.'};
+
+  // valor de mercado do modelo = FCF dividido pelo FCF yield, celula a celula
+  const caps=[];
+  outSheets.forEach(function(sh){
+    const byAxes={};
+    sh.tables.forEach(function(t){ if(t.kind!=='2d')return; const k=_s2AxesKey(t); (byAxes[k]=byAxes[k]||[]).push(t); });
+    Object.keys(byAxes).forEach(function(k){
+      const grp=byAxes[k];
+      const pick=function(m){ return grp.filter(function(t){return t.metric===m;})[0]; };
+      const fcf=pick('fcf'), fy=pick('fcf_yield'), eb=pick('ebitda'), ev=pick('ev_ebitda');
+      if(ev&&eb) ev.pairId=eb.id;                     // EV/EBITDA precisa do EBITDA da mesma grade
+      if(fcf&&fy){
+        for(let i=0;i<fcf.values.length;i++)
+          for(let j=0;j<fcf.values[i].length;j++){
+            const a=fcf.values[i][j], b=fy.values[i][j];
+            if(a!=null&&b!=null&&b!==0) caps.push(a/b);
+          }
+      }
+    });
+  });
+  const mktcap=_s2Median(caps);
+  let spread=null;
+  if(caps.length&&mktcap){ const mn=Math.min.apply(null,caps), mx=Math.max.apply(null,caps); spread=(mx-mn)/Math.abs(mktcap); }
+  if(mktcap==null) warnings.push('nao deduzi o valor de mercado do modelo (faltou o par FCF + FCF yield); os multiplos ficam como publicados');
+  else if(spread>0.01) warnings.push('o valor de mercado deduzido varia '+(spread*100).toFixed(1)+' por cento entre celulas; o esperado e zero. Confira o arquivo');
+  const shares=(mktcap!=null&&modelPrice)?mktcap/modelPrice:null;
+  outSheets.forEach(function(sh){ sh.tables.forEach(function(t){
+    if(t.metric==='ev_ebitda'&&!t.pairId) warnings.push(t.title+': nao achei o EBITDA da mesma grade; fica como publicado'); }); });
+
+  const def={kind:'sens2d', ticker:opts.ticker||'', import_ticker:opts.ticker||'',
+    source_file:opts.sourceFile||'', model_date:opts.modelDate||'', currency:currency||null,
+    model_price:modelPrice, mktcap_model:_s2Round(mktcap,1e6), shares_mn:_s2Round(shares,1e6),
+    panel:(typeof _SGI_PANEL!=='undefined'&&_SGI_PANEL[opts.ticker])||'Sensitivity',
+    sheets:outSheets.map(function(sh){ return {name:sh.name, tables:sh.tables.map(function(t){
+      return {id:t.id,title:t.title,metric:t.metric,year:t.year,kind:t.kind,corner:t.corner,
+        rowLabel:t.rowLabel||null,colLabel:t.colLabel||null,
+        rowLevels:t.rowLevels||null,colLevels:t.colLevels,values:t.values,pairId:t.pairId||null}; })}; }),
+    assumptions:allAssum};
+  const nTab=outSheets.reduce(function(a,sh){return a+sh.tables.length;},0);
+  return {def:{title:'Sensitivity - '+(opts.ticker||'?'), value_mode:'absolute',
+               companies:opts.ticker?[opts.ticker]:[], definition:def},
+          info:{sheets:outSheets.length, tables:nTab, mktcap:mktcap, spread:spread,
+                shares:shares, price:modelPrice, currency:currency},
+          warnings:warnings};
+}
+
+
+// ── importador das TABELAS PUBLICADAS: le o _Sensitivity.xlsx do analista como ele e ──
+let _sgS2=null;   // {buf, name, parsed}
+const _S2_FILE_TICKER=[['mineraç','CMIN3'],['mineracao','CMIN3'],['vale','VALE3'],['suzano','SUZB3'],
+  ['gerdau','GGBR4'],['usiminas','USIM5'],['ternium','TX'],['aura','AUGO'],['klabin','KLBN11'],['csn','CSNA3']];
+function _s2TickerFromFile(nm){ const s=String(nm||'').toLowerCase();
+  for(let i=0;i<_S2_FILE_TICKER.length;i++) if(s.indexOf(_S2_FILE_TICKER[i][0])>=0) return _S2_FILE_TICKER[i][1];
+  return ''; }
+const _S2_MONTHS={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+// "Mining - Vale Model Itau BBA - Aug-17-2026_Sensitivity.xlsx" -> 2026-08-17
+function _s2DateFromFile(nm){ const s=String(nm||'').toLowerCase(); const parts=s.split('-');
+  for(let i=0;i<parts.length-2;i++){
+    const m=_S2_MONTHS[parts[i].slice(-3)];
+    if(!m) continue;
+    const d=parseInt(parts[i+1],10); const y=parseInt(parts[i+2].slice(0,4),10);
+    if(d>=1&&d<=31&&y>=2000&&y<=2099) return y+'-'+m+'-'+(d<10?'0'+d:''+d);
+  }
+  return ''; }
+
+async function sgSens2dPick(file){ if(!file)return;
+  const setS=function(h){ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
+  const form=_v('sg-s2-form'); if(form)form.innerHTML='';
+  setS('Lendo o modelo…');
+  try{
+    const buf=await file.arrayBuffer();
+    const names=(XLSX.read(buf,{type:'array',bookSheets:true}).SheetNames)||[];
+    const want=names.filter(function(x){ return String(x).trim().toLowerCase().indexOf('sensitivity')===0; });
+    if(!want.length){ setS('<b style="color:#C0392B">Esse arquivo não tem aba "Sensitivity".</b> <span class="muted">Abas vistas: '+esc(names.join(', '))+'</span>'); return; }
+    const wb=XLSX.read(buf,{type:'array',sheets:want,dense:true});
+    const sheets=want.map(function(x){ return {name:x, aoa:XLSX.utils.sheet_to_json(wb.Sheets[x],{header:1,raw:true})}; });
+    const tk=_s2TickerFromFile(file.name);
+    const p=sgParseSens2d(sheets,{ticker:tk, sourceFile:file.name, modelDate:_s2DateFromFile(file.name)});
+    if(p.error){ setS('<b style="color:#C0392B">'+esc(p.error)+'</b>'); return; }
+    _sgS2={buf:buf, name:file.name, parsed:p, sheets:sheets};
+    setS(''); sgS2RenderForm();
+  }catch(e){ setS('<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e)); } }
+
+function sgS2RenderForm(){ const g=_sgS2; if(!g)return; const form=_v('sg-s2-form'); if(!form)return;
+  const d=g.parsed.def.definition, inf=g.parsed.info;
+  const fmt=function(x,dec){ return x==null?'–':Number(x).toLocaleString('pt-BR',{minimumFractionDigits:dec||0,maximumFractionDigits:dec||0}); };
+  let tabs='';
+  d.sheets.forEach(function(sh){
+    tabs+='<div style="margin-top:6px"><b>'+esc(sh.name)+'</b> <span class="muted">('+sh.tables.length+' tabelas)</span><div class="foot" style="margin-top:2px">'+
+      sh.tables.map(function(t){ return esc(t.title)+' <span class="muted">['+t.metric+(t.rowLevels?' '+t.rowLevels.length+'x'+t.colLevels.length:' 1-D')+']</span>'; }).join(' · ')+'</div></div>';
+  });
+  const warn=g.parsed.warnings.length
+    ? '<div style="margin-top:8px;color:#8a6d1f;background:rgba(214,168,42,.13);border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:6px 9px;font-size:12px"><b>Atenção:</b><br>'+g.parsed.warnings.map(esc).join('<br>')+'</div>' : '';
+  form.innerHTML='<div style="border:1px solid #e2e2e2;border-radius:10px;padding:12px;margin:8px 0;background:#fafafa">'
+    +'<div style="font-weight:600;margin-bottom:2px">Tabelas publicadas — '+esc(g.name)+'</div>'
+    +'<div class="foot" style="margin-bottom:8px">Lido direto do modelo do analista. O cliente vê estas tabelas sem poder mexer; múltiplos e yields são recalculados no preço de tela.</div>'
+    +'<div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">'
+    +'<div style="width:120px"><div class="foot">Ticker</div><input id="s2-tk" value="'+esc(d.ticker||'')+'" placeholder="VALE3" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
+    +'<div style="width:120px"><div class="foot">Data do modelo</div><input id="s2-dt" value="'+esc(d.model_date||'')+'" placeholder="2026-08-17" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
+    +'<div class="foot" style="padding-bottom:6px">Moeda <b>'+esc(d.currency||'?')+'</b> · preço do modelo <b>'+fmt(d.model_price,2)+'</b> · valor de mercado <b>'+fmt(inf.mktcap)+'</b> · ações <b>'+fmt(d.shares_mn)+' mn</b></div>'
+    +'</div>'+tabs+warn
+    +'<div class="row" style="margin-top:12px;gap:8px"><button class="btn" onclick="sgSens2dImport()">Importar</button>'
+    +'<button class="chip" onclick="_sgS2=null;_v(\'sg-s2-form\').innerHTML=\'\'">Cancelar</button></div></div>';
+}
+
+async function sgSens2dImport(){ const setS=function(h){ const el=_v('sg-import-status'); if(el)el.innerHTML=h; };
+  const g=_sgS2; if(!g){ setS('Escolha o arquivo primeiro.'); return; }
+  const tk=((_v('s2-tk').value||'').trim().toUpperCase());
+  if(!tk){ setS('<b style="color:#C0392B">Informe o ticker.</b>'); return; }
+  const dt=((_v('s2-dt').value||'').trim());
+  try{
+    const p=sgParseSens2d(g.sheets,{ticker:tk, sourceFile:g.name, modelDate:dt});
+    if(p.error){ setS('<b style="color:#C0392B">'+esc(p.error)+'</b>'); return; }
+    setS('Salvando '+esc(tk)+'…');
+    const existing=_sgSens.find(function(t){ return t.definition&&(t.definition.import_ticker===tk||t.title===p.def.title); });
+    const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',
+      {p_id:existing?Number(existing.id):null, p_data:p.def});
+    if(up.error){ setS('<b style="color:#C0392B">Falhou:</b> '+esc(up.error.message)); return; }
+    const nT=p.def.definition.sheets.reduce(function(a,sh){return a+sh.tables.length;},0);
+    setS('<b style="color:#1E8E4E">OK!</b> '+esc(tk)+' · '+nT+' tabelas · '+p.def.definition.sheets.length+' aba(s)'
+      +(p.warnings.length?'<br><span class="muted">'+p.warnings.map(esc).join(' · ')+'</span>':''));
+    _sgS2=null; _v('sg-s2-form').innerHTML=''; loadSGSens();
+  }catch(e){ setS('<b style="color:#C0392B">Falhou:</b> '+esc(e.message||e)); } }
+
+// ════════════ GRADE DE CENÁRIOS por empresa (aba por TICKER: A:I) ════════════
 // Formato por aba: NOME DA ABA = ticker; linha1=cabeçalho (D..I = EBITDA/FCF/Net Debt × ano atual/
-// próximo); col B = sequência de 6 valores ";" (3 variáveis × 2 anos, agrupada por variável:
-// v1_ano1;v1_ano2;v2_ano1;...); col C = idx (idx1 = CASO-BASE, fora da grade); D..I = 6 métricas.
+// próximo); col B = sequência de 4 OU 6 valores ";" (2 ou 3 variáveis × 2 anos, agrupada por
+// variável: v1_ano1;v1_ano2;v2_ano1;...); col C = idx (idx1 = CASO-BASE, fora da grade);
+// D..I = 6 métricas (as métricas são sempre 6, independente do nº de variáveis).
 // Um arquivo pode ter VÁRIAS abas (uma por empresa). Grade grande → blob gzip por empresa.
 let _sgG6=null;   // {buf, companies:[{sheet,ticker,y1,y2,nrows}]}
 function _g6Year(s){ const m=String(s==null?'':s).match(/(20\d{2})/); return m?m[1]:null; }
-function _g6TickerFromName(nm){ const s=String(nm||'').trim().toUpperCase(); const m=s.match(/([A-Z]{2,6}\d{0,2})/); return m?m[1]:s.replace(/\s+/g,''); }
+function _g6TickerFromName(nm){ const s=String(nm||'').trim().toUpperCase();
+  // aba de nome genérico (arquivo com UMA aba de grade, em vez de uma por empresa) → não chuta
+  // ticker: melhor o campo vir vazio p/ o usuário digitar do que vir "SENSIT" e passar batido.
+  if(/^(SENSITIVITY|SENSIBILIDADE|CENARIOS|CENÁRIOS|SCENARIOS|GRADE|GRID|DADOS|DATA|SHEET[0-9]*|PLAN[0-9]*|PLANILHA[0-9]*)$/.test(s)) return '';
+  const m=s.match(/([A-Z]{2,8}\d{0,2})/); return m?m[1]:s.replace(/\s+/g,''); }
 
 // lê UMA aba do buffer (memória limitada a 1 aba) -> aoa
 function _g6ReadSheet(buf,sheet){ const wb=XLSX.read(buf,{type:'array',sheets:[sheet],dense:true}); return XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,raw:true}); }
@@ -1977,38 +2205,44 @@ async function sgGrid6Pick(file){ if(!file)return; const setS=h=>{ const el=_v('
       setS('Analisando aba "'+esc(nm)+'"…');
       let aoa; try{ aoa=_g6ReadSheet(buf,nm); }catch(e){ skipped.push(String(nm)); continue; }
       if(!aoa||aoa.length<4){ skipped.push(String(nm)); continue; }
-      // conta linhas com sequência de 6 valores (só col B) — barato
-      let nrows=0; for(let r=1;r<aoa.length;r++){ const B=(aoa[r]||[])[1]; if(B!=null&&String(B).split(';').length===6) nrows++; }
+      // conta linhas por TAMANHO da sequência (só col B) — barato. 4 valores = 2 variáveis,
+      // 6 = 3 variáveis (sempre × 2 anos). Vale o tamanho dominante: assim uma linha-base fora
+      // do padrão não confunde a detecção.
+      const cnt={}; for(let r=1;r<aoa.length;r++){ const B=(aoa[r]||[])[1]; if(B==null)continue;
+        const L=String(B).split(';').length; if(L>=4&&L%2===0) cnt[L]=(cnt[L]||0)+1; }
+      let seqLen=0,nrows=0; Object.keys(cnt).forEach(L=>{ if(cnt[L]>nrows){ nrows=cnt[L]; seqLen=Number(L); } });
       if(nrows<8){ skipped.push(String(nm)); continue; }   // não é uma aba de grade (capa/notas)
       const hdr=aoa[0]||[];
-      companies.push({sheet:String(nm), ticker:_g6TickerFromName(nm), y1:_g6Year(hdr[3])||'', y2:_g6Year(hdr[4])||'', nrows:nrows});
+      companies.push({sheet:String(nm), ticker:_g6TickerFromName(nm), y1:_g6Year(hdr[3])||'', y2:_g6Year(hdr[4])||'',
+        nrows:nrows, seqLen:seqLen, nvars:seqLen/2});
     }
-    if(!companies.length){ setS('<b style="color:#C0392B">Nenhuma aba com grade de cenários</b> (preciso de: nome da aba = ticker + col B com 6 valores separados por ";" + col C idx + D:I as métricas).'+(skipped.length?'<br><span class="muted">Abas vistas: '+esc(skipped.join(', '))+'</span>':'')); return; }
+    if(!companies.length){ setS('<b style="color:#C0392B">Nenhuma aba com grade de cenários</b> (preciso de: nome da aba = ticker + col B com 4 ou 6 valores separados por ";" + col C idx + D:I as métricas).'+(skipped.length?'<br><span class="muted">Abas vistas: '+esc(skipped.join(', '))+'</span>':'')); return; }
     _sgG6={buf:buf, companies:companies, skipped:skipped};
     setS(''); sgG6RenderForm();
   }catch(e){ setS('<b style="color:#C0392B">Falha ao ler:</b> '+esc(e.message||e)); } }
 
 function sgG6RenderForm(){ const g=_sgG6; if(!g)return; const form=_v('sg-g6-form'); if(!form)return;
   const inp=(id,ph,val,w)=>`<input id="${id}" placeholder="${ph}" value="${esc(val||'')}" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:${w||'100%'}">`;
+  const PH=['Ex.: Celulose','Ex.: Câmbio','Ex.: Custo','Ex.: Variável 4'];
+  const maxv=Math.max.apply(null,g.companies.map(c=>c.nvars||3));
   let rows='';
   g.companies.forEach((c,i)=>{
+    const nv=c.nvars||3; let vs='';
+    for(let k=0;k<nv;k++) vs+=`<div style="width:150px"><div class="foot">Variável ${k+1}</div>${inp('g6-v'+k+'-'+i,PH[k]||('Variável '+(k+1)))}</div>`;
     rows+=`<div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;padding:8px 0;border-top:1px solid #eee">
-      <div style="width:120px"><div class="foot">Ticker <span class="muted">(aba "${esc(c.sheet)}")</span></div>${inp('g6-tk-'+i,'SUZB3',c.ticker)}</div>
-      <div style="width:150px"><div class="foot">Variável 1</div>${inp('g6-v0-'+i,'Ex.: Celulose')}</div>
-      <div style="width:150px"><div class="foot">Variável 2</div>${inp('g6-v1-'+i,'Ex.: Câmbio')}</div>
-      <div style="width:150px"><div class="foot">Variável 3</div>${inp('g6-v2-'+i,'Ex.: Custo')}</div>
+      <div style="width:120px"><div class="foot">Ticker <span class="muted">${c.ticker?('(aba "'+esc(c.sheet)+'")'):'← digite'}</span></div>${inp('g6-tk-'+i,'SUZB3',c.ticker)}</div>
+      ${vs}
       <div style="width:60px"><div class="foot">Ano 1</div>${inp('g6-y1-'+i,'2026',c.y1,'56px')}</div>
       <div style="width:60px"><div class="foot">Ano 2</div>${inp('g6-y2-'+i,'2027',c.y2,'56px')}</div>
-      <div class="foot" style="padding-bottom:6px">${c.nrows.toLocaleString('pt-BR')} cen.</div>
+      <div class="foot" style="padding-bottom:6px">${c.nrows.toLocaleString('pt-BR')} cen. · ${nv} variáveis</div>
     </div>`; });
+  let defs=''; for(let k=0;k<maxv;k++) defs+=`<div style="width:150px">${inp('g6-def'+k,PH[k]||('Variável '+(k+1)))}</div>`;
   form.innerHTML=`<div style="border:1px solid #e2e2e2;border-radius:10px;padding:12px;margin:8px 0;background:#fafafa">
-    <div style="font-weight:600;margin-bottom:2px">Grade 6-D — ${g.companies.length} empresa(s) detectada(s)</div>
-    <div class="foot" style="margin-bottom:8px">Confira o ticker de cada aba e dê nome às 3 variáveis (viram os rótulos dos controles na dash). Deixe o ticker vazio p/ pular uma aba.</div>
+    <div style="font-weight:600;margin-bottom:2px">Grade de cenários — ${g.companies.length} empresa(s) detectada(s)</div>
+    <div class="foot" style="margin-bottom:8px">Confira o ticker de cada aba e dê nome às variáveis (viram os rótulos dos controles na dash). O nº de variáveis vem do próprio arquivo. Deixe o ticker vazio p/ pular uma aba.</div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end;background:#f0f4ff;border:1px solid #d5e0f5;border-radius:8px;padding:8px">
       <div class="foot" style="width:100%;font-weight:600">Nomes padrão (aplicar a todas):</div>
-      <div style="width:150px">${inp('g6-def0','Ex.: Celulose')}</div>
-      <div style="width:150px">${inp('g6-def1','Ex.: Câmbio')}</div>
-      <div style="width:150px">${inp('g6-def2','Ex.: Custo')}</div>
+      ${defs}
       <button class="chip" onclick="sgG6ApplyDefaults()">Aplicar a todas</button>
     </div>
     ${rows}
@@ -2018,36 +2252,49 @@ function sgG6RenderForm(){ const g=_sgG6; if(!g)return; const form=_v('sg-g6-for
     </div>
   </div>`;
 }
-function sgG6ApplyDefaults(){ const g=_sgG6; if(!g)return; const d=[( _v('g6-def0').value||''),( _v('g6-def1').value||''),( _v('g6-def2').value||'')];
-  g.companies.forEach((c,i)=>{ for(let k=0;k<3;k++){ const el=_v('g6-v'+k+'-'+i); if(el&&d[k].trim()!=='') el.value=d[k]; } }); }
+function sgG6ApplyDefaults(){ const g=_sgG6; if(!g)return;
+  const maxv=Math.max.apply(null,g.companies.map(c=>c.nvars||3)); const d=[];
+  for(let k=0;k<maxv;k++){ const el=_v('g6-def'+k); d.push(el?(el.value||''):''); }
+  g.companies.forEach((c,i)=>{ for(let k=0;k<(c.nvars||3);k++){ const el=_v('g6-v'+k+'-'+i); if(el&&d[k]&&d[k].trim()!=='') el.value=d[k]; } }); }
 
 // PARSE puro (testável) -> {def, dense, sizes, prod, filled, complete, summary}
 function sgParseGrid6(aoa, opts){
   if(!aoa||aoa.length<4) throw 'Aba muito curta.';
+  opts=opts||{};
   const RND=v=>Math.round(v*1e6)/1e6;
+  // quantos valores tem a sequência? 4 = 2 variáveis, 6 = 3 (sempre × 2 anos). Vale o tamanho
+  // DOMINANTE, p/ uma linha-base fora do padrão não confundir a leitura.
+  let NAX=Number(opts.seqLen)||0;
+  if(!NAX){ const cnt={}; let best=0;
+    for(let r=1;r<aoa.length;r++){ const row=aoa[r]; if(!row)continue; const B=row[1];
+      if(B==null||String(B).trim()==='')continue; const L=String(B).split(';').length;
+      if(L>=4&&L%2===0) cnt[L]=(cnt[L]||0)+1; }
+    Object.keys(cnt).forEach(L=>{ if(cnt[L]>best){ best=cnt[L]; NAX=Number(L); } }); }
+  if(!NAX) throw 'Não achei sequências na coluna B (esperado 4 ou 6 valores separados por ";").';
+  const NV=NAX/2;
   let base=null; const scen=[];
   for(let r=1;r<aoa.length;r++){ const row=aoa[r]; if(!row)continue; const B=row[1];
     if(B==null||String(B).trim()==='')continue;
-    const parts=String(B).split(';'); if(parts.length!==6)continue;
+    const parts=String(B).split(';'); if(parts.length!==NAX)continue;
     const coords=parts.map(_sgiNum); if(coords.some(x=>x==null))continue;
     const idx=_sgiNum(row[2]); const met=[3,4,5,6,7,8].map(c=>_sgiNum(row[c]));
     if(idx===1&&!base){ base={coords:coords,met:met}; continue; }   // idx1 = base (fora da grade)
     scen.push({coords:coords,met:met}); }
-  if(scen.length<8) throw 'Poucos cenários válidos ('+scen.length+') — confira que a col B tem 6 valores separados por ";".';
-  const levels=[]; for(let k=0;k<6;k++){ const s=new Set(); scen.forEach(x=>s.add(RND(x.coords[k]))); levels.push(Array.from(s).sort((a,b)=>a-b)); }
+  if(scen.length<8) throw 'Poucos cenários válidos ('+scen.length+') — confira que a col B tem '+NAX+' valores separados por ";".';
+  const levels=[]; for(let k=0;k<NAX;k++){ const s=new Set(); scen.forEach(x=>s.add(RND(x.coords[k]))); levels.push(Array.from(s).sort((a,b)=>a-b)); }
   const sizes=levels.map(l=>l.length); const prod=sizes.reduce((a,b)=>a*b,1);
-  const strides=new Array(6); strides[5]=1; for(let k=4;k>=0;k--) strides[k]=strides[k+1]*sizes[k+1];   // último eixo mais rápido
+  const strides=new Array(NAX); strides[NAX-1]=1; for(let k=NAX-2;k>=0;k--) strides[k]=strides[k+1]*sizes[k+1];   // último eixo mais rápido
   const imap=levels.map(l=>{ const m=new Map(); l.forEach((v,j)=>m.set(v,j)); return m; });
   const MK=['ebitda_y1','ebitda_y2','fcf_y1','fcf_y2','net_debt_y1','net_debt_y2'];
   const dense={}; MK.forEach(mk=>dense[mk]=new Array(prod).fill(null));
   let filled=0;
-  scen.forEach(x=>{ let f=0,ok=true; for(let k=0;k<6;k++){ const j=imap[k].get(RND(x.coords[k])); if(j==null){ok=false;break;} f+=j*strides[k]; }
+  scen.forEach(x=>{ let f=0,ok=true; for(let k=0;k<NAX;k++){ const j=imap[k].get(RND(x.coords[k])); if(j==null){ok=false;break;} f+=j*strides[k]; }
     if(!ok)return; for(let m=0;m<6;m++){ const v=x.met[m]; dense[MK[m]][f]=(v==null?null:Math.round(v*1e3)/1e3); } filled++; });
-  const vn=[ (opts.varNames&&opts.varNames[0])||'Variável 1', (opts.varNames&&opts.varNames[1])||'Variável 2', (opts.varNames&&opts.varNames[2])||'Variável 3' ];
+  const vn=[]; for(let k=0;k<NV;k++){ const nm=String((opts.varNames&&opts.varNames[k])||'').trim(); vn.push(nm||('Variável '+(k+1))); }
   const yl=[ opts.y1||'ano 1', opts.y2||'ano 2' ];
-  const axes=[]; for(let k=0;k<6;k++){ const g=Math.floor(k/2);
+  const axes=[]; for(let k=0;k<NAX;k++){ const g=Math.floor(k/2);
     axes.push({key:'a'+k, group:vn[g], groupIdx:g, year:(k%2===0)?'y1':'y2', label:vn[g]+' '+yl[k%2], levels:levels[k]}); }
-  const groups=[0,1,2].map(g=>({name:vn[g], axes:[g*2,g*2+1]}));
+  const groups=[]; for(let g=0;g<NV;g++) groups.push({name:vn[g], axes:[g*2,g*2+1]});
   const outs=[]; const push=(key,label,mode,metric,secondary)=>outs.push({key:key,label:label,mode:mode,metric:metric,secondary:secondary||null});
   [['y1',yl[0]],['y2',yl[1]]].forEach(([y,lab])=>{
     push('ebitda_'+y,'EBITDA '+lab,'absolute','ebitda_'+y,null);
@@ -2057,7 +2304,7 @@ function sgParseGrid6(aoa, opts){
     push('net_debt_'+y,'Net Debt '+lab,'absolute','net_debt_'+y,null);
     push('nd_ebitda_'+y,'ND/EBITDA '+lab,'nd_ebitda','ebitda_'+y,'net_debt_'+y); });
   const baseMetrics=base?{ebitda_y1:base.met[0],ebitda_y2:base.met[1],fcf_y1:base.met[2],fcf_y2:base.met[3],net_debt_y1:base.met[4],net_debt_y2:base.met[5]}:null;
-  const def={kind:'grid6', ticker:opts.ticker, y1_label:yl[0], y2_label:yl[1], axes:axes, groups:groups,
+  const def={kind:'grid6', nvars:NV, ticker:opts.ticker, y1_label:yl[0], y2_label:yl[1], axes:axes, groups:groups,
     base:{coords:base?base.coords:null, metrics:baseMetrics}, outputs:outs,
     panel:(_SGI_PANEL[opts.ticker]||'Sensibilidade'), import_ticker:opts.ticker};
   return { def:{title:'Sensibilidade — '+opts.ticker, value_mode:'absolute', companies:[opts.ticker], definition:def},
@@ -2076,8 +2323,9 @@ async function sgGrid6Import(){ const setS=h=>{ const el=_v('sg-import-status');
   const g=_sgG6; if(!g||!g.companies||!g.companies.length){ setS('Escolha o arquivo primeiro.'); return; }
   // coleta os inputs de cada aba; ticker vazio = pular a aba
   const jobs=[]; g.companies.forEach((c,i)=>{ const tk=((_v('g6-tk-'+i).value||'').trim().toUpperCase()); if(!tk) return;
+    const vn=[]; for(let k=0;k<(c.nvars||3);k++){ const el=_v('g6-v'+k+'-'+i); vn.push(el?(el.value||'').trim():''); }
     jobs.push({sheet:c.sheet, ticker:tk, y1:(_v('g6-y1-'+i).value||'').trim(), y2:(_v('g6-y2-'+i).value||'').trim(),
-      varNames:[(_v('g6-v0-'+i).value||'').trim(),(_v('g6-v1-'+i).value||'').trim(),(_v('g6-v2-'+i).value||'').trim()]}); });
+      seqLen:c.seqLen||0, varNames:vn}); });
   if(!jobs.length){ setS('<b style="color:#C0392B">Nenhuma empresa p/ importar</b> (todos os tickers vazios).'); return; }
   const done=[]; const fails=[]; const N=jobs.length;
   for(let ci=0;ci<N;ci++){ const j=jobs[ci]; const tag='['+(ci+1)+'/'+N+'] '+esc(j.ticker);
