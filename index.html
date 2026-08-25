@@ -964,30 +964,42 @@ html.dark ::-webkit-scrollbar-thumb:hover{background:#39424F;background-clip:con
    ⚠️ borda feita com `inset box-shadow` e não `border`: com box-sizing:border-box
    uma borda de 1px comeria 2px da altura do cartão (que já é apertada: 46px). */
 html.dark .hm-card{background:#141821;color:#D7DCE4;box-shadow:inset 0 0 0 1px #1F2532;}
-/* Mesma paleta calculada, resolvida para a chapa quase preta.
-   Medido: vizinhas ΔE 10,5 · espelhadas ΔE 38,4 · pior contraste 4,70. */
-html.dark .hm-card.up-strong{background:#369B50;box-shadow:inset 0 0 0 1px #47B063;color:#062412;}
-html.dark .hm-card.up-mid{background:#13542D;box-shadow:inset 0 0 0 1px #1C6B3B;color:#D6EBDD;}
-html.dark .hm-card.up{background:#153723;box-shadow:inset 0 0 0 1px #1F4A31;color:#D2E7D9;}
-html.dark .hm-card.flat{background:#141821;box-shadow:inset 0 0 0 1px #232A36;color:#AFB7C3;}
-html.dark .hm-card.down{background:#4E2423;box-shadow:inset 0 0 0 1px #663030;color:#EBD5D5;}
-html.dark .hm-card.down-mid{background:#7E2F2D;box-shadow:inset 0 0 0 1px #9A403C;color:#F0D6D6;}
-html.dark .hm-card.down-strong{background:#E15A50;box-shadow:inset 0 0 0 1px #F07A70;color:#2A0705;}
-html.dark .hm-ticker{color:#F2F4F8;}
-html.dark .hm-name{opacity:.6;}
-html.dark .hm-price{opacity:.8;}
-html.dark .hm-card.up .hm-change,html.dark .hm-card.up-mid .hm-change,
-html.dark .hm-card.up .hm-spark,html.dark .hm-card.up-mid .hm-spark{color:#4ADE80;}
-html.dark .hm-card.down .hm-change,html.dark .hm-card.down-mid .hm-change,
-html.dark .hm-card.down .hm-spark,html.dark .hm-card.down-mid .hm-spark{color:#FCA5A5;}
+/* ── Rampa do escuro, 2ª versão (2026-08-25) ────────────────────────────────
+   A 1ª versão tinha a lógica INVERTIDA: variação pequena ficava quase preta e a forte
+   virava cor viva. O certo é o mesmo sentido do tema claro — quanto MAIOR a variação,
+   mais FUNDO o tom. Agora, em L* (luminosidade): fraca 58 · média 44 · forte 30.
+   E nada de cor chapada: cada faixa é um gradiente (topo ~4,5 L* mais claro que a base)
+   com um fio de luz na aresta de cima — é o "menos fosco" que o usuário aprovou.
+   Cores resolvidas em CIELAB. Medido no browser: vizinhas ΔE 11,9 · espelhadas ΔE 44,0
+   · pior contraste 4,88. Como no claro, tile claro pede texto escuro e vice-versa. */
+html.dark .hm-card.up{background:linear-gradient(180deg,#6D9D73,#619067);color:#08180D;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 0 0 1px rgba(255,255,255,.10);}
+html.dark .hm-card.up-mid{background:linear-gradient(180deg,#3A7547,#2E693C);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.09);}
+html.dark .hm-card.up-strong{background:linear-gradient(180deg,#0D582D,#004C22);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.08);}
+html.dark .hm-card.flat{background:linear-gradient(180deg,#1E1F25,#14151B);color:#AFB7C3;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 0 1px #232A36;}
+html.dark .hm-card.down{background:linear-gradient(180deg,#CC7D77,#BD706B);color:#1E0704;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 0 0 1px rgba(255,255,255,.10);}
+html.dark .hm-card.down-mid{background:linear-gradient(180deg,#AB4B4A,#9C3E3F);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.09);}
+html.dark .hm-card.down-strong{background:linear-gradient(180deg,#8F242E,#811423);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.08);}
+/* o ticker tinha cor FIXA e ficaria branco sobre a faixa clara: agora herda a faixa
+   (só o tile neutro precisa de realce próprio) */
+html.dark .hm-ticker{color:inherit;}
+html.dark .hm-card.flat .hm-ticker{color:#F2F4F8;}
+html.dark .hm-price{opacity:1;}
+/* número e risquinho: um tom acima do texto do cartão, no mesmo lado da escala */
+html.dark .hm-card.up .hm-change,html.dark .hm-card.up .hm-spark{color:#0A2413;}
+html.dark .hm-card.up-mid .hm-change,html.dark .hm-card.up-mid .hm-spark{color:#fff;}
+html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-strong .hm-spark{color:#fff;}
+html.dark .hm-card.down .hm-change,html.dark .hm-card.down .hm-spark{color:#2B0B07;}
+html.dark .hm-card.down-mid .hm-change,html.dark .hm-card.down-mid .hm-spark{color:#fff;}
+html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-strong .hm-spark{color:#fff;}
 html.dark .hm-card.flat .hm-change{color:#98A1AF;}
 html.dark .hm-card.flat .hm-spark{color:#7A8494;}
-/* Faixa forte no escuro: cor cheia e TUDO escrito em quase-preto — inclusive o ticker,
-   que tem cor própria (#F2F4F8) e ficaria branco sobre verde/vermelho claro. */
-html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-strong .hm-spark,
-html.dark .hm-card.up-strong .hm-ticker{color:#062412;}
-html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-strong .hm-spark,
-html.dark .hm-card.down-strong .hm-ticker{color:#2A0705;}
 
 /* ── MARKET PULSE ────────────────────────────────────────────────────────── */
 /* o trilho do ponteiro está no HTML (stroke="#E3E3E3") → no escuro virava um
@@ -1050,8 +1062,8 @@ html.dark .pulse-chip.active,html.dark .pulse-view.active,
 html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
-html.dark .hm-name{opacity:.84;}
-html.dark .hm-ccy{opacity:.86;}
+html.dark .hm-name{opacity:.95;}
+html.dark .hm-ccy{opacity:.95;}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 /* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
