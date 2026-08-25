@@ -51,7 +51,10 @@ async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem(
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#8C8C8C;
+  /* --gray-mid escureceu de #8C8C8C p/ #767676 em 2026-08-25: era 3,03:1 no branco e
+     carrega ~100 textos miúdos (unidades, datas, legendas). Agora 4,54:1. Trocado nas
+     8 páginas que definem o token. NÃO voltar pro claro. */
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#767676;
   --gray-light:#F4F3F0;--border:#E3E3E3;--white:#fff;--green:#16a34a;--red:#c0392b;
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
   --radius:10px;
@@ -344,7 +347,7 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
 .pulse-stat{text-align:center;}
 .pulse-stat-num{font-size:16px;font-weight:700;letter-spacing:-.02em;}
-.pulse-stat-num.pos{color:var(--green);}
+.pulse-stat-num.pos{color:#15803d;}
 .pulse-stat-num.neg{color:var(--red);}
 .pulse-stat-num.neu{color:var(--gray-mid);}
 .pulse-stat-lbl{font-size:8px;font-weight:600;color:var(--gray-mid);
@@ -539,25 +542,25 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   transition:transform .15s,box-shadow .15s;}
 .hm-card:hover{transform:translateY(-1px);box-shadow:inset 0 0 0 1px var(--gray-mid);}
 /* Escala de 7 faixas por intensidade da variação (±5 / ±2 / ±0.5) */
-.hm-card.up-strong{background-image:linear-gradient(rgba(22,163,74,.20),rgba(22,163,74,.20));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.45);}
-.hm-card.up-mid{background-image:linear-gradient(rgba(22,163,74,.13),rgba(22,163,74,.13));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.30);}
-.hm-card.up{background-image:linear-gradient(rgba(22,163,74,.07),rgba(22,163,74,.07));
-  box-shadow:inset 0 0 0 1px rgba(22,163,74,.18);}
+.hm-card.up-strong{background-image:linear-gradient(rgba(22,163,74,.24),rgba(22,163,74,.24));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.55);}
+.hm-card.up-mid{background-image:linear-gradient(rgba(22,163,74,.14),rgba(22,163,74,.14));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.32);}
+.hm-card.up{background-image:linear-gradient(rgba(22,163,74,.06),rgba(22,163,74,.06));
+  box-shadow:inset 0 0 0 1px rgba(22,163,74,.15);}
 .hm-card.flat{background-image:none;box-shadow:inset 0 0 0 1px var(--border);}
-.hm-card.down{background-image:linear-gradient(rgba(192,57,43,.07),rgba(192,57,43,.07));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.18);}
-.hm-card.down-mid{background-image:linear-gradient(rgba(192,57,43,.13),rgba(192,57,43,.13));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.30);}
-.hm-card.down-strong{background-image:linear-gradient(rgba(192,57,43,.20),rgba(192,57,43,.20));
-  box-shadow:inset 0 0 0 1px rgba(192,57,43,.45);}
+.hm-card.down{background-image:linear-gradient(rgba(192,57,43,.06),rgba(192,57,43,.06));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.15);}
+.hm-card.down-mid{background-image:linear-gradient(rgba(192,57,43,.14),rgba(192,57,43,.14));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.32);}
+.hm-card.down-strong{background-image:linear-gradient(rgba(192,57,43,.24),rgba(192,57,43,.24));
+  box-shadow:inset 0 0 0 1px rgba(192,57,43,.55);}
 /* O verde/vermelho da casa é claro demais para texto de 9px sobre a tinta: o NÚMERO
    usa tons mais fechados (5,1:1 e 5,4:1 na faixa mais forte). O risquinho, que é
    desenho e não texto, fica na cor da casa. */
 .hm-card.up-strong .hm-change,.hm-card.up-mid .hm-change,.hm-card.up .hm-change{color:#146c33;}
 .hm-card.down-strong .hm-change,.hm-card.down-mid .hm-change,.hm-card.down .hm-change{color:#a3271b;}
-.hm-card.flat .hm-change{color:#6b7280;}   /* var(--gray-mid) dava 3,0:1 em 9px */
+.hm-card.flat .hm-change{color:#5F6773;}   /* var(--gray-mid) dava 3,0:1 em 9px */
 .hm-card.up-strong .hm-spark,.hm-card.up-mid .hm-spark,.hm-card.up .hm-spark{color:var(--green);}
 .hm-card.down-strong .hm-spark,.hm-card.down-mid .hm-spark,.hm-card.down .hm-spark{color:var(--red);}
 .hm-card.flat .hm-spark{color:var(--gray-mid);}
@@ -568,7 +571,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
-.hm-ccy{font-weight:500;opacity:.6;font-size:.85em;margin-left:2px;}
+.hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
@@ -583,7 +586,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;
   display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
 .hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
-.hm-filter-btn .hm-count{font-weight:600;opacity:.88;}
+.hm-filter-btn .hm-count{font-weight:600;}
 /* Popover do heatmap = DUAS COLUNAS: grupos à esquerda (rail), empresas do grupo aberto à direita.
    Antes era uma lista única (presets em cima + TODOS os setores empilhados) → rolagem longa. */
 .hm-pop{position:fixed;z-index:4000;width:min(440px,92vw);
@@ -683,7 +686,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .kv-badge{flex:none;font-size:7px;font-weight:700;text-transform:uppercase;
   letter-spacing:.03em;padding:1px 4px;border-radius:3px;line-height:1.1;
   display:inline-flex;align-items:center;gap:3px;}
-.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:var(--gray-mid);}
+.kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:#6E6E6E;}
 .kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
 .kv-badge.live::before{content:'';width:4px;height:4px;border-radius:50%;
   background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
@@ -714,17 +717,17 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   transition:border-color .15s,transform .15s;}
 .cm-card:hover{border-color:var(--gray-mid);transform:translateY(-1px);}
 /* altura fixa de 2 linhas: sem isso os nomes curtos e longos desalinham os números */
-.cm-name{font-size:9.5px;font-weight:600;color:var(--gray-mid);letter-spacing:.02em;
+.cm-name{font-size:9.5px;font-weight:600;color:#6E6E6E;letter-spacing:.02em;
   line-height:1.25;height:2.5em;overflow:hidden;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .cm-top{display:flex;align-items:flex-start;gap:4px;min-width:0;}
 .cm-top .cm-name{flex:1;min-width:0;}
 .cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
-.cm-unit{font-size:7.5px;font-weight:500;color:var(--gray-mid);margin-left:3px;letter-spacing:0;}
+.cm-unit{font-size:7.5px;font-weight:500;color:#6E6E6E;margin-left:3px;letter-spacing:0;}
 .cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-top:1px;}
 .cm-chg{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.cm-date{font-size:8px;font-weight:500;color:var(--gray-mid);font-variant-numeric:tabular-nums;
+.cm-date{font-size:8px;font-weight:500;color:#6E6E6E;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
 /* o verde da casa (#16a34a) dá só 3,0:1 em texto de 10,5px sobre o cartão claro;
@@ -733,7 +736,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .cm-card.up .cm-chg{color:#15803d;}
 .cm-card.up .cm-spark{color:var(--green);}
 .cm-card.down .cm-chg,.cm-card.down .cm-spark{color:var(--red);}
-.cm-card.flat .cm-chg{color:#6b7280;}   /* mesmo cinza do tile neutro do heatmap (4,4:1) */
+.cm-card.flat .cm-chg{color:#5F6773;}   /* mesmo cinza do tile neutro do heatmap (4,4:1) */
 .cm-card.flat .cm-spark{color:var(--gray-mid);}
 
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
@@ -960,32 +963,32 @@ html.dark .hm-card{background:#141821;color:#D7DCE4;box-shadow:inset 0 0 0 1px #
    atalho `background:` nas faixas zerava a chapa #141821 e o verde/vermelho
    translúcido caía direto sobre o painel (as faixas ficavam de tom diferente). */
 html.dark .hm-card.up-strong{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(34,197,94,.22),rgba(34,197,94,.05));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.34);color:#DCEFE3;}
+  background-image:linear-gradient(180deg,rgba(34,197,94,.34),rgba(34,197,94,.08));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.55);color:#DCEFE3;}
 html.dark .hm-card.up-mid{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(34,197,94,.14),rgba(34,197,94,.035));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.24);color:#D6EBDD;}
+  background-image:linear-gradient(180deg,rgba(34,197,94,.18),rgba(34,197,94,.05));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.34);color:#D6EBDD;}
 html.dark .hm-card.up{background-color:#141821;
-  background-image:linear-gradient(rgba(34,197,94,.075),rgba(34,197,94,.075));
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.16);color:#D2E7D9;}
+  background-image:linear-gradient(rgba(34,197,94,.08),rgba(34,197,94,.08));
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.18);color:#D2E7D9;}
 html.dark .hm-card.flat{background-color:#141821;background-image:none;
   box-shadow:inset 0 0 0 1px #232A36;color:#AFB7C3;}
 html.dark .hm-card.down{background-color:#141821;
-  background-image:linear-gradient(rgba(239,68,68,.075),rgba(239,68,68,.075));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.16);color:#EBD5D5;}
+  background-image:linear-gradient(rgba(239,68,68,.08),rgba(239,68,68,.08));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.18);color:#EBD5D5;}
 html.dark .hm-card.down-mid{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(239,68,68,.14),rgba(239,68,68,.035));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.26);color:#F0D6D6;}
+  background-image:linear-gradient(180deg,rgba(239,68,68,.18),rgba(239,68,68,.05));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.34);color:#F0D6D6;}
 html.dark .hm-card.down-strong{background-color:#141821;
-  background-image:linear-gradient(180deg,rgba(239,68,68,.24),rgba(239,68,68,.06));
-  box-shadow:inset 0 0 0 1px rgba(239,68,68,.38);color:#F6DADA;}
+  background-image:linear-gradient(180deg,rgba(239,68,68,.34),rgba(239,68,68,.08));
+  box-shadow:inset 0 0 0 1px rgba(239,68,68,.55);color:#F6DADA;}
 html.dark .hm-ticker{color:#F2F4F8;}
 html.dark .hm-name{opacity:.6;}
 html.dark .hm-price{opacity:.8;}
 html.dark .hm-card.up-strong .hm-change,html.dark .hm-card.up-mid .hm-change,
 html.dark .hm-card.up .hm-change{color:#4ADE80;}
 html.dark .hm-card.down-strong .hm-change,html.dark .hm-card.down-mid .hm-change,
-html.dark .hm-card.down .hm-change{color:#F87171;}
+html.dark .hm-card.down .hm-change{color:#FA9494;}
 html.dark .hm-card.flat .hm-change{color:#98A1AF;}
 /* o risquinho usa currentColor → basta trocar a `color` do próprio SVG */
 html.dark .hm-card.up-strong .hm-spark,html.dark .hm-card.up-mid .hm-spark,
@@ -1026,6 +1029,7 @@ html.dark .news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.10),
 html.dark .cm-card{background:#141821;border-color:#1F2532;}
 html.dark .cm-card:hover{border-color:#3A4351;}
 html.dark .cm-name{color:#8A93A2;}
+html.dark .cm-unit,html.dark .cm-date{color:var(--gray-mid);}
 html.dark .cm-val{color:#F2F4F8;}
 html.dark .cm-card.up .cm-chg{color:#4ADE80;}
 html.dark .cm-card.down .cm-chg{color:#F87171;}
