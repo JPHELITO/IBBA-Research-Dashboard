@@ -308,9 +308,8 @@ html,body{
      nasce uma linha entre eles, mais forte quanto menor a distância — então
      a malha se costura e se desfaz sozinha, sem nada estar pré-desenhado.
      Cada ponto tem uma PROFUNDIDADE: os do fundo são menores, mais apagados
-     e mais lentos; os da frente reagem mais ao mouse (parallax). Uns poucos
-     borrões fora de foco dão o ar de lente aberta. O cursor também costura:
-     ele se liga aos pontos por perto.
+     e mais lentos; os da frente reagem mais ao mouse (parallax). O cursor
+     também costura: ele se liga aos pontos por perto.
      Sem biblioteca externa. O laço DORME quando a aba perde o foco e nem
      começa se o sistema estiver pedindo menos movimento.
      ══════════════════════════════════════════════════════════════════════ -->
@@ -322,8 +321,8 @@ html,body{
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var W=0, H=0, DPR=1, mob=false, raf=null, lastT=-1e9;
-  var PTS=[], BLUR=[], PX=[], PY=[], LINK=0, LINK2=0;
-  var SP_HOT=null, SP_COOL=null, BL_HOT=null, BL_COOL=null;
+  var PTS=[], PX=[], PY=[], LINK=0, LINK2=0;
+  var SP_HOT=null, SP_COOL=null;
 
   /* sorteio determinístico: a mesma constelação em todo carregamento */
   function prng(seed){ var s=seed>>>0; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
@@ -339,17 +338,6 @@ html,body{
     gr.addColorStop(0,  'rgba(255,'+(core?236:200)+','+(core?214:170)+',.98)');
     gr.addColorStop(.14,'rgba('+r+','+g+','+b+',.95)');
     gr.addColorStop(.38,'rgba('+r+','+g+','+b+',.30)');
-    gr.addColorStop(1,  'rgba('+r+','+g+','+b+',0)');
-    x.fillStyle=gr; x.beginPath(); x.arc(R,R,R,0,6.283); x.fill();
-    return c;
-  }
-  function blob(r,g,b){                 /* fora de foco: sem miolo aceso */
-    var c=document.createElement('canvas'), x, gr, R=48;
-    c.width=c.height=R*2; x=c.getContext('2d');
-    gr=x.createRadialGradient(R,R,0,R,R,R);
-    gr.addColorStop(0,  'rgba('+r+','+g+','+b+',.55)');
-    gr.addColorStop(.55,'rgba('+r+','+g+','+b+',.28)');
-    gr.addColorStop(.82,'rgba('+r+','+g+','+b+',.08)');
     gr.addColorStop(1,  'rgba('+r+','+g+','+b+',0)');
     x.fillStyle=gr; x.beginPath(); x.arc(R,R,R,0,6.283); x.fill();
     return c;
@@ -376,13 +364,6 @@ html,body{
         z:z, hot:r()<.44                /* ~4 de 10 laranja, o resto cinza */
       });
     }
-
-    BLUR=[];
-    for(i=0;i<(mob?4:8);i++){
-      a=r()*6.283;
-      BLUR.push({x:r()*W, y:r()*H, vx:Math.cos(a)*4, vy:Math.sin(a)*4,
-                 s:70+r()*160, a:.13+r()*.14, hot:r()<.55});
-    }
   }
 
   /* ── posição do mouse: parallax + costura no cursor ─────────────────── */
@@ -402,10 +383,7 @@ html,body{
     cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
     cv.style.width = W+'px'; cv.style.height = H+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
-    if(!SP_HOT){
-      SP_HOT  = dot(255,104,26,1);  SP_COOL = dot(176,180,200,0);
-      BL_HOT  = blob(255,92,14);    BL_COOL = blob(150,155,178);
-    }
+    if(!SP_HOT){ SP_HOT = dot(255,104,26,1); SP_COOL = dot(176,180,200,0); }
     build();
   }
 
@@ -417,11 +395,6 @@ html,body{
       /* quica nas bordas: some pela lateral cortaria as linhas na hora */
       if(p.x<-m){p.x=-m;p.vx=-p.vx;} else if(p.x>W+m){p.x=W+m;p.vx=-p.vx;}
       if(p.y<-m){p.y=-m;p.vy=-p.vy;} else if(p.y>H+m){p.y=H+m;p.vy=-p.vy;}
-    }
-    for(i=0;i<BLUR.length;i++){        /* os borrões atravessam e voltam */
-      p=BLUR[i]; p.x+=p.vx*dt; p.y+=p.vy*dt;
-      if(p.x<-p.s) p.x=W+p.s; else if(p.x>W+p.s) p.x=-p.s;
-      if(p.y<-p.s) p.y=H+p.s; else if(p.y>H+p.s) p.y=-p.s;
     }
   }
 
@@ -437,13 +410,6 @@ html,body{
 
     ctx.clearRect(0,0,W,H);
     ctx.globalCompositeOperation='lighter';
-
-    /* fora de foco, no fundo */
-    for(i=0;i<BLUR.length;i++){
-      p=BLUR[i]; ctx.globalAlpha=p.a;
-      ctx.drawImage(p.hot?BL_HOT:BL_COOL, p.x-p.s, p.y-p.s, p.s*2, p.s*2);
-    }
-    ctx.globalAlpha=1;
 
     /* posição na tela = posição real + parallax pela profundidade.
        CALM abre uma clareira no meio: a malha se apaga onde o card fica,
