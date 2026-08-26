@@ -59,6 +59,7 @@ e publica o resultado na dashboard, em UM comando.
  • Se o Excel-mestre estiver aberto, ele avisa e para (não corrompe).
 """
 import argparse
+import collections
 import csv
 import glob
 import io
@@ -127,6 +128,47 @@ def mais_novo(padrao_glob, pasta=None):
     """Arquivo mais recente que casa com o padrão (ignora os temporários '~$')."""
     achados = todos_que_casam(padrao_glob, pasta)
     return achados[0] if achados else None
+
+
+def avisar_codigos_sumidos(nome, vol_hist, mes_novo, sh6_do_mes, corte_t=50.0,
+                           janela=6, minimo=4):
+    """
+    Avisa quando um código HABITUAL não veio no mês novo.
+
+    Por que isso existe: o download do GACC e o da Coreia trazem SÓ os códigos que
+    você pediu na consulta. Se a lista de códigos encolher sem querer, o mês entra
+    "completo" aos olhos do script — e o volume simplesmente some da série, sem erro
+    nenhum aparecendo. Aconteceu de verdade: os pulls de mai/jun/jul-2026 da China
+    vieram só com 25-29 códigos e só com o Brasil, e nesses arquivos é IMPOSSÍVEL
+    distinguir "a China não exportou esse código" de "esse código ficou fora da
+    consulta". Este aviso não decide qual dos dois é — só levanta a mão.
+
+    Regra: código que apareceu em pelo menos `minimo` dos últimos `janela` meses e
+    cuja média nesses meses passa de `corte_t` toneladas, mas não veio agora.
+    """
+    anteriores = sorted(m for m in vol_hist if m < mes_novo)[-janela:]
+    if len(anteriores) < minimo:
+        return
+    suspeitos = []
+    for sh6 in {s for m in anteriores for s in vol_hist[m]}:
+        se_viu = [m for m in anteriores if vol_hist[m].get(sh6, 0) > 0]
+        if len(se_viu) < minimo or sh6 in sh6_do_mes:
+            continue
+        media = sum(vol_hist[m].get(sh6, 0) for m in se_viu) / len(se_viu)
+        if media >= corte_t:
+            suspeitos.append((media, sh6))
+    if not suspeitos:
+        return
+    suspeitos.sort(reverse=True)
+    print(f"    ⚠ {nome} {mes_novo}: {len(suspeitos)} código(s) que vinham sempre não "
+          f"apareceram no arquivo —")
+    for media, sh6 in suspeitos[:8]:
+        print(f"        {sh6}  (média de {media:,.0f} t/mês nos últimos {len(anteriores)})")
+    print("      Pode ser zero de verdade (a série está caindo) OU código que ficou de")
+    print("      fora da consulta. Se quiser conferir, refaça o download com a lista")
+    print(f"      completa de códigos e rode com  --refazer {mes_novo}")
+    print("      (Dica: um pull com TODOS OS PAÍSES resolve a dúvida de vez — se o código")
+    print("       aparece p/ algum país, ele estava na consulta e o zero é real.)")
 
 
 def _relata_ja_tinha(vistos, ja_na_aba, refazer=None):
@@ -200,30 +242,38 @@ def ler_estado(xlsx: Path) -> dict:
     est["SECEX"] = dict(meses=meses, ultima=ultima, sh6=sh6,
                         desc_ncm=desc_ncm, desc_sh6=desc_sh6)
 
-    # ── KOREA: A='2026.07', B=HS6
+    # ── KOREA: A='2026.07', B=HS6, D=país destino, E=volume (ton)
     ws = wb["KOREA"]
     meses, hs, ultima = set(), set(), 1
+    vol = collections.defaultdict(lambda: collections.defaultdict(float))
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if r[0] is None:
             continue
         ultima = i
         p = str(r[0]).strip()
+        codigo = str(r[1]).strip().zfill(6)
+        hs.add(codigo)
         if "." in p:
-            meses.add(p.replace(".", "-"))
-        hs.add(str(r[1]).strip().zfill(6))
-    est["KOREA"] = dict(meses=meses, ultima=ultima, hs=hs)
+            m = p.replace(".", "-")
+            meses.add(m)
+            if str(r[3]).strip() == "Brazil":          # só o que alimenta o modelo
+                vol[m][codigo] += num(r[4])            # já em toneladas
+    est["KOREA"] = dict(meses=meses, ultima=ultima, hs=hs, vol=vol)
 
-    # ── CHINA: A=202607, B=código 8 dígitos
+    # ── CHINA: A=202607, B=código 8 dígitos, F=quantidade (kg)
     ws = wb["CHINA"]
     meses, ultima = set(), 1
+    vol = collections.defaultdict(lambda: collections.defaultdict(float))
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if r[0] is None:
             continue
         ultima = i
         p = str(r[0]).strip()
         if len(p) == 6 and p.isdigit():
-            meses.add(f"{p[:4]}-{p[4:]}")
-    est["CHINA"] = dict(meses=meses, ultima=ultima)
+            m = f"{p[:4]}-{p[4:]}"
+            meses.add(m)
+            vol[m][str(r[1]).strip()[:6]] += num(r[5]) / 1000.0   # kg -> toneladas
+    est["CHINA"] = dict(meses=meses, ultima=ultima, vol=vol)
 
     wb.close()
     return est
@@ -812,6 +862,14 @@ def main():
             alvo = sorted(pm)
             novos["KOREA"] = [l for m in alvo for l in pm[m]]
             print(f"    meses a inserir: {', '.join(alvo)} → {len(novos['KOREA'])} linhas.")
+            for m in alvo:
+                # O arquivo coreano traz TODOS os países. Então, se o código aparece
+                # para qualquer país, ele ESTAVA na consulta — e não ter linha p/ o
+                # Brasil é zero de verdade, não buraco. Por isso a conferência usa o
+                # conjunto de códigos do arquivo inteiro, e não só o das linhas do
+                # Brasil: sem isso o aviso dispara todo mês à toa.
+                avisar_codigos_sumidos("KOREA", est["KOREA"]["vol"], m,
+                                       {str(l[1])[:6] for l in pm[m]})
         else:
             print("    nada novo nesses arquivos.")
 
@@ -828,6 +886,9 @@ def main():
             alvo = sorted(pm)
             novos["CHINA"] = [l for m in alvo for l in pm[m]]
             print(f"    meses a inserir: {', '.join(alvo)} → {len(novos['CHINA'])} linhas.")
+            for m in alvo:
+                avisar_codigos_sumidos("CHINA", est["CHINA"]["vol"], m,
+                                       {str(l[1])[:6] for l in pm[m]})
         else:
             print("    nada novo nesses arquivos.")
 
