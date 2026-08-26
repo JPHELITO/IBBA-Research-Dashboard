@@ -33,31 +33,16 @@ html,body{
 }
 
 /* ═══ FUNDO ANIMADO ═══════════════════════════════════════════════════════
-   Três camadas empilhadas atrás do conteúdo:
-   0 .bg-glow  → manchas de calor (laranja/cinza) que respiram devagar (CSS)
+   Duas camadas empilhadas atrás do conteúdo:
    1 #bg       → canvas: rede de pontos que se ligam e se desligam (JS)
    2 .bg-veil  → grão fino + vinheta, para nada ficar chapado
    3 conteúdo  → header, card e rodapé
 
    ⚠️ z-index POSITIVO de propósito: com z-index negativo o fundo de <body>
-   é pintado DEPOIS (ordem de pintura do CSS) e engole as três camadas.
+   é pintado DEPOIS (ordem de pintura do CSS) e engole as camadas.
    ─────────────────────────────────────────────────────────────────────── */
-.bg-glow,#bg,.bg-veil{position:fixed;pointer-events:none;}
+#bg,.bg-veil{position:fixed;pointer-events:none;}
 .header,.orange-rule,.main,.footer{position:relative;z-index:3;}
-.bg-glow{
-  inset:-25%;z-index:0;
-  background:
-    radial-gradient(40% 42% at 14% 16%, rgba(255,80,0,.20), transparent 70%),
-    radial-gradient(46% 40% at 86% 8%,  rgba(140,140,158,.16), transparent 72%),
-    radial-gradient(36% 36% at 78% 58%, rgba(255,80,0,.10), transparent 72%),
-    radial-gradient(80% 52% at 50% 108%,rgba(255,80,0,.28), transparent 70%);
-  animation:breathe 24s ease-in-out infinite alternate;
-}
-@keyframes breathe{
-  0%  {transform:translate3d(0,0,0) scale(1);}
-  50% {transform:translate3d(1.6%,-1.2%,0) scale(1.06);}
-  100%{transform:translate3d(-1.8%,1.4%,0) scale(1.02);}
-}
 #bg{inset:0;width:100%;height:100%;z-index:1;display:block;}
 .bg-veil{
   inset:0;z-index:2;
@@ -226,7 +211,6 @@ html,body{
   .field input{font-size:16px;padding:12px 13px;} /* 16px evita zoom auto no iOS */
   .btn-submit{padding:13.5px;font-size:13px;}
   .footer{padding:14px 18px;}
-  .bg-glow{filter:blur(34px);}
 }
 @media(max-width:420px){
   .header{padding:0 14px;}
@@ -242,7 +226,7 @@ html,body{
 
 /* ═══ MOVIMENTO REDUZIDO ══════════════════════════════════════════════════ */
 @media(prefers-reduced-motion:reduce){
-  .bg-glow,.logo,.login-card,.reveal,.btn-submit::after{animation:none!important;}
+  .logo,.login-card,.reveal,.btn-submit::after{animation:none!important;}
   .login-card,.reveal{opacity:1!important;transform:none!important;}
   .btn-submit:hover{transform:none;}
 }
@@ -251,7 +235,6 @@ html,body{
 <body>
 
 <!-- FUNDO ANIMADO -->
-<div class="bg-glow" aria-hidden="true"></div>
 <canvas id="bg" aria-hidden="true"></canvas>
 <div class="bg-veil" aria-hidden="true"></div>
 
