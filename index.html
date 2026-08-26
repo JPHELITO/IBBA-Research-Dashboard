@@ -157,7 +157,12 @@ body{height:100vh;overflow:hidden;}
   padding:0 12px 10px;
   display:grid;gap:10px;
   grid-template-columns:repeat(12,1fr);
-  grid-template-rows:minmax(0,180px) minmax(0,190px) minmax(0,1fr);
+  /* Faixa 1 de 232px (era 180): o "At the Open" passou a listar 12 empresas e, com 180, só
+     QUATRO linhas cabiam — a quinta saía cortada ao meio pela borda do bloco, que foi
+     exatamente o que o usuário viu. Medido: com 232 as dez linhas cabem inteiras nos dois
+     layouts. Os 52px saem da faixa 3 (`1fr`), onde o feed de notícias perde ~6% da altura
+     (de 797px para 745px) — uma manchete por coluna. */
+  grid-template-rows:minmax(0,232px) minmax(0,190px) minmax(0,1fr);
   grid-template-areas:
     "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
     "news news news news news news news news comm comm comm comm"
@@ -221,9 +226,13 @@ body{height:100vh;overflow:hidden;}
    E a faixa do topo perde o número grande: com 12 empresas, cada pixel do cabeçalho é uma
    linha do ranking que some. O resumo continua ali, em uma linha só. */
 .page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);gap:1px;}
-.page.has-events .pulse-row{grid-template-columns:56px 52px 22px minmax(0,1fr) 12px;
-  gap:4px;padding:1px 3px;}
+.page.has-events .pulse-row{grid-template-columns:54px 50px 20px minmax(0,1fr) 11px;
+  gap:4px;padding:0 3px;line-height:1.15;}
 .page.has-events .pulse-mkt{padding:1px 6px;gap:6px;}
+/* cada pixel de moldura aqui é uma linha do ranking que some */
+.page.has-events .area-pulse .pulse-body{padding:4px 8px 5px;gap:3px;}
+.page.has-events #pulse-v2{gap:4px;}
+.page.has-events .area-pulse .sec-head{padding-bottom:3px;}
 .page.has-events .pulse-mkt-val{font-size:12.5px;min-width:42px;}
 .page.has-events .pulse-mkt-lbl{font-size:7.5px;}
 .page.has-events .pulse-mkt-sub{display:none;}   /* o Morning Call vira o title do card */
@@ -2181,13 +2190,24 @@ const _PULSE_INSTR = {
 };
 const _pInstr = s => _PULSE_INSTR[s] || s;
 
+// O MACRO — câmbio, VIX, futuros americanos, EWZ — entra no modelo de TODAS as empresas, e
+// por isso costuma dominar a atribuição em bloco: num dia de dólar, ele é o maior
+// contribuinte de nove nomes ao mesmo tempo. Verdadeiro, e inútil como explicação: dizer
+// "a Vale abre assim por causa do dólar" não conta nada ao analista de mineração.
+const _MACRO_SYMS = new Set(['USDBRL=X','EURUSD=X','DX-Y.NYB','^VIX','ES=F','NQ=F','EWZ']);
+
 // O driver principal, em cinco palavras, na MESMA linha do número. Atribuição escondida
 // atrás de um clique é atribuição que não existe: o cliente precisa ver o porquê junto
 // com o quanto, senão o número é só um palpite bonito.
+//
+// Mostra o maior driver ESPECÍFICO da empresa (minério para a Vale, ouro para a Aura,
+// cobre para a Southern). O macro só aparece quando nenhum específico pesou — e a lista
+// completa, macro incluso e na ordem real de contribuição, está a um clique.
 function _pDriver(r){
   const d = (r.attribution && r.attribution.drivers) || [];
   if(!d.length) return '';
-  const [sym, , mov] = d[0];
+  const alvo = d.find(([s]) => !_MACRO_SYMS.has(s)) || d[0];
+  const [sym, , mov] = alvo;
   const nome = _pInstr(sym);
   if(mov == null || !isFinite(Number(mov))) return nome;
   const m = Number(mov);
@@ -2240,7 +2260,10 @@ const _TEMA_RE = {
 function _pManchetes(r){
   const drv = (r.attribution && r.attribution.drivers) || [];
   if(!drv.length || !_pulseNews.length) return '';
-  const tema = _TEMA_DE[drv[0][0]];
+  // mesmo driver que a linha exibe (o específico), para o texto não falar de um tema e o
+  // número ao lado de outro
+  const alvo = drv.find(([s]) => !_MACRO_SYMS.has(s)) || drv[0];
+  const tema = _TEMA_DE[alvo[0]];
   const re = tema && _TEMA_RE[tema];
   if(!re) return '';
   // Dedup: a mesma matéria chega por mais de uma fonte, e repetir a manchete faria a
