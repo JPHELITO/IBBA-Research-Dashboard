@@ -2112,11 +2112,21 @@ async function loadPulseTrack(){
 
 function _pScorecard(){
   if(!_pulseTrack.length) return '';
-  const dias = [...new Set(_pulseTrack.map(r => r.session_date))].sort();
+  // ⚠️ UM CORTE POR DIA. A RPC devolve os dois (07h e 09h), então cada empresa aparece
+  // duas vezes no mesmo pregão — e o placar diria "11 de 14" para dez empresas, o que
+  // parece erro de conta para quem está olhando a lista. Fica o corte das 09h, o mesmo
+  // que o painel exibe (o das 07h é preliminar); onde só houver o das 07h, ele serve.
+  const porDia = {};
+  for(const r of _pulseTrack) (porDia[r.session_date] ||= new Set()).add(r.cut);
+  const cutDoDia = d => porDia[d].has('09') ? '09' : [...porDia[d]].sort().pop();
+  const linhas = _pulseTrack.filter(r => r.cut === cutDoDia(r.session_date));
+  if(!linhas.length) return '';
+
+  const dias = [...new Set(linhas.map(r => r.session_date))].sort();
   const ultimo = dias[dias.length - 1];
-  const ontem = _pulseTrack.filter(r => r.session_date === ultimo);
+  const ontem = linhas.filter(r => r.session_date === ultimo);
   const acertos = ontem.filter(r => r.hit).length;
-  const geral = _pulseTrack.filter(r => r.hit).length / _pulseTrack.length;
+  const geral = linhas.filter(r => r.hit).length / linhas.length;
   const d = new Date(ultimo + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'});
   return `Last call (${d}): ${acertos}/${ontem.length} directions right`
        + ` · ${Math.round(100 * geral)}% over the last ${dias.length} sessions`;
