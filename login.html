@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover"/>
-<meta name="theme-color" content="#111111"/>
+<meta name="theme-color" content="#0A0A0C"/>
 <title>Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -15,150 +15,249 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
-  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#27AE60;
+  --orange:#FF5000;--orange-lt:#FF8A3C;
+  --ink:#08080A;--ink-2:#101013;
+  --gray-mid:#8A8A93;--gray-soft:#B6B6BE;
+  --white:#F6F4F1;
+  --line:rgba(255,255,255,.10);
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
-  --radius:10px;
-  --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 20px rgba(0,0,0,0.08);
+  --shadow:0 24px 70px rgba(0,0,0,.60),0 2px 8px rgba(0,0,0,.40);
 }
 html,body{
-  font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
-  min-height:100vh;-webkit-font-smoothing:antialiased;
+  font-family:var(--font);color:var(--gray-soft);
+  background:var(--ink);
+  min-height:100vh;min-height:100dvh;
+  -webkit-font-smoothing:antialiased;
   display:flex;flex-direction:column;
+  overflow-x:hidden;
 }
 
-/* ── HEADER ───────────────────────────────────────────────────────────── */
+/* ═══ FUNDO ANIMADO ═══════════════════════════════════════════════════════
+   Três camadas empilhadas atrás do conteúdo:
+   0 .bg-glow  → manchas de calor (laranja/cinza) que respiram devagar (CSS)
+   1 #bg       → canvas: rede de pontos que se ligam e se desligam (JS)
+   2 .bg-veil  → grão fino + vinheta, para nada ficar chapado
+   3 conteúdo  → header, card e rodapé
+
+   ⚠️ z-index POSITIVO de propósito: com z-index negativo o fundo de <body>
+   é pintado DEPOIS (ordem de pintura do CSS) e engole as três camadas.
+   ─────────────────────────────────────────────────────────────────────── */
+.bg-glow,#bg,.bg-veil{position:fixed;pointer-events:none;}
+.header,.orange-rule,.main,.footer{position:relative;z-index:3;}
+.bg-glow{
+  inset:-25%;z-index:0;
+  background:
+    radial-gradient(40% 42% at 14% 16%, rgba(255,80,0,.20), transparent 70%),
+    radial-gradient(46% 40% at 86% 8%,  rgba(140,140,158,.16), transparent 72%),
+    radial-gradient(36% 36% at 78% 58%, rgba(255,80,0,.10), transparent 72%),
+    radial-gradient(80% 52% at 50% 108%,rgba(255,80,0,.28), transparent 70%);
+  animation:breathe 24s ease-in-out infinite alternate;
+}
+@keyframes breathe{
+  0%  {transform:translate3d(0,0,0) scale(1);}
+  50% {transform:translate3d(1.6%,-1.2%,0) scale(1.06);}
+  100%{transform:translate3d(-1.8%,1.4%,0) scale(1.02);}
+}
+#bg{inset:0;width:100%;height:100%;z-index:1;display:block;}
+.bg-veil{
+  inset:0;z-index:2;
+  background:
+    radial-gradient(140% 120% at 50% 40%, transparent 40%, rgba(0,0,0,.34) 72%, rgba(0,0,0,.62) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.12'/></svg>");
+  background-size:auto,140px 140px;
+  opacity:.6;
+}
+
+/* ═══ HEADER ══════════════════════════════════════════════════════════════ */
 .header{
-  background:var(--black);
   display:flex;align-items:center;padding:0 40px;height:62px;gap:14px;
+  background:rgba(8,8,10,.78);
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.logo{flex:none;animation:emberPulse 5s ease-in-out infinite;}
+@keyframes emberPulse{
+  0%,100%{filter:drop-shadow(0 0 7px rgba(255,80,0,.35));}
+  50%    {filter:drop-shadow(0 0 17px rgba(255,80,0,.70));}
 }
 .brand-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.04em;}
-.brand-sub{font-size:9.5px;color:rgba(255,255,255,.38);font-weight:400;
-  letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
-.orange-rule{height:2px;background:var(--orange);}
 
-/* ── MAIN ─────────────────────────────────────────────────────────────── */
-.main{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  padding:48px 24px;
+/* filete laranja sob o cabecalho */
+.orange-rule{
+  height:2px;position:relative;
+  background:linear-gradient(90deg,rgba(255,80,0,.18),var(--orange) 20%,var(--orange-lt) 50%,var(--orange) 80%,rgba(255,80,0,.18));
+  box-shadow:0 0 18px rgba(255,80,0,.45);
 }
 
-/* ── LOGIN CARD ───────────────────────────────────────────────────────── */
+/* ═══ MAIN ════════════════════════════════════════════════════════════════ */
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px;}
+
+/* ═══ CARD ════════════════════════════════════════════════════════════════ */
 .login-card{
-  background:var(--white);border:1px solid var(--border);
-  border-radius:14px;box-shadow:var(--shadow);
-  padding:44px 40px 40px;width:100%;max-width:400px;
   position:relative;overflow:hidden;
+  width:100%;max-width:400px;padding:44px 40px 40px;
+  border-radius:16px;
+  background:rgba(17,17,20,.72);
+  -webkit-backdrop-filter:blur(14px) saturate(130%);backdrop-filter:blur(14px) saturate(130%);
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:var(--shadow);
+  animation:cardIn .75s cubic-bezier(.22,1,.36,1) both;
 }
-.login-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:var(--orange);border-radius:14px 14px 0 0;
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .login-card{background:rgba(14,14,17,.94);}
 }
+.login-card::before{                 /* fio laranja no topo do card */
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--orange) 18%,var(--orange-lt) 50%,var(--orange) 82%,transparent);
+}
+.login-card::after{                  /* luz suave escorrendo do topo */
+  content:'';position:absolute;top:0;left:0;right:0;height:120px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,80,0,.09),transparent);
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.985);}to{opacity:1;transform:none;}}
+
+/* entrada escalonada do conteúdo */
+.reveal{animation:reveal .6s cubic-bezier(.22,1,.36,1) both;}
+@keyframes reveal{from{opacity:0;transform:translateY(9px);}to{opacity:1;transform:none;}}
 
 .login-eyebrow{
   font-size:10px;font-weight:600;text-transform:uppercase;
-  letter-spacing:.8px;color:var(--orange);margin-bottom:8px;
+  letter-spacing:.9px;color:var(--orange);margin-bottom:8px;
+  animation-delay:.10s;
 }
 .login-title{
-  font-size:22px;font-weight:700;color:var(--black);
-  letter-spacing:-.03em;margin-bottom:6px;
+  font-size:24px;font-weight:700;color:#fff;
+  letter-spacing:-.03em;margin-bottom:6px;animation-delay:.16s;
 }
 .login-sub{
-  font-size:12.5px;color:var(--gray-mid);line-height:1.55;margin-bottom:32px;
+  font-size:12.5px;color:var(--gray-mid);line-height:1.55;margin-bottom:30px;
+  animation-delay:.22s;
 }
+#login-form{animation-delay:.28s;}
 
-/* ── FORM ─────────────────────────────────────────────────────────────── */
+/* ═══ FORM ════════════════════════════════════════════════════════════════ */
 .field{margin-bottom:18px;}
 .field label{
-  display:block;font-size:11px;font-weight:600;color:var(--gray-dark);
-  letter-spacing:.02em;margin-bottom:6px;
+  display:block;font-size:11px;font-weight:600;color:var(--gray-soft);
+  letter-spacing:.03em;margin-bottom:6px;
 }
 .field input{
-  width:100%;padding:10px 13px;
-  border:1.5px solid var(--border);border-radius:8px;
-  font-size:13.5px;font-family:var(--font);color:var(--black);
-  background:var(--white);outline:none;
-  transition:border-color .18s,box-shadow .18s;
+  width:100%;padding:11px 13px;
+  border:1.5px solid var(--line);border-radius:9px;
+  font-size:13.5px;font-family:var(--font);color:var(--white);
+  background:rgba(255,255,255,.045);outline:none;
+  transition:border-color .18s,box-shadow .18s,background .18s;
 }
+.field input:hover{border-color:rgba(255,255,255,.18);}
 .field input:focus{
   border-color:var(--orange);
-  box-shadow:0 0 0 3px rgba(255,80,0,.08);
+  background:rgba(255,255,255,.07);
+  box-shadow:0 0 0 3px rgba(255,80,0,.15);
 }
-.field input::placeholder{color:#BBBBB8;}
-
-/* ── FORGOT PASSWORD ──────────────────────────────────────────────────── */
-.forgot-wrap{text-align:right;margin-top:-10px;margin-bottom:20px;}
-.forgot-link{
-  font-size:11px;color:var(--gray-mid);text-decoration:none;
-  transition:color .15s;
+.field input::placeholder{color:rgba(255,255,255,.24);}
+/* o autofill do Chrome não pode voltar a pintar o campo de branco */
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus{
+  -webkit-text-fill-color:var(--white);
+  -webkit-box-shadow:0 0 0 1000px #17171B inset;
+  caret-color:var(--white);
+  transition:background-color 9999s ease-out 0s;
 }
-.forgot-link:hover{color:var(--orange);}
 
-/* ── SUBMIT BUTTON ────────────────────────────────────────────────────── */
+/* ═══ BOTÃO ═══════════════════════════════════════════════════════════════ */
 .btn-submit{
-  width:100%;padding:12px;
-  background:var(--black);color:#fff;
-  font-size:13px;font-weight:600;letter-spacing:.04em;
-  border:none;border-radius:8px;cursor:pointer;
+  width:100%;padding:12.5px;margin-top:4px;
+  background:linear-gradient(135deg,#FF6A1A,var(--orange) 55%,#E64300);
+  color:#0A0A0C;
+  font-size:13px;font-weight:700;letter-spacing:.04em;
+  border:none;border-radius:9px;cursor:pointer;
   font-family:var(--font);
   position:relative;overflow:hidden;
-  transition:background .2s;
+  box-shadow:0 6px 20px rgba(255,80,0,.26);
+  transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .2s,filter .2s;
 }
-.btn-submit:hover{background:#2C2C2C;}
-.btn-submit:disabled{opacity:.55;cursor:not-allowed;}
-.btn-submit .btn-text{transition:opacity .15s;}
-.btn-submit .btn-spinner{
-  display:none;position:absolute;inset:0;
-  align-items:center;justify-content:center;
+.btn-submit::after{                  /* brilho que atravessa no hover */
+  content:'';position:absolute;top:0;bottom:0;left:0;width:40%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
+  transform:translateX(-160%);transition:transform .6s cubic-bezier(.3,0,.2,1);
 }
+.btn-submit:hover{transform:translateY(-1.5px);box-shadow:0 10px 28px rgba(255,80,0,.40);filter:brightness(1.05);}
+.btn-submit:hover::after{transform:translateX(320%);}
+.btn-submit:active{transform:translateY(0);box-shadow:0 4px 14px rgba(255,80,0,.30);}
+.btn-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-submit:disabled::after{display:none;}
+.btn-submit .btn-text{transition:opacity .15s;position:relative;z-index:1;}
+.btn-submit .btn-spinner{display:none;position:absolute;inset:0;align-items:center;justify-content:center;z-index:1;}
 .btn-submit.loading .btn-text{opacity:0;}
 .btn-submit.loading .btn-spinner{display:flex;}
 
 /* spinner */
 @keyframes spin{to{transform:rotate(360deg);}}
 .spinner-ring{
-  width:18px;height:18px;border:2px solid rgba(255,255,255,.3);
-  border-top-color:#fff;border-radius:50%;
+  width:18px;height:18px;border:2px solid rgba(0,0,0,.25);
+  border-top-color:#0A0A0C;border-radius:50%;
   animation:spin .7s linear infinite;
 }
 
-/* ── ERROR / SUCCESS MESSAGES ─────────────────────────────────────────── */
+/* ═══ MENSAGENS ═══════════════════════════════════════════════════════════ */
 .msg{
-  display:none;padding:10px 13px;border-radius:7px;
+  display:none;padding:10px 13px;border-radius:8px;
   font-size:12px;font-weight:500;margin-bottom:16px;line-height:1.4;
 }
-.msg.error{background:rgba(192,57,43,.08);color:#C0392B;border:1px solid rgba(192,57,43,.2);}
-.msg.info{background:rgba(39,174,96,.08);color:#27AE60;border:1px solid rgba(39,174,96,.2);}
-.msg.visible{display:block;}
+.msg.error{background:rgba(255,86,72,.10);color:#FF8B80;border:1px solid rgba(255,86,72,.30);}
+.msg.info{background:rgba(46,204,113,.10);color:#5FD99A;border:1px solid rgba(46,204,113,.28);}
+.msg.visible{display:block;animation:reveal .28s ease-out both;}
 
-/* ── FOOTER ───────────────────────────────────────────────────────────── */
+/* ═══ FOOTER ══════════════════════════════════════════════════════════════ */
 .footer{
-  background:var(--white);border-top:1px solid var(--border);
   padding:14px 40px;display:flex;align-items:center;gap:8px;
+  border-top:1px solid rgba(255,255,255,.05);
+  background:rgba(8,8,10,.72);
 }
-.footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
-.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.2);}
+.footer-text{font-size:10px;color:rgba(255,255,255,.30);font-weight:400;letter-spacing:.02em;}
+.footer-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,80,0,.55);}
 
+/* ═══ RESPONSIVO ══════════════════════════════════════════════════════════ */
 @media(max-width:768px){
   .header{padding:0 18px;height:56px;}
   .main{padding:32px 16px;}
   .login-card{padding:32px 22px 28px;max-width:100%;}
-  .login-title{font-size:20px;}
-  .field input{font-size:16px;padding:11px 13px;} /* 16px evita zoom auto no iOS */
-  .btn-submit{padding:13px;font-size:13px;}
+  .login-title{font-size:21px;}
+  .field input{font-size:16px;padding:12px 13px;} /* 16px evita zoom auto no iOS */
+  .btn-submit{padding:13.5px;font-size:13px;}
   .footer{padding:14px 18px;}
+  .bg-glow{filter:blur(34px);}
 }
 @media(max-width:420px){
   .header{padding:0 14px;}
   .login-card{padding:28px 18px 24px;}
 }
+/* janela baixa (navegador em janela, notebook 768p): sem isso sobravam
+   12px de rolagem so por causa do respiro vertical do .main */
+@media(max-height:700px){
+  .main{padding:24px;}
+  .login-card{padding:32px 34px 30px;}
+  .login-sub{margin-bottom:22px;}
+}
+
+/* ═══ MOVIMENTO REDUZIDO ══════════════════════════════════════════════════ */
+@media(prefers-reduced-motion:reduce){
+  .bg-glow,.logo,.login-card,.reveal,.btn-submit::after{animation:none!important;}
+  .login-card,.reveal{opacity:1!important;transform:none!important;}
+  .btn-submit:hover{transform:none;}
+}
 </style>
 </head>
 <body>
 
+<!-- FUNDO ANIMADO -->
+<div class="bg-glow" aria-hidden="true"></div>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="bg-veil" aria-hidden="true"></div>
+
 <!-- HEADER -->
 <div class="header">
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+  <svg class="logo" width="22" height="22" viewBox="0 0 22 22" fill="none">
     <rect width="22" height="22" rx="6" fill="#FF5000"/>
   </svg>
   <div>
@@ -170,14 +269,14 @@ html,body{
 <!-- MAIN -->
 <div class="main">
   <div class="login-card">
-    <div class="login-eyebrow">Equity Research · Restricted access</div>
-    <div class="login-title">Welcome</div>
-    <div class="login-sub">Enter your credentials to access the sector research dashboard.</div>
+    <div class="login-eyebrow reveal">Equity Research · Restricted access</div>
+    <div class="login-title reveal">Welcome</div>
+    <div class="login-sub reveal">Enter your credentials to access the sector research dashboard.</div>
 
-    <div id="msg-error" class="msg error"></div>
-    <div id="msg-info"  class="msg info"></div>
+    <div id="msg-error" class="msg error" role="alert" aria-live="assertive"></div>
+    <div id="msg-info"  class="msg info" aria-live="polite"></div>
 
-    <form id="login-form" onsubmit="handleLogin(event)">
+    <form id="login-form" class="reveal" onsubmit="handleLogin(event)">
       <div class="field">
         <label for="username">Username</label>
         <input id="username" type="text" placeholder="e.g.: IBBA" autocomplete="username"
@@ -203,6 +302,242 @@ html,body{
   <span class="footer-text">Restricted use</span>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     FUNDO ANIMADO — constelação
+     Uma nuvem de pontos à deriva. Sempre que dois chegam perto o bastante,
+     nasce uma linha entre eles, mais forte quanto menor a distância — então
+     a malha se costura e se desfaz sozinha, sem nada estar pré-desenhado.
+     Cada ponto tem uma PROFUNDIDADE: os do fundo são menores, mais apagados
+     e mais lentos; os da frente reagem mais ao mouse (parallax). Uns poucos
+     borrões fora de foco dão o ar de lente aberta. O cursor também costura:
+     ele se liga aos pontos por perto.
+     Sem biblioteca externa. O laço DORME quando a aba perde o foco e nem
+     começa se o sistema estiver pedindo menos movimento.
+     ══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var cv = document.getElementById('bg');
+  if(!cv || !cv.getContext) return;
+  var ctx = cv.getContext('2d');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var W=0, H=0, DPR=1, mob=false, raf=null, lastT=-1e9;
+  var PTS=[], BLUR=[], PX=[], PY=[], LINK=0, LINK2=0;
+  var SP_HOT=null, SP_COOL=null, BL_HOT=null, BL_COOL=null;
+
+  /* sorteio determinístico: a mesma constelação em todo carregamento */
+  function prng(seed){ var s=seed>>>0; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+
+  /* ── sprites ────────────────────────────────────────────────────────────
+     Ponto e borrão são desenhados UMA vez num canvas de bolso e depois só
+     reaproveitados com drawImage. Desenhar o brilho a cada quadro custaria
+     caro; assim o custo por ponto vira quase nada.                        */
+  function dot(r,g,b,core){
+    var c=document.createElement('canvas'), x, gr, R=24;
+    c.width=c.height=R*2; x=c.getContext('2d');
+    gr=x.createRadialGradient(R,R,0,R,R,R);
+    gr.addColorStop(0,  'rgba(255,'+(core?236:200)+','+(core?214:170)+',.98)');
+    gr.addColorStop(.14,'rgba('+r+','+g+','+b+',.95)');
+    gr.addColorStop(.38,'rgba('+r+','+g+','+b+',.30)');
+    gr.addColorStop(1,  'rgba('+r+','+g+','+b+',0)');
+    x.fillStyle=gr; x.beginPath(); x.arc(R,R,R,0,6.283); x.fill();
+    return c;
+  }
+  function blob(r,g,b){                 /* fora de foco: sem miolo aceso */
+    var c=document.createElement('canvas'), x, gr, R=48;
+    c.width=c.height=R*2; x=c.getContext('2d');
+    gr=x.createRadialGradient(R,R,0,R,R,R);
+    gr.addColorStop(0,  'rgba('+r+','+g+','+b+',.55)');
+    gr.addColorStop(.55,'rgba('+r+','+g+','+b+',.28)');
+    gr.addColorStop(.82,'rgba('+r+','+g+','+b+',.08)');
+    gr.addColorStop(1,  'rgba('+r+','+g+','+b+',0)');
+    x.fillStyle=gr; x.beginPath(); x.arc(R,R,R,0,6.283); x.fill();
+    return c;
+  }
+
+  /* ── a nuvem ───────────────────────────────────────────────────────── */
+  function build(){
+    var r = prng(20260826), i, a, z, n;
+
+    /* alcance da ligação e nº de pontos acompanham o tamanho da tela, senão
+       o desenho fica ralo no monitor grande e entupido no celular          */
+    LINK  = Math.max(130, Math.min(255, Math.sqrt(W*H)/4.4));
+    LINK2 = LINK*LINK;
+    n = Math.round(W*H/10500);
+    n = Math.max(40, Math.min(mob?58:130, n));
+
+    PTS=[]; PX=new Float32Array(n); PY=new Float32Array(n); CALM=new Float32Array(n);
+    for(i=0;i<n;i++){
+      a = r()*6.283; z = .34+r()*.66;
+      PTS.push({
+        x:r()*W, y:r()*H,
+        vx:Math.cos(a)*(6+r()*15)*z,    /* os do fundo andam mais devagar */
+        vy:Math.sin(a)*(6+r()*15)*z,
+        z:z, hot:r()<.44                /* ~4 de 10 laranja, o resto cinza */
+      });
+    }
+
+    BLUR=[];
+    for(i=0;i<(mob?4:8);i++){
+      a=r()*6.283;
+      BLUR.push({x:r()*W, y:r()*H, vx:Math.cos(a)*4, vy:Math.sin(a)*4,
+                 s:70+r()*160, a:.13+r()*.14, hot:r()<.55});
+    }
+  }
+
+  /* ── posição do mouse: parallax + costura no cursor ─────────────────── */
+  var mx=0, my=0, tx=0, ty=0, cx=-9999, cy=-9999, PAR=26;
+  window.addEventListener('pointermove', function(e){
+    tx = (e.clientX/window.innerWidth  - .5)*2;
+    ty = (e.clientY/window.innerHeight - .5)*2;
+    cx = e.clientX; cy = e.clientY;
+  }, {passive:true});
+  window.addEventListener('pointerleave', function(){ cx=cy=-9999; }, {passive:true});
+
+  /* ── medidas ────────────────────────────────────────────────────────── */
+  function size(){
+    W = window.innerWidth; H = window.innerHeight;
+    mob = W < 720;
+    DPR = Math.min(window.devicePixelRatio||1, 1.5);
+    cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(!SP_HOT){
+      SP_HOT  = dot(255,104,26,1);  SP_COOL = dot(176,180,200,0);
+      BL_HOT  = blob(255,92,14);    BL_COOL = blob(150,155,178);
+    }
+    build();
+  }
+
+  /* ── movimento ──────────────────────────────────────────────────────── */
+  function move(dt){
+    var i,p,m=28;
+    for(i=0;i<PTS.length;i++){
+      p=PTS[i]; p.x+=p.vx*dt; p.y+=p.vy*dt;
+      /* quica nas bordas: some pela lateral cortaria as linhas na hora */
+      if(p.x<-m){p.x=-m;p.vx=-p.vx;} else if(p.x>W+m){p.x=W+m;p.vx=-p.vx;}
+      if(p.y<-m){p.y=-m;p.vy=-p.vy;} else if(p.y>H+m){p.y=H+m;p.vy=-p.vy;}
+    }
+    for(i=0;i<BLUR.length;i++){        /* os borrões atravessam e voltam */
+      p=BLUR[i]; p.x+=p.vx*dt; p.y+=p.vy*dt;
+      if(p.x<-p.s) p.x=W+p.s; else if(p.x>W+p.s) p.x=-p.s;
+      if(p.y<-p.s) p.y=H+p.s; else if(p.y>H+p.s) p.y=-p.s;
+    }
+  }
+
+  /* ── desenho ────────────────────────────────────────────────────────────
+     As linhas são separadas em 12 baldes (2 cores × 6 intensidades) e cada
+     balde vira UM traço só. Desenhar linha por linha seriam centenas de
+     chamadas por quadro; assim são 12.                                    */
+  var SEG=[], ALPHA=[.10,.19,.29,.41,.55,.72], CALM=[];
+  for(var b=0;b<12;b++) SEG.push([]);
+
+  function draw(){
+    var n=PTS.length, i, j, p, q, dx, dy, d2, d, f, al, bk, k, arr, s;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+
+    /* fora de foco, no fundo */
+    for(i=0;i<BLUR.length;i++){
+      p=BLUR[i]; ctx.globalAlpha=p.a;
+      ctx.drawImage(p.hot?BL_HOT:BL_COOL, p.x-p.s, p.y-p.s, p.s*2, p.s*2);
+    }
+    ctx.globalAlpha=1;
+
+    /* posição na tela = posição real + parallax pela profundidade.
+       CALM abre uma clareira no meio: a malha se apaga onde o card fica,
+       para o formulário ter sossego, e volta ao normal nas bordas.      */
+    var ux, uy, rr;
+    for(i=0;i<n;i++){
+      p=PTS[i];
+      PX[i]=p.x + mx*PAR*p.z;
+      PY[i]=p.y + my*PAR*p.z*.55;
+      ux=(PX[i]-W*.5)/(W*.5); uy=(PY[i]-H*.5)/(H*.5);
+      rr=ux*ux + uy*uy*1.30;
+      CALM[i] = .22 + .78*(rr<.52 ? rr/.52 : 1);
+    }
+
+    for(k=0;k<12;k++) SEG[k].length=0;
+
+    for(i=0;i<n;i++){
+      p=PTS[i];
+      for(j=i+1;j<n;j++){
+        q=PTS[j];
+        dx=PX[i]-PX[j]; dy=PY[i]-PY[j]; d2=dx*dx+dy*dy;
+        if(d2>LINK2) continue;
+        f = 1 - Math.sqrt(d2)/LINK;
+        al = f*f*(p.z<q.z?p.z:q.z)*(CALM[i]<CALM[j]?CALM[i]:CALM[j]);
+        if(al<.03) continue;
+        bk = al*6|0; if(bk>5) bk=5;
+        arr = SEG[(p.hot&&q.hot?6:0)+bk];
+        arr.push(PX[i],PY[i],PX[j],PY[j]);
+      }
+    }
+
+    /* o cursor também costura */
+    if(cx>-9998){
+      for(i=0;i<n;i++){
+        dx=PX[i]-cx; dy=PY[i]-cy; d2=dx*dx+dy*dy;
+        if(d2>LINK2) continue;
+        f = 1 - Math.sqrt(d2)/LINK;
+        al = f*f*.9*CALM[i]; if(al<.03) continue;
+        bk = al*6|0; if(bk>5) bk=5;
+        SEG[6+bk].push(PX[i],PY[i],cx,cy);
+      }
+    }
+
+    for(k=0;k<12;k++){
+      arr=SEG[k]; if(!arr.length) continue;
+      ctx.beginPath();
+      for(i=0;i<arr.length;i+=4){ ctx.moveTo(arr[i],arr[i+1]); ctx.lineTo(arr[i+2],arr[i+3]); }
+      ctx.strokeStyle = (k<6?'rgba(178,184,208,':'rgba(255,112,30,') + ALPHA[k%6] + ')';
+      ctx.lineWidth = k<6 ? 1 : 1.2;
+      ctx.stroke();
+    }
+
+    /* os pontos por cima das linhas */
+    for(i=0;i<n;i++){
+      p=PTS[i];
+      s = (2.8 + p.z*6.2) * (p.hot?1.18:1);
+      ctx.globalAlpha = (.42 + p.z*.58) * CALM[i];
+      ctx.drawImage(p.hot?SP_HOT:SP_COOL, PX[i]-s, PY[i]-s, s*2, s*2);
+    }
+
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  /* ── laço ───────────────────────────────────────────────────────────── */
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    if(now-lastT < 30) return;   /* teto de ~30 quadros/s: o fundo se move devagar,
+                                    ninguém vê diferença e a máquina trabalha metade */
+    var dt = (now-lastT)/1000;
+    lastT = now;
+    if(dt>.2) dt=.05;            /* voltando de aba escondida, nada de teleporte */
+    mx += (tx-mx)*.09; my += (ty-my)*.09;
+    move(dt); draw();
+  }
+
+  function play(){ if(raf===null && !reduce){ lastT=-1e9; raf=requestAnimationFrame(frame); } }
+  function pause(){ if(raf!==null){ cancelAnimationFrame(raf); raf=null; } }
+
+  /* aba escondida não gasta bateria nem GPU */
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) pause(); else play();
+  });
+
+  var rt=null;
+  window.addEventListener('resize', function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ size(); if(reduce) draw(); }, 140);
+  }, {passive:true});
+
+  size();
+  if(reduce) draw(); else play();
+})();
+</script>
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
 // ⚠️  CONFIGURE AQUI — substitua os valores abaixo pelas suas credenciais
