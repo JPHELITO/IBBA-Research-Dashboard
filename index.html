@@ -157,12 +157,11 @@ body{height:100vh;overflow:hidden;}
   padding:0 12px 10px;
   display:grid;gap:10px;
   grid-template-columns:repeat(12,1fr);
-  /* Faixa 1 de 232px (era 180): o "At the Open" passou a listar 12 empresas e, com 180, só
-     QUATRO linhas cabiam — a quinta saía cortada ao meio pela borda do bloco, que foi
-     exatamente o que o usuário viu. Medido: com 232 as dez linhas cabem inteiras nos dois
-     layouts. Os 52px saem da faixa 3 (`1fr`), onde o feed de notícias perde ~6% da altura
-     (de 797px para 745px) — uma manchete por coluna. */
-  grid-template-rows:minmax(0,232px) minmax(0,190px) minmax(0,1fr);
+  /* ⚠️ NÃO MEXER na altura desta faixa. Em 2026-08-26 eu a subi para 232px para caber as 12
+     empresas do "At the Open" sem rolar; o usuário recusou na hora — mexer no tamanho dos
+     cards mexe na home inteira, e o preço (o feed de notícias encolhendo) não vale a
+     conveniência de não rolar uma lista. A lista do pulse rola por dentro, e pronto. */
+  grid-template-rows:minmax(0,180px) minmax(0,190px) minmax(0,1fr);
   grid-template-areas:
     "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
     "news news news news news news news news comm comm comm comm"
@@ -226,13 +225,9 @@ body{height:100vh;overflow:hidden;}
    E a faixa do topo perde o número grande: com 12 empresas, cada pixel do cabeçalho é uma
    linha do ranking que some. O resumo continua ali, em uma linha só. */
 .page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);gap:1px;}
-.page.has-events .pulse-row{grid-template-columns:54px 50px 20px minmax(0,1fr) 11px;
-  gap:4px;padding:0 3px;line-height:1.15;}
+.page.has-events .pulse-row{grid-template-columns:56px 52px 22px minmax(0,1fr) 12px;
+  gap:4px;padding:1px 3px;}
 .page.has-events .pulse-mkt{padding:1px 6px;gap:6px;}
-/* cada pixel de moldura aqui é uma linha do ranking que some */
-.page.has-events .area-pulse .pulse-body{padding:4px 8px 5px;gap:3px;}
-.page.has-events #pulse-v2{gap:4px;}
-.page.has-events .area-pulse .sec-head{padding-bottom:3px;}
 .page.has-events .pulse-mkt-val{font-size:12.5px;min-width:42px;}
 .page.has-events .pulse-mkt-lbl{font-size:7.5px;}
 .page.has-events .pulse-mkt-sub{display:none;}   /* o Morning Call vira o title do card */
@@ -422,11 +417,6 @@ img.team-avatar{object-fit:cover;background:none;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
-/* Diz o que o ponteiro é. Fica no fluxo (não sobre o gauge) para não competir com o
-   número. Medido a 1600px: cabe em UMA linha nos dois layouts (493px sem o card Events,
-   238px com ele) e o card do pulse continua com os mesmos 178px de altura, alinhado ao
-   vizinho. A frase completa está no title do gauge. */
-.pulse-v1-note{font-size:9.5px;line-height:1.35;color:var(--gray-mid);letter-spacing:.01em;}
 
 .pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
 .pulse-stat{text-align:center;}
@@ -1344,12 +1334,10 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
             <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
             <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
           </div>
-          <!-- Dizer o que o número É. Ele mede o tom do que já foi publicado; a auditoria
-               mediu correlação de +0,18 com o retorno de ONTEM e ~0 com o de hoje.
-               Curto de propósito: com o card Events ligado esta coluna é estreita, e o
-               texto longo quebrava em 179px de altura, empurrando o card inteiro. A frase
-               completa vive no title do gauge, que funciona nos dois layouts. -->
-          <div class="pulse-v1-note">Descriptive — not a forecast.</div>
+          <!-- A linha "Descriptive — not a forecast." ficava aqui e foi REMOVIDA a pedido do
+               usuário (2026-08-26). A informação continua no title do gauge e no do botão
+               "News"; o que dizia ao cliente que o ponteiro não é previsão são os rótulos
+               (POSITIVE TONE / BALANCED / NEGATIVE TONE), e esses ficam. -->
         </div>
       </div>
       <div class="pulse-pane" id="pulse-ov">
