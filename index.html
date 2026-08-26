@@ -216,12 +216,17 @@ body{height:100vh;overflow:hidden;}
 .page.has-events .ov-row:nth-child(n+9){display:none;}
 .page.has-events .ov-name,.page.has-events .ov-chg{font-size:10px;}
 .page.has-events .ov-foot{font-size:7px;}
-/* Espremido pelo card Events (~271px): a BANDA sai da linha e vai para o tooltip — é a
-   informação mais sacrificável das cinco, e sem ela nome, gap, convicção e driver ainda
-   cabem. O driver fica: é ele que responde "por quê" sem exigir clique. */
-.page.has-events .pulse-row{grid-template-columns:56px 48px 24px minmax(0,1fr) 12px;
-  gap:4px;padding:2px 4px;}
-.page.has-events .pulse-band{display:none;}
+/* Espremido pelo card Events (~238px de largura e ~50px de lista): volta a UMA coluna e a
+   banda segue fora da linha. O driver fica — é ele que responde "por quê" sem exigir clique.
+   E a faixa do topo perde o número grande: com 12 empresas, cada pixel do cabeçalho é uma
+   linha do ranking que some. O resumo continua ali, em uma linha só. */
+.page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);gap:1px;}
+.page.has-events .pulse-row{grid-template-columns:56px 52px 22px minmax(0,1fr) 12px;
+  gap:4px;padding:1px 3px;}
+.page.has-events .pulse-mkt{padding:1px 6px;gap:6px;}
+.page.has-events .pulse-mkt-val{font-size:12.5px;min-width:42px;}
+.page.has-events .pulse-mkt-lbl{font-size:7.5px;}
+.page.has-events .pulse-mkt-sub{display:none;}   /* o Morning Call vira o title do card */
 .page.has-events .pulse-name{font-size:10px;}
 .page.has-events .pulse-gap{font-size:10px;}
 .page.has-events .pulse-why{font-size:8px;}
@@ -495,9 +500,17 @@ img.team-avatar{object-fit:cover;background:none;}
 /* RANKING em coluna única (era grade 3x3). A ordem — pelo tamanho do gap esperado — já é
    informação: o que importa hoje fica no topo. E cada linha carrega o DRIVER ao lado do
    número, porque atribuição escondida atrás de um clique é atribuição que não existe. */
+/* DUAS colunas quando o painel é largo (~493px sem o card Events): com 12 empresas, uma
+   coluna só deixaria dois terços da lista fora de vista. A banda sai da linha nesse modo
+   — é a informação mais sacrificável das cinco, e continua no tooltip. Com o card Events
+   ligado o painel tem 238px e volta a uma coluna (regra logo abaixo, no bloco has-events). */
 .pulse-list{flex:1;min-height:0;overflow:auto;display:grid;
-  grid-template-columns:minmax(0,1fr);grid-auto-rows:min-content;
-  gap:1px;align-content:start;}
+  grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:min-content;
+  gap:1px 12px;align-content:start;}
+.pulse-list .pulse-row{grid-template-columns:64px 56px 24px minmax(0,1fr) 12px;}
+.pulse-list .pulse-band{display:none;}
+/* a explicação aberta atravessa as duas colunas */
+.pulse-list .pulse-attr{grid-column:1/-1;}
 .pulse-row{display:grid;grid-template-columns:62px 52px 74px 28px minmax(0,1fr) 12px;
   align-items:center;gap:6px;line-height:1.25;
   padding:1px 4px;border-radius:5px;cursor:pointer;transition:background .12s;}
@@ -1928,10 +1941,15 @@ let _pulseAberto = null;      // empresa com o "por quê" aberto
 // setor de `quotes` → chip da home. Mineração e siderurgia são S&M; celulose/papel é P&P.
 const _PULSE_SEC = {iron_ore:'sm', steel:'sm', gold:'sm', copper:'sm', mining:'sm',
                     rare_earths:'sm', pp:'pp'};
-const _pSec = r => _PULSE_SEC[r.sector] || 'sm';
+// As três das Américas podem não estar em `quotes` (o join da RPC devolveria setor nulo).
+// Sem este mapa elas cairiam no default 'sm' por acidente; aqui é por decisão — cobre e
+// aço são S&M, do mesmo jeito que as brasileiras do setor.
+const _PULSE_SEC_FIXO = {'SCCO':'sm', 'TX':'sm', 'GMEXICOB.MX':'sm'};
+const _pSec = r => _PULSE_SEC_FIXO[r.company] || _PULSE_SEC[r.sector] || 'sm';
 // A lista roda em 3 colunas (~59px para o nome) — dois nomes de `quotes` não cabem inteiros.
 // Encurtar é melhor que espremer a fonte ou cortar com reticências.
-const _PULSE_NOME = {'AURA33.SA':'Aura', 'CMIN3.SA':'CSN Min.'};
+const _PULSE_NOME = {'AURA33.SA':'Aura', 'CMIN3.SA':'CSN Min.',
+                     'SCCO':'S. Copper', 'TX':'Ternium', 'GMEXICOB.MX':'G. México'};
 const _pNome = r => _PULSE_NOME[r.company] || r.name || r.company;
 
 function _pFaixa(s){
@@ -1986,7 +2004,12 @@ function _renderPulseV2(){
     val.textContent = `${g >= 0 ? '+' : ''}${g.toFixed(2)}%`;
     val.className = 'pulse-mkt-val ' + _pCls(m);
     lbl.textContent = `${sobe} up · ${ok.length - sobe} down at the open`;
-    sub.textContent = _pMorningCall(ok);
+    const call = _pMorningCall(ok);
+    sub.textContent = call;
+    // No layout espremido a linha do Morning Call é escondida por CSS — o texto vive no
+    // title da faixa, para não sumir junto.
+    const faixa = document.querySelector('#pulse-v2 .pulse-mkt');
+    if(faixa) faixa.title = call;
   } else {
     val.textContent = '—'; val.className = 'pulse-mkt-val neu';
     lbl.textContent = 'No reading'; sub.textContent = 'No name with a signal in this filter.';
