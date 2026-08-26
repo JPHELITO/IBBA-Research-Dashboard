@@ -216,12 +216,17 @@ body{height:100vh;overflow:hidden;}
 .page.has-events .ov-row:nth-child(n+9){display:none;}
 .page.has-events .ov-name,.page.has-events .ov-chg{font-size:10px;}
 .page.has-events .ov-foot{font-size:7px;}
-.page.has-events .pulse-row{grid-template-columns:1fr 46px 36px 26px;gap:4px;padding:2px 4px;}
+/* Espremido pelo card Events (~271px): a BANDA sai da linha e vai para o tooltip — é a
+   informação mais sacrificável das cinco, e sem ela nome, gap, convicção e driver ainda
+   cabem. O driver fica: é ele que responde "por quê" sem exigir clique. */
+.page.has-events .pulse-row{grid-template-columns:56px 48px 24px minmax(0,1fr) 12px;
+  gap:4px;padding:2px 4px;}
+.page.has-events .pulse-band{display:none;}
 .page.has-events .pulse-name{font-size:10px;}
 .page.has-events .pulse-gap{font-size:10px;}
+.page.has-events .pulse-why{font-size:8px;}
 .page.has-events .pscore{font-size:8.5px;}
-.page.has-events .pulse-conf{font-size:8px;}
-.page.has-events .pulse-foot{font-size:7px;}
+.page.has-events .pulse-foot{font-size:6.5px;}
 }
 /* ── FIM has-events (só desktop) ─────────────────────────────────────────── */
 .ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
@@ -468,11 +473,12 @@ img.team-avatar{object-fit:cover;background:none;}
    O modelo estima o GAP DE ABERTURA de cada coberta a partir do que Ásia, Europa e
    commodities negociaram de madrugada. Layout: faixa de mercado em cima + lista embaixo. */
 
-/* faixa do topo: o número da cobertura + o que ele significa */
-.pulse-mkt{display:flex;align-items:center;gap:10px;flex:none;
-  padding:4px 9px;border-radius:7px;background:var(--gray-light);border:1px solid var(--border);}
-.pulse-mkt-val{font-size:21px;font-weight:700;letter-spacing:-.03em;line-height:1;
-  min-width:52px;text-align:center;font-variant-numeric:tabular-nums;}
+/* Faixa do topo: o número da cobertura + o que ele significa. Compacta de propósito —
+   cada pixel aqui é uma linha a menos do ranking, e o corpo do card tem ~108px no total. */
+.pulse-mkt{display:flex;align-items:center;gap:9px;flex:none;
+  padding:2px 8px;border-radius:7px;background:var(--gray-light);border:1px solid var(--border);}
+.pulse-mkt-val{font-size:17px;font-weight:700;letter-spacing:-.03em;line-height:1.05;
+  min-width:56px;text-align:center;font-variant-numeric:tabular-nums;}
 .pulse-mkt-val.pos{color:var(--green);} .pulse-mkt-val.neg{color:var(--red);}
 .pulse-mkt-val.neu{color:var(--gray-mid);}
 .pulse-mkt-txt{min-width:0;flex:1;}
@@ -486,28 +492,47 @@ img.team-avatar{object-fit:cover;background:none;}
    ⚠️ `minmax(0,1fr)` e NÃO `1fr`: as linhas têm texto `nowrap`, e o `1fr` puro
    (=`minmax(auto,1fr)`) deixa o min-content esticar a coluna e desalinhar tudo —
    mesma armadilha já documentada no calendário. */
+/* RANKING em coluna única (era grade 3x3). A ordem — pelo tamanho do gap esperado — já é
+   informação: o que importa hoje fica no topo. E cada linha carrega o DRIVER ao lado do
+   número, porque atribuição escondida atrás de um clique é atribuição que não existe. */
 .pulse-list{flex:1;min-height:0;overflow:auto;display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;
-  gap:1px 10px;align-content:start;}
-.pulse-row{display:grid;grid-template-columns:1fr 46px 34px 26px;align-items:center;gap:4px;
-  padding:2px 4px;border-radius:5px;cursor:pointer;transition:background .12s;}
+  grid-template-columns:minmax(0,1fr);grid-auto-rows:min-content;
+  gap:1px;align-content:start;}
+.pulse-row{display:grid;grid-template-columns:62px 52px 74px 28px minmax(0,1fr) 12px;
+  align-items:center;gap:6px;line-height:1.25;
+  padding:1px 4px;border-radius:5px;cursor:pointer;transition:background .12s;}
 .pulse-row:hover{background:var(--gray-light);}
 .pulse-row.off{cursor:default;opacity:.45;}
 .pulse-row.off:hover{background:transparent;}
 .pulse-name{font-size:10.5px;font-weight:600;color:var(--black);white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;min-width:0;}
-.pulse-gap{font-size:10.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
-.pulse-gap.pos{color:var(--green);} .pulse-gap.neg{color:var(--red);}
+.pulse-gap{font-size:11px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;
+  white-space:nowrap;}
+/* ⚠️ O verde da casa (#16a34a) rende só 3,2:1 em texto de 11px sobre a chapa clara — e este
+   é o número PRINCIPAL da linha. Mesma correção já usada no heatmap e nos cartões de
+   commodity: um verde mais fundo para o texto (medido 5,3:1). No escuro o verde da casa já
+   rende 8,1:1, então lá ele fica. */
+.pulse-gap.pos{color:#15803d;} .pulse-gap.neg{color:var(--red);}
 .pulse-gap.neu{color:var(--gray-mid);}
-.pscore{font-size:9.5px;font-weight:700;text-align:center;border-radius:20px;padding:2px 0;
-  font-variant-numeric:tabular-nums;background:var(--border);color:var(--gray-dark);}
-.pscore.pos{background:rgba(22,163,74,.14);color:var(--green);}
-.pscore.neg{background:rgba(192,57,43,.14);color:var(--red);}
-.pscore.strong{font-weight:800;}
-.pscore.pos.strong{background:var(--green);color:#fff;}
-.pscore.neg.strong{background:var(--red);color:#fff;}
-.pulse-conf{font-size:9px;font-weight:600;color:var(--gray-mid);text-align:right;
-  font-variant-numeric:tabular-nums;}
+html.dark .pulse-gap.pos{color:var(--green);}
+/* A banda de 80% em cinza: ela qualifica o número sem competir com ele. Onde o modelo é
+   fraco a banda é larga, e isso é a informação honesta — não um defeito a esconder. */
+.pulse-band{font-size:8.5px;color:var(--gray-mid);text-align:right;white-space:nowrap;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+/* Convicção em três pontos. O laranja da marca rende 3,2:1 no claro — abaixo do mínimo de
+   TEXTO, mas estes são símbolos gráficos (o mínimo é 3:1) e a cor é decisão de marca da
+   casa. Subimos para 8px em vez de mexer na cor; a informação também está no tooltip. */
+.pulse-conv{font-size:8px;letter-spacing:.5px;text-align:center;white-space:nowrap;
+  color:var(--border);}
+.pulse-conv.low{color:var(--gray-mid);} .pulse-conv.mid{color:var(--gray-dark);}
+.pulse-conv.high{color:var(--orange);}
+.pulse-why{font-size:8.5px;color:var(--gray-mid);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;min-width:0;}
+.pulse-real{font-size:9px;font-weight:700;text-align:center;}
+.pulse-real.ok{color:#15803d;} .pulse-real.ko{color:var(--red);}
+html.dark .pulse-real.ok{color:var(--green);}
+.pulse-row.off .pscore{font-size:9px;font-weight:600;color:var(--gray-mid);
+  grid-column:2/-1;text-align:left;}
 /* "por quê": abre embaixo da linha clicada, atravessando as duas colunas */
 .pulse-attr{display:none;padding:3px 8px 6px;grid-column:1/-1;
   background:var(--gray-light);border-radius:5px;}
@@ -519,8 +544,15 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-attr-r span:first-child{color:var(--gray-dark);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;}
 .pulse-attr-r span:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
-.pulse-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:2px;
-  border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Rodapé em duas pontas: à esquerda o PLACAR (o que dissemos x o que o mercado fez),
+   à direita a procedência do dado. O placar fica à esquerda de propósito — é a primeira
+   coisa que o olho encontra ao terminar a lista. */
+.pulse-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:3px;
+  border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;
+  align-items:baseline;}
+.pulse-foot > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.pulse-foot > span:first-child{font-weight:700;color:var(--gray-dark);}
+.pulse-foot-r{flex:none;}
 
 /* ── NEWS HUNTER (2 cols × 10 rows) ────────────────────────────────── */
 .sec-new-badge{display:none;background:var(--orange);color:#fff;
@@ -1249,7 +1281,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
         <div class="pulse-views">
           <button class="pulse-view active" data-view="v1" title="Tom das notícias já publicadas hoje — descritivo, não é previsão">News</button>
           <button class="pulse-view" data-view="ov" title="O que se moveu lá fora enquanto o Brasil dormia">Overnight</button>
-          <button class="pulse-view" data-view="v2" title="Expectativa de abertura por empresa — em validação, admin-only">Open</button>
+          <button class="pulse-view" data-view="v2" title="Gap de abertura esperado por empresa, com banda de 80% — em validação, admin-only">At the Open</button>
         </div>
         <button class="pulse-chip active" data-sector="all">All</button>
         <button class="pulse-chip" data-sector="sm">S&amp;M</button>
@@ -1919,6 +1951,7 @@ async function loadPulseV2(){
     console.warn('pulse error:', e);
     _pulseRows = [];
   }
+  await loadPulseTrack();
   _renderPulseV2();
 }
 
@@ -1941,53 +1974,78 @@ function _renderPulseV2(){
   const rows = _pulseRows.filter(r => _pulseSector === 'all' || _pSec(r) === _pulseSector);
   const ok   = rows.filter(r => r.status === 'ok' && r.score != null);
 
-  // Market/Sector Pulse = média dos scores das empresas com leitura no filtro atual
+  // O número do topo é o GAP MÉDIO ESPERADO da cobertura, em %, na mesma unidade das
+  // linhas. O score −100..+100 saiu: escala abstrata exige que o cliente confie na régua,
+  // e o gap em % se explica sozinho.
   if(ok.length){
-    const m = ok.reduce((a,r) => a + Number(r.score), 0) / ok.length;
     const g = ok.reduce((a,r) => a + Number(r.gap_expected), 0) / ok.length;
-    val.textContent = (m > 0 ? '+' : '') + Math.round(m);
+    const m = ok.reduce((a,r) => a + Number(r.score), 0) / ok.length;   // só p/ a faixa
+    const sobe = ok.filter(r => Number(r.gap_expected) > 0).length;
+    // 2 casas na MÉDIA (não nas linhas): a média de 7 previsões tem erro menor que cada
+    // uma, e com 1 casa um dia equilibrado virava "+0.0%", que parece defeito.
+    val.textContent = `${g >= 0 ? '+' : ''}${g.toFixed(2)}%`;
     val.className = 'pulse-mkt-val ' + _pCls(m);
-    lbl.textContent = _pFaixa(m);
-    sub.textContent = `expected open ${g >= 0 ? '+' : ''}${g.toFixed(2)}% `
-                    + `across ${ok.length} ${ok.length === 1 ? 'name' : 'names'}`;
+    lbl.textContent = `${sobe} up · ${ok.length - sobe} down at the open`;
+    sub.textContent = _pMorningCall(ok);
   } else {
     val.textContent = '—'; val.className = 'pulse-mkt-val neu';
     lbl.textContent = 'No reading'; sub.textContent = 'No name with a signal in this filter.';
   }
 
-  // com leitura primeiro (por convicção), depois os sem sinal
+  // Ranking pelo tamanho do gap esperado: a ORDEM já é informação — o que importa hoje
+  // fica no topo. (Antes ordenava pelo score, que é a mesma coisa reescalada, mas o score
+  // saiu da tela.) Os sem sinal vão para o fim, juntos.
   const ordem = [...rows].sort((a,b) => {
     const pa = a.status === 'ok' ? 0 : 1, pb = b.status === 'ok' ? 0 : 1;
     if(pa !== pb) return pa - pb;
-    return Math.abs(Number(b.score) || 0) - Math.abs(Number(a.score) || 0);
+    return Math.abs(Number(b.gap_expected) || 0) - Math.abs(Number(a.gap_expected) || 0);
   });
 
-  lista.innerHTML = ordem.map(r => {
+  // Quem não tem sinal vira UMA linha no fim, não uma linha por empresa: nove linhas de
+  // ranking não cabem no card, e o valor do "no reliable signal" está na declaração, não
+  // em repeti-la. O porquê de cada uma fica no tooltip.
+  const semSinal = ordem.filter(r => r.status !== 'ok' || r.score == null);
+  const comSinal = ordem.filter(r => !(r.status !== 'ok' || r.score == null));
+
+  lista.innerHTML = comSinal.map(r => {
     const nome = _esc(_pNome(r));
-    if(r.status !== 'ok' || r.score == null){
-      const motivo = (r.attribution && r.attribution.motivo)
-        || (r.status === 'sem_dado' ? 'incomplete market data in this run' : 'no signal');
-      return `<div class="pulse-row off" title="${_esc(motivo)}">
-        <span class="pulse-name">${nome}</span>
-        <span class="pulse-gap neu">—</span>
-        <span class="pscore">no signal</span>
-        <span class="pulse-conf">—</span></div>`;
-    }
-    const s = Number(r.score), gap = Number(r.gap_expected), cf = r.confidence;
-    const forte = Math.abs(s) >= 65 ? ' strong' : '';
-    const tip = `${_pFaixa(s)} · model IC ${r.ic_oos != null ? Number(r.ic_oos).toFixed(2) : '—'}`
-              + ` out-of-sample · click to see what's driving it`;
+    const gap = Number(r.gap_expected);
+    const a = r.attribution || {};
+    const band = Array.isArray(a.band) ? a.band : null;
+    const conv = a.conviction || null;                       // 'high' | 'mid' | 'low'
+    const hit  = a.conviction_hit != null ? Math.round(a.conviction_hit * 100) : null;
+    const real = r.gap_actual != null ? Number(r.gap_actual) : null;
+
+    // O QUE MUDOU AQUI: o score −100..+100 saiu da tela. A unidade agora é o gap esperado
+    // em %, que é a própria variável que o modelo prevê e que o cliente já lê todo dia no
+    // "implied open" dos futuros. Uma casa decimal: um IC de 0,4 não autoriza duas.
+    const dir = gap > 0 ? 'pos' : gap < 0 ? 'neg' : 'neu';
+    const seta = gap > 0 ? '▲' : gap < 0 ? '▼' : '–';
+    const pontos = {high: '●●●', mid: '●●○', low: '●○○'}[conv] || '';
+    const tipConv = conv
+      ? `${conv} conviction — the signal is ${conv === 'high' ? 'over 1' : conv === 'mid' ? '0.5 to 1' : 'under 0.5'}`
+        + ` standard deviation of this model's own forecasts`
+        + (hit != null ? `. Historically right ${hit}% of the time in this band.` : '')
+      : '';
+    const tip = `model IC ${r.ic_oos != null ? Number(r.ic_oos).toFixed(2) : '—'} out-of-sample`
+              + (band ? ` · 80% band ${band[0].toFixed(1)} to ${band[1].toFixed(1)}%` : '')
+              + ` · click to see what's driving it`;
+    const driver = _pDriver(r);
+
     return `<div class="pulse-row" data-emp="${_esc(r.company)}" title="${_esc(tip)}">
         <span class="pulse-name">${nome}</span>
-        <span class="pulse-gap ${gap > 0 ? 'pos' : gap < 0 ? 'neg' : 'neu'}">${gap >= 0 ? '+' : ''}${gap.toFixed(2)}%</span>
-        <span class="pscore ${_pCls(s)}${forte}">${s > 0 ? '+' : ''}${Math.round(s)}</span>
-        <span class="pulse-conf">${cf != null ? Math.round(cf) + '%' : '—'}</span>
+        <span class="pulse-gap ${dir}">${seta} ${gap >= 0 ? '+' : ''}${gap.toFixed(1)}%</span>
+        <span class="pulse-band">${band ? `${band[0].toFixed(1)} … ${band[1].toFixed(1)}` : '—'}</span>
+        <span class="pulse-conv ${conv || ''}" title="${_esc(tipConv)}">${pontos}</span>
+        <span class="pulse-why">${_esc(driver)}</span>
+        ${real != null ? `<span class="pulse-real ${(gap > 0) === (real > 0) ? 'ok' : 'ko'}"
+             title="opened ${real.toFixed(2)}%">${(gap > 0) === (real > 0) ? '✓' : '✗'}</span>` : ''}
       </div>
       <div class="pulse-attr" data-attr="${_esc(r.company)}">
         <div class="pulse-attr-t">what's driving it</div>
         ${_pAttr(r)}
       </div>`;
-  }).join('');
+  }).join('') + (semSinal.length ? _pSemSinal(semSinal) : '');
 
   // reabre o "por quê" que estava aberto antes do refresh
   if(_pulseAberto){
@@ -2002,7 +2060,100 @@ function _renderPulseV2(){
   const dia = r0.session_date
     ? new Date(r0.session_date + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'})
     : '';
-  foot.textContent = `Expected OPEN, not the session · data as of ${hora} on ${dia}`;
+  foot.innerHTML = `<span>${_pScorecard()}</span>`
+    + `<span class="pulse-foot-r">Expected OPEN, not the session · as of ${_esc(hora)} on ${_esc(dia)}</span>`;
+}
+
+// ─── placar: o que dissemos × o que o mercado fez ────────────────────────────
+// É o gerador de autoridade mais barato que existe — os dados já são gravados, e nenhum
+// produto gratuito faz isso para a B3. Um previsor que publica o próprio histórico de erro
+// é lido como honesto; um que só mostra a previsão de hoje, como vendedor.
+let _pulseTrack = [];
+
+async function loadPulseTrack(){
+  try {
+    const {data, error} = await sbAuth.rpc('get_pulse_track_record', {p_dias: 30});
+    if(error) throw error;
+    _pulseTrack = data || [];
+  } catch(e){
+    // A RPC/coluna pode não existir ainda (SQL não rodado). Sem placar o painel segue
+    // inteiro — é um acréscimo, não um pré-requisito.
+    _pulseTrack = [];
+  }
+}
+
+function _pScorecard(){
+  if(!_pulseTrack.length) return '';
+  const dias = [...new Set(_pulseTrack.map(r => r.session_date))].sort();
+  const ultimo = dias[dias.length - 1];
+  const ontem = _pulseTrack.filter(r => r.session_date === ultimo);
+  const acertos = ontem.filter(r => r.hit).length;
+  const geral = _pulseTrack.filter(r => r.hit).length / _pulseTrack.length;
+  const d = new Date(ultimo + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'});
+  return `Last call (${d}): ${acertos}/${ontem.length} directions right`
+       + ` · ${Math.round(100 * geral)}% over the last ${dias.length} sessions`;
+}
+
+// MORNING CALL — a frase que abre o painel: qual nome se move mais hoje e por causa de quê.
+//
+// Gerada por TEMPLATE a partir dos drivers do próprio modelo, não por IA. Duas razões: a
+// cota das IAs de produção é reservada aos takes das notícias (regra permanente da casa), e
+// aqui não há nada para interpretar — o modelo já disse qual instrumento pesou mais. Texto
+// determinístico também nunca contradiz o número que está logo ao lado, que é o defeito
+// mais caro que um resumo automático pode ter.
+function _pMorningCall(ok){
+  if(!ok.length) return '';
+  const forte = ok.reduce((a, b) =>
+    Math.abs(Number(b.gap_expected)) > Math.abs(Number(a.gap_expected)) ? b : a);
+  const gap = Number(forte.gap_expected);
+  const drv = _pDriver(forte);
+  const nome = _pNome(forte);
+  const verbo = gap > 0 ? 'set to open higher' : gap < 0 ? 'set to open lower' : 'flat at the open';
+  return drv ? `${nome} ${verbo} on ${drv} overnight` : `${nome} ${verbo}`;
+}
+
+// "No reliable signal" numa linha só, com o motivo de cada nome no tooltip. Calar sobre o
+// que o modelo não sabe é feature: o cliente julga o produto pelo pior cartão visível, e um
+// palpite ruim ao lado de uma previsão de 76% de acerto desconta a segunda.
+function _pSemSinal(rows){
+  const nomes = rows.map(r => _pNome(r)).join(', ');
+  const motivos = rows.map(r => {
+    const m = (r.attribution && r.attribution.motivo)
+      || (r.status === 'sem_dado' ? 'incomplete market data in this run' : 'no signal');
+    return `${_pNome(r)}: ${m}`;
+  }).join('\n');
+  return `<div class="pulse-row off nosig" title="${_esc(motivos)}">
+      <span class="pulse-name">No signal</span>
+      <span class="pscore">${_esc(nomes)}</span></div>`;
+}
+
+// Nome de gente para os instrumentos. O cliente não tem que saber que "FMG.AX" é a
+// Fortescue nem que "DX-Y.NYB" é o índice do dólar — o painel fala de mercados, não de
+// tickers do Yahoo. Símbolo sem entrada aqui aparece como está (degrada legível).
+const _PULSE_INSTR = {
+  'FMG.AX':'Fortescue', 'BHP.AX':'BHP', 'RIO.AX':'Rio Tinto', 'AAL.L':'Anglo American',
+  '^AXJO':'ASX 200', '^HSI':'Hang Seng', '000001.SS':'Shanghai', '^N225':'Nikkei',
+  '600019.SS':'Baoshan Steel', '5401.T':'Nippon Steel', '2689.HK':'Nine Dragons',
+  'HG=F':'Copper', 'GC=F':'Gold', 'SI=F':'Silver',
+  '^STOXX50E':'Euro Stoxx', '^GDAXI':'DAX', '^FTSE':'FTSE', 'UPM.HE':'UPM', 'STERV.HE':'Stora Enso',
+  'ES=F':'S&P futures', 'NQ=F':'Nasdaq futures', 'CL=F':'Oil',
+  'USDBRL=X':'USD/BRL', 'EURUSD=X':'EUR/USD', 'AUDUSD=X':'AUD/USD', 'DX-Y.NYB':'Dollar index',
+  '^VIX':'VIX', '^VIX9D':'VIX 9d', '^VIX3M':'VIX 3m',
+  'VALE':'Vale ADR', 'SID':'CSN ADR', 'GGB':'Gerdau ADR', 'AUGO':'Aura (Nasdaq)', 'EWZ':'EWZ',
+};
+const _pInstr = s => _PULSE_INSTR[s] || s;
+
+// O driver principal, em cinco palavras, na MESMA linha do número. Atribuição escondida
+// atrás de um clique é atribuição que não existe: o cliente precisa ver o porquê junto
+// com o quanto, senão o número é só um palpite bonito.
+function _pDriver(r){
+  const d = (r.attribution && r.attribution.drivers) || [];
+  if(!d.length) return '';
+  const [sym, , mov] = d[0];
+  const nome = _pInstr(sym);
+  if(mov == null || !isFinite(Number(mov))) return nome;
+  const m = Number(mov);
+  return `${nome} ${m >= 0 ? '+' : ''}${m.toFixed(1)}%`;
 }
 
 function _pAttr(r){

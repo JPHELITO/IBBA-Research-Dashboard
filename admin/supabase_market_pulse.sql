@@ -114,6 +114,21 @@ comment on column public.pulse_daily.attribution is
   'aproximação nem importância estimada. É por isso que o ridge foi escolhido no lugar das '
   'árvores (que empatavam em acurácia e não explicam nada).';
 
+-- O PLACAR: o que de fato aconteceu na abertura, gravado no fim do dia (corte 18).
+-- Previsão sem placar é opinião — e é isto que sustenta o "ontem dissemos X, abriu Y" e a
+-- página de track record. Colunas aditivas: o motor degrada limpo se elas não existirem.
+alter table public.pulse_daily add column if not exists gap_actual numeric;
+alter table public.pulse_daily add column if not exists traded boolean;
+
+comment on column public.pulse_daily.gap_actual is
+  'Gap de abertura REALIZADO, em %, ajustado por proventos (no ex-dividendo o preço cai por '
+  'construção; contar isso como erro do modelo seria mentir). Preenchido por '
+  'hunter/pulse_outcome.py na rodada das 18h, quando a abertura do dia já é definitiva.';
+comment on column public.pulse_daily.traded is
+  'false = a abertura saiu EXATAMENTE igual ao fechamento anterior, ou seja, o leilão não '
+  'formou preço. Não havia gap para acertar: estes dias saem da conta de acerto. Sem isso, '
+  'papel ilíquido teria teto artificial — RANI3 abre assim em 27,7% dos pregões.';
+
 create index if not exists pulse_daily_date_idx
   on public.pulse_daily (session_date desc, cut);
 
@@ -121,6 +136,11 @@ create index if not exists pulse_daily_date_idx
 -- Devolve a rodada mais recente que existe: pega o último pregão com resultado e,
 -- dentro dele, prefere o corte das 09h (mais forte); se só houver o das 07h, usa ele.
 -- Junta nome e setor de `quotes` para o front não precisar de um segundo pedido.
+-- ⚠️ O DROP é obrigatório: `create or replace` NÃO consegue mudar o tipo de retorno de uma
+-- função existente ("cannot change return type of existing function"). Como esta ganhou
+-- gap_actual e traded, é preciso derrubar antes. A janela sem a função dura milissegundos
+-- dentro da transação do editor de SQL.
+drop function if exists public.get_market_pulse();
 create or replace function public.get_market_pulse()
   returns table (
     session_date date,
@@ -134,7 +154,9 @@ create or replace function public.get_market_pulse()
     confidence   numeric,
     attribution  jsonb,
     snapshot_at  timestamptz,
-    ic_oos       numeric
+    ic_oos       numeric,
+    gap_actual   numeric,
+    traded       boolean
   )
   language sql stable security definer set search_path = public, pg_temp as $$
   with alvo as (
@@ -148,7 +170,7 @@ create or replace function public.get_market_pulse()
          coalesce(q.name, d.company) as name,
          q.sector,
          d.status, d.gap_expected, d.score, d.confidence, d.attribution, d.snapshot_at,
-         m.ic_oos
+         m.ic_oos, d.gap_actual, d.traded
     from public.pulse_daily d
     join alvo a on a.session_date = d.session_date and a.cut = d.cut
     left join public.quotes q on q.ticker = d.company
@@ -157,6 +179,39 @@ create or replace function public.get_market_pulse()
 $$;
 revoke all on function public.get_market_pulse() from public, anon;
 grant execute on function public.get_market_pulse() to authenticated;
+
+-- ───────────── 4b) TRACK RECORD: o que dissemos x o que o mercado fez ─────────
+-- Alimenta o placar do topo do painel ("ontem: 4 de 5 direções") e a página de histórico.
+-- Só devolve linha já resolvida (tem gap_actual) e que teve leilão de verdade — dia sem
+-- negócio na abertura não é acerto nem erro, e contá-lo rebaixaria papel ilíquido de graça.
+create or replace function public.get_pulse_track_record(p_dias int default 30)
+  returns table (
+    session_date date,
+    cut          text,
+    company      text,
+    name         text,
+    gap_expected numeric,
+    gap_actual   numeric,
+    confidence   numeric,
+    conviction   text,
+    hit          boolean
+  )
+  language sql stable security definer set search_path = public, pg_temp as $$
+  select d.session_date, d.cut, d.company,
+         coalesce(q.name, d.company) as name,
+         d.gap_expected, d.gap_actual, d.confidence,
+         d.attribution->>'conviction' as conviction,
+         (d.gap_expected > 0) = (d.gap_actual > 0) as hit
+    from public.pulse_daily d
+    left join public.quotes q on q.ticker = d.company
+   where d.status = 'ok'
+     and d.gap_actual is not null
+     and coalesce(d.traded, true)
+     and d.session_date >= (current_date - greatest(p_dias, 1) * 2)
+   order by d.session_date desc, d.cut desc, abs(d.gap_expected) desc;
+$$;
+revoke all on function public.get_pulse_track_record(int) from public, anon;
+grant execute on function public.get_pulse_track_record(int) to authenticated;
 
 -- ───────────── 5) SAÚDE DO MODELO (admin) ─────────────────────────────────────
 -- Usada pelo painel de admin da Fase 5. Só para quem é admin de verdade.
