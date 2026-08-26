@@ -31,13 +31,15 @@
 
 -- ───────────── 1) SNAPSHOT: a foto do mundo antes da B3 abrir ─────────────────
 -- Uma linha por (pregão, instrumento, corte). `cut` é o horário de Brasília em que a
--- foto foi tirada: '07' (preliminar) ou '09' (definitiva, uma hora antes da abertura).
--- Os dois cortes existem porque foram VALIDADOS EM SEPARADO (IC 0,273 às 07h contra
--- 0,290 às 09h) — cada um tem o seu próprio jogo de pesos em pulse_model.
+-- foto foi tirada: '18' (âncora do fechamento de ontem), '07' (preliminar) ou '09'
+-- (definitiva, uma hora antes da abertura).
+-- Os cortes da manhã existem em separado porque foram VALIDADOS em separado — cada um
+-- tem o seu próprio jogo de pesos em pulse_model. O corte '18' NÃO pontua: ele é o
+-- ponto de partida da variação overnight que os cortes da manhã medem.
 create table if not exists public.pulse_snapshot (
   session_date  date        not null,
   symbol        text        not null,      -- ticker no Yahoo (ex.: 'FMG.AX', 'HG=F')
-  cut           text        not null,      -- '07' | '09'
+  cut           text        not null,      -- '18' | '07' | '09'
   price         numeric     not null,
   captured_at   timestamptz not null default now(),
   primary key (session_date, symbol, cut)
@@ -45,11 +47,14 @@ create table if not exists public.pulse_snapshot (
 alter table public.pulse_snapshot enable row level security;
 
 comment on table public.pulse_snapshot is
-  'Preço de cada instrumento global no corte pré-abertura. A feature do modelo é a '
-  'variação de 24h: price(D) / price(D-1) - 1, sempre dentro do mesmo corte.';
+  'Preço de cada instrumento global em cada corte. A feature do modelo é a variação '
+  'OVERNIGHT: price(corte, D) / price(18h, D-1) - 1 — só o que se moveu enquanto a B3 '
+  'esteve fechada. (Até 2026-08-26 era a variação de 24h dentro do mesmo corte; ela '
+  'embutia o pregão de ontem, que já está no preço de partida do gap.)';
 comment on column public.pulse_snapshot.cut is
-  '''07'' = 07:00 BRT (10:00 UTC) · ''09'' = 09:00 BRT (12:00 UTC). NUNCA misturar os '
-  'cortes numa mesma conta: o modelo de cada corte foi treinado com o insumo daquele corte.';
+  '''18'' = 18:00 BRT (21:00 UTC), âncora do fechamento da B3 — não pontua · '
+  '''07'' = 07:00 BRT (10:00 UTC) · ''09'' = 09:00 BRT (12:00 UTC). Os cortes da manhã '
+  'nunca se misturam numa mesma conta: cada modelo foi treinado com o insumo do seu corte.';
 
 -- o scorer sempre pergunta "os dois últimos preços deste símbolo neste corte"
 create index if not exists pulse_snapshot_sym_cut_date_idx
