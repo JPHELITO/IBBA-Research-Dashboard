@@ -40,7 +40,25 @@ DB_PATH = Path(os.environ.get("SECEX_DB") or (HERE / "steel_sm.db"))
 sys.path.insert(0, str(HERE.parent / "_shared"))
 import dictionary as _dict  # noqa: E402
 
-DEFAULT_PRED = Path.home() / "Downloads" / "SECEX - Prediction Analysis.xlsx"
+def _achar_excel_mestre():
+    """
+    Excel-mestre mais RECENTE no Downloads.
+
+    O navegador renomeia o download repetido p/ "... (1).xlsx", "... (3).xlsx" — e o
+    caminho fixo antigo ("SECEX - Prediction Analysis.xlsx") passava a apontar p/ uma
+    cópia velha, ou p/ nada. Pegar o mais novo que casa com o padrão resolve; o --pred
+    continua mandando mais que isso.
+    """
+    import glob
+    achados = [Path(p) for p in glob.glob(str(Path.home() / "Downloads" /
+                                              "SECEX - Prediction Analysis*.xlsx"))
+               if not Path(p).name.startswith("~$")]
+    if not achados:
+        return Path.home() / "Downloads" / "SECEX - Prediction Analysis.xlsx"
+    return max(achados, key=lambda p: p.stat().st_mtime)
+
+
+DEFAULT_PRED = _achar_excel_mestre()
 AD_SH6 = _dict.antidumping_sh6_set()
 NOW = datetime.utcnow().isoformat()
 
