@@ -403,6 +403,11 @@ img.team-avatar{object-fit:cover;background:none;}
 .gauge-label.bullish{color:var(--green);}
 .gauge-label.bearish{color:var(--red);}
 .gauge-label.neutral{color:var(--gray-mid);}
+/* Diz o que o ponteiro é. Fica no fluxo (não sobre o gauge) para não competir com o
+   número. Medido a 1600px: cabe em UMA linha nos dois layouts (493px sem o card Events,
+   238px com ele) e o card do pulse continua com os mesmos 178px de altura, alinhado ao
+   vizinho. A frase completa está no title do gauge. */
+.pulse-v1-note{font-size:9.5px;line-height:1.35;color:var(--gray-mid);letter-spacing:.01em;}
 
 .pulse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;}
 .pulse-stat{text-align:center;}
@@ -1242,7 +1247,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
       </span>
       <div class="pulse-controls" id="pulse-controls">
         <div class="pulse-views">
-          <button class="pulse-view active" data-view="v1" title="Balanço dos takes das notícias do dia">News</button>
+          <button class="pulse-view active" data-view="v1" title="Tom das notícias já publicadas hoje — descritivo, não é previsão">News</button>
           <button class="pulse-view" data-view="ov" title="O que se moveu lá fora enquanto o Brasil dormia">Overnight</button>
           <button class="pulse-view" data-view="v2" title="Expectativa de abertura por empresa — em validação, admin-only">Open</button>
         </div>
@@ -1254,7 +1259,8 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
     <div class="pulse-body">
       <!-- v1: termômetro de notícias (cliente). v2: expectativa de abertura (admin). -->
       <div class="pulse-pane on" id="pulse-v1">
-        <div class="gauge" id="pulse-gauge">
+        <div class="gauge" id="pulse-gauge"
+             title="Balance of the takes on news already published today. It describes the tone of the newsflow — it is not a forecast of today's move.">
           <svg viewBox="0 15 140 70" preserveAspectRatio="xMidYMid meet">
             <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#E3E3E3" stroke-width="10" fill="none" stroke-linecap="round"/>
             <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#FF5000" stroke-width="10" fill="none"
@@ -1279,6 +1285,12 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
             <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
             <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
           </div>
+          <!-- Dizer o que o número É. Ele mede o tom do que já foi publicado; a auditoria
+               mediu correlação de +0,18 com o retorno de ONTEM e ~0 com o de hoje.
+               Curto de propósito: com o card Events ligado esta coluna é estreita, e o
+               texto longo quebrava em 179px de altura, empurrando o card inteiro. A frase
+               completa vive no title do gauge, que funciona nos dois layouts. -->
+          <div class="pulse-v1-note">Descriptive — not a forecast.</div>
         </div>
       </div>
       <div class="pulse-pane" id="pulse-ov">
@@ -1841,6 +1853,11 @@ async function loadPulseV1(){
   }
 }
 
+// ⚠️ Os rótulos DESCREVEM as notícias já publicadas — não preveem o dia.
+// BULLISH/BEARISH sugeriam direção futura, e a auditoria mediu o contrário: este ponteiro
+// correlaciona +0,18 com o retorno de ONTEM e ~0 com o de hoje. Quem fala do dia que vai
+// começar é o quadro "Open"; aqui o texto diz o que o número é de fato — o tom do que foi
+// publicado. Ver Market-Pulse-Research/RESEARCH_LOG.md, E2.
 function _renderGauge(val){
   val = Math.max(0, Math.min(100, val));
   document.getElementById('gauge-val').textContent = val;
@@ -1850,13 +1867,13 @@ function _renderGauge(val){
   arc.setAttribute('stroke-dasharray', `${filled} ${total}`);
   const label = document.getElementById('gauge-label');
   if(val >= 65){
-    label.textContent = 'BULLISH'; label.className = 'gauge-label bullish';
+    label.textContent = 'POSITIVE TONE'; label.className = 'gauge-label bullish';
     arc.setAttribute('stroke', '#16a34a');
   } else if(val < 35){
-    label.textContent = 'BEARISH'; label.className = 'gauge-label bearish';
+    label.textContent = 'NEGATIVE TONE'; label.className = 'gauge-label bearish';
     arc.setAttribute('stroke', '#c0392b');
   } else {
-    label.textContent = 'NEUTRAL'; label.className = 'gauge-label neutral';
+    label.textContent = 'BALANCED'; label.className = 'gauge-label neutral';
     arc.setAttribute('stroke', '#8C8C8C');
   }
 }
