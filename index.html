@@ -557,6 +557,11 @@ html.dark .pulse-real.ok{color:var(--green);}
 .pulse-attr-r span:first-child{color:var(--gray-dark);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;}
 .pulse-attr-r span:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+/* a manchete da madrugada que sustenta o driver — evidência, não previsão */
+.pulse-news{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:6px;align-items:baseline;
+  font-size:9px;line-height:1.4;color:var(--gray-dark);}
+.pulse-news > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pulse-news-h{text-align:right;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
 /* Rodapé em duas pontas: à esquerda o PLACAR (o que dissemos x o que o mercado fez),
    à direita a procedência do dado. O placar fica à esquerda de propósito — é a primeira
    coisa que o olho encontra ao terminar a lista. */
@@ -1969,7 +1974,7 @@ async function loadPulseV2(){
     console.warn('pulse error:', e);
     _pulseRows = [];
   }
-  await loadPulseTrack();
+  await Promise.all([loadPulseTrack(), loadPulseNews()]);
   _renderPulseV2();
 }
 
@@ -2182,12 +2187,94 @@ function _pDriver(r){
 function _pAttr(r){
   const g = (r.attribution && r.attribution.grupos) || null;
   if(!g) return '<div class="pulse-attr-r"><span>no breakdown</span><span></span></div>';
-  return Object.entries(g).slice(0, 5).map(([k, v]) => {
+  const linhas = Object.entries(g).slice(0, 5).map(([k, v]) => {
     const n = Number(v);
     return `<div class="pulse-attr-r"><span>${_esc(k)}</span>`
          + `<span class="${n > 0 ? 'pulse-gap pos' : n < 0 ? 'pulse-gap neg' : 'pulse-gap neu'}">`
          + `${n >= 0 ? '+' : ''}${n.toFixed(2)}</span></div>`;
   }).join('');
+  return linhas + _pManchetes(r);
+}
+
+// ─── a manchete que explica o driver ─────────────────────────────────────────
+// O que a auditoria concluiu sobre o nosso feed: ele NÃO prevê o dia (correlaciona com o
+// retorno de ontem, não com o de hoje) — mas EXPLICA. Aqui ele faz esse trabalho: a
+// manchete não é a previsão, é a evidência do driver que o modelo já escolheu. Como a
+// seleção parte do driver, número e texto nunca se contradizem; num resumo automático solto
+// essa contradição é o defeito mais caro que existe.
+//
+// Só entram manchetes da MADRUGADA (18h de ontem em diante): é a janela em que a informação
+// pública se move enquanto a B3 está fechada, e é o que o cliente ainda não leu.
+// ⚠️ As chaves aqui têm de bater EXATAMENTE com as de `_TEMA_RE` — são o mesmo rótulo, e
+// ele vai para a tela. Um nome trocado só de um lado faz a evidência sumir em silêncio.
+const _TEMA_DE = {
+  'FMG.AX':'iron ore', 'BHP.AX':'iron ore', 'RIO.AX':'iron ore', 'AAL.L':'iron ore',
+  'VALE':'iron ore', '^AXJO':'iron ore',
+  'HG=F':'copper', 'GC=F':'gold', 'SI=F':'gold',
+  '600019.SS':'steel', '5401.T':'steel', 'SID':'steel', 'GGB':'steel',
+  '2689.HK':'pulp & paper', 'UPM.HE':'pulp & paper', 'STERV.HE':'pulp & paper',
+  '^HSI':'China', '000001.SS':'China', '^N225':'China',
+};
+// A busca é bilíngue porque o feed é: Platts e Fastmarkets escrevem em inglês, Valor e
+// Estadão em português, e a mesma notícia pode chegar pelos dois.
+// ⚠️ O RÓTULO exibido é em inglês — esta é tela de cliente (regra da casa).
+const _TEMA_RE = {
+  'iron ore': /iron ore|min[ée]rio|pellet|fortescue|vale|bhp|rio tinto|dalian/i,
+  'steel':    /\bsteel\b|a[çc]o|hrc|rebar|vergalh|slab|billet|scrap|sucata|siderurg/i,
+  'copper':   /copper|cobre|codelco|escondida/i,
+  'gold':     /\bgold\b|ouro|bullion|silver|prata/i,
+  'pulp & paper': /pulp|celulose|paper|papel|containerboard|kraft|bhkp|nbsk/i,
+  'China':    /china|chinese|beijing|pequim|pmi|stimulus|est[íi]mulo/i,
+};
+
+function _pManchetes(r){
+  const drv = (r.attribution && r.attribution.drivers) || [];
+  if(!drv.length || !_pulseNews.length) return '';
+  const tema = _TEMA_DE[drv[0][0]];
+  const re = tema && _TEMA_RE[tema];
+  if(!re) return '';
+  // Dedup: a mesma matéria chega por mais de uma fonte, e repetir a manchete faria a
+  // evidência parecer mais farta do que é. A chave são as 7 primeiras palavras sem
+  // pontuação nem números — prefixo cru não basta, porque as versões de uma mesma matéria
+  // costumam divergir só no fim (um "(atualizada)", uma cidade, um número).
+  const chaveDe = t => t.toLowerCase().replace(/[^a-zà-ú\s]/g, ' ')
+                        .split(/\s+/).filter(Boolean).slice(0, 7).join(' ');
+  const vistos = new Set(), achadas = [];
+  for(const a of _pulseNews){
+    const t = (a.title || '').trim();
+    if(!t || !re.test(t)) continue;
+    const chave = chaveDe(t);
+    if(vistos.has(chave)) continue;
+    vistos.add(chave); achadas.push(a);
+    if(achadas.length === 2) break;
+  }
+  if(!achadas.length) return '';
+  return `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
+       + achadas.map(a => {
+           const h = new Date(a.published_at || a.found_at)
+             .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
+           return `<div class="pulse-news"><span>${_esc(a.title)}</span>`
+                + `<span class="pulse-news-h">${_esc(h)}</span></div>`;
+         }).join('');
+}
+
+// Manchetes publicadas desde as 18:00 de ontem — a janela em que o mundo se moveu com a
+// B3 fechada. Falha em silêncio: o painel funciona inteiro sem elas.
+let _pulseNews = [];
+
+async function loadPulseNews(){
+  try {
+    const {data:{session}} = await sbAuth.auth.getSession();
+    if(!session) return;
+    const desde = new Date(_spDayStartMs() - 6 * 3600 * 1000).toISOString();  // 18h de ontem
+    const url = `${SUPA_URL}/rest/v1/news_articles`
+      + `?select=title,published_at,found_at,take_llm,sector`
+      + `&or=(published_at.gte.${desde},and(published_at.is.null,found_at.gte.${desde}))`
+      + `&include_in_report=eq.true&order=published_at.desc&limit=120`;
+    const r = await fetch(url, {headers:{'apikey':SUPA_KEY,
+                                         'Authorization':`Bearer ${session.access_token}`}});
+    _pulseNews = r.ok ? await r.json() : [];
+  } catch(e){ _pulseNews = []; }
 }
 
 // clique na linha abre/fecha a explicação (uma de cada vez)
