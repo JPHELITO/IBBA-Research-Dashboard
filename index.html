@@ -561,6 +561,19 @@ html.dark .pulse-real.ok{color:var(--green);}
   font-size:9px;line-height:1.4;color:var(--gray-dark);}
 .pulse-news > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pulse-news-h{text-align:right;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
+/* o selo do take que a IA já deu à manchete — mesma linguagem visual da aba News
+   (news.html .news-take), miniaturizado para caber na linha de 9px */
+.pulse-take{display:inline-flex;align-items:center;justify-content:center;width:11px;
+  height:11px;border-radius:3px;font-size:8px;font-weight:800;line-height:1;
+  margin-right:4px;vertical-align:1px;}
+.pulse-take.pos{background:rgba(22,163,74,.15);color:#15803d;}
+.pulse-take.neg{background:rgba(192,57,43,.15);color:#c0392b;}
+.pulse-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
+.pulse-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
+html.dark .pulse-take.pos{color:#4ade80;background:rgba(34,197,94,.18);}
+html.dark .pulse-take.neg{color:#f87171;background:rgba(239,68,68,.18);}
+html.dark .pulse-take.neu{color:#9ca3af;background:rgba(140,140,140,.2);}
+html.dark .pulse-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
 /* Rodapé em duas pontas: à esquerda o PLACAR (o que dissemos x o que o mercado fez),
    à direita a procedência do dado. O placar fica à esquerda de propósito — é a primeira
    coisa que o olho encontra ao terminar a lista. */
@@ -2219,8 +2232,9 @@ function _pAttr(r){
 // O que a auditoria concluiu sobre o nosso feed: ele NÃO prevê o dia (correlaciona com o
 // retorno de ontem, não com o de hoje) — mas EXPLICA. Aqui ele faz esse trabalho: a
 // manchete não é a previsão, é a evidência do driver que o modelo já escolheu. Como a
-// seleção parte do driver, número e texto nunca se contradizem; num resumo automático solto
-// essa contradição é o defeito mais caro que existe.
+// seleção parte do driver (o TEMA) e o take da IA ordena a evidência (a DIREÇÃO — manchete
+// concordante primeiro), número e texto puxam para o mesmo lado sempre que o feed permite;
+// num resumo automático solto essa contradição é o defeito mais caro que existe.
 //
 // Só entram manchetes da MADRUGADA (18h de ontem em diante): é a janela em que a informação
 // pública se move enquanto a B3 está fechada, e é o que o cliente ainda não leu.
@@ -2255,6 +2269,19 @@ function _pManchetes(r){
   const tema = _TEMA_DE[alvo[0]];
   const re = tema && _TEMA_RE[tema];
   if(!re) return '';
+  // A direção com que a manchete tem de concordar é a do MOVIMENTO do instrumento — é o
+  // número que a linha exibe ("Gold −1.3%"). A contribuição é o reserva, para atribuição
+  // antiga gravada sem movimento; sem nenhum dos dois não há preferência (vale a recência).
+  const mov = Number(alvo[2]), ctb = Number(alvo[1]);
+  const dir = isFinite(mov) && mov !== 0 ? Math.sign(mov)
+            : isFinite(ctb) && ctb !== 0 ? Math.sign(ctb) : 0;
+  // O take (+/−/=) que a consulta já traz ordena a evidência: manchete que CONCORDA com o
+  // driver primeiro, neutra/sem take depois, contrária por último. A contrária ainda entra
+  // — às vezes é a única história do tema — mas entra com o selo à vista: o selo é a
+  // leitura da IA sob a ótica das cobertas, não um juízo desta tela.
+  const tier = t => !dir ? 0
+             : t === (dir > 0 ? '+' : '-') ? 0
+             : t === (dir > 0 ? '-' : '+') ? 2 : 1;
   // Dedup: a mesma matéria chega por mais de uma fonte, e repetir a manchete faria a
   // evidência parecer mais farta do que é. A chave são as 7 primeiras palavras sem
   // pontuação nem números — prefixo cru não basta, porque as versões de uma mesma matéria
@@ -2268,14 +2295,20 @@ function _pManchetes(r){
     const chave = chaveDe(t);
     if(vistos.has(chave)) continue;
     vistos.add(chave); achadas.push(a);
-    if(achadas.length === 2) break;
   }
   if(!achadas.length) return '';
+  // sort é estável: dentro do mesmo tier a ordem continua a da consulta (recência)
+  achadas.sort((a, b) => tier(a.take_llm) - tier(b.take_llm));
+  const selo = t =>
+      t === '+'      ? '<span class="pulse-take pos" title="Positive">+</span>'
+    : t === '-'      ? '<span class="pulse-take neg" title="Negative">−</span>'
+    : t === '='      ? '<span class="pulse-take neu" title="Neutral">=</span>'
+    : t === 'review' ? '<span class="pulse-take rev" title="Review">~</span>' : '';
   return `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
-       + achadas.map(a => {
+       + achadas.slice(0, 2).map(a => {
            const h = new Date(a.published_at || a.found_at)
              .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
-           return `<div class="pulse-news"><span>${_esc(a.title)}</span>`
+           return `<div class="pulse-news"><span>${selo(a.take_llm)}${_esc(a.title)}</span>`
                 + `<span class="pulse-news-h">${_esc(h)}</span></div>`;
          }).join('');
 }
