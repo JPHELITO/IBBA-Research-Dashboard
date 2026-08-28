@@ -1,0 +1,81 @@
+<!doctype html><meta charset="utf-8"><title>celulose (Fastmarkets PIX) — grupos e cartões</title>
+<body><pre id="out">rodando…</pre><script>
+/* Tira do próprio index.html o mapa de frequência, os grupos do carrossel e o
+   desenhador do cartão, e confere que as 6 commodities de celulose da Fastmarkets
+   entram certas. Os `code` daqui são contrato com o robô (news-hunter:
+   FASTMARKETS_COMMODITIES) — se um lado renomear, o cartão some calado. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+
+const PULP = ['PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN',
+              'PULP_RADIATA_RESALE_CN','PULP_NBSK_EUROPE','PULP_BHKP_EUROPE'];
+
+window.__RUN__=async function(){
+  // index.html está gravado em CRLF e as âncoras abaixo usam \n → normaliza antes de recortar
+  const cru = await (await fetch('/index.html?v='+Date.now())).text();
+  const t = cru.split('\r\n').join('\n');
+  const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
+  const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
+  const GRUPOS= cut(t,'let COMM_GROUPS = [','];');
+  const SPARK = cut(t,'function _commSpark(sp){','</svg>`;\n}');
+  const CARD  = cut(t,'function _kvCard(c){','  </div>`;\n}');
+
+  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Date, Object};
+  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${GRUPOS}\n${SPARK}\n${CARD}
+    return {_freqOf, COMM_GROUPS, _kvCard, FREQ_WEEKLY, _fmtAssessed}; }`)(ctx);
+
+  // ── 1. frequência: assessment PIX é semanal, e o badge tem que dizer isso
+  ok('as 6 de celulose são Weekly',
+     PULP.every(code=>M._freqOf({code})==='Weekly'),
+     PULP.filter(code=>M._freqOf({code})!=='Weekly').join(',')||'todas ok');
+  ok('não estraguei o Pellet Premium (o semanal que já existia)',
+     M._freqOf({code:'IOBFC04'})==='Weekly');
+  ok('minério segue Daily e cobre segue Live',
+     M._freqOf({code:'IRON_ORE'})==='Daily' && M._freqOf({code:'COPPER'})==='Live');
+
+  // ── 2. grupos do carrossel (o default; o admin pode sobrescrever pelo Supabase)
+  const g = Object.fromEntries(M.COMM_GROUPS.map(x=>[x.title, x.codes]));
+  ok('grupo "Pulp China (PIX)" existe com os 2 de índice + os 2 de resale',
+     JSON.stringify(g['Pulp China (PIX)'])===JSON.stringify(
+       ['PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']),
+     JSON.stringify(g['Pulp China (PIX)']));
+  ok('grupo "Pulp Europe (PIX)" só com as duas em US$ (as em EUR ficam de fora)',
+     JSON.stringify(g['Pulp Europe (PIX)'])===JSON.stringify(
+       ['PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']),
+     JSON.stringify(g['Pulp Europe (PIX)']));
+  ok('os 6 códigos aparecem em algum grupo, sem repetir',
+     (()=>{const todos=M.COMM_GROUPS.flatMap(x=>x.codes).filter(c=>PULP.includes(c));
+           return todos.length===6 && new Set(todos).size===6;})());
+  ok('os 5 grupos de aço/minério continuam lá', M.COMM_GROUPS.length===7,
+     'grupos='+M.COMM_GROUPS.length);
+  // 6 cartões numa fileira cortam o nome ("Euca Resal…"): a régua é 5, como os grupos antigos
+  ok('nenhum grupo passa de 5 cartões',
+     M.COMM_GROUPS.every(x=>x.codes.length<=5),
+     M.COMM_GROUPS.filter(x=>x.codes.length>5).map(x=>x.title).join(',')||'ok');
+
+  // ── 3. o cartão desenhado
+  // O resale chega da Fastmarkets em YUAN e o robô publica em DÓLAR (a conta da planilha
+  // do analista, hunter/prices.py::resale_cny_para_usd) — o cartão nunca mostra yuan.
+  const euca={code:'PULP_EUCA_RESALE_CN', name:'Euca Resale China', unit:'USD/t',
+              price:576.01, change_pct:3.1114, assessed_at:new Date().toISOString().slice(0,10),
+              spark:{d:{c:3.11,s:[100,400,900]}}};
+  const html=M._kvCard(euca);
+  ok('o resale sai em dólar, com 2 casas', html.includes('576.01'), html.slice(0,200));
+  ok('a unidade é USD/t (nunca CNY/t)', html.includes('USD/t') && !html.includes('CNY'));
+  ok('a variação é a recalculada em dólar', html.includes('+3.11%'));
+  ok('sobe = cartão verde', html.includes('cm-card up'));
+  ok('o badge Weekly entra no cartão', html.includes('kv-badge wk')&&html.includes('Weekly'));
+  ok('o risquinho é desenhado', html.includes('<svg class="cm-spark"'));
+
+  const nbsk={code:'PULP_NBSK_EUROPE', name:'NBSK Europe', unit:'USD/t', price:1629.77,
+              change_pct:-0.1752, assessed_at:'2026-08-25', spark:{d:{c:-0.18,s:[900,400,100]}}};
+  const h2=M._kvCard(nbsk);
+  ok('preço de 4 dígitos com casas decimais', h2.includes('1,629.77'), h2.slice(0,200));
+  ok('cai = cartão vermelho e sinal negativo', h2.includes('cm-card down')&&h2.includes('-0.18%'));
+
+  document.getElementById('out').textContent =
+    R.join('\n')+'\n\n'+R.filter(x=>x.startsWith('PASS')).length+'/'+R.length+' OK';
+  return R;
+};
+__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message;});
+</script>

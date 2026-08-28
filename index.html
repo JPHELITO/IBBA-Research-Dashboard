@@ -3133,7 +3133,10 @@ function _attachHover(host, lines, dom){
 // Platts = Daily por padrão. Preencher FREQ_WEEKLY com os símbolos semanais que o
 // analista indicar. Se a grade Platts passar a expor frequência (c.freq), ela vence o mapa.
 const FREQ_LIVE   = new Set(['COPPER','GOLD']);
-const FREQ_WEEKLY = new Set(['IOBFC04']);   // Pellet Premium é o único semanal
+// Semanais: o Pellet Premium do Platts + as 6 de celulose da Fastmarkets (PIX, frequency=Weekly)
+const FREQ_WEEKLY = new Set(['IOBFC04',
+  'PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN',
+  'PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']);
 function _freqOf(c){
   if(c.freq) return c.freq;
   if(FREQ_LIVE.has(c.code))   return 'Live';
@@ -3208,6 +3211,12 @@ let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyD
   {title:'Freight + HCC',      codes:['IOFBC00','IOFAC00','MET_COAL','HCCAU00']},
   {title:'Forward Curve',      codes:['TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01']},
   {title:'Steel + Other Ores', codes:['HRC_CHINA','REBAR_TURKEY','COPPER','GOLD']},
+  // Celulose (Fastmarkets PIX). China junta o preço de índice (net, CFR, US$) com o
+  // RESALE doméstico (exw, yuan) — é a leitura que o analista faz junto. Europa fica
+  // só em US$: as linhas em EUR da aba são o mesmo preço noutra moeda.
+  {title:'Pulp China (PIX)',   codes:['PULP_NBSK_CHINA','PULP_BHKP_CHINA',
+                                      'PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']},
+  {title:'Pulp Europe (PIX)',  codes:['PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']},
 ];
 let _commByCode={}, _commPage=0, _commUpdated=null;
 const COMM_ROTATE_MS=10000;   // cada grupo gira a cada 10s
