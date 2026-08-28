@@ -3214,7 +3214,9 @@ let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyD
   // Celulose (Fastmarkets PIX). China junta o preço de índice (net, CFR, US$) com o
   // RESALE doméstico (exw, yuan) — é a leitura que o analista faz junto. Europa fica
   // só em US$: as linhas em EUR da aba são o mesmo preço noutra moeda.
-  {title:'Pulp China (PIX)',   codes:['PULP_NBSK_CHINA','PULP_BHKP_CHINA',
+  // ordem pedida pelo analista: Net e Resale da MESMA fibra lado a lado, BHKP primeiro.
+  // (EUCA = BHKP/hardwood, RADIATA = NBSK/softwood — o code guarda a espécie, o nome a fibra.)
+  {title:'Pulp China (PIX)',   codes:['PULP_BHKP_CHINA','PULP_NBSK_CHINA',
                                       'PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']},
   {title:'Pulp Europe (PIX)',  codes:['PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']},
 ];
