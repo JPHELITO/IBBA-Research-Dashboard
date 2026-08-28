@@ -3218,7 +3218,7 @@ let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyD
   // (EUCA = BHKP/hardwood, RADIATA = NBSK/softwood — o code guarda a espécie, o nome a fibra.)
   {title:'Pulp China (PIX)',   codes:['PULP_BHKP_CHINA','PULP_NBSK_CHINA',
                                       'PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']},
-  {title:'Pulp Europe (PIX)',  codes:['PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']},
+  {title:'Pulp Europe (PIX)',  codes:['PULP_BHKP_EUROPE','PULP_NBSK_EUROPE']},   // BHKP primeiro, igual à China
 ];
 let _commByCode={}, _commPage=0, _commUpdated=null;
 const COMM_ROTATE_MS=10000;   // cada grupo gira a cada 10s

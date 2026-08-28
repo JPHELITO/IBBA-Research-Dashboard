@@ -30,11 +30,18 @@ update public.commodity_groups
    and codes <> '["PULP_BHKP_CHINA","PULP_NBSK_CHINA","PULP_EUCA_RESALE_CN","PULP_RADIATA_RESALE_CN"]'::jsonb;
 
 -- Grupo 2 — Europa, só em US$ (as linhas em EUR da aba são o mesmo preço noutra moeda).
+-- Mesma convenção da China: BHKP primeiro.
 insert into public.commodity_groups (title, codes, sort_order)
 select 'Pulp Europe (PIX)',
-       '["PULP_NBSK_EUROPE","PULP_BHKP_EUROPE"]'::jsonb,
+       '["PULP_BHKP_EUROPE","PULP_NBSK_EUROPE"]'::jsonb,
        70
 where not exists (select 1 from public.commodity_groups where title = 'Pulp Europe (PIX)');
+
+update public.commodity_groups
+   set codes = '["PULP_BHKP_EUROPE","PULP_NBSK_EUROPE"]'::jsonb,
+       updated_at = now()
+ where title = 'Pulp Europe (PIX)'
+   and codes <> '["PULP_BHKP_EUROPE","PULP_NBSK_EUROPE"]'::jsonb;
 
 -- Conferência: deve listar os 5 de aço/minério + os 2 de celulose, nesta ordem.
 select sort_order, title, is_visible, codes from public.commodity_groups order by sort_order, title;
