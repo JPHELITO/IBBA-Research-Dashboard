@@ -87,60 +87,108 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .g6-gname{font:700 11px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
 .g6-group .steppers{margin:0}
 .g6-actions{margin:0 0 12px}
-/* ── tabelas publicadas do analista (sens2d): só leitura, sem controle nenhum ── */
-.s2-top{margin:2px 0 14px}
-.s2-meta{font:600 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+/* ══ TABELAS PUBLICADAS DO ANALISTA (sens2d) — só leitura ═══════════════════
+   Antes a grade era uma FOTOCÓPIA do Excel do modelo: barra de título PRETA,
+   cabeçalho cinza chapado (#A6A6A6), rótulo do eixo Y girado 90° na lateral e
+   moldura preta de 1,5px. Ficava um corpo estranho no meio da dash, onde todo
+   o resto é cartão branco + tabela .data. Aqui ela passa a falar a língua da
+   casa:
+     · cada tabela é um .card (branco, borda --border, raio 10, sombra leve);
+     · cabeçalho no padrão table.data (caixa alta 9,5px sobre --g-light);
+     · o rótulo do eixo X vira uma faixa que atravessa o topo da tabela e o do
+       eixo Y vai para a célula de canto — ninguém precisa virar a cabeça;
+     · a COR FICA NO DADO (mesma régua do heatmap da home): a magnitude entra
+       como tinta NEUTRA de alfa baixa e o LARANJA fica EXCLUSIVO do spot de
+       hoje — se os dois fossem laranja, brigariam pela atenção e o spot, que é
+       a informação que o cliente procura primeiro, sumiria no meio da grade.
+   ⚠️ A tinta da magnitude vai em background-IMAGE e a chapa do spot em
+   background-COLOR (mesmo truque do .hm-card da home): as duas em `background`
+   se apagariam — a alfa é inline (por célula) e a chapa vem da classe. */
+:root{--s2-ink:17,17,17}
+html.dark{--s2-ink:255,255,255}
+
+.s2-top{margin:2px 0 18px}
+.s2-hdr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.s2-name{font:700 15px var(--font);letter-spacing:.2px}
+.s2-meta{font:500 10.5px var(--font);color:var(--g-mid);letter-spacing:.2px}
 .s2-kpis{display:flex;flex-wrap:wrap;gap:10px}
-.s2-kpi{border:1px solid var(--border);border-radius:10px;padding:7px 11px;min-width:132px}
-.s2-k{font:700 9.5px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px}
-.s2-v{font:600 13px var(--font);margin-top:2px}
-.s2-sub{font-size:9.5px;color:var(--g-mid);margin-top:1px}
+.s2-kpi{background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:9px 12px 10px;flex:0 1 auto;min-width:158px;max-width:280px}
+.s2-k{font:700 9px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-v{font:600 14.5px var(--font);margin-top:3px;letter-spacing:-.2px;font-variant-numeric:tabular-nums}
+.s2-sub{font-size:9.5px;color:var(--g-mid);margin-top:2px}
+.s2-kpi.on .s2-k{color:var(--orange)}
 .s2-arrow{color:var(--g-mid);font-weight:400}
-.s2-warn{margin-top:9px;font-size:11px;color:#8a6d1f;background:rgba(214,168,42,.13);
-  border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:6px 9px}
-.s2-sheet{font:700 11px var(--font);color:var(--orange);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px}
-.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(392px,1fr));gap:16px}
-/* A tabela replica o desenho do Excel do analista: barra de titulo PRETA com texto branco,
-   rotulo do eixo Y girado 90 graus na esquerda, rotulo do eixo X em cima, cabecalhos em
-   CINZA #A6A6A6 e dados centralizados dentro de uma moldura. Cores tiradas do tema do
-   proprio arquivo (dk1 #000000, lt1 #FFFFFF, cabecalho = lt1 com tint -0,35). */
-:root{--s2-bar-bg:#000;--s2-bar-fg:#fff;--s2-head-bg:#A6A6A6;--s2-head-fg:#000;
-  --s2-cell-bg:#fff;--s2-cell-fg:#111;--s2-line:#000;--s2-grid:#c8c8c8}
-html.dark{--s2-bar-bg:#0d0d0d;--s2-bar-fg:#f2f2f2;--s2-head-bg:#4a4d52;--s2-head-fg:#f2f2f2;
-  --s2-cell-bg:transparent;--s2-cell-fg:#e8e8e8;--s2-line:#6b6f76;--s2-grid:#3a3d42}
-.s2-card{min-width:0}
-.s2-bar{background:var(--s2-bar-bg);color:var(--s2-bar-fg);font:700 11px var(--font);
-  text-align:center;padding:4px 30px 4px 8px;position:relative;line-height:1.3;
-  border:1.5px solid var(--s2-line);border-bottom:0}
-.s2-bar-live{position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  font:700 8px var(--font);letter-spacing:.5px;text-transform:uppercase;opacity:.72}
-.s2-body{display:flex;align-items:stretch;border:1.5px solid var(--s2-line)}
-.s2-ylab{background:var(--s2-head-bg);color:var(--s2-head-fg);display:flex;align-items:center;
-  justify-content:center;padding:2px 1px;border-right:1px solid var(--s2-grid)}
-.s2-ylab span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;
-  font:700 8.5px var(--font);overflow:hidden;text-overflow:ellipsis}
-.s2-main{flex:1;min-width:0;display:flex;flex-direction:column}
-.s2-xlab{background:var(--s2-head-bg);color:var(--s2-head-fg);text-align:center;
-  font:700 8.5px var(--font);padding:2px 4px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;border-bottom:1px solid var(--s2-grid)}
+.s2-warn{margin-top:11px;font-size:11px;color:#8a6d1f;background:rgba(214,168,42,.13);
+  border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:7px 10px}
+.s2-sheet{font:700 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;
+  letter-spacing:.5px;margin:20px 0 8px}
+.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,530px),1fr));gap:16px;align-items:start}
+
+/* ── um cartão por indicador ── */
+.s2-card{padding:12px 14px 11px;margin-bottom:0;min-width:0}
+.s2-chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px}
+.s2-card h3{margin-bottom:0}
+.s2-axes{font-size:10px;color:var(--g-mid);margin-top:2px}
+.s2-live{flex:none;display:inline-flex;align-items:center;gap:5px;font:700 8.5px var(--font);
+  text-transform:uppercase;letter-spacing:.7px;color:var(--orange);background:rgba(255,80,0,.08);
+  border:1px solid rgba(255,80,0,.28);border-radius:20px;padding:2px 8px;white-space:nowrap}
+.s2-live i{width:5px;height:5px;border-radius:50%;background:var(--orange);
+  animation:livepulse 2s ease-in-out infinite}
 .s2-scroll{overflow-x:auto}
-.s2-tbl{border-collapse:collapse;font-size:9.5px;width:100%;table-layout:auto}
-.s2-tbl th,.s2-tbl td{padding:2px 5px;text-align:center;white-space:nowrap}
-.s2-tbl th{background:var(--s2-head-bg);color:var(--s2-head-fg);font-weight:700}
-.s2-tbl thead th{border-bottom:1px solid var(--s2-grid)}
-.s2-tbl tbody th{border-right:1px solid var(--s2-grid)}
-.s2-tbl td{background:var(--s2-cell-bg);color:var(--s2-cell-fg)}
-.s2-tbl th.s2-hit{outline:1.5px solid var(--orange);outline-offset:-1.5px}
+
+.s2-tbl{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.s2-tbl th,.s2-tbl td{padding:4px 6px;text-align:center;border-bottom:1px solid var(--border)}
+.s2-tbl thead th{font:600 9.5px var(--font);color:var(--g-dark);background:var(--g-light);
+  text-transform:uppercase;letter-spacing:.4px}
+/* o rótulo do eixo sai como o analista escreveu: em caixa alta "62% Fe (US$/t)"
+   viraria "62% FE (US$/T)" e a unidade deixaria de ser a unidade */
+.s2-tbl thead th.s2-xhead{color:var(--g-mid);letter-spacing:.6px;text-transform:none;font-size:9.5px}
+.s2-tbl thead th.s2-corner{background:var(--g-light);font:600 8.5px var(--font);color:var(--g-mid);
+  letter-spacing:.4px;text-transform:none;text-align:left;white-space:normal;line-height:1.15;max-width:98px}
+.s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:var(--g-light);
+  border-right:1px solid var(--border)}
+.s2-tbl tbody tr:last-child th,.s2-tbl tbody tr:last-child td{border-bottom:0}
 .s2-num{font-variant-numeric:tabular-nums}
-.s2-cell-near{background:rgba(230,125,34,.08)}
-.s2-cell-hit{background:rgba(230,125,34,.22);font-weight:700;
+/* tinta = magnitude dentro da PRÓPRIA tabela (--h vem inline, célula a célula) */
+.s2-tbl td{background-color:transparent;
+  background-image:linear-gradient(rgba(var(--s2-ink),var(--h,0)),rgba(var(--s2-ink),var(--h,0)))}
+/* laranja = onde o mercado está HOJE */
+.s2-tbl th.s2-hit{color:var(--orange);
+  background-image:linear-gradient(rgba(255,80,0,.13),rgba(255,80,0,.13))}
+.s2-tbl td.s2-cell-near{background-color:rgba(255,80,0,.05)}
+.s2-tbl td.s2-cell-hit{background-color:rgba(255,80,0,.15);font-weight:700;color:var(--black);
   box-shadow:inset 0 0 0 1.5px var(--orange)}
-.s2-note{font-size:10.5px;color:var(--g-mid);margin-top:14px;line-height:1.45}
+/* leitura no ponto exato do spot (interpolada entre os níveis publicados) */
+.s2-spot{display:flex;align-items:baseline;gap:8px;margin-top:9px;padding-top:8px;
+  border-top:1px dashed var(--border);font-size:10px;color:var(--g-mid)}
+.s2-spot-k{font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--orange)}
+.s2-spot-x{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.s2-spot b{font:700 12.5px var(--font);color:var(--black);font-variant-numeric:tabular-nums}
+
+.s2-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;color:var(--g-mid);
+  margin-top:16px;line-height:1.45}
+.s2-ramp{flex:none;width:66px;height:8px;border-radius:4px;border:1px solid var(--border);
+  background-color:var(--white);
+  background-image:linear-gradient(90deg,rgba(var(--s2-ink),.008),rgba(var(--s2-ink),.06))}
+html.dark .s2-kpi{background:#1c2026}
+html.dark .s2-warn{color:#e0c26a}
+html.dark .s2-tbl td.s2-cell-hit{color:#fff}
+
+@media(max-width:900px){
+  /* 1ª coluna ancorada: rolando de lado você não perde o nível do eixo Y */
+  .s2-tbl tbody th,.s2-tbl .s2-corner{position:sticky;left:0;z-index:2;box-shadow:1px 0 0 var(--border)}
+}
 @media(max-width:760px){
   .s2-grid{grid-template-columns:1fr}
-  .s2-kpi{min-width:0;flex:1 1 132px}
-  .s2-tbl{font-size:9px}
-  .s2-tbl th,.s2-tbl td{padding:2px 3px}
+  .s2-kpi{min-width:136px;max-width:none;flex:1 1 136px}
+  .s2-card{padding:11px 11px 10px}
+  .s2-scroll{margin:0 -11px}
+  .s2-tbl thead th:first-child,.s2-tbl tbody th:first-child{padding-left:11px}
+  .s2-tbl{font-size:10.5px}
+  .s2-tbl th,.s2-tbl td{padding:4px 5px}
 }
 
 .g6d{font-size:9.5px;color:var(--g-mid);font-weight:600;margin-left:3px}
@@ -597,9 +645,45 @@ function _s2Ctx(t){
           mv:(_SENS_CTX&&_SENS_CTX.marketValues)||{}};
 }
 
-// uma tabela em HTML, replicando o desenho do Excel do analista: barra de titulo preta,
-// rotulo do eixo Y girado 90 graus na esquerda, rotulo do eixo X em cima, cabecalhos
-// cinza e dados centralizados dentro de uma moldura.
+// ── interpolação no ponto: onde o spot cai ENTRE dois níveis publicados ──
+// Devolve o par de índices que cerca o valor e o peso entre eles. Fora da
+// grade devolve null: NÃO se extrapola tabela de analista.
+function _s2Span(levels,v){
+  if(v==null||!isFinite(v)||!levels||!levels.length) return null;
+  if(levels.length===1) return levels[0]===v?{i:0,j:0,w:0}:null;
+  for(let i=0;i<levels.length-1;i++){
+    const a=levels[i], b=levels[i+1];
+    if((v>=a&&v<=b)||(v<=a&&v>=b)){ const d=b-a; return {i:i,j:i+1,w:d?(v-a)/d:0}; }
+  }
+  return null;
+}
+// valor PUBLICADO no ponto (linha r, coluna c), bilinear na própria grade
+function _s2At(tab,r,c){
+  const cs=_s2Span(tab.colLevels,c); if(!cs) return null;
+  const onRow=function(row){ if(!row) return null;
+    const a=n(row[cs.i]), b=n(row[cs.j]);
+    if(a==null||b==null) return null; return a+(b-a)*cs.w; };
+  if(!tab.rowLevels||!tab.rowLevels.length) return onRow(tab.values&&tab.values[0]);
+  const rs=_s2Span(tab.rowLevels,r); if(!rs) return null;
+  const v0=onRow(tab.values[rs.i]), v1=onRow(tab.values[rs.j]);
+  if(v0==null||v1==null) return null;
+  return v0+(v1-v0)*rs.w;
+}
+// "EBITDA 2026E (BRL million)" vira {head:"EBITDA 2026E", note:"BRL million"}
+function _s2TitleParts(title){
+  const t=String(title==null?'':title).trim();
+  const i=t.indexOf('('), j=t.lastIndexOf(')');
+  if(i>0&&j>i) return {head:t.slice(0,i).trim(), note:t.slice(i+1,j).trim()};
+  return {head:t, note:''};
+}
+
+// Uma tabela em HTML NO PADRÃO DA DASH. Antes era uma cópia do Excel do
+// analista: barra de título preta, cabeçalho cinza chapado e o rótulo do eixo Y
+// girado 90 graus na lateral. Agora: cartão branco, cabeçalho no estilo
+// table.data, rótulo do eixo X atravessando o topo e o do eixo Y na célula de
+// canto. A tinta neutra das células mostra a magnitude DENTRO da própria
+// tabela; o laranja marca só a linha/coluna do spot e o cruzamento dos dois,
+// que é o que o cliente procura primeiro.
 function _s2TableHtml(tab,byId,ctx){
   const met=tab.metric; const live=SG.SENS2D_METRICS[met]&&SG.SENS2D_METRICS[met].live;
   const pair=tab.pairId?byId[tab.pairId]:null;
@@ -610,32 +694,68 @@ function _s2TableHtml(tab,byId,ctx){
   const colLive=_s2LiveAxis(tab.colLabel,ctx.mv), rowLive=tab.rowLevels?_s2LiveAxis(tab.rowLabel,ctx.mv):null;
   const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
   const canLive=live&&ctx.mcLive!=null&&ctx.mcModel!=null&&(met!=='ev_ebitda'||!!pair);
-  let h='<div class="s2-card">';
-  h+='<div class="s2-bar"><span>'+esc(tab.title)+'</span>'+
-     (canLive?'<span class="s2-bar-live" title="recalculado no preço de tela">live</span>':'')+'</div>';
-  h+='<div class="s2-body">';
-  if(tab.rowLabel) h+='<div class="s2-ylab"><span>'+esc(tab.rowLabel)+'</span></div>';
-  h+='<div class="s2-main">';
-  if(tab.colLabel) h+='<div class="s2-xlab">'+esc(tab.colLabel)+'</div>';
-  h+='<div class="s2-scroll"><table class="s2-tbl"><thead><tr><th class="s2-corner"></th>';
+  const hasRow=!!(tab.rowLevels&&tab.rowLevels.length);
+  const rows=tab.rowLevels||[null];
+  // o preço de tela reescreve múltiplos/yields; EBITDA, FCF e margens saem como publicados
+  const toScreen=function(pub,eb){ return canLive?SG.sens2dLiveValue({metric:met,published:pub,
+      ebitda:eb,mktcapModel:ctx.mcModel,mktcapLive:ctx.mcLive}):pub; };
+  const vals=rows.map(function(rv,i){ return tab.colLevels.map(function(cv,j){
+    return toScreen(tab.values[i]?tab.values[i][j]:null, pair&&pair.values[i]?pair.values[i][j]:null); }); });
+  // faixa da PRÓPRIA tabela manda na intensidade da tinta (nunca se compara entre tabelas)
+  let mn=Infinity,mx=-Infinity;
+  vals.forEach(function(r){ r.forEach(function(v){ if(v!=null&&isFinite(v)){ if(v<mn)mn=v; if(v>mx)mx=v; } }); });
+  const span=(isFinite(mn)&&isFinite(mx)&&mx>mn)?(mx-mn):0;
+  const ink=function(v){ if(!span||v==null||!isFinite(v)) return '';
+    return ' style="--h:'+(0.008+0.052*(v-mn)/span).toFixed(3)+'"'; };
+  const parts=_s2TitleParts(tab.title);
+
+  let h='<div class="card s2-card">';
+  h+='<div class="s2-chead"><div><h3>'+esc(parts.head)+'</h3>'+
+     (parts.note?'<div class="s2-axes">'+esc(parts.note)+'</div>':'')+'</div>'+
+     (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
+     '</div>';
+  h+='<div class="s2-scroll"><table class="s2-tbl"><thead>';
+  if(tab.colLabel){
+    h+='<tr>'+(hasRow?'<th class="s2-corner" rowspan="2">'+esc(tab.rowLabel||'')+'</th>':'')+
+       '<th class="s2-xhead" colspan="'+tab.colLevels.length+'">'+esc(tab.colLabel)+'</th></tr><tr>';
+  } else {
+    h+='<tr>'+(hasRow?'<th class="s2-corner">'+esc(tab.rowLabel||'')+'</th>':'');
+  }
   tab.colLevels.forEach(function(v,j){
     h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
   h+='</tr></thead><tbody>';
-  const rows=tab.rowLevels||[null];
   rows.forEach(function(rv,i){
-    h+='<tr><th'+(i===ri?' class="s2-hit"':'')+'>'+
-       (rv==null?'':esc(SG.sens2dAxisFormat(rv,rowPct,NUM_LOC,rowDec)))+'</th>';
+    h+='<tr>';
+    if(hasRow) h+='<th'+(i===ri?' class="s2-hit"':'')+'>'+
+       esc(SG.sens2dAxisFormat(rv,rowPct,NUM_LOC,rowDec))+'</th>';
     tab.colLevels.forEach(function(cv,j){
-      const pub=tab.values[i]?tab.values[i][j]:null;
-      const v=canLive?SG.sens2dLiveValue({metric:met,published:pub,
-              ebitda:pair&&pair.values[i]?pair.values[i][j]:null,
-              mktcapModel:ctx.mcModel,mktcapLive:ctx.mcLive}):pub;
+      const v=vals[i][j];
       const hit=(i===ri&&j===cj)?' s2-cell-hit':((i===ri||j===cj)?' s2-cell-near':'');
-      h+='<td class="s2-num'+hit+'">'+esc(SG.sens2dFormat(v,met,NUM_LOC))+'</td>';
+      h+='<td class="s2-num'+hit+'"'+ink(v)+'>'+esc(SG.sens2dFormat(v,met,NUM_LOC))+'</td>';
     });
     h+='</tr>';
   });
-  h+='</tbody></table></div></div></div></div>';
+  h+='</tbody></table></div>';
+  // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada
+  if(colLive!=null&&(!hasRow||rowLive!=null)){
+    const pubAt=_s2At(tab,rowLive,colLive);
+    const ebAt=pair?_s2At(pair,rowLive,colLive):null;
+    const at=(pubAt==null)?null:toScreen(pubAt,ebAt);
+    if(at!=null&&isFinite(at)){
+      // o spot entra com casa a MAIS quando a casa do eixo o arredondaria: o eixo do
+      // cambio mostra 5,4 mas quem entrou na conta foi 5,44 - a linha tem de dizer isso
+      const spotFmt=function(v,pct,dec){ const x=pct?v*100:v, pw=Math.pow(10,dec);
+        const d=(Math.abs(x*pw-Math.round(x*pw))<1e-9)?dec:Math.min(dec+1,3);
+        return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
+      const xs=[spotFmt(colLive,colPct,colDec)];
+      if(hasRow) xs.push(spotFmt(rowLive,rowPct,rowDec));
+      h+='<div class="s2-spot" title="interpolated between the published grid levels">'+
+         '<span class="s2-spot-k">At spot</span>'+
+         '<span class="s2-spot-x">'+esc(xs.join(' × '))+'</span>'+
+         '<b>'+esc(SG.sens2dFormat(at,met,NUM_LOC))+'</b></div>';
+    }
+  }
+  h+='</div>';
   return h;
 }
 // encurta o rotulo do driver (os do modelo sao longos demais p/ cabecalho)
@@ -662,25 +782,27 @@ function _s2RenderPane(t,pane){
   const byId={}; (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(x){ byId[x.id]=x; }); });
   const ccy=d.currency||'';
   let h='<div class="s2-top">';
-  h+='<div class="s2-meta">'+esc(d.source_file||'model')+(d.model_date?' · '+esc(d.model_date):'')+
-     (ccy?' · '+esc(ccy)+' mn':'')+'</div>';
-  // preco do modelo x preco de tela
+  h+='<div class="s2-hdr"><div class="s2-name">'+esc(_s2Label(t))+'</div>'+
+     '<div class="s2-meta">'+esc(d.source_file||'model')+(d.model_date?' · '+esc(d.model_date):'')+
+     (ccy?' · '+esc(ccy)+' mn':'')+'</div></div>';
+  // preço do modelo × preço de tela + faixa de cada driver (e onde o spot está hoje)
   const pm=n(d.model_price), pl=ctx.price;
   h+='<div class="s2-kpis">';
-  h+='<div class="s2-kpi"><div class="s2-k">Share price</div><div class="s2-v">'+
+  h+='<div class="s2-kpi'+(pl!=null?' on':'')+'"><div class="s2-k">Share price</div><div class="s2-v">'+
      (pm!=null?pm.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2}):'–')+
      ' <span class="s2-arrow">→</span> '+
      (pl!=null?'<b>'+pl.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>':'<span class="muted">no quote</span>')+
      '</div><div class="s2-sub">'+(pm&&pl?((pl/pm-1)*100).toLocaleString(NUM_LOC,{minimumFractionDigits:1,maximumFractionDigits:1})+'% vs model':'model → live')+'</div></div>';
   _s2DriverStrip(d,ctx).forEach(function(x){
-    h+='<div class="s2-kpi"><div class="s2-k">'+esc(_s2Short(x.label))+'</div><div class="s2-v">'+
+    h+='<div class="s2-kpi'+(x.inside?' on':'')+'"><div class="s2-k" title="'+esc(x.label)+'">'+esc(_s2Short(x.label))+
+       '</div><div class="s2-v">'+
        esc(SG.sens2dAxisFormat(x.min,x.pct,NUM_LOC,x.dec))+'–'+esc(SG.sens2dAxisFormat(x.max,x.pct,NUM_LOC,x.dec))+
        (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(SG.sens2dAxisFormat(x.live,x.pct,NUM_LOC,x.dec))+'</b>':'')+
-       '</div><div class="s2-sub">'+(x.live==null?'grid range · no screen price':(x.inside?'grid range · spot':'spot fora da grade'))+'</div></div>';
+       '</div><div class="s2-sub">'+(x.live==null?'grid range · no live read':(x.inside?'grid range · spot':'spot outside the grid'))+'</div></div>';
   });
   h+='</div>';
-  if(ctx.mismatch) h+='<div class="s2-warn">Moeda do modelo e do preço ao vivo não batem — mostrando os números como publicados.</div>';
-  else if(ctx.mcLive==null) h+='<div class="s2-warn">Sem cotação ao vivo agora — múltiplos e yields aparecem como publicados.</div>';
+  if(ctx.mismatch) h+='<div class="s2-warn">Model currency and live price do not match — showing the numbers exactly as published.</div>';
+  else if(ctx.mcLive==null) h+='<div class="s2-warn">No live quote right now — multiples and yields are shown as published.</div>';
   h+='</div>';
   (d.sheets||[]).forEach(function(sh){
     if((d.sheets||[]).length>1) h+='<div class="s2-sheet">'+esc(sh.name)+'</div>';
@@ -688,13 +810,16 @@ function _s2RenderPane(t,pane){
     (sh.tables||[]).forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
     h+='</div>';
   });
-  h+='<div class="s2-note">EBITDA, FCF e margens saem como o analista publicou. EV/EBITDA, yields, upside e P/NAV são recalculados no preço de tela: a dívida líquida de cada célula é a que está embutida no EV publicado.</div>';
+  h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading = magnitude within each grid (light to dark); '+
+     'orange marks where the market is trading today. EBITDA, FCF and margins are exactly as the analyst published. '+
+     'EV/EBITDA, yields, upside and P/NAV are recomputed at the current screen price: the net debt in each cell is '+
+     'the one embedded in the published EV.</span></div>';
   pane.innerHTML=h;
 }
 
 function sgRenderSens2dTabs(list,others,host){
   _S2_TABS=list.map(function(t){ return {key:'s2-'+t.id,t:t,label:_s2Label(t)}; });
-  if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Outras'});
+  if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Other'});
   const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs';
   _S2_TABS.forEach(function(tab,i){ const b=document.createElement('button');
     b.className='sg-tab'+(i===0?' active':''); b.id='s2tab-'+i; b.textContent=tab.label;
