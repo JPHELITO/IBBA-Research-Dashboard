@@ -35,9 +35,10 @@ window.__RUN__=async function(){
 
   // ── 2. grupos do carrossel (o default; o admin pode sobrescrever pelo Supabase)
   const g = Object.fromEntries(M.COMM_GROUPS.map(x=>[x.title, x.codes]));
-  ok('grupo "Pulp China (PIX)" existe com os 2 de índice + os 2 de resale',
+  // ORDEM importa: Net e Resale da mesma fibra lado a lado, BHKP primeiro (pedido do analista)
+  ok('grupo "Pulp China (PIX)" na ordem BHKP Net, NBSK Net, BHKP Resale, NBSK Resale',
      JSON.stringify(g['Pulp China (PIX)'])===JSON.stringify(
-       ['PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']),
+       ['PULP_BHKP_CHINA','PULP_NBSK_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']),
      JSON.stringify(g['Pulp China (PIX)']));
   ok('grupo "Pulp Europe (PIX)" só com as duas em US$ (as em EUR ficam de fora)',
      JSON.stringify(g['Pulp Europe (PIX)'])===JSON.stringify(
@@ -56,7 +57,7 @@ window.__RUN__=async function(){
   // ── 3. o cartão desenhado
   // O resale chega da Fastmarkets em YUAN e o robô publica em DÓLAR (a conta da planilha
   // do analista, hunter/prices.py::resale_cny_para_usd) — o cartão nunca mostra yuan.
-  const euca={code:'PULP_EUCA_RESALE_CN', name:'Euca Resale China', unit:'USD/t',
+  const euca={code:'PULP_EUCA_RESALE_CN', name:'BHKP China Resale', unit:'USD/t',
               price:576.01, change_pct:3.1114, assessed_at:new Date().toISOString().slice(0,10),
               spark:{d:{c:3.11,s:[100,400,900]}}};
   const html=M._kvCard(euca);
