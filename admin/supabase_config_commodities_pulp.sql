@@ -1,0 +1,30 @@
+-- =============================================================================
+-- CELULOSE (Fastmarkets PIX) — 2 grupos novos no carrossel de commodities da home
+-- Rodar no SQL Editor do Supabase. Idempotente (roda quantas vezes quiser).
+--
+-- Por que um arquivo separado: o seed de `commodity_groups` em
+-- supabase_config_commodities.sql só roda com a tabela VAZIA ("where not exists"),
+-- e em produção ela já tem os 5 grupos de aço/minério. Este script acrescenta os
+-- de celulose sem tocar nos existentes.
+--
+-- Os preços em si são gravados pelo robô (news-hunter: fastmarkets_scraper →
+-- update_fastmarkets_commodities), na mesma tabela `commodities` do Platts. Este
+-- SQL só decide COMO eles aparecem no carrossel.
+-- =============================================================================
+
+-- Grupo 1 — China: o índice PIX (net, CFR, US$) + o RESALE doméstico (exw, yuan).
+insert into public.commodity_groups (title, codes, sort_order)
+select 'Pulp China (PIX)',
+       '["PULP_NBSK_CHINA","PULP_BHKP_CHINA","PULP_EUCA_RESALE_CN","PULP_RADIATA_RESALE_CN"]'::jsonb,
+       60
+where not exists (select 1 from public.commodity_groups where title = 'Pulp China (PIX)');
+
+-- Grupo 2 — Europa, só em US$ (as linhas em EUR da aba são o mesmo preço noutra moeda).
+insert into public.commodity_groups (title, codes, sort_order)
+select 'Pulp Europe (PIX)',
+       '["PULP_NBSK_EUROPE","PULP_BHKP_EUROPE"]'::jsonb,
+       70
+where not exists (select 1 from public.commodity_groups where title = 'Pulp Europe (PIX)');
+
+-- Conferência: deve listar os 5 de aço/minério + os 2 de celulose, nesta ordem.
+select sort_order, title, is_visible, codes from public.commodity_groups order by sort_order, title;
