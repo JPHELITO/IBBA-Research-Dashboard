@@ -561,6 +561,9 @@ html.dark .pulse-real.ok{color:var(--green);}
   font-size:9px;line-height:1.4;color:var(--gray-dark);}
 .pulse-news > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pulse-news-h{text-align:right;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
+/* manchete clicável, mas discreta: cor herdada, sublinhado só no hover */
+.pulse-news a{color:inherit;text-decoration:none;}
+.pulse-news a:hover{text-decoration:underline;}
 /* o selo do take que a IA já deu à manchete — mesma linguagem visual da aba News
    (news.html .news-take), miniaturizado para caber na linha de 9px */
 .pulse-take{display:inline-flex;align-items:center;justify-content:center;width:11px;
@@ -2283,71 +2286,132 @@ const _TEMA_RE = {
 const _TEMAS_MACRO = new Set(['FX', 'US markets', 'Brazil']);
 const _RES_COMMODITY = ['iron ore', 'steel', 'copper', 'gold', 'pulp & paper', 'oil']
   .map(k => _TEMA_RE[k]);
+// A manchete da PRÓPRIA empresa usa a marcação do hunter (take_covered_companies, formato
+// "VALE; CSN"), que já desarma "vale a pena"/"aura de otimismo" exigindo contexto setorial
+// — o front NÃO adivinha empresa por regex de nome. Exceção: SCCO e Grupo México, que o
+// classificador não cobre; os nomes são inequívocos e regex basta.
+const _COV_DE = {
+  'VALE3.SA':'VALE', 'CMIN3.SA':'CMIN', 'CSNA3.SA':'CSN', 'GGBR4.SA':'GERDAU',
+  'USIM5.SA':'USIMINAS', 'TX':'TERNIUM', 'AURA33.SA':'AURA',
+  'SUZB3.SA':'SUZANO', 'KLBN11.SA':'KLABIN', 'RANI3.SA':'IRANI',
+};
+const _EMPRESA_RE = {
+  'SCCO': /southern copper/i,
+  'GMEXICOB.MX': /grupo m[ée]xico/i,
+};
 
 function _pManchetes(r){
+  if(!_pulseNews.length) return '';
   const drv = (r.attribution && r.attribution.drivers) || [];
-  if(!drv.length || !_pulseNews.length) return '';
   // mesmo driver que a linha exibe (o específico), para o texto não falar de um tema e o
   // número ao lado de outro
   const alvo = drv.find(([s]) => !_MACRO_SYMS.has(s)) || drv[0];
-  const tema = _TEMA_DE[alvo[0]];
+  const tema = alvo && _TEMA_DE[alvo[0]];
   const re = tema && _TEMA_RE[tema];
-  if(!re) return '';
-  // A direção com que a manchete tem de concordar é a do MOVIMENTO do instrumento — é o
-  // número que a linha exibe ("Gold −1.3%"). A contribuição é o reserva, para atribuição
-  // antiga gravada sem movimento; sem nenhum dos dois não há preferência (vale a recência).
-  const mov = Number(alvo[2]), ctb = Number(alvo[1]);
-  const dir = isFinite(mov) && mov !== 0 ? Math.sign(mov)
-            : isFinite(ctb) && ctb !== 0 ? Math.sign(ctb) : 0;
-  // O take (+/−/=) que a consulta já traz ordena a evidência: manchete que CONCORDA com o
-  // driver primeiro, neutra/sem take depois, contrária por último. A contrária ainda entra
-  // — às vezes é a única história do tema — mas entra com o selo à vista: o selo é a
-  // leitura da IA sob a ótica das cobertas, não um juízo desta tela.
-  const tier = t => !dir ? 0
-             : t === (dir > 0 ? '+' : '-') ? 0
-             : t === (dir > 0 ? '-' : '+') ? 2 : 1;
   // Dedup: a mesma matéria chega por mais de uma fonte, e repetir a manchete faria a
   // evidência parecer mais farta do que é. A chave são as 7 primeiras palavras sem
   // pontuação nem números — prefixo cru não basta, porque as versões de uma mesma matéria
   // costumam divergir só no fim (um "(atualizada)", uma cidade, um número).
   const chaveDe = t => t.toLowerCase().replace(/[^a-zà-ú\s]/g, ' ')
                         .split(/\s+/).filter(Boolean).slice(0, 7).join(' ');
-  // O título é curto e nem sempre carrega a palavra do tema ("DCE futures rise") — o
-  // resumo completa a busca. Acerto no título vale mais que no resumo: manchete estampando
-  // o tema é evidência mais forte. O strip de tags é obrigatório: snippet chega com HTML,
-  // e sem ele um "china" dentro de um href viraria evidência de China.
   const limpa = s => String(s || '').replace(/<[^>]+>/g, ' ');
-  const vistos = new Set(), achadas = [];
-  for(const a of _pulseNews){
-    const t = (a.title || '').trim();
-    if(!t) continue;
-    const hit = re.test(t) ? 0 : re.test(limpa(a.snippet)) ? 1 : -1;
-    if(hit < 0) continue;
-    // a guarda dos temas macro: o campo que deu o acerto decide o dono da manchete
-    if(_TEMAS_MACRO.has(tema)){
-      const campo = hit === 0 ? t : limpa(a.snippet);
-      if(_RES_COMMODITY.some(cre => cre.test(campo))) continue;
-    }
-    const chave = chaveDe(t);
-    if(vistos.has(chave)) continue;
-    vistos.add(chave); achadas.push({a, hit});
-  }
-  if(!achadas.length) return '';
-  // sort é estável: concordância com o driver manda, título-antes-de-resumo desempata, e
-  // dentro do mesmo par a ordem continua a da consulta (recência)
-  achadas.sort((x, y) => (tier(x.a.take_llm) * 2 + x.hit) - (tier(y.a.take_llm) * 2 + y.hit));
   const selo = t =>
       t === '+'      ? '<span class="pulse-take pos" title="Positive">+</span>'
     : t === '-'      ? '<span class="pulse-take neg" title="Negative">−</span>'
     : t === '='      ? '<span class="pulse-take neu" title="Neutral">=</span>'
     : t === 'review' ? '<span class="pulse-take rev" title="Review">~</span>' : '';
-  return `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
-       + achadas.slice(0, 2).map(({a}) => {
-           const h = new Date(a.published_at || a.found_at)
-             .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
-           return `<div class="pulse-news"><span>${selo(a.take_llm)}${_esc(a.title)}</span>`
-                + `<span class="pulse-news-h">${_esc(h)}</span></div>`;
-         }).join('');
+  // A manchete vira LINK quando a URL é http(s) de verdade; sem URL fica texto — link
+  // morto é pior que link nenhum. O clique não fecha o "por quê": o handler da lista só
+  // reage a .pulse-row, e a âncora vive no .pulse-attr.
+  const linha = a => {
+    const h = new Date(a.published_at || a.found_at)
+      .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
+    const u = /^https?:/i.test(a.url || '') ? _esc(a.url) : '';
+    const tit = u ? `<a href="${u}" target="_blank" rel="noopener">${_esc(a.title)}</a>`
+                  : _esc(a.title);
+    return `<div class="pulse-news"><span>${selo(a.take_llm)}${tit}</span>`
+         + `<span class="pulse-news-h">${_esc(h)}</span></div>`;
+  };
+
+  // ── bloco 1: o tema do driver ──────────────────────────────────────────────
+  let blocoTema = '';
+  const naTela = new Set();
+  if(re){
+    // A direção com que a manchete tem de concordar é a do MOVIMENTO do instrumento — é o
+    // número que a linha exibe ("Gold −1.3%"). A contribuição é o reserva, para atribuição
+    // antiga gravada sem movimento; sem nenhum dos dois não há preferência (vale a recência).
+    const mov = Number(alvo[2]), ctb = Number(alvo[1]);
+    const dir = isFinite(mov) && mov !== 0 ? Math.sign(mov)
+              : isFinite(ctb) && ctb !== 0 ? Math.sign(ctb) : 0;
+    // O take (+/−/=) que a consulta já traz ordena a evidência: manchete que CONCORDA com
+    // o driver primeiro, neutra/sem take depois, contrária por último. A contrária ainda
+    // entra — às vezes é a única história do tema — mas entra com o selo à vista: o selo é
+    // a leitura da IA sob a ótica das cobertas, não um juízo desta tela.
+    const tier = t => !dir ? 0
+               : t === (dir > 0 ? '+' : '-') ? 0
+               : t === (dir > 0 ? '-' : '+') ? 2 : 1;
+    // O título é curto e nem sempre carrega a palavra do tema ("DCE futures rise") — o
+    // resumo completa a busca. Acerto no título vale mais que no resumo: manchete
+    // estampando o tema é evidência mais forte. O strip de tags é obrigatório: snippet
+    // chega com HTML, e sem ele um "china" dentro de um href viraria evidência de China.
+    const vistos = new Set(), achadas = [];
+    for(const a of _pulseNews){
+      const t = (a.title || '').trim();
+      if(!t) continue;
+      const hit = re.test(t) ? 0 : re.test(limpa(a.snippet)) ? 1 : -1;
+      if(hit < 0) continue;
+      // a guarda dos temas macro: o campo que deu o acerto decide o dono da manchete
+      if(_TEMAS_MACRO.has(tema)){
+        const campo = hit === 0 ? t : limpa(a.snippet);
+        if(_RES_COMMODITY.some(cre => cre.test(campo))) continue;
+      }
+      const chave = chaveDe(t);
+      if(vistos.has(chave)) continue;
+      vistos.add(chave); achadas.push({a, hit, chave});
+    }
+    if(achadas.length){
+      // sort é estável: concordância com o driver manda, título-antes-de-resumo desempata,
+      // e dentro do mesmo par a ordem continua a da consulta (recência)
+      achadas.sort((x, y) => (tier(x.a.take_llm) * 2 + x.hit) - (tier(y.a.take_llm) * 2 + y.hit));
+      const top = achadas.slice(0, 2);
+      top.forEach(x => naTela.add(x.chave));
+      blocoTema = `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
+                + top.map(x => linha(x.a)).join('');
+    }
+  }
+
+  // ── bloco 2: a PRÓPRIA empresa ─────────────────────────────────────────────
+  // Evidência mais forte que a do tema, quando existe — e entra como linha EXTRA, sem
+  // substituir a do driver (o número da linha continua sendo o driver). A direção aqui é a
+  // do PRÓPRIO call (gap_expected), não a do driver; o que o tema já pôs na tela não
+  // repete; e o bloco aparece mesmo quando o tema não achou nada (AUGO sem manchete de
+  // ouro, mas com "Aura anuncia X" — mostrar).
+  let blocoEmp = '';
+  const cov = _COV_DE[r.company], covRe = _EMPRESA_RE[r.company];
+  if(cov || covRe){
+    const g = Number(r.gap_expected);
+    const gdir = isFinite(g) && g !== 0 ? Math.sign(g) : 0;
+    const gtier = t => !gdir ? 0
+                 : t === (gdir > 0 ? '+' : '-') ? 0
+                 : t === (gdir > 0 ? '-' : '+') ? 2 : 1;
+    const jaVi = new Set(), proprias = [];
+    for(const a of _pulseNews){
+      const t = (a.title || '').trim();
+      if(!t) continue;
+      const marcada = cov && (a.take_covered_companies || '')
+        .split(';').some(x => x.trim() === cov);
+      if(!marcada && !(covRe && (covRe.test(t) || covRe.test(limpa(a.snippet))))) continue;
+      const chave = chaveDe(t);
+      if(naTela.has(chave) || jaVi.has(chave)) continue;
+      jaVi.add(chave); proprias.push(a);
+    }
+    if(proprias.length){
+      proprias.sort((a, b) => gtier(a.take_llm) - gtier(b.take_llm));
+      blocoEmp = `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(r.name || r.company)}</div>`
+               + linha(proprias[0]);
+    }
+  }
+  return blocoTema + blocoEmp;
 }
 
 // Manchetes publicadas desde as 18:00 de ontem — a janela em que o mundo se moveu com a
@@ -2360,10 +2424,11 @@ async function loadPulseNews(){
     if(!session) return;
     const desde = new Date(_spDayStartMs() - 6 * 3600 * 1000).toISOString();  // 18h de ontem
     // snippet entrou p/ a busca de tema no CORPO (título curto nem sempre carrega a
-    // palavra do tema): ~25 KB a mais por busca, 1x/5min e só com a home aberta.
+    // palavra do tema); url p/ a manchete ser clicável; take_covered_companies p/ o bloco
+    // da própria empresa. ~40 KB por busca, 1x/5min e só com a home aberta.
     // `sector` saiu — ninguém lia.
     const url = `${SUPA_URL}/rest/v1/news_articles`
-      + `?select=title,snippet,published_at,found_at,take_llm`
+      + `?select=title,snippet,url,take_covered_companies,published_at,found_at,take_llm`
       + `&or=(published_at.gte.${desde},and(published_at.is.null,found_at.gte.${desde}))`
       + `&include_in_report=eq.true&order=published_at.desc&limit=120`;
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,
