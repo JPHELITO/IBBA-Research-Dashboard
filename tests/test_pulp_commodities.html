@@ -40,9 +40,9 @@ window.__RUN__=async function(){
      JSON.stringify(g['Pulp China (PIX)'])===JSON.stringify(
        ['PULP_BHKP_CHINA','PULP_NBSK_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN']),
      JSON.stringify(g['Pulp China (PIX)']));
-  ok('grupo "Pulp Europe (PIX)" só com as duas em US$ (as em EUR ficam de fora)',
+  ok('grupo "Pulp Europe (PIX)": só as duas em US$ (as em EUR ficam de fora), BHKP primeiro',
      JSON.stringify(g['Pulp Europe (PIX)'])===JSON.stringify(
-       ['PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']),
+       ['PULP_BHKP_EUROPE','PULP_NBSK_EUROPE']),
      JSON.stringify(g['Pulp Europe (PIX)']));
   ok('os 6 códigos aparecem em algum grupo, sem repetir',
      (()=>{const todos=M.COMM_GROUPS.flatMap(x=>x.codes).filter(c=>PULP.includes(c));
