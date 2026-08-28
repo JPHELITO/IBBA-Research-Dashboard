@@ -2240,17 +2240,30 @@ function _pAttr(r){
 // pública se move enquanto a B3 está fechada, e é o que o cliente ainda não leu.
 // ⚠️ As chaves aqui têm de bater EXATAMENTE com as de `_TEMA_RE` — são o mesmo rótulo, e
 // ele vai para a tela. Um nome trocado só de um lado faz a evidência sumir em silêncio.
+// ⚠️ TODO símbolo que pode ser driver TEM de ter tema aqui — símbolo sem tema abre a
+// linha SEM manchete, em silêncio. Quem pode ser driver (pulse_snapshot.py): os blocos de
+// DRIVERS_POR_EMPRESA + o MACRO (fallback de dia todo-macro, alvo = drv[0]) + os gêmeos.
+// CL=F (driver específico de GGBR4/TX) e AUGO (gêmeo da Aura) eram buracos silenciosos.
 const _TEMA_DE = {
   'FMG.AX':'iron ore', 'BHP.AX':'iron ore', 'RIO.AX':'iron ore', 'AAL.L':'iron ore',
   'VALE':'iron ore', '^AXJO':'iron ore',
-  'HG=F':'copper', 'GC=F':'gold', 'SI=F':'gold',
+  'HG=F':'copper', 'GC=F':'gold', 'SI=F':'gold', 'AUGO':'gold',
   '600019.SS':'steel', '5401.T':'steel', 'SID':'steel', 'GGB':'steel',
   '2689.HK':'pulp & paper', 'UPM.HE':'pulp & paper', 'STERV.HE':'pulp & paper',
   '^HSI':'China', '000001.SS':'China', '^N225':'China',
+  'CL=F':'oil',
+  'USDBRL=X':'FX', 'EURUSD=X':'FX', 'DX-Y.NYB':'FX',
+  '^VIX':'US markets', 'ES=F':'US markets', 'NQ=F':'US markets',
+  'EWZ':'Brazil',
 };
 // A busca é bilíngue porque o feed é: Platts e Fastmarkets escrevem em inglês, Valor e
 // Estadão em português, e a mesma notícia pode chegar pelos dois.
 // ⚠️ O RÓTULO exibido é em inglês — esta é tela de cliente (regra da casa).
+// Os temas macro são APERTADOS de propósito: regex frouxa pinta manchete alheia de
+// "evidência" — melhor não mostrar nada do que mostrar a errada. Fed/Treasury aparecem em
+// FX E em US markets porque as mesmas histórias movem os dois; sobreposição não é defeito.
+// A proteção contra o caso "Gold rises on Fed cut bets" (casa com FX pelo Fed, mas é
+// manchete de OURO) é a guarda _TEMAS_MACRO logo abaixo, não o regex.
 const _TEMA_RE = {
   'iron ore': /iron ore|min[ée]rio|pellet|fortescue|vale|bhp|rio tinto|dalian/i,
   'steel':    /\bsteel\b|a[çc]o|hrc|rebar|vergalh|slab|billet|scrap|sucata|siderurg/i,
@@ -2258,7 +2271,18 @@ const _TEMA_RE = {
   'gold':     /\bgold\b|ouro|bullion|silver|prata/i,
   'pulp & paper': /pulp|celulose|paper|papel|containerboard|kraft|bhkp|nbsk/i,
   'China':    /china|chinese|beijing|pequim|pmi|stimulus|est[íi]mulo/i,
+  'oil':      /\boil\b|petr[óo]le|crude|brent|\bwti\b|opec|opep|petrobras/i,
+  'FX':       /d[óo]lar|\bdollar\b|greenback|c[âa]mbio|\bdxy\b|\bfed\b|fomc|treasur|\byields?\b|\bjuros\b/i,
+  'US markets': /wall st|s&p ?500|nasdaq|dow jones|\bnyse\b|u\.?s\.? (stocks|futures|equities|shares)|\bfed\b|fomc|treasur|payroll|\bcpi\b/i,
+  'Brazil':   /brazil|brasil|ibovespa|\bb3\b|copom|selic|banco central/i,
 };
+// Manchete de commodity tem dono. "Gold holds near record as traders price in a Fed cut"
+// casa com FX pelo Fed, mas é manchete de OURO — como evidência do dólar ela mente. Tema
+// macro só fica com o que NENHUMA commodity reclama; a manchete mista ("Dollar firms as
+// iron ore slips") vai para o lado da commodity, onde o leitor a procuraria.
+const _TEMAS_MACRO = new Set(['FX', 'US markets', 'Brazil']);
+const _RES_COMMODITY = ['iron ore', 'steel', 'copper', 'gold', 'pulp & paper', 'oil']
+  .map(k => _TEMA_RE[k]);
 
 function _pManchetes(r){
   const drv = (r.attribution && r.attribution.drivers) || [];
@@ -2288,24 +2312,37 @@ function _pManchetes(r){
   // costumam divergir só no fim (um "(atualizada)", uma cidade, um número).
   const chaveDe = t => t.toLowerCase().replace(/[^a-zà-ú\s]/g, ' ')
                         .split(/\s+/).filter(Boolean).slice(0, 7).join(' ');
+  // O título é curto e nem sempre carrega a palavra do tema ("DCE futures rise") — o
+  // resumo completa a busca. Acerto no título vale mais que no resumo: manchete estampando
+  // o tema é evidência mais forte. O strip de tags é obrigatório: snippet chega com HTML,
+  // e sem ele um "china" dentro de um href viraria evidência de China.
+  const limpa = s => String(s || '').replace(/<[^>]+>/g, ' ');
   const vistos = new Set(), achadas = [];
   for(const a of _pulseNews){
     const t = (a.title || '').trim();
-    if(!t || !re.test(t)) continue;
+    if(!t) continue;
+    const hit = re.test(t) ? 0 : re.test(limpa(a.snippet)) ? 1 : -1;
+    if(hit < 0) continue;
+    // a guarda dos temas macro: o campo que deu o acerto decide o dono da manchete
+    if(_TEMAS_MACRO.has(tema)){
+      const campo = hit === 0 ? t : limpa(a.snippet);
+      if(_RES_COMMODITY.some(cre => cre.test(campo))) continue;
+    }
     const chave = chaveDe(t);
     if(vistos.has(chave)) continue;
-    vistos.add(chave); achadas.push(a);
+    vistos.add(chave); achadas.push({a, hit});
   }
   if(!achadas.length) return '';
-  // sort é estável: dentro do mesmo tier a ordem continua a da consulta (recência)
-  achadas.sort((a, b) => tier(a.take_llm) - tier(b.take_llm));
+  // sort é estável: concordância com o driver manda, título-antes-de-resumo desempata, e
+  // dentro do mesmo par a ordem continua a da consulta (recência)
+  achadas.sort((x, y) => (tier(x.a.take_llm) * 2 + x.hit) - (tier(y.a.take_llm) * 2 + y.hit));
   const selo = t =>
       t === '+'      ? '<span class="pulse-take pos" title="Positive">+</span>'
     : t === '-'      ? '<span class="pulse-take neg" title="Negative">−</span>'
     : t === '='      ? '<span class="pulse-take neu" title="Neutral">=</span>'
     : t === 'review' ? '<span class="pulse-take rev" title="Review">~</span>' : '';
   return `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
-       + achadas.slice(0, 2).map(a => {
+       + achadas.slice(0, 2).map(({a}) => {
            const h = new Date(a.published_at || a.found_at)
              .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
            return `<div class="pulse-news"><span>${selo(a.take_llm)}${_esc(a.title)}</span>`
@@ -2322,8 +2359,11 @@ async function loadPulseNews(){
     const {data:{session}} = await sbAuth.auth.getSession();
     if(!session) return;
     const desde = new Date(_spDayStartMs() - 6 * 3600 * 1000).toISOString();  // 18h de ontem
+    // snippet entrou p/ a busca de tema no CORPO (título curto nem sempre carrega a
+    // palavra do tema): ~25 KB a mais por busca, 1x/5min e só com a home aberta.
+    // `sector` saiu — ninguém lia.
     const url = `${SUPA_URL}/rest/v1/news_articles`
-      + `?select=title,published_at,found_at,take_llm,sector`
+      + `?select=title,snippet,published_at,found_at,take_llm`
       + `&or=(published_at.gte.${desde},and(published_at.is.null,found_at.gte.${desde}))`
       + `&include_in_report=eq.true&order=published_at.desc&limit=120`;
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,
