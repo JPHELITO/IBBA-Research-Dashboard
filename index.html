@@ -877,54 +877,39 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .cm-date{font-size:8px;font-weight:500;color:#686868;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
-/* Os 4 períodos DENTRO do cartão (W · M · YTD · 1Y): rótulo, risquinho e variação por
-   linha. Substituíram o gráfico único + o seletor D/WoW/MoM/YTD/YoY do cabeçalho — com os
-   quatro à vista não há o que clicar, e some a dúvida de "qual período estou olhando".
-   ⚠️ Por que EM PÉ e não deitados, como foi pedido: o cartão tem 95px de largura (painel
-   de 519px com 5 cartões), então quatro gráficos lado a lado ficariam com 20px cada — vira
-   rabisco e os números se encostam. Medido num protótipo com os dados reais antes de optar.
-   ⚠️ E por que 4 linhas magras: a faixa `comm` da home é `minmax(0,190px)` e o `kv-list`
-   tem `overflow:hidden` — o que passar disso é CORTADO calado, e a altura da faixa está
-   marcada como "não mexer" (mexer nela encolhe o feed de notícias). Sobrou folga de 5px. */
-/* Grupo em que NENHUM nome quebra em duas linhas devolve a 2ª linha para o desenho
-   (~10px). São 4 dos 7 grupos — Freight+HCC, Forward Curve, Steel+Other Ores e Pulp
+/* Grupo em que NENHUM nome quebra em duas linhas devolve a 2ª linha para o gráfico
+   (~8px). São 4 dos 7 grupos — Freight+HCC, Forward Curve, Steel+Other Ores e Pulp
    Europe — e era o "espaço grande em cima" que o analista viu. A altura fixa de 2 linhas
    continua nos grupos MISTOS, senão o preço de um cartão dança em relação ao vizinho.
    Quem decide é o `_renderCommPage`, medindo as caixas de linha depois de desenhar. */
 .kv-list.uma-linha .cm-name{height:1.25em;}
-.cm-rows{flex:1;min-height:0;margin-top:4px;padding-top:3px;border-top:1px solid var(--border);
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:2px 7px;}
-/* ⚠️ 2×2, e não quatro linhas empilhadas. Em fila (rótulo | risquinho | número) as três
-   colunas dividiam os 76px úteis do cartão e sobravam DEZOITO pixels para o desenho —
-   o mesmo rabisco da versão deitada, só que disfarçado. Empilhando o rótulo e o número
-   ACIMA do risquinho, ele passa a usar a largura inteira da célula (~35px, quase o dobro)
-   e a altura não muda: 2 células de 2 andares ocupam o mesmo que 4 linhas de 1.
-   ⚠️ Medir na tela, não no screenshot: o print sai reamostrado e 18px pareciam 30. */
-.cm-row{position:relative;display:flex;flex-direction:column;justify-content:flex-end;
-  min-width:0;min-height:0;}
-/* só o NÚMERO ocupa a linha de cima, alinhado à direita. ⚠️ O rótulo NÃO cabe ao lado dele:
-   medido no grupo de 5 cartões a célula tem 36px, e "YTD" (14,9) + folga + "+83,5%" (32,9)
-   pedem 50. Ou o rótulo saía, ou o "%" não entrava. O rótulo foi para cima do risquinho,
-   com o fundo do cartão atrás — ele cobre a ponta ESQUERDA da curva, que é o dado mais
-   velho da janela, e o desenho mantém a largura inteira. */
-.cm-rhead{display:flex;align-items:baseline;justify-content:flex-end;min-width:0;}
-.cm-rl{position:absolute;left:0;bottom:0;z-index:1;padding-right:3px;
-  background:var(--gray-light);line-height:1.1;
-  font-size:7px;font-weight:700;color:#8A8A8A;letter-spacing:.02em;}
-/* ⚠️⚠️ `min-height:0` NÃO É DETALHE — é o que impede o risquinho de EMPURRAR o cartão.
-   Um <svg> com viewBox 100×28 carrega PROPORÇÃO INTRÍNSECA: com a largura em 100% e a
-   altura livre, ele pede largura×0,28 de altura. E `grid-template-rows:1fr` é
-   `minmax(AUTO,1fr)`, então a linha respeitava esse pedido e crescia junto. Resultado
-   medido em 31/08: quanto MAIS LARGO o cartão, mais o conteúdo estourava — 18px nos
-   grupos de 5 cartões (95px), 26px nos de 4 (120px) e 68px no Pulp Europe, que só tem 2
-   cartões de 246px. O risquinho vazava para fora da borda arredondada, e foi assim que o
-   analista viu. Com `minmax(0,1fr)` na grade e `min-height:0` aqui, a altura passa a vir
-   SÓ de cima para baixo: o cartão manda, o desenho ocupa o que sobrou. */
-.cm-rs{display:block;width:100%;flex:1;min-height:0;}
+
+/* O corpo do cartão: UM gráfico de 12 meses (o apelo visual) e, embaixo, os quatro
+   períodos em lista — rótulo à esquerda, variação à direita.
+   ⚠️ POR QUE UM GRÁFICO E NÃO QUATRO. A 1ª versão punha quatro risquinhos num 2×2. O
+   cartão tem 95×103 na home, então cada um ficava com 37×10px: nesse tamanho a curva não
+   é informação, é textura — e o rótulo, que não cabia ao lado do número, ainda tinha de
+   ser desenhado POR CIMA dela. Medido no protótipo com o cartão pinado em 103px: não há
+   arranjo em que quatro percentuais rotulados E um gráfico caibam juntos; o gráfico
+   colapsava para ZERO. Um gráfico de 76px de largura vale mais que quatro de 37.
+   ⚠️ A ALTURA veio das bolinhas do carrossel, que subiram para o cabeçalho (18px). O que
+   NÃO fiz: crescer o painel. A faixa `comm` é `minmax(0,190px)`, mas 190 é TETO, não
+   reserva — a linha se dimensiona pelo conteúdo (158px hoje) e o resto vai para o
+   heatmap. Crescer aqui encolhe o heatmap, e isso é decisão do analista, não minha. */
+.cm-hero{display:block;width:100%;flex:1;min-height:0;margin-top:3px;color:#5F6773;}
+/* o gráfico fica NEUTRO de propósito: ele mostra 12 meses, e o verde/vermelho do cartão
+   fala do DIA — pintar a curva com a cor do dia faria a linha mentir sobre o período que
+   desenha. A cor fica por conta dos quatro números, cada um com o sinal do seu período.
+   (Sem esta linha o <svg> herda a cor do texto e sai BRANCO no tema escuro.) */
+.cm-rows{flex:none;margin-top:3px;padding-top:3px;border-top:1px solid var(--border);
+  display:flex;flex-direction:column;}
+.cm-row{display:flex;align-items:baseline;justify-content:space-between;gap:4px;
+  line-height:1.15;min-width:0;}
+.cm-rl{font-size:7px;font-weight:700;color:#8A8A8A;letter-spacing:.02em;}
 .cm-rv{font-size:8.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* a cor é POR LINHA — cada período sobe ou desce por conta, não segue o sinal do dia */
 .cm-row.up{color:#0F5C2B;}.cm-row.down{color:#8E2318;}.cm-row.flat{color:#5F6773;}
+.cm-row .cm-rl{color:#8A8A8A;}
 /* Mesmos acentos do heatmap — uma cor por lado no tema todo. O verde/vermelho da casa
    não serve aqui: sobre a chapa do cartão o #16a34a dá 4,1:1 no número e 2,7:1 no
    risquinho (abaixo do mínimo até para desenho). Estes dão 6,6:1 e 7,1:1.
@@ -935,8 +920,8 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .cm-card.flat .cm-spark{color:var(--gray-mid);}
 
 /* Carrossel automático das commodities (rodapé: dots + barra de progresso de 10s) */
-.comm-foot{flex:none;display:flex;align-items:center;gap:10px;padding:6px 18px 8px;border-top:1px solid var(--border);}
-.comm-dots{display:flex;gap:5px;}
+.comm-foot{flex:none;display:flex;align-items:center;padding:0 12px 4px;}
+.comm-dots{display:flex;gap:5px;align-items:center;}
 .comm-dot{width:7px;height:7px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--border);transition:background .15s;}
 .comm-dot.on{background:var(--orange);}
 .comm-dot:hover{background:var(--gray-mid);}
@@ -1049,7 +1034,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   .kv-row{padding:9px 13px;gap:8px;}
   .kv-name{font-size:12.5px;} .kv-value{font-size:13px;} .kv-change{font-size:11.5px;min-width:52px;}
   .kv-date{font-size:9.5px;} .kv-unit{font-size:9px;}
-  .comm-foot{padding:9px 14px 11px;}
+  .comm-foot{padding:0 14px 8px;}
   .comm-dot{width:9px;height:9px;}
 
   .footer{padding:14px 16px;}
@@ -1229,8 +1214,9 @@ html.dark .cm-val{color:#F2F4F8;}
 html.dark .cm-card.up .cm-chg{color:#4ADE80;}
 html.dark .cm-card.down .cm-chg{color:#F87171;}
 html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
-html.dark .cm-rl{color:#7E8899;background:#141821;}
+html.dark .cm-row .cm-rl{color:#6E7889;}
 html.dark .cm-rows{border-top-color:#1F2532;}
+html.dark .cm-hero{color:#8A93A2;}
 html.dark .cm-row.up{color:#4ADE80;}html.dark .cm-row.down{color:#F87171;}
 html.dark .cm-row.flat{color:#98A1AF;}
 html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
@@ -1495,15 +1481,18 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
     <div class="sec-head">
       <span class="sec-title" id="comm-title">Commodities</span>
       <div class="hm-head-right">
-        <!-- o seletor D/WoW/MoM/YTD/YoY saiu: cada cartão mostra os 4 períodos de uma vez -->
+        <!-- o seletor D/WoW/MoM/YTD/YoY saiu: cada cartão mostra os 4 períodos de uma vez.
+             As bolinhas do carrossel vieram do rodapé para cá: aquela faixa custava 18px
+             de ALTURA, e altura é o que faltava para o gráfico do cartão respirar. -->
+        <div class="comm-dots" id="comm-dots"></div>
         <span class="sec-meta" id="comm-meta">—</span>
       </div>
     </div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
     </div>
+    <!-- sobrou a barrinha de tempo, uma linha de 2px colada no pé do painel -->
     <div class="comm-foot" id="comm-foot" style="display:none;">
-      <div class="comm-dots" id="comm-dots"></div>
       <div class="comm-prog-track"><div class="comm-prog" id="comm-prog"></div></div>
     </div>
   </div>
@@ -3214,10 +3203,8 @@ function _fmtAssessed(iso, freq){
 // só dele. Cada botão muda o zoom E o trecho aceso, então D e WoW deixam de ser a mesma
 // figura sem que nenhum cartão fique sem gráfico. Um pontinho marca o último preço.
 function _commSpark(sp, b, classe){
-  // `cm-rs` = o risquinho magro das 4 linhas de período (≈45×11). Nesse tamanho os traços
-  // do cartão grande ficam gordos demais (1,9px seriam 17% da altura) — daí a régua menor.
-  const mini = classe === 'cm-rs', cls = classe || 'cm-spark';
-  const g = mini ? {ctx:0.8, med:1.3, dot:2.2} : {ctx:1.1, med:1.9, dot:3.6};
+  const cls = classe || 'cm-spark';
+  const g = {ctx:1.1, med:1.9, dot:3.6};
   if(!Array.isArray(sp) || sp.length < 3) return `<div class="${cls}"></div>`;
   const W=100, H=28, pad=3, n=sp.length;
   const xy = i => `${((i/(n-1))*W).toFixed(1)},${(pad+(1-sp[i]/1000)*(H-2*pad)).toFixed(1)}`;
@@ -3257,9 +3244,7 @@ function _sinal(v){ return v == null ? 'flat' : v > 0.05 ? 'up' : v < -0.05 ? 'd
 function _cmRow(rotulo, per){
   if(!per) return '';
   return `<div class="cm-row ${_sinal(per.c)}">
-    <div class="cm-rhead"><span class="cm-rv">${_pctCurto(per.c)}</span></div>
-    ${_commSpark(per.s, per.b, 'cm-rs')}
-    <span class="cm-rl">${rotulo}</span>
+    <span class="cm-rl">${rotulo}</span><span class="cm-rv">${_pctCurto(per.c)}</span>
   </div>`;
 }
 
@@ -3286,9 +3271,12 @@ function _kvCard(c){
   const dateStr = _fmtAssessed(c.assessed_at, freq);
   // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
   const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
-  // sem as 4 janelas (formato antigo ou robô ainda não recalculou) → desenho único
+  // O gráfico é UM só e mostra 12 meses — é o contexto que o olho reconhece, e os quatro
+  // números embaixo cobrem os horizontes. Sem as 4 janelas (formato antigo, ou o robô
+  // ainda não recalculou) o cartão cai no desenho único de antes em vez de ficar vazio.
   const corpo = sp
-    ? `<div class="cm-rows">${PERIOD_ROWS.map(([k,r]) => _cmRow(r, sp[k])).join('')}</div>`
+    ? _commSpark((sp.y||{}).s, 0, 'cm-hero')
+      + `<div class="cm-rows">${PERIOD_ROWS.map(([k,r]) => _cmRow(r, sp[k])).join('')}</div>`
     : _commSpark(Array.isArray(c.spark) ? c.spark : null, 0);
   const faltando = sp ? PERIOD_ROWS.filter(([k]) => sp[k] && sp[k].c == null).map(([,r]) => r) : [];
   const tip = (c.name || '')

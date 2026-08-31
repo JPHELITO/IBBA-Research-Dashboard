@@ -75,9 +75,10 @@ window.__RUN__=async function(){
      (html.match(/<span class="cm-chg">([^<]*)</)||[])[1]);
   ok('sobe = cartão verde', html.includes('cm-card up'));
   ok('o badge Weekly entra no cartão', html.includes('kv-badge wk')&&html.includes('Weekly'));
-  ok('as 4 linhas de período são desenhadas',
-     (html.match(/class="cm-row /g)||[]).length===4 && html.includes('<svg class="cm-rs"'),
-     'linhas='+((html.match(/class="cm-row /g)||[]).length));
+  ok('as 4 linhas de período e o gráfico de 12 meses são desenhados',
+     (html.match(/class="cm-row /g)||[]).length===4 && html.includes('<svg class="cm-hero"'),
+     'linhas='+((html.match(/class="cm-row /g)||[]).length)
+       +' graficos='+((html.match(/<svg class="cm-hero"/g)||[]).length));
   ok('o "d" não vira linha (a variação do dia é o número grande)',
      !/>D</.test(html) && html.includes('>W<'));
 
