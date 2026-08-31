@@ -781,7 +781,7 @@ function renderConfig(){
   set('cfg-earn-on','checked',!!c.earnings_review.on);
   set('cfg-earn-label','value',c.earnings_review.label||'');
   renderPubList('cfg-pubs', c.recent_publications, true);   // com data → alimenta o Weekly Recap
-  renderPubList('cfg-earn', c.earnings_review.items);
+  renderPubList('cfg-earn', c.earnings_review.items, true);   // com data → alimenta o Weekly Recap
   if(!Array.isArray(c.analysts)) c.analysts=DEFAULT_ANALYSTS.map(a=>({...a}));
   renderAnalysts('cfg-analysts', c.analysts);
 }
@@ -1196,7 +1196,7 @@ function wire(){
   document.getElementById('cfg-earn-on').onchange=e=>{ S.config.earnings_review.on=e.target.checked; saveConfig(); };
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
   document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:'',date:todayBRT()}); renderConfig(); saveConfig(); };
-  document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
+  document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:'',date:todayBRT()}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-analysts-add').onclick=()=>{ if(!Array.isArray(S.config.analysts)) S.config.analysts=[]; S.config.analysts.push({name:'',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement',phone:'',email:''}); renderConfig(); saveConfig(); };
   // Buscar novas agora (2 botões, disparam o GitHub Actions) + data default = hoje BRT
   const _hp=document.getElementById('clip-hunt-pw'), _hr=document.getElementById('clip-hunt-rss');

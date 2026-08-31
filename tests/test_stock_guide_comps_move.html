@@ -1,0 +1,130 @@
+<!doctype html><meta charset="utf-8"><title>comps: a conta mudou de arquivo, não de resultado</title>
+<body><pre id="out">rodando…</pre>
+<script src="/stock-guide-lib.js"></script>
+<script>
+/* Em 31/08/2026 `mapComp`/`deriveMultiples`/`deriveComps` saíram de stock-guide.html e
+   foram para stock-guide-lib.js, para o Weekly Recap montar a MESMA comp table com o
+   fechamento da sexta no lugar do preço ao vivo.
+
+   Este teste não confere "se a conta está certa" — confere que ela é **a MESMA de
+   antes**: extrai as funções do stock-guide.html do último commit, roda as duas versões
+   sobre a mesma fixture e compara campo a campo. Se um dia alguém "melhorar" a fórmula
+   só de um lado, aqui quebra.
+
+   Rodar: servir a pasta e abrir /tests/test_stock_guide_comps_move.html               */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+
+// Fixture com os casos que importam: empresa em R$ (base==negociação), empresa em US$,
+// empresa oculta (yahoo_symbol nulo), sem preço, EBITDA zero e lucro negativo.
+const COMPS=[
+  {ticker:'VALE3',company_name:'Vale',is_visible:true,display_order:1,sector:'iron_ore',
+   yahoo_symbol:'VALE3.SA',shares_outstanding:4200,target_price:95,recommendation:'OP',
+   net_debt_y1:60000,net_debt_y2:55000,ebitda_y1:80000,ebitda_y2:85000,
+   net_income_y1:40000,net_income_y2:44000,dividends_y1:20000,dividends_y2:22000,
+   cash_earnings_y1:50000,cash_earnings_y2:52000,ocf_y1:60000,ocf_y2:62000,
+   ev_adjustment_y1:1000,ev_adjustment_y2:0,fx_to_base:1,fx_to_usd:0.18,
+   base_ccy:'BRL',trade_ccy:'BRL',model_url:'https://m/1'},
+  {ticker:'AUGO',company_name:'Aura',is_visible:true,display_order:2,sector:'gold',
+   yahoo_symbol:'AUGO',shares_outstanding:75,target_price:40,recommendation:'OP',
+   net_debt_y1:-200,net_debt_y2:-300,ebitda_y1:600,ebitda_y2:700,
+   net_income_y1:300,net_income_y2:350,dividends_y1:50,dividends_y2:60,
+   cash_earnings_y1:380,cash_earnings_y2:420,ocf_y1:450,ocf_y2:480,
+   ev_adjustment_y1:null,ev_adjustment_y2:null,fx_to_base:1,fx_to_usd:1,
+   base_ccy:'USD',trade_ccy:'USD',model_url:null},
+  {ticker:'OCULTA',company_name:'Oculta',is_visible:false,display_order:3,sector:'steel',
+   yahoo_symbol:null,shares_outstanding:null,target_price:null,recommendation:null,
+   net_debt_y1:null,net_debt_y2:null,ebitda_y1:null,ebitda_y2:null,
+   net_income_y1:null,net_income_y2:null,dividends_y1:null,dividends_y2:null,
+   cash_earnings_y1:null,cash_earnings_y2:null,ocf_y1:null,ocf_y2:null,
+   ev_adjustment_y1:null,ev_adjustment_y2:null,fx_to_base:null,fx_to_usd:null,
+   base_ccy:null,trade_ccy:null,model_url:null},
+  {ticker:'SEMPRECO',company_name:'Sem Preço',is_visible:true,display_order:4,sector:'pp',
+   yahoo_symbol:'XPTO3.SA',shares_outstanding:1000,target_price:10,recommendation:'MP',
+   net_debt_y1:100,net_debt_y2:90,ebitda_y1:0,ebitda_y2:50,
+   net_income_y1:-20,net_income_y2:30,dividends_y1:0,dividends_y2:5,
+   cash_earnings_y1:0,cash_earnings_y2:10,ocf_y1:0,ocf_y2:12,
+   ev_adjustment_y1:0,ev_adjustment_y2:0,fx_to_base:1,fx_to_usd:0.18,
+   base_ccy:'BRL',trade_ccy:'BRL',model_url:null},
+];
+// duas escalas de preço: a "ao vivo" e a do fechamento da sexta (é o ponto do exercício)
+const PRECO_VIVO ={'VALE3.SA':78.39,'VALE3':78.39,'AUGO':31.20};
+const PRECO_SEXTA={'VALE3.SA':75.03,'VALE3':75.03,'AUGO':29.80};
+const FX={BRL:5.45};
+
+function cortar(txt,a,b){const i=txt.indexOf(a),j=txt.indexOf(b,i);
+  if(i<0||j<0)throw new Error('não achei o trecho: '+a); return txt.slice(i,j);}
+
+window.__RUN__=async function(){
+  ok('a lib expõe as três funções',
+     typeof SG.mapComp==='function'&&typeof SG.deriveMultiples==='function'&&typeof SG.deriveComps==='function');
+
+  // ── a página delega, não tem cópia própria ────────────────────────────────
+  const pagCru=await (await fetch('/stock-guide.html?v='+Date.now())).text();
+  const pag=pagCru.split('\r\n').join('\n');   // o repo grava CRLF; as âncoras usam \n
+  ok('stock-guide.html não redefine mapComp',      !/function\s+mapComp\s*\(/.test(pag));
+  ok('…nem deriveMultiples',                       !/function\s+deriveMultiples\s*\(/.test(pag));
+  ok('…nem deriveComps',                           !/function\s+deriveComps\s*\(/.test(pag));
+  ok('…e aponta para as da lib',
+     /const\s+deriveComps\s*=\s*SG\.deriveComps/.test(pag));
+  ok('a lib é carregada antes de usar', pag.indexOf('stock-guide-lib.js')>0);
+
+  // ── EQUIVALÊNCIA: versão antiga (do último commit) × versão da lib ────────
+  // O arquivo antigo vem do git via uma cópia servida em /tests/fixtures/.
+  let antigoTxt=null;
+  try{ antigoTxt=await (await fetch('/tests/fixtures/stock_guide_comps_antes.js?v='+Date.now())).text(); }
+  catch(e){ antigoTxt=null; }
+  if(!antigoTxt){
+    ok('fixture da versão antiga presente', false,
+       'gere com: git show <commit>:stock-guide.html | recortar as 3 funções');
+  } else {
+    const ctx={SG:SG, Math:Math, Object:Object, isFinite:isFinite, String:String};
+    const velho=new Function('ctx',`with(ctx){ ${antigoTxt}\n return {mapComp,deriveMultiples,deriveComps}; }`)(ctx);
+    [['ao vivo',PRECO_VIVO],['fechamento da sexta',PRECO_SEXTA]].forEach(([rot,mapa])=>{
+      const a=velho.deriveComps(COMPS,mapa,FX);
+      const b=SG.deriveComps(COMPS,mapa,FX);
+      ok('mesma quantidade de linhas ('+rot+')', a.length===b.length, a.length+' vs '+b.length);
+      // comparação campo a campo, com os nulos preservados
+      const diffs=[];
+      a.forEach((ra,i)=>{ const rb=b[i]||{};
+        Object.keys(ra).forEach(k=>{
+          const x=ra[k], y=rb[k];
+          const igual=(x===y)||(x==null&&y==null)||
+            (typeof x==='number'&&typeof y==='number'&&(x===y||Math.abs(x-y)<1e-12));
+          if(!igual) diffs.push(ra.ticker+'.'+k+': '+x+' ≠ '+y);
+        });
+      });
+      ok('todo campo idêntico ('+rot+')', diffs.length===0, diffs.slice(0,4).join(' | ')||'0 diferenças');
+    });
+    // e o preço realmente muda o resultado (senão a comparação acima seria vazia de sentido)
+    const v=SG.deriveComps(COMPS,PRECO_VIVO,FX)[0], s=SG.deriveComps(COMPS,PRECO_SEXTA,FX)[0];
+    ok('trocar o preço muda o múltiplo (o ponto do exercício)',
+       v.evEbitdaY1!==s.evEbitdaY1 && v.livePrice===78.39 && s.livePrice===75.03,
+       'EV/EBITDA '+(v.evEbitdaY1||0).toFixed(3)+' → '+(s.evEbitdaY1||0).toFixed(3));
+  }
+
+  // ── casos de borda que o e-mail vai encontrar ─────────────────────────────
+  const rows=SG.deriveComps(COMPS,PRECO_SEXTA,FX);
+  const por=t=>rows.find(r=>r.ticker===t);
+  ok('empresa oculta entra na lista sem preço nem múltiplo',
+     por('OCULTA').livePrice==null && por('OCULTA').evEbitdaY1==null);
+  ok('empresa sem cotação não inventa múltiplo', por('SEMPRECO').evEbitdaY1==null);
+  ok('EBITDA zero não vira divisão por zero', por('SEMPRECO').evEbitdaY2==null);
+  ok('lucro negativo não vira P/E', por('SEMPRECO').peY1==null);
+  const vale=por('VALE3');
+  // mktcap = 4.200 × 75,03 = 315.126 · EV = +60.000 +1.000 = 376.126 · ÷80.000
+  ok('a conta do EV/EBITDA bate na mão',
+     Math.abs(vale.evEbitdaY1-(4200*75.03+60000+1000)/80000)<1e-9, String(vale.evEbitdaY1));
+  ok('upside sai do target contra o MESMO preço',
+     Math.abs(vale.upsidePct-(95/75.03-1))<1e-12, String(vale.upsidePct));
+  ok('dividend yield em %', Math.abs(vale.divYieldY1-(20000/(4200*75.03)*100))<1e-9);
+  // AUGO negocia em US$ e a base do modelo é US$ → fator 1, sem passar pelo câmbio
+  ok('empresa em US$ não é convertida', Math.abs(por('AUGO').marketCapBrlMn-75*29.80)<1e-9);
+
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=
+    R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+};
+window.__RUN__();
+</script>
+</body>
