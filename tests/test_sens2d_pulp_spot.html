@@ -1,0 +1,142 @@
+<!doctype html><meta charset="utf-8"><title>sensitivity — marca laranja da celulose (Klabin e Suzano)</title>
+<script src="/stock-guide-lib.js"></script>
+<body><pre id="out">rodando…</pre><script>
+/* Confere que o eixo de CELULOSE dos modelos publicados de Suzano e Klabin passou a ter
+   leitura ao vivo (índice PIX BHKP China net) e, com isso, a tabela ganha a marca laranja
+   da linha/coluna, o cruzamento e a linha "At spot".
+
+   As funções vêm RECORTADAS do próprio stock-guide.html (mesmo método dos outros testes do
+   diretório): se alguém mexer nelas, o teste acompanha em vez de testar uma cópia velha.
+   Os `code` das commodities são contrato com o robô (news-hunter: FASTMARKETS_COMMODITIES) —
+   se um lado renomear, a marca some calada. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+
+// spot de verdade lido do banco em 31/08/2026 (assessment PIX de 28/08) e o câmbio do mesmo dia
+const SPOT_PULP=563.64, SPOT_FX=5.1806;
+const MV={pulp_bhkp_china:SPOT_PULP, fx_usdbrl:SPOT_FX, iron_ore_62:99.7, gold:4472.7, copper:6.702};
+
+window.__RUN__=async function(){
+  const cru=await (await fetch('/stock-guide.html?v='+Date.now())).text();
+  const t=cru.split('\r\n').join('\n');
+  // um único bloco contíguo: _s2Def … _s2DriverStrip
+  const BLOCO=cut(t,'function _s2Def(t){','  return out;\n}');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ctx={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US', Math:Math, isFinite:isFinite, String:String};
+  const M=new Function('ctx',`with(ctx){ ${BLOCO}
+    return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip}; }`)(ctx);
+
+  const DEF=await (await fetch('/tests/fixtures/sens2d_pulp.json?v='+Date.now())).json();
+  const tabsOf=d=>d.sheets[0].tables;
+  const byIdOf=d=>{const m={}; tabsOf(d).forEach(x=>m[x.id]=x); return m;};
+  const PULP_AXIS=tabsOf(DEF.SUZB3)[0].colLabel;   // 'Average Hardwood Pulp Net Price 2027 (USD/ton)'
+
+  // ── 1. o eixo do analista casa com a série certa ───────────────────────────
+  ok('eixo de celulose dos 2 modelos é o mesmo rótulo',
+     PULP_AXIS===tabsOf(DEF.KLBN11)[0].colLabel, PULP_AXIS);
+  ok('hardwood → índice BHKP China net', M._s2DriverKey(PULP_AXIS)==='pulp_bhkp_china',
+     String(M._s2DriverKey(PULP_AXIS)));
+  ok('softwood/NBSK → índice NBSK China net',
+     M._s2DriverKey('Average Softwood Pulp Net Price 2027 (USD/ton)')==='pulp_nbsk_china' &&
+     M._s2DriverKey('NBSK price (USD/t)')==='pulp_nbsk_china');
+  ok('CUSTO de celulose NÃO é preço de mercado (fica sem marca)',
+     M._s2DriverKey('Pulp Cash Cost 2027 (BRL/ton)')===null &&
+     M._s2DriverKey('Cash cost (USD/ton)')===null);
+  ok('eixo de celulose em REAIS fica sem marca (a série é em US$)',
+     M._s2DriverKey('Average Hardwood Pulp Net Price 2027 (BRL/ton)')===null);
+  ok('"pulp price" sem dizer a fibra não é adivinhado',
+     M._s2DriverKey('Pulp price 2027 (USD/ton)')===null);
+  ok('os eixos que já marcavam continuam iguais (minério/ouro/cobre/câmbio)',
+     M._s2DriverKey('Iron ore 2026 (USD/dmt)')==='iron_ore_62' && M._s2DriverKey('Gold (USD/oz)')==='gold' &&
+     M._s2DriverKey('Copper (USD/ton)')==='copper' && M._s2DriverKey('Average FX 2027 (USD/BRL)')==='fx_usdbrl');
+  ok('eixo de crescimento/volume/margem segue sem marca (Gerdau/Usiminas/Ternium)',
+     M._s2DriverKey('Steel volume growth 2027 (%)')===null && M._s2DriverKey('EBITDA margin 2027 (%)')===null &&
+     M._s2DriverKey('LT iron ore (USD/t)')===null);
+
+  // ── 2. catálogo do lib: é dele que sai o marketValues da página ────────────
+  const cat={}; SG.MARKET_DRIVER_CATALOG.forEach(d=>cat[d.key]=d);
+  ok('catálogo tem pulp_bhkp_china → PULP_BHKP_CHINA (US$/t)',
+     !!cat.pulp_bhkp_china && cat.pulp_bhkp_china.src.table==='commodities' &&
+     cat.pulp_bhkp_china.src.code==='PULP_BHKP_CHINA' && cat.pulp_bhkp_china.unit==='USD/t');
+  ok('catálogo tem pulp_nbsk_china → PULP_NBSK_CHINA (US$/t)',
+     !!cat.pulp_nbsk_china && cat.pulp_nbsk_china.src.code==='PULP_NBSK_CHINA');
+  ok('resale e Europa NÃO entraram (não são preço líquido realizado)',
+     !SG.MARKET_DRIVER_CATALOG.some(d=>/RESALE|EUROPE/.test(d.src.code)));
+  ok('toda chave do catálogo é reconhecida como dinâmica',
+     SG.MARKET_DRIVER_CATALOG.every(d=>SG.isDynamicSource(d.key)));
+  ok('leitura ao vivo do eixo = o índice, sem conversão de unidade',
+     M._s2LiveAxis(PULP_AXIS,MV)===SPOT_PULP, String(M._s2LiveAxis(PULP_AXIS,MV)));
+  ok('sem o preço no marketValues a tabela volta a ficar sem marca',
+     M._s2LiveAxis(PULP_AXIS,{fx_usdbrl:SPOT_FX})===null);
+
+  // ── 3. a marca cai na célula certa ─────────────────────────────────────────
+  const perto=(lv,v)=>{let b=-1,d=Infinity; lv.forEach((x,i)=>{const k=Math.abs(x-v); if(k<d){d=k;b=i;}}); return b;};
+  const cjS=perto(tabsOf(DEF.SUZB3)[0].colLevels,SPOT_PULP), cjK=perto(tabsOf(DEF.KLBN11)[0].colLevels,SPOT_PULP);
+  const riS=perto(tabsOf(DEF.SUZB3)[0].rowLevels,SPOT_FX);
+  ok('spot de celulose está DENTRO das duas grades (Suzano 430–670, Klabin 455–695)',
+     M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,SPOT_PULP)===cjS &&
+     M._s2NearIdx(tabsOf(DEF.KLBN11)[0].colLevels,SPOT_PULP)===cjK,
+     'Suzano col '+cjS+' ('+tabsOf(DEF.SUZB3)[0].colLevels[cjS]+') · Klabin col '+cjK+' ('+tabsOf(DEF.KLBN11)[0].colLevels[cjK]+')');
+  ok('preço fora da grade não marca nada (extrapolar tabela de analista é proibido)',
+     M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,320)===-1 && M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,900)===-1);
+
+  // ── 4. a tabela renderizada: cruzamento único + linha "At spot" ────────────
+  const ctxOf=d=>({def:d,comp:null,mcModel:d.mktcap_model,mcLive:d.mktcap_model*1.1,price:d.model_price,mismatch:false,mv:MV});
+  const conta=(s,re)=>(s.match(re)||[]).length;
+  ['SUZB3','KLBN11'].forEach(function(tk){
+    const d=DEF[tk], tabs=tabsOf(d), byId=byIdOf(d), c=ctxOf(d);
+    const html=M._s2TableHtml(tabs[0],byId,c);           // t1 = EBITDA
+    ok(tk+': um único cruzamento laranja na tabela', conta(html,/s2-cell-hit/g)===1, 'achei '+conta(html,/s2-cell-hit/g));
+    ok(tk+': linha e coluna do spot destacadas (8 células cada, fora o cruzamento)',
+       conta(html,/s2-cell-near/g)===16, 'achei '+conta(html,/s2-cell-near/g));
+    ok(tk+': cabeçalhos do eixo marcados (coluna da celulose + linha do câmbio)',
+       conta(html,/class="s2-hit"/g)===2);
+    ok(tk+': tem a linha "At spot"', html.indexOf('At spot')>=0);
+    ok(tk+': o tooltip diz de qual série veio a marca',
+       html.indexOf('live: BHKP China net price (PIX)')>=0);
+    // valor da linha "At spot" = bilinear na própria grade, conferido por conta independente
+    const tab=tabs[0], cl=tab.colLevels, rl=tab.rowLevels;
+    let ci=0; while(ci<cl.length-2 && cl[ci+1]<SPOT_PULP) ci++;
+    let rI=0; while(rI<rl.length-2 && rl[rI+1]<SPOT_FX) rI++;
+    const wc=(SPOT_PULP-cl[ci])/(cl[ci+1]-cl[ci]), wr=(SPOT_FX-rl[rI])/(rl[rI+1]-rl[rI]);
+    const lin=(r)=>tab.values[r][ci]+(tab.values[r][ci+1]-tab.values[r][ci])*wc;
+    const esperado=lin(rI)+(lin(rI+1)-lin(rI))*wr;
+    ok(tk+': _s2At = bilinear feito à mão',
+       Math.abs(M._s2At(tab,SPOT_FX,SPOT_PULP)-esperado)<1e-9,
+       'motor '+M._s2At(tab,SPOT_FX,SPOT_PULP).toFixed(3)+' × mão '+esperado.toFixed(3));
+    ok(tk+': o número da linha "At spot" é esse bilinear formatado',
+       html.indexOf('<b>'+esperado.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'</b>')>=0,
+       'EBITDA 2027 no spot = '+esperado.toFixed(0)+' '+d.currency+' mn');
+    // EV/EBITDA (t2) é reescrito no preço de tela — a marca tem de aparecer nele também
+    const h2=M._s2TableHtml(tabs[1],byId,c);
+    ok(tk+': EV/EBITDA também marca o spot e continua "live"',
+       conta(h2,/s2-cell-hit/g)===1 && h2.indexOf('At spot')>=0 && h2.indexOf('>live<')>=0);
+  });
+
+  // ── 5. o painel de faixas do topo passa a dizer "spot" na celulose ─────────
+  ['SUZB3','KLBN11'].forEach(function(tk){
+    const d=DEF[tk], strip=M._s2DriverStrip(d,ctxOf(d));
+    const p=strip.find(x=>x.label===PULP_AXIS);
+    ok(tk+': cartão da celulose com leitura ao vivo dentro da faixa',
+       !!p && p.live===SPOT_PULP && p.inside===true && p.src==='BHKP China net price (PIX)');
+    const fx=strip.find(x=>/FX/.test(x.label));
+    ok(tk+': cartão do câmbio segue funcionando', !!fx && fx.live===SPOT_FX && fx.inside===true);
+    ok(tk+': são 2 eixos, sem repetir (as 4 tabelas usam os mesmos)', strip.length===2);
+  });
+
+  // ── 6. tabela sem leitura ao vivo continua SEM a linha "At spot" ───────────
+  const semLeitura={id:'x',title:'EBITDA 2027 (BRL million)',metric:'ebitda',pairId:null,
+    colLabel:'Steel volume growth 2027 (%)',colLevels:[-0.04,0,0.04],rowLevels:null,
+    values:[[100,110,120]]};
+  const hx=M._s2TableHtml(semLeitura,{},ctxOf(DEF.SUZB3));
+  ok('eixo sem equivalente na tela: nada de laranja, nada de "At spot"',
+     hx.indexOf('At spot')<0 && conta(hx,/s2-cell-hit/g)===0 && conta(hx,/s2-cell-near/g)===0);
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM')+
+    '\n\nspot usado: BHKP China net US$ '+SPOT_PULP+'/t · USD/BRL '+SPOT_FX+
+    '\npremissa dos modelos p/ 2027: Suzano US$ 570 · Klabin US$ 575';
+};
+window.__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message+'\n'+e.stack;});
+</script>

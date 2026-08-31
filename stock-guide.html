@@ -600,18 +600,35 @@ function _s2Def(t){ return (t&&t.definition)||{}; }
 function _s2Label(t){ const tk=_s2Def(t).ticker||''; const c=compByTicker(tk);
   return (c&&c.company_name)?c.company_name:(tk||t.title); }
 
-// eixo -> serie ao vivo. Eixos de CRESCIMENTO/VOLUME/celulose nao tem equivalente na tela:
+// eixo -> serie ao vivo. Eixos de CRESCIMENTO/VOLUME/CUSTO nao tem equivalente na tela:
 // devolvem null e a tabela sai sem marcador de spot (em vez de fingir uma leitura).
 function _s2DriverKey(label){
   const L=String(label==null?'':label).toLowerCase();
   if(L.indexOf('lt ')===0||L.indexOf('long term')>=0||L.indexOf('long-term')>=0) return null;  // premissa de longo prazo
   if(L.indexOf('growth')>=0||L.indexOf('volume')>=0||L.indexOf('margin')>=0) return null;
+  if(L.indexOf('cost')>=0) return null;                // eixo de CUSTO (ex.: pulp cash cost) nao e preco de mercado
+  // CELULOSE: o eixo do analista diz a FIBRA (hardwood=BHKP, softwood=NBSK) e pede preco
+  // LIQUIDO em USD/t -> a serie que casa e o indice NET da China (PIX/Fastmarkets), nao o
+  // resale (revenda domestica chinesa) nem a Europa (preco de LISTA, bruto).
+  if(L.indexOf('pulp')>=0||L.indexOf('bhkp')>=0||L.indexOf('nbsk')>=0){
+    if(L.indexOf('brl')>=0||L.indexOf('r$')>=0) return null;               // eixo em reais: sem leitura de tela
+    if(L.indexOf('softwood')>=0||L.indexOf('nbsk')>=0) return 'pulp_nbsk_china';
+    if(L.indexOf('hardwood')>=0||L.indexOf('bhkp')>=0||L.indexOf('euca')>=0) return 'pulp_bhkp_china';
+    return null;                                       // "pulp price" sem dizer a fibra: nao se adivinha
+  }
   if(L.indexOf('iron ore')>=0) return 'iron_ore_62';   // codigo IRON_ORE = Platts 61%, que e o eixo do analista
   if(L.indexOf('copper')>=0) return 'copper';
   if(L.indexOf('gold')>=0) return 'gold';
   if(L.indexOf('fx')>=0||L.indexOf('usd/brl')>=0) return 'fx_usdbrl';
   return null;
 }
+// nome da serie que esta por tras da marca laranja — vai no tooltip, para o cliente saber
+// COM O QUE o eixo do modelo esta sendo comparado (o catalogo do lib nao serve: o rotulo de
+// minerio la diz 62% e a serie usada aqui e a de 61%, que e a do eixo do analista).
+const _S2_SRC_NAME={ iron_ore_62:'Platts iron ore fines 61%', copper:'Copper (LME proxy)',
+  gold:'Gold', fx_usdbrl:'USD/BRL', pulp_bhkp_china:'BHKP China net price (PIX)',
+  pulp_nbsk_china:'NBSK China net price (PIX)' };
+function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[k]||''):''; }
 // valor do eixo AO VIVO, ja na unidade do eixo (o catalogo tem cobre em USD/lb; ha modelo
 // com o eixo em USD/ton).
 function _s2LiveAxis(label,mv){
@@ -749,7 +766,10 @@ function _s2TableHtml(tab,byId,ctx){
         return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
       const xs=[spotFmt(colLive,colPct,colDec)];
       if(hasRow) xs.push(spotFmt(rowLive,rowPct,rowDec));
-      h+='<div class="s2-spot" title="interpolated between the published grid levels">'+
+      const srcs=[]; const cs=_s2SrcName(tab.colLabel); if(cs)srcs.push(cs);
+      if(hasRow){ const rs=_s2SrcName(tab.rowLabel); if(rs&&srcs.indexOf(rs)<0)srcs.push(rs); }
+      h+='<div class="s2-spot" title="'+esc('interpolated between the published grid levels'+
+           (srcs.length?' · live: '+srcs.join(' × '):''))+'">'+
          '<span class="s2-spot-k">At spot</span>'+
          '<span class="s2-spot-x">'+esc(xs.join(' × '))+'</span>'+
          '<b>'+esc(SG.sens2dFormat(at,met,NUM_LOC))+'</b></div>';
@@ -772,7 +792,7 @@ function _s2DriverStrip(d,ctx){
       const mn=Math.min.apply(null,lv), mx=Math.max.apply(null,lv);
       const live=_s2LiveAxis(lab,ctx.mv);
       out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:SG.sens2dAxisDecimals(lv,pct),
-                inside:live!=null&&live>=mn&&live<=mx});
+                src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx});
     }); }); });
   return out;
 }
@@ -794,7 +814,8 @@ function _s2RenderPane(t,pane){
      (pl!=null?'<b>'+pl.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>':'<span class="muted">no quote</span>')+
      '</div><div class="s2-sub">'+(pm&&pl?((pl/pm-1)*100).toLocaleString(NUM_LOC,{minimumFractionDigits:1,maximumFractionDigits:1})+'% vs model':'model → live')+'</div></div>';
   _s2DriverStrip(d,ctx).forEach(function(x){
-    h+='<div class="s2-kpi'+(x.inside?' on':'')+'"><div class="s2-k" title="'+esc(x.label)+'">'+esc(_s2Short(x.label))+
+    h+='<div class="s2-kpi'+(x.inside?' on':'')+'"><div class="s2-k" title="'+
+       esc(x.label+(x.live!=null&&x.src?' · live: '+x.src:''))+'">'+esc(_s2Short(x.label))+
        '</div><div class="s2-v">'+
        esc(SG.sens2dAxisFormat(x.min,x.pct,NUM_LOC,x.dec))+'–'+esc(SG.sens2dAxisFormat(x.max,x.pct,NUM_LOC,x.dec))+
        (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(SG.sens2dAxisFormat(x.live,x.pct,NUM_LOC,x.dec))+'</b>':'')+
