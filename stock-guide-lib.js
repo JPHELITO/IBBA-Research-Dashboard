@@ -25,6 +25,13 @@
     { key: 'met_coal',     label: 'Met coal (Platts)',        unit: 'USD/t',   src: { table: 'commodities', code: 'MET_COAL' } },
     { key: 'copper',       label: 'Copper (LME proxy)',       unit: 'USD/lb',  src: { table: 'commodities', code: 'COPPER' } },
     { key: 'gold',         label: 'Gold',                     unit: 'USD/oz',  src: { table: 'commodities', code: 'GOLD' } },
+    // Celulose (assessment PIX/Fastmarkets, semanal): os indices NET da China, que sao os
+    // que conversam com o eixo "Net Price" dos modelos de Suzano/Klabin. Os precos de
+    // RESALE e os da Europa ficam de fora do catalogo de propósito: resale e' preco de
+    // revenda no mercado domestico chines e a Europa e' preco de LISTA (bruto) — nenhum
+    // dos dois e' o preco liquido realizado que o eixo do analista pede.
+    { key: 'pulp_bhkp_china', label: 'BHKP China net (PIX)', unit: 'USD/t',   src: { table: 'commodities', code: 'PULP_BHKP_CHINA' } },
+    { key: 'pulp_nbsk_china', label: 'NBSK China net (PIX)', unit: 'USD/t',   src: { table: 'commodities', code: 'PULP_NBSK_CHINA' } },
     { key: 'fx_usdbrl',    label: 'USD/BRL',                  unit: 'BRL/USD', src: { table: 'macro',       code: 'USD_BRL' } },
   ];
   const MARKET_DRIVER_CATALOG_BY_KEY = MARKET_DRIVER_CATALOG.reduce(function (m, d) { m[d.key] = d; return m; }, {});
