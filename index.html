@@ -886,26 +886,42 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
    ⚠️ E por que 4 linhas magras: a faixa `comm` da home é `minmax(0,190px)` e o `kv-list`
    tem `overflow:hidden` — o que passar disso é CORTADO calado, e a altura da faixa está
    marcada como "não mexer" (mexer nela encolhe o feed de notícias). Sobrou folga de 5px. */
+/* Grupo em que NENHUM nome quebra em duas linhas devolve a 2ª linha para o desenho
+   (~10px). São 4 dos 7 grupos — Freight+HCC, Forward Curve, Steel+Other Ores e Pulp
+   Europe — e era o "espaço grande em cima" que o analista viu. A altura fixa de 2 linhas
+   continua nos grupos MISTOS, senão o preço de um cartão dança em relação ao vizinho.
+   Quem decide é o `_renderCommPage`, medindo as caixas de linha depois de desenhar. */
+.kv-list.uma-linha .cm-name{height:1.25em;}
 .cm-rows{flex:1;min-height:0;margin-top:4px;padding-top:3px;border-top:1px solid var(--border);
-  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px 7px;}
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:2px 7px;}
 /* ⚠️ 2×2, e não quatro linhas empilhadas. Em fila (rótulo | risquinho | número) as três
    colunas dividiam os 76px úteis do cartão e sobravam DEZOITO pixels para o desenho —
    o mesmo rabisco da versão deitada, só que disfarçado. Empilhando o rótulo e o número
    ACIMA do risquinho, ele passa a usar a largura inteira da célula (~35px, quase o dobro)
    e a altura não muda: 2 células de 2 andares ocupam o mesmo que 4 linhas de 1.
    ⚠️ Medir na tela, não no screenshot: o print sai reamostrado e 18px pareciam 30. */
-.cm-row{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;}
-.cm-rhead{display:flex;align-items:baseline;justify-content:space-between;gap:2px;min-width:0;}
-.cm-rl{font-size:7px;font-weight:700;color:#8A8A8A;letter-spacing:.02em;}
-/* flex:1 em vez de altura fixa — a folga que sobrar vira desenho, e não branco (mesmo
-   truque do `.cm-spark` de antes).
-   ⚠️ O min-height é o PISO, e piso alto aqui não deixa o risquinho maior: deixa o cartão
-   ESTOURAR. O painel não cresce para acomodar (a faixa `comm` é content-sized e o
-   `kv-list` tem `min-height:0` + `overflow:hidden`), então quem não couber é cortado.
-   Medido na home real: até 13px nenhum cartão estoura, em 14px estouram 5. Fica em 10 —
-   o `flex:1` já entrega os ~10px disponíveis e a folga é margem de segurança para tela
-   estreita, zoom do navegador e fonte maior. */
-.cm-rs{display:block;width:100%;flex:1;min-height:10px;}
+.cm-row{position:relative;display:flex;flex-direction:column;justify-content:flex-end;
+  min-width:0;min-height:0;}
+/* só o NÚMERO ocupa a linha de cima, alinhado à direita. ⚠️ O rótulo NÃO cabe ao lado dele:
+   medido no grupo de 5 cartões a célula tem 36px, e "YTD" (14,9) + folga + "+83,5%" (32,9)
+   pedem 50. Ou o rótulo saía, ou o "%" não entrava. O rótulo foi para cima do risquinho,
+   com o fundo do cartão atrás — ele cobre a ponta ESQUERDA da curva, que é o dado mais
+   velho da janela, e o desenho mantém a largura inteira. */
+.cm-rhead{display:flex;align-items:baseline;justify-content:flex-end;min-width:0;}
+.cm-rl{position:absolute;left:0;bottom:0;z-index:1;padding-right:3px;
+  background:var(--gray-light);line-height:1.1;
+  font-size:7px;font-weight:700;color:#8A8A8A;letter-spacing:.02em;}
+/* ⚠️⚠️ `min-height:0` NÃO É DETALHE — é o que impede o risquinho de EMPURRAR o cartão.
+   Um <svg> com viewBox 100×28 carrega PROPORÇÃO INTRÍNSECA: com a largura em 100% e a
+   altura livre, ele pede largura×0,28 de altura. E `grid-template-rows:1fr` é
+   `minmax(AUTO,1fr)`, então a linha respeitava esse pedido e crescia junto. Resultado
+   medido em 31/08: quanto MAIS LARGO o cartão, mais o conteúdo estourava — 18px nos
+   grupos de 5 cartões (95px), 26px nos de 4 (120px) e 68px no Pulp Europe, que só tem 2
+   cartões de 246px. O risquinho vazava para fora da borda arredondada, e foi assim que o
+   analista viu. Com `minmax(0,1fr)` na grade e `min-height:0` aqui, a altura passa a vir
+   SÓ de cima para baixo: o cartão manda, o desenho ocupa o que sobrou. */
+.cm-rs{display:block;width:100%;flex:1;min-height:0;}
 .cm-rv{font-size:8.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* a cor é POR LINHA — cada período sobe ou desce por conta, não segue o sinal do dia */
 .cm-row.up{color:#0F5C2B;}.cm-row.down{color:#8E2318;}.cm-row.flat{color:#5F6773;}
@@ -1213,7 +1229,7 @@ html.dark .cm-val{color:#F2F4F8;}
 html.dark .cm-card.up .cm-chg{color:#4ADE80;}
 html.dark .cm-card.down .cm-chg{color:#F87171;}
 html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
-html.dark .cm-rl{color:#6E7889;}
+html.dark .cm-rl{color:#7E8899;background:#141821;}
 html.dark .cm-rows{border-top-color:#1F2532;}
 html.dark .cm-row.up{color:#4ADE80;}html.dark .cm-row.down{color:#F87171;}
 html.dark .cm-row.flat{color:#98A1AF;}
@@ -3226,9 +3242,13 @@ function _commSpark(sp, b, classe){
   </svg>`;
 }
 
-// Formata uma variação: "+2.6" / "-11.7" / "—". Sem o "%" — o cartão é uma coluna de
-// percentuais e repetir o símbolo 4 vezes só rouba largura do risquinho.
-function _pctCurto(v){ return v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`; }
+// Formata a variação de uma janela: "+2.6%" / "-11.7%" / "—". Uma casa decimal abaixo de
+// 100% e nenhuma acima — "+123%" cabe onde "+123.4%" não caberia, e a décima de um número
+// de três dígitos não muda decisão nenhuma.
+function _pctCurto(v){
+  if(v == null) return '—';
+  return `${v >= 0 ? '+' : ''}${Math.abs(v) >= 100 ? Math.round(v) : v.toFixed(1)}%`;
+}
 function _sinal(v){ return v == null ? 'flat' : v > 0.05 ? 'up' : v < -0.05 ? 'down' : 'flat'; }
 
 // Uma das 4 linhas de período do cartão: rótulo · risquinho · variação.
@@ -3237,8 +3257,9 @@ function _sinal(v){ return v == null ? 'flat' : v > 0.05 ? 'up' : v < -0.05 ? 'd
 function _cmRow(rotulo, per){
   if(!per) return '';
   return `<div class="cm-row ${_sinal(per.c)}">
-    <div class="cm-rhead"><span class="cm-rl">${rotulo}</span><span class="cm-rv">${_pctCurto(per.c)}</span></div>
+    <div class="cm-rhead"><span class="cm-rv">${_pctCurto(per.c)}</span></div>
     ${_commSpark(per.s, per.b, 'cm-rs')}
+    <span class="cm-rl">${rotulo}</span>
   </div>`;
 }
 
@@ -3369,6 +3390,16 @@ function _renderCommPage(){
   const g=COMM_GROUPS[_commPage] || COMM_GROUPS[0];
   const items=g.codes.map(code=>_commByCode[code]).filter(Boolean);
   list.innerHTML=items.length ? items.map(c=>_kvCard(c)).join('') : '<div class="kv-loading">—</div>';
+  // O nome tem altura fixa de 2 linhas para os preços dos cartões vizinhos ficarem na mesma
+  // altura. Quando NENHUM nome do grupo quebra, essa 2ª linha é só espaço vazio no topo —
+  // e o risquinho, lá embaixo, é quem paga (4 dos 7 grupos estavam assim). Aqui a segunda
+  // linha é devolvida ao desenho, e só quando o grupo inteiro dispensa. Medir as CAIXAS DE
+  // LINHA com um Range: `scrollHeight` não serve, o bloco tem altura fixa e clamp, então
+  // responde a altura da caixa (=2) mesmo com uma linha só de texto.
+  const cabeEmUma = [...list.querySelectorAll('.cm-name')].every(n=>{
+    const r=document.createRange(); r.selectNodeContents(n); return r.getClientRects().length<=1;
+  });
+  list.classList.toggle('uma-linha', cabeEmUma);
   const titleEl=document.getElementById('comm-title'); if(titleEl) titleEl.textContent=g.title;
   _updateMeta('comm-meta', _commUpdated);
   const n=_commPageCount();

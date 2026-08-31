@@ -90,7 +90,8 @@ window.__RUN__=async function(){
      (hrc.match(/title="([^"]*)"/)||[])[1]);
   ok('Rebar Turkey idem',
      (M._kvCard(by.REBAR_TURKEY).match(/<span class="cm-rv">—<\/span>/g)||[]).length===2);
-  ok('a W e a M do HRC continuam com número', /cm-rv">\+[\d.]+</.test(hrc));
+  ok('a W e a M do HRC continuam com número', /cm-rv">\+[\d.]+%</.test(hrc),
+     (hrc.match(/<span class="cm-rv">[^<]*<\/span>/g)||[]).join(' '));
 
   // ── 6. o número grande: dia nas diárias, semana nas semanais
   ok('numa DIÁRIA o número grande é o change_pct da fonte',
@@ -119,25 +120,63 @@ window.__RUN__=async function(){
      M._kvCard({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,
                 assessed_at:'2026-08-31'}).includes('cm-spark'));
 
-  // ── 9. ALTURA: o cartão tem de caber na faixa de 190px com overflow:hidden
+  // ── 9. a variação sai em % (o analista perguntou "isso é %?" — era, e não dizia)
+  const numeros = M._kvCard(by.IOFAC00).match(/<span class="cm-rv">([^<]*)<\/span>/g);
+  ok('as 4 variações trazem o símbolo %', numeros.every(x=>/%<\/span>$/.test(x)),
+     numeros.join(' '));
+  ok('acima de 100% a casa decimal cai (senão não cabe na célula)',
+     /^\+123%$/.test(M._cmRow('W',{c:123.4,s:[0,500,1000],b:1}).match(/cm-rv">([^<]*)</)[1]),
+     M._cmRow('W',{c:123.4,s:[0,500,1000],b:1}).match(/cm-rv">([^<]*)</)[1]);
+  ok('"—" continua sem % (não existe variação para pôr o símbolo)',
+     /cm-rv">—</.test(M._kvCard(by.HRC_CHINA)));
+
+  // ── 10. GEOMETRIA na home: nada pode vazar para fora do cartão
   const est=document.createElement('style');
   est.textContent=[...t.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
   document.head.appendChild(est);
+  // 519×137 = a medida REAL do `#comm-list` na home a 1600px. Os três arranjos de grupo
+  // que existem: 5 cartões (95px), 4 (120px) e 2 (246px). ⚠️ O de 2 É O QUE MAIS ESTOURAVA
+  // (68px) — o <svg> com viewBox 100×28 pedia altura = largura×0,28, então quanto MAIS
+  // LARGO o cartão, mais o conteúdo transbordava. Testar só o cartão estreito escondia o pior.
   const grupos=[['IRON_ORE','MET_COAL','IOFAC00','HRC_CHINA','REBAR_TURKEY'],
-                ['PULP_BHKP_CHINA','PULP_NBSK_EUROPE','IOBFC04','COPPER','GOLD']];
-  // 519×137 = a medida REAL do `#comm-list` na home a 1600px de viewport. Sem travar a
-  // altura o palco dá folga que a home não tem, e o cartão sai mais alto aqui do que lá.
+                ['PULP_BHKP_CHINA','PULP_NBSK_EUROPE','IOBFC04','COPPER'],
+                ['GOLD','COPPER']];
   document.getElementById('palco').innerHTML = grupos.map(g=>
     `<div class="kv-list" style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
       grid-auto-rows:minmax(0,1fr);gap:8px;padding:8px 12px 6px;height:137px;overflow:hidden">
       ${g.map(code=>M._kvCard(by[code])).join('')}</div>`).join('');
-  const alturas=[...document.querySelectorAll('.cm-card')].map(c=>c.getBoundingClientRect().height);
-  const alta=Math.max(...alturas);
+  // o `uma-linha` é decidido pelo `_renderCommPage` na home; aqui é reproduzido à mão
+  [...document.querySelectorAll('#palco .kv-list')].forEach(lista=>{
+    const uma=[...lista.querySelectorAll('.cm-name')].every(n=>{
+      const r=document.createRange(); r.selectNodeContents(n); return r.getClientRects().length<=1; });
+    lista.classList.toggle('uma-linha', uma);
+  });
+  const cards=[...document.querySelectorAll('#palco .cm-card')];
+  const vazando=cards.filter(c=>c.scrollHeight>c.clientHeight+1)
+    .map(c=>c.querySelector('.cm-name').textContent+' (+'+(c.scrollHeight-c.clientHeight)+'px)');
+  ok('nenhum cartão deixa o conteúdo vazar para fora da borda', vazando.length===0,
+     vazando.join(', ')||cards.length+' cartões ok');
+  const alta=Math.max(...cards.map(c=>c.getBoundingClientRect().height));
   // 190px da faixa − 59px de cabeçalho/respiro medidos na home = 131px para o cartão
   ok('o cartão cabe na faixa de 190px da home', alta<=131, 'mais alto='+Math.round(alta)+'px');
-  const larguras=[...document.querySelectorAll('.cm-rs')].map(s=>s.getBoundingClientRect().width);
-  ok('o risquinho de cada linha fica com largura útil', Math.min(...larguras)>=30,
-     'mais estreito='+Math.round(Math.min(...larguras))+'px');
+  // trava do bug da proporção: o risquinho NÃO pode crescer em altura junto com a largura
+  const risq=[...document.querySelectorAll('#palco .cm-rs')].map(s=>s.getBoundingClientRect());
+  const maisLargo=risq.reduce((a,b)=>a.width>b.width?a:b);
+  ok('a altura do risquinho não acompanha a largura (proporção intrínseca do <svg>)',
+     maisLargo.height <= 20, Math.round(maisLargo.width)+'x'+Math.round(maisLargo.height));
+  ok('o risquinho de cada célula fica com largura útil',
+     Math.min(...risq.map(r=>r.width))>=30,
+     'mais estreito='+Math.round(Math.min(...risq.map(r=>r.width)))+'px');
+  // o rótulo fica POR CIMA do risquinho: não pode comer mais que um terço dele
+  const cel=document.querySelector('#palco .cm-row');
+  const rl=cel.querySelector('.cm-rl').getBoundingClientRect();
+  const rs=cel.querySelector('.cm-rs').getBoundingClientRect();
+  ok('o rótulo sobreposto cobre no máximo 1/3 do desenho', rl.width/rs.width<=0.34,
+     Math.round(rl.width/rs.width*100)+'%');
+  // e o número não pode transbordar a própria célula
+  const estourouNumero=[...document.querySelectorAll('#palco .cm-row')].filter(r=>
+    r.querySelector('.cm-rv').getBoundingClientRect().width > r.getBoundingClientRect().width);
+  ok('nenhum número transborda a célula', estourouNumero.length===0, estourouNumero.length+' estouros');
 
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
