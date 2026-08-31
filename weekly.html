@@ -721,15 +721,22 @@ function baixarEml(){
 }
 
 // ═══════════════ PERSISTÊNCIA ════════════════════════════════════════════════
-// Mora em clipping_config.settings.weekly (RPCs que já existem). Guarda só o que
-// é TEXTO do analista: números e manchetes vêm do banco a cada carga, então o
-// rascunho nunca "congela" um preço velho.
+// Mora em clipping_config.settings.weekly. Guarda só o que é TEXTO do analista:
+// números, manchetes e relatórios vêm do banco a cada carga, então o rascunho nunca
+// "congela" um preço velho nem uma lista velha.
+//
+// 🔒 Grava por `admin_save_weekly_config`, que escreve UMA CHAVE e deixa o Postgres
+// fundir com o que estiver lá. NÃO usar `admin_save_clipping_config` aqui: ela troca
+// o objeto INTEIRO de configuração, e como esta página guarda uma cópia na memória
+// desde que foi aberta, salvar por ela devolveria a versão velha de
+// `recent_publications` por cima do que o analista acabou de cadastrar no Clipping.
+// Foi assim que uma lista de publicações se perdeu em 31/08/2026.
 let _saveT=null;
 function salvar(){
   if(typeof WKTEST!=='undefined'&&WKTEST) return;   // harness local não fala com o banco
   clearTimeout(_saveT);
   _saveT=setTimeout(()=>{
-    S.cfg.weekly={
+    const weekly={
       intro:document.getElementById('intro').value,
       resumo:{commodities:document.getElementById('r-commodities').value,
               companhias :document.getElementById('r-companhias').value,
@@ -742,13 +749,28 @@ function salvar(){
       tickers:S.tickers,
       ref:ymd(S.sem.fim),
     };
-    // ⚠️ `recent_publications` NÃO é escrita aqui: o cadastro é do Clipping. Gravar a
-    // partir desta tela sobrescreveria o que ele acabou de digitar lá.
-    rpc('admin_save_clipping_config',{p_settings:S.cfg}).catch(e=>console.warn('save',e));
+    S.cfg.weekly=weekly;                       // espelho local, para a tela não piscar
+    rpc('admin_save_weekly_config',{p_weekly:weekly}).catch(e=>{
+      console.warn('save',e);
+      // Sem o SQL do adendo a função não existe. Falha ABERTA e barulhenta: melhor o
+      // analista saber que o rascunho não está sendo guardado do que salvar por um
+      // caminho que pode levar a lista do Clipping junto.
+      if(String(e&&e.message||'').indexOf('PGRST202')>=0 || /not find the function/i.test(e&&e.message||''))
+        flash('Rascunho NÃO salvo: falta rodar admin/supabase_weekly_recap.sql (a parte do adendo).');
+    });
   },900);
 }
 
 // ═══════════════ CARGA GERAL ═════════════════════════════════════════════════
+// Relê SÓ a lista de publicações (o Clipping pode ter mudado numa outra aba enquanto
+// esta ficou aberta). Leitura, nunca escrita.
+async function recarregarPubs(){
+  try{
+    const c=await rpc('admin_get_clipping_config')||{};
+    S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  }catch(e){ console.warn('pubs',e); }
+}
+
 async function recarregar(){
   const ref=ymdParse(document.getElementById('ref').value)||new Date();
   S.sem=W.semanaDe(ref);
@@ -763,7 +785,8 @@ async function recarregar(){
   document.getElementById('ac-box').innerHTML='<div class="muted">carregando…</div>';
   document.getElementById('nw-box').innerHTML='<div class="muted">carregando…</div>';
 
-  const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias()]);
+  const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias(),
+                                    recarregarPubs()]);
   r.forEach(x=>{ if(x.status==='rejected') console.warn(x.reason); });
 
   const sw=document.getElementById('sqlwarn');

@@ -321,10 +321,62 @@ const HTML=W.buildEmail(MODELO);
      html.indexOf('NOTÍCIAS')>0 && html.indexOf('24 A 28 DE AGOSTO')>0);
 })();
 
+// ══ 8. GUARDA: o Weekly NÃO PODE ESCREVER NADA DO CLIPPING ══════════════════
+// Em 31/08/2026 a 1ª versão desta aba apagou publicações do Clipping: ela lia o
+// título em `titulo` (o Clipping grava `name`), a lista aparecia em branco, e o
+// botão de apagar escrevia de volta em `recent_publications`. O analista foi
+// explícito depois disso: **o Weekly só consulta; quem manda na lista é o Clipping.**
+// Estas asserções leem os FONTES e quebram se alguém reabrir essa porta.
+async function guardaDeEscrita(){
+  const src = await (await fetch('/weekly.html?v='+Date.now())).text();
+
+  // a CHAMADA, não a menção: o arquivo cita o nome num comentário explicando por que
+  // ela não pode ser usada aqui, e esse comentário tem de continuar existindo
+  ok('o Weekly não CHAMA admin_save_clipping_config (ela troca a config INTEIRA)',
+     src.indexOf("rpc('admin_save_clipping_config'")<0);
+  ok('…e o comentário que explica o porquê segue no arquivo',
+     src.indexOf('admin_save_clipping_config')>0);
+  ok('…e grava só pela função que funde uma chave',
+     src.indexOf("rpc('admin_save_weekly_config'")>0);
+  // nenhuma atribuição a recent_publications (ler é permitido; escrever, não)
+  const escritas=[...src.matchAll(/recent_publications\s*=[^=]/g)].length;
+  ok('o Weekly nunca ATRIBUI recent_publications', escritas===0, 'atribuições='+escritas);
+  ok('…e também não mexe em intro/earnings_review/analysts do Clipping',
+     !/\b(intro|earnings_review|analysts)\s*=[^=]/.test(src.split('DEFAULT_INTRO')[1]||''));
+
+  // a única chamada de ESCRITA no banco é a do weekly
+  const rpcs=[...src.matchAll(/rpc\('([a-z_]+)'/g)].map(m=>m[1]);
+  const escrita=rpcs.filter(n=>/^admin_(save|enqueue|delete|upsert|trigger)/.test(n));
+  ok('a única RPC de escrita é admin_save_weekly_config',
+     escrita.length===1 && escrita[0]==='admin_save_weekly_config', escrita.join(',')||'nenhuma');
+
+  // e a função do banco de fato funde em vez de substituir
+  const sql = await (await fetch('/admin/supabase_weekly_recap.sql?v='+Date.now())).text();
+  ok('a função do banco existe no SQL', sql.indexOf('admin_save_weekly_config')>0);
+  ok('…e funde a chave em vez de trocar o objeto (o `||` do jsonb)',
+     /settings\s*=\s*public\.clipping_config\.settings\s*\|\|/.test(sql));
+  ok('…gateada por is_admin()', /admin_save_weekly_config[\s\S]*?is_admin\(\)/.test(sql));
+
+  // e o Clipping segue dono da lista
+  const clip = await (await fetch('/clipinator.html?v='+Date.now())).text();
+  ok('o Clipping continua gravando pela função dele',
+     clip.indexOf('admin_save_clipping_config')>0);
+  ok('o Clipping ganhou a data da publicação (é o que o Weekly consulta)',
+     clip.indexOf('pub-date')>0 && clip.indexOf("type=\"date\"")>0);
+  ok('…só em Recent Publications (Earnings Review não mudou)',
+     clip.indexOf("renderPubList('cfg-pubs', c.recent_publications, true)")>0 &&
+     clip.indexOf("renderPubList('cfg-earn', c.earnings_review.items)")>0);
+}
+
 // ── resultado ────────────────────────────────────────────────────────────────
-const falhas=R.filter(r=>r.startsWith('FAIL')).length;
-document.getElementById('out').textContent=
-  R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
-window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+function _publicar(){
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=
+    R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+}
+_publicar();                       // o que é síncrono já aparece
+guardaDeEscrita().catch(e=>ok('guarda de escrita rodou',false,String(e&&e.message||e)))
+                 .then(_publicar); // …e a guarda repinta com o total final
 </script>
 </body>
