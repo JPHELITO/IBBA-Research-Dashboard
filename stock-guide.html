@@ -616,16 +616,20 @@ function _s2DriverKey(label){
     if(L.indexOf('hardwood')>=0||L.indexOf('bhkp')>=0||L.indexOf('euca')>=0) return 'pulp_bhkp_china';
     return null;                                       // "pulp price" sem dizer a fibra: nao se adivinha
   }
-  if(L.indexOf('iron ore')>=0) return 'iron_ore_62';   // codigo IRON_ORE = Platts 61%, que e o eixo do analista
+  // MINERIO: o eixo diz o TEOR. Vale e CMIN publicam "Iron Ore 61%" -> serie da Platts (IO Fines
+  // 61%), que casa exato. So um eixo que escreva 62 e' que vai para a serie de 62% CFR China; sem
+  // teor no rotulo fica no 61%, que e a convencao dos modelos da casa.
+  if(L.indexOf('iron ore')>=0) return L.indexOf('62')>=0?'iron_ore_62':'iron_ore_61';
   if(L.indexOf('copper')>=0) return 'copper';
   if(L.indexOf('gold')>=0) return 'gold';
   if(L.indexOf('fx')>=0||L.indexOf('usd/brl')>=0) return 'fx_usdbrl';
   return null;
 }
 // nome da serie que esta por tras da marca laranja — vai no tooltip, para o cliente saber
-// COM O QUE o eixo do modelo esta sendo comparado (o catalogo do lib nao serve: o rotulo de
-// minerio la diz 62% e a serie usada aqui e a de 61%, que e a do eixo do analista).
-const _S2_SRC_NAME={ iron_ore_62:'Platts iron ore fines 61%', copper:'Copper (LME proxy)',
+// COM O QUE o eixo do modelo esta sendo comparado (nome curto, de leitura; o rotulo cheio do
+// catalogo do lib e para o admin escolher driver).
+const _S2_SRC_NAME={ iron_ore_61:'Platts iron ore fines 61%', iron_ore_62:'Iron ore 62% Fe CFR China',
+  copper:'Copper (LME proxy)',
   gold:'Gold', fx_usdbrl:'USD/BRL', pulp_bhkp_china:'BHKP China net price (PIX)',
   pulp_nbsk_china:'NBSK China net price (PIX)' };
 function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[k]||''):''; }

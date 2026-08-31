@@ -1,9 +1,9 @@
-<!doctype html><meta charset="utf-8"><title>sensitivity — marca laranja da celulose (Klabin e Suzano)</title>
-<script src="/stock-guide-lib.js"></script>
+<!doctype html><meta charset="utf-8"><title>sensitivity — a marca laranja do spot (celulose, minério e cobre)</title>
 <body><pre id="out">rodando…</pre><script>
-/* Confere que o eixo de CELULOSE dos modelos publicados de Suzano e Klabin passou a ter
-   leitura ao vivo (índice PIX BHKP China net) e, com isso, a tabela ganha a marca laranja
-   da linha/coluna, o cruzamento e a linha "At spot".
+/* Confere a MARCA LARANJA DO SPOT nas tabelas publicadas do analista: a linha, a coluna, o
+   cruzamento e a linha "At spot" com o número interpolado.
+     · celulose (Suzano e Klabin) — índice PIX BHKP China net, que entrou em 31/08/2026;
+     · minério e cobre (Vale e CSN Mineração) — Platts IO Fines 61% e cobre convertido p/ US$/t.
 
    As funções vêm RECORTADAS do próprio stock-guide.html (mesmo método dos outros testes do
    diretório): se alguém mexer nelas, o teste acompanha em vez de testar uma cópia velha.
@@ -13,10 +13,15 @@ const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''))
 function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
 
 // spot de verdade lido do banco em 31/08/2026 (assessment PIX de 28/08) e o câmbio do mesmo dia
-const SPOT_PULP=563.64, SPOT_FX=5.1806;
-const MV={pulp_bhkp_china:SPOT_PULP, fx_usdbrl:SPOT_FX, iron_ore_62:99.7, gold:4472.7, copper:6.702};
+const SPOT_PULP=563.64, SPOT_FX=5.1806, SPOT_IO61=99.7, SPOT_IO62=95.84, SPOT_CU_LB=6.702;
+const SPOT_CU_TON=SPOT_CU_LB*2204.62262;   // 14.775,4 — o eixo da Vale é em US$/ton
+const MV={pulp_bhkp_china:SPOT_PULP, fx_usdbrl:SPOT_FX, iron_ore_61:SPOT_IO61, iron_ore_62:SPOT_IO62,
+          gold:4472.7, copper:SPOT_CU_LB};
 
 window.__RUN__=async function(){
+  // o lib entra por fetch+eval, e nao por <script src>: sem o carimbo de tempo o navegador
+  // serve a versao em cache e o teste avalia codigo VELHO sem avisar (aconteceu ao escrever isto)
+  new Function(await (await fetch('/stock-guide-lib.js?v='+Date.now())).text())();
   const cru=await (await fetch('/stock-guide.html?v='+Date.now())).text();
   const t=cru.split('\r\n').join('\n');
   // um único bloco contíguo: _s2Def … _s2DriverStrip
@@ -26,7 +31,7 @@ window.__RUN__=async function(){
   const M=new Function('ctx',`with(ctx){ ${BLOCO}
     return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip}; }`)(ctx);
 
-  const DEF=await (await fetch('/tests/fixtures/sens2d_pulp.json?v='+Date.now())).json();
+  const DEF=await (await fetch('/tests/fixtures/sens2d_models.json?v='+Date.now())).json();
   const tabsOf=d=>d.sheets[0].tables;
   const byIdOf=d=>{const m={}; tabsOf(d).forEach(x=>m[x.id]=x); return m;};
   const PULP_AXIS=tabsOf(DEF.SUZB3)[0].colLabel;   // 'Average Hardwood Pulp Net Price 2027 (USD/ton)'
@@ -46,9 +51,17 @@ window.__RUN__=async function(){
      M._s2DriverKey('Average Hardwood Pulp Net Price 2027 (BRL/ton)')===null);
   ok('"pulp price" sem dizer a fibra não é adivinhado',
      M._s2DriverKey('Pulp price 2027 (USD/ton)')===null);
-  ok('os eixos que já marcavam continuam iguais (minério/ouro/cobre/câmbio)',
-     M._s2DriverKey('Iron ore 2026 (USD/dmt)')==='iron_ore_62' && M._s2DriverKey('Gold (USD/oz)')==='gold' &&
-     M._s2DriverKey('Copper (USD/ton)')==='copper' && M._s2DriverKey('Average FX 2027 (USD/BRL)')==='fx_usdbrl');
+  ok('os eixos que já marcavam continuam iguais (ouro/cobre/câmbio)',
+     M._s2DriverKey('Gold (USD/oz)')==='gold' && M._s2DriverKey('Copper (USD/ton)')==='copper' &&
+     M._s2DriverKey('Average FX 2027 (USD/BRL)')==='fx_usdbrl');
+  // MINÉRIO: o eixo diz o TEOR e as duas séries diferem em ~4% — não pode cair na errada calada
+  ok('eixo "Iron Ore 61%" (Vale e CMIN) → série 61% da Platts',
+     M._s2DriverKey(tabsOf(DEF.VALE3)[0].colLabel)==='iron_ore_61' &&
+     M._s2DriverKey(tabsOf(DEF.CMIN3)[0].colLabel)==='iron_ore_61');
+  ok('eixo que escreve 62% → série 62% CFR China',
+     M._s2DriverKey('Iron ore 62% Fe CFR China 2027 (USD/t)')==='iron_ore_62');
+  ok('eixo de minério sem teor fica no 61%, convenção dos modelos da casa',
+     M._s2DriverKey('Iron ore 2026 (USD/dmt)')==='iron_ore_61');
   ok('eixo de crescimento/volume/margem segue sem marca (Gerdau/Usiminas/Ternium)',
      M._s2DriverKey('Steel volume growth 2027 (%)')===null && M._s2DriverKey('EBITDA margin 2027 (%)')===null &&
      M._s2DriverKey('LT iron ore (USD/t)')===null);
@@ -64,6 +77,11 @@ window.__RUN__=async function(){
      !SG.MARKET_DRIVER_CATALOG.some(d=>/RESALE|EUROPE/.test(d.src.code)));
   ok('toda chave do catálogo é reconhecida como dinâmica',
      SG.MARKET_DRIVER_CATALOG.every(d=>SG.isDynamicSource(d.key)));
+  ok('catálogo separa as DUAS séries de minério, cada uma no seu código',
+     cat.iron_ore_61.src.code==='IRON_ORE' && cat.iron_ore_62.src.code==='IRON_ORE_62' &&
+     /61%/.test(cat.iron_ore_61.label) && /62%/.test(cat.iron_ore_62.label));
+  ok('nenhuma chave do catálogo aponta p/ dois códigos iguais',
+     new Set(SG.MARKET_DRIVER_CATALOG.map(d=>d.src.code)).size===SG.MARKET_DRIVER_CATALOG.length);
   ok('leitura ao vivo do eixo = o índice, sem conversão de unidade',
      M._s2LiveAxis(PULP_AXIS,MV)===SPOT_PULP, String(M._s2LiveAxis(PULP_AXIS,MV)));
   ok('sem o preço no marketValues a tabela volta a ficar sem marca',
@@ -81,47 +99,62 @@ window.__RUN__=async function(){
      M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,320)===-1 && M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,900)===-1);
 
   // ── 4. a tabela renderizada: cruzamento único + linha "At spot" ────────────
+  // um caso por empresa: {spot da COLUNA, spot da LINHA, nome da série que o tooltip tem de dizer}
+  const CASOS=[
+    {tk:'SUZB3', col:SPOT_PULP,  row:SPOT_FX,      src:'BHKP China net price (PIX)'},
+    {tk:'KLBN11',col:SPOT_PULP,  row:SPOT_FX,      src:'BHKP China net price (PIX)'},
+    {tk:'VALE3', col:SPOT_IO61,  row:SPOT_CU_TON,  src:'Platts iron ore fines 61%'},
+    {tk:'CMIN3', col:SPOT_IO61,  row:SPOT_FX,      src:'Platts iron ore fines 61%'}];
   const ctxOf=d=>({def:d,comp:null,mcModel:d.mktcap_model,mcLive:d.mktcap_model*1.1,price:d.model_price,mismatch:false,mv:MV});
   const conta=(s,re)=>(s.match(re)||[]).length;
-  ['SUZB3','KLBN11'].forEach(function(tk){
-    const d=DEF[tk], tabs=tabsOf(d), byId=byIdOf(d), c=ctxOf(d);
+  CASOS.forEach(function(cs){
+    const tk=cs.tk, d=DEF[tk], tabs=tabsOf(d), byId=byIdOf(d), c=ctxOf(d);
     const html=M._s2TableHtml(tabs[0],byId,c);           // t1 = EBITDA
     ok(tk+': um único cruzamento laranja na tabela', conta(html,/s2-cell-hit/g)===1, 'achei '+conta(html,/s2-cell-hit/g));
     ok(tk+': linha e coluna do spot destacadas (8 células cada, fora o cruzamento)',
        conta(html,/s2-cell-near/g)===16, 'achei '+conta(html,/s2-cell-near/g));
-    ok(tk+': cabeçalhos do eixo marcados (coluna da celulose + linha do câmbio)',
-       conta(html,/class="s2-hit"/g)===2);
+    ok(tk+': os dois cabeçalhos de eixo marcados', conta(html,/class="s2-hit"/g)===2);
     ok(tk+': tem a linha "At spot"', html.indexOf('At spot')>=0);
-    ok(tk+': o tooltip diz de qual série veio a marca',
-       html.indexOf('live: BHKP China net price (PIX)')>=0);
+    ok(tk+': o tooltip diz de qual série veio a marca', html.indexOf('live: '+cs.src)>=0, cs.src);
     // valor da linha "At spot" = bilinear na própria grade, conferido por conta independente
     const tab=tabs[0], cl=tab.colLevels, rl=tab.rowLevels;
-    let ci=0; while(ci<cl.length-2 && cl[ci+1]<SPOT_PULP) ci++;
-    let rI=0; while(rI<rl.length-2 && rl[rI+1]<SPOT_FX) rI++;
-    const wc=(SPOT_PULP-cl[ci])/(cl[ci+1]-cl[ci]), wr=(SPOT_FX-rl[rI])/(rl[rI+1]-rl[rI]);
+    let ci=0; while(ci<cl.length-2 && cl[ci+1]<cs.col) ci++;
+    let rI=0; while(rI<rl.length-2 && rl[rI+1]<cs.row) rI++;
+    const wc=(cs.col-cl[ci])/(cl[ci+1]-cl[ci]), wr=(cs.row-rl[rI])/(rl[rI+1]-rl[rI]);
     const lin=(r)=>tab.values[r][ci]+(tab.values[r][ci+1]-tab.values[r][ci])*wc;
     const esperado=lin(rI)+(lin(rI+1)-lin(rI))*wr;
     ok(tk+': _s2At = bilinear feito à mão',
-       Math.abs(M._s2At(tab,SPOT_FX,SPOT_PULP)-esperado)<1e-9,
-       'motor '+M._s2At(tab,SPOT_FX,SPOT_PULP).toFixed(3)+' × mão '+esperado.toFixed(3));
+       Math.abs(M._s2At(tab,cs.row,cs.col)-esperado)<1e-9,
+       'motor '+M._s2At(tab,cs.row,cs.col).toFixed(3)+' × mão '+esperado.toFixed(3));
     ok(tk+': o número da linha "At spot" é esse bilinear formatado',
        html.indexOf('<b>'+esperado.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'</b>')>=0,
-       'EBITDA 2027 no spot = '+esperado.toFixed(0)+' '+d.currency+' mn');
+       tabs[0].title.trim()+' no spot = '+esperado.toFixed(0)+' '+d.currency+' mn');
     // EV/EBITDA (t2) é reescrito no preço de tela — a marca tem de aparecer nele também
     const h2=M._s2TableHtml(tabs[1],byId,c);
     ok(tk+': EV/EBITDA também marca o spot e continua "live"',
        conta(h2,/s2-cell-hit/g)===1 && h2.indexOf('At spot')>=0 && h2.indexOf('>live<')>=0);
   });
+  // o eixo de cobre da Vale vem em US$/TON e a série do banco em US$/lb: sem a conversão a
+  // marca cairia fora da grade (6,70 < 8.789) e a Vale perderia o cruzamento.
+  const CU_AXIS=tabsOf(DEF.VALE3)[0].rowLabel;
+  ok('cobre convertido de US$/lb p/ US$/ton no eixo da Vale',
+     Math.abs(M._s2LiveAxis(CU_AXIS,MV)-SPOT_CU_TON)<1e-6, M._s2LiveAxis(CU_AXIS,MV).toFixed(1)+' USD/t');
+  ok('eixo de cobre em US$/lb continua sem conversão',
+     M._s2LiveAxis('Copper price 2027 (USD/lb)',MV)===SPOT_CU_LB);
 
-  // ── 5. o painel de faixas do topo passa a dizer "spot" na celulose ─────────
-  ['SUZB3','KLBN11'].forEach(function(tk){
-    const d=DEF[tk], strip=M._s2DriverStrip(d,ctxOf(d));
-    const p=strip.find(x=>x.label===PULP_AXIS);
-    ok(tk+': cartão da celulose com leitura ao vivo dentro da faixa',
-       !!p && p.live===SPOT_PULP && p.inside===true && p.src==='BHKP China net price (PIX)');
-    const fx=strip.find(x=>/FX/.test(x.label));
-    ok(tk+': cartão do câmbio segue funcionando', !!fx && fx.live===SPOT_FX && fx.inside===true);
-    ok(tk+': são 2 eixos, sem repetir (as 4 tabelas usam os mesmos)', strip.length===2);
+  // ── 5. o painel de faixas do topo diz "spot" em cada eixo ─────────────────
+  const EIXO_SPOT={SUZB3:PULP_AXIS, KLBN11:PULP_AXIS,
+                   VALE3:tabsOf(DEF.VALE3)[0].colLabel, CMIN3:tabsOf(DEF.CMIN3)[0].colLabel};
+  CASOS.forEach(function(cs){
+    const tk=cs.tk, d=DEF[tk], strip=M._s2DriverStrip(d,ctxOf(d));
+    const p=strip.find(x=>x.label===EIXO_SPOT[tk]);
+    ok(tk+': cartão do driver principal com leitura ao vivo dentro da faixa',
+       !!p && p.live===cs.col && p.inside===true && p.src===cs.src,
+       p?(p.min+'–'+p.max+' · '+p.live):'sem cartão');
+    const seg=strip.find(x=>x.label!==EIXO_SPOT[tk]);
+    ok(tk+': o segundo eixo (câmbio/cobre) também lê ao vivo e cai dentro',
+       !!seg && seg.live!=null && seg.inside===true);
+    ok(tk+': são 2 eixos, sem repetir (as tabelas da empresa usam os mesmos)', strip.length===2);
   });
 
   // ── 6. tabela sem leitura ao vivo continua SEM a linha "At spot" ───────────
@@ -135,8 +168,9 @@ window.__RUN__=async function(){
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
     R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM')+
-    '\n\nspot usado: BHKP China net US$ '+SPOT_PULP+'/t · USD/BRL '+SPOT_FX+
-    '\npremissa dos modelos p/ 2027: Suzano US$ 570 · Klabin US$ 575';
+    '\n\nspot usado: celulose BHKP China net US$ '+SPOT_PULP+'/t · minério 61% US$ '+SPOT_IO61+
+    '/t · cobre US$ '+SPOT_CU_TON.toFixed(0)+'/t · USD/BRL '+SPOT_FX+
+    '\npremissa dos modelos p/ 2027: celulose Suzano 570 e Klabin 575 · minério Vale 97,5 e CMIN 95';
 };
 window.__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message+'\n'+e.stack;});
 </script>
