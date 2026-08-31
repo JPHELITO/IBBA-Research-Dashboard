@@ -117,6 +117,26 @@ html.dark .warn code{background:rgba(255,255,255,.08);}
 .xbtn{border:none;background:transparent;color:var(--gray-mid);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;}
 .xbtn:hover{color:var(--red);}
 
+/* seletor de papéis: chips do que está no e-mail + painel flutuante para acrescentar */
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:11px;}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;
+  padding:3px 5px 3px 9px;border:1px solid var(--border);border-radius:999px;background:var(--bg);}
+.chip-x{border:none;background:transparent;color:var(--gray-mid);cursor:pointer;
+  font-size:11px;line-height:1;padding:2px 3px;border-radius:50%;}
+.chip-x:hover{color:var(--red);background:rgba(192,57,43,.1);}
+#tk-pop{position:absolute;z-index:20;left:15px;right:15px;top:44px;background:var(--card);
+  border:1px solid var(--border);border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:9px;}
+html.dark #tk-pop{box-shadow:0 10px 28px rgba(0,0,0,.55);}
+.tk-h{display:flex;gap:7px;margin-bottom:8px;}
+#tk-lista{max-height:290px;overflow:auto;}
+.tk-g{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--gray-mid);margin:8px 0 3px;}
+.tk-g:first-child{margin-top:0;}
+.tk-i{display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 4px;border-radius:6px;cursor:pointer;}
+.tk-i:hover{background:var(--gray-light);}
+.tk-i input{width:auto;margin:0;}
+.tk-i .muted{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
 .day{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;}
 .day-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;
   background:var(--gray-light);font-size:12px;font-weight:700;}
@@ -216,17 +236,29 @@ html.dark .tk.e{background:rgba(255,255,255,.09);}
       <div class="panel">
         <div class="panel-h"><h2>Ações em cobertura — Δ últimos 7 dias</h2>
           <span class="sub" id="ac-meta"></span></div>
-        <div class="panel-b"><div id="ac-box" class="muted">carregando…</div></div>
+        <div class="panel-b" style="position:relative">
+          <div id="tk-box"></div>
+          <!-- painel de escolha dos papéis (sem teto) -->
+          <div id="tk-pop" hidden>
+            <div class="tk-h">
+              <input type="text" id="tk-busca" placeholder="Buscar ticker ou empresa…"/>
+              <button class="b sm" id="tk-fechar">Fechar</button>
+            </div>
+            <div id="tk-lista"></div>
+          </div>
+          <div id="ac-box" class="muted">carregando…</div>
+        </div>
       </div>
 
       <!-- Relatórios -->
       <div class="panel">
         <div class="panel-h"><h2>Relatórios publicados</h2>
-          <button class="b sm" id="rep-add">+ relatório</button></div>
+          <span class="sub" id="rep-meta"></span></div>
         <div class="panel-b">
           <div id="rep-box"></div>
-          <div class="hint">Esta é a <b>mesma lista</b> que o Clipping usa em “Recent Publications” —
-            cadastrar aqui aparece lá, e vice-versa.</div>
+          <div class="hint">Automático: entram os relatórios cuja <b>data</b> cai na semana escolhida.
+            O cadastro é no <a href="/clipinator.html" target="_blank" style="color:var(--orange)">Clipping</a>,
+            na mesma lista “Recent Publications” — lá cada relatório tem um campo de data.</div>
         </div>
       </div>
 
@@ -309,21 +341,24 @@ const PRECOS=[
   {code:'PULP_NBSK_CHINA', rotulo:'Pulp China NBSK',        unidade:'US$/t · fibra longa', casas:2,
    prosa:'NBSK na China (fibra longa)',      unidadeProsa:'US$/t'},
 ];
-// Ações: a cobertura na BOLSA LOCAL (o weekly manda VALE3/AURA33, não os ADRs
-// VALE/AUGO que o heatmap da home usa) + o IBOV como referência.
-const ACOES=[
-  {ticker:'VALE3.SA', rotulo:'VALE3',  prefixo:'R$ ', casas:2},
-  {ticker:'CMIN3.SA', rotulo:'CMIN3',  prefixo:'R$ ', casas:2},
-  {ticker:'CSNA3.SA', rotulo:'CSNA3',  prefixo:'R$ ', casas:2},
-  {ticker:'GGBR4.SA', rotulo:'GGBR4',  prefixo:'R$ ', casas:2},
-  {ticker:'USIM5.SA', rotulo:'USIM5',  prefixo:'R$ ', casas:2},
-  {ticker:'AURA33.SA',rotulo:'AURA33', prefixo:'R$ ', casas:2},
-  {ticker:'SUZB3.SA', rotulo:'SUZB3',  prefixo:'R$ ', casas:2},
-  {ticker:'KLBN11.SA',rotulo:'KLBN11', prefixo:'R$ ', casas:2},
-  {ticker:'RANI3.SA', rotulo:'RANI3',  prefixo:'R$ ', casas:2},
-  {ticker:'IBOV',     rotulo:'IBOV',   prefixo:'',    casas:0},
-];
+// Ações: a comparação PADRÃO é a cobertura na BOLSA LOCAL (o weekly manda
+// VALE3/AURA33, não os ADRs VALE/AUGO que o heatmap da home usa) + o IBOV como
+// referência. O analista pode acrescentar ou tirar QUALQUER papel que exista na
+// dashboard, e **não há teto** — a lista dele manda.
+const ACOES_PADRAO=['VALE3.SA','CMIN3.SA','CSNA3.SA','GGBR4.SA','USIM5.SA',
+                    'AURA33.SA','SUZB3.SA','KLBN11.SA','RANI3.SA','IBOV'];
 const IDX_ROTULO='IBOV';
+
+// Moeda por BOLSA (o campo `exchange` de `quotes`, escrito pelo robô).
+const MOEDA={B3:'R$ ',NYSE:'US$ ',NASDAQ:'US$ ',US:'US$ ',TSX:'C$ ',
+             BCS:'CLP ',BMV:'MX$ ',LSE:'GBp ',HEL:'€ ',ASX:'A$ '};
+// Índice não tem moeda: 175.696 pontos do IBOV não são "R$ 175.696".
+const SEM_MOEDA=new Set(['IBOV','SPX','NASDAQ']);
+// Rótulo curto: o e-mail mostra USIM5, não USIM5.SA (o sufixo é do Yahoo).
+function _rotuloDe(t){ return String(t).replace(/\.(SA|SN|MX|AX|L|HE|TO|F)$/i,''); }
+// Casas decimais pelo TAMANHO do número, não pela bolsa: peso chileno na casa dos
+// milhares com 2 decimais é ruído, e centavo de real com 0 casas é informação perdida.
+function _casasDe(v){ return (v!=null && Math.abs(v)>=1000) ? 0 : 2; }
 
 const DEFAULT_INTRO='Olá, bom dia!\n\nSeguem as interações/updates que tivemos ao longo da semana passada com as '
   +'empresas dos setores de Mineração, Siderurgia, Papel e Celulose.\n\nPrecisando de detalhes sobre os '
@@ -341,7 +376,10 @@ const S={
   cands:{},                    // 'YYYY-MM-DD' -> [manchetes candidatas]
   cfg:{},                      // clipping_config.settings inteiro (preservado ao salvar)
   weekly:{},                   // cfg.weekly — o que ESTA página guarda
-  relatorios:[],               // = cfg.recent_publications (compartilhada com o Clipping)
+  pubs:[],                     // = cfg.recent_publications (cadastro é no Clipping)
+  fake:null,                   // séries do harness local (?wktest=1); null = ao vivo
+  tickers:[],                  // papéis comparados (escolha do analista, sem teto)
+  universo:[],                 // o que existe em `quotes` — alimenta o seletor
   semSQL:false,
 };
 
@@ -376,13 +414,36 @@ async function carregarPrecos(){
   });
 }
 
+// O universo é o que a dashboard TEM — nada de lista fixa aqui, senão papel novo no
+// robô nunca apareceria. Uma busca por visita (só os metadados, sem a série).
+async function carregarUniverso(){
+  if(S.universo.length) return;
+  if(S.fake) return;                           // harness local já monta o universo
+  try{
+    S.universo=await restGet('quotes?select=ticker,name,sector,exchange&order=ticker.asc');
+  }catch(e){ console.warn('universo',e); S.universo=[]; }
+}
+
 async function carregarAcoes(){
-  const lista=ACOES.map(a=>a.ticker).map(encodeURIComponent).join(',');
-  const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${lista})`);
-  const porTk={}; rows.forEach(r=>{porTk[r.ticker]=r.daily||[];});
-  S.acoes=ACOES.map(a=>{
-    const l=W.linhaDeSerie(a.rotulo,porTk[a.ticker],S.sem,a.casas,a.prefixo);
-    l.ticker=a.ticker;
+  await carregarUniverso();
+  const meta={}; S.universo.forEach(q=>{meta[q.ticker]=q;});
+  const lista=S.tickers.map(encodeURIComponent).join(',');
+  if(!lista){ S.acoes=[]; return; }
+  let porTk={};
+  if(S.fake){                                  // harness local (?wktest=1): sem rede
+    S.tickers.forEach(t=>{ if(S.fake[t]) porTk[t]=S.fake[t]; });
+  } else {
+    const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${lista})`);
+    rows.forEach(r=>{porTk[r.ticker]=r.daily||[];});
+  }
+  S.acoes=S.tickers.map(t=>{
+    const q=meta[t]||{}, serie=porTk[t];
+    // as casas saem do fechamento do dia; sem série, 2 (o caso comum)
+    const ult=W.pontoAte(serie||[],S.sem.fim);
+    const casas=_casasDe(ult&&ult.v);
+    const pref=SEM_MOEDA.has(t)?'':(MOEDA[q.exchange]||'');
+    const l=W.linhaDeSerie(_rotuloDe(t),serie,S.sem,casas,pref);
+    l.ticker=t; l.nome=q.name||t; l.setor=q.sector||'';
     return l;
   }).sort((x,y)=>(y.delta==null?-1e9:y.delta)-(x.delta==null?-1e9:x.delta));
 }
@@ -413,65 +474,125 @@ function selo(pt,alvo){
   return a===b?'':`<span class="stale" title="assessment mais recente até a data pedida"> ${a}</span>`;
 }
 
+// ⚠️ SÓ LEITURA, por decisão do analista (31/08/2026): assessment é o número que a
+// fonte publicou. Havia caixa editável aqui como rede de segurança; ela saiu porque
+// preço "corrigido na mão" é preço que ninguém consegue auditar depois. Se um valor
+// faltar, a linha mostra travessão e o cabeçalho diz quantos faltaram — o conserto é
+// no robô, não no e-mail.
 function renderPrecos(){
   const box=document.getElementById('pr-box');
-  const faltando=S.precos.filter(l=>!l.ini||!l.fim).map(l=>l.rotulo);
+  const faltando=S.precos.filter(l=>!l.ini||!l.fim).length;
   document.getElementById('pr-meta').textContent=
-    faltando.length?`${faltando.length} sem histórico`:'5 de 5 com histórico';
+    faltando?`${faltando} sem histórico`:`${S.precos.length} de ${S.precos.length} com histórico`;
   box.innerHTML=
     `<table class="data"><thead><tr><th>Ativo</th>
       <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
-    +S.precos.map((l,i)=>`<tr>
+    +S.precos.map(l=>`<tr>
       <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.unidade)}</span></td>
-      <td><input type="number" step="any" data-pr="${i}" data-k="ini" value="${l.ini?l.ini.v:''}"/>${selo(l.ini,S.sem.ini)}</td>
-      <td><input type="number" step="any" data-pr="${i}" data-k="fim" value="${l.fim?l.fim.v:''}"/>${selo(l.fim,S.sem.fim)}</td>
+      <td>${l.ini?esc(W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
+      <td>${l.fim?esc(W.num(l.fim.v,l.casas)):'—'}${selo(l.fim,S.sem.fim)}</td>
       <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
     +'</tbody></table>';
-  box.querySelectorAll('input[data-pr]').forEach(inp=>{
-    inp.addEventListener('input',()=>{
-      const l=S.precos[+inp.dataset.pr], k=inp.dataset.k, v=parseFloat(inp.value);
-      l[k]=isFinite(v)?{v:v,data:k==='ini'?S.sem.ini:S.sem.fim}:null;
-      l.delta=(l.ini&&l.fim&&l.ini.v)?(l.fim.v/l.ini.v-1)*100:null;
-      const td=inp.closest('tr').lastElementChild;
-      td.className=cls(l.delta); td.textContent=W.pct(l.delta);
-      atualizarPrevia();
-    });
-  });
 }
 
 function renderAcoes(){
   const box=document.getElementById('ac-box');
   const faltando=S.acoes.filter(l=>!l.ini||!l.fim).length;
   document.getElementById('ac-meta').textContent=
-    faltando?`${faltando} sem histórico`:`${S.acoes.length} de ${S.acoes.length} com histórico`;
+    `${S.acoes.length} papéis`+(faltando?` · ${faltando} sem histórico`:'');
   box.innerHTML=
     `<table class="data"><thead><tr><th>Ativo</th>
       <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
-    +S.acoes.map(l=>`<tr><td>${esc(l.rotulo)}</td>
+    +(S.acoes.length?S.acoes.map(l=>`<tr>
+      <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.nome||'')}</span></td>
       <td>${l.ini?esc(l.prefixo+W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
       <td>${l.fim?esc(l.prefixo+W.num(l.fim.v,l.casas)):'—'}${selo(l.fim,S.sem.fim)}</td>
       <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
+      :'<tr><td colspan="4" class="muted">Nenhum papel escolhido.</td></tr>')
     +'</tbody></table>';
 }
 
+// ── Seletor de papéis: chips do que está no e-mail + painel para acrescentar ──
+// SEM TETO, por pedido do analista: quem decide quantos papéis o weekly compara é
+// ele. A lista oferecida é o universo REAL da dashboard (`quotes`), então papel novo
+// no robô aparece aqui sozinho, sem editar código.
+const SETOR_NOME={steel:'Aço',iron_ore:'Minério de ferro',gold:'Ouro',copper:'Cobre',
+                  rare_earths:'Terras raras',pp:'Papel & Celulose',index:'Índices'};
+function renderTickers(){
+  const box=document.getElementById('tk-box'); if(!box) return;
+  const chips=S.tickers.map(t=>{
+    const q=S.universo.find(x=>x.ticker===t)||{};
+    return `<span class="chip" title="${esc(q.name||t)}">${esc(_rotuloDe(t))}<button class="chip-x" data-tk="${esc(t)}" title="Tirar do weekly">✕</button></span>`;
+  }).join('');
+  const padrao=S.tickers.join(',')===ACOES_PADRAO.join(',');
+  box.innerHTML=`<div class="chips">${chips||'<span class="muted" style="font-size:12px">Nenhum papel.</span>'}`
+    +`<button class="b sm" id="tk-add">+ papel</button>`
+    +(padrao?'':`<button class="b sm" id="tk-reset" title="Volta para a cobertura + IBOV">↺ padrão</button>`)
+    +`</div>`;
+  box.querySelectorAll('.chip-x').forEach(b=>b.addEventListener('click',()=>tirarTicker(b.dataset.tk)));
+  const add=document.getElementById('tk-add'); if(add) add.addEventListener('click',abrirPainelTickers);
+  const rst=document.getElementById('tk-reset');
+  if(rst) rst.addEventListener('click',()=>{ S.tickers=ACOES_PADRAO.slice(); aplicarTickers(); });
+}
+function tirarTicker(t){ S.tickers=S.tickers.filter(x=>x!==t); aplicarTickers(); }
+async function aplicarTickers(){
+  renderTickers(); salvar();
+  await carregarAcoes(); renderAcoes(); atualizarPrevia();
+}
+function abrirPainelTickers(){
+  const pop=document.getElementById('tk-pop');
+  pop.hidden=false;
+  const busca=document.getElementById('tk-busca');
+  busca.value=''; desenharPainelTickers(''); busca.focus();
+}
+function fecharPainelTickers(){ document.getElementById('tk-pop').hidden=true; }
+function desenharPainelTickers(busca){
+  const q=(busca||'').trim().toLowerCase();
+  const escolhidos=new Set(S.tickers), grupos={};
+  S.universo.forEach(x=>{
+    const alvo=(x.ticker+' '+(x.name||'')).toLowerCase();
+    if(q && alvo.indexOf(q)<0) return;
+    (grupos[x.sector||'—']=grupos[x.sector||'—']||[]).push(x);
+  });
+  const chaves=Object.keys(grupos).sort((a,b)=>(SETOR_NOME[a]||a).localeCompare(SETOR_NOME[b]||b,'pt-BR'));
+  const lista=document.getElementById('tk-lista');
+  lista.innerHTML=chaves.length
+    ? chaves.map(k=>`<div class="tk-g">${esc(SETOR_NOME[k]||k)}</div>`
+        +grupos[k].map(x=>`<label class="tk-i"><input type="checkbox" data-t="${esc(x.ticker)}"${escolhidos.has(x.ticker)?' checked':''}><b>${esc(_rotuloDe(x.ticker))}</b><span class="muted">${esc(x.name||'')}</span></label>`).join('')).join('')
+    : '<div class="muted" style="font-size:12px;padding:6px">Nada encontrado.</div>';
+  lista.querySelectorAll('input[data-t]').forEach(cb=>cb.addEventListener('change',()=>{
+    const t=cb.dataset.t;
+    // a tabela é sempre ordenada por variação, então basta acrescentar no fim
+    if(cb.checked){ if(S.tickers.indexOf(t)<0) S.tickers.push(t); }
+    else S.tickers=S.tickers.filter(x=>x!==t);
+    aplicarTickers();
+  }));
+}
+
+// ⚠️ AUTOMÁTICO, por decisão do analista (31/08/2026). A lista é a MESMA do Clipping
+// (`clipping_config.recent_publications`), onde cada relatório agora carrega a DATA em
+// que saiu; aqui ela é só filtrada pela semana de referência. Cadastro é lá, num lugar
+// só — esta tela mostra o que entrou e o que ficou de fora, e por quê.
 function renderRelatorios(){
   const box=document.getElementById('rep-box');
-  if(!S.relatorios.length){ box.innerHTML='<div class="muted" style="font-size:12px">Nenhum relatório cadastrado nesta semana.</div>'; return; }
-  box.innerHTML=S.relatorios.map((r,i)=>`<div class="item">
-    <div class="top">
-      <input type="text" data-rep="${i}" data-k="data" placeholder="24/ago" value="${esc(r.data||'')}" style="width:90px;flex:none"/>
-      <input type="text" data-rep="${i}" data-k="setor" placeholder="Pulp &amp; Paper" value="${esc(r.setor||'')}" style="width:150px;flex:none"/>
-      <input type="text" data-rep="${i}" data-k="titulo" class="grow" placeholder="Itaú BBA on Klabin: Unleashing the Puma 2.0" value="${esc(r.titulo||'')}"/>
-      <button class="xbtn" data-del="${i}" title="remover">✕</button>
-    </div>
-    <input type="text" data-rep="${i}" data-k="link" placeholder="https://www.itau.com.br/itaubba-pt/portal/viewer/equity/…" value="${esc(r.link||'')}"/>
-  </div>`).join('');
-  box.querySelectorAll('input[data-rep]').forEach(inp=>inp.addEventListener('input',()=>{
-    S.relatorios[+inp.dataset.rep][inp.dataset.k]=inp.value; atualizarPrevia(); salvar();
-  }));
-  box.querySelectorAll('button[data-del]').forEach(b=>b.addEventListener('click',()=>{
-    S.relatorios.splice(+b.dataset.del,1); renderRelatorios(); atualizarPrevia(); salvar();
-  }));
+  const daSemana=W.relatoriosDaSemana(S.pubs,S.sem);
+  const semData=(S.pubs||[]).filter(r=>(r.name||'').trim() && !String(r.date||'').slice(0,10)).length;
+  document.getElementById('rep-meta').textContent=
+    `${daSemana.length} na semana`+(S.pubs.length?` · ${S.pubs.length} cadastrados`:'');
+  const aviso=semData
+    ? `<div class="warn" style="margin:0 0 10px"><b>${semData} relatório(s) sem data</b> no Clipping — sem
+       ela não dá para saber de que semana são, e eles nunca entram num weekly.
+       <a href="/clipinator.html" target="_blank" style="color:var(--orange)">Abrir o Clipping ↗</a></div>` : '';
+  box.innerHTML=aviso+(daSemana.length
+    ? `<table class="data"><thead><tr><th>Data</th><th style="text-align:left">Relatório</th><th>Setor</th></tr></thead><tbody>`
+      +daSemana.map(r=>`<tr>
+        <td style="text-align:left;font-weight:600;white-space:nowrap">${esc(r.data)}</td>
+        <td style="text-align:left;font-weight:400">${esc(r.titulo)}
+          ${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener" title="Abrir o relatório" style="color:var(--orange);text-decoration:none"> ↗</a>`:'<span class="stale" title="sem link"> sem link</span>'}</td>
+        <td style="white-space:nowrap">${esc(r.setor)}</td></tr>`).join('')
+      +'</tbody></table>'
+    : '<div class="muted" style="font-size:12px">Nenhum relatório com data entre '
+      +esc(W.dbarra(S.sem.ini))+' e '+esc(W.dbarra(S.sem.fim))+'.</div>');
 }
 
 function _takeCls(t){return t==='positive'?'p':t==='negative'?'n':'e';}
@@ -552,7 +673,7 @@ function modelo(){
       noticias   :document.getElementById('r-noticias').value,
     },
     precos:S.precos, acoes:S.acoes,
-    relatorios:S.relatorios,
+    relatorios:W.relatoriosDaSemana(S.pubs,S.sem),
     dias:S.dias,
     assinatura:{nome:document.getElementById('sig-nome').value,
                 cargo:document.getElementById('sig-cargo').value,
@@ -618,9 +739,11 @@ function salvar(){
                   cargo:document.getElementById('sig-cargo').value,
                   contato:document.getElementById('sig-contato').value},
       dashboard:document.getElementById('sig-dash').value,
+      tickers:S.tickers,
       ref:ymd(S.sem.fim),
     };
-    S.cfg.recent_publications=S.relatorios;   // compartilhada com o Clipping
+    // ⚠️ `recent_publications` NÃO é escrita aqui: o cadastro é do Clipping. Gravar a
+    // partir desta tela sobrescreveria o que ele acabou de digitar lá.
     rpc('admin_save_clipping_config',{p_settings:S.cfg}).catch(e=>console.warn('save',e));
   },900);
 }
@@ -650,7 +773,8 @@ async function recarregar(){
     +'Supabase, o arquivo <code>admin/supabase_weekly_recap.sql</code>. Enquanto isso dá para digitar '
     +'os fechamentos à mão nas caixinhas da tabela de preços.</div>';
 
-  renderPrecos(); renderAcoes(); renderNoticias(); atualizarPrevia();
+  renderPrecos(); renderTickers(); renderAcoes(); renderRelatorios();
+  renderNoticias(); atualizarPrevia();
 }
 
 async function carregarConfig(){
@@ -658,8 +782,10 @@ async function carregarConfig(){
   try{ c=await rpc('admin_get_clipping_config')||{}; }catch(e){ console.warn('config',e); }
   S.cfg=c;
   S.weekly=c.weekly||{};
-  S.relatorios=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
   const w=S.weekly;
+  // papéis: a escolha guardada; na 1ª visita, a cobertura + IBOV
+  S.tickers=(Array.isArray(w.tickers)&&w.tickers.length)?w.tickers.slice():ACOES_PADRAO.slice();
   document.getElementById('intro').value=w.intro!=null?w.intro:DEFAULT_INTRO;
   document.getElementById('r-commodities').value=(w.resumo&&w.resumo.commodities)||'';
   document.getElementById('r-companhias').value =(w.resumo&&w.resumo.companhias) ||'';
@@ -669,7 +795,6 @@ async function carregarConfig(){
   document.getElementById('sig-cargo').value=a.cargo||DEFAULT_SIG.cargo;
   document.getElementById('sig-contato').value=a.contato||DEFAULT_SIG.contato;
   document.getElementById('sig-dash').value=w.dashboard||DEFAULT_DASH;
-  renderRelatorios();
 }
 
 function wire(){
@@ -682,8 +807,14 @@ function wire(){
   });
   document.querySelectorAll('button[data-draft]').forEach(b=>
     b.addEventListener('click',()=>rascunhar(b.dataset.draft)));
-  document.getElementById('rep-add').addEventListener('click',()=>{
-    S.relatorios.unshift({data:'',setor:'',titulo:'',link:''}); renderRelatorios(); atualizarPrevia(); salvar();
+  document.getElementById('tk-busca').addEventListener('input',e=>desenharPainelTickers(e.target.value));
+  document.getElementById('tk-fechar').addEventListener('click',fecharPainelTickers);
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharPainelTickers(); });
+  // clique fora fecha o painel (ele é um cartão flutuante dentro do painel de ações)
+  document.addEventListener('click',e=>{
+    const pop=document.getElementById('tk-pop');
+    if(pop.hidden) return;
+    if(!pop.contains(e.target) && !e.target.closest('#tk-add')) fecharPainelTickers();
   });
   ['intro','r-commodities','r-companhias','r-noticias','sig-nome','sig-cargo','sig-contato','sig-dash']
     .forEach(id=>document.getElementById(id).addEventListener('input',()=>{atualizarPrevia();salvar();}));
@@ -708,23 +839,39 @@ function wktestBoot(){
   const pm=Object.fromEntries(WKTEST_PRECOS.map(g=>[g[0],par(g[1],g[2])]));
   S.precos=PRECOS.map(p=>{const l=W.linhaDeSerie(p.rotulo,pm[p.code],S.sem,p.casas,'');
     l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa; return l;});
-  const am=Object.fromEntries(WKTEST_ACOES.map(g=>[g[0],par(g[1],g[2])]));
-  S.acoes=ACOES.map(a=>W.linhaDeSerie(a.rotulo,am[a.ticker],S.sem,a.casas,a.prefixo))
-               .sort((x,y)=>y.delta-x.delta);
+  S.fake=Object.fromEntries(WKTEST_ACOES.map(g=>[g[0],par(g[1],g[2])]));
+  // papéis de FORA da cobertura, para o seletor ter o que oferecer (e para conferir
+  // moeda estrangeira e casas decimais em preço na casa dos milhares)
+  S.fake['SCCO']=par(112.30,118.55);
+  S.fake['CMPC.SN']=par(1070.0,1036.0);
+  S.fake['MT']=par(31.20,30.10);
+  S.tickers=ACOES_PADRAO.slice();
+  const META={'IBOV':['Ibovespa','index','B3'],'SCCO':['Southern Copper','copper','NYSE'],
+              'CMPC.SN':['CMPC','pp','BCS'],'MT':['ArcelorMittal','steel','NYSE']};
+  S.universo=Object.keys(S.fake).map(t=>({ticker:t,
+    name:(META[t]||[])[0]||_rotuloDe(t), sector:(META[t]||[])[1]||'steel',
+    exchange:(META[t]||[])[2]||'B3'}));
   S.dias=W.diasUteis(S.sem);
   S.dias[0].itens=[{texto:'Cortes de capacidade de celulose softwood na América do Norte e Europa já afetam cerca de 2,5 milhões de ton/ano, em meio à sobreoferta e pressão sobre margens.'},
                    {texto:'Carvão metalúrgico CFR China atingiu USD 270,50/ton, maior nível desde março de 2024.'}];
   S.dias[4].itens=[{texto:'Suzano anunciou aumento de USD 20/ton para BHK na China em setembro após aceleração da recomposição de estoques.'}];
-  S.relatorios=[{data:'24/ago',setor:'Pulp & Paper',titulo:'Itaú BBA on Klabin: Unleashing the Puma 2.0',link:'https://www.itau.com.br/'},
-                {data:'26/ago',setor:'Pulp & Paper',titulo:'LatAm Pulp & Paper: New Short-Term Relief; Old Long-Term Concern',link:'https://www.itau.com.br/'}];
+  // no formato do Clipping (name/sector/link/date) — é dali que a lista vem
+  S.pubs=[{date:'2026-08-24',sector:'PP',name:'Itaú BBA on Klabin: Unleashing the Puma 2.0',link:'https://www.itau.com.br/'},
+          {date:'2026-08-26',sector:'PP',name:'LatAm Pulp & Paper: New Short-Term Relief; Old Long-Term Concern',link:'https://www.itau.com.br/'},
+          {date:'2026-08-27',sector:'PP',name:'Irani: Gaia Wraps Up, Neos Kicks Off; Watching OCC',link:'https://www.itau.com.br/'},
+          {date:'2026-08-14',sector:'SM',name:'FORA DA SEMANA — não pode aparecer',link:''},
+          {date:'',          sector:'SM',name:'SEM DATA — deve aparecer como aviso',link:''}];
   document.getElementById('intro').value=DEFAULT_INTRO;
   document.getElementById('sig-nome').value=DEFAULT_SIG.nome;
   document.getElementById('sig-cargo').value=DEFAULT_SIG.cargo;
   document.getElementById('sig-contato').value=DEFAULT_SIG.contato;
   document.getElementById('sig-dash').value=DEFAULT_DASH;
-  renderPrecos(); renderAcoes(); renderRelatorios(); renderNoticias();
-  ['commodities','companhias','noticias'].forEach(rascunhar);
-  atualizarPrevia();
+  renderPrecos(); renderRelatorios(); renderNoticias();
+  carregarAcoes().then(()=>{
+    renderTickers(); renderAcoes();
+    ['commodities','companhias','noticias'].forEach(rascunhar);
+    atualizarPrevia();
+  });
 }
 
 ;(async()=>{

@@ -108,6 +108,44 @@ function diasUteis(sem) {
   return out;
 }
 
+// ISO 'AAAA-MM-DD' <-> Date LOCAL. ⚠️ `new Date('2026-08-24')` é interpretado como
+// UTC e, no fuso do Brasil, volta como 23/08 às 21h — o relatório de segunda cairia
+// no domingo. Por isso a data é montada campo a campo.
+function ymd(d) { return d.getFullYear() + '-' + _2(d.getMonth() + 1) + '-' + _2(d.getDate()); }
+function deIso(s) {
+  var p = String(s || '').slice(0, 10).split('-');
+  if (p.length !== 3 || !p[0]) return null;
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return isNaN(d) ? null : d;
+}
+
+// ── RELATÓRIOS DA SEMANA ─────────────────────────────────────────────────────
+// A lista é a MESMA do Clipping (`clipping_config.recent_publications`), onde cada
+// item traz a data em que o relatório saiu. Aqui ela é só FILTRADA pela semana de
+// referência — o analista não recadastra nada no weekly.
+//
+// ⚠️ A lista do Clipping fala outra língua: lá o título é `name` e o setor é o CÓDIGO
+// ('SM'/'PP'/'NR'); o e-mail quer `titulo` e o nome por extenso. A tradução mora AQUI,
+// num lugar só, porque ler `r.titulo` direto do que o Clipping gravou devolve vazio —
+// e vazio não dá erro, só some da tela.
+//
+// Janela: **sábado a sexta** (`ini` exclusivo, `fim` inclusive) — a mesma dos preços.
+// Relatório publicado no fim de semana entra na edição seguinte em vez de cair no vão
+// entre duas semanas.
+var SETOR_LONGO = {SM: 'Steel & Mining', PP: 'Pulp & Paper', NR: 'Natural Resources'};
+function relatoriosDaSemana(pubs, sem) {
+  var de = ymd(sem.ini), ate = ymd(sem.fim);
+  return (pubs || [])
+    .map(function (p) { return {p: p, d: String((p && p.date) || '').slice(0, 10)}; })
+    // string ISO compara como data: 'AAAA-MM-DD' é ordenável lexicograficamente
+    .filter(function (x) { return x.d > de && x.d <= ate && (x.p.name || '').trim(); })
+    .sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; })
+    .map(function (x) {
+      return {data: dmes(deIso(x.d)), setor: SETOR_LONGO[x.p.sector] || x.p.sector || '',
+              titulo: x.p.name || '', link: x.p.link || ''};
+    });
+}
+
 // ── leitura de série [[epoch_s, valor], ...] ─────────────────────────────────
 // Devolve o ÚLTIMO ponto com data ≤ alvo. É o que faz o fechamento cair no pregão
 // certo mesmo quando a data pedida é feriado — e o que mantém honesto o assessment
@@ -220,9 +258,9 @@ function _regua(cor, alturaPt, larguraPx) {
 function _secao(titulo, legenda) {
   return '<tr><td style="padding:25.5pt ' + T.PAD + ' 0 ' + T.PAD + '">' +
     _regua(T.accent, '1.5pt', 26) +
-    _p('<b style="font-family:' + T.sans + ';font-size:7.5pt;color:' + T.ink +
-       ';letter-spacing:1.35pt">' + _esc(titulo) + '</b>', 'margin:7.5pt 0 2.25pt 0') +
-    (legenda ? _p('<span style="font-family:' + T.sans + ';font-size:8.5pt;color:' + T.mute + '">' +
+    _p('<b style="font-family:' + T.sans + ';font-size:10pt;color:' + T.ink +
+       ';letter-spacing:1.05pt">' + _esc(titulo) + '</b>', 'margin:8.5pt 0 3pt 0') +
+    (legenda ? _p('<span style="font-family:' + T.sans + ';font-size:9pt;color:' + T.mute + '">' +
        _esc(legenda) + '</span>', 'margin:0 0 10.5pt 0') : '') +
     '</td></tr>';
 }
@@ -234,8 +272,8 @@ function _cartao(conteudo) {
     ';border-radius:12px"><tr><td style="padding:13.5pt 16.5pt">' + conteudo + '</td></tr></table>';
 }
 function _olho(txt) {
-  return _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:' + T.accent +
-    ';letter-spacing:1pt">' + _esc(txt) + '</b>', 'margin:0 0 4pt 0');
+  return _p('<b style="font-family:' + T.sans + ';font-size:8pt;color:' + T.accent +
+    ';letter-spacing:.9pt">' + _esc(txt) + '</b>', 'margin:0 0 5pt 0');
 }
 function _vao(pt) {
   return '<div style="height:' + pt + 'pt;line-height:' + pt + 'pt;font-size:1pt">&nbsp;</div>';
@@ -262,7 +300,7 @@ function _blocoResumo(m) {
 function _th(txt, alinha, raio) {
   return '<td style="background:' + T.ink + ';padding:6.75pt ' + (alinha ? '3.75pt' : '10.5pt') +
     (raio ? ';border-radius:' + raio : '') + '">' +
-    _p('<b style="font-family:' + T.sans + ';font-size:6pt;color:#FFFFFF;letter-spacing:.3pt">' +
+    _p('<b style="font-family:' + T.sans + ';font-size:7.5pt;color:#FFFFFF;letter-spacing:.3pt">' +
        _esc(txt) + '</b>', alinha ? 'text-align:right' : '') + '</td>';
 }
 function _td(html, alinha, ultima) {
@@ -307,7 +345,7 @@ function _tabelaAcoes(linhas, sem) {
     return l.delta == null ? 0 : Math.abs(l.delta);
   }).concat([0.01]));
   var s8 = 'font-family:' + T.sans + ';font-size:8.5pt;';
-  var s6 = 'font-family:' + T.sans + ';font-size:6pt;color:' + T.mute + ';letter-spacing:.3pt';
+  var s6 = 'font-family:' + T.sans + ';font-size:7pt;color:' + T.mute + ';letter-spacing:.3pt';
 
   var corpo = linhas.map(function (l) {
     var v = l.delta, w = v == null ? 0 : Math.max(1, Math.round(BAR_MAX * Math.abs(v) / maxAbs));
@@ -358,8 +396,8 @@ function _blocoRelatorios(itens) {
     lista.map(function (r, i) {
       var olho = [r.data, r.setor].filter(Boolean).join('  ·  ') || 'ITAÚ BBA';
       var corpo = _olho(olho) +
-        _p('<b style="font-family:' + T.serif + ';font-size:12pt;color:' + T.body + '">' +
-           _esc(r.titulo) + '</b>', 'line-height:16.5pt') +
+        _p('<b style="font-family:' + T.serif + ';font-size:12.5pt;color:' + T.body + '">' +
+           _esc(r.titulo) + '</b>', 'line-height:17.5pt') +
         (r.link ? _p('<a href="' + _esc(r.link) + '" style="text-decoration:none"><b style="font-family:' +
            T.sans + ';font-size:8.5pt;color:' + T.accent + '">Abrir o relatório ↗</b></a>',
            'margin:6pt 0 0 0') : '');
@@ -385,8 +423,8 @@ function _blocoNoticias(dias) {
           : txt, 'margin:0 0 6pt 0;line-height:16.5pt');
       }).join('');
       return '<div style="' + (k ? 'margin-top:13.5pt;padding-top:12pt;border-top:1px solid ' + T.border + ';' : '') + '">' +
-        _p('<b style="font-family:' + T.sans + ';font-size:7pt;color:' + T.mute +
-           ';letter-spacing:1.3pt">' + _esc(String(d.rotulo).toUpperCase()) + '</b>', 'margin:0 0 7.5pt 0') +
+        _p('<b style="font-family:' + T.sans + ';font-size:9pt;color:' + T.mute +
+           ';letter-spacing:1pt">' + _esc(String(d.rotulo).toUpperCase()) + '</b>', 'margin:0 0 8pt 0') +
         itens + '</div>';
     }).join('') + '</td></tr>';
 }
@@ -407,11 +445,11 @@ function buildEmail(m) {
   // 1. cabeçalho da publicação
   linhas.push('<tr><td style="padding:19.5pt ' + T.PAD + ' 12pt ' + T.PAD + '">' +
     '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%"><tr>' +
-    '<td>' + _p('<b style="font-family:' + T.sans + ';font-size:8pt;color:' + T.accent +
-        ';letter-spacing:1.5pt">' + _esc(m.marca || 'ITAÚ BBA EQUITY RESEARCH') + '</b>') +
-      _p('<span style="font-family:' + T.serif + ';font-size:17.5pt;color:' + T.ink +
-        ';letter-spacing:-.25pt">' + _esc(m.titulo || 'Weekly Recap') + '</span>', 'margin:2pt 0 0 0') + '</td>' +
-    '<td valign="bottom">' + _p('<span style="font-family:' + T.sans + ';font-size:8pt;color:' +
+    '<td>' + _p('<b style="font-family:' + T.sans + ';font-size:8.5pt;color:' + T.accent +
+        ';letter-spacing:1.4pt">' + _esc(m.marca || 'ITAÚ BBA EQUITY RESEARCH') + '</b>') +
+      _p('<span style="font-family:' + T.serif + ';font-size:20pt;color:' + T.ink +
+        ';letter-spacing:-.3pt">' + _esc(m.titulo || 'Weekly Recap') + '</span>', 'margin:3pt 0 0 0') + '</td>' +
+    '<td valign="bottom">' + _p('<span style="font-family:' + T.sans + ';font-size:8.5pt;color:' +
         T.mute + ';letter-spacing:.25pt">' + _esc(m.subtitulo || 'Steel & Mining · Pulp & Paper') +
         '</span>', 'text-align:right') + '</td>' +
     '</tr></table></td></tr>');
@@ -419,7 +457,7 @@ function buildEmail(m) {
 
   // 2. abertura: período + título grande + saudação
   linhas.push('<tr><td style="padding:27pt ' + T.PAD + ' 0 ' + T.PAD + '">' +
-    _p('<b style="font-family:' + T.sans + ';font-size:7pt;color:' + T.mute + ';letter-spacing:1.3pt">' +
+    _p('<b style="font-family:' + T.sans + ';font-size:8pt;color:' + T.mute + ';letter-spacing:1.15pt">' +
        _esc(periodoLongo(sem.seg, sem.fim).toUpperCase()) + '</b>') +
     _p('<span style="font-family:' + T.serif + ';font-size:26.5pt;color:' + T.ink +
        ';letter-spacing:-.45pt">1 Semana em 1 Minuto</span>', 'margin:9pt 0 13.5pt 0;line-height:30pt') +
@@ -522,8 +560,8 @@ function buildEml(m, html) {
 
 root.IBBAWeekly = {
   T: T, semanaDe: semanaDe, periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
-  pontoAte: pontoAte, linhaDeSerie: linhaDeSerie,
-  num: num, pct: pct, dmes: dmes, dbarra: dbarra,
+  pontoAte: pontoAte, linhaDeSerie: linhaDeSerie, relatoriosDaSemana: relatoriosDaSemana,
+  num: num, pct: pct, dmes: dmes, dbarra: dbarra, ymd: ymd, deIso: deIso,
   rascunhoCommodities: rascunhoCommodities,
   rascunhoCompanhias: rascunhoCompanhias,
   rascunhoNoticias: rascunhoNoticias,

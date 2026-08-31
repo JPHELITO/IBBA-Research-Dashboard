@@ -147,6 +147,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .ex-grid textarea,#cfg-earn-label{width:100%;box-sizing:border-box;}
 .ex-grid textarea{resize:vertical;}
 .pub-row{display:grid;grid-template-columns:auto auto 1fr 58px 1fr auto;gap:4px;margin-bottom:4px;align-items:center;}
+/* Recent Publications ganhou a DATA de publicação (o Weekly Recap seleciona por ela).
+   ⚠️ A linha vira DUAS: o painel de config tem 350px de largura e o campo de data pede
+   ~116px fixos (o dd/mm/aaaa + o ícone do calendário não encolhem). Numa linha só,
+   nome e link caíam para 55px cada — inutilizáveis. Com o link embaixo, o nome volta
+   aos ~120px que tinha antes e o link ganha a largura inteira. */
+.pub-row.dated{
+  grid-template-columns:auto auto 116px 58px minmax(0,1fr) auto;
+  grid-template-areas:"num alca data setor nome  xis"
+                      "num alca link link  link  .";
+  row-gap:4px;}
+.pub-row.dated .pub-n{grid-area:num;align-self:center;}
+.pub-row.dated .pub-h{grid-area:alca;align-self:center;}
+.pub-row.dated .pub-date{grid-area:data;}
+.pub-row.dated .pub-sec{grid-area:setor;}
+.pub-row.dated .pub-name{grid-area:nome;}
+.pub-row.dated .pub-link{grid-area:link;}
+.pub-row.dated .pub-x{grid-area:xis;align-self:center;}
+.pub-row.dated+.pub-row.dated{margin-top:7px;}
+.pub-date{font-size:11.5px!important;padding:6px 6px!important;}
+/* sem data o relatório nunca entra num weekly — a borda laranja é o aviso */
+.pub-date.vazia{border-color:var(--orange);}
 .pub-row.dragging{opacity:.4;}
 .pub-h{cursor:grab;color:var(--gray-mid);font-size:12px;user-select:none;opacity:.55;}
 .pub-h:active{cursor:grabbing;}
@@ -714,12 +735,17 @@ async function loadConfig(){
   }
   renderConfig();
 }
-function renderPubList(hostId, list){
+// `comData` acrescenta a DATA de publicação à linha. Ela existe para o Weekly Recap:
+// a aba de lá lê ESTA MESMA lista e escolhe sozinha os relatórios da semana de
+// referência. Sem data, o relatório fica no Clipping mas nunca entra num weekly —
+// por isso o campo vazio aparece com a borda laranja.
+function renderPubList(hostId, list, comData){
   const host=document.getElementById(hostId); if(!host) return;
   // numeração 1..n por linha + contador total no cabeçalho (igual ao painel de notícias)
-  host.innerHTML=(list||[]).map((p,i)=>`<div class="pub-row" data-i="${i}">
+  host.innerHTML=(list||[]).map((p,i)=>`<div class="pub-row${comData?' dated':''}" data-i="${i}">
     <span class="pub-n">${i+1}</span>
     <span class="pub-h" draggable="true" title="Arraste para reordenar">⠿</span>
+    ${comData?`<input class="pub-date${(p.date||'')?'':' vazia'}" type="date" title="Data de publicação — é ela que leva o relatório para o Weekly Recap da semana" value="${esc(p.date||'')}">`:''}
     <input class="pub-name" placeholder="Nome a exibir" value="${esc(p.name||'')}">
     <select class="pub-sec">${SECTORS.map(([v,l])=>`<option value="${v}"${p.sector===v?' selected':''}>${l}</option>`).join('')}</select>
     <input class="pub-link" placeholder="Link do relatório" value="${esc(p.link||'')}">
@@ -728,6 +754,8 @@ function renderPubList(hostId, list){
   if(cnt){ cnt.textContent=(list||[]).length; cnt.title=(list||[]).length+' relatório(s) neste bloco'; }
   let dragI=null;
   host.querySelectorAll('.pub-row').forEach(row=>{ const i=+row.dataset.i;
+    const dt=row.querySelector('.pub-date');
+    if(dt) dt.onchange=e=>{ list[i].date=e.target.value; dt.classList.toggle('vazia',!e.target.value); saveConfig(); };
     row.querySelector('.pub-name').oninput=e=>{ list[i].name=e.target.value; saveConfig(); };
     row.querySelector('.pub-sec').onchange=e=>{ list[i].sector=e.target.value; saveConfig(); };
     row.querySelector('.pub-link').oninput=e=>{ list[i].link=e.target.value; saveConfig(); };
@@ -752,7 +780,7 @@ function renderConfig(){
   }
   set('cfg-earn-on','checked',!!c.earnings_review.on);
   set('cfg-earn-label','value',c.earnings_review.label||'');
-  renderPubList('cfg-pubs', c.recent_publications);
+  renderPubList('cfg-pubs', c.recent_publications, true);   // com data → alimenta o Weekly Recap
   renderPubList('cfg-earn', c.earnings_review.items);
   if(!Array.isArray(c.analysts)) c.analysts=DEFAULT_ANALYSTS.map(a=>({...a}));
   renderAnalysts('cfg-analysts', c.analysts);
@@ -1167,7 +1195,7 @@ function wire(){
   wireIntroEditor();   // negrito/itálico/sublinhado/cor/link direto no texto (tipo Word)
   document.getElementById('cfg-earn-on').onchange=e=>{ S.config.earnings_review.on=e.target.checked; saveConfig(); };
   document.getElementById('cfg-earn-label').oninput=e=>{ S.config.earnings_review.label=e.target.value; saveConfig(); };
-  document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
+  document.getElementById('cfg-pubs-add').onclick=()=>{ S.config.recent_publications.unshift({name:'',sector:'SM',link:'',date:todayBRT()}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-earn-add').onclick=()=>{ S.config.earnings_review.items.unshift({name:'',sector:'SM',link:''}); renderConfig(); saveConfig(); };
   document.getElementById('cfg-analysts-add').onclick=()=>{ if(!Array.isArray(S.config.analysts)) S.config.analysts=[]; S.config.analysts.push({name:'',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement',phone:'',email:''}); renderConfig(); saveConfig(); };
   // Buscar novas agora (2 botões, disparam o GitHub Actions) + data default = hoje BRT
