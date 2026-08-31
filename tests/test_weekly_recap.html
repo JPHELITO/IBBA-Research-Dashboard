@@ -151,6 +151,44 @@ GAB_ACOES.forEach((g,i)=>ok('ação '+g[0]+' fecha em '+g[3]+' (como no e-mail)'
      W.rascunhoCommodities([])==='' && W.rascunhoNoticias([])==='');
 })();
 
+// ══ 5b. RELATÓRIOS DA SEMANA (seleção automática pela data do Clipping) ══════
+(function(){
+  // formato REAL do Clipping: title = `name`, setor = CÓDIGO, e a data nova
+  const PUBS=[
+    {date:'2026-08-24', sector:'PP', name:'Klabin: Unleashing the Puma 2.0', link:'https://x/1'},
+    {date:'2026-08-27', sector:'PP', name:'Irani: Gaia Wraps Up', link:'https://x/3'},
+    {date:'2026-08-26', sector:'SM', name:'LatAm Pulp & Paper', link:'https://x/2'},
+    {date:'2026-08-22', sector:'SM', name:'Sábado conta (semana começa no sábado)', link:''},
+    {date:'2026-08-21', sector:'SM', name:'Sexta ANTERIOR: já foi no recap passado', link:''},
+    {date:'2026-08-31', sector:'SM', name:'Semana que vem', link:''},
+    {date:'',           sector:'SM', name:'Sem data: fica de fora', link:''},
+    {date:'2026-08-25', sector:'SM', name:'   ', link:''},                 // sem título
+  ];
+  const r=W.relatoriosDaSemana(PUBS,SEM);
+  ok('pega só os relatórios da semana de referência', r.length===4, 'n='+r.length);
+  ok('…em ordem de data', r.map(x=>x.data).join('|')==='22/ago|24/ago|26/ago|27/ago',
+     r.map(x=>x.data).join('|'));
+  ok('a sexta ANTERIOR não entra (ela fechou o recap passado)',
+     !r.some(x=>/recap passado/.test(x.titulo)));
+  ok('o SÁBADO entra (a janela é sábado→sexta, igual à dos preços)',
+     r.some(x=>/Sábado conta/.test(x.titulo)));
+  ok('a semana seguinte não entra', !r.some(x=>/Semana que vem/.test(x.titulo)));
+  ok('relatório sem data fica de fora', !r.some(x=>/Sem data/.test(x.titulo)));
+  ok('relatório sem título fica de fora', r.every(x=>x.titulo.trim()));
+  // a tradução do vocabulário do Clipping para o do e-mail
+  ok('`name` do Clipping vira `titulo` do e-mail',
+     r[1].titulo==='Klabin: Unleashing the Puma 2.0', r[1].titulo);
+  ok('o CÓDIGO do setor vira nome por extenso',
+     r[1].setor==='Pulp & Paper' && r[2].setor==='Steel & Mining',
+     r[1].setor+' / '+r[2].setor);
+  ok('o link atravessa', r[1].link==='https://x/1');
+  ok('lista vazia não quebra', W.relatoriosDaSemana(null,SEM).length===0);
+  // ⚠️ new Date('2026-08-24') é UTC e, no Brasil, volta como 23/08 21h
+  ok('data ISO não escorrega de dia por causa do fuso',
+     W.dmes(W.deIso('2026-08-24'))==='24/ago', W.dmes(W.deIso('2026-08-24')));
+  ok('data ISO malformada devolve null', W.deIso('')===null && W.deIso('xx')===null);
+})();
+
 // ══ 6. o HTML do e-mail ══════════════════════════════════════════════════════
 const MODELO={
   semana:SEM, precos:precos, acoes:acoes,
@@ -198,6 +236,20 @@ const HTML=W.buildEmail(MODELO);
   ok('o dia com notícia aparece; o dia vazio não',
      HTML.indexOf('SEGUNDA, 24/AGO')>0 && HTML.indexOf('TERÇA, 25/AGO')<0);
   ok('a assinatura fecha o e-mail', HTML.indexOf('Daniel Sasson, CFA')>0);
+
+  // — tamanho dos RÓTULOS (o analista achou os títulos pequenos ao lado das tabelas) —
+  // O corpo das tabelas é 8,5pt: todo rótulo de seção tem que ser MAIOR que isso.
+  const tam=(re)=>{const m=HTML.match(re); return m?parseFloat(m[1]):0;};
+  const tSec =tam(/font-size:([\d.]+)pt;color:#16191D;letter-spacing:1\.05pt/);
+  const tOlho=tam(/font-size:([\d.]+)pt;color:#D94400;letter-spacing:\.9pt/);
+  const tDia =tam(/font-size:([\d.]+)pt;color:#8B929B;letter-spacing:1pt/);
+  const tTh  =tam(/font-size:([\d.]+)pt;color:#FFFFFF;letter-spacing:\.3pt/);
+  ok('o título de seção ficou maior que o corpo da tabela (8,5pt)', tSec>8.5, tSec+'pt');
+  ok('o olho do cartão também', tOlho>=8, tOlho+'pt');
+  ok('o rótulo do dia também', tDia>=9, tDia+'pt');
+  ok('o cabeçalho da tabela subiu de 6pt', tTh>=7, tTh+'pt');
+  ok('o nome da publicação no topo cresceu',
+     HTML.indexOf('font-size:20pt;color:#16191D')>0);
   ok('**negrito** do rascunho vira <b> de verdade', HTML.indexOf('<b>updates</b>')>0);
   ok('a quebra de linha da abertura vira <br>', HTML.indexOf('bom dia!<br>')>0);
 
