@@ -19,7 +19,12 @@
   // src = onde buscar o valor vivo: tabela `commodities` (por code) ou `macro` (por code).
   // Sem curva forward → o valor do ano = spot (flat).
   const MARKET_DRIVER_CATALOG = [
-    { key: 'iron_ore_62',  label: 'Iron ore 62% Fe (Platts)', unit: 'USD/t',   src: { table: 'commodities', code: 'IRON_ORE' } },
+    // ⚠️ SAO DUAS SERIES DIFERENTES e a diferenca e material (61% 99,70 x 62% 95,84 em 31/08/2026):
+    // `IRON_ORE` = IO Fines 61% da Platts, que e o eixo que os analistas publicam (Vale e CMIN
+    // escrevem "Iron Ore 61%" na propria planilha); `IRON_ORE_62` = 62% CFR China (Trading
+    // Economics), que a aba Market usa. A chave dizia 62 e lia 61 — armadilha corrigida.
+    { key: 'iron_ore_61',  label: 'Iron ore fines 61% (Platts)', unit: 'USD/t', src: { table: 'commodities', code: 'IRON_ORE' } },
+    { key: 'iron_ore_62',  label: 'Iron ore 62% Fe CFR China',   unit: 'USD/t', src: { table: 'commodities', code: 'IRON_ORE_62' } },
     { key: 'hrc_china',    label: 'HRC China (Platts)',       unit: 'USD/t',   src: { table: 'commodities', code: 'HRC_CHINA' } },
     { key: 'rebar_turkey', label: 'Rebar Turkey (Platts)',    unit: 'USD/t',   src: { table: 'commodities', code: 'REBAR_TURKEY' } },
     { key: 'met_coal',     label: 'Met coal (Platts)',        unit: 'USD/t',   src: { table: 'commodities', code: 'MET_COAL' } },
