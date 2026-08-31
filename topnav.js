@@ -71,7 +71,7 @@
   var SVG_WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.94 11.94 0 0 0 12.07.13C5.5.13.18 5.46.18 12.03c0 2.12.55 4.18 1.6 6L0 24l6.18-1.62a11.93 11.93 0 0 0 5.89 1.5h.01c6.57 0 11.9-5.33 11.9-11.89 0-3.18-1.24-6.16-3.46-8.51zM12.07 21.78h-.01a9.84 9.84 0 0 1-5.02-1.38l-.36-.21-3.67.96.98-3.57-.24-.37a9.83 9.83 0 0 1-1.51-5.18c0-5.45 4.43-9.88 9.88-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.43 9.74-9.93 9.74zm5.42-7.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>';
 
   var CSS = '\
-.gnav{background:#111;display:flex;align-items:center;gap:14px;padding:0 28px;height:54px;\
+.gnav{background:#111;display:flex;align-items:center;gap:14px;padding:0 28px;height:54px;flex-shrink:0;\
   font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;position:relative;z-index:500;}\
 .gnav-brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}\
 .gnav-brand b{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap;}\
@@ -208,6 +208,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
+    <a class="gn-item gn-admin" id="gnav-weekly" href="/weekly.html" style="display:none">Weekly</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
@@ -236,6 +237,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
+    <a class="gnm-a adm gnm-admin" href="/weekly.html" style="display:none">Weekly</a>\
     <a class="gnm-a adm gnm-admin" href="/admin.html" style="display:none">Admin</a>\
     <div class="gnm-cat">Equity Research</div>\
     <div class="gnm-team" id="gnav-mteam"></div>\
@@ -351,7 +353,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   function _sb(){ try{ if(typeof sbAuth!=='undefined' && sbAuth && sbAuth.rpc) return sbAuth; }catch(e){}
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
   function _setAdminLinks(show){
-    ['gnav-admin','gnav-clipinator','gnav-scenario'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+    ['gnav-admin','gnav-clipinator','gnav-scenario','gnav-weekly'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
     [].slice.call(document.querySelectorAll('.gnm-admin')).forEach(function(a){ a.style.display = show ? 'flex' : 'none'; });
     _fitTeam();   // os 3 botões de admin mudam a largura da barra → re-avalia se os nomes cabem
   }

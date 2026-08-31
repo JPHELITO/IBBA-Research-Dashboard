@@ -12,7 +12,7 @@ const PULP = ['PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN',
 
 window.__RUN__=async function(){
   // index.html está gravado em CRLF e as âncoras abaixo usam \n → normaliza antes de recortar
-  const cru = await (await fetch('/index.html?v='+Date.now())).text();
+  const cru = (await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const t = cru.split('\r\n').join('\n');
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
   const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");

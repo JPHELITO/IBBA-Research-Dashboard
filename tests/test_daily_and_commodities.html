@@ -5,7 +5,7 @@ const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''))
 function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
 
 window.__RUN__=async function(){
-  const t=await (await fetch('/index.html?v='+Date.now())).text();
+  const t=(await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const DAILY=cut(t,'async function loadQuotesDaily(){',"} catch(e){ console.warn('daily error:', e); }\n}");
   const COMM =cut(t,'async function loadCommodities(){',"} catch(e){console.warn('commodities error:', e);}\n}");
 

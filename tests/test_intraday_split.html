@@ -14,7 +14,7 @@ const intra=(t,n)=>({ticker:t,intraday:{prev:9,pts:Array.from({length:n},(_,i)=>
 window.__RUN__=async function(){
  // ─────────────────────────── HOME (index.html) ───────────────────────────
  {
-  const t=await (await fetch('/index.html')).text();
+  const t=(await (await fetch('/index.html')).text()).split('\r\n').join('\n');
   const SRC=cut(t,'async function loadQuotes(){','  _intraStamp = stamp;\n}');
   const HANDLER=cut(t,"document.getElementById('hm-range')?.addEventListener('click', e=>{",'\n});');
   let pedidos=[], upd='2026-08-19T13:40:00Z', falhaIntra=false, renders=0;
@@ -63,7 +63,7 @@ window.__RUN__=async function(){
  }
  // ─────────────────────────── MARKET (market.html) ───────────────────────────
  {
-  const t=await (await fetch('/market.html')).text();
+  const t=(await (await fetch('/market.html')).text()).split('\r\n').join('\n');
   const SRC=cut(t,'async function loadQuotes(){','  _intraStamp=stamp;\n}');
   let pedidos=[], upd='2026-08-19T13:40:00Z';
   const ctx={

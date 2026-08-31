@@ -63,8 +63,13 @@ async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem(
      luminância da borda (que é o que o olho usa perto do branco, por Weber) subiu
      0,232 → 0,313. */
   --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;
+  /* HIERARQUIA DE LINHA (2026-08-31): --border DESENHA A CAIXA (calibrada acima, nao mexer).
+     --rule e a divisoria de DENTRO — separa itens de uma lista, nao delimita painel.
+     Antes as duas eram a mesma cor: a grade do feed gritava tanto quanto a borda do
+     cartao e a home parecia uma planilha. Agora a caixa manda e a lista sussurra. */
+  --rule:#E7E2DA;
   --font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;
-  --radius:10px;
+  --radius:12px;
   /* a sombra larga era invisível sobre branco (0,05 de alfa) e só sujava a borda;
      quem define a caixa agora é o fio de borda */
   --shadow:0 1px 2px rgba(0,0,0,.06);
@@ -242,7 +247,7 @@ body{height:100vh;overflow:hidden;}
 .ev-open:hover{text-decoration:underline;}
 .ev-body{flex:1;min-height:0;overflow:auto;padding:6px 12px 10px;}
 .ev-sub{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-mid);margin:7px 0 3px;}
-.ev-item{display:flex;align-items:center;gap:7px;padding:4px 0;text-decoration:none;border-bottom:1px solid var(--border);}
+.ev-item{display:flex;align-items:center;gap:7px;padding:4px 0;text-decoration:none;border-bottom:1px solid var(--rule);}
 .ev-item:last-child{border-bottom:none;}
 .ev-item:hover .ev-t{color:var(--orange);}
 .ev-dot{width:8px;height:8px;border-radius:50%;flex:none;}
@@ -253,10 +258,19 @@ body{height:100vh;overflow:hidden;}
 
 /* ── CARD BASE ──────────────────────────────────────────────────────── */
 .sec{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+  overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+/* ── Cabecalho como BARRA DE FERRAMENTAS, nao como rotulo (2026-08-31) ────────
+   Os titulos ("News Hunter", "Heatmap - Quotes", "Events", "Market Pulse") sairam:
+   o conteudo do cartao ja diz o que ele e, e o rotulo so gastava uma linha de
+   maiusculas. Junto sairam DUAS linhas por cartao — a divisoria do cabecalho e a
+   sombra — porque quem desenha a caixa e o fio da borda, que foi calibrado de
+   proposito (ver o comentario do --border la em cima). O padding encolheu de
+   8/7 para 6/5. Sobra: o titulo VIRA controle, e o cabecalho fica com duas
+   pontas (ferramentas a esquerda, estado/atalho a direita). */
 .sec-head{flex:none;display:flex;align-items:center;justify-content:space-between;
-  padding:8px 16px 7px;border-bottom:1px solid var(--border);gap:8px;
+  padding:6px 13px 5px;gap:8px;
   flex-wrap:wrap;row-gap:3px;}  /* tela estreita: lado direito desce de linha em vez de espremer/cortar */
+.sec-tools{display:flex;align-items:center;gap:10px;min-width:0;}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
 .wip-badge{flex:none;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
@@ -601,12 +615,14 @@ html.dark .pulse-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
   grid-auto-flow:column;grid-template-rows:repeat(10,auto);align-content:start;}
 .news-empty{padding:30px 18px;text-align:center;color:var(--gray-mid);
   font-size:12px;grid-column:1/-1;}
-.news-item{padding:10px 16px;border-bottom:1px solid var(--border);
-  border-right:1px solid var(--border);text-decoration:none;color:inherit;
+.news-item{padding:10px 16px;border-bottom:1px solid var(--rule);
+  border-right:1px solid var(--rule);text-decoration:none;color:inherit;
   position:relative;transition:background .15s;}
-.news-item:nth-child(10n){border-bottom:none;}   /* fim de cada coluna */
-.news-item:nth-child(n+11){border-right:none;}    /* coluna direita sem borda dir */
-.news-item:hover{background:#FBFAF7;}
+/* Fim de coluna / coluna da direita vem por CLASSE, nao por nth-child(10n): o numero de
+   linhas agora e calculado pela altura da tela, entao qualquer numero fixo aqui quebraria. */
+.news-item.col-end{border-bottom:none;}
+.news-item.col-right{border-right:none;}
+.news-item:hover{background:#F5F2EC;}
 .news-item:hover .news-item-title{color:var(--orange);}
 .news-item.is-new{background:linear-gradient(90deg,rgba(255,80,0,.06) 0%,transparent 60%);
   border-left:3px solid var(--orange);padding-left:13px;}
@@ -984,8 +1000,8 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   /* cabeçalho do cartão: título em cima, controles embaixo (e os controles quebram entre si) */
   .sec-head{flex-wrap:wrap;align-items:center;padding:10px 13px 9px;row-gap:8px;}
   .sec-title{font-size:11.5px;}
-  .sec-head > span:first-child{flex:1 1 auto;}
-  .pulse-controls,.hm-head-right,.area-news .sec-head > div:last-of-type{
+  .sec-head > .sec-tools{flex:1 1 auto;}
+  .pulse-controls,.hm-head-right,.area-news .sec-head > .sec-tools{
     width:100%;flex-wrap:wrap;gap:6px 8px;}
   .pulse-views{margin-right:0;padding-right:8px;}
   .pulse-view,.pulse-chip{font-size:10.5px;padding:5px 11px;}
@@ -1019,7 +1035,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   /* News — uma coluna, letra de leitura */
   .news-feed{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none;}
   .news-item{border-right:none;padding:11px 13px;}
-  .news-item:nth-child(10n){border-bottom:1px solid var(--border);}
+  .news-item.col-end{border-bottom:1px solid var(--rule);}   /* 1 coluna: nao ha "fim de coluna" */
   .news-item-title{font-size:13.5px;line-height:1.4;-webkit-line-clamp:3;}
   .news-item-meta{font-size:11px;}
   .news-take{min-width:20px;height:20px;font-size:12.5px;}
@@ -1110,6 +1126,7 @@ html.dark{
   --gray-light:#0A0C11;     /* canvas (era #15171b: cinza-chumbo, "lavava" a tela) */
   --white:#111419;          /* superfície dos painéis */
   --border:#1E232C;         /* fio de borda / divisória */
+  --rule:#171C24;           /* divisória INTERNA (lista) — um degrau abaixo da borda */
   --black:#E9ECF2;          /* títulos e números fortes */
   --gray-dark:#C4CAD4;      /* texto corrente */
   --gray-mid:#79818F;       /* apoio / legenda */
@@ -1344,10 +1361,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- MARKET PULSE (full width) -->
   <div class="sec area-pulse">
     <div class="sec-head">
-      <span style="display:flex;align-items:center;gap:7px;min-width:0;">
-        <span class="sec-title">Market Pulse</span>
-        <span class="wip-badge">Work in progress</span>
-      </span>
+      <span class="sec-tools"><span class="wip-badge">Work in progress</span></span>
       <div class="pulse-controls" id="pulse-controls">
         <div class="pulse-views">
           <button class="pulse-view active" data-view="v1" title="Tom das notícias já publicadas hoje — descritivo, não é previsão">News</button>
@@ -1415,7 +1429,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- EVENTS (Executive Calendar) — só aparece com a flag exec_calendar (admin sempre) -->
   <div class="sec area-events" data-flag="exec_calendar" style="display:none">
     <div class="sec-head">
-      <span style="display:flex;align-items:center;gap:7px;min-width:0;"><span class="sec-title">Events</span></span>
       <a class="ev-open" href="/agenda.html">Open calendar →</a>
     </div>
     <div class="ev-body" id="ev-body"><div class="ev-loading">Loading…</div></div>
@@ -1426,8 +1439,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- NEWS HUNTER -->
   <div class="sec area-news">
     <div class="sec-head">
-      <span class="sec-title">News Hunter</span>
-      <div style="display:flex;align-items:center;gap:12px;">
+      <div class="sec-tools">
         <div class="news-filter" id="news-filter">
           <button class="news-filter-chip active" data-take="all" title="All takes">All</button>
           <button class="news-filter-chip pos" data-take="+" title="Positive take">+</button>
@@ -1441,6 +1453,8 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
           <button class="news-filter-chip" data-sec="nr" title="Natural Resources — macro / cross-sector">NR</button>
         </div>
         <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
+      </div>
+      <div class="sec-tools">
         <span class="sec-meta" id="news-meta">loading…</span>
         <a class="sec-link" href="news.html">View history <span>→</span></a>
       </div>
@@ -1453,7 +1467,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- HEATMAP — Quotes -->
   <div class="sec area-heat">
     <div class="sec-head">
-      <span class="sec-title">Heatmap — Quotes</span>
       <div class="hm-head-right">
         <div class="hm-filter">
           <button class="hm-filter-btn" id="hm-filter-btn" aria-haspopup="true" aria-expanded="false">
@@ -1468,8 +1481,8 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
           <button data-r="YTD">YTD</button>
           <button data-r="Y">YoY</button>
         </div>
-        <span class="sec-meta" id="quotes-meta">—</span>
       </div>
+      <span class="sec-meta" id="quotes-meta">—</span>
     </div>
     <div class="heatmap-grid" id="heatmap-grid">
       <div class="kv-loading">Loading quotes…</div>
@@ -1635,7 +1648,39 @@ async function applyDashboardConfig(){
 }
 
 // ─── NEWS FEED ─────────────────────────────────────────────────────────
-const NEWS_LIMIT = 20;
+// ─── Quantas manchetes cabem na tela (2026-08-31) ────────────────────────────
+// O feed era travado em 10 linhas x 2 colunas = 20 manchetes. So que a consulta ja
+// baixa 60 e a coluna tem altura sobrando: medido em 1920x1080, sobravam 114px mortos
+// no pe de cada coluna — 4 manchetes baixadas e jogadas fora. Agora o numero de linhas
+// sai da altura REAL do painel. Nao custa um byte a mais de rede: o dado ja esta aqui.
+const NEWS_ROWS_MIN = 8, NEWS_ROWS_MAX = 30;   // teto 30x2=60 = o que a consulta traz
+let _newsRows = 10;                            // chute do 1o paint; _fitNewsRows corrige
+let _ultimasNoticias = null;                   // ultima resposta crua (p/ repintar sem rede)
+let _repintando = false;                       // trava: no maximo 1 repintura por render
+function _newsLimit(){ return _newsRows * 2; }
+
+// Devolve TRUE se o numero de linhas mudou (= quem chamou precisa repintar).
+function _fitNewsRows(){
+  const feed = document.getElementById('news-feed');
+  if(!feed) return false;
+  // Ate 1024px o feed cresce junto com a pagina (overflow:visible) e abaixo de 900px
+  // vira uma coluna so: nao existe "altura util" para dividir. Devolve o layout ao CSS.
+  if(window.innerWidth <= 1024){
+    if(_newsRows === 10) return false;
+    _newsRows = 10; return true;
+  }
+  const itens = feed.querySelectorAll('.news-item');
+  const util  = feed.clientHeight;             // px de LAYOUT (o transform:scale nao entra)
+  if(!util || !itens.length) return false;
+  // Unidade = a manchete MAIS ALTA, nao a media: titulo de 1 linha e mais baixo que o de 2,
+  // e pela media a coluna mais "cheia" estouraria e nasceria uma barra de rolagem.
+  let unidade = 0; itens.forEach(e => { if(e.offsetHeight > unidade) unidade = e.offsetHeight; });
+  if(unidade < 20) return false;               // painel ainda sem layout: nao chuta
+  const cabem = Math.max(NEWS_ROWS_MIN, Math.min(NEWS_ROWS_MAX, Math.floor(util / unidade)));
+  if(cabem === _newsRows) return false;
+  _newsRows = cabem;
+  return true;
+}
 const NEWS_INTERVAL = 60 * 1000;
 const NEW_HIGHLIGHT_WINDOW = 15 * 60 * 1000;
 // O robô NAO publica take: a noticia so aparece com o take da IA (take_llm). Valvula de
@@ -1769,6 +1814,7 @@ function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
 
 function _renderNews(articles){
   const feed=document.getElementById('news-feed');
+  _ultimasNoticias = articles;      // guarda o cru: repintar depois nao custa rede
   if(!articles.length){
     const msg=_newsTakeFilter==='all'?'No news available.':'No news with this take.';
     feed.innerHTML=`<div class="news-empty">${msg}</div>`;return;
@@ -1788,18 +1834,25 @@ function _renderNews(articles){
     if(!key||seenTitle.has(key)) continue;
     seenTitle.add(key);
     picked.push(a);
-    if(picked.length>=NEWS_LIMIT) break;
+    if(picked.length>=_newsLimit()) break;
   }
   articles=picked;
   const now=Date.now();
-  feed.innerHTML=articles.map(a=>{
+  // A grade acompanha SEMPRE o que esta sendo pintado. Se as linhas mudassem sem repintar,
+  // 26 itens numa grade de 8 linhas viraria 4 colunas (grid-auto-flow:column inventa
+  // coluna implicita) e o feed estouraria pro lado. Escrever aqui torna isso impossivel.
+  feed.style.gridTemplateRows = (window.innerWidth > 1024) ? `repeat(${_newsRows},auto)` : '';
+  feed.innerHTML=articles.map((a,i)=>{
     const lbl=_label(a);
+    // A grade preenche COLUNA primeiro: os _newsRows primeiros a esquerda, o resto a direita.
+    const fimDeColuna = (i % _newsRows) === _newsRows - 1;
+    const colunaDireita = i >= _newsRows;
     // Idade pela ENTRADA na dashboard (found_at; published_at só como fallback).
     const date=a.found_at||a.published_at;
     const foundMs=a.found_at?Date.parse(a.found_at):0;
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
-    return`<a class="news-item ${isNew?'is-new':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
+    return`<a class="news-item ${isNew?'is-new':''}${fimDeColuna?' col-end':''}${colunaDireita?' col-right':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
       <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div></div>
       <div class="news-item-meta">
         <span class="news-item-source">${lbl}</span>
@@ -1809,7 +1862,25 @@ function _renderNews(articles){
       </div>
     </a>`;
   }).join('');
+  // Segunda passada: so agora existe item na tela para medir. Se o numero de linhas
+  // mudou, repinta UMA vez (a trava _repintando impede qualquer laco).
+  if(!_repintando && _fitNewsRows()){
+    _repintando = true;
+    try{ _renderNews(_ultimasNoticias); } finally { _repintando = false; }
+  }
 }
+
+// Mudou o tamanho da janela -> recalcula as linhas e repinta com o que ja esta na memoria.
+(function(){
+  let t;
+  window.addEventListener('resize', () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      if(!_ultimasNoticias) return;             // nada em memoria: nada a repintar
+      if(_fitNewsRows()) _renderNews(_ultimasNoticias);
+    }, 200);
+  });
+})();
 
 // Filtro de take — refetch ao clicar num chip
 document.getElementById('news-filter').addEventListener('click', e => {
