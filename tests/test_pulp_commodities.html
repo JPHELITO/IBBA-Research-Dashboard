@@ -17,11 +17,12 @@ window.__RUN__=async function(){
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
   const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
   const GRUPOS= cut(t,'let COMM_GROUPS = [','];');
-  const SPARK = cut(t,'function _commSpark(sp){','</svg>`;\n}');
+  const SPARK = cut(t,'function _commSpark(sp, b){','</svg>`;\n}');
   const CARD  = cut(t,'function _kvCard(c){','  </div>`;\n}');
+  const LABEL = cut(t,'const PERIOD_LABEL = ',"y:'YoY'};");
 
-  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Date, Object};
-  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${GRUPOS}\n${SPARK}\n${CARD}
+  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Date, Object, Number};
+  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${GRUPOS}\n${LABEL}\n${SPARK}\n${CARD}
     return {_freqOf, COMM_GROUPS, _kvCard, FREQ_WEEKLY, _fmtAssessed}; }`)(ctx);
 
   // ── 1. frequência: assessment PIX é semanal, e o badge tem que dizer isso
