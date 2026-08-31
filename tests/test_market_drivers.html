@@ -1,0 +1,83 @@
+<!doctype html><meta charset="utf-8"><title>aba Market — drivers: forma para o pago, número só para o livre</title>
+<body><pre id="out">rodando…</pre><div id="palco" style="padding:14px"></div><script>
+/* Trava a REGRA DE PRIVACIDADE dos drivers da aba Market, que é a coisa mais fácil de
+   regredir sem ninguém notar: o gráfico some ou aparece, mas ninguém percebe que passou a
+   sair número pago.
+
+   A regra: o cliente pode ver o GRÁFICO, não os NÚMEROS. E isso não é escolha de estilo —
+   uma linha comparável (preço, ou % com base comum) É a série: como o preço de hoje é
+   público, dá para reconstruir todos os passados a partir dela. Só a FORMA (min-max
+   0..1000, sem escala e sem datas) resiste, porque deixa duas incógnitas — mínimo e
+   amplitude — para uma equação só.
+
+   Por isso:
+   • o gráfico combinado de PREÇO só aceita commodity de fonte LIVRE (minério 62% do
+     Trading Economics, cobre e ouro do Yahoo);
+   • toda commodity paga (Platts, Fastmarkets) entra como risquinho no tile, pela forma.
+
+   ⚠️ Em 31/08/2026 chegaram a subir 5 anos de HRC China / Rebar Turkey / Met Coal em
+   números; o analista voltou atrás no mesmo dia ("só não deixe que o cliente tenha acesso
+   ao histórico em si, os números") e a coluna voltou ao acúmulo diário. Se alguém puser um
+   código pago em COMM_NUMEROS_LIVRES, é este teste que acusa.
+
+   Rodar: servir a pasta e abrir /tests/test_market_drivers.html */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+
+window.__RUN__=async function(){
+  const t=(await (await fetch('/market.html?v='+Date.now())).text()).split('\r\n').join('\n');
+
+  const DRV   = cut(t,'const SECTOR_DRIVER={','};');
+  const LIVRES= cut(t,'const COMM_NUMEROS_LIVRES = ',');');
+  const SHAPE = cut(t,'function _commShape(c){','\n}');
+  const ctx={Array,Set,Object};
+  const M=new Function('ctx',`with(ctx){ ${DRV}\n${LIVRES}\n${SHAPE}
+    return {SECTOR_DRIVER, COMM_NUMEROS_LIVRES, _commShape}; }`)(ctx);
+
+  // ── 1. quem pode ter NÚMERO no navegador
+  const pagos=[...M.COMM_NUMEROS_LIVRES].filter(c=>/^(PULP_|IO|ST|TSIP|HCC|MET_COAL|HRC_CHINA|REBAR_TURKEY)/.test(c)
+                                                  && c!=='IRON_ORE_62');
+  ok('só fonte LIVRE na lista de número público', pagos.length===0,
+     pagos.length?('PAGO na lista: '+pagos.join(', ')):[...M.COMM_NUMEROS_LIVRES].join(', '));
+  ok('as três livres estão lá (minério 62% do TE, cobre e ouro do Yahoo)',
+     ['IRON_ORE_62','COPPER','GOLD'].every(c=>M.COMM_NUMEROS_LIVRES.has(c)));
+  ok('HRC China, Rebar Turkey e Met Coal NÃO entram em número',
+     ['HRC_CHINA','REBAR_TURKEY','MET_COAL'].every(c=>!M.COMM_NUMEROS_LIVRES.has(c)));
+  ok('nenhuma de celulose entra em número',
+     [...M.COMM_NUMEROS_LIVRES].every(c=>!c.startsWith('PULP_')));
+
+  // ── 2. o gráfico combinado consulta essa lista (não basta ela existir)
+  const filtro=cut(t,'const histDrivers=histSrc.map','.length>=5);');
+  ok('o gráfico de preço filtra por COMM_NUMEROS_LIVRES',
+     filtro.includes('COMM_NUMEROS_LIVRES.has'), filtro.replace(/\s+/g,' ').slice(0,150));
+
+  // ── 3. celulose ganhou driver (até 31/08/2026 caía num "no Platts price in feed")
+  const pp=M.SECTOR_DRIVER.pp||[];
+  ok('o setor Pulp & Paper tem driver', pp.length>=2, JSON.stringify(pp.map(d=>d.code)));
+  ok('os drivers de celulose são os índices NET da China, uma fibra cada',
+     pp.map(d=>d.code).join()==='PULP_BHKP_CHINA,PULP_NBSK_CHINA', pp.map(d=>d.code).join());
+  ok('todo setor com driver aponta para código que existe no carrossel',
+     Object.values(M.SECTOR_DRIVER).flat().every(d=>/^[A-Z0-9_]+$/.test(d.code)));
+
+  // ── 4. a forma: é ela que desenha o risquinho do tile
+  ok('sem spark não desenha', M._commShape({})===null);
+  ok('formato novo {y:{s}} vira série', (M._commShape({spark:{y:{s:[0,500,1000]}}})||[]).length===3);
+  ok('formato antigo (array) também', (M._commShape({spark:[0,500,1000]})||[]).length===3);
+  ok('o eixo x é o ÍNDICE, não data — a forma não tem datas de propósito',
+     JSON.stringify(M._commShape({spark:{y:{s:[10,20,30]}}}))==='[[0,10],[1,20],[2,30]]');
+  ok('forma curta demais não vira gráfico', M._commShape({spark:{y:{s:[1,2]}}})===null);
+
+  // ── 5. o tile desenha o risquinho
+  const tile=cut(t,'function _commTile(code){','t-meta">${esc(c.unit||\'\')}');
+  ok('o tile de driver chama o risquinho da forma',
+     tile.includes('_commShape(c)') && tile.includes("_sparkline(forma,'t-spark')"));
+  ok('o CSS do risquinho do tile existe e é neutro',
+     /\.tile \.t-spark\{[^}]*color:var\(--dim\)/.test(t));
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+`\n\n${R.length-falhas}/${R.length} PASS`+(falhas?`  — ${falhas} FALHA(S)`:'  — tudo ok');
+  window.__RESULT__={total:R.length, falhas};
+};
+__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message+'\n'+e.stack;});
+</script>
