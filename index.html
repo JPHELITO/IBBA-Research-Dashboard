@@ -1665,10 +1665,14 @@ async function applyDashboardConfig(){
 // minuto. Com a unidade constante: linhas = altura util / altura da divisao, e as linhas
 // esticam (1fr) para fechar a coluna sem buraco no pe.
 //
-// FOLGA_DIVISAO = 1px de margem contra arredondamento sub-pixel do 1fr. Subir este numero
-// deixa o feed mais arejado (menos manchetes por coluna); baixar para 0 pega o maximo no fio.
+// FOLGA_DIVISAO = 1px de margem contra arredondamento sub-pixel do 1fr. NAO usar como
+// controle de densidade: ela e margem POR DIVISAO, entao desloca a curva inteira. Medido
+// com 8: da 10 linhas em 1920x1080 (desejado) mas derruba o notebook 1536x864 de 10 p/ 9.
 const FOLGA_DIVISAO = 1;
-const NEWS_ROWS_MIN = 8, NEWS_ROWS_MAX = 20;   // teto 20x2=40 < as 60 que a consulta traz
+// TETO = a densidade que o usuario quer ler (2026-08-31): 10 por coluna, 20 manchetes.
+// E teto, nao numero fixo: numa janela baixa a conta ainda desce (8 em 1280x620) para o
+// feed nao nascer com barra de rolagem. Subir aqui e a forma certa de deixar mais denso.
+const NEWS_ROWS_MIN = 8, NEWS_ROWS_MAX = 10;
 let _newsRows = 10;                            // 1o paint; _ajustarLinhas corrige
 let _ultimasNoticias = null;                   // resposta crua (repintar nao custa rede)
 let _repintando = false;                       // trava: no maximo 1 repintura por render
