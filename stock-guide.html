@@ -633,6 +633,33 @@ const _S2_SRC_NAME={ iron_ore_61:'Platts iron ore fines 61%', iron_ore_62:'Iron 
   gold:'Gold', fx_usdbrl:'USD/BRL', pulp_bhkp_china:'BHKP China net price (PIX)',
   pulp_nbsk_china:'NBSK China net price (PIX)' };
 function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[k]||''):''; }
+// EIXO EM "REAL TERMS": o analista publica o preco em dolares CONSTANTES do ano-base do
+// modelo. Conferido no Excel da Vale (Ferrous R&C): `Nominal = Real x Acummulated US-CPI`, e o
+// indice acumulado vale 1 ate o ano do modelo (2026) e 1,0304 em 2027 — ou seja, o eixo de 2027
+// "real terms" esta em dolares de 2026. Consequencia pratica: enquanto o modelo for do ano
+// corrente, o preco de hoje JA esta nessa base e NAO se deflaciona nada (deflacionar pelo CPI de
+// 2027 empurraria o minerio de 99,70 p/ 96,76 e o EBITDA da Vale de 18.335 p/ 17.593 — erro de
+// 4%). Se o modelo for de um ano anterior, faltaria a inflacao acumulada desde entao: a pagina
+// AVISA em vez de inventar fator, porque o deflator nao vem no arquivo do analista.
+function _s2RealTermsAxis(d){
+  let lab=null;
+  (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
+    [t.colLabel,t.rowLabel].forEach(function(x){ if(!lab&&x&&/real\s*terms/i.test(x)) lab=x; }); }); });
+  if(!lab) return null;
+  const m=/^(\d{4})/.exec(String(d.model_date||''));
+  return {label:lab, base:m?Number(m[1]):0};     // base 0 = e' real terms mas nao da p/ saber o ano
+}
+function _s2RealTermsNote(d,anoAgora){
+  const rt=_s2RealTermsAxis(d); if(!rt) return '';
+  const eixo='The "'+_s2Short(rt.label)+'" axis';
+  if(!rt.base) return eixo+' is published in real terms (constant dollars) and the live read is '+
+    "today's price — the model does not say which year those constant dollars are from.";
+  if(rt.base===anoAgora) return eixo+' is in real terms, i.e. constant '+rt.base+' dollars (the model '+
+    "inflates it by US CPI to reach the nominal year). Today's price is already in "+rt.base+
+    ' dollars, so the orange mark is compared as is, with no deflator.';
+  return eixo+' is in real terms — constant '+rt.base+' dollars — while the live read is '+
+    "today's nominal price, so the orange mark ignores the inflation since "+rt.base+'.';
+}
 // valor do eixo AO VIVO, ja na unidade do eixo (o catalogo tem cobre em USD/lb; ha modelo
 // com o eixo em USD/ton).
 function _s2LiveAxis(label,mv){
@@ -835,10 +862,11 @@ function _s2RenderPane(t,pane){
     (sh.tables||[]).forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
     h+='</div>';
   });
+  const notaReal=_s2RealTermsNote(d,new Date().getFullYear());
   h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading = magnitude within each grid (light to dark); '+
      'orange marks where the market is trading today. EBITDA, FCF and margins are exactly as the analyst published. '+
      'EV/EBITDA, yields, upside and P/NAV are recomputed at the current screen price: the net debt in each cell is '+
-     'the one embedded in the published EV.</span></div>';
+     'the one embedded in the published EV.'+(notaReal?' '+esc(notaReal):'')+'</span></div>';
   pane.innerHTML=h;
 }
 
