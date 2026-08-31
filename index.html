@@ -610,9 +610,15 @@ html.dark .pulse-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
 @keyframes pulse-badge{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
 
 /* Preenchimento COLUNA primeiro: as 10 mais recentes na coluna ESQUERDA
-   (topo→baixo), depois as 10 seguintes na coluna DIREITA. */
+   (topo→baixo), depois as 10 seguintes na coluna DIREITA.
+   ⚠️ Aqui `minmax(auto,1fr)` é o CERTO, e é o oposto do aviso das colunas lá em cima
+   (l.509 e l.966). Naqueles casos o eixo é a LARGURA e o mínimo `auto` = min-content de
+   texto `nowrap` vira PISO de largura → rolagem lateral. Aqui o eixo é a ALTURA: o mínimo
+   `auto` é a altura da manchete, que é exatamente o piso desejado (linha nunca esmaga o
+   texto), e o `1fr` faz as 10 linhas ESTICAREM até encher a coluna. Trocar por
+   `minmax(0,1fr)` deixaria a linha encolher abaixo do conteúdo e cortaria manchete. */
 .news-feed{flex:1;min-height:0;overflow:auto;padding:4px 0;display:grid;grid-template-columns:1fr 1fr;
-  grid-auto-flow:column;grid-template-rows:repeat(10,auto);align-content:start;}
+  grid-auto-flow:column;grid-template-rows:repeat(10,minmax(auto,1fr));align-content:stretch;}
 .news-empty{padding:30px 18px;text-align:center;color:var(--gray-mid);
   font-size:12px;grid-column:1/-1;}
 .news-item{padding:10px 16px;border-bottom:1px solid var(--rule);
@@ -629,7 +635,14 @@ html.dark .pulse-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
 .news-item-title{font-size:11.5px;font-weight:600;color:var(--black);
   letter-spacing:-.01em;line-height:1.35;margin-bottom:5px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  transition:color .15s;}
+  transition:color .15s;
+  /* ⚠️ RESERVA 2 LINHAS SEMPRE (2026-08-31). O clamp corta em 2, mas manchete curta
+     ocupava 1 e a linha do feed encolhia -> divisórias de tamanhos diferentes, e a
+     conta de "quantas cabem" passava a depender do texto que chegou naquele minuto
+     (no preview TODO título tem 1 linha; em produção não). Com a caixa fixa em 2
+     linhas a divisão é constante, as divisórias ficam todas iguais e a conta é
+     confiável. O preço é o respiro embaixo do título de 1 linha — de propósito. */
+  min-height:calc(2 * 1.35em);}
 .news-item-meta{font-size:9.5px;font-weight:500;color:var(--orange);
   display:flex;align-items:center;gap:6px;letter-spacing:.01em;}
 .news-item-meta .sep{color:rgba(255,80,0,.4);}
@@ -946,7 +959,8 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 @keyframes commfill{from{width:0;}to{width:100%;}}
 .kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
 
-/* ── FOOTER ──────────────────────────────────────────────────────────── */
+/* ── FOOTER: removido da home (2026-08-31). O CSS fica porque as OUTRAS paginas
+   (login, setoriais) ainda usam a mesma faixa; so a home deixou de desenha-la. */
 .footer{background:var(--white);border-top:1px solid var(--border);flex:none;
   padding:8px 18px;display:flex;align-items:center;gap:8px;}
 .footer-text{font-size:10px;color:rgba(0,0,0,.3);font-weight:400;}
@@ -1036,7 +1050,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   .news-feed{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none;}
   .news-item{border-right:none;padding:11px 13px;}
   .news-item.col-end{border-bottom:1px solid var(--rule);}   /* 1 coluna: nao ha "fim de coluna" */
-  .news-item-title{font-size:13.5px;line-height:1.4;-webkit-line-clamp:3;}
+  .news-item-title{font-size:13.5px;line-height:1.4;-webkit-line-clamp:3;min-height:0;}
   .news-item-meta{font-size:11px;}
   .news-take{min-width:20px;height:20px;font-size:12.5px;}
 
@@ -1512,12 +1526,8 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 </div>
 
-<!-- FOOTER -->
-<div class="footer">
-  <span class="footer-text">Equity Research</span>
-  <div class="footer-dot"></div>
-  <span class="footer-text">Restricted use</span>
-</div>
+<!-- FOOTER removido a pedido do usuario (2026-08-31): a faixa "Equity Research ·
+     Restricted use" custava 29px na base da tela e a .page cresce nesse tanto. -->
 
 </div><!-- /#stage -->
 <script>
@@ -1648,35 +1658,52 @@ async function applyDashboardConfig(){
 }
 
 // ─── NEWS FEED ─────────────────────────────────────────────────────────
-// ─── Quantas manchetes cabem na tela (2026-08-31) ────────────────────────────
-// O feed era travado em 10 linhas x 2 colunas = 20 manchetes. So que a consulta ja
-// baixa 60 e a coluna tem altura sobrando: medido em 1920x1080, sobravam 114px mortos
-// no pe de cada coluna — 4 manchetes baixadas e jogadas fora. Agora o numero de linhas
-// sai da altura REAL do painel. Nao custa um byte a mais de rede: o dado ja esta aqui.
-const NEWS_ROWS_MIN = 8, NEWS_ROWS_MAX = 30;   // teto 30x2=60 = o que a consulta traz
-let _newsRows = 10;                            // chute do 1o paint; _fitNewsRows corrige
-let _ultimasNoticias = null;                   // ultima resposta crua (p/ repintar sem rede)
+// ─── Quantas manchetes cabem, com TODAS as divisorias do mesmo tamanho ───────
+// A caixa do titulo reserva 2 linhas (ver o CSS de .news-item-title), entao a altura de
+// UMA divisao e constante — nao depende mais de a manchete ter 1 ou 2 linhas. So por
+// isso esta conta e confiavel: antes ela media o texto que a IA tinha trazido naquele
+// minuto. Com a unidade constante: linhas = altura util / altura da divisao, e as linhas
+// esticam (1fr) para fechar a coluna sem buraco no pe.
+//
+// FOLGA_DIVISAO = 1px de margem contra arredondamento sub-pixel do 1fr. Subir este numero
+// deixa o feed mais arejado (menos manchetes por coluna); baixar para 0 pega o maximo no fio.
+const FOLGA_DIVISAO = 1;
+const NEWS_ROWS_MIN = 8, NEWS_ROWS_MAX = 20;   // teto 20x2=40 < as 60 que a consulta traz
+let _newsRows = 10;                            // 1o paint; _ajustarLinhas corrige
+let _ultimasNoticias = null;                   // resposta crua (repintar nao custa rede)
 let _repintando = false;                       // trava: no maximo 1 repintura por render
 function _newsLimit(){ return _newsRows * 2; }
 
+// Mede a altura NATURAL de uma divisao. Precisa neutralizar o esticamento antes: com as
+// linhas em 1fr, offsetHeight devolve a linha esticada, nao o conteudo.
+function _medirDivisao(feed){
+  const guardado = feed.style.gridTemplateRows;
+  feed.style.gridTemplateRows = 'repeat(60,auto)';   // neutro -> altura de conteudo
+  let u = 0;
+  feed.querySelectorAll('.news-item').forEach(e => { if(e.offsetHeight > u) u = e.offsetHeight; });
+  feed.style.gridTemplateRows = guardado;
+  return u;
+}
+
 // Devolve TRUE se o numero de linhas mudou (= quem chamou precisa repintar).
-function _fitNewsRows(){
+function _ajustarLinhas(){
   const feed = document.getElementById('news-feed');
   if(!feed) return false;
-  // Ate 1024px o feed cresce junto com a pagina (overflow:visible) e abaixo de 900px
-  // vira uma coluna so: nao existe "altura util" para dividir. Devolve o layout ao CSS.
+  // Ate 1024px o feed cresce junto com a pagina e abaixo de 900px vira uma coluna so:
+  // nao existe "altura util" para dividir. Devolve o layout ao CSS.
   if(window.innerWidth <= 1024){
     if(_newsRows === 10) return false;
     _newsRows = 10; return true;
   }
-  const itens = feed.querySelectorAll('.news-item');
-  const util  = feed.clientHeight;             // px de LAYOUT (o transform:scale nao entra)
-  if(!util || !itens.length) return false;
-  // Unidade = a manchete MAIS ALTA, nao a media: titulo de 1 linha e mais baixo que o de 2,
-  // e pela media a coluna mais "cheia" estouraria e nasceria uma barra de rolagem.
-  let unidade = 0; itens.forEach(e => { if(e.offsetHeight > unidade) unidade = e.offsetHeight; });
-  if(unidade < 20) return false;               // painel ainda sem layout: nao chuta
-  const cabem = Math.max(NEWS_ROWS_MIN, Math.min(NEWS_ROWS_MAX, Math.floor(util / unidade)));
+  // ⚠️ clientHeight INCLUI o padding do feed (4px em cima + 4 embaixo). Usar ele direto
+  // superestimava a altura util em 8px e a conta dava 11 linhas onde so cabem 10 — o feed
+  // nascia com barra de rolagem. A altura que as LINHAS dividem e a caixa de conteudo.
+  const cs = getComputedStyle(feed);
+  const util = feed.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const unidade = _medirDivisao(feed);
+  if(!util || unidade < 20) return false;            // ainda sem layout: nao chuta
+  const cabem = Math.max(NEWS_ROWS_MIN,
+                Math.min(NEWS_ROWS_MAX, Math.floor(util / (unidade + FOLGA_DIVISAO))));
   if(cabem === _newsRows) return false;
   _newsRows = cabem;
   return true;
@@ -1839,12 +1866,13 @@ function _renderNews(articles){
   articles=picked;
   const now=Date.now();
   // A grade acompanha SEMPRE o que esta sendo pintado. Se as linhas mudassem sem repintar,
-  // 26 itens numa grade de 8 linhas viraria 4 colunas (grid-auto-flow:column inventa
-  // coluna implicita) e o feed estouraria pro lado. Escrever aqui torna isso impossivel.
-  feed.style.gridTemplateRows = (window.innerWidth > 1024) ? `repeat(${_newsRows},auto)` : '';
+  // 22 itens numa grade de 8 linhas viravam 3 colunas (grid-auto-flow:column inventa coluna
+  // implicita) e o feed estouraria pro lado. Escrever aqui torna isso impossivel.
+  feed.style.gridTemplateRows = (window.innerWidth > 1024)
+    ? `repeat(${_newsRows},minmax(auto,1fr))` : '';
   feed.innerHTML=articles.map((a,i)=>{
     const lbl=_label(a);
-    // A grade preenche COLUNA primeiro: os _newsRows primeiros a esquerda, o resto a direita.
+    // A grade preenche COLUNA primeiro: as _newsRows primeiras a esquerda, o resto a direita.
     const fimDeColuna = (i % _newsRows) === _newsRows - 1;
     const colunaDireita = i >= _newsRows;
     // Idade pela ENTRADA na dashboard (found_at; published_at só como fallback).
@@ -1862,22 +1890,22 @@ function _renderNews(articles){
       </div>
     </a>`;
   }).join('');
-  // Segunda passada: so agora existe item na tela para medir. Se o numero de linhas
+  // Segunda passada: so agora ha item na tela para medir a divisao. Se o numero de linhas
   // mudou, repinta UMA vez (a trava _repintando impede qualquer laco).
-  if(!_repintando && _fitNewsRows()){
+  if(!_repintando && _ajustarLinhas()){
     _repintando = true;
     try{ _renderNews(_ultimasNoticias); } finally { _repintando = false; }
   }
 }
 
-// Mudou o tamanho da janela -> recalcula as linhas e repinta com o que ja esta na memoria.
+// Redimensionou a janela -> recalcula e repinta com o que ja esta na memoria (sem rede).
 (function(){
   let t;
   window.addEventListener('resize', () => {
     clearTimeout(t);
     t = setTimeout(() => {
-      if(!_ultimasNoticias) return;             // nada em memoria: nada a repintar
-      if(_fitNewsRows()) _renderNews(_ultimasNoticias);
+      if(!_ultimasNoticias) return;
+      if(_ajustarLinhas()) _renderNews(_ultimasNoticias);
     }, 200);
   });
 })();
