@@ -1,0 +1,278 @@
+<!doctype html><meta charset="utf-8"><title>weekly recap — montador do e-mail</title>
+<body><pre id="out">rodando…</pre>
+<script src="/weekly-lib.js"></script>
+<script>
+/* Testa o weekly-lib.js — o montador do "Weekly Recap S&M/P&P".
+   O GABARITO é o e-mail REAL da semana encerrada em 28/08/2026 (o que o analista
+   mandou como referência): os fechamentos e as variações abaixo foram copiados de
+   lá, número por número. Se a conta desta biblioteca divergir daquele e-mail, o
+   teste quebra — que é exatamente o ponto.
+
+   Rodar: servir a pasta IBBA-Research-Dashboard e abrir /tests/test_weekly_recap.html
+   (o harness do preview_harness.py já serve nessa raiz).                            */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const W=window.IBBAWeekly;
+const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
+
+// ══ 1. janela da semana ══════════════════════════════════════════════════════
+(function(){
+  // segunda 31/08/2026 → a semana de referência é a que fechou na sexta 28/08
+  const s=W.semanaDe(new Date(2026,7,31));
+  ok('segunda-feira aponta para a sexta anterior',
+     W.dbarra(s.fim)==='28/08/2026', W.dbarra(s.fim));
+  ok('o par de fechamentos é sexta-a-sexta (21 → 28)',
+     W.dbarra(s.ini)==='21/08/2026', W.dbarra(s.ini));
+  ok('as notícias começam na SEGUNDA da semana que fechou (24/08), não em 21/08',
+     W.dbarra(s.seg)==='24/08/2026', W.dbarra(s.seg));
+  // na própria sexta o recap é o da semana que está fechando, não o da anterior
+  ok('sexta-feira aponta para ela mesma',
+     W.dbarra(W.semanaDe(new Date(2026,7,28)).fim)==='28/08/2026');
+  ok('domingo aponta para a sexta anterior',
+     W.dbarra(W.semanaDe(new Date(2026,7,30)).fim)==='28/08/2026');
+  ok('quarta-feira aponta para a sexta anterior (não pula p/ a sexta que vem)',
+     W.dbarra(W.semanaDe(new Date(2026,7,26)).fim)==='21/08/2026',
+     W.dbarra(W.semanaDe(new Date(2026,7,26)).fim));
+  ok('período por extenso: "24 a 28 de agosto de 2026"',
+     W.periodoLongo(s.seg,s.fim)==='24 a 28 de agosto de 2026', W.periodoLongo(s.seg,s.fim));
+  // virada de mês: 29/09 a 03/10 tem de citar os DOIS meses
+  const v=W.semanaDe(new Date(2026,9,3));
+  ok('semana que vira o mês cita os dois meses',
+     W.periodoLongo(v.seg,v.fim)==='28 de setembro a 2 de outubro de 2026',
+     W.periodoLongo(v.seg,v.fim));
+  ok('os 5 dias úteis saem na ordem segunda→sexta',
+     W.diasUteis(s).map(d=>d.rotulo).join('|')==='Segunda, 24/ago|Terça, 25/ago|Quarta, 26/ago|Quinta, 27/ago|Sexta, 28/ago',
+     W.diasUteis(s).map(d=>d.rotulo).join('|'));
+})();
+
+// ══ 2. leitura de série ══════════════════════════════════════════════════════
+(function(){
+  const s=W.semanaDe(new Date(2026,7,31));
+  const serie=[[ts(2026,8,19),90],[ts(2026,8,20),92],[ts(2026,8,21),95.45],
+               [ts(2026,8,24),96],[ts(2026,8,27),97],[ts(2026,8,28),98.60]];
+  ok('pega o fechamento do dia exato', W.pontoAte(serie,s.fim).v===98.60);
+  ok('não enxerga o futuro (21/ago não vê o 24)', W.pontoAte(serie,s.ini).v===95.45);
+  // feriado / assessment semanal: cai no ponto anterior E devolve a data real,
+  // que é o que a tela usa para carimbar "27/ago" ao lado do número
+  const semanal=[[ts(2026,8,20),564.79],[ts(2026,8,27),563.64]];
+  const p=W.pontoAte(semanal,s.fim);
+  ok('série semanal: usa o assessment mais recente até a sexta', p.v===563.64);
+  ok('…e devolve a data REAL do assessment (27/ago), não a sexta pedida',
+     W.dmes(p.data)==='27/ago', W.dmes(p.data));
+  ok('série vazia devolve null', W.pontoAte([],s.fim)===null);
+  ok('data anterior a toda a série devolve null',
+     W.pontoAte(serie,new Date(2026,0,5))===null);
+  ok('ponto com valor nulo é ignorado',
+     W.pontoAte([[ts(2026,8,27),null],[ts(2026,8,26),50]],s.fim).v===50);
+})();
+
+// ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
+// Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
+// analista mandou]. A conta da lib tem de bater com a última coluna.
+const SEM=W.semanaDe(new Date(2026,7,31));
+const serie2=(a,b)=>[[ts(2026,8,21),a],[ts(2026,8,28),b]];
+const GAB_PRECOS=[
+  ['Iodex CFR China 61% Fe', 95.45,  98.60,  '+3,30%',  2],
+  ['HRC China',             490,    500,     '+2,04%',  0],
+  ['Rebar Turquia',         580,    590,     '+1,72%',  0],
+  ['Pulp China BHKP',       564.79, 563.64,  '−0,20%',  2],
+  ['Pulp China NBSK',       635.05, 638.72,  '+0,58%',  2],
+];
+const GAB_ACOES=[
+  ['USIM5',    6.55,   7.23,   '+10,38%'],
+  ['CSNA3',    4.79,   5.23,   '+9,19%'],
+  ['GGBR4',   22.15,  23.82,   '+7,54%'],
+  ['VALE3',   75.03,  78.39,   '+4,48%'],
+  ['SUZB3',   44.97,  46.21,   '+2,76%'],
+  ['IBOV', 171032, 175696,     '+2,73%'],
+  ['KLBN11',  18.49,  18.99,   '+2,70%'],
+  ['CMIN3',    5.90,   5.97,   '+1,19%'],
+  ['RANI3',    7.74,   7.76,   '+0,26%'],
+  ['AURA33', 149.00, 145.28,   '−2,50%'],
+];
+const precos=GAB_PRECOS.map(g=>{
+  const l=W.linhaDeSerie(g[0],serie2(g[1],g[2]),SEM,g[4],''); l.unidade='US$/t';
+  // como a tela manda: nome e unidade PARA A PROSA, diferentes dos da tabela
+  l.prosa=g[0]==='Iodex CFR China 61% Fe'?'minério de ferro (IODEX 61% Fe)':g[0];
+  l.unidadeProsa=g[4]===2&&g[0].indexOf('Iodex')===0?'US$/dmt':'US$/t';
+  return l;
+});
+const acoes=GAB_ACOES.map(g=>
+  W.linhaDeSerie(g[0],serie2(g[1],g[2]),SEM,g[0]==='IBOV'?0:2,g[0]==='IBOV'?'':'R$ '));
+
+GAB_PRECOS.forEach((g,i)=>ok('preço "'+g[0]+'" fecha em '+g[3]+' (como no e-mail)',
+  W.pct(precos[i].delta)===g[3], W.pct(precos[i].delta)));
+GAB_ACOES.forEach((g,i)=>ok('ação '+g[0]+' fecha em '+g[3]+' (como no e-mail)',
+  W.pct(acoes[i].delta)===g[3], W.pct(acoes[i].delta)));
+
+// ══ 4. formatação em pt-BR ═══════════════════════════════════════════════════
+(function(){
+  ok('milhar com ponto e decimal com vírgula', W.num(175696,0)==='175.696', W.num(175696,0));
+  ok('duas casas quando pedido', W.num(98.6,2)==='98,60', W.num(98.6,2));
+  ok('negativo usa o menos tipográfico (−), não o hífen', W.pct(-2.4966)==='−2,50%', W.pct(-2.4966));
+  ok('zero não leva sinal', W.pct(0)==='0,00%', W.pct(0));
+  ok('sem dado vira travessão', W.num(null)==='—' && W.pct(undefined)==='—');
+  ok('data curta em pt-BR', W.dmes(new Date(2026,7,28))==='28/ago', W.dmes(new Date(2026,7,28)));
+})();
+
+// ══ 5. rascunho da prosa ═════════════════════════════════════════════════════
+(function(){
+  const t=W.rascunhoCommodities(precos);
+  ok('rascunho de commodities cita o fechamento da sexta',
+     t.indexOf('98,60')>=0, t.slice(0,80));
+  // o rascunho escreve como o analista escreve, não como a tabela rotula
+  ok('…com o nome de prosa e a unidade no lugar certo ("US$ 98,60/dmt")',
+     t.indexOf('O minério de ferro (IODEX 61% Fe) encerrou a semana em US$ 98,60/dmt')===0, t.slice(0,90));
+  ok('…e sem `unidadeProsa` cai no prefixo da tabela',
+     W.rascunhoCommodities([{rotulo:'X',casas:2,prefixo:'R$ ',
+       fim:{v:10},ini:{v:9},delta:11.1}]).indexOf('em R$ 10,00,')>0);
+  ok('…e a variação em palavras', /alta de ~3%/.test(t), t.slice(0,80));
+  ok('recuo pequeno vira "queda de 0,2%"', /queda de 0,2%/.test(t), t.slice(-90));
+
+  const c=W.rascunhoCompanhias(acoes,'IBOV');
+  ok('rascunho de companhias começa pelo tom da semana',
+     /majoritariamente positivo/.test(c), c.slice(0,70));
+  ok('…compara com o IBOV', /ante \+2,73% do IBOV/.test(c), c.slice(0,140));
+  ok('…lista os 3 maiores ganhos, em ordem',
+     c.indexOf('USIM5 (+10,38%), CSNA3 (+9,19%) e GGBR4 (+7,54%)')>=0, c);
+  ok('…e nomeia a única em queda com a frase certa',
+     /AURA33 \(−2,50%\) foi a única ação da cobertura em queda/.test(c), c.slice(-120));
+  ok('o IBOV não entra na lista de ganhadores (é referência, não cobertura)',
+     c.indexOf('IBOV (+2,73%)')<0, c);
+
+  const dias=[{rotulo:'Segunda, 24/ago',itens:[{texto:'Cortes de capacidade de celulose softwood.'},
+                                               {texto:'Carvão metalúrgico atingiu USD 270,50/ton.'}]},
+              {rotulo:'Terça, 25/ago',itens:[{texto:'Exportações chinesas de tarugos em recorde.'}]}];
+  const n=W.rascunhoNoticias(dias);
+  ok('rascunho de notícias numera i/ii/iii e junta com ponto e vírgula',
+     n.indexOf('i) Cortes')===0 && n.indexOf('; ii) ')>0 && n.indexOf('; iii) ')>0, n);
+  ok('…e tira o ponto final de cada item antes de emendar',
+     n.indexOf('softwood;')>0, n);
+  ok('sem dado, o rascunho sai vazio (a tela avisa em vez de inventar)',
+     W.rascunhoCommodities([])==='' && W.rascunhoNoticias([])==='');
+})();
+
+// ══ 6. o HTML do e-mail ══════════════════════════════════════════════════════
+const MODELO={
+  semana:SEM, precos:precos, acoes:acoes,
+  intro:'Olá, bom dia!\nSeguem os **updates** da semana.',
+  resumo:{commodities:'O minério subiu.',companhias:'As ações subiram.',noticias:'i) algo aconteceu.'},
+  relatorios:[{data:'24/ago',setor:'Pulp & Paper',titulo:'Klabin: Unleashing the Puma 2.0',
+               link:'https://www.itau.com.br/relatorio'}],
+  dias:[{rotulo:'Segunda, 24/ago',itens:[{texto:'Cortes de capacidade.',link:'https://ex.com/a'}]},
+        {rotulo:'Terça, 25/ago',itens:[]}],
+  assinatura:{nome:'Daniel Sasson, CFA',cargo:'Equity Research',contato:'daniel.sasson@itaubba.com'},
+  dashboard:{url:'https://exemplo.vercel.app',label:'Dashboard M&M | P&P'},
+};
+const HTML=W.buildEmail(MODELO);
+(function(){
+  // — a regra que sustenta tudo: o Outlook desenha com o motor do Word —
+  ok('nada de flex/grid no e-mail (o Outlook não desenha)',
+     !/display\s*:\s*(flex|grid)/i.test(HTML));
+  ok('nada de variável CSS nem de rem', !/var\(--/.test(HTML) && !/\d+rem/.test(HTML));
+  ok('nada de classe CSS (não há <style> no e-mail)',
+     !/\sclass="/.test(HTML) && HTML.indexOf('<style')<0);
+  ok('o miolo tem largura fixa de 640px (max-width sozinho o Outlook ignora)',
+     HTML.indexOf('width="640"')>0);
+
+  // — os tokens medidos no Long Story Short —
+  const T=W.T;
+  [['fundo creme',T.bg],['laranja Itaú',T.accent],['tinta do título',T.ink],
+   ['verde de alta',T.green],['vermelho de queda',T.red],['borda do cartão',T.border]]
+    .forEach(([nome,cor])=>ok('usa o '+nome+' do Long Story Short ('+cor+')',HTML.indexOf(cor)>0));
+  ok('títulos em Georgia (a serifa do LSS)', HTML.indexOf("'Georgia',serif")>0);
+  ok('dados em Arial', HTML.indexOf("'Arial',sans-serif")>0);
+  ok('cartão com raio de 12px, como no LSS', HTML.indexOf('border-radius:12px')>0);
+
+  // — conteúdo —
+  ok('cabeçalho traz "Weekly Recap"', HTML.indexOf('Weekly Recap')>0);
+  ok('o período aparece em caixa alta', HTML.indexOf('24 A 28 DE AGOSTO DE 2026')>0);
+  ok('as três caixas do resumo aparecem',
+     HTML.indexOf('COMMODITIES')>0 && HTML.indexOf('COMPANHIAS')>0 && HTML.indexOf('NOTÍCIAS')>0);
+  ok('a tabela de preços traz os dois fechamentos',
+     HTML.indexOf('95,45')>0 && HTML.indexOf('98,60')>0);
+  ok('a unidade acompanha o nome do ativo', HTML.indexOf('US$/t')>0);
+  ok('as ações trazem o R$ e o percentual', HTML.indexOf('R$ 7,23')>0 && HTML.indexOf('+10,38%')>0);
+  ok('o IBOV sai sem casa decimal', HTML.indexOf('175.696')>0);
+  ok('o relatório vira cartão com link', HTML.indexOf('Unleashing the Puma 2.0')>0
+     && HTML.indexOf('Abrir o relatório ↗')>0);
+  ok('o dia com notícia aparece; o dia vazio não',
+     HTML.indexOf('SEGUNDA, 24/AGO')>0 && HTML.indexOf('TERÇA, 25/AGO')<0);
+  ok('a assinatura fecha o e-mail', HTML.indexOf('Daniel Sasson, CFA')>0);
+  ok('**negrito** do rascunho vira <b> de verdade', HTML.indexOf('<b>updates</b>')>0);
+  ok('a quebra de linha da abertura vira <br>', HTML.indexOf('bom dia!<br>')>0);
+
+  // — o gráfico de barras (o "Market Performance" do LSS) —
+  const barras=[...HTML.matchAll(/width="(\d+)" style="width:\1px;height:6\.75pt;background:(#[0-9A-F]{6})/g)]
+                 .map(m=>({w:+m[1],cor:m[2]}));
+  ok('desenha uma barra por papel', barras.length===acoes.length, 'barras='+barras.length);
+  ok('a maior barra é a do maior movimento e respeita o teto de 126px',
+     Math.max(...barras.map(b=>b.w))===126, JSON.stringify(barras.map(b=>b.w)));
+  ok('a barra é proporcional (CSNA3 +9,19% ≈ 9,19/10,38 da maior)',
+     Math.abs(barras.find(b=>b.w<126&&b.cor===W.T.green).w-Math.round(126*9.19/10.38))<=1,
+     JSON.stringify(barras));
+  ok('quem caiu ganha barra vermelha', barras.some(b=>b.cor===W.T.red));
+  ok('quem subiu ganha barra verde',  barras.filter(b=>b.cor===W.T.green).length===9);
+  ok('há um eixo central de 1px', HTML.indexOf('width="1" style="width:1px;background:'+W.T.axis)>0);
+
+  // — segurança: manchete é texto de terceiro, tem de sair escapada —
+  const mau=W.buildEmail(Object.assign({},MODELO,{
+    dias:[{rotulo:'Segunda',itens:[{texto:'<img src=x onerror=alert(1)> "aspas" & e-comercial'}]}]}));
+  ok('manchete com HTML sai escapada', mau.indexOf('&lt;img src=x')>0 && mau.indexOf('<img src=x')<0);
+  ok('aspas e & também', mau.indexOf('&quot;aspas&quot;')>0 && mau.indexOf('&amp; e-comercial')>0);
+  const mauLink=W.buildEmail(Object.assign({},MODELO,{
+    relatorios:[{titulo:'x',link:'https://a.com/"><scr'+'ipt>alert(1)</scr'+'ipt>'}]}));
+  ok('link de relatório sai escapado', mauLink.indexOf('<scr'+'ipt>alert')<0);
+
+  // — degradação: sem dado nenhum o e-mail ainda sai de pé —
+  const vazio=W.buildEmail({semana:SEM,resumo:{},precos:[],acoes:[],relatorios:[],dias:[],
+                            assinatura:{},dashboard:{}});
+  ok('sem dado nenhum, ainda monta o cabeçalho sem quebrar',
+     vazio.indexOf('Weekly Recap')>0 && vazio.indexOf('1 Semana em 1 Minuto')>0);
+  ok('…e não desenha seção vazia (nada de "PREÇOS" sem tabela)',
+     vazio.indexOf('PREÇOS')<0 && vazio.indexOf('RELATÓRIOS')<0);
+  // linha sem histórico não pode virar barra nem número inventado
+  const semHist=W.buildEmail(Object.assign({},MODELO,{
+    acoes:[Object.assign({},acoes[0]),{rotulo:'XPTO3',casas:2,prefixo:'R$ ',ini:null,fim:null,delta:null}]}));
+  ok('papel sem histórico sai com travessão, não com zero',
+     semHist.indexOf('>—<')>0, 'ok');
+})();
+
+// ══ 7. o arquivo .eml ════════════════════════════════════════════════════════
+(function(){
+  const eml=W.buildEml(MODELO,HTML);
+  // A LIÇÃO que custou 3 rodadas no clipping (CLAUDE.md, b34cc4e): com LF puro o
+  // Outlook não decodifica o corpo e cospe o código-fonte na tela.
+  ok('não existe UM \\n solto: toda quebra é CRLF',
+     !/[^\r]\n/.test(eml) && eml.indexOf('\n')>0, 'primeira solta em '+eml.search(/[^\r]\n/));
+  ok('tem X-Unsent: 1 (senão abre como recebida e vira "FW:")',
+     /^X-Unsent: 1$/m.test(eml));
+  ok('declara utf-8 e base64',
+     /Content-Type: text\/html; charset="utf-8"/.test(eml) &&
+     /Content-Transfer-Encoding: base64/.test(eml));
+  ok('assunto vem codificado (o "–" e o "&" não podem ir crus)',
+     /^Subject: =\?UTF-8\?B\?[A-Za-z0-9+/=]+\?=$/m.test(eml));
+  // decodifica o assunto e confere o texto
+  const ass=new TextDecoder().decode(Uint8Array.from(
+    atob(eml.match(/^Subject: =\?UTF-8\?B\?([^?]+)\?=$/m)[1]),c=>c.charCodeAt(0)));
+  ok('…e decodifica para o assunto certo',
+     ass==='Weekly Recap S&M/P&P – Semana encerrada em 28/08/2026', ass);
+  // corpo: base64 em linhas de no máximo 76, que volta a ser o HTML
+  const corpo=eml.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+  ok('nenhuma linha do base64 passa de 76 caracteres',
+     corpo.split('\r\n').every(l=>l.length<=76));
+  const html=new TextDecoder().decode(Uint8Array.from(
+    atob(corpo.replace(/\r\n/g,'')),c=>c.charCodeAt(0)));
+  ok('o corpo decodificado contém o e-mail inteiro', html.indexOf(HTML)>0);
+  ok('…dentro de um documento HTML completo',
+     /^<!doctype html>/i.test(html) && html.indexOf('<meta charset="utf-8">')>0);
+  ok('…com os acentos intactos depois de ida e volta',
+     html.indexOf('NOTÍCIAS')>0 && html.indexOf('24 A 28 DE AGOSTO')>0);
+})();
+
+// ── resultado ────────────────────────────────────────────────────────────────
+const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+document.getElementById('out').textContent=
+  R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+</script>
+</body>

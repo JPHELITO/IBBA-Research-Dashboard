@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Weekly Recap</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/topnav.js"></script>
+<script src="/weekly-lib.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;
+  --bg:#F7F6F3;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+[hidden]{display:none!important}
+
+.splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{display:inline-block;margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--orange);color:#fff;
+  text-decoration:none;font-size:12.5px;font-weight:600;border:none;cursor:pointer;}
+
+#app{flex:1;width:100%;max-width:1560px;margin:0 auto;padding:14px 20px 26px;}
+.wk-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px;}
+.wk-title{font-size:22px;font-weight:700;letter-spacing:-.01em;}
+.wk-title small{display:block;font-size:12px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
+.wk-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
+  border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:2px 8px;vertical-align:middle;}
+
+/* editor à esquerda, prévia à direita (a prévia tem 640px de e-mail + folga) */
+/* ⚠️ `minmax(0,…)` nas DUAS variantes, nunca `1fr` puro: `1fr` é `minmax(auto,1fr)`, e o
+   mínimo `auto` é o min-content do que está dentro (uma tabela, um <input>) — a coluna
+   deixa de encolher e a página rola de lado. Armadilha já documentada no CLAUDE.md. */
+.wk-grid{display:grid;grid-template-columns:minmax(430px,1fr) 700px;gap:18px;align-items:start;}
+.wk-grid>*{min-width:0;}
+@media(max-width:1300px){.wk-grid{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:760px){
+  #app{padding:12px 12px 20px;}
+  .wk-head{gap:10px;}
+  .wk-head .bar{width:100%;}
+  .wk-head .bar #ref{width:auto;flex:1;}
+  table.data{font-size:11px;}
+  table.data input[type=number]{width:74px;}
+}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:11px 15px;border-bottom:1px solid var(--border);}
+.panel-h h2{font-size:13px;font-weight:700;}
+.panel-h .sub{font-size:11px;color:var(--gray-mid);font-weight:400;}
+.panel-b{padding:12px 15px;}
+
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+button.b,a.b{font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;border:1px solid var(--border);
+  background:var(--card);color:var(--black);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+button.b:hover,a.b:hover{border-color:var(--orange);color:var(--orange);}
+button.b.pri{background:var(--orange);border-color:var(--orange);color:#fff;}
+button.b.pri:hover{filter:brightness(1.06);color:#fff;}
+button.b.sm{font-size:11px;padding:4px 9px;}
+button.b:disabled{opacity:.45;cursor:not-allowed;}
+input[type=date],input[type=text],input[type=number],textarea,select{
+  font:inherit;font-size:12.5px;color:var(--black);background:var(--card);
+  border:1px solid var(--border);border-radius:7px;padding:6px 9px;width:100%;}
+textarea{resize:vertical;line-height:1.5;min-height:74px;}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--orange);}
+label.f{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--gray-mid);margin-bottom:4px;}
+.fld{margin-bottom:12px;}
+.fld:last-child{margin-bottom:0;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+/* tabelinhas de conferência (o que foi carregado do banco) */
+table.data{width:100%;border-collapse:collapse;font-size:12px;}
+table.data th{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);
+  font-weight:700;text-align:right;padding:0 6px 6px;border-bottom:1px solid var(--border);}
+table.data th:first-child{text-align:left;padding-left:0;}
+table.data td{padding:5px 6px;border-bottom:1px solid var(--gray-light);text-align:right;
+  font-variant-numeric:tabular-nums;}
+table.data td:first-child{text-align:left;padding-left:0;font-weight:600;}
+table.data tr:last-child td{border-bottom:none;}
+table.data input[type=number]{width:88px;text-align:right;padding:3px 6px;font-size:12px;
+  font-variant-numeric:tabular-nums;}
+.pos{color:var(--green);font-weight:700;}
+.neg{color:var(--red);font-weight:700;}
+.zero{color:var(--gray-mid);font-weight:700;}
+.stale{font-size:10px;color:var(--orange);font-weight:600;}
+
+.warn{font-size:11.5px;line-height:1.5;background:rgba(255,80,0,.08);border:1px solid rgba(255,80,0,.35);
+  border-radius:7px;padding:8px 11px;color:var(--gray-dark);margin-bottom:12px;}
+.warn b{color:var(--orange);}
+.warn code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:rgba(0,0,0,.05);
+  padding:1px 4px;border-radius:3px;}
+html.dark .warn code{background:rgba(255,255,255,.08);}
+
+/* relatórios / notícias: lista de itens editáveis */
+.item{border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-bottom:8px;background:var(--bg);}
+.item .top{display:flex;gap:8px;align-items:center;margin-bottom:7px;}
+.item .top .grow{flex:1;}
+.xbtn{border:none;background:transparent;color:var(--gray-mid);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;}
+.xbtn:hover{color:var(--red);}
+
+.day{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+.day-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;
+  background:var(--gray-light);font-size:12px;font-weight:700;}
+html.dark .day-h{background:#15171b;}
+.day-b{padding:9px 11px;}
+.nline{display:flex;gap:7px;align-items:flex-start;margin-bottom:7px;}
+.nline .rom{font-size:11px;color:var(--gray-mid);font-weight:700;padding-top:7px;min-width:16px;}
+.nline textarea{min-height:46px;font-size:12px;}
+.cands{margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;}
+.cands .ch{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);
+  font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.cand{display:flex;gap:7px;align-items:flex-start;font-size:11.5px;line-height:1.45;padding:4px 0;
+  border-bottom:1px solid var(--gray-light);}
+.cand:last-child{border-bottom:none;}
+.cand button{flex:none;}
+.cand .t{flex:1;color:var(--gray-dark);}
+.cand .src{color:var(--gray-mid);font-size:10px;}
+.tk{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:5px;
+  vertical-align:1px;}
+.tk.p{background:rgba(22,163,74,.14);color:var(--green);}
+.tk.n{background:rgba(192,57,43,.14);color:var(--red);}
+.tk.e{background:rgba(0,0,0,.07);color:var(--gray-mid);}
+html.dark .tk.e{background:rgba(255,255,255,.09);}
+
+/* prévia */
+.prev-wrap{position:sticky;top:12px;}
+#prev{width:100%;height:calc(100vh - 150px);min-height:520px;border:1px solid var(--border);
+  border-radius:var(--radius);background:#F7F5F0;display:block;}
+.hint{font-size:11px;color:var(--gray-mid);margin-top:7px;line-height:1.5;}
+.ok{color:var(--green);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Carregando o Weekly…</div></div>
+
+<div id="denied" class="splash" hidden>
+  <div style="font-size:34px">🔒</div>
+  <div><b>Área restrita</b></div>
+  <div class="muted" style="max-width:400px">O Weekly Recap é uma ferramenta interna, disponível apenas para administradores.</div>
+  <a class="hbtn" href="/index.html">← Voltar para a home</a>
+</div>
+
+<div id="app" hidden>
+  <div class="wk-head">
+    <div class="wk-title">Weekly Recap <span class="wk-badge">admin</span>
+      <small>Preços, ações e notícias saem do banco; o texto vem rascunhado para você ajustar.</small>
+    </div>
+    <div class="bar">
+      <label class="f" style="margin:0 4px 0 0;align-self:center">Semana encerrada em</label>
+      <input type="date" id="ref" style="width:150px"/>
+      <button class="b" id="reload">↻ Recarregar</button>
+      <button class="b" id="copy">Copiar para o Outlook</button>
+      <button class="b pri" id="eml">Baixar .eml</button>
+    </div>
+  </div>
+
+  <div class="wk-grid">
+    <!-- ═══════════ COLUNA DA ESQUERDA: O EDITOR ═══════════ -->
+    <div>
+      <div id="sqlwarn" hidden></div>
+
+      <!-- 1 Semana em 1 Minuto -->
+      <div class="panel">
+        <div class="panel-h"><h2>1 Semana em 1 Minuto</h2>
+          <button class="b sm" id="draft-all">↻ Rascunhar os três</button></div>
+        <div class="panel-b">
+          <div class="fld">
+            <label class="f">Abertura</label>
+            <textarea id="intro" style="min-height:88px"></textarea>
+          </div>
+          <div class="fld">
+            <label class="f">Commodities <button class="b sm" data-draft="commodities" style="float:right;margin-top:-3px">↻ rascunho</button></label>
+            <textarea id="r-commodities" style="min-height:100px"></textarea>
+          </div>
+          <div class="fld">
+            <label class="f">Companhias <button class="b sm" data-draft="companhias" style="float:right;margin-top:-3px">↻ rascunho</button></label>
+            <textarea id="r-companhias" style="min-height:100px"></textarea>
+          </div>
+          <div class="fld">
+            <label class="f">Notícias <button class="b sm" data-draft="noticias" style="float:right;margin-top:-3px">↻ rascunho</button></label>
+            <textarea id="r-noticias" style="min-height:100px"></textarea>
+          </div>
+          <div class="hint">Use <code>**negrito**</code> para destacar. O rascunho é montado a partir dos números
+            carregados abaixo — nunca digite um número à mão aqui.</div>
+        </div>
+      </div>
+
+      <!-- Preços -->
+      <div class="panel">
+        <div class="panel-h"><h2>Preços — Δ últimos 7 dias</h2>
+          <span class="sub" id="pr-meta"></span></div>
+        <div class="panel-b"><div id="pr-box" class="muted">carregando…</div></div>
+      </div>
+
+      <!-- Ações -->
+      <div class="panel">
+        <div class="panel-h"><h2>Ações em cobertura — Δ últimos 7 dias</h2>
+          <span class="sub" id="ac-meta"></span></div>
+        <div class="panel-b"><div id="ac-box" class="muted">carregando…</div></div>
+      </div>
+
+      <!-- Relatórios -->
+      <div class="panel">
+        <div class="panel-h"><h2>Relatórios publicados</h2>
+          <button class="b sm" id="rep-add">+ relatório</button></div>
+        <div class="panel-b">
+          <div id="rep-box"></div>
+          <div class="hint">Esta é a <b>mesma lista</b> que o Clipping usa em “Recent Publications” —
+            cadastrar aqui aparece lá, e vice-versa.</div>
+        </div>
+      </div>
+
+      <!-- Notícias -->
+      <div class="panel">
+        <div class="panel-h"><h2>Principais notícias do setor</h2>
+          <span class="sub" id="nw-meta"></span></div>
+        <div class="panel-b"><div id="nw-box" class="muted">carregando…</div></div>
+      </div>
+
+      <!-- Assinatura -->
+      <div class="panel">
+        <div class="panel-h"><h2>Assinatura e rodapé</h2></div>
+        <div class="panel-b">
+          <div class="row2 fld">
+            <div><label class="f">Nome</label><input type="text" id="sig-nome"/></div>
+            <div><label class="f">Cargo</label><input type="text" id="sig-cargo"/></div>
+          </div>
+          <div class="row2 fld">
+            <div><label class="f">Contato</label><input type="text" id="sig-contato"/></div>
+            <div><label class="f">Link da dashboard</label><input type="text" id="sig-dash"/></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ COLUNA DA DIREITA: A PRÉVIA ═══════════ -->
+    <div class="prev-wrap">
+      <div class="panel" style="margin-bottom:8px">
+        <div class="panel-h"><h2>Prévia do e-mail</h2>
+          <span class="sub" id="prev-meta"></span></div>
+      </div>
+      <iframe id="prev" title="Prévia do Weekly Recap"></iframe>
+      <div class="hint" id="status">A prévia é o HTML que vai no e-mail — o mesmo em <b>Copiar</b> e em <b>.eml</b>.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase + auth (idêntico às demais páginas) ─────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+let _session=null;
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){
+  const {data,error}=(args===undefined)?await sbAuth.rpc(name):await sbAuth.rpc(name,args);
+  if(error) throw Object.assign(new Error(name+': '+(error.message||error)),{code:error.code});
+  return data;
+}
+async function restGet(path){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,
+    {headers:{apikey:SUPA_KEY,Authorization:`Bearer ${_session.access_token}`}});
+  if(!r.ok) throw new Error(path+': HTTP '+r.status);
+  return r.json();
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const W=window.IBBAWeekly;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O QUE ENTRA NO WEEKLY — as listas são o contrato com o robô (news-hunter).
+// Se um `code`/`ticker` for renomeado lá, a linha some daqui CALADA: é por isso
+// que a tela mostra "sem histórico" em vez de simplesmente omitir a linha.
+// ═══════════════════════════════════════════════════════════════════════════
+// Commodities: os 5 assessments que o weekly manda hoje. `code` = coluna
+// `commodities.code` (o robô grava IRON_ORE p/ o IODBZ00, que é o IODEX 61%,
+// exatamente o do e-mail — NÃO confundir com IRON_ORE_62, que é outra série).
+// `rotulo`/`unidade` = como aparece na TABELA. `prosa`/`unidadeProsa` = como o
+// analista escreve a frase ("O minério de ferro (IODEX 61% Fe) encerrou a semana
+// em US$ 98,60/dmt") — é o que o rascunho usa.
+const PRECOS=[
+  {code:'IRON_ORE',        rotulo:'Iodex CFR China 61% Fe', unidade:'US$/dmt', casas:2,
+   prosa:'minério de ferro (IODEX 61% Fe)',  unidadeProsa:'US$/dmt'},
+  {code:'HRC_CHINA',       rotulo:'HRC China',              unidade:'US$/t · aços planos', casas:0,
+   prosa:'HRC China (aço plano)',            unidadeProsa:'US$/t'},
+  {code:'REBAR_TURKEY',    rotulo:'Rebar Turquia',          unidade:'US$/t · aços longos', casas:0,
+   prosa:'rebar Turquia (aço longo)',        unidadeProsa:'US$/t'},
+  {code:'PULP_BHKP_CHINA', rotulo:'Pulp China BHKP',        unidade:'US$/t · fibra curta', casas:2,
+   prosa:'BHKP na China (fibra curta)',      unidadeProsa:'US$/t'},
+  {code:'PULP_NBSK_CHINA', rotulo:'Pulp China NBSK',        unidade:'US$/t · fibra longa', casas:2,
+   prosa:'NBSK na China (fibra longa)',      unidadeProsa:'US$/t'},
+];
+// Ações: a cobertura na BOLSA LOCAL (o weekly manda VALE3/AURA33, não os ADRs
+// VALE/AUGO que o heatmap da home usa) + o IBOV como referência.
+const ACOES=[
+  {ticker:'VALE3.SA', rotulo:'VALE3',  prefixo:'R$ ', casas:2},
+  {ticker:'CMIN3.SA', rotulo:'CMIN3',  prefixo:'R$ ', casas:2},
+  {ticker:'CSNA3.SA', rotulo:'CSNA3',  prefixo:'R$ ', casas:2},
+  {ticker:'GGBR4.SA', rotulo:'GGBR4',  prefixo:'R$ ', casas:2},
+  {ticker:'USIM5.SA', rotulo:'USIM5',  prefixo:'R$ ', casas:2},
+  {ticker:'AURA33.SA',rotulo:'AURA33', prefixo:'R$ ', casas:2},
+  {ticker:'SUZB3.SA', rotulo:'SUZB3',  prefixo:'R$ ', casas:2},
+  {ticker:'KLBN11.SA',rotulo:'KLBN11', prefixo:'R$ ', casas:2},
+  {ticker:'RANI3.SA', rotulo:'RANI3',  prefixo:'R$ ', casas:2},
+  {ticker:'IBOV',     rotulo:'IBOV',   prefixo:'',    casas:0},
+];
+const IDX_ROTULO='IBOV';
+
+const DEFAULT_INTRO='Olá, bom dia!\n\nSeguem as interações/updates que tivemos ao longo da semana passada com as '
+  +'empresas dos setores de Mineração, Siderurgia, Papel e Celulose.\n\nPrecisando de detalhes sobre os '
+  +'setores/empresas, é só avisar.';
+const DEFAULT_SIG={nome:'Daniel Sasson, CFA',
+  cargo:'Equity Research – Steel & Mining | Pulp & Paper',
+  contato:'daniel.sasson@itaubba.com  |  +55 11 99674-1242'};
+const DEFAULT_DASH='https://metals-mining-pulp-paper-dashboard.vercel.app';
+
+// ── estado ───────────────────────────────────────────────────────────────────
+const S={
+  sem:null,                    // {ini,fim,seg}
+  precos:[], acoes:[],         // linhas montadas (com .ini/.fim/.delta)
+  dias:[],                     // [{data,rotulo,itens:[{texto,link}]}]
+  cands:{},                    // 'YYYY-MM-DD' -> [manchetes candidatas]
+  cfg:{},                      // clipping_config.settings inteiro (preservado ao salvar)
+  weekly:{},                   // cfg.weekly — o que ESTA página guarda
+  relatorios:[],               // = cfg.recent_publications (compartilhada com o Clipping)
+  semSQL:false,
+};
+
+// ── datas ────────────────────────────────────────────────────────────────────
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ymdParse(s){const p=String(s||'').split('-').map(Number); return new Date(p[0],p[1]-1,p[2]);}
+// Data efetiva de uma notícia: publicação quando existe, descoberta quando não —
+// a mesma régua do feed (`_effDate` em news.html), para os dois contarem igual.
+function effDate(a){const iso=a.published_at||a.found_at; if(!iso) return null;
+  const d=new Date(iso); return isNaN(d)?null:ymd(d);}
+
+// ═══════════════ CARGA DOS DADOS ═════════════════════════════════════════════
+async function carregarPrecos(){
+  const de=ymd(new Date(S.sem.ini.getFullYear(),S.sem.ini.getMonth(),S.sem.ini.getDate()-14));
+  const ate=ymd(S.sem.fim);
+  let rows=[];
+  try{
+    rows=await rpc('admin_commodity_window',{p_codes:PRECOS.map(p=>p.code),p_from:de,p_to:ate})||[];
+    S.semSQL=false;
+  }catch(e){
+    // PGRST202 = função não existe → o SQL ainda não foi rodado. Não é motivo para
+    // a tela morrer: as células de preço são editáveis, então o analista consegue
+    // fechar o weekly na mão enquanto isso.
+    console.warn('admin_commodity_window', e);
+    S.semSQL=true; rows=[];
+  }
+  const porCode={}; rows.forEach(r=>{porCode[r.code]=r.points||[];});
+  S.precos=PRECOS.map(p=>{
+    const l=W.linhaDeSerie(p.rotulo,porCode[p.code],S.sem,p.casas,'');
+    l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa;
+    return l;
+  });
+}
+
+async function carregarAcoes(){
+  const lista=ACOES.map(a=>a.ticker).map(encodeURIComponent).join(',');
+  const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${lista})`);
+  const porTk={}; rows.forEach(r=>{porTk[r.ticker]=r.daily||[];});
+  S.acoes=ACOES.map(a=>{
+    const l=W.linhaDeSerie(a.rotulo,porTk[a.ticker],S.sem,a.casas,a.prefixo);
+    l.ticker=a.ticker;
+    return l;
+  }).sort((x,y)=>(y.delta==null?-1e9:y.delta)-(x.delta==null?-1e9:x.delta));
+}
+
+async function carregarNoticias(){
+  const de=ymd(S.sem.seg), ate=ymd(new Date(S.sem.fim.getFullYear(),S.sem.fim.getMonth(),S.sem.fim.getDate()+1));
+  const cols='url,title,source_name,domain,published_at,found_at,take,take_llm,take_sector';
+  // Janela por found_at (todo artigo tem) com folga de 1 dia na ponta; o
+  // agrupamento por dia usa effDate, que prefere a publicação.
+  const rows=await restGet(`news_articles?select=${cols}&include_in_report=eq.true`
+    +`&found_at=gte.${de}T00:00:00&found_at=lt.${ate}T00:00:00&order=found_at.desc&limit=600`);
+  const vistos=new Set(); S.cands={};
+  rows.forEach(a=>{
+    const d=effDate(a); if(!d) return;
+    const chave=(a.title||'').toLowerCase().replace(/\W+/g,'').slice(0,70);
+    if(!chave||vistos.has(chave)) return; vistos.add(chave);
+    (S.cands[d]=S.cands[d]||[]).push(a);
+  });
+}
+
+// ═══════════════ DESENHO DOS PAINÉIS ═════════════════════════════════════════
+function cls(v){return v==null?'zero':v>0?'pos':v<0?'neg':'zero';}
+// "assessment de 27/ago" quando o ponto encontrado não é do dia pedido (celulose é
+// semanal): melhor dizer do que fingir que o número é da sexta.
+function selo(pt,alvo){
+  if(!pt||!alvo) return '';
+  const a=W.dmes(pt.data), b=W.dmes(alvo);
+  return a===b?'':`<span class="stale" title="assessment mais recente até a data pedida"> ${a}</span>`;
+}
+
+function renderPrecos(){
+  const box=document.getElementById('pr-box');
+  const faltando=S.precos.filter(l=>!l.ini||!l.fim).map(l=>l.rotulo);
+  document.getElementById('pr-meta').textContent=
+    faltando.length?`${faltando.length} sem histórico`:'5 de 5 com histórico';
+  box.innerHTML=
+    `<table class="data"><thead><tr><th>Ativo</th>
+      <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
+    +S.precos.map((l,i)=>`<tr>
+      <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.unidade)}</span></td>
+      <td><input type="number" step="any" data-pr="${i}" data-k="ini" value="${l.ini?l.ini.v:''}"/>${selo(l.ini,S.sem.ini)}</td>
+      <td><input type="number" step="any" data-pr="${i}" data-k="fim" value="${l.fim?l.fim.v:''}"/>${selo(l.fim,S.sem.fim)}</td>
+      <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
+    +'</tbody></table>';
+  box.querySelectorAll('input[data-pr]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const l=S.precos[+inp.dataset.pr], k=inp.dataset.k, v=parseFloat(inp.value);
+      l[k]=isFinite(v)?{v:v,data:k==='ini'?S.sem.ini:S.sem.fim}:null;
+      l.delta=(l.ini&&l.fim&&l.ini.v)?(l.fim.v/l.ini.v-1)*100:null;
+      const td=inp.closest('tr').lastElementChild;
+      td.className=cls(l.delta); td.textContent=W.pct(l.delta);
+      atualizarPrevia();
+    });
+  });
+}
+
+function renderAcoes(){
+  const box=document.getElementById('ac-box');
+  const faltando=S.acoes.filter(l=>!l.ini||!l.fim).length;
+  document.getElementById('ac-meta').textContent=
+    faltando?`${faltando} sem histórico`:`${S.acoes.length} de ${S.acoes.length} com histórico`;
+  box.innerHTML=
+    `<table class="data"><thead><tr><th>Ativo</th>
+      <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
+    +S.acoes.map(l=>`<tr><td>${esc(l.rotulo)}</td>
+      <td>${l.ini?esc(l.prefixo+W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
+      <td>${l.fim?esc(l.prefixo+W.num(l.fim.v,l.casas)):'—'}${selo(l.fim,S.sem.fim)}</td>
+      <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
+    +'</tbody></table>';
+}
+
+function renderRelatorios(){
+  const box=document.getElementById('rep-box');
+  if(!S.relatorios.length){ box.innerHTML='<div class="muted" style="font-size:12px">Nenhum relatório cadastrado nesta semana.</div>'; return; }
+  box.innerHTML=S.relatorios.map((r,i)=>`<div class="item">
+    <div class="top">
+      <input type="text" data-rep="${i}" data-k="data" placeholder="24/ago" value="${esc(r.data||'')}" style="width:90px;flex:none"/>
+      <input type="text" data-rep="${i}" data-k="setor" placeholder="Pulp &amp; Paper" value="${esc(r.setor||'')}" style="width:150px;flex:none"/>
+      <input type="text" data-rep="${i}" data-k="titulo" class="grow" placeholder="Itaú BBA on Klabin: Unleashing the Puma 2.0" value="${esc(r.titulo||'')}"/>
+      <button class="xbtn" data-del="${i}" title="remover">✕</button>
+    </div>
+    <input type="text" data-rep="${i}" data-k="link" placeholder="https://www.itau.com.br/itaubba-pt/portal/viewer/equity/…" value="${esc(r.link||'')}"/>
+  </div>`).join('');
+  box.querySelectorAll('input[data-rep]').forEach(inp=>inp.addEventListener('input',()=>{
+    S.relatorios[+inp.dataset.rep][inp.dataset.k]=inp.value; atualizarPrevia(); salvar();
+  }));
+  box.querySelectorAll('button[data-del]').forEach(b=>b.addEventListener('click',()=>{
+    S.relatorios.splice(+b.dataset.del,1); renderRelatorios(); atualizarPrevia(); salvar();
+  }));
+}
+
+function _takeCls(t){return t==='positive'?'p':t==='negative'?'n':'e';}
+function _takeTxt(t){return t==='positive'?'+':t==='negative'?'−':'=';}
+
+function renderNoticias(){
+  const box=document.getElementById('nw-box');
+  const total=S.dias.reduce((n,d)=>n+d.itens.filter(i=>(i.texto||'').trim()).length,0);
+  const cand=Object.values(S.cands).reduce((n,a)=>n+a.length,0);
+  document.getElementById('nw-meta').textContent=`${total} escritas · ${cand} manchetes candidatas`;
+  box.innerHTML=S.dias.map((d,di)=>{
+    const chave=ymd(d.data), lista=(S.cands[chave]||[]).slice(0,14);
+    const linhas=d.itens.map((it,ii)=>`<div class="nline">
+      <div class="rom">${['i','ii','iii','iv','v','vi'][ii]||ii+1})</div>
+      <textarea data-day="${di}" data-i="${ii}" placeholder="Resuma a notícia em uma frase, em português.">${esc(it.texto||'')}</textarea>
+      <button class="xbtn" data-rmn="${di}:${ii}" title="remover">✕</button>
+    </div>`).join('');
+    return `<div class="day">
+      <div class="day-h"><span>${esc(d.rotulo)}</span>
+        <button class="b sm" data-addn="${di}">+ linha</button></div>
+      <div class="day-b">
+        ${linhas||'<div class="muted" style="font-size:11.5px;margin-bottom:7px">Sem linhas — clique numa manchete abaixo ou em “+ linha”.</div>'}
+        <div class="cands">
+          <div class="ch"><span>Manchetes do dia (${lista.length}${(S.cands[chave]||[]).length>lista.length?' de '+S.cands[chave].length:''})</span></div>
+          ${lista.length?lista.map(a=>`<div class="cand">
+            <button class="b sm" data-use="${esc(a.url)}" data-day="${di}">＋</button>
+            <div class="t">${esc(a.title||'')}<span class="tk ${_takeCls(a.take_llm||a.take)}">${_takeTxt(a.take_llm||a.take)}</span>
+              <div class="src">${esc(a.source_name||a.domain||'')}</div></div>
+          </div>`).join(''):'<div class="muted" style="font-size:11.5px">Nada no feed nesse dia.</div>'}
+        </div>
+      </div></div>`;
+  }).join('');
+
+  box.querySelectorAll('textarea[data-day]').forEach(t=>t.addEventListener('input',()=>{
+    S.dias[+t.dataset.day].itens[+t.dataset.i].texto=t.value; atualizarPrevia(); salvar();
+  }));
+  box.querySelectorAll('button[data-addn]').forEach(b=>b.addEventListener('click',()=>{
+    S.dias[+b.dataset.addn].itens.push({texto:'',link:''}); renderNoticias(); atualizarPrevia();
+  }));
+  box.querySelectorAll('button[data-rmn]').forEach(b=>b.addEventListener('click',()=>{
+    const [di,ii]=b.dataset.rmn.split(':').map(Number);
+    S.dias[di].itens.splice(ii,1); renderNoticias(); atualizarPrevia(); salvar();
+  }));
+  // "＋" numa manchete: entra como linha nova daquele dia, com o título e o link.
+  // O texto vem do TÍTULO (em inglês, como está no feed) de propósito — é ponto de
+  // partida para o analista reescrever em português, não texto final.
+  box.querySelectorAll('button[data-use]').forEach(b=>b.addEventListener('click',()=>{
+    const di=+b.dataset.day, url=b.dataset.use;
+    const a=(S.cands[ymd(S.dias[di].data)]||[]).find(x=>x.url===url); if(!a) return;
+    S.dias[di].itens.push({texto:a.title||'',link:a.url||''});
+    renderNoticias(); atualizarPrevia(); salvar();
+  }));
+}
+
+// ═══════════════ RASCUNHOS ═══════════════════════════════════════════════════
+function rascunhar(qual){
+  const t={commodities:()=>W.rascunhoCommodities(S.precos),
+           companhias:()=>W.rascunhoCompanhias(S.acoes,IDX_ROTULO),
+           noticias:()=>W.rascunhoNoticias(S.dias)}[qual];
+  if(!t) return;
+  const txt=t();
+  if(!txt){ flash('Sem dado suficiente para rascunhar “'+qual+'”.'); return; }
+  document.getElementById('r-'+qual).value=txt;
+  atualizarPrevia(); salvar();
+}
+
+// ═══════════════ MODELO + PRÉVIA ═════════════════════════════════════════════
+function modelo(){
+  return {
+    semana:S.sem,
+    marca:'ITAÚ BBA EQUITY RESEARCH',
+    titulo:'Weekly Recap',
+    subtitulo:'Steel & Mining · Pulp & Paper',
+    intro:document.getElementById('intro').value,
+    resumo:{
+      commodities:document.getElementById('r-commodities').value,
+      companhias :document.getElementById('r-companhias').value,
+      noticias   :document.getElementById('r-noticias').value,
+    },
+    precos:S.precos, acoes:S.acoes,
+    relatorios:S.relatorios,
+    dias:S.dias,
+    assinatura:{nome:document.getElementById('sig-nome').value,
+                cargo:document.getElementById('sig-cargo').value,
+                contato:document.getElementById('sig-contato').value},
+    dashboard:{url:document.getElementById('sig-dash').value,label:'Dashboard M&M | P&P'},
+  };
+}
+let _htmlAtual='';
+function atualizarPrevia(){
+  const m=modelo();
+  _htmlAtual=W.buildEmail(m);
+  // srcdoc isola o e-mail do CSS desta página (que tem reset `*{margin:0}` e
+  // fonte própria) — sem isso a prévia mentiria sobre como o Outlook desenha.
+  document.getElementById('prev').srcdoc=
+    '<!doctype html><meta charset="utf-8"><body style="margin:0;background:#F7F5F0">'+_htmlAtual+'</body>';
+  document.getElementById('prev-meta').textContent=W.assunto(m);
+}
+
+// ═══════════════ SAÍDA ═══════════════════════════════════════════════════════
+function flash(msg,ok){
+  const el=document.getElementById('status');
+  el.innerHTML=(ok?'<span class="ok">✓ </span>':'')+esc(msg);
+  clearTimeout(flash._t);
+  flash._t=setTimeout(()=>{el.innerHTML='A prévia é o HTML que vai no e-mail — o mesmo em <b>Copiar</b> e em <b>.eml</b>.';},6000);
+}
+async function copiar(){
+  try{
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html' :new Blob([_htmlAtual],{type:'text/html'}),
+      'text/plain':new Blob([_htmlAtual],{type:'text/plain'}),
+    })]);
+    flash('Copiado. Cole no Outlook com Ctrl+V.',true);
+  }catch(e){ console.warn(e); flash('O navegador recusou a área de transferência — use o .eml.'); }
+}
+function baixarEml(){
+  const m=modelo();
+  // `message/rfc822` é o que faz o Windows abrir no Outlook em vez de no bloco de notas.
+  const blob=new Blob([W.buildEml(m,_htmlAtual)],{type:'message/rfc822'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Weekly Recap SM-PP '+ymd(S.sem.fim)+'.eml';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  flash('Arquivo baixado. Abra e envie pelo Outlook.',true);
+}
+
+// ═══════════════ PERSISTÊNCIA ════════════════════════════════════════════════
+// Mora em clipping_config.settings.weekly (RPCs que já existem). Guarda só o que
+// é TEXTO do analista: números e manchetes vêm do banco a cada carga, então o
+// rascunho nunca "congela" um preço velho.
+let _saveT=null;
+function salvar(){
+  if(typeof WKTEST!=='undefined'&&WKTEST) return;   // harness local não fala com o banco
+  clearTimeout(_saveT);
+  _saveT=setTimeout(()=>{
+    S.cfg.weekly={
+      intro:document.getElementById('intro').value,
+      resumo:{commodities:document.getElementById('r-commodities').value,
+              companhias :document.getElementById('r-companhias').value,
+              noticias   :document.getElementById('r-noticias').value},
+      dias:S.dias.map(d=>({data:ymd(d.data),itens:d.itens})),
+      assinatura:{nome:document.getElementById('sig-nome').value,
+                  cargo:document.getElementById('sig-cargo').value,
+                  contato:document.getElementById('sig-contato').value},
+      dashboard:document.getElementById('sig-dash').value,
+      ref:ymd(S.sem.fim),
+    };
+    S.cfg.recent_publications=S.relatorios;   // compartilhada com o Clipping
+    rpc('admin_save_clipping_config',{p_settings:S.cfg}).catch(e=>console.warn('save',e));
+  },900);
+}
+
+// ═══════════════ CARGA GERAL ═════════════════════════════════════════════════
+async function recarregar(){
+  const ref=ymdParse(document.getElementById('ref').value)||new Date();
+  S.sem=W.semanaDe(ref);
+  document.getElementById('ref').value=ymd(S.sem.fim);   // sempre encosta numa sexta
+
+  // esqueleto dos 5 dias úteis; o texto salvo daquela semana volta por cima
+  S.dias=W.diasUteis(S.sem);
+  const salvos=(S.weekly.ref===ymd(S.sem.fim)&&S.weekly.dias)?S.weekly.dias:[];
+  salvos.forEach(sd=>{const alvo=S.dias.find(d=>ymd(d.data)===sd.data); if(alvo) alvo.itens=sd.itens||[];});
+
+  document.getElementById('pr-box').innerHTML='<div class="muted">carregando…</div>';
+  document.getElementById('ac-box').innerHTML='<div class="muted">carregando…</div>';
+  document.getElementById('nw-box').innerHTML='<div class="muted">carregando…</div>';
+
+  const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias()]);
+  r.forEach(x=>{ if(x.status==='rejected') console.warn(x.reason); });
+
+  const sw=document.getElementById('sqlwarn');
+  sw.hidden=!S.semSQL;
+  if(S.semSQL) sw.innerHTML='<div class="warn"><b>Preços não carregaram.</b> A função '
+    +'<code>admin_commodity_window</code> ainda não existe no banco — rode uma vez, no SQL Editor do '
+    +'Supabase, o arquivo <code>admin/supabase_weekly_recap.sql</code>. Enquanto isso dá para digitar '
+    +'os fechamentos à mão nas caixinhas da tabela de preços.</div>';
+
+  renderPrecos(); renderAcoes(); renderNoticias(); atualizarPrevia();
+}
+
+async function carregarConfig(){
+  let c={};
+  try{ c=await rpc('admin_get_clipping_config')||{}; }catch(e){ console.warn('config',e); }
+  S.cfg=c;
+  S.weekly=c.weekly||{};
+  S.relatorios=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  const w=S.weekly;
+  document.getElementById('intro').value=w.intro!=null?w.intro:DEFAULT_INTRO;
+  document.getElementById('r-commodities').value=(w.resumo&&w.resumo.commodities)||'';
+  document.getElementById('r-companhias').value =(w.resumo&&w.resumo.companhias) ||'';
+  document.getElementById('r-noticias').value   =(w.resumo&&w.resumo.noticias)   ||'';
+  const a=w.assinatura||DEFAULT_SIG;
+  document.getElementById('sig-nome').value=a.nome||DEFAULT_SIG.nome;
+  document.getElementById('sig-cargo').value=a.cargo||DEFAULT_SIG.cargo;
+  document.getElementById('sig-contato').value=a.contato||DEFAULT_SIG.contato;
+  document.getElementById('sig-dash').value=w.dashboard||DEFAULT_DASH;
+  renderRelatorios();
+}
+
+function wire(){
+  document.getElementById('reload').addEventListener('click',()=>recarregar());
+  document.getElementById('ref').addEventListener('change',()=>recarregar());
+  document.getElementById('copy').addEventListener('click',copiar);
+  document.getElementById('eml').addEventListener('click',baixarEml);
+  document.getElementById('draft-all').addEventListener('click',()=>{
+    ['commodities','companhias','noticias'].forEach(rascunhar);
+  });
+  document.querySelectorAll('button[data-draft]').forEach(b=>
+    b.addEventListener('click',()=>rascunhar(b.dataset.draft)));
+  document.getElementById('rep-add').addEventListener('click',()=>{
+    S.relatorios.unshift({data:'',setor:'',titulo:'',link:''}); renderRelatorios(); atualizarPrevia(); salvar();
+  });
+  ['intro','r-commodities','r-companhias','r-noticias','sig-nome','sig-cargo','sig-contato','sig-dash']
+    .forEach(id=>document.getElementById(id).addEventListener('input',()=>{atualizarPrevia();salvar();}));
+}
+
+// ═══════════════ HARNESS LOCAL (?wktest=1, só em localhost) ══════════════════
+// Abre a tela sem login, com os números REAIS da semana encerrada em 28/08/2026 —
+// os mesmos do e-mail que o analista mandou como referência. Serve para conferir o
+// desenho do e-mail e mexer no visual sem depender do banco.
+const WKTEST=/[?&]wktest=1/.test(location.search)&&/^(localhost|127\.|\[?::1)/.test(location.hostname);
+const WKTEST_PRECOS=[['IRON_ORE',95.45,98.60],['HRC_CHINA',490,500],['REBAR_TURKEY',580,590],
+                     ['PULP_BHKP_CHINA',564.79,563.64],['PULP_NBSK_CHINA',635.05,638.72]];
+const WKTEST_ACOES=[['USIM5.SA',6.55,7.23],['CSNA3.SA',4.79,5.23],['GGBR4.SA',22.15,23.82],
+                    ['VALE3.SA',75.03,78.39],['SUZB3.SA',44.97,46.21],['IBOV',171032,175696],
+                    ['KLBN11.SA',18.49,18.99],['CMIN3.SA',5.90,5.97],['RANI3.SA',7.74,7.76],
+                    ['AURA33.SA',149.00,145.28]];
+function wktestBoot(){
+  document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+  S.sem=W.semanaDe(new Date(2026,7,31));
+  document.getElementById('ref').value=ymd(S.sem.fim);
+  const par=(a,b)=>[[Date.UTC(2026,7,21,12)/1000,a],[Date.UTC(2026,7,28,12)/1000,b]];
+  const pm=Object.fromEntries(WKTEST_PRECOS.map(g=>[g[0],par(g[1],g[2])]));
+  S.precos=PRECOS.map(p=>{const l=W.linhaDeSerie(p.rotulo,pm[p.code],S.sem,p.casas,'');
+    l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa; return l;});
+  const am=Object.fromEntries(WKTEST_ACOES.map(g=>[g[0],par(g[1],g[2])]));
+  S.acoes=ACOES.map(a=>W.linhaDeSerie(a.rotulo,am[a.ticker],S.sem,a.casas,a.prefixo))
+               .sort((x,y)=>y.delta-x.delta);
+  S.dias=W.diasUteis(S.sem);
+  S.dias[0].itens=[{texto:'Cortes de capacidade de celulose softwood na América do Norte e Europa já afetam cerca de 2,5 milhões de ton/ano, em meio à sobreoferta e pressão sobre margens.'},
+                   {texto:'Carvão metalúrgico CFR China atingiu USD 270,50/ton, maior nível desde março de 2024.'}];
+  S.dias[4].itens=[{texto:'Suzano anunciou aumento de USD 20/ton para BHK na China em setembro após aceleração da recomposição de estoques.'}];
+  S.relatorios=[{data:'24/ago',setor:'Pulp & Paper',titulo:'Itaú BBA on Klabin: Unleashing the Puma 2.0',link:'https://www.itau.com.br/'},
+                {data:'26/ago',setor:'Pulp & Paper',titulo:'LatAm Pulp & Paper: New Short-Term Relief; Old Long-Term Concern',link:'https://www.itau.com.br/'}];
+  document.getElementById('intro').value=DEFAULT_INTRO;
+  document.getElementById('sig-nome').value=DEFAULT_SIG.nome;
+  document.getElementById('sig-cargo').value=DEFAULT_SIG.cargo;
+  document.getElementById('sig-contato').value=DEFAULT_SIG.contato;
+  document.getElementById('sig-dash').value=DEFAULT_DASH;
+  renderPrecos(); renderAcoes(); renderRelatorios(); renderNoticias();
+  ['commodities','companhias','noticias'].forEach(rascunhar);
+  atualizarPrevia();
+}
+
+;(async()=>{
+  wire();
+  document.getElementById('ref').value=ymd(W.semanaDe(new Date()).fim);
+  if(WKTEST){ wktestBoot(); return; }
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _session=session; _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token){_session=s;_setAuthCookie(s);}
+      else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Portão ADMIN-ONLY: esta ferramenta NUNCA é exposta ao cliente (nem com flag ligada).
+    let isAdmin=false;
+    try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role',e); }
+    if(!isAdmin){ try{ isAdmin=(await rpc('is_admin'))===true; }catch(e){ console.warn('is_admin',e); } }
+    if(!isAdmin){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; return; }
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    await carregarConfig();
+    await recarregar();
+  }catch(e){ console.error(e);
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">🗞️</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Weekly indisponível</div>'
+      +'<div class="muted">'+esc(String(e&&e.message||e))+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Voltar para a home</a></div>'; }
+})();
+</script>
+</body>
+</html>
