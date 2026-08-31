@@ -853,8 +853,18 @@ async function loadDaily(){
   _dailyMap=Object.fromEntries(rows.map(q=>[q.ticker,q.daily]));
   _quotes.forEach(q=>{ if(_dailyMap[q.ticker]) q.daily=_dailyMap[q.ticker]; });
 }
+// Os ÚNICOS códigos que esta aba consome: os 3 negociáveis (MKT_COMMS) + os drivers de
+// setor (SECTOR_DRIVER). Nada aqui varre a tabela inteira — sempre se busca por código.
+const COMM_USADAS=[...new Set([...MKT_COMMS.map(c=>c.code),
+  ...Object.values(SECTOR_DRIVER).flat().map(d=>d.code)])];
 async function loadCommodities(){
-  try{ const rows=await restGet('commodities?select=*'); _commByCode={}; rows.forEach(c=>_commByCode[c.code]=c); }catch(e){console.warn('comm',e);}
+  // ⚠️ Era `select=*` nas 29 commodities: 182 KB por visita para usar 6 delas, e trazia
+  // junto o `spark` (as 5 janelas do carrossel, ~1,5 KB/linha), que esta aba não desenha.
+  // Por código e por coluna dá 112 KB — e foi isso que abriu espaço para os 5 anos de
+  // histórico dos drivers de aço caberem sem a página ficar mais pesada do que já era.
+  const cols='code,name,unit,price,change_pct,updated_at,assessed_at,daily';
+  try{ const rows=await restGet(`commodities?select=${cols}&code=in.(${COMM_USADAS.join(',')})`);
+       _commByCode={}; rows.forEach(c=>_commByCode[c.code]=c); }catch(e){console.warn('comm',e);}
 }
 
 /* ── commodity / news helpers ── */
