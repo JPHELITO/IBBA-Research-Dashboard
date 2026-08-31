@@ -29,7 +29,8 @@ window.__RUN__=async function(){
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ctx={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US', Math:Math, isFinite:isFinite, String:String};
   const M=new Function('ctx',`with(ctx){ ${BLOCO}
-    return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip}; }`)(ctx);
+    return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip,
+            _s2RealTermsAxis,_s2RealTermsNote}; }`)(ctx);
 
   const DEF=await (await fetch('/tests/fixtures/sens2d_models.json?v='+Date.now())).json();
   const tabsOf=d=>d.sheets[0].tables;
@@ -164,6 +165,34 @@ window.__RUN__=async function(){
   const hx=M._s2TableHtml(semLeitura,{},ctxOf(DEF.SUZB3));
   ok('eixo sem equivalente na tela: nada de laranja, nada de "At spot"',
      hx.indexOf('At spot')<0 && conta(hx,/s2-cell-hit/g)===0 && conta(hx,/s2-cell-near/g)===0);
+
+  // ── 7. eixo "Real Terms" da Vale: em que dólar ele está escrito ───────────
+  // O Excel da Vale (Ferrous R&C) faz `Nominal = Real × Acummulated US-CPI`, e o índice
+  // acumulado é 1 até 2026 e 1,0304 em 2027 → o eixo de 2027 está em dólares de 2026, que é a
+  // mesma moeda do preço de hoje. Por isso NÃO se deflaciona: o ajuste seria um erro de 4%.
+  const CPI27=1.0304;
+  const rt=M._s2RealTermsAxis(DEF.VALE3);
+  ok('Vale: eixo em real terms detectado, com a base do modelo (ano do model_date)',
+     !!rt && /Real Terms/i.test(rt.label) && rt.base===2026, rt?rt.label+' · base '+rt.base:'não achou');
+  ok('quem não tem eixo em real terms não ganha nota nenhuma',
+     M._s2RealTermsAxis(DEF.CMIN3)===null && M._s2RealTermsAxis(DEF.SUZB3)===null &&
+     M._s2RealTermsAxis(DEF.KLBN11)===null);
+  ok('modelo do ano corrente: a nota diz que o spot já está na base e não leva deflator',
+     /constant 2026 dollars/.test(M._s2RealTermsNote(DEF.VALE3,2026)) &&
+     /no deflator/.test(M._s2RealTermsNote(DEF.VALE3,2026)));
+  ok('modelo de ano anterior: a nota AVISA em vez de inventar fator',
+     /ignores the inflation since 2026/.test(M._s2RealTermsNote(DEF.VALE3,2029)));
+  ok('modelo sem data: nota honesta, sem ano inventado',
+     /does not say which year/.test(M._s2RealTermsNote(
+       Object.assign({},DEF.VALE3,{model_date:null}),2026)));
+  ok('a nota é texto, não muda a marca: o spot do eixo continua nominal',
+     M._s2LiveAxis(tabsOf(DEF.VALE3)[0].colLabel,MV)===SPOT_IO61);
+  // quanto CUSTARIA deflacionar: fica registrado o tamanho do erro que se evitou
+  const t1=tabsOf(DEF.VALE3)[0];
+  const comoEsta=M._s2At(t1,SPOT_CU_TON,SPOT_IO61), deflacionado=M._s2At(t1,SPOT_CU_TON,SPOT_IO61/CPI27);
+  ok('deflacionar mudaria o EBITDA no spot em ~4% (por isso não se faz)',
+     Math.abs(comoEsta-deflacionado)/comoEsta>0.03,
+     'como está '+comoEsta.toFixed(0)+' × deflacionado '+deflacionado.toFixed(0)+' USD mn');
 
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
