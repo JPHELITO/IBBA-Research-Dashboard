@@ -189,6 +189,25 @@ GAB_ACOES.forEach((g,i)=>ok('ação '+g[0]+' fecha em '+g[3]+' (como no e-mail)'
   ok('data ISO malformada devolve null', W.deIso('')===null && W.deIso('xx')===null);
 })();
 
+// ══ 5c. EARNINGS REVIEW — o toggle manda ════════════════════════════════════
+// Regra do analista, textual: "caso esteja desligado, não deve entrar no nosso weekly".
+(function(){
+  const ITENS=[{date:'2026-08-25',sector:'SM',name:'Vale 2Q26',link:'https://x'},
+               {date:'2026-08-10',sector:'SM',name:'Fora da semana',link:''}];
+  ok('DESLIGADO não entra, mesmo com item dentro da semana',
+     W.earningsDaSemana({on:false,label:'2Q26 Review',items:ITENS},SEM)===null);
+  ok('sem o campo `on` também não entra (ausência ≠ ligado)',
+     W.earningsDaSemana({label:'2Q26 Review',items:ITENS},SEM)===null);
+  ok('config inexistente não quebra', W.earningsDaSemana(null,SEM)===null);
+  const on=W.earningsDaSemana({on:true,label:'2Q26 Review',items:ITENS},SEM);
+  ok('LIGADO entra, e só o que é da semana', on && on.itens.length===1, on?on.itens.length:'null');
+  ok('…com o rótulo que o analista escolheu', on.label==='2Q26 Review', on.label);
+  ok('ligado sem nenhum item na semana devolve null (não desenha seção vazia)',
+     W.earningsDaSemana({on:true,label:'x',items:[ITENS[1]]},SEM)===null);
+  ok('rótulo vazio cai no padrão',
+     W.earningsDaSemana({on:true,label:'   ',items:ITENS},SEM).label==='Earnings Review');
+})();
+
 // ══ 6. o HTML do e-mail ══════════════════════════════════════════════════════
 const MODELO={
   semana:SEM, precos:precos, acoes:acoes,
@@ -201,6 +220,18 @@ const MODELO={
   assinatura:{nome:'Daniel Sasson, CFA',cargo:'Equity Research',contato:'daniel.sasson@itaubba.com'},
   dashboard:{url:'https://exemplo.vercel.app',label:'Dashboard M&M | P&P'},
 };
+MODELO.earnings={label:'2Q26 Review',itens:[{data:'25/ago',setor:'Steel & Mining',
+  titulo:'Vale 2Q26: em linha',link:'https://x/er'}]};
+MODELO.comps={y1:'26E',nota:'Estimativas Itaú BBA.',grupos:[
+  {titulo:'MINERAÇÃO',linhas:[
+    {nome:'Vale',ticker:'VALE3',preco:'R$ 78,39',target:'R$ 95,00',upside:21.19,
+     evEbitda:4.68,pe:8.23,dy:6.07}]},
+  {titulo:'SIDERURGIA',linhas:[
+    {nome:'CSN',ticker:'CSNA3',preco:'R$ 5,23',target:'R$ 7,00',upside:33.84,
+     evEbitda:4.99,pe:17.39,dy:2.88},
+    {nome:'Sem modelo',ticker:'XPTO3',preco:'R$ 1,00',target:'',upside:null,
+     evEbitda:null,pe:null,dy:null}]},
+]};
 const HTML=W.buildEmail(MODELO);
 (function(){
   // — a regra que sustenta tudo: o Outlook desenha com o motor do Word —
@@ -265,6 +296,32 @@ const HTML=W.buildEmail(MODELO);
   ok('quem caiu ganha barra vermelha', barras.some(b=>b.cor===W.T.red));
   ok('quem subiu ganha barra verde',  barras.filter(b=>b.cor===W.T.green).length===9);
   ok('há um eixo central de 1px', HTML.indexOf('width="1" style="width:1px;background:'+W.T.axis)>0);
+
+  // — Earnings Review e comp table —
+  ok('o Earnings Review vira seção com o rótulo do analista',
+     HTML.indexOf('2Q26 REVIEW')>0 && HTML.indexOf('Vale 2Q26: em linha')>0);
+  ok('a comp table entra com o cabeçalho preto por setor',
+     HTML.indexOf('MINERAÇÃO')>0 && HTML.indexOf('SIDERURGIA')>0);
+  ok('…com as 6 colunas escolhidas, no ano do modelo',
+     ['PREÇO','TARGET','UPSIDE','EV/EBITDA 26E','P/E 26E','DY 26E']
+       .every(c=>HTML.indexOf(c)>0));
+  ok('…e sem as colunas que ficaram de fora (o e-mail tem 640px)',
+     HTML.indexOf('ND/EBITDA')<0 && HTML.indexOf('P/CE')<0);
+  ok('múltiplo sai com uma casa e o "x"', HTML.indexOf('4,7x')>0, 'ev=4,68');
+  ok('dividend yield sai com o %', HTML.indexOf('6,1%')>0);
+  ok('upside sem casa decimal e em verde',
+     HTML.indexOf('+21%')>0 && HTML.indexOf('color:'+W.T.green+'">+21%')>0);
+  ok('empresa sem modelo sai com travessão, não com zero',
+     HTML.indexOf('Sem modelo')>0 && (HTML.match(/>—</g)||[]).length>=3);
+  ok('a nota de rodapé da comp table aparece', HTML.indexOf('Estimativas Itaú BBA.')>0);
+  ok('a legenda diz que o preço é o mesmo da tabela de cima',
+     HTML.indexOf('o mesmo preço da tabela acima')>0);
+  // com o toggle desligado a seção some inteira
+  const semEr=W.buildEmail(Object.assign({},MODELO,{earnings:null}));
+  ok('sem earnings a seção não é desenhada',
+     semEr.indexOf('2Q26 REVIEW')<0 && semEr.indexOf('Vale 2Q26: em linha')<0);
+  const semComps=W.buildEmail(Object.assign({},MODELO,{comps:null}));
+  ok('sem comp table a seção não é desenhada', semComps.indexOf('MÚLTIPLOS DA COBERTURA')<0);
 
   // — segurança: manchete é texto de terceiro, tem de sair escapada —
   const mau=W.buildEmail(Object.assign({},MODELO,{
@@ -357,15 +414,32 @@ async function guardaDeEscrita(){
      /settings\s*=\s*public\.clipping_config\.settings\s*\|\|/.test(sql));
   ok('…gateada por is_admin()', /admin_save_weekly_config[\s\S]*?is_admin\(\)/.test(sql));
 
+  // ── o preço da comp table é o MESMO da tabela de performance ──────────────
+  // Exigência do analista: "esses preços spot têm que ser iguais aos que estarão no
+  // weekly performance como o do dia de hoje". Isso não é uma coincidência de código:
+  // as duas tabelas leem o fechamento pela MESMA função, na MESMA data.
+  ok('a comp table busca o fechamento com pontoAte(..., S.sem.fim), como a performance',
+     /precoNaData\[r\.ticker\]/.test(src) && /W\.pontoAte\(r\.daily\|\|\[\],\s*S\.sem\.fim\)/.test(src));
+  ok('…e a conta dos múltiplos é a do Stock Guide, não uma cópia',
+     src.indexOf('SG.deriveComps(')>0);
+  ok('…com a lib do Stock Guide carregada na página',
+     src.indexOf('stock-guide-lib.js')>0);
+  ok('o Weekly não redefine nenhuma fórmula de múltiplo',
+     !/function\s+deriveMultiples/.test(src) && !/evEbitdaY1\s*[:=]\s*[^,;]*\//.test(src));
+  ok('empresa sem fechamento na data fica FORA da comp table (não inventa preço)',
+     /if\(r\.livePrice==null\)\s*return;/.test(src));
+
   // e o Clipping segue dono da lista
   const clip = await (await fetch('/clipinator.html?v='+Date.now())).text();
   ok('o Clipping continua gravando pela função dele',
      clip.indexOf('admin_save_clipping_config')>0);
   ok('o Clipping ganhou a data da publicação (é o que o Weekly consulta)',
      clip.indexOf('pub-date')>0 && clip.indexOf("type=\"date\"")>0);
-  ok('…só em Recent Publications (Earnings Review não mudou)',
+  ok('…nas DUAS listas (o Earnings Review também alimenta o weekly)',
      clip.indexOf("renderPubList('cfg-pubs', c.recent_publications, true)")>0 &&
-     clip.indexOf("renderPubList('cfg-earn', c.earnings_review.items)")>0);
+     clip.indexOf("renderPubList('cfg-earn', c.earnings_review.items, true)")>0);
+  ok('o Clipping segue dono do toggle do Earnings Review',
+     clip.indexOf('cfg-earn-on')>0 || /earnings_review\.on/.test(clip));
 }
 
 // ── resultado ────────────────────────────────────────────────────────────────

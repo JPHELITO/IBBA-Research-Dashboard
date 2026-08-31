@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<script src="/stock-guide-lib.js"></script>
 <script src="/weekly-lib.js"></script>
 <style>
 :root{
@@ -262,6 +263,13 @@ html.dark .tk.e{background:rgba(255,255,255,.09);}
         </div>
       </div>
 
+      <!-- Comp table -->
+      <div class="panel">
+        <div class="panel-h"><h2>Múltiplos da cobertura</h2>
+          <span class="sub" id="cp-meta"></span></div>
+        <div class="panel-b"><div id="cp-box" class="muted">carregando…</div></div>
+      </div>
+
       <!-- Notícias -->
       <div class="panel">
         <div class="panel-h"><h2>Principais notícias do setor</h2>
@@ -380,6 +388,8 @@ const S={
   fake:null,                   // séries do harness local (?wktest=1); null = ao vivo
   tickers:[],                  // papéis comparados (escolha do analista, sem teto)
   universo:[],                 // o que existe em `quotes` — alimenta o seletor
+  earnings:null,               // = cfg.earnings_review (só entra se o toggle estiver ON)
+  comps:null,                  // múltiplos no fechamento da sexta ({y1,grupos,nota})
   semSQL:false,
 };
 
@@ -446,6 +456,72 @@ async function carregarAcoes(){
     l.ticker=t; l.nome=q.name||t; l.setor=q.sector||'';
     return l;
   }).sort((x,y)=>(y.delta==null?-1e9:y.delta)-(x.delta==null?-1e9:x.delta));
+}
+
+// ── COMP TABLE, no fechamento da sexta ──────────────────────────────────────
+// A exigência do analista: *"esses preços spot têm que ser iguais aos que estarão no
+// weekly performance como o do dia de hoje"*. Resolvido pela porta certa: a conta é a
+// MESMA função que desenha a aba Stock Guide (`SG.deriveComps`), só que alimentada com
+// um `priceByKey` montado a partir de `quotes.daily` na data de referência, em vez do
+// `quotes.price` ao vivo. Não há fórmula duplicada — trocar o preço é o único delta.
+const GRUPO_NOME={mining:'Mineração', steel:'Siderurgia', pulp_paper:'Papel & Celulose'};
+const GRUPO_ORDEM=['mining','steel','pulp_paper'];
+
+async function carregarComps(){
+  S.comps=null;
+  let comps=[], cfg={};
+  try{
+    comps=await rpc('get_stock_guide_comps')||[];
+    cfg  =((await rpc('get_stock_guide_config'))||[])[0]||{};
+  }catch(e){ console.warn('stock guide',e); return; }
+  if(!comps.length) return;
+
+  // 1) fechamento da sexta de CADA papel do Stock Guide (a mesma série da performance)
+  const syms=[...new Set(comps.map(c=>c.yahoo_symbol).filter(Boolean))];
+  const precoNaData={};
+  if(syms.length){
+    try{
+      const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${syms.map(encodeURIComponent).join(',')})`);
+      rows.forEach(r=>{
+        const pt=W.pontoAte(r.daily||[],S.sem.fim);
+        if(pt){ precoNaData[r.ticker]=pt.v; precoNaData[_rotuloDe(r.ticker)]=pt.v; }
+      });
+    }catch(e){ console.warn('quotes comps',e); }
+  }
+  // 2) câmbio: o ao vivo. Só pesa em empresa cuja moeda-base difere da de negociação,
+  //    e o e-mail não publica o agregado em US$ — então a defasagem não aparece em tela.
+  //    (Não há histórico de FX no banco; inventar um seria pior que assumir o de hoje.)
+  let fx={};
+  try{
+    (await restGet('macro_indicators?select=code,value')).forEach(r=>{
+      const m=/^USD_([A-Z]{3})$/.exec(r.code);
+      if(m && +r.value>0) fx[m[1]]=+r.value;
+    });
+  }catch(e){ /* sem câmbio a lib cai no snapshot do modelo */ }
+
+  const linhas=SG.deriveComps(comps,precoNaData,fx);
+  const porGrupo={};
+  linhas.forEach(r=>{
+    if(r.livePrice==null) return;              // sem fechamento na data → fora da tabela
+    const g=r.group||'mining';
+    (porGrupo[g]=porGrupo[g]||[]).push({
+      nome:r.displayName, ticker:_rotuloDe(r.ticker),
+      preco:_moedaComp(r)+W.num(r.livePrice,_casasDe(r.livePrice)),
+      target:r.target_price!=null?_moedaComp(r)+W.num(r.target_price,_casasDe(r.target_price)):'',
+      upside:r.upsidePct!=null?r.upsidePct*100:null,
+      evEbitda:r.evEbitdaY1, pe:r.peY1, dy:r.divYieldY1,
+    });
+  });
+  const grupos=GRUPO_ORDEM.filter(g=>porGrupo[g]).map(g=>({titulo:(GRUPO_NOME[g]||g).toUpperCase(),
+                                                          linhas:porGrupo[g]}));
+  Object.keys(porGrupo).forEach(g=>{ if(GRUPO_ORDEM.indexOf(g)<0)
+    grupos.push({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:porGrupo[g]}); });
+  S.comps={y1:cfg.y1_label||'26E', grupos:grupos, nota:(cfg.comps_footnote||'').trim()};
+}
+// moeda do papel na comp table: o Stock Guide guarda a moeda de NEGOCIAÇÃO por empresa
+function _moedaComp(r){
+  const c=(r.trade_ccy||'').toUpperCase();
+  return c==='BRL'?'R$ ':c==='USD'?'US$ ':c==='CLP'?'CLP ':c==='MXN'?'MX$ ':c?c+' ':'';
 }
 
 async function carregarNoticias(){
@@ -576,9 +652,12 @@ function desenharPainelTickers(busca){
 function renderRelatorios(){
   const box=document.getElementById('rep-box');
   const daSemana=W.relatoriosDaSemana(S.pubs,S.sem);
-  const semData=(S.pubs||[]).filter(r=>(r.name||'').trim() && !String(r.date||'').slice(0,10)).length;
+  const er=S.earnings||{}, erSemana=W.earningsDaSemana(er,S.sem);
+  const semData=(S.pubs||[]).concat((er.items)||[])
+    .filter(r=>(r.name||'').trim() && !String(r.date||'').slice(0,10)).length;
   document.getElementById('rep-meta').textContent=
-    `${daSemana.length} na semana`+(S.pubs.length?` · ${S.pubs.length} cadastrados`:'');
+    `${daSemana.length+(erSemana?erSemana.itens.length:0)} na semana`
+    +(S.pubs.length?` · ${S.pubs.length} cadastrados`:'');
   const aviso=semData
     ? `<div class="warn" style="margin:0 0 10px"><b>${semData} relatório(s) sem data</b> no Clipping — sem
        ela não dá para saber de que semana são, e eles nunca entram num weekly.
@@ -593,6 +672,54 @@ function renderRelatorios(){
       +'</tbody></table>'
     : '<div class="muted" style="font-size:12px">Nenhum relatório com data entre '
       +esc(W.dbarra(S.sem.ini))+' e '+esc(W.dbarra(S.sem.fim))+'.</div>');
+
+  // ── Earnings Review: entra SÓ se o toggle do Clipping estiver ligado ──
+  // Estado sempre visível na tela, inclusive quando NÃO entra — senão o analista fica
+  // sem saber se o bloco ficou de fora por estar desligado ou por falta de data.
+  const cx=document.createElement('div');
+  cx.style.cssText='margin-top:12px;padding-top:11px;border-top:1px solid var(--border)';
+  const nItens=((er.items)||[]).length;
+  const rot=esc((er.label||'Earnings Review').trim()||'Earnings Review');
+  if(!er.on){
+    cx.innerHTML=`<div class="muted" style="font-size:11.5px"><b>${rot}</b> está
+      <b style="color:var(--gray-mid)">desligado</b> no Clipping — não entra neste weekly
+      (${nItens} item(ns) cadastrados). Ligue lá se quiser incluir.</div>`;
+  } else if(!erSemana){
+    cx.innerHTML=`<div class="muted" style="font-size:11.5px"><b>${rot}</b> está ligado, mas
+      nenhum dos ${nItens} item(ns) tem data dentro da semana.</div>`;
+  } else {
+    cx.innerHTML=`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;
+        letter-spacing:.06em;color:var(--orange);margin-bottom:6px">${rot} · ${erSemana.itens.length} na semana</div>`
+      +`<table class="data"><tbody>`
+      +erSemana.itens.map(r=>`<tr><td style="white-space:nowrap;width:60px">${esc(r.data)}</td>
+        <td style="text-align:left;font-weight:400">${esc(r.titulo)}</td></tr>`).join('')
+      +'</tbody></table>';
+  }
+  box.appendChild(cx);
+}
+
+function renderComps(){
+  const box=document.getElementById('cp-box'); if(!box) return;
+  const c=S.comps;
+  const n=c?c.grupos.reduce((k,g)=>k+g.linhas.length,0):0;
+  document.getElementById('cp-meta').textContent=
+    c?`${n} empresas · múltiplos ${c.y1}`:'sem dados do Stock Guide';
+  if(!c||!n){ box.innerHTML='<div class="muted" style="font-size:12px">Sem comp table: '
+    +'o Stock Guide não devolveu empresas com fechamento em '+esc(W.dbarra(S.sem.fim))+'.</div>'; return; }
+  box.innerHTML=`<table class="data"><thead><tr><th>Empresa</th><th>Preço</th><th>Target</th>
+      <th>Upside</th><th>EV/EBITDA</th><th>P/E</th><th>DY</th></tr></thead><tbody>`
+    +c.grupos.map(g=>`<tr><td colspan="7" style="padding-top:9px;font-size:9.5px;font-weight:700;
+        text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);border-bottom:none">${esc(g.titulo)}</td></tr>`
+      +g.linhas.map(l=>`<tr><td>${esc(l.nome)} <span class="muted" style="font-weight:400">${esc(l.ticker)}</span></td>
+        <td>${esc(l.preco)}</td><td>${esc(l.target||'—')}</td>
+        <td class="${cls(l.upside)}">${l.upside==null?'—':esc(W.pct(l.upside,0))}</td>
+        <td>${l.evEbitda==null?'—':esc(W.num(l.evEbitda,1))+'x'}</td>
+        <td>${l.pe==null?'—':esc(W.num(l.pe,1))+'x'}</td>
+        <td>${l.dy==null?'—':esc(W.num(l.dy,1))+'%'}</td></tr>`).join('')).join('')
+    +'</tbody></table>'
+    +'<div class="hint">Os preços são o fechamento de '+esc(W.dbarra(S.sem.fim))
+    +' — os mesmos da tabela de performance. Os múltiplos são recalculados nesse preço, '
+    +'pela mesma conta do Stock Guide.</div>';
 }
 
 function _takeCls(t){return t==='positive'?'p':t==='negative'?'n':'e';}
@@ -674,6 +801,8 @@ function modelo(){
     },
     precos:S.precos, acoes:S.acoes,
     relatorios:W.relatoriosDaSemana(S.pubs,S.sem),
+    earnings:W.earningsDaSemana(S.earnings,S.sem),
+    comps:S.comps,
     dias:S.dias,
     assinatura:{nome:document.getElementById('sig-nome').value,
                 cargo:document.getElementById('sig-cargo').value,
@@ -768,6 +897,7 @@ async function recarregarPubs(){
   try{
     const c=await rpc('admin_get_clipping_config')||{};
     S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
+    S.earnings=c.earnings_review||null;
   }catch(e){ console.warn('pubs',e); }
 }
 
@@ -786,7 +916,7 @@ async function recarregar(){
   document.getElementById('nw-box').innerHTML='<div class="muted">carregando…</div>';
 
   const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias(),
-                                    recarregarPubs()]);
+                                    recarregarPubs(),carregarComps()]);
   r.forEach(x=>{ if(x.status==='rejected') console.warn(x.reason); });
 
   const sw=document.getElementById('sqlwarn');
@@ -796,7 +926,7 @@ async function recarregar(){
     +'Supabase, o arquivo <code>admin/supabase_weekly_recap.sql</code>. Enquanto isso dá para digitar '
     +'os fechamentos à mão nas caixinhas da tabela de preços.</div>';
 
-  renderPrecos(); renderTickers(); renderAcoes(); renderRelatorios();
+  renderPrecos(); renderTickers(); renderAcoes(); renderRelatorios(); renderComps();
   renderNoticias(); atualizarPrevia();
 }
 
@@ -806,6 +936,7 @@ async function carregarConfig(){
   S.cfg=c;
   S.weekly=c.weekly||{};
   S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  S.earnings=c.earnings_review||null;
   const w=S.weekly;
   // papéis: a escolha guardada; na 1ª visita, a cobertura + IBOV
   S.tickers=(Array.isArray(w.tickers)&&w.tickers.length)?w.tickers.slice():ACOES_PADRAO.slice();
@@ -889,7 +1020,43 @@ function wktestBoot(){
   document.getElementById('sig-cargo').value=DEFAULT_SIG.cargo;
   document.getElementById('sig-contato').value=DEFAULT_SIG.contato;
   document.getElementById('sig-dash').value=DEFAULT_DASH;
-  renderPrecos(); renderRelatorios(); renderNoticias();
+  // Earnings Review LIGADO com um item dentro e um fora da semana, para conferir os dois
+  S.earnings={on:true,label:'2Q26 Review',items:[
+    {date:'2026-08-25',sector:'SM',name:'Vale 2Q26: em linha, com dividendo acima',link:'https://x'},
+    {date:'2026-08-10',sector:'SM',name:'FORA DA SEMANA — não pode aparecer',link:''}]};
+  // comp table: a conta REAL da lib do Stock Guide, no fechamento da sexta
+  const CO=[
+    {ticker:'VALE3',company_name:'Vale',is_visible:true,display_order:1,sector:'iron_ore',
+     yahoo_symbol:'VALE3.SA',shares_outstanding:4200,target_price:95,recommendation:'OP',
+     net_debt_y1:60000,net_debt_y2:55000,ebitda_y1:80000,ebitda_y2:85000,
+     net_income_y1:40000,net_income_y2:44000,dividends_y1:20000,dividends_y2:22000,
+     cash_earnings_y1:50000,ocf_y1:60000,fx_to_base:1,fx_to_usd:0.18,base_ccy:'BRL',trade_ccy:'BRL'},
+    {ticker:'CSNA3',company_name:'CSN',is_visible:true,display_order:2,sector:'steel',
+     yahoo_symbol:'CSNA3.SA',shares_outstanding:1330,target_price:7,recommendation:'MP',
+     net_debt_y1:38000,ebitda_y1:9000,net_income_y1:400,dividends_y1:200,
+     cash_earnings_y1:2500,ocf_y1:3000,fx_to_base:1,fx_to_usd:0.18,base_ccy:'BRL',trade_ccy:'BRL'},
+    {ticker:'SUZB3',company_name:'Suzano',is_visible:true,display_order:3,sector:'pp',
+     yahoo_symbol:'SUZB3.SA',shares_outstanding:1250,target_price:62,recommendation:'OP',
+     net_debt_y1:70000,ebitda_y1:22000,net_income_y1:6000,dividends_y1:2000,
+     cash_earnings_y1:9000,ocf_y1:12000,fx_to_base:1,fx_to_usd:0.18,base_ccy:'BRL',trade_ccy:'BRL'},
+  ];
+  const precoNaData={};
+  ['VALE3.SA','CSNA3.SA','SUZB3.SA'].forEach(t=>{
+    const pt=W.pontoAte(S.fake[t],S.sem.fim);
+    if(pt){ precoNaData[t]=pt.v; precoNaData[_rotuloDe(t)]=pt.v; }
+  });
+  const ls=SG.deriveComps(CO,precoNaData,{BRL:5.45});
+  const pg={};
+  ls.forEach(r=>{ if(r.livePrice==null) return; const g=r.group||'mining';
+    (pg[g]=pg[g]||[]).push({nome:r.displayName,ticker:_rotuloDe(r.ticker),
+      preco:_moedaComp(r)+W.num(r.livePrice,_casasDe(r.livePrice)),
+      target:r.target_price!=null?_moedaComp(r)+W.num(r.target_price,_casasDe(r.target_price)):'',
+      upside:r.upsidePct!=null?r.upsidePct*100:null,
+      evEbitda:r.evEbitdaY1,pe:r.peY1,dy:r.divYieldY1}); });
+  S.comps={y1:'26E',
+    grupos:GRUPO_ORDEM.filter(g=>pg[g]).map(g=>({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:pg[g]})),
+    nota:'Estimativas Itaú BBA. Preços de fechamento.'};
+  renderPrecos(); renderRelatorios(); renderComps(); renderNoticias();
   carregarAcoes().then(()=>{
     renderTickers(); renderAcoes();
     ['commodities','companhias','noticias'].forEach(rascunhar);

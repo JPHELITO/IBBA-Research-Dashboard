@@ -146,6 +146,18 @@ function relatoriosDaSemana(pubs, sem) {
     });
 }
 
+// ── EARNINGS REVIEW ──────────────────────────────────────────────────────────
+// O Clipping tem um bloco opcional ("2Q26 Review" e afins) com um TOGGLE. Regra do
+// analista, textual: *"caso esteja desligado, não deve entrar no nosso weekly"*.
+// Então o `on` é verificado ANTES de qualquer filtro — desligado devolve null e a
+// seção inteira some do e-mail, mesmo que os itens estejam lá e dentro da semana.
+function earningsDaSemana(er, sem) {
+  if (!er || !er.on) return null;
+  var itens = relatoriosDaSemana(er.items, sem);
+  if (!itens.length) return null;
+  return {label: (er.label || 'Earnings Review').trim() || 'Earnings Review', itens: itens};
+}
+
 // ── leitura de série [[epoch_s, valor], ...] ─────────────────────────────────
 // Devolve o ÚLTIMO ponto com data ≤ alvo. É o que faz o fechamento cair no pregão
 // certo mesmo quando a data pedida é feriado — e o que mantém honesto o assessment
@@ -429,6 +441,65 @@ function _blocoNoticias(dias) {
     }).join('') + '</td></tr>';
 }
 
+// ── comp table (molde da "Coverage Summary Table" do Long Story Short) ──────
+// Um cabeçalho PRETO por grupo de setor, como no LSS. As contas NÃO são feitas aqui:
+// chegam prontas de `SG.deriveComps` (stock-guide-lib.js), a mesma função que desenha
+// a aba Stock Guide — só que alimentada com o fechamento da sexta em vez do preço ao
+// vivo. É isso que garante que o preço desta tabela seja o MESMO da coluna "hoje" da
+// tabela de performance, que era a exigência do analista.
+function _tabelaComps(comps) {
+  var grupos = (comps && comps.grupos || []).filter(function (g) { return (g.linhas || []).length; });
+  if (!grupos.length) return '';
+  var y1 = comps.y1 || '26E';
+  var COLS = ['PREÇO', 'TARGET', 'UPSIDE', 'EV/EBITDA ' + y1, 'P/E ' + y1, 'DY ' + y1];
+  var s8 = 'font-family:' + T.sans + ';font-size:8.5pt;';
+  var s7 = 'font-family:' + T.sans + ';font-size:7.5pt;';
+
+  var corpo = grupos.map(function (g, gi) {
+    var cab = '<tr>' +
+      '<td style="background:' + T.ink + ';padding:6.75pt 10.5pt' +
+        (gi === 0 ? ';border-radius:12px 0 0 0' : '') + '">' +
+        _p('<b style="' + s7 + 'color:#FFFFFF;letter-spacing:.9pt">' + _esc(g.titulo) + '</b>') + '</td>' +
+      COLS.map(function (c, i) {
+        return '<td style="background:' + T.ink + ';padding:6.75pt 3.75pt' +
+          (gi === 0 && i === COLS.length - 1 ? ';border-radius:0 12px 0 0' : '') + '">' +
+          _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:#FFFFFF;letter-spacing:.3pt">' +
+             _esc(c) + '</b>', 'text-align:right') + '</td>';
+      }).join('') + '</tr>';
+
+    var linhas = g.linhas.map(function (l, i) {
+      var ult = (gi === grupos.length - 1) && (i === g.linhas.length - 1);
+      var borda = ult ? '' : 'border-bottom:1px solid ' + T.line + ';';
+      var cel = function (txt, cor, negrito) {
+        return '<td style="' + borda + 'padding:6pt 3.75pt">' +
+          _p('<' + (negrito ? 'b' : 'span') + ' style="' + s8 + 'color:' + (cor || T.soft) + '">' +
+             txt + '</' + (negrito ? 'b' : 'span') + '>', 'text-align:right') + '</td>';
+      };
+      return '<tr>' +
+        '<td style="' + borda + 'padding:6pt 10.5pt">' +
+          _p('<b style="' + s8 + 'color:' + T.ink + '">' + _esc(l.nome) + '</b>' +
+             (l.ticker ? ' <span style="' + s8 + 'color:' + T.faint + '">' + _esc(l.ticker) + '</span>' : '')) + '</td>' +
+        cel(_esc(l.preco || '—'), T.ink, true) +
+        cel(_esc(l.target || '—')) +
+        // o upside é a leitura do analista: verde quando o alvo está acima do preço
+        cel(l.upside == null ? '—' : pct(l.upside, 0), corDe(l.upside), true) +
+        cel(l.evEbitda == null ? '—' : num(l.evEbitda, 1) + 'x') +
+        cel(l.pe == null ? '—' : num(l.pe, 1) + 'x') +
+        cel(l.dy == null ? '—' : num(l.dy, 1) + '%') +
+        '</tr>';
+    }).join('');
+    return cab + linhas;
+  }).join('');
+
+  return '<tr><td style="padding:0 ' + T.PAD + '">' +
+    '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"' +
+    ' style="width:100%;background:' + T.card + ';border:1px solid ' + T.border +
+    ';border-radius:12px;border-collapse:separate">' + corpo + '</table>' +
+    (comps.nota ? _p('<span style="font-family:' + T.sans + ';font-size:7.5pt;color:' + T.mute + '">' +
+       _esc(comps.nota) + '</span>', 'margin:6pt 0 0 0') : '') +
+    '</td></tr>';
+}
+
 // ══ O E-MAIL INTEIRO ═════════════════════════════════════════════════════════
 /**
  * model = {
@@ -489,6 +560,21 @@ function buildEmail(m) {
   if ((m.relatorios || []).some(function (r) { return (r.titulo || '').trim(); })) {
     linhas.push(_secao('RELATÓRIOS PUBLICADOS', 'O que saiu na semana'));
     linhas.push(_blocoRelatorios(m.relatorios));
+  }
+
+  // 6b. earnings review (só quando o toggle do Clipping está LIGADO)
+  if (m.earnings && (m.earnings.itens || []).length) {
+    linhas.push(_secao(String(m.earnings.label).toUpperCase(),
+      'Resultados comentados na semana'));
+    linhas.push(_blocoRelatorios(m.earnings.itens));
+  }
+
+  // 6c. comp table (múltiplos no MESMO preço da tabela de performance)
+  if (m.comps && (m.comps.grupos || []).some(function (g) { return (g.linhas || []).length; })) {
+    linhas.push(_secao('MÚLTIPLOS DA COBERTURA',
+      'Estimativas do nosso modelo sobre o fechamento de ' + dbarra(sem.fim) +
+      ' — o mesmo preço da tabela acima'));
+    linhas.push(_tabelaComps(m.comps));
   }
 
   // 7. notícias
@@ -561,6 +647,7 @@ function buildEml(m, html) {
 root.IBBAWeekly = {
   T: T, semanaDe: semanaDe, periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
   pontoAte: pontoAte, linhaDeSerie: linhaDeSerie, relatoriosDaSemana: relatoriosDaSemana,
+  earningsDaSemana: earningsDaSemana,
   num: num, pct: pct, dmes: dmes, dbarra: dbarra, ymd: ymd, deIso: deIso,
   rascunhoCommodities: rascunhoCommodities,
   rascunhoCompanhias: rascunhoCompanhias,
