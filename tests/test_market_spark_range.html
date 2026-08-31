@@ -8,7 +8,7 @@ const xs=svg=>{const m=/points="([^"]+)"/.exec(svg); return m?m[1].trim().split(
 
 window.__RUN__=async function(){
  try{
-  const t=await (await fetch('/market.html?v='+Date.now())).text();
+  const t=(await (await fetch('/market.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const SRC=[
     cut(t,'const _RANGE_DAYS=','};'),
     cut(t,'function _dailyRaw(q){','}'),

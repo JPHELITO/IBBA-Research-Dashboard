@@ -27,7 +27,7 @@ function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new
 const pts=svg=>[...svg.matchAll(/points="([^"]+)"/g)].map(m=>m[1]);
 
 window.__RUN__=async function(){
-  const cru = await (await fetch('/index.html?v='+Date.now())).text();
+  const cru = (await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const t = cru.split('\r\n').join('\n');          // index.html está gravado em CRLF
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
   const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
