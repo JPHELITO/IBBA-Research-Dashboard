@@ -75,3 +75,52 @@ comment on function public.admin_commodity_window(text[], date, date) is
 -- • Cotações — `quotes` (o `daily` leve, mensal + 1 ano diário) já é legível por
 --   usuário logado. As ações do weekly saem de lá, sem RPC.
 -- =============================================================================
+
+-- =============================================================================
+-- ADENDO (31/08/2026) — o Weekly NÃO PODE ESCREVER NA LISTA DO CLIPPING
+--
+-- O QUE ACONTECEU, para não repetir
+-- A 1ª versão da aba Weekly lia o título do relatório em `titulo`, mas o Clipping
+-- grava em `name` — então a lista aparecia EM BRANCO lá, e linha em branco convida
+-- a apagar. O botão de apagar da aba escrevia de volta em `recent_publications`,
+-- que é a lista do CLIPPING. Resultado: publicações perdidas.
+--
+-- Corrigir o nome do campo não bastaria. `admin_save_clipping_config` substitui o
+-- objeto INTEIRO de configuração, então bastava a aba Weekly ter sido aberta antes
+-- de o analista cadastrar algo no Clipping para o próximo salvamento dela devolver
+-- a versão VELHA por cima — last-write-wins, sem ninguém apagar nada de propósito.
+--
+-- A trava é aqui, no banco, e não no código da tela: esta função escreve UMA chave
+-- (`weekly`) e o Postgres funde com o que estiver lá na hora. O que é do Clipping
+-- (`intro`, `recent_publications`, `earnings_review`, `analysts`) fica intocado,
+-- mesmo que a aba Weekly esteja aberta há horas com uma cópia velha na memória.
+--
+-- DESFAZER: drop function if exists public.admin_save_weekly_config(jsonb);
+-- =============================================================================
+
+create or replace function public.admin_save_weekly_config(p_weekly jsonb)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public, pg_temp
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  insert into public.clipping_config (user_id, settings, updated_at)
+  values (auth.uid(), jsonb_build_object('weekly', coalesce(p_weekly, '{}'::jsonb)), now())
+  on conflict (user_id) do update
+    -- `||` funde no nível de cima: troca só a chave 'weekly' e preserva o resto.
+    set settings   = public.clipping_config.settings || jsonb_build_object('weekly', coalesce(p_weekly, '{}'::jsonb)),
+        updated_at = now();
+end;
+$$;
+
+revoke all on function public.admin_save_weekly_config(jsonb) from public, anon;
+grant execute on function public.admin_save_weekly_config(jsonb) to authenticated;
+
+comment on function public.admin_save_weekly_config(jsonb) is
+  'Grava SÓ a chave "weekly" de clipping_config.settings. Existe para a aba Weekly '
+  'Recap nunca poder sobrescrever a lista de publicações nem a mensagem do Clipping.';
