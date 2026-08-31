@@ -283,6 +283,10 @@ table.wl tbody tr.sel td.l{box-shadow:inset 2px 0 0 var(--orange)}
 .tile .t-rw{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
 .tile .t-ch{font-family:var(--mono);font-size:11px;font-weight:600}
 .tile .t-meta{font-size:9px;color:var(--mute)}
+/* risquinho do tile de driver: 12 meses de FORMA, sem eixo e sem números. Fica NEUTRO de
+   propósito — a curva é de um ano e pintá-la com a cor do dia faria a linha mentir sobre o
+   período que desenha (mesma regra do cartão da home). */
+.tile .t-spark{display:block;width:100%;height:24px;margin:5px 0 2px;color:var(--dim);opacity:.85}
 .th-div{width:1px;background:var(--border);align-self:stretch}
 .fwd-host{height:120px;position:relative}
 .fwd-host svg{width:100%;height:100%}
@@ -634,7 +638,19 @@ const SECTOR_DRIVER={
   steel:[{code:'HRC_CHINA',label:'HRC China'},{code:'MET_COAL',label:'Met Coal'},{code:'REBAR_TURKEY',label:'Rebar Turkey'}],
   copper:[{code:'COPPER',label:'Copper'}],
   gold:[{code:'GOLD',label:'Gold'}],
+  // Celulose entrou em 31/08/2026: até então o setor caía num "no Platts price in feed" e
+  // Suzano/Klabin/Irani/CMPC ficavam sem driver nenhum. São os dois índices NET da China
+  // (uma fibra cada: BHKP = eucalipto/hardwood, NBSK = softwood) — os resales ficam de fora
+  // porque são preço doméstico e o carrossel já os pareia lá.
+  pp:[{code:'PULP_BHKP_CHINA',label:'BHKP China'},{code:'PULP_NBSK_CHINA',label:'NBSK China'}],
 };
+
+// ⚠️ Commodities cujo HISTÓRICO em números pode ir para o navegador: minério 62% (Trading
+// Economics) e cobre/ouro (Yahoo) — fontes LIVRES. Todo o resto do painel é assessment PAGO
+// (Platts, Fastmarkets) e sai daqui só como FORMA, sem escala. Em 31/08/2026 o analista
+// chegou a autorizar 5 anos do aço em números e voltou atrás no mesmo dia: "só não deixe que
+// o cliente tenha acesso ao histórico em si, os números". Não incluir código pago nesta lista.
+const COMM_NUMEROS_LIVRES = new Set(['IRON_ORE_62','COPPER','GOLD']);
 const SECTOR_NEWS={steel:'steel',iron_ore:'mining',gold:'mining',copper:'mining',rare_earths:'mining',pp:'pp',index:null,commodity:'mining'};
 
 /* ── setor de RECOMENDAÇÃO do âncora (p/ os chips de comparação) ──
@@ -862,7 +878,10 @@ async function loadCommodities(){
   // junto o `spark` (as 5 janelas do carrossel, ~1,5 KB/linha), que esta aba não desenha.
   // Por código e por coluna dá 112 KB — e foi isso que abriu espaço para os 5 anos de
   // histórico dos drivers de aço caberem sem a página ficar mais pesada do que já era.
-  const cols='code,name,unit,price,change_pct,updated_at,assessed_at,daily';
+  // `spark` volta à busca: é a FORMA (0..1000, sem escala e sem datas) que desenha o
+  // risquinho de cada tile de driver. É o único jeito de dar gráfico às commodities pagas
+  // sem entregar os números — o mesmo arranjo do carrossel da home.
+  const cols='code,name,unit,price,change_pct,updated_at,assessed_at,daily,spark';
   try{ const rows=await restGet(`commodities?select=${cols}&code=in.(${COMM_USADAS.join(',')})`);
        _commByCode={}; rows.forEach(c=>_commByCode[c.code]=c); }catch(e){console.warn('comm',e);}
 }
@@ -1406,10 +1425,22 @@ function _tile(q,clk){ if(!q)return ''; const c=_signCls(q.change_pct);
     <div class="t-nm">${esc(q.name||_short(q.ticker))}</div>
     <div class="t-rw"><span class="t-px mono">${_px(q)}</span><span class="t-ch ${c} mono">${_pctStr(q.change_pct,1)}</span></div>
     <div class="t-meta">${_short(q.ticker)}</div></div>`; }
+// Risquinho do tile de driver, desenhado a partir da FORMA de 12 meses (`spark.y.s`:
+// inteiros 0..1000, sem escala e sem datas). Reusa o `_sparkline` da watchlist passando o
+// ÍNDICE como eixo x — a forma não tem datas de propósito, e é isso que impede reconstruir
+// os preços: min-max deixa duas incógnitas (mínimo e amplitude) e o preço de hoje é só uma
+// equação. Formato antigo (array simples) também serve.
+function _commShape(c){
+  const sp=c&&c.spark;
+  const s=Array.isArray(sp)?sp:(sp&&sp.y&&sp.y.s);
+  return Array.isArray(s)&&s.length>=3 ? s.map((v,i)=>[i,v]) : null;
+}
 function _commTile(code){ const c=_commByCode[code]; if(!c)return ''; const cls=_signCls(c.change_pct), freq=_freqOf(c);
   const note=COMM_NOTE[code]?` · ${COMM_NOTE[code]}`:'';
+  const forma=_commShape(c);
   return `<div class="tile"><div class="t-nm">${esc(c.name||code)}</div>
     <div class="t-rw"><span class="t-px mono">${c.price!=null?c.price.toLocaleString('en-US',{maximumFractionDigits:2}):'—'}</span><span class="t-ch ${cls} mono">${_pctStr(c.change_pct,1)}</span></div>
+    ${forma?_sparkline(forma,'t-spark'):''}
     <div class="t-meta">${esc(c.unit||'')} · ${_fmtAssessed(c.assessed_at,freq)}${note}</div></div>`; }
 function renderThesis(){
   const host=document.getElementById('thesis'); if(!host)return;
@@ -1429,7 +1460,11 @@ function renderThesis(){
   // Histórico da(s) commodity(ies) que importam p/ a empresa (substitui o antigo forward curve).
   // Se o próprio ativo for uma commodity, o "driver" é ela mesma → mostra o histórico dela.
   const histSrc=(sec==='commodity'&&q.isComm&&q.code)?[{code:q.code,label:q.name||_short(q.ticker)}]:drivers;
-  const histDrivers=histSrc.map(d=>({d,c:_commByCode[d.code]})).filter(x=>x.c&&Array.isArray(x.c.daily)&&x.c.daily.length>=5);
+  // ⚠️ só entram aqui as de número LIVRE. Uma linha comparável (preço ou % com base comum)
+  // É a série: com o preço de hoje, que é público, dá para reconstruir todos os passados.
+  // Para as pagas o histórico aparece como risquinho no tile, que não permite essa conta.
+  const histDrivers=histSrc.map(d=>({d,c:_commByCode[d.code]}))
+    .filter(x=>x.c&&COMM_NUMEROS_LIVRES.has(x.c.code)&&Array.isArray(x.c.daily)&&x.c.daily.length>=5);
   if(histDrivers.length){
     const title=histDrivers.length>1?'Drivers — price history':`${esc(histDrivers[0].d.label)} — price history`;
     html+=`<div class="th-div"></div><div class="th-grp" style="flex:1.4;min-width:280px">
