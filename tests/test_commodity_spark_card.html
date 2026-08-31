@@ -1,120 +1,143 @@
-<!doctype html><meta charset="utf-8"><title>risquinho das commodities — contexto + trecho medido</title>
-<body><pre id="out">rodando…</pre><div id="palco" style="width:920px"></div><script>
+<!doctype html><meta charset="utf-8"><title>cartão de commodity — os 4 períodos de uma vez</title>
+<body><pre id="out">rodando…</pre><div id="palco" style="width:519px"></div><script>
 /* Recorta do próprio index.html o desenhador do risquinho e o cartão, e roda contra o
    `spark` REAL do banco (fixtures/commodities_spark_v2.json, tirado em 31/08/2026).
 
-   O que este arquivo trava — tudo defeito que estava NO AR e que o analista viu na tela:
+   O que este arquivo trava — tudo defeito ou decisão que veio da tela, não do log:
    • D e WoW desenhavam a MESMA figura nas 29 commodities (as duas janelas pediam 22
-     pontos; só o número mudava);
-   • HRC China e Rebar Turkey publicavam "YTD +1,83%" e "YoY +1,83%" que eram, na
-     verdade, "desde 23 de junho" — a única história que a série curta delas conta;
+     pontos; só o número mudava). Hoje os quatro períodos aparecem JUNTOS no cartão e o
+     seletor D/WoW/MoM/YTD/YoY do cabeçalho não existe mais.
+   • HRC China e Rebar Turkey publicavam "YTD +1,83%" e "YoY +1,83%" que eram, na verdade,
+     "desde 23 de junho" — a única história que a série curta delas conta.
    • o cartão não pode ficar SEM gráfico: o analista quer a figura mesmo quando o número
-     não existe, e mesmo nas semanais, que não têm curva diária nenhuma. */
+     não existe, e mesmo nas semanais, que não têm curva diária nenhuma.
+   • numa Weekly o número grande é o WoW: o `change_pct` do dia é 0,00% quatro dias em
+     cinco e, no quinto, é cópia exata do WoW logo abaixo.
+   • a ALTURA: a faixa `comm` da home é minmax(0,190px) com overflow:hidden, e a altura
+     está marcada como "não mexer" no CSS. Cartão que passar disso é cortado calado. */
 const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
 function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
 const pts=svg=>[...svg.matchAll(/points="([^"]+)"/g)].map(m=>m[1]);
+const PER=['w','m','ytd','y'];
 
 window.__RUN__=async function(){
   const cru = await (await fetch('/index.html?v='+Date.now())).text();
   const t = cru.split('\r\n').join('\n');          // index.html está gravado em CRLF
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
   const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
-  const LABEL = cut(t,'const PERIOD_LABEL = ',"y:'YoY'};");
-  const SPARK = cut(t,'function _commSpark(sp, b){','</svg>`;\n}');
-  const CARD  = cut(t,'function _kvCard(c){','  </div>`;\n}');
-  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Object, Date, Number};
-  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${LABEL}\n${SPARK}\n${CARD}
-    return {_kvCard, _commSpark, setP:p=>{ctx._commPeriod=p}}; }`)(ctx);
+  const ROWS  = cut(t,'const PERIOD_ROWS = ',"['y','1Y']];");
+  const SPARK = cut(t,'function _commSpark(sp, b, classe){','</svg>`;\n}');
+  // ⚠️ âncora do FIM tem de citar o ${corpo}: `_cmRow` também termina em "</div>`;\n}" e
+  // o corte parava nele, deixando o `_kvCard` de fora ("_kvCard is not defined")
+  const CARD  = cut(t,'function _pctCurto(v){','    ${corpo}\n  </div>`;\n}');
+  const ctx={NUM_LOC:'en-US', Math, Array, Object, Date, Number};
+  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${ROWS}\n${SPARK}\n${CARD}
+    return {_kvCard, _commSpark, _cmRow, PERIOD_ROWS}; }`)(ctx);
 
   const dados = await (await fetch('/tests/fixtures/commodities_spark_v2.json?v='+Date.now())).json();
   const by = Object.fromEntries(dados.map(c=>[c.code,c]));
-  const PER = ['d','w','m','ytd','y'];
-  const card=(c,p)=>{ M.setP(p); return M._kvCard(c); };
 
-  // ── 1. o defeito original: cada botão tem de mudar o DESENHO, não só o número
+  // ── 1. o seletor sumiu e as 4 linhas estão no cartão
+  ok('o seletor D/WoW/MoM/YTD/YoY saiu do cabeçalho', !t.includes('id="comm-range"'));
+  ok('as linhas são W · M · YTD · 1Y, sem o "d"',
+     JSON.stringify(M.PERIOD_ROWS)===JSON.stringify([['w','W'],['m','M'],['ytd','YTD'],['y','1Y']]),
+     JSON.stringify(M.PERIOD_ROWS));
+  let faltando=[];
+  for(const c of dados){
+    const h=M._kvCard(c);
+    if((h.match(/class="cm-row /g)||[]).length!==4) faltando.push(c.code);
+  }
+  ok('todas as 10 commodities desenham as 4 linhas', faltando.length===0, faltando.join(', ')||'10/10');
+
+  // ── 2. o defeito original: cada período tem a SUA curva
   let repetiram=[];
   for(const c of dados){
-    const figuras = PER.map(p=>{ M.setP(p); return pts(M._commSpark(c.spark[p].s, c.spark[p].b))[0]; });
+    const figuras = PER.map(p=>pts(M._commSpark(c.spark[p].s, c.spark[p].b, 'cm-rs'))[0]);
+    // HRC China e Rebar Turkey só têm historico desde 23/06: M, YTD e YoY são honestamente
+    // a mesma série inteira. Nas outras, os 4 períodos são 4 zooms.
+    const esperado = (c.code==='HRC_CHINA'||c.code==='REBAR_TURKEY') ? 2 : 4;
     const unicas = new Set(figuras).size;
-    // HRC China e Rebar Turkey só têm histórico desde 23/06: MoM, YTD e YoY são
-    // honestamente a mesma série inteira. Nas outras, as 5 janelas são 5 zooms.
-    const esperado = (c.code==='HRC_CHINA'||c.code==='REBAR_TURKEY') ? 3 : 5;
     if(unicas < esperado) repetiram.push(c.code+':'+unicas+'/'+esperado);
   }
   ok('cada período desenha a sua própria curva', repetiram.length===0, repetiram.join(', ')||'10/10');
 
-  const dw = c => { M.setP('d'); const a=M._commSpark(c.spark.d.s,c.spark.d.b);
-                    M.setP('w'); const b=M._commSpark(c.spark.w.s,c.spark.w.b); return a!==b; };
-  ok('D ≠ WoW no minério (era idêntico byte a byte)', dw(by.IRON_ORE));
-  ok('D ≠ WoW numa SEMANAL de celulose', dw(by.PULP_BHKP_CHINA));
-  ok('D ≠ WoW no Pellet Premium (o outro semanal)', dw(by.IOBFC04));
-
-  // ── 2. nenhum cartão fica sem gráfico — nem sem número, nem sendo semanal
+  // ── 3. nenhum cartão fica sem gráfico
   let sem=[];
-  for(const c of dados) for(const p of PER){
-    const h=card(c,p);
-    if(!/<svg class="cm-spark"/.test(h) || pts(h).length<3) sem.push(c.code+'/'+p);
-  }
-  ok('todo cartão desenha em todos os 5 períodos', sem.length===0, sem.join(', ')||'50/50');
+  for(const c of dados){ const h=M._kvCard(c);
+    if((h.match(/<svg class="cm-rs"/g)||[]).length!==4) sem.push(c.code); }
+  ok('os 4 risquinhos aparecem em todo cartão', sem.length===0, sem.join(', ')||'40/40');
 
-  // ── 3. o trecho medido: contexto esmaecido + medido em cor cheia, e o preenchimento
-  //      (a área) só embaixo do trecho medido — é o que separa D de WoW quando o zoom
-  //      é parecido
-  const svgD = M._commSpark(by.IRON_ORE.spark.d.s, by.IRON_ORE.spark.d.b);
-  const P = pts(svgD);
-  ok('desenha 4 traços: área, contexto, medido e o pontinho do último preço', P.length===4,
-     'traços='+P.length);
-  ok('o traço de contexto cobre a janela inteira',
-     P[1].split(' ').length === by.IRON_ORE.spark.d.s.length);
-  ok('o traço medido é mais curto que o contexto',
+  // ── 4. contexto esmaecido + trecho medido em cor cheia + pontinho do último preço
+  const svgW = M._commSpark(by.IRON_ORE.spark.w.s, by.IRON_ORE.spark.w.b, 'cm-rs');
+  const P = pts(svgW);
+  ok('4 traços: área, contexto, medido e o pontinho', P.length===4, 'traços='+P.length);
+  ok('o contexto cobre a janela inteira', P[1].split(' ').length===by.IRON_ORE.spark.w.s.length);
+  ok('o trecho medido é mais curto que o contexto',
      P[2].split(' ').length < P[1].split(' ').length,
      P[2].split(' ').length+' de '+P[1].split(' ').length);
-  ok('o pontinho fica no último ponto da curva',
-     P[3]===P[1].split(' ').slice(-1)[0]+' '+P[1].split(' ').slice(-1)[0]);
-  const wowMedido = pts(M._commSpark(by.IRON_ORE.spark.w.s, by.IRON_ORE.spark.w.b))[2];
-  ok('o trecho aceso do WoW é maior que o do D (7 dias contra 1)',
-     wowMedido.split(' ').length > P[2].split(' ').length,
-     'WoW='+wowMedido.split(' ').length+' D='+P[2].split(' ').length);
+  ok('o pontinho fica no último ponto', P[3]===P[1].split(' ').slice(-1)[0]+' '+P[1].split(' ').slice(-1)[0]);
+  ok('o risquinho magro usa traço mais fino que o do cartão grande',
+     /stroke-width="1.3"/.test(svgW) &&
+     /stroke-width="1.9"/.test(M._commSpark(by.IRON_ORE.spark.w.s, by.IRON_ORE.spark.w.b)));
 
-  // ── 4. "—" honesto onde não há histórico, com o motivo no tooltip
-  const hrcYtd = card(by.HRC_CHINA,'ytd'), hrcYoy = card(by.HRC_CHINA,'y');
-  ok('HRC China: YTD mostra "—" e não um número inventado',
-     />—</.test(hrcYtd.match(/<span class="cm-chg">[^<]*<\/span>/)[0]),
-     hrcYtd.match(/<span class="cm-chg">([^<]*)</)[1]);
-  ok('HRC China: YoY também', />—</.test(hrcYoy.match(/<span class="cm-chg">[^<]*<\/span>/)[0]));
-  ok('o tooltip diz por que está "—"', /sem histórico suficiente para YTD/.test(hrcYtd),
-     (hrcYtd.match(/title="([^"]*)"/)||[])[1]);
-  ok('Rebar Turkey idem', />—</.test(card(by.REBAR_TURKEY,'y').match(/<span class="cm-chg">[^<]*<\/span>/)[0]));
-  ok('...mas os dois AINDA desenham no YTD/YoY',
-     pts(card(by.HRC_CHINA,'ytd')).length>=3 && pts(card(by.REBAR_TURKEY,'y')).length>=3);
-  ok('cartão "—" fica neutro (classe flat), não verde nem vermelho',
-     /class="cm-card flat"/.test(hrcYtd));
+  // ── 5. "—" honesto onde não há histórico, com o motivo no tooltip
+  const hrc = M._kvCard(by.HRC_CHINA);
+  ok('HRC China: YTD e 1Y saem "—" e não um número inventado',
+     (hrc.match(/<span class="cm-rv">—<\/span>/g)||[]).length===2,
+     (hrc.match(/<span class="cm-rv">[^<]*<\/span>/g)||[]).join(' '));
+  ok('...mas as duas linhas AINDA desenham', (hrc.match(/<svg class="cm-rs"/g)||[]).length===4);
+  ok('o tooltip diz por que está "—"', /sem histórico suficiente para YTD e 1Y/.test(hrc),
+     (hrc.match(/title="([^"]*)"/)||[])[1]);
+  ok('Rebar Turkey idem',
+     (M._kvCard(by.REBAR_TURKEY).match(/<span class="cm-rv">—<\/span>/g)||[]).length===2);
+  ok('a W e a M do HRC continuam com número', /cm-rv">\+[\d.]+</.test(hrc));
 
-  // ── 5. números: o D vem do Platts (fonte autoritativa), o resto da janela
-  ok('D usa o change_pct da fonte, não o calculado',
-     card(by.IOFAC00,'d').includes(by.IOFAC00.change_pct.toFixed(2)+'%'),
+  // ── 6. o número grande: dia nas diárias, semana nas semanais
+  ok('numa DIÁRIA o número grande é o change_pct da fonte',
+     M._kvCard(by.IOFAC00).includes(by.IOFAC00.change_pct.toFixed(2)+'%'),
      'change_pct='+by.IOFAC00.change_pct);
-  ok('WoW do frete saiu do +12,80% velho para o valor da janela nova',
-     card(by.IOFAC00,'w').includes(by.IOFAC00.spark.w.c.toFixed(2)+'%') &&
-     Math.abs(by.IOFAC00.spark.w.c-12.8)>1, 'WoW='+by.IOFAC00.spark.w.c);
+  const pulp = M._kvCard(by.PULP_NBSK_EUROPE);
+  ok('numa SEMANAL o número grande é o WoW, não o do dia',
+     pulp.includes(by.PULP_NBSK_EUROPE.spark.w.c.toFixed(2)+'%'),
+     'WoW='+by.PULP_NBSK_EUROPE.spark.w.c+' vs dia='+by.PULP_NBSK_EUROPE.change_pct);
+  ok('e o cartão semanal continua marcado como Weekly', pulp.includes('kv-badge wk'));
+  ok('Copper/Gold são Live e seguem no número do dia',
+     M._kvCard(by.COPPER).includes(by.COPPER.change_pct.toFixed(2)+'%'));
 
-  // ── 6. reserva: `spark` no formato ANTIGO (array simples) ainda desenha
+  // ── 7. cor POR LINHA (um cartão pode cair na semana e subir no ano)
+  const gold = M._kvCard(by.GOLD);
+  ok('as linhas têm cores independentes do cartão',
+     gold.includes('cm-row down') && gold.includes('cm-row up'),
+     (gold.match(/cm-row (up|down|flat)/g)||[]).join(' '));
+
+  // ── 8. reserva: formato antigo e ausência de spark não quebram
   const velho={code:'X',name:'Formato antigo',unit:'USD/t',price:100,change_pct:1,
                assessed_at:'2026-08-31',spark:[0,300,600,900,1000]};
-  ok('formato antigo (array) não quebra o cartão', pts(card(velho,'d')).length>=3);
+  ok('formato antigo (array) volta ao desenho único em vez de sumir',
+     M._kvCard(velho).includes('<svg class="cm-spark"'));
   ok('spark ausente não quebra o cartão',
-     card({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,assessed_at:'2026-08-31'},'d')
-       .includes('cm-spark'));
+     M._kvCard({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,
+                assessed_at:'2026-08-31'}).includes('cm-spark'));
 
-  // palco visual: as 10 commodities nos 5 períodos, com o CSS REAL do index.html —
-  // é para conferir a ESTÉTICA a olho, que é metade do pedido do analista
+  // ── 9. ALTURA: o cartão tem de caber na faixa de 190px com overflow:hidden
   const est=document.createElement('style');
   est.textContent=[...t.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
   document.head.appendChild(est);
-  document.getElementById('palco').innerHTML = PER.map(p=>
-    `<h4 style="font:600 12px system-ui;margin:14px 0 4px">${p.toUpperCase()}</h4>
-     <div class="cm-list" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
-       ${dados.map(c=>card(c,p)).join('')}</div>`).join('');
+  const grupos=[['IRON_ORE','MET_COAL','IOFAC00','HRC_CHINA','REBAR_TURKEY'],
+                ['PULP_BHKP_CHINA','PULP_NBSK_EUROPE','IOBFC04','COPPER','GOLD']];
+  // 519×137 = a medida REAL do `#comm-list` na home a 1600px de viewport. Sem travar a
+  // altura o palco dá folga que a home não tem, e o cartão sai mais alto aqui do que lá.
+  document.getElementById('palco').innerHTML = grupos.map(g=>
+    `<div class="kv-list" style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+      grid-auto-rows:minmax(0,1fr);gap:8px;padding:8px 12px 6px;height:137px;overflow:hidden">
+      ${g.map(code=>M._kvCard(by[code])).join('')}</div>`).join('');
+  const alturas=[...document.querySelectorAll('.cm-card')].map(c=>c.getBoundingClientRect().height);
+  const alta=Math.max(...alturas);
+  // 190px da faixa − 59px de cabeçalho/respiro medidos na home = 131px para o cartão
+  ok('o cartão cabe na faixa de 190px da home', alta<=131, 'mais alto='+Math.round(alta)+'px');
+  const larguras=[...document.querySelectorAll('.cm-rs')].map(s=>s.getBoundingClientRect().width);
+  ok('o risquinho de cada linha fica com largura útil', Math.min(...larguras)>=30,
+     'mais estreito='+Math.round(Math.min(...larguras))+'px');
 
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
