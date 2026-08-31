@@ -3158,29 +3158,56 @@ function _fmtAssessed(iso, freq){
   return d.toLocaleDateString(NUM_LOC, {day:'2-digit', month:'short'});
 }
 
-// Risquinho do cartão de commodity. Recebe a FORMA (`spark`: inteiros 0..1000,
-// sem escala e sem datas — o histórico em números não sai do banco) e desenha
-// exatamente como `_sparkline` do heatmap: área a 12% + linha em currentColor.
-function _commSpark(sp){
+// Risquinho do cartão de commodity. Recebe a FORMA (`spark.s`: inteiros 0..1000, sem
+// escala e sem datas — o histórico em números não sai do banco) e `b`, o ponto onde
+// COMEÇA o trecho que a variação do botão mede.
+//
+// Por que dois traços e não um: o preço de uma commodity não tem curva intradiária, e as
+// semanais só andam uma vez por semana — desenhar "só o período" daria um risco reto de
+// dois pontos no D, ou uma escadinha de 4 degraus nas de celulose. Então a linha inteira
+// é CONTEXTO (esmaecida) e o trecho medido sai em cor cheia, com o preenchimento embaixo
+// só dele. Cada botão muda o zoom E o trecho aceso, então D e WoW deixam de ser a mesma
+// figura sem que nenhum cartão fique sem gráfico. Um pontinho marca o último preço.
+function _commSpark(sp, b){
   if(!Array.isArray(sp) || sp.length < 3) return '<div class="cm-spark"></div>';
   const W=100, H=28, pad=3, n=sp.length;
-  const pts = sp.map((v,i)=> `${((i/(n-1))*W).toFixed(1)},${(pad+(1-v/1000)*(H-2*pad)).toFixed(1)}`).join(' ');
+  const xy = i => `${((i/(n-1))*W).toFixed(1)},${(pad+(1-sp[i]/1000)*(H-2*pad)).toFixed(1)}`;
+  const todos = sp.map((_,i)=>xy(i)).join(' ');
+  const i0 = (Number.isInteger(b) && b > 0 && b < n-1) ? b : 0;
+  const medido = sp.slice(i0).map((_,k)=>xy(i0+k)).join(' ');
+  const fim = xy(n-1);
+  // ⚠️ a ÁREA fica embaixo da curva INTEIRA, não só do trecho medido. Preencher só o
+  // trecho desenhava um retângulo estreito colado na direita — nos cartões parados
+  // (Pellet Premium, Rebar Turkey) virava uma barrinha vertical, parecia outro gráfico.
+  // O destaque é o TRAÇO: contexto fino e apagado, trecho medido grosso e cheio.
+  // ⚠️ o SVG é esticado com preserveAspectRatio="none", então <circle> viraria elipse:
+  // o pontinho é um traço de comprimento ZERO com ponta redonda + non-scaling-stroke.
   return `<svg class="cm-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-    <polygon points="0,${H} ${pts} ${W},${H}" fill="currentColor" opacity="0.12"></polygon>
-    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4"
-      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"></polyline>
+    <polygon points="0,${H} ${todos} ${W},${H}" fill="currentColor" opacity="0.10"></polygon>
+    <polyline points="${todos}" fill="none" stroke="currentColor" stroke-width="1.1"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"></polyline>
+    <polyline points="${medido}" fill="none" stroke="currentColor" stroke-width="1.9"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"></polyline>
+    <polyline points="${fim} ${fim}" fill="none" stroke="currentColor" stroke-width="3.6"
+      vector-effect="non-scaling-stroke" stroke-linecap="round"></polyline>
   </svg>`;
 }
 
 function _kvCard(c){
-  // `spark` é um objeto {d,w,m,ytd,y} → {c: variação%, s: forma}. Array = formato antigo
-  // (uma janela só), aceito como reserva enquanto o robô não recalcula.
+  // `spark` é um objeto {d,w,m,ytd,y} → {c: variação%, s: forma, b: início do trecho
+  // medido} + {asof, v}. Array = formato antigo (uma janela só), aceito como reserva
+  // enquanto o robô não recalcula — nele não há `b`, e o risquinho sai todo aceso.
   const per = (c.spark && !Array.isArray(c.spark)) ? c.spark[_commPeriod] : null;
   const forma = per ? per.s : (Array.isArray(c.spark) ? c.spark : null);
   // No D vale o `change_pct` do PLATTS, não o calculado: é o número autoritativo da fonte
   // e o que o painel já mostrava. Nos demais períodos vem da janela.
   const value = c.price, unit = c.unit || '',
         pct = _commPeriod === 'd' ? c.change_pct : (per ? per.c : null);
+  // pct nulo = a série não alcança a âncora do período (ex.: HRC China e Rebar Turkey só
+  // têm histórico desde 23/06/2026 → YTD e YoY não existem). Antes o motor caía no
+  // primeiro ponto da série e publicava "YTD +1,83%" que era, na verdade, "desde 23 de
+  // junho". Agora sai "—" e o tooltip diz por quê — o gráfico continua ali.
+  const semBase = pct == null;
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : value.toFixed(2))
     : '—';
@@ -3194,11 +3221,12 @@ function _kvCard(c){
   const dateStr = _fmtAssessed(c.assessed_at, freq);
   // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
   const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
-  return `<div class="cm-card ${pctCls}" title="${(c.name||'').replace(/"/g,'&quot;')}">
+  const tip = (c.name||'') + (semBase ? ` — sem histórico suficiente para ${PERIOD_LABEL[_commPeriod]||_commPeriod}` : '');
+  return `<div class="cm-card ${pctCls}" title="${tip.replace(/"/g,'&quot;')}">
     <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
     <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
     <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
-    ${_commSpark(forma)}
+    ${_commSpark(forma, per ? per.b : 0)}
   </div>`;
 }
 
@@ -3276,6 +3304,7 @@ async function loadCommSparks(){
 }
 
 // Período ativo do carrossel — mesmos rótulos e mesmo visual do seletor do heatmap.
+const PERIOD_LABEL = {d:'D', w:'WoW', m:'MoM', ytd:'YTD', y:'YoY'};
 let _commPeriod = 'd';
 document.getElementById('comm-range')?.addEventListener('click', e=>{
   const b = e.target.closest('button[data-p]'); if(!b) return;

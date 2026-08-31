@@ -1,0 +1,126 @@
+<!doctype html><meta charset="utf-8"><title>risquinho das commodities — contexto + trecho medido</title>
+<body><pre id="out">rodando…</pre><div id="palco" style="width:920px"></div><script>
+/* Recorta do próprio index.html o desenhador do risquinho e o cartão, e roda contra o
+   `spark` REAL do banco (fixtures/commodities_spark_v2.json, tirado em 31/08/2026).
+
+   O que este arquivo trava — tudo defeito que estava NO AR e que o analista viu na tela:
+   • D e WoW desenhavam a MESMA figura nas 29 commodities (as duas janelas pediam 22
+     pontos; só o número mudava);
+   • HRC China e Rebar Turkey publicavam "YTD +1,83%" e "YoY +1,83%" que eram, na
+     verdade, "desde 23 de junho" — a única história que a série curta delas conta;
+   • o cartão não pode ficar SEM gráfico: o analista quer a figura mesmo quando o número
+     não existe, e mesmo nas semanais, que não têm curva diária nenhuma. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+const pts=svg=>[...svg.matchAll(/points="([^"]+)"/g)].map(m=>m[1]);
+
+window.__RUN__=async function(){
+  const cru = await (await fetch('/index.html?v='+Date.now())).text();
+  const t = cru.split('\r\n').join('\n');          // index.html está gravado em CRLF
+  const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
+  const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
+  const LABEL = cut(t,'const PERIOD_LABEL = ',"y:'YoY'};");
+  const SPARK = cut(t,'function _commSpark(sp, b){','</svg>`;\n}');
+  const CARD  = cut(t,'function _kvCard(c){','  </div>`;\n}');
+  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Object, Date, Number};
+  const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${LABEL}\n${SPARK}\n${CARD}
+    return {_kvCard, _commSpark, setP:p=>{ctx._commPeriod=p}}; }`)(ctx);
+
+  const dados = await (await fetch('/tests/fixtures/commodities_spark_v2.json?v='+Date.now())).json();
+  const by = Object.fromEntries(dados.map(c=>[c.code,c]));
+  const PER = ['d','w','m','ytd','y'];
+  const card=(c,p)=>{ M.setP(p); return M._kvCard(c); };
+
+  // ── 1. o defeito original: cada botão tem de mudar o DESENHO, não só o número
+  let repetiram=[];
+  for(const c of dados){
+    const figuras = PER.map(p=>{ M.setP(p); return pts(M._commSpark(c.spark[p].s, c.spark[p].b))[0]; });
+    const unicas = new Set(figuras).size;
+    // HRC China e Rebar Turkey só têm histórico desde 23/06: MoM, YTD e YoY são
+    // honestamente a mesma série inteira. Nas outras, as 5 janelas são 5 zooms.
+    const esperado = (c.code==='HRC_CHINA'||c.code==='REBAR_TURKEY') ? 3 : 5;
+    if(unicas < esperado) repetiram.push(c.code+':'+unicas+'/'+esperado);
+  }
+  ok('cada período desenha a sua própria curva', repetiram.length===0, repetiram.join(', ')||'10/10');
+
+  const dw = c => { M.setP('d'); const a=M._commSpark(c.spark.d.s,c.spark.d.b);
+                    M.setP('w'); const b=M._commSpark(c.spark.w.s,c.spark.w.b); return a!==b; };
+  ok('D ≠ WoW no minério (era idêntico byte a byte)', dw(by.IRON_ORE));
+  ok('D ≠ WoW numa SEMANAL de celulose', dw(by.PULP_BHKP_CHINA));
+  ok('D ≠ WoW no Pellet Premium (o outro semanal)', dw(by.IOBFC04));
+
+  // ── 2. nenhum cartão fica sem gráfico — nem sem número, nem sendo semanal
+  let sem=[];
+  for(const c of dados) for(const p of PER){
+    const h=card(c,p);
+    if(!/<svg class="cm-spark"/.test(h) || pts(h).length<3) sem.push(c.code+'/'+p);
+  }
+  ok('todo cartão desenha em todos os 5 períodos', sem.length===0, sem.join(', ')||'50/50');
+
+  // ── 3. o trecho medido: contexto esmaecido + medido em cor cheia, e o preenchimento
+  //      (a área) só embaixo do trecho medido — é o que separa D de WoW quando o zoom
+  //      é parecido
+  const svgD = M._commSpark(by.IRON_ORE.spark.d.s, by.IRON_ORE.spark.d.b);
+  const P = pts(svgD);
+  ok('desenha 4 traços: área, contexto, medido e o pontinho do último preço', P.length===4,
+     'traços='+P.length);
+  ok('o traço de contexto cobre a janela inteira',
+     P[1].split(' ').length === by.IRON_ORE.spark.d.s.length);
+  ok('o traço medido é mais curto que o contexto',
+     P[2].split(' ').length < P[1].split(' ').length,
+     P[2].split(' ').length+' de '+P[1].split(' ').length);
+  ok('o pontinho fica no último ponto da curva',
+     P[3]===P[1].split(' ').slice(-1)[0]+' '+P[1].split(' ').slice(-1)[0]);
+  const wowMedido = pts(M._commSpark(by.IRON_ORE.spark.w.s, by.IRON_ORE.spark.w.b))[2];
+  ok('o trecho aceso do WoW é maior que o do D (7 dias contra 1)',
+     wowMedido.split(' ').length > P[2].split(' ').length,
+     'WoW='+wowMedido.split(' ').length+' D='+P[2].split(' ').length);
+
+  // ── 4. "—" honesto onde não há histórico, com o motivo no tooltip
+  const hrcYtd = card(by.HRC_CHINA,'ytd'), hrcYoy = card(by.HRC_CHINA,'y');
+  ok('HRC China: YTD mostra "—" e não um número inventado',
+     />—</.test(hrcYtd.match(/<span class="cm-chg">[^<]*<\/span>/)[0]),
+     hrcYtd.match(/<span class="cm-chg">([^<]*)</)[1]);
+  ok('HRC China: YoY também', />—</.test(hrcYoy.match(/<span class="cm-chg">[^<]*<\/span>/)[0]));
+  ok('o tooltip diz por que está "—"', /sem histórico suficiente para YTD/.test(hrcYtd),
+     (hrcYtd.match(/title="([^"]*)"/)||[])[1]);
+  ok('Rebar Turkey idem', />—</.test(card(by.REBAR_TURKEY,'y').match(/<span class="cm-chg">[^<]*<\/span>/)[0]));
+  ok('...mas os dois AINDA desenham no YTD/YoY',
+     pts(card(by.HRC_CHINA,'ytd')).length>=3 && pts(card(by.REBAR_TURKEY,'y')).length>=3);
+  ok('cartão "—" fica neutro (classe flat), não verde nem vermelho',
+     /class="cm-card flat"/.test(hrcYtd));
+
+  // ── 5. números: o D vem do Platts (fonte autoritativa), o resto da janela
+  ok('D usa o change_pct da fonte, não o calculado',
+     card(by.IOFAC00,'d').includes(by.IOFAC00.change_pct.toFixed(2)+'%'),
+     'change_pct='+by.IOFAC00.change_pct);
+  ok('WoW do frete saiu do +12,80% velho para o valor da janela nova',
+     card(by.IOFAC00,'w').includes(by.IOFAC00.spark.w.c.toFixed(2)+'%') &&
+     Math.abs(by.IOFAC00.spark.w.c-12.8)>1, 'WoW='+by.IOFAC00.spark.w.c);
+
+  // ── 6. reserva: `spark` no formato ANTIGO (array simples) ainda desenha
+  const velho={code:'X',name:'Formato antigo',unit:'USD/t',price:100,change_pct:1,
+               assessed_at:'2026-08-31',spark:[0,300,600,900,1000]};
+  ok('formato antigo (array) não quebra o cartão', pts(card(velho,'d')).length>=3);
+  ok('spark ausente não quebra o cartão',
+     card({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,assessed_at:'2026-08-31'},'d')
+       .includes('cm-spark'));
+
+  // palco visual: as 10 commodities nos 5 períodos, com o CSS REAL do index.html —
+  // é para conferir a ESTÉTICA a olho, que é metade do pedido do analista
+  const est=document.createElement('style');
+  est.textContent=[...t.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
+  document.head.appendChild(est);
+  document.getElementById('palco').innerHTML = PER.map(p=>
+    `<h4 style="font:600 12px system-ui;margin:14px 0 4px">${p.toUpperCase()}</h4>
+     <div class="cm-list" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+       ${dados.map(c=>card(c,p)).join('')}</div>`).join('');
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+`\n\n${R.length-falhas}/${R.length} PASS`+(falhas?`  — ${falhas} FALHA(S)`:'  — tudo ok');
+  window.__RESULT__={total:R.length, falhas, linhas:R};
+};
+__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message+'\n'+e.stack;
+                    window.__RESULT__={erro:e.message};});
+</script>
