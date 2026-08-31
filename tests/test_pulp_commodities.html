@@ -17,11 +17,12 @@ window.__RUN__=async function(){
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
   const DATA  = cut(t,'function _fmtAssessed(iso, freq){',"month:'short'});\n}");
   const GRUPOS= cut(t,'let COMM_GROUPS = [','];');
-  const SPARK = cut(t,'function _commSpark(sp, b){','</svg>`;\n}');
-  const CARD  = cut(t,'function _kvCard(c){','  </div>`;\n}');
-  const LABEL = cut(t,'const PERIOD_LABEL = ',"y:'YoY'};");
+  const SPARK = cut(t,'function _commSpark(sp, b, classe){','</svg>`;\n}');
+  // ⚠️ o fim tem de citar o ${corpo}: `_cmRow` também acaba em "</div>`;\n}"
+  const CARD  = cut(t,'function _pctCurto(v){','    ${corpo}\n  </div>`;\n}');
+  const LABEL = cut(t,'const PERIOD_ROWS = ',"['y','1Y']];");
 
-  const ctx={NUM_LOC:'en-US', _commPeriod:'d', Math, Array, Date, Object, Number};
+  const ctx={NUM_LOC:'en-US', Math, Array, Date, Object, Number};
   const M=new Function('ctx',`with(ctx){ ${FREQ}\n${DATA}\n${GRUPOS}\n${LABEL}\n${SPARK}\n${CARD}
     return {_freqOf, COMM_GROUPS, _kvCard, FREQ_WEEKLY, _fmtAssessed}; }`)(ctx);
 
@@ -58,22 +59,35 @@ window.__RUN__=async function(){
   // ── 3. o cartão desenhado
   // O resale chega da Fastmarkets em YUAN e o robô publica em DÓLAR (a conta da planilha
   // do analista, hunter/prices.py::resale_cny_para_usd) — o cartão nunca mostra yuan.
+  // ⚠️ `change_pct` = 0 de propósito: é o valor REAL destas 6 quatro dias em cinco, porque
+  // o assessment PIX é semanal. Foi o que motivou a regra nova (2026-08-31): numa Weekly o
+  // número grande do cartão é o WoW, não o do dia. Com change_pct ≠ w.c o teste discrimina.
+  const janelas=(w,m,ytd,y)=>({d:{c:0,s:[500,500,500],b:1}, w:{c:w,s:[100,400,900],b:1},
+    m:{c:m,s:[200,500,800],b:1}, ytd:{c:ytd,s:[300,600,900],b:0}, y:{c:y,s:[100,500,900],b:0}});
   const euca={code:'PULP_EUCA_RESALE_CN', name:'BHKP China Resale', unit:'USD/t',
-              price:576.01, change_pct:3.1114, assessed_at:new Date().toISOString().slice(0,10),
-              spark:{d:{c:3.11,s:[100,400,900]}}};
+              price:576.01, change_pct:0, assessed_at:new Date().toISOString().slice(0,10),
+              spark:janelas(3.11, 5.00, 1.88, 15.38)};
   const html=M._kvCard(euca);
   ok('o resale sai em dólar, com 2 casas', html.includes('576.01'), html.slice(0,200));
   ok('a unidade é USD/t (nunca CNY/t)', html.includes('USD/t') && !html.includes('CNY'));
-  ok('a variação é a recalculada em dólar', html.includes('+3.11%'));
+  ok('numa Weekly o número grande é o WoW (em dólar), não o "+0,00%" do dia',
+     html.includes('+3.11%') && !html.includes('+0.00%'),
+     (html.match(/<span class="cm-chg">([^<]*)</)||[])[1]);
   ok('sobe = cartão verde', html.includes('cm-card up'));
   ok('o badge Weekly entra no cartão', html.includes('kv-badge wk')&&html.includes('Weekly'));
-  ok('o risquinho é desenhado', html.includes('<svg class="cm-spark"'));
+  ok('as 4 linhas de período são desenhadas',
+     (html.match(/class="cm-row /g)||[]).length===4 && html.includes('<svg class="cm-rs"'),
+     'linhas='+((html.match(/class="cm-row /g)||[]).length));
+  ok('o "d" não vira linha (a variação do dia é o número grande)',
+     !/>D</.test(html) && html.includes('>W<'));
 
   const nbsk={code:'PULP_NBSK_EUROPE', name:'NBSK Europe', unit:'USD/t', price:1629.77,
-              change_pct:-0.1752, assessed_at:'2026-08-25', spark:{d:{c:-0.18,s:[900,400,100]}}};
+              change_pct:0, assessed_at:'2026-08-25', spark:janelas(-0.18, -1.24, 8.77, 8.97)};
   const h2=M._kvCard(nbsk);
   ok('preço de 4 dígitos com casas decimais', h2.includes('1,629.77'), h2.slice(0,200));
   ok('cai = cartão vermelho e sinal negativo', h2.includes('cm-card down')&&h2.includes('-0.18%'));
+  ok('cada linha tem a SUA cor (a semana cai, o ano sobe no mesmo cartão)',
+     h2.includes('cm-row down')&&h2.includes('cm-row up'));
 
   document.getElementById('out').textContent =
     R.join('\n')+'\n\n'+R.filter(x=>x.startsWith('PASS')).length+'/'+R.length+' OK';

@@ -877,6 +877,38 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .cm-date{font-size:8px;font-weight:500;color:#686868;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cm-spark{display:block;width:100%;flex:1;min-height:16px;margin-top:3px;}
+/* Os 4 períodos DENTRO do cartão (W · M · YTD · 1Y): rótulo, risquinho e variação por
+   linha. Substituíram o gráfico único + o seletor D/WoW/MoM/YTD/YoY do cabeçalho — com os
+   quatro à vista não há o que clicar, e some a dúvida de "qual período estou olhando".
+   ⚠️ Por que EM PÉ e não deitados, como foi pedido: o cartão tem 95px de largura (painel
+   de 519px com 5 cartões), então quatro gráficos lado a lado ficariam com 20px cada — vira
+   rabisco e os números se encostam. Medido num protótipo com os dados reais antes de optar.
+   ⚠️ E por que 4 linhas magras: a faixa `comm` da home é `minmax(0,190px)` e o `kv-list`
+   tem `overflow:hidden` — o que passar disso é CORTADO calado, e a altura da faixa está
+   marcada como "não mexer" (mexer nela encolhe o feed de notícias). Sobrou folga de 5px. */
+.cm-rows{flex:1;min-height:0;margin-top:4px;padding-top:3px;border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px 7px;}
+/* ⚠️ 2×2, e não quatro linhas empilhadas. Em fila (rótulo | risquinho | número) as três
+   colunas dividiam os 76px úteis do cartão e sobravam DEZOITO pixels para o desenho —
+   o mesmo rabisco da versão deitada, só que disfarçado. Empilhando o rótulo e o número
+   ACIMA do risquinho, ele passa a usar a largura inteira da célula (~35px, quase o dobro)
+   e a altura não muda: 2 células de 2 andares ocupam o mesmo que 4 linhas de 1.
+   ⚠️ Medir na tela, não no screenshot: o print sai reamostrado e 18px pareciam 30. */
+.cm-row{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;}
+.cm-rhead{display:flex;align-items:baseline;justify-content:space-between;gap:2px;min-width:0;}
+.cm-rl{font-size:7px;font-weight:700;color:#8A8A8A;letter-spacing:.02em;}
+/* flex:1 em vez de altura fixa — a folga que sobrar vira desenho, e não branco (mesmo
+   truque do `.cm-spark` de antes).
+   ⚠️ O min-height é o PISO, e piso alto aqui não deixa o risquinho maior: deixa o cartão
+   ESTOURAR. O painel não cresce para acomodar (a faixa `comm` é content-sized e o
+   `kv-list` tem `min-height:0` + `overflow:hidden`), então quem não couber é cortado.
+   Medido na home real: até 13px nenhum cartão estoura, em 14px estouram 5. Fica em 10 —
+   o `flex:1` já entrega os ~10px disponíveis e a folga é margem de segurança para tela
+   estreita, zoom do navegador e fonte maior. */
+.cm-rs{display:block;width:100%;flex:1;min-height:10px;}
+.cm-rv{font-size:8.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* a cor é POR LINHA — cada período sobe ou desce por conta, não segue o sinal do dia */
+.cm-row.up{color:#0F5C2B;}.cm-row.down{color:#8E2318;}.cm-row.flat{color:#5F6773;}
 /* Mesmos acentos do heatmap — uma cor por lado no tema todo. O verde/vermelho da casa
    não serve aqui: sobre a chapa do cartão o #16a34a dá 4,1:1 no número e 2,7:1 no
    risquinho (abaixo do mínimo até para desenho). Estes dão 6,6:1 e 7,1:1.
@@ -1181,6 +1213,10 @@ html.dark .cm-val{color:#F2F4F8;}
 html.dark .cm-card.up .cm-chg{color:#4ADE80;}
 html.dark .cm-card.down .cm-chg{color:#F87171;}
 html.dark .cm-card.flat .cm-chg,html.dark .cm-card.flat .cm-spark{color:#98A1AF;}
+html.dark .cm-rl{color:#6E7889;}
+html.dark .cm-rows{border-top-color:#1F2532;}
+html.dark .cm-row.up{color:#4ADE80;}html.dark .cm-row.down{color:#F87171;}
+html.dark .cm-row.flat{color:#98A1AF;}
 html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
 /* ⚠️ `html.dark .comm-dot` tem especificidade (0,2,1) e ganhava de `.comm-dot.on` e
    `.comm-dot:hover`, que são (0,2,0) — no escuro a bolinha ATIVA ficava cinza igual às
@@ -1443,14 +1479,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
     <div class="sec-head">
       <span class="sec-title" id="comm-title">Commodities</span>
       <div class="hm-head-right">
-        <!-- mesma classe/rótulos do seletor do heatmap: um idioma só na home -->
-        <div class="hm-range" id="comm-range">
-          <button data-p="d" class="active">D</button>
-          <button data-p="w">WoW</button>
-          <button data-p="m">MoM</button>
-          <button data-p="ytd">YTD</button>
-          <button data-p="y">YoY</button>
-        </div>
+        <!-- o seletor D/WoW/MoM/YTD/YoY saiu: cada cartão mostra os 4 períodos de uma vez -->
         <span class="sec-meta" id="comm-meta">—</span>
       </div>
     </div>
@@ -3168,8 +3197,12 @@ function _fmtAssessed(iso, freq){
 // é CONTEXTO (esmaecida) e o trecho medido sai em cor cheia, com o preenchimento embaixo
 // só dele. Cada botão muda o zoom E o trecho aceso, então D e WoW deixam de ser a mesma
 // figura sem que nenhum cartão fique sem gráfico. Um pontinho marca o último preço.
-function _commSpark(sp, b){
-  if(!Array.isArray(sp) || sp.length < 3) return '<div class="cm-spark"></div>';
+function _commSpark(sp, b, classe){
+  // `cm-rs` = o risquinho magro das 4 linhas de período (≈45×11). Nesse tamanho os traços
+  // do cartão grande ficam gordos demais (1,9px seriam 17% da altura) — daí a régua menor.
+  const mini = classe === 'cm-rs', cls = classe || 'cm-spark';
+  const g = mini ? {ctx:0.8, med:1.3, dot:2.2} : {ctx:1.1, med:1.9, dot:3.6};
+  if(!Array.isArray(sp) || sp.length < 3) return `<div class="${cls}"></div>`;
   const W=100, H=28, pad=3, n=sp.length;
   const xy = i => `${((i/(n-1))*W).toFixed(1)},${(pad+(1-sp[i]/1000)*(H-2*pad)).toFixed(1)}`;
   const todos = sp.map((_,i)=>xy(i)).join(' ');
@@ -3182,51 +3215,69 @@ function _commSpark(sp, b){
   // O destaque é o TRAÇO: contexto fino e apagado, trecho medido grosso e cheio.
   // ⚠️ o SVG é esticado com preserveAspectRatio="none", então <circle> viraria elipse:
   // o pontinho é um traço de comprimento ZERO com ponta redonda + non-scaling-stroke.
-  return `<svg class="cm-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
     <polygon points="0,${H} ${todos} ${W},${H}" fill="currentColor" opacity="0.10"></polygon>
-    <polyline points="${todos}" fill="none" stroke="currentColor" stroke-width="1.1"
+    <polyline points="${todos}" fill="none" stroke="currentColor" stroke-width="${g.ctx}"
       vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"></polyline>
-    <polyline points="${medido}" fill="none" stroke="currentColor" stroke-width="1.9"
+    <polyline points="${medido}" fill="none" stroke="currentColor" stroke-width="${g.med}"
       vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"></polyline>
-    <polyline points="${fim} ${fim}" fill="none" stroke="currentColor" stroke-width="3.6"
+    <polyline points="${fim} ${fim}" fill="none" stroke="currentColor" stroke-width="${g.dot}"
       vector-effect="non-scaling-stroke" stroke-linecap="round"></polyline>
   </svg>`;
+}
+
+// Formata uma variação: "+2.6" / "-11.7" / "—". Sem o "%" — o cartão é uma coluna de
+// percentuais e repetir o símbolo 4 vezes só rouba largura do risquinho.
+function _pctCurto(v){ return v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`; }
+function _sinal(v){ return v == null ? 'flat' : v > 0.05 ? 'up' : v < -0.05 ? 'down' : 'flat'; }
+
+// Uma das 4 linhas de período do cartão: rótulo · risquinho · variação.
+// `c` nulo (série curta demais para a âncora) sai "—" em cinza, mas COM o gráfico: o
+// analista quer a figura mesmo quando o número não existe.
+function _cmRow(rotulo, per){
+  if(!per) return '';
+  return `<div class="cm-row ${_sinal(per.c)}">
+    <div class="cm-rhead"><span class="cm-rl">${rotulo}</span><span class="cm-rv">${_pctCurto(per.c)}</span></div>
+    ${_commSpark(per.s, per.b, 'cm-rs')}
+  </div>`;
 }
 
 function _kvCard(c){
   // `spark` é um objeto {d,w,m,ytd,y} → {c: variação%, s: forma, b: início do trecho
   // medido} + {asof, v}. Array = formato antigo (uma janela só), aceito como reserva
-  // enquanto o robô não recalcula — nele não há `b`, e o risquinho sai todo aceso.
-  const per = (c.spark && !Array.isArray(c.spark)) ? c.spark[_commPeriod] : null;
-  const forma = per ? per.s : (Array.isArray(c.spark) ? c.spark : null);
-  // No D vale o `change_pct` do PLATTS, não o calculado: é o número autoritativo da fonte
-  // e o que o painel já mostrava. Nos demais períodos vem da janela.
-  const value = c.price, unit = c.unit || '',
-        pct = _commPeriod === 'd' ? c.change_pct : (per ? per.c : null);
-  // pct nulo = a série não alcança a âncora do período (ex.: HRC China e Rebar Turkey só
-  // têm histórico desde 23/06/2026 → YTD e YoY não existem). Antes o motor caía no
-  // primeiro ponto da série e publicava "YTD +1,83%" que era, na verdade, "desde 23 de
-  // junho". Agora sai "—" e o tooltip diz por quê — o gráfico continua ali.
-  const semBase = pct == null;
+  // enquanto o robô não recalcula — nele não há as 4 janelas, e o cartão volta ao
+  // desenho único de antes em vez de ficar vazio.
+  const sp = (c.spark && !Array.isArray(c.spark)) ? c.spark : null;
+  const freq = _freqOf(c);
+  // ⚠️ NAS SEMANAIS O NÚMERO GRANDE É O WoW, não o do dia. As 6 de celulose e o Pellet
+  // Premium só reavaliam 1×/semana: quatro dias em cinco o `change_pct` é 0,00% e no
+  // quinto ele é uma cópia exata do WoW logo abaixo. Nas diárias segue valendo o
+  // `change_pct` da FONTE (Platts/Yahoo), que é o número autoritativo.
+  const semanal = freq === 'Weekly';
+  const pct = semanal ? (sp && sp.w ? sp.w.c : null) : c.change_pct;
+  const value = c.price, unit = c.unit || '';
   const valStr = value != null
     ? (Math.abs(value) >= 100 ? value.toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : value.toFixed(2))
     : '—';
-  let pctCls = 'flat', pctStr = '—';
-  if(pct != null){
-    pctCls = pct > 0.05 ? 'up' : pct < -0.05 ? 'down' : 'flat';
-    pctStr = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
-  }
-  const freq = _freqOf(c);
+  const pctCls = _sinal(pct);
+  const pctStr = pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
   const fcls = freq === 'Weekly' ? 'wk' : freq === 'Live' ? 'live' : 'daily';
   const dateStr = _fmtAssessed(c.assessed_at, freq);
   // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
   const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
-  const tip = (c.name||'') + (semBase ? ` — sem histórico suficiente para ${PERIOD_LABEL[_commPeriod]||_commPeriod}` : '');
+  // sem as 4 janelas (formato antigo ou robô ainda não recalculou) → desenho único
+  const corpo = sp
+    ? `<div class="cm-rows">${PERIOD_ROWS.map(([k,r]) => _cmRow(r, sp[k])).join('')}</div>`
+    : _commSpark(Array.isArray(c.spark) ? c.spark : null, 0);
+  const faltando = sp ? PERIOD_ROWS.filter(([k]) => sp[k] && sp[k].c == null).map(([,r]) => r) : [];
+  const tip = (c.name || '')
+    + (semanal ? ' — variação da semana (assessment semanal)' : '')
+    + (faltando.length ? ` — sem histórico suficiente para ${faltando.join(' e ')}` : '');
   return `<div class="cm-card ${pctCls}" title="${tip.replace(/"/g,'&quot;')}">
     <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
     <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
     <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
-    ${_commSpark(forma, per ? per.b : 0)}
+    ${corpo}
   </div>`;
 }
 
@@ -3303,15 +3354,12 @@ async function loadCommSparks(){
   }catch(e){ console.warn('commodity sparks:', e); }
 }
 
-// Período ativo do carrossel — mesmos rótulos e mesmo visual do seletor do heatmap.
-const PERIOD_LABEL = {d:'D', w:'WoW', m:'MoM', ytd:'YTD', y:'YoY'};
-let _commPeriod = 'd';
-document.getElementById('comm-range')?.addEventListener('click', e=>{
-  const b = e.target.closest('button[data-p]'); if(!b) return;
-  _commPeriod = b.dataset.p;
-  document.querySelectorAll('#comm-range button').forEach(x=>x.classList.toggle('active', x===b));
-  _renderCommPage();
-});
+// As 4 linhas de período do cartão, na ordem: [chave no `spark`, rótulo na tela].
+// O "d" NÃO entra: a variação do dia é o número grande do topo, ao lado do preço.
+// ⚠️ O seletor D/WoW/MoM/YTD/YoY do cabeçalho SAIU daqui (2026-08-31, pedido do analista).
+// Com os quatro períodos à vista não há o que clicar, e some a pergunta "qual período eu
+// estou olhando?" — que era o que fazia D e WoW parecerem o mesmo gráfico.
+const PERIOD_ROWS = [['w','W'], ['m','M'], ['ytd','YTD'], ['y','1Y']];
 
 function _commPageCount(){ return COMM_GROUPS.length; }
 
