@@ -790,20 +790,22 @@ function blDia(iso){
 //
 // A saída não é caprichar no negrito: é dar a cada nível um sinal DIFERENTE EM ESPÉCIE.
 //
-//   ▌ + CAIXA ALTA    seção      NEWS HIGHLIGHTS · HOW MARKETS ARE TRADING · HEADLINES
-//   ▪ + CAIXA ALTA    subdivisão GLOBAL · COMMODITIES · GLOBAL PEERS · S&M · P&P
-//   negrito puro      grupo      Iron ore · Metals & energy · Pulp China · Europe - Live
+//   ▌ + CAIXA ALTA   seção       NEWS HIGHLIGHTS · HOW MARKETS ARE TRADING · HEADLINES
+//   CAIXA ALTA       subdivisão  GLOBAL · COMMODITIES · GLOBAL PEERS · S&M · P&P
+//   Caixa normal     grupo       Iron ore · Metals & energy · Pulp China · Europe - Live
 //
-// O terceiro nível não leva marcador NENHUM, e é de propósito: a ausência de marcador já é
-// o sinal dele. Pôr um terceiro glifo aqui devolveria o problema — três marcas parecidas
-// competindo em vez de três degraus.
+// ⚠️ SÓ A SEÇÃO LEVA MARCADOR. A 1ª versão pôs um ▪ nas subdivisões também e o analista
+// recusou depois de testar: "acho que pode ficar sem nada mesmo ali, só em negrito e em
+// capslock como já era". Ele está certo — com a barra marcando a seção, um segundo glifo
+// vira concorrência, não hierarquia. Abaixo dela a distinção passa a ser a CAIXA: alta
+// para a subdivisão, normal para o grupo. Um sinal por degrau, e nenhum a mais.
 //
 // ⚠️ Marcador é NEGRITO junto com o texto (*▌TÍTULO*), nunca solto antes do asterisco: o
 // WhatsApp só abre negrito quando o asterisco encosta em caractere não-espaço, então
 // "*▌ TÍTULO*" com espaço depois da barra funciona, mas "▌ *TÍTULO*" deixa a barra fina e
 // o título grosso — dois pesos na mesma linha, que é o oposto do que se quer.
 function blH1(t){ return '*▌'+t+'*'; }
-function blH2(t){ return '*▪ '+t+'*'; }
+function blH2(t){ return '*'+t+'*'; }
 
 // No WhatsApp não existe cor: alta e queda têm de vir do GLIFO, senão o leitor tem de ler
 // número por número para saber a direção.
