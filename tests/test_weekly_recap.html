@@ -15,38 +15,79 @@ const W=window.IBBAWeekly;
 const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
 
 // ══ 1. janela da semana ══════════════════════════════════════════════════════
+// A régua é WoW: `fim` é o dia escolhido e `ini` é o MESMO dia da semana anterior.
+// Até 01/09/2026 a função recuava tudo para a sexta mais recente — o que travava a
+// tela em sexta-feira. Os testes abaixo guardam a regra nova.
 (function(){
-  // segunda 31/08/2026 → a semana de referência é a que fechou na sexta 28/08
-  const s=W.semanaDe(new Date(2026,7,31));
-  ok('segunda-feira aponta para a sexta anterior',
+  // sexta 28/08/2026 — o caso de sempre, o weekly de verdade
+  const s=W.semanaDe(new Date(2026,7,28));
+  ok('sexta-feira aponta para ela mesma',
      W.dbarra(s.fim)==='28/08/2026', W.dbarra(s.fim));
   ok('o par de fechamentos é sexta-a-sexta (21 → 28)',
      W.dbarra(s.ini)==='21/08/2026', W.dbarra(s.ini));
   ok('as notícias começam na SEGUNDA da semana que fechou (24/08), não em 21/08',
      W.dbarra(s.seg)==='24/08/2026', W.dbarra(s.seg));
-  // na própria sexta o recap é o da semana que está fechando, não o da anterior
-  ok('sexta-feira aponta para ela mesma',
-     W.dbarra(W.semanaDe(new Date(2026,7,28)).fim)==='28/08/2026');
-  ok('domingo aponta para a sexta anterior',
-     W.dbarra(W.semanaDe(new Date(2026,7,30)).fim)==='28/08/2026');
-  ok('quarta-feira aponta para a sexta anterior (não pula p/ a sexta que vem)',
-     W.dbarra(W.semanaDe(new Date(2026,7,26)).fim)==='21/08/2026',
-     W.dbarra(W.semanaDe(new Date(2026,7,26)).fim));
   ok('período por extenso: "24 a 28 de agosto de 2026"',
      W.periodoLongo(s.seg,s.fim)==='24 a 28 de agosto de 2026', W.periodoLongo(s.seg,s.fim));
-  // virada de mês: 29/09 a 03/10 tem de citar os DOIS meses
-  const v=W.semanaDe(new Date(2026,9,3));
-  ok('semana que vira o mês cita os dois meses',
-     W.periodoLongo(v.seg,v.fim)==='28 de setembro a 2 de outubro de 2026',
-     W.periodoLongo(v.seg,v.fim));
   ok('os 5 dias úteis saem na ordem segunda→sexta',
      W.diasUteis(s).map(d=>d.rotulo).join('|')==='Segunda, 24/ago|Terça, 25/ago|Quarta, 26/ago|Quinta, 27/ago|Sexta, 28/ago',
      W.diasUteis(s).map(d=>d.rotulo).join('|'));
+
+  // ── qualquer dia útil vale como referência ─────────────────────────────────
+  const q=W.semanaDe(new Date(2026,7,26));                 // quarta 26/08
+  ok('quarta-feira aponta para ELA MESMA (não recua para a sexta)',
+     W.dbarra(q.fim)==='26/08/2026', W.dbarra(q.fim));
+  ok('…e compara com a quarta anterior (19/08) — WoW de verdade',
+     W.dbarra(q.ini)==='19/08/2026', W.dbarra(q.ini));
+  ok('…a janela de notícias são os 5 pregões que terminam nela (20/08 → 26/08)',
+     W.dbarra(q.seg)==='20/08/2026', W.dbarra(q.seg));
+  ok('…e ela atravessa o fim de semana SEM sábado nem domingo na lista',
+     W.diasUteis(q).map(d=>d.rotulo).join('|')==='Quinta, 20/ago|Sexta, 21/ago|Segunda, 24/ago|Terça, 25/ago|Quarta, 26/ago',
+     W.diasUteis(q).map(d=>d.rotulo).join('|'));
+
+  const g=W.semanaDe(new Date(2026,7,31));            // segunda 31/08
+  ok('segunda-feira também vale como referência',
+     W.dbarra(g.fim)==='31/08/2026', W.dbarra(g.fim));
+  ok('…contra a segunda anterior (24/08)', W.dbarra(g.ini)==='24/08/2026', W.dbarra(g.ini));
+  ok('…com os 5 pregões terça→segunda',
+     W.diasUteis(g).map(d=>d.rotulo).join('|')==='Terça, 25/ago|Quarta, 26/ago|Quinta, 27/ago|Sexta, 28/ago|Segunda, 31/ago',
+     W.diasUteis(g).map(d=>d.rotulo).join('|'));
+
+  // nenhum dia útil pode gerar sábado/domingo no esqueleto do bloco de notícias
+  let sujo='';
+  for(var i=24;i<=28;i++){
+    W.diasUteis(W.semanaDe(new Date(2026,7,i))).forEach(d=>{
+      if(d.data.getDay()===0||d.data.getDay()===6) sujo+=d.rotulo+' ';
+    });
+  }
+  ok('nenhuma referência produz fim de semana na lista de dias', sujo==='', sujo);
+
+  // ── fim de semana ainda recua (não há pregão nem assessment) ───────────────
+  ok('sábado recua para a sexta',
+     W.dbarra(W.semanaDe(new Date(2026,7,29)).fim)==='28/08/2026',
+     W.dbarra(W.semanaDe(new Date(2026,7,29)).fim));
+  ok('domingo recua para a sexta',
+     W.dbarra(W.semanaDe(new Date(2026,7,30)).fim)==='28/08/2026');
+
+  // ── o PADRÃO da tela continua sendo a sexta mais recente ───────────────────
+  ok('sextaMaisRecente: numa segunda devolve a sexta anterior',
+     W.dbarra(W.sextaMaisRecente(new Date(2026,7,31)))==='28/08/2026',
+     W.dbarra(W.sextaMaisRecente(new Date(2026,7,31))));
+  ok('sextaMaisRecente: numa sexta devolve o próprio dia',
+     W.dbarra(W.sextaMaisRecente(new Date(2026,7,28)))==='28/08/2026');
+  ok('sextaMaisRecente: num domingo devolve a sexta anterior',
+     W.dbarra(W.sextaMaisRecente(new Date(2026,7,30)))==='28/08/2026');
+
+  // virada de mês: 28/09 a 02/10 tem de citar os DOIS meses
+  const v=W.semanaDe(new Date(2026,9,3));                  // sábado → sexta 02/10
+  ok('semana que vira o mês cita os dois meses',
+     W.periodoLongo(v.seg,v.fim)==='28 de setembro a 2 de outubro de 2026',
+     W.periodoLongo(v.seg,v.fim));
 })();
 
 // ══ 2. leitura de série ══════════════════════════════════════════════════════
 (function(){
-  const s=W.semanaDe(new Date(2026,7,31));
+  const s=W.semanaDe(new Date(2026,7,28));
   const serie=[[ts(2026,8,19),90],[ts(2026,8,20),92],[ts(2026,8,21),95.45],
                [ts(2026,8,24),96],[ts(2026,8,27),97],[ts(2026,8,28),98.60]];
   ok('pega o fechamento do dia exato', W.pontoAte(serie,s.fim).v===98.60);
@@ -71,7 +112,7 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
 // então TODAS as linhas apareciam carimbadas com um dia a menos ("27/ago" no
 // assessment de 28). O gabarito acima usa MEIO-DIA UTC e por isso nunca pegou nada.
 (function(){
-  const s=W.semanaDe(new Date(2026,7,31));
+  const s=W.semanaDe(new Date(2026,7,28));
   const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;      // como o robô grava de verdade
   const serie=[[meia(2026,8,21),95.45],[meia(2026,8,28),98.60]];
   const b=W.pontoAte(serie,s.fim), a=W.pontoAte(serie,s.ini);
@@ -131,7 +172,7 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
 // ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
 // Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
 // analista mandou]. A conta da lib tem de bater com a última coluna.
-const SEM=W.semanaDe(new Date(2026,7,31));
+const SEM=W.semanaDe(new Date(2026,7,28));
 const serie2=(a,b)=>[[ts(2026,8,21),a],[ts(2026,8,28),b]];
 const GAB_PRECOS=[
   ['Iodex CFR China 61% Fe', 95.45,  98.60,  '+3,30%',  2],

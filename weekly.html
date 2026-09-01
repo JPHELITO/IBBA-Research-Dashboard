@@ -196,6 +196,7 @@ html.dark .tk.e{background:rgba(255,255,255,.09);}
       <button class="b" id="copy">Copiar para o Outlook</button>
       <button class="b pri" id="eml">Baixar .eml</button>
     </div>
+    <div class="hint" id="janela" style="flex-basis:100%;text-align:right;margin-top:0"></div>
   </div>
 
   <div class="wk-grid">
@@ -402,9 +403,10 @@ function ymdParse(s){const p=String(s||'').split('-').map(Number); return new Da
 // "Hoje" no relógio de SÃO PAULO, não no do navegador: a régua de toda a dashboard é
 // BRT, e a máquina pode estar em outro fuso (ou o relógio do SO, errado).
 function hojeSP(){ return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}); }
-// A coluna da direita só vira PREÇO DE TELA quando a sexta de referência é HOJE — que é
-// o caso de sempre, porque o analista monta o weekly na própria sexta, ~16h/17h, com o
-// pregão ainda aberto. Recap de uma semana já encerrada continua fechamento × fechamento.
+// A coluna da direita só vira PREÇO DE TELA quando o dia de referência é HOJE — que é
+// o caso de sempre no weekly de verdade, porque o analista monta na própria sexta,
+// ~16h/17h, com o pregão ainda aberto. Vale igual num recorte de quarta contra quarta.
+// Referência de um dia já encerrado continua fechamento × fechamento.
 function refEhHoje(){ return !!S.sem && ymd(S.sem.fim)===hojeSP(); }
 // Data efetiva de uma notícia: publicação quando existe, descoberta quando não —
 // a mesma régua do feed (`_effDate` em news.html), para os dois contarem igual.
@@ -962,10 +964,15 @@ async function recarregarPubs(){
 async function recarregar(){
   const ref=ymdParse(document.getElementById('ref').value)||new Date();
   S.sem=W.semanaDe(ref);
-  document.getElementById('ref').value=ymd(S.sem.fim);   // sempre encosta numa sexta
+  // O campo só é reescrito quando o dia escolhido NÃO tem pregão (sábado/domingo, que
+  // `semanaDe` puxa para a sexta). Qualquer dia útil fica como o analista escolheu —
+  // antes daqui saía sempre uma sexta, e era isso que fazia a data "pular de volta".
+  const recuou=ymd(ref)!==ymd(S.sem.fim);
+  if(recuou) document.getElementById('ref').value=ymd(S.sem.fim);
 
   // esqueleto dos 5 dias úteis; o texto salvo daquela semana volta por cima
   S.dias=W.diasUteis(S.sem);
+  janelaHint(recuou);
   const salvos=(S.weekly.ref===ymd(S.sem.fim)&&S.weekly.dias)?S.weekly.dias:[];
   salvos.forEach(sd=>{const alvo=S.dias.find(d=>ymd(d.data)===sd.data); if(alvo) alvo.itens=sd.itens||[];});
 
@@ -986,6 +993,18 @@ async function recarregar(){
 
   renderPrecos(); renderTickers(); renderAcoes(); renderRelatorios(); renderComps();
   renderNoticias(); atualizarPrevia();
+}
+
+// Diz, em português, o par que está sendo comparado — o Δ é SEMPRE WoW (o mesmo dia
+// da semana anterior), então numa quarta a tabela é quarta × quarta. Sem isto o
+// analista não tem como saber se a janela é a que ele quis.
+function janelaHint(recuou){
+  const el=document.getElementById('janela'); if(!el) return;
+  const d=(S.dias&&S.dias.length)?S.dias:W.diasUteis(S.sem);
+  el.innerHTML=(recuou?'<b>Fim de semana não tem pregão</b> — puxei para a sexta. ':'')
+    +'Comparando <b>'+esc(W.diaSemana(S.sem.fim))+'</b> com o fechamento de <b>'
+    +esc(W.diaSemana(S.sem.ini))+'</b> · notícias de '+esc(W.dmes(d[0].data))
+    +' a '+esc(W.dmes(d[d.length-1].data))+'.';
 }
 
 async function carregarConfig(){
@@ -1045,7 +1064,7 @@ const WKTEST_ACOES=[['USIM5.SA',6.55,7.23],['CSNA3.SA',4.79,5.23],['GGBR4.SA',22
                     ['AURA33.SA',149.00,145.28]];
 function wktestBoot(){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
-  S.sem=W.semanaDe(new Date(2026,7,31));
+  S.sem=W.semanaDe(new Date(2026,7,28));      // a sexta do gabarito, não a segunda seguinte
   document.getElementById('ref').value=ymd(S.sem.fim);
   const par=(a,b)=>[[Date.UTC(2026,7,21,12)/1000,a],[Date.UTC(2026,7,28,12)/1000,b]];
   const pm=Object.fromEntries(WKTEST_PRECOS.map(g=>[g[0],par(g[1],g[2])]));
@@ -1064,6 +1083,7 @@ function wktestBoot(){
     name:(META[t]||[])[0]||_rotuloDe(t), sector:(META[t]||[])[1]||'steel',
     exchange:(META[t]||[])[2]||'B3'}));
   S.dias=W.diasUteis(S.sem);
+  janelaHint(false);
   S.dias[0].itens=[{texto:'Cortes de capacidade de celulose softwood na América do Norte e Europa já afetam cerca de 2,5 milhões de ton/ano, em meio à sobreoferta e pressão sobre margens.'},
                    {texto:'Carvão metalúrgico CFR China atingiu USD 270,50/ton, maior nível desde março de 2024.'}];
   S.dias[4].itens=[{texto:'Suzano anunciou aumento de USD 20/ton para BHK na China em setembro após aceleração da recomposição de estoques.'}];
@@ -1124,7 +1144,9 @@ function wktestBoot(){
 
 ;(async()=>{
   wire();
-  document.getElementById('ref').value=ymd(W.semanaDe(new Date()).fim);
+  // Padrão = a sexta mais recente (hoje, se hoje for sexta). É só o VALOR INICIAL:
+  // daqui em diante qualquer dia útil que o analista escolher é respeitado.
+  document.getElementById('ref').value=ymd(W.sextaMaisRecente(new Date()));
   if(WKTEST){ wktestBoot(); return; }
   try{
     const {data:{session}}=await sbAuth.auth.getSession();

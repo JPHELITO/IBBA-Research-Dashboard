@@ -80,16 +80,34 @@ function _rich(s) {
 function corDe(v) { return v > 0 ? T.green : v < 0 ? T.red : T.soft; }
 
 // ── janela da semana ─────────────────────────────────────────────────────────
-// O recap fecha na SEXTA. `fim` = a sexta da semana de referência; `ini` = a sexta
-// anterior (é o par de fechamentos que a tabela compara). As notícias vão de
-// segunda a sexta — por isso `seg` sai de `fim` menos 4 dias, e não de `ini`.
+// A régua é WoW: `fim` = o dia de referência, `ini` = o MESMO dia da semana anterior
+// (`fim` − 7). O par de fechamentos que a tabela compara é sempre esse.
+//
+// ⚠️ MUDOU em 01/09/2026. Antes a função recuava até a sexta mais recente, o que na
+// prática travava a tela em sexta-feira: escolher uma quarta devolvia a sexta anterior
+// e o campo "pulava de volta". Agora QUALQUER DIA ÚTIL vale como referência — quarta
+// contra quarta, segunda contra segunda. Só sábado e domingo recuam para a sexta,
+// porque não há pregão nem assessment nesses dias e a tabela sairia vazia.
+// Para o comportamento antigo (o padrão ao abrir a tela) existe `sextaMaisRecente`.
 function semanaDe(ref) {
   var d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
-  var recuo = (d.getDay() - 5 + 7) % 7;                 // recua até a sexta mais recente
-  var fim = new Date(d.getFullYear(), d.getMonth(), d.getDate() - recuo);
+  var fimDeSemana = d.getDay() === 6 ? 1 : d.getDay() === 0 ? 2 : 0;   // sáb → −1, dom → −2
+  var fim = new Date(d.getFullYear(), d.getMonth(), d.getDate() - fimDeSemana);
   var ini = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - 7);
-  var seg = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - 4);
+  // `seg` = o primeiro dos 5 PREGÕES que terminam em `fim` (é onde o bloco de notícias
+  // começa). Numa sexta a janela é a semana corrida, segunda a sexta (`fim` − 4); em
+  // qualquer outro dia útil ela atravessa um fim de semana e vira `fim` − 6 — por
+  // exemplo, quarta a quarta é quinta-passada → quarta.
+  var seg = new Date(fim.getFullYear(), fim.getMonth(),
+                     fim.getDate() - (fim.getDay() === 5 ? 4 : 6));
   return {ini: ini, fim: fim, seg: seg};
+}
+// A sexta mais recente (hoje, se hoje for sexta). É o PADRÃO ao abrir a tela — o
+// weekly de verdade fecha na sexta — mas não é mais uma trava: o analista pode
+// escolher outro dia no campo de data.
+function sextaMaisRecente(ref) {
+  var d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() - 5 + 7) % 7));
 }
 // Rótulo do período: "24 a 28 de agosto de 2026" (mês por extenso).
 function periodoLongo(seg, sex) {
@@ -99,11 +117,17 @@ function periodoLongo(seg, sex) {
          sex.getDate() + ' de ' + MESLONGO[sex.getMonth()] + ' de ' + sex.getFullYear();
 }
 // Os 5 dias úteis da semana, na ordem — é o esqueleto do bloco de notícias.
+// ⚠️ PULA sábado e domingo em vez de somar 5 dias corridos: quando a referência não é
+// sexta, a janela atravessa o fim de semana (quarta a quarta começa numa quinta) e a
+// versão antiga produzia "Sábado, 29/ago" e "Domingo, 30/ago" como se fossem pregões.
 function diasUteis(sem) {
   var out = [];
-  for (var i = 0; i < 5; i++) {
-    var d = new Date(sem.seg.getFullYear(), sem.seg.getMonth(), sem.seg.getDate() + i);
-    out.push({data: d, rotulo: diaSemana(d), itens: []});
+  var d = new Date(sem.seg.getFullYear(), sem.seg.getMonth(), sem.seg.getDate());
+  while (out.length < 5) {
+    if (d.getDay() !== 0 && d.getDay() !== 6)
+      out.push({data: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+                rotulo: diaSemana(d), itens: []});
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
   }
   return out;
 }
@@ -710,7 +734,8 @@ function buildEml(m, html) {
 }
 
 root.IBBAWeekly = {
-  T: T, semanaDe: semanaDe, periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
+  T: T, semanaDe: semanaDe, sextaMaisRecente: sextaMaisRecente,
+  periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
   pontoAte: pontoAte, diaDoTs: diaDoTs, linhaDeSerie: linhaDeSerie,
   aplicarAoVivo: aplicarAoVivo, ultimoAoVivo: ultimoAoVivo, hhmm: hhmm,
   relatoriosDaSemana: relatoriosDaSemana,
