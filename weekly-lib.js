@@ -173,7 +173,20 @@ function pontoAte(serie, alvo) {
     if (p[0] <= lim) achado = p; else break;      // a série vem em ordem crescente
   }
   if (!achado) return null;
-  return {ts: achado[0], v: Number(achado[1]), data: new Date(achado[0] * 1000)};
+  return {ts: achado[0], v: Number(achado[1]), data: diaDoTs(achado[0])};
+}
+
+// O DIA de um carimbo da série, lido em UTC.
+// ⚠️ ISTO JÁ QUEBROU (01/09/2026): os robôs gravam o assessment à MEIA-NOITE UTC
+// (`fromisoformat(d + 'T00:00:00+00:00')`, em prices.py e nos seeders). `new Date(ts*1000)`
+// devolve um INSTANTE, e ler o dia dele com getDate() é ler no fuso do navegador — em
+// Brasília (UTC−3) a meia-noite UTC de 28/ago é 27/ago às 21h. O número na tela era o
+// certo (o de 28), mas o carimbo ao lado dizia "27/ago" em TODAS as linhas.
+// O teste não pegava porque o gabarito carimba MEIO-DIA UTC, que sobrevive ao fuso.
+// Mesma armadilha do `deIso` logo acima; a diferença é que lá a data já vinha em texto.
+function diaDoTs(ts) {
+  var u = new Date(ts * 1000);
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
 }
 
 // Uma linha de tabela: {rotulo, casas, prefixo, ini:{v,data}, fim:{v,data}, delta}
@@ -185,6 +198,42 @@ function linhaDeSerie(rotulo, serie, sem, casas, prefixo) {
     delta: (a && b && a.v) ? (b.v / a.v - 1) * 100 : null
   };
 }
+
+// ── PREÇO DE TELA ────────────────────────────────────────────────────────────
+// Regra do analista (01/09/2026), textual: *"nunca vou rodar na sexta pós mercado
+// fechar, vou rodar na hora lá, umas 16h/17h... e você irá utilizar a comparação com
+// o preço de tela daquele momento com o fechamento de 1 semana anterior"*.
+//
+// Ou seja: quando a semana de referência é a que está fechando HOJE, a coluna da
+// direita não é fechamento nenhum — ele ainda não existe. É a ÚLTIMA COTAÇÃO PUXADA
+// (`quotes.price` / `commodities.price`, o mesmo número do heatmap e do carrossel).
+// A coluna da esquerda continua sendo o FECHAMENTO da sexta anterior, e o Δ passa a
+// ser tela-de-agora ÷ fechamento-de-uma-semana-atrás.
+//
+// `dia`  = o dia a que a cotação se refere (hoje para ação; `assessed_at` para
+//          commodity, que pode ser de ontem quando o assessment ainda não saiu).
+// `pego` = o instante em que o robô puxou (`updated_at`) — vira o "16h42" da tela.
+//
+// NUNCA ANDA PARA TRÁS: se o histórico já tem ponto mais NOVO que a cotação ao vivo
+// (robô parado há dois dias, fim de semana), o histórico manda e a linha continua
+// sendo fechamento. Preço velho carimbado de "ao vivo" seria pior que não ter.
+function aplicarAoVivo(linha, valor, dia, pego) {
+  var v = Number(valor);
+  if (!linha || valor == null || !isFinite(v) || !dia) return linha;
+  var d = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
+  if (linha.fim && linha.fim.data && linha.fim.data > d) return linha;
+  linha.fim = {ts: Math.floor((pego || d).getTime() / 1000), v: v, data: d};
+  linha.aoVivo = pego || d;
+  linha.delta = (linha.ini && linha.ini.v) ? (v / linha.ini.v - 1) * 100 : null;
+  return linha;
+}
+// O instante mais recente em que alguma linha foi puxada — é o que o e-mail cita.
+function ultimoAoVivo(linhas) {
+  return (linhas || []).reduce(function (m, l) {
+    return (l && l.aoVivo && (!m || l.aoVivo > m)) ? l.aoVivo : m;
+  }, null);
+}
+function hhmm(d) { return d ? _2(d.getHours()) + 'h' + _2(d.getMinutes()) : ''; }
 
 // ══ RASCUNHO DA PROSA ════════════════════════════════════════════════════════
 // Não é IA: é o número virando frase. O analista reescreve por cima — e essa é a
@@ -214,8 +263,13 @@ function rascunhoCommodities(linhas) {
   var ok = (linhas || []).filter(function (l) { return l.fim && l.delta != null; });
   if (!ok.length) return '';
   return ok.map(function (l) {
-    return 'O ' + (l.prosa || l.rotulo) + ' encerrou a semana em ' + _valorProsa(l) +
-           ', ' + _grandeza(l.delta) + '.';
+    // Com o pregão aberto nada "encerrou" coisa nenhuma — o verbo muda junto com o
+    // número, senão o rascunho já nasce mentindo e o analista publica sem reparar.
+    return l.aoVivo
+      ? 'O ' + (l.prosa || l.rotulo) + ' está em ' + _valorProsa(l) +
+        ', ' + _grandeza(l.delta) + ' na semana.'
+      : 'O ' + (l.prosa || l.rotulo) + ' encerrou a semana em ' + _valorProsa(l) +
+        ', ' + _grandeza(l.delta) + '.';
   }).join(' ');
 }
 function rascunhoCompanhias(linhas, idxRotulo) {
@@ -229,7 +283,8 @@ function rascunhoCompanhias(linhas, idxRotulo) {
   var nome = function (l) { return l.rotulo + ' (' + pct(l.delta) + ')'; };
   var t = 'As ações em cobertura tiveram desempenho ' +
     (altas.length >= acoes.length * 0.7 ? 'majoritariamente positivo'
-      : baixas.length >= acoes.length * 0.7 ? 'majoritariamente negativo' : 'misto') + ' na semana';
+      : baixas.length >= acoes.length * 0.7 ? 'majoritariamente negativo' : 'misto') +
+    (ultimoAoVivo(todas) ? ' na semana até agora' : ' na semana');
   if (idx && idx.delta != null) t += ', ante ' + pct(idx.delta) + ' do ' + idxRotulo;
   t += '. ';
   if (altas.length) {
@@ -500,6 +555,17 @@ function _tabelaComps(comps) {
     '</td></tr>';
 }
 
+// A legenda das duas tabelas. Fechamento contra fechamento no caso normal; quando a
+// coluna da direita é PREÇO DE TELA (weekly montado com o pregão aberto), o e-mail diz
+// isso com todas as letras — número de meio de pregão anunciado como "fechamento" é o
+// tipo de erro que só aparece na segunda, quando o cliente compara com a fonte dele.
+function _contra(sem, linhas) {
+  var vivo = ultimoAoVivo(linhas);
+  return 'Fechamento de ' + dbarra(sem.ini) + ' contra ' +
+    (vivo ? 'a última cotação de ' + dbarra(sem.fim) + ', às ' + hhmm(vivo)
+          : dbarra(sem.fim));
+}
+
 // ══ O E-MAIL INTEIRO ═════════════════════════════════════════════════════════
 /**
  * model = {
@@ -543,16 +609,15 @@ function buildEmail(m) {
 
   // 4. preços
   if ((m.precos || []).length) {
-    linhas.push(_secao('PREÇOS', m.fontePrecos ||
-      ('Fechamento de ' + dbarra(sem.ini) + ' contra ' + dbarra(sem.fim) +
+    linhas.push(_secao('PREÇOS', m.fontePrecos || (_contra(sem, m.precos) +
        '. Assessments Platts (aço e minério) e Fastmarkets PIX (celulose)')));
     linhas.push(_tabelaPrecos(m.precos, sem));
   }
 
   // 5. ações
   if ((m.acoes || []).length) {
-    linhas.push(_secao('AÇÕES EM COBERTURA', 'Fechamento de ' + dbarra(sem.ini) + ' contra ' +
-      dbarra(sem.fim) + '. Cada papel na moeda em que negocia'));
+    linhas.push(_secao('AÇÕES EM COBERTURA',
+      _contra(sem, m.acoes) + '. Cada papel na moeda em que negocia'));
     linhas.push(_tabelaAcoes(m.acoes, sem));
   }
 
@@ -646,7 +711,9 @@ function buildEml(m, html) {
 
 root.IBBAWeekly = {
   T: T, semanaDe: semanaDe, periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
-  pontoAte: pontoAte, linhaDeSerie: linhaDeSerie, relatoriosDaSemana: relatoriosDaSemana,
+  pontoAte: pontoAte, diaDoTs: diaDoTs, linhaDeSerie: linhaDeSerie,
+  aplicarAoVivo: aplicarAoVivo, ultimoAoVivo: ultimoAoVivo, hhmm: hhmm,
+  relatoriosDaSemana: relatoriosDaSemana,
   earningsDaSemana: earningsDaSemana,
   num: num, pct: pct, dmes: dmes, dbarra: dbarra, ymd: ymd, deIso: deIso,
   rascunhoCommodities: rascunhoCommodities,

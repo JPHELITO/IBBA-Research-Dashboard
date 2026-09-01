@@ -103,6 +103,9 @@ table.data input[type=number]{width:88px;text-align:right;padding:3px 6px;font-s
 .neg{color:var(--red);font-weight:700;}
 .zero{color:var(--gray-mid);font-weight:700;}
 .stale{font-size:10px;color:var(--orange);font-weight:600;}
+/* "tela 16h42": a coluna da direita não é fechamento, é a cotação do momento. */
+.live{font-size:9.5px;color:var(--green);font-weight:700;letter-spacing:.02em;
+  background:rgba(22,163,74,.13);border-radius:4px;padding:1px 4px;white-space:nowrap;}
 
 .warn{font-size:11.5px;line-height:1.5;background:rgba(255,80,0,.08);border:1px solid rgba(255,80,0,.35);
   border-radius:7px;padding:8px 11px;color:var(--gray-dark);margin-bottom:12px;}
@@ -396,6 +399,13 @@ const S={
 // ── datas ────────────────────────────────────────────────────────────────────
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function ymdParse(s){const p=String(s||'').split('-').map(Number); return new Date(p[0],p[1]-1,p[2]);}
+// "Hoje" no relógio de SÃO PAULO, não no do navegador: a régua de toda a dashboard é
+// BRT, e a máquina pode estar em outro fuso (ou o relógio do SO, errado).
+function hojeSP(){ return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}); }
+// A coluna da direita só vira PREÇO DE TELA quando a sexta de referência é HOJE — que é
+// o caso de sempre, porque o analista monta o weekly na própria sexta, ~16h/17h, com o
+// pregão ainda aberto. Recap de uma semana já encerrada continua fechamento × fechamento.
+function refEhHoje(){ return !!S.sem && ymd(S.sem.fim)===hojeSP(); }
 // Data efetiva de uma notícia: publicação quando existe, descoberta quando não —
 // a mesma régua do feed (`_effDate` em news.html), para os dois contarem igual.
 function effDate(a){const iso=a.published_at||a.found_at; if(!iso) return null;
@@ -422,6 +432,29 @@ async function carregarPrecos(){
     l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa;
     return l;
   });
+  await telaPrecos();
+}
+
+// PREÇO DE TELA das commodities. `commodity_history` é a FOTO que o robô grava 1×/dia;
+// o número do momento mora em `commodities.price` — a mesma coluna que desenha o
+// carrossel da home, então weekly e dashboard nunca divergem.
+// ⚠️ `assessed_at` é o dia do ASSESSMENT, e ele pode ser anterior a hoje: celulose é
+// semanal e o Platts do dia sai de manhã. A linha carimba a data real ao lado do número
+// (o `selo`), então "última cotação" nunca é confundida com "cotação de hoje".
+async function telaPrecos(){
+  if(!refEhHoje()) return;
+  let rows=[];
+  try{
+    rows=await restGet('commodities?select=code,price,assessed_at,updated_at'
+      +`&code=in.(${PRECOS.map(p=>p.code).join(',')})`);
+  }catch(e){ console.warn('preço ao vivo',e); return; }   // sem tela, fica no fechamento
+  const por={}; rows.forEach(r=>{por[r.code]=r;});
+  S.precos.forEach(l=>{
+    const r=por[l.code]; if(!r) return;
+    const dia=ymdParse(String(r.assessed_at||'').slice(0,10));
+    if(!dia||isNaN(dia)) return;
+    W.aplicarAoVivo(l,r.price,dia,r.updated_at?new Date(r.updated_at):null);
+  });
 }
 
 // O universo é o que a dashboard TEM — nada de lista fixa aqui, senão papel novo no
@@ -439,13 +472,16 @@ async function carregarAcoes(){
   const meta={}; S.universo.forEach(q=>{meta[q.ticker]=q;});
   const lista=S.tickers.map(encodeURIComponent).join(',');
   if(!lista){ S.acoes=[]; return; }
-  let porTk={};
+  let porTk={}, vivo={};
   if(S.fake){                                  // harness local (?wktest=1): sem rede
     S.tickers.forEach(t=>{ if(S.fake[t]) porTk[t]=S.fake[t]; });
   } else {
-    const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${lista})`);
-    rows.forEach(r=>{porTk[r.ticker]=r.daily||[];});
+    // `price`/`updated_at` = a cotação AO VIVO (o robô reescreve a linha a cada ~5 min).
+    // Vêm na MESMA busca do `daily`: são colunas da mesma linha, não custam ida extra.
+    const rows=await restGet(`quotes?select=ticker,daily,price,updated_at&ticker=in.(${lista})`);
+    rows.forEach(r=>{porTk[r.ticker]=r.daily||[]; vivo[r.ticker]=r;});
   }
+  const hoje=refEhHoje()?ymdParse(hojeSP()):null;
   S.acoes=S.tickers.map(t=>{
     const q=meta[t]||{}, serie=porTk[t];
     // as casas saem do fechamento do dia; sem série, 2 (o caso comum)
@@ -454,16 +490,22 @@ async function carregarAcoes(){
     const pref=SEM_MOEDA.has(t)?'':(MOEDA[q.exchange]||'');
     const l=W.linhaDeSerie(_rotuloDe(t),serie,S.sem,casas,pref);
     l.ticker=t; l.nome=q.name||t; l.setor=q.sector||'';
+    // Preço de tela ANTES da ordenação: quem lidera a semana é medido pelo mesmo número
+    // que sai no e-mail — senão a ordem da tabela contaria uma história e o Δ, outra.
+    const v=vivo[t];
+    if(hoje&&v) W.aplicarAoVivo(l,v.price,hoje,v.updated_at?new Date(v.updated_at):null);
     return l;
   }).sort((x,y)=>(y.delta==null?-1e9:y.delta)-(x.delta==null?-1e9:x.delta));
 }
 
-// ── COMP TABLE, no fechamento da sexta ──────────────────────────────────────
+// ── COMP TABLE, no mesmo preço da tabela de ações ───────────────────────────
 // A exigência do analista: *"esses preços spot têm que ser iguais aos que estarão no
 // weekly performance como o do dia de hoje"*. Resolvido pela porta certa: a conta é a
 // MESMA função que desenha a aba Stock Guide (`SG.deriveComps`), só que alimentada com
-// um `priceByKey` montado a partir de `quotes.daily` na data de referência, em vez do
-// `quotes.price` ao vivo. Não há fórmula duplicada — trocar o preço é o único delta.
+// um `priceByKey` nosso. Não há fórmula duplicada — trocar o preço é o único delta.
+// E o preço segue a MESMA régua da tabela de ações (`aplicarAoVivo`): tela quando a
+// referência é hoje, fechamento quando a semana já encerrou. Se as duas divergissem,
+// o mesmo papel apareceria com dois preços dentro do mesmo e-mail.
 const GRUPO_NOME={mining:'Mineração', steel:'Siderurgia', pulp_paper:'Papel & Celulose'};
 const GRUPO_ORDEM=['mining','steel','pulp_paper'];
 
@@ -481,10 +523,12 @@ async function carregarComps(){
   const precoNaData={};
   if(syms.length){
     try{
-      const rows=await restGet(`quotes?select=ticker,daily&ticker=in.(${syms.map(encodeURIComponent).join(',')})`);
+      const rows=await restGet(`quotes?select=ticker,daily,price,updated_at&ticker=in.(${syms.map(encodeURIComponent).join(',')})`);
+      const hoje=refEhHoje()?ymdParse(hojeSP()):null;
       rows.forEach(r=>{
-        const pt=W.pontoAte(r.daily||[],S.sem.fim);
-        if(pt){ precoNaData[r.ticker]=pt.v; precoNaData[_rotuloDe(r.ticker)]=pt.v; }
+        const l={fim:W.pontoAte(r.daily||[],S.sem.fim)};
+        if(hoje) W.aplicarAoVivo(l,r.price,hoje,r.updated_at?new Date(r.updated_at):null);
+        if(l.fim){ precoNaData[r.ticker]=l.fim.v; precoNaData[_rotuloDe(r.ticker)]=l.fim.v; }
       });
     }catch(e){ console.warn('quotes comps',e); }
   }
@@ -550,6 +594,19 @@ function selo(pt,alvo){
   return a===b?'':`<span class="stale" title="assessment mais recente até a data pedida"> ${a}</span>`;
 }
 
+// Cabeçalho da coluna da direita: "28/ago" no recap de uma semana já encerrada;
+// "28/ago tela 16h42" quando o número é a cotação do momento, com o pregão aberto.
+function thFim(linhas){
+  const vivo=W.ultimoAoVivo(linhas);
+  return esc(W.dmes(S.sem.fim))+(vivo?` <span class="live">tela ${esc(W.hhmm(vivo))}</span>`:'');
+}
+// A mesma hora no contador do painel — quem olha o cartão de lado vê se o número
+// envelheceu (a página não fica repuxando sozinha; quem repuxa é o ↻ Recarregar).
+function metaVivo(linhas){
+  const vivo=W.ultimoAoVivo(linhas);
+  return vivo?` · última cotação às ${W.hhmm(vivo)}`:'';
+}
+
 // ⚠️ SÓ LEITURA, por decisão do analista (31/08/2026): assessment é o número que a
 // fonte publicou. Havia caixa editável aqui como rede de segurança; ela saiu porque
 // preço "corrigido na mão" é preço que ninguém consegue auditar depois. Se um valor
@@ -559,10 +616,11 @@ function renderPrecos(){
   const box=document.getElementById('pr-box');
   const faltando=S.precos.filter(l=>!l.ini||!l.fim).length;
   document.getElementById('pr-meta').textContent=
-    faltando?`${faltando} sem histórico`:`${S.precos.length} de ${S.precos.length} com histórico`;
+    (faltando?`${faltando} sem histórico`:`${S.precos.length} de ${S.precos.length} com histórico`)
+    +metaVivo(S.precos);
   box.innerHTML=
     `<table class="data"><thead><tr><th>Ativo</th>
-      <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
+      <th>${esc(W.dmes(S.sem.ini))}</th><th>${thFim(S.precos)}</th><th>Δ 7d</th></tr></thead><tbody>`
     +S.precos.map(l=>`<tr>
       <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.unidade)}</span></td>
       <td>${l.ini?esc(W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
@@ -575,10 +633,10 @@ function renderAcoes(){
   const box=document.getElementById('ac-box');
   const faltando=S.acoes.filter(l=>!l.ini||!l.fim).length;
   document.getElementById('ac-meta').textContent=
-    `${S.acoes.length} papéis`+(faltando?` · ${faltando} sem histórico`:'');
+    `${S.acoes.length} papéis`+(faltando?` · ${faltando} sem histórico`:'')+metaVivo(S.acoes);
   box.innerHTML=
     `<table class="data"><thead><tr><th>Ativo</th>
-      <th>${esc(W.dmes(S.sem.ini))}</th><th>${esc(W.dmes(S.sem.fim))}</th><th>Δ 7d</th></tr></thead><tbody>`
+      <th>${esc(W.dmes(S.sem.ini))}</th><th>${thFim(S.acoes)}</th><th>Δ 7d</th></tr></thead><tbody>`
     +(S.acoes.length?S.acoes.map(l=>`<tr>
       <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.nome||'')}</span></td>
       <td>${l.ini?esc(l.prefixo+W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
