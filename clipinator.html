@@ -746,16 +746,18 @@ const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
 // Cobre em USD/lb (é como o carrossel publica e como o analista lê). Nada é convertido: a
 // unidade é a da fonte. Celulose é PIX semanal — sem a data ao lado, o preço engana.
 const BL_GRUPOS = [
-  {rot:'Iron ore', linhas:[
-    {rot:'62%',  code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
-    {rot:'61%',  code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
-  ]},
-  {rot:'Metals & energy', linhas:[
-    {rot:'Copper',   code:'COPPER',   un:'/lb'},
-    {rot:'Brent',    code:'BRENT',    un:'/bbl'},
-    {rot:'Nickel',   code:'NICKEL',   un:'/t'},
-    {rot:'Gold',     code:'GOLD',     un:'/oz'},
-    {rot:'Aluminum', code:'ALUMINUM', un:'/t'},
+  // Minério e metais num bloco SÓ (02/09). A divisão em dois grupos custava um nível de
+  // hierarquia — e o WhatsApp só tem dois — sem separar nada que o leitor precise separar.
+  // ⚠️ Sem o cabeçalho do grupo, o rótulo tem de voltar a ser INTEIRO: "62%" sozinho não
+  // diz de que se trata.
+  {rot:'Commodities', linhas:[
+    {rot:'Iron Ore 62%', code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
+    {rot:'Iron Ore 61%', code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
+    {rot:'Copper',       code:'COPPER',       un:'/lb'},
+    {rot:'Brent',        code:'BRENT',        un:'/bbl'},
+    {rot:'Nickel',       code:'NICKEL',       un:'/t'},
+    {rot:'Gold',         code:'GOLD',         un:'/oz'},
+    {rot:'Aluminum',     code:'ALUMINUM',     un:'/t'},
   ]},
   // Celulose em DOIS grupos, como no carrossel da dashboard — e não por estética: China e
   // Europa têm datas de assessment DIFERENTES (medido em 01/09: China 28/ago, Europa 01/set),
@@ -783,8 +785,23 @@ function blDia(iso){
   const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); if(!m) return '';
   return m[3]+'/'+BL_MES[+m[2]-1];
 }
-// No WhatsApp não existe cor: alta e queda têm de vir do GLIFO, senão o leitor tem de ler
-// número por número para saber a direção.
+// ── HIERARQUIA (02/09) ───────────────────────────────────────────────────────
+// O WhatsApp dá exatamente DUAS ferramentas de tipografia: negrito e itálico. Tamanho de
+// letra não existe. Com três níveis de título (HOW MARKETS ARE TRADING > COMMODITIES >
+// Iron ore) os três saíam IDÊNTICOS na tela — não dava para saber o que estava dentro do
+// quê. A saída não é caprichar no negrito, é achatar para dois níveis e dar ao primeiro um
+// sinal que não seja tipográfico:
+//     régua + CAIXA ALTA  = seção
+//     negrito caixa normal = bloco dentro dela
+// Sumiram junto os invólucros GLOBAL (embrulhava UMA linha) e GLOBAL PEERS (não dizia nada
+// que "Peers — Europe" já não diga). 13 rótulos em negrito viraram 9.
+const BL_REGUA = '━━━━━━━━━━━━━━━━';
+
+// ⚠️ SETA, NUNCA EMOJI. Testamos 🟢/🔴 e o analista recusou: "volta para o antigo, ele vinha
+// preto no WhatsApp, estava clean". Emoji é a única coisa que o app pinta — caractere de
+// texto herda a cor da mensagem — mas o preto uniforme é o que ele quer. (E fica o registro:
+// 🔺 e 🔻 são os DOIS vermelhos, não servem como par de direção.)
+// A direção vem do GLIFO, senão o leitor lê número por número para achá-la.
 function blSeta(v){ return (v==null||!isFinite(v)) ? '·' : (v>0.005?'▲':(v<-0.005?'▼':'▬')); }
 const BL_TAKE = {'+':'(+)','-':'(-)','=':'(=)'};   // "no take" não vira símbolo nenhum
 const BL_MAX_IDADE_MIN = 45;                       // acima disso, avisa que o preço está velho
@@ -833,19 +850,19 @@ function blBuild(){
   L.push('Seguem abaixo os destaques da manhã.','');
   L.push('Abs!','Daniel Sasson – Itaú BBA','');
 
-  L.push('*NEWS HIGHLIGHTS*','');
+  L.push(BL_REGUA,'*NEWS HIGHLIGHTS*','');
   const d=(_blDest||[]).filter(function(x){return x&&x.trim();});
   d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
 
-  L.push('*HOW MARKETS ARE TRADING*','');
-  L.push('*GLOBAL*');
+  // O futuro do S&P abre a seção sem rótulo próprio: ele É a temperatura do mercado, e um
+  // cabeçalho "GLOBAL" para uma linha só era o nível de hierarquia que sobrava.
+  L.push(BL_REGUA,'*HOW MARKETS ARE TRADING*','');
   const sp=P.byTicker['SP500_FUT']; fresco(sp);
   L.push(sp&&sp.price!=null
     ? blSeta(sp.change_pct)+' US 500 fut. '+blNum(sp.price)+' · '+blPct(sp.change_pct)
     : '· US 500 fut.');
   L.push('');
 
-  L.push('*COMMODITIES*','');
   BL_GRUPOS.forEach(function(g){
     // A data do grupo semanal (celulose) fica no CABEÇALHO, uma vez — repetir em cada
     // linha é ruído, e sem ela um preço de terça passa por preço de hoje.
@@ -883,16 +900,15 @@ function blBuild(){
       L.push((r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
                                      : '· '+x[0]); });
   }
-  L.push('*GLOBAL PEERS*','');
-  L.push('*Europe - Live*');
+  L.push('*Peers — Europe, live*');
   blPeers(BL_EUROPE);
   L.push('');
-  L.push('*Australia - Overnight*');
+  L.push('*Peers — Australia, overnight*');
   blPeers(BL_AUS);
   L.push('');
 
   const H=blHeadlines();
-  L.push('*HEADLINES*','');
+  L.push(BL_REGUA,'*HEADLINES*','');
   [['SM','S&M'],['PP','P&P']].forEach(function(x){
     L.push('*'+x[1]+'*','');
     H[x[0]].forEach(function(h){ L.push(h,''); });
