@@ -757,9 +757,22 @@ const BL_GRUPOS = [
     {rot:'Gold',     code:'GOLD',     un:'/oz'},
     {rot:'Aluminum', code:'ALUMINUM', un:'/t'},
   ]},
-  {rot:'Pulp', semanal:true, linhas:[
-    {rot:'BHKP China', code:'PULP_BHKP_CHINA', un:'/t'},
-    {rot:'NBSK China', code:'PULP_NBSK_CHINA', un:'/t'},
+  // Celulose em DOIS grupos, como no carrossel da dashboard — e não por estética: China e
+  // Europa têm datas de assessment DIFERENTES (medido em 01/09: China 28/ago, Europa 01/set),
+  // então uma data única no cabeçalho mentiria para metade das linhas.
+  // Ordem = a mesma do carrossel (`COMM_GROUPS` do index.html), que é a que o analista lê
+  // todo dia: os dois índices Net e depois os dois resale.
+  // ⚠️ O resale é publicado em YUAN e o robô já o converte para dólar antes de gravar
+  // (prices.resale_cny_para_usd). Aqui não se converte nada: a unidade é a do banco.
+  {rot:'Pulp China', semanal:true, linhas:[
+    {rot:'BHKP Net',     code:'PULP_BHKP_CHINA',       un:'/t'},
+    {rot:'NBSK Net',     code:'PULP_NBSK_CHINA',       un:'/t'},
+    {rot:'BHKP Resale',  code:'PULP_EUCA_RESALE_CN',   un:'/t'},
+    {rot:'NBSK Resale',  code:'PULP_RADIATA_RESALE_CN',un:'/t'},
+  ]},
+  {rot:'Pulp Europe', semanal:true, linhas:[
+    {rot:'BHKP', code:'PULP_BHKP_EUROPE', un:'/t'},
+    {rot:'NBSK', code:'PULP_NBSK_EUROPE', un:'/t'},
   ]},
 ];
 const BL_CODES = BL_GRUPOS.reduce((a,g)=>a.concat(g.linhas.map(l=>l.code)),[]);
@@ -836,10 +849,16 @@ function blBuild(){
   BL_GRUPOS.forEach(function(g){
     // A data do grupo semanal (celulose) fica no CABEÇALHO, uma vez — repetir em cada
     // linha é ruído, e sem ela um preço de terça passa por preço de hoje.
-    let cab='*'+g.rot+'*';
+    let cab='*'+g.rot+'*', dataDoGrupo=null;
     if(g.semanal){
-      const d=g.linhas.map(function(l){return (P.byCode[l.code]||{}).assessed_at;}).filter(Boolean)[0];
-      cab+=' _semanal'+(d?' · '+blDia(d):'')+'_';
+      // A data só sobe para o cabeçalho quando TODAS as linhas do grupo têm a MESMA.
+      // Se divergirem (um índice publicou e o outro não), o cabeçalho diz só "semanal" e
+      // cada linha carrega a sua — melhor uma linha a mais que uma data errada em metade
+      // do bloco.
+      const ds=g.linhas.map(function(l){return (P.byCode[l.code]||{}).assessed_at;}).filter(Boolean);
+      const unicas=ds.filter(function(d,i){return ds.indexOf(d)===i;});
+      dataDoGrupo = unicas.length===1 ? unicas[0] : null;
+      cab+=' _semanal'+(dataDoGrupo?' · '+blDia(dataDoGrupo):'')+'_';
     }
     L.push(cab);
     g.linhas.forEach(function(l){
@@ -847,27 +866,29 @@ function blBuild(){
       if(!r||r.price==null){ L.push('· '+l.rot); return; }
       let nota=l.nota||'';
       if(l.notaPlatts) nota='Platts'+(r.assessed_at?', '+blDia(r.assessed_at):'');
+      // no grupo semanal cuja data NÃO é única, a data desce para a linha
+      if(g.semanal && !dataDoGrupo && r.assessed_at) nota=blDia(r.assessed_at);
       L.push(blSeta(r.change_pct)+' '+l.rot+(nota?' _'+nota+'_ ·':'')
              +' USD '+blNum(r.price)+l.un+' · '+blPct(r.change_pct));
     });
     L.push('');
   });
 
-  // Peers em linha corrida: seis papéis ocupavam dez linhas e são só variações.
+  // UM POR LINHA (escolha do analista, 02/09). A versão em linha corrida economizava seis
+  // linhas, mas ele lê papel por papel — e com a seta na frente a coluna já varre sozinha.
+  // Sem cotação sai "· MT", o mesmo espaçador das commodities: a coluna da seta continua
+  // alinhada e ninguém confunde ausência com zero.
   function blPeers(lista){
-    const partes=lista.map(function(x){ const r=P.byTicker[x[1]]; fresco(r);
-      // Sem cotação sai "MT —" e NÃO "· MT": em linha corrida o separador já é um ponto,
-      // e os dois juntos viravam "· · MT". O travessão diz "não há número" sem ambiguidade.
-      return (r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
-                                     : x[0]+' —'; });
-    return partes.join(' · ');
+    lista.forEach(function(x){ const r=P.byTicker[x[1]]; fresco(r);
+      L.push((r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
+                                     : '· '+x[0]); });
   }
   L.push('*GLOBAL PEERS*','');
   L.push('*Europe - Live*');
-  L.push(blPeers(BL_EUROPE));
+  blPeers(BL_EUROPE);
   L.push('');
   L.push('*Australia - Overnight*');
-  L.push(blPeers(BL_AUS));
+  blPeers(BL_AUS);
   L.push('');
 
   const H=blHeadlines();
