@@ -783,6 +783,28 @@ function blDia(iso){
   const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); if(!m) return '';
   return m[3]+'/'+BL_MES[+m[2]-1];
 }
+// ── HIERARQUIA DO BLAST (02/09) ──────────────────────────────────────────────
+// O WhatsApp dá negrito, itálico, tachado, monoespaçado e Unicode — e MAIS NADA. Não há
+// tamanho de letra. Com três níveis de título e uma só ferramenta (negrito), os três
+// saíam idênticos na tela e não dava para saber o que estava dentro do quê.
+//
+// A saída não é caprichar no negrito: é dar a cada nível um sinal DIFERENTE EM ESPÉCIE.
+//
+//   ▌ + CAIXA ALTA    seção      NEWS HIGHLIGHTS · HOW MARKETS ARE TRADING · HEADLINES
+//   ▪ + CAIXA ALTA    subdivisão GLOBAL · COMMODITIES · GLOBAL PEERS · S&M · P&P
+//   negrito puro      grupo      Iron ore · Metals & energy · Pulp China · Europe - Live
+//
+// O terceiro nível não leva marcador NENHUM, e é de propósito: a ausência de marcador já é
+// o sinal dele. Pôr um terceiro glifo aqui devolveria o problema — três marcas parecidas
+// competindo em vez de três degraus.
+//
+// ⚠️ Marcador é NEGRITO junto com o texto (*▌TÍTULO*), nunca solto antes do asterisco: o
+// WhatsApp só abre negrito quando o asterisco encosta em caractere não-espaço, então
+// "*▌ TÍTULO*" com espaço depois da barra funciona, mas "▌ *TÍTULO*" deixa a barra fina e
+// o título grosso — dois pesos na mesma linha, que é o oposto do que se quer.
+function blH1(t){ return '*▌'+t+'*'; }
+function blH2(t){ return '*▪ '+t+'*'; }
+
 // No WhatsApp não existe cor: alta e queda têm de vir do GLIFO, senão o leitor tem de ler
 // número por número para saber a direção.
 function blSeta(v){ return (v==null||!isFinite(v)) ? '·' : (v>0.005?'▲':(v<-0.005?'▼':'▬')); }
@@ -862,19 +884,19 @@ function blBuild(){
   L.push('Seguem abaixo os destaques da manhã.','');
   L.push('Abs!','Daniel Sasson – Itaú BBA','');
 
-  L.push('*NEWS HIGHLIGHTS*','');
+  L.push(blH1('NEWS HIGHLIGHTS'),'');
   const d=(_blDest||[]).filter(function(x){return x&&x.trim();});
   d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
 
-  L.push('*HOW MARKETS ARE TRADING*','');
-  L.push('*GLOBAL*');
+  L.push(blH1('HOW MARKETS ARE TRADING'),'');
+  L.push(blH2('GLOBAL'));
   const sp=P.byTicker['SP500_FUT']; fresco(sp);
   L.push(sp&&sp.price!=null
     ? blSeta(sp.change_pct)+' US 500 fut. '+blNum(sp.price)+' · '+blPct(sp.change_pct)
     : '· US 500 fut.');
   L.push('');
 
-  L.push('*COMMODITIES*','');
+  L.push(blH2('COMMODITIES'),'');
   BL_GRUPOS.forEach(function(g){
     // A data do grupo semanal (celulose) fica no CABEÇALHO, uma vez — repetir em cada
     // linha é ruído, e sem ela um preço de terça passa por preço de hoje.
@@ -912,7 +934,7 @@ function blBuild(){
       L.push((r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
                                      : '· '+x[0]); });
   }
-  L.push('*GLOBAL PEERS*','');
+  L.push(blH2('GLOBAL PEERS'),'');
   L.push('*Europe - Live*');
   blPeers(BL_EUROPE);
   L.push('');
@@ -921,9 +943,9 @@ function blBuild(){
   L.push('');
 
   const H=blHeadlines();
-  L.push('*HEADLINES*','');
+  L.push(blH1('HEADLINES'),'');
   [['SM','S&M'],['PP','P&P']].forEach(function(x){
-    L.push('*'+x[1]+'*','');
+    L.push(blH2(x[1]),'');
     H[x[0]].forEach(function(h){ L.push(h,''); });
   });
   // NR não existe no formato do blast. Em vez de sumir com a notícia calado, a tela avisa
