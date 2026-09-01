@@ -114,6 +114,12 @@ table.data input[type=number]{width:88px;text-align:right;padding:3px 6px;font-s
   padding:1px 4px;border-radius:3px;}
 html.dark .warn code{background:rgba(255,255,255,.08);}
 
+/* Dia sem clipping oficial e dia preenchido pelo blast (2026-09-01) */
+.nw-sem{font-size:11px;color:#8a5a00;background:#fff6e5;border:1px solid #f0d9a8;
+  border-radius:6px;padding:5px 8px;margin-bottom:8px;line-height:1.45;}
+html.dark .nw-sem{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
+.nw-do{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:1px 4px;margin-left:7px;}
 /* relatórios / notícias: lista de itens editáveis */
 .item{border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-bottom:8px;background:var(--bg);}
 .item .top{display:flex;gap:8px;align-items:center;margin-bottom:7px;}
@@ -390,6 +396,8 @@ const S={
   cfg:{},                      // clipping_config.settings inteiro (preservado ao salvar)
   weekly:{},                   // cfg.weekly — o que ESTA página guarda
   pubs:[],                     // = cfg.recent_publications (cadastro é no Clipping)
+  hl:{},                       // = cfg.blast_highlights — os 3 destaques que o
+                               // Clipping carimbou por dia. SÓ LEITURA aqui.
   fake:null,                   // séries do harness local (?wktest=1); null = ao vivo
   tickers:[],                  // papéis comparados (escolha do analista, sem teto)
   universo:[],                 // o que existe em `quotes` — alimenta o seletor
@@ -761,11 +769,42 @@ function desenharPainelTickers(busca){
 function _takeCls(t){return t==='positive'?'p':t==='negative'?'n':'e';}
 function _takeTxt(t){return t==='positive'?'+':t==='negative'?'−':'=';}
 
+// ── Os 3 destaques do Clipping viram as linhas do dia ────────────────────────
+// Integração pedida em 01/09/2026: o blast da manhã já escolheu e escreveu as 3 notícias
+// que importaram naquele dia, com números tirados do corpo das matérias. Reescrevê-las à
+// mão no weekly seria fazer duas vezes o mesmo trabalho — e com menos informação, porque
+// aqui não há o texto das matérias.
+//
+// ⚠️ DUAS REGRAS QUE NÃO PODEM CAIR:
+// 1) NUNCA sobrescrever o que o analista escreveu. O preenchimento só acontece em dia que
+//    está VAZIO; o que ele digitou (e o que já foi salvo em `weekly.dias`) manda sempre.
+// 2) O Weekly SÓ LÊ `blast_highlights`. Quem carimba é o Clipping. É a mesma regra que
+//    nasceu do episódio em que esta aba apagou publicações do Clipping — "o recap faz o
+//    recorte, isso não pode influenciar no clipping".
+function preencherDosDestaques(){
+  let usados = 0, vazios = 0;
+  (S.dias || []).forEach(function (d) {
+    const chave = ymd(d.data);
+    const r = S.hl && S.hl[chave];
+    const temTexto = (d.itens || []).some(function (i) { return (i.texto || '').trim(); });
+    d.doClipping = !!(r && Array.isArray(r.destaques) && r.destaques.length);
+    if (!d.doClipping) { if (!temTexto) vazios++; return; }
+    if (temTexto) { usados++; return; }             // o analista já escreveu: não encosta
+    d.itens = r.destaques.map(function (t) { return { texto: String(t).trim(), link: '' }; });
+    d.preenchido = true;
+    usados++;
+  });
+  return { usados: usados, vazios: vazios };
+}
+
 function renderNoticias(){
   const box=document.getElementById('nw-box');
   const total=S.dias.reduce((n,d)=>n+d.itens.filter(i=>(i.texto||'').trim()).length,0);
   const cand=Object.values(S.cands).reduce((n,a)=>n+a.length,0);
-  document.getElementById('nw-meta').textContent=`${total} escritas · ${cand} manchetes candidatas`;
+  const comClip=S.dias.filter(d=>d.doClipping).length, semClip=S.dias.length-comClip;
+  document.getElementById('nw-meta').textContent=
+    `${total} escritas · ${cand} manchetes candidatas · ${comClip} de ${S.dias.length} dias com blast`
+    + (semClip?` · ${semClip} sem clipping oficial`:'');
   box.innerHTML=S.dias.map((d,di)=>{
     const chave=ymd(d.data), lista=(S.cands[chave]||[]).slice(0,14);
     const linhas=d.itens.map((it,ii)=>`<div class="nline">
@@ -773,10 +812,18 @@ function renderNoticias(){
       <textarea data-day="${di}" data-i="${ii}" placeholder="Resuma a notícia em uma frase, em português.">${esc(it.texto||'')}</textarea>
       <button class="xbtn" data-rmn="${di}:${ii}" title="remover">✕</button>
     </div>`).join('');
+    // Dia sem clipping oficial APARECE, com aviso — decisão do analista: assim ele
+    // percebe a falha em vez de achar que foi feriado. O aviso é só da TELA; o
+    // e-mail continua desenhando apenas o que tem texto.
+    const semClip = !d.doClipping
+      ? `<div class="nw-sem">⚠ sem clipping oficial neste dia — nada veio do blast</div>` : '';
+    const selo = d.preenchido
+      ? `<span class="nw-do">do blast</span>` : '';
     return `<div class="day">
-      <div class="day-h"><span>${esc(d.rotulo)}</span>
+      <div class="day-h"><span>${esc(d.rotulo)}${selo}</span>
         <button class="b sm" data-addn="${di}">+ linha</button></div>
       <div class="day-b">
+        ${semClip}
         ${linhas||'<div class="muted" style="font-size:11.5px;margin-bottom:7px">Sem linhas — clique numa manchete abaixo ou em “+ linha”.</div>'}
         <div class="cands">
           <div class="ch"><span>Manchetes do dia (${lista.length}${(S.cands[chave]||[]).length>lista.length?' de '+S.cands[chave].length:''})</span></div>
@@ -929,6 +976,7 @@ async function recarregarPubs(){
   try{
     const c=await rpc('admin_get_clipping_config')||{};
     S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  S.hl=(c && typeof c.blast_highlights==='object' && c.blast_highlights)||{};
     S.earnings=c.earnings_review||null;
   }catch(e){ console.warn('pubs',e); }
 }
@@ -944,6 +992,7 @@ async function recarregar(){
 
   // esqueleto dos 5 dias úteis; o texto salvo daquela semana volta por cima
   S.dias=W.diasUteis(S.sem);
+  try{ preencherDosDestaques(); }catch(e){ console.warn('destaques', e); }
   janelaHint(recuou);
   const salvos=(S.weekly.ref===ymd(S.sem.fim)&&S.weekly.dias)?S.weekly.dias:[];
   salvos.forEach(sd=>{const alvo=S.dias.find(d=>ymd(d.data)===sd.data); if(alvo) alvo.itens=sd.itens||[];});
@@ -983,6 +1032,7 @@ async function carregarConfig(){
   S.cfg=c;
   S.weekly=c.weekly||{};
   S.pubs=Array.isArray(c.recent_publications)?c.recent_publications:[];
+  S.hl=(c && typeof c.blast_highlights==='object' && c.blast_highlights)||{};
   S.earnings=c.earnings_review||null;
   const w=S.weekly;
   // papéis: a escolha guardada; na 1ª visita, a cobertura + IBOV
@@ -1052,6 +1102,7 @@ function wktestBoot(){
     name:(META[t]||[])[0]||_rotuloDe(t), sector:(META[t]||[])[1]||'steel',
     exchange:(META[t]||[])[2]||'B3'}));
   S.dias=W.diasUteis(S.sem);
+  try{ preencherDosDestaques(); }catch(e){ console.warn('destaques', e); }
   janelaHint(false);
   S.dias[0].itens=[{texto:'Cortes de capacidade de celulose softwood na América do Norte e Europa já afetam cerca de 2,5 milhões de ton/ano, em meio à sobreoferta e pressão sobre margens.'},
                    {texto:'Carvão metalúrgico CFR China atingiu USD 270,50/ton, maior nível desde março de 2024.'}];

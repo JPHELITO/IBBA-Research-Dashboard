@@ -141,6 +141,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .gen.blast{border-top:1px solid var(--border);}
 .gen.blast .btn.primary{width:auto;padding:7px 14px;}
 .bl-hint{font-size:11px;color:var(--gray-mid);}
+.bl-selo{font-size:10.5px;color:var(--gray-mid);cursor:default;}
+.bl-selo.on{color:var(--orange);font-weight:600;}
 .bl-ck{font-size:11px;color:var(--gray-mid);display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
 .bl-out{width:100%;min-height:280px;margin-top:8px;padding:9px 10px;border:1px solid var(--border);
         border-radius:8px;background:#fff;color:#111;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
@@ -343,7 +345,7 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
       <div class="gen blast">
         <div class="bar" style="margin-bottom:8px">
           <b style="font-size:12px">Blast do WhatsApp</b>
-          <span class="bl-hint">precos ao vivo + as manchetes selecionadas</span>
+          <span class="bl-selo" id="bl-selo" title=""></span>
         </div>
         <div class="bar" style="gap:6px;margin-bottom:8px">
           <button class="btn primary" id="bl-gen" disabled>Gerar blast</button>
@@ -420,7 +422,10 @@ const DEFAULT_ANALYSTS=[
   {name:'João Paulo Luka Helito, CNPI',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t.+55 11 3073 3005  m.+55 11 93452 7535',  email:'joao.helito@itaubba.com'},
 ];
 const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all', src:new Set(),
-          config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]}, analysts:DEFAULT_ANALYSTS.map(a=>({...a})) } };
+          config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]}, analysts:DEFAULT_ANALYSTS.map(a=>({...a})),
+                   // Os 3 destaques do blast, por DATA do clipping. O Weekly le daqui
+                   // (so le — quem manda na config do Clipping e o Clipping).
+                   blast_highlights:{} } };
 const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr'};
 const SEC_ORDER=['NR','SM','PP'];                        // agrupamento/ordem do clipping (= SECTOR_ORDER do motor)
@@ -860,9 +865,13 @@ async function blGerar(){
     const b=(job.config||{}).blast||{};
     if(job.status==='done'){
       _blDest=b.destaques||[]; blRender();
+      const gravou=blCarimbar(_blDest, b.provedor, S.order.length);
+      blRenderSelo();
       st.className='gen-status ok';
       st.innerHTML = _blDest.length
         ? '✓ Pronto — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>.'
+          + (gravou ? ' Marcados como os do dia — o Weekly vai usar estes.'
+                    : ' <b>Os antigos foram mantidos</b> para o Weekly.')
         : '✓ Pronto, mas a IA não devolveu destaque'+(b.erro?' ('+esc(b.erro)+')':'')+'. A seção fica vazia, como o formato prevê.';
       btn.disabled=false; return;
     }
@@ -875,6 +884,65 @@ async function blGerar(){
   st.className='gen-status err';
   st.innerHTML='Blast pronto <b>sem os destaques</b> — a IA demorou demais (o robô do Actions pode estar iniciando).';
   btn.disabled=false;
+}
+
+// ── O clipping OFICIAL do dia ────────────────────────────────────────────────
+// Regra do analista (01/09/2026): "utilize o último clicado em Gerar blast para aquele dia
+// em específico; caso já tenha algum, perguntar se pode substituir o antigo".
+//
+// A data é a do CLIPPING (campo "Data do clipping"), não a de hoje: se ele gerar na
+// segunda o clipping datado de sexta, o destaque tem de cair na sexta no weekly.
+// Mora em `clipping_config.settings.blast_highlights` — jsonb aceita chave nova, então
+// não há migração de SQL. O Weekly SÓ LÊ daqui.
+const BL_GUARDAR_DIAS = 120;      // poda: 4 meses de histórico bastam p/ qualquer weekly
+
+function blDataRef(){
+  const el=document.getElementById('cfg-ref-date');
+  return (el && el.value) || todayBRT();
+}
+
+function blOficialDoDia(data){
+  const h=S.config.blast_highlights||{};
+  const r=h[data||blDataRef()];
+  return (r && Array.isArray(r.destaques) && r.destaques.length) ? r : null;
+}
+
+function blPodar(h){
+  const corte=new Date(Date.now()-BL_GUARDAR_DIAS*864e5).toISOString().slice(0,10);
+  Object.keys(h).forEach(k=>{ if(k<corte) delete h[k]; });
+  return h;
+}
+
+// Devolve true se gravou. Pergunta antes de sobrescrever um dia que já tem destaques.
+function blCarimbar(destaques, provedor, nNoticias){
+  if(!destaques || !destaques.length) return false;
+  const data=blDataRef();
+  S.config.blast_highlights=S.config.blast_highlights||{};
+  const antigo=blOficialDoDia(data);
+  if(antigo){
+    const q=antigo.at ? new Date(antigo.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const ok=confirm(
+      'O dia '+data.split('-').reverse().join('/')+' já tem destaques marcados'+(q?' (das '+q+')':'')+':\n\n'
+      + antigo.destaques.map((d,i)=>(i+1)+'. '+d).join('\n')
+      + '\n\nSubstituir pelos que acabaram de sair? É esta versão que o Weekly vai usar.');
+    if(!ok) return false;
+  }
+  S.config.blast_highlights[data]={destaques:destaques.slice(), provedor:provedor||null,
+                                   n_noticias:nNoticias||0, at:new Date().toISOString()};
+  blPodar(S.config.blast_highlights);
+  saveConfig();
+  return true;
+}
+
+// Selo ao lado do título do bloco, para nunca haver dúvida sobre o que está valendo.
+function blRenderSelo(){
+  const el=document.getElementById('bl-selo'); if(!el) return;
+  const data=blDataRef(), r=blOficialDoDia(data);
+  if(!r){ el.textContent='sem destaques marcados para '+data.split('-').reverse().join('/'); el.className='bl-selo'; return; }
+  const q=r.at ? new Date(r.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+  el.textContent='★ '+r.destaques.length+' destaque(s) marcados para '+data.split('-').reverse().join('/')+(q?' · '+q:'');
+  el.className='bl-selo on';
+  el.title=r.destaques.map((d,i)=>(i+1)+'. '+d).join('\n');
 }
 
 async function blCopiar(){
@@ -997,6 +1065,7 @@ function renderPubList(hostId, list, comData){
   });
 }
 function renderConfig(){
+  try{ blRenderSelo(); }catch(e){}
   const c=S.config, set=(id,prop,val)=>{ const el=document.getElementById(id); if(el) el[prop]=val; };
   set('cfg-intro-on','checked',!!c.intro.on);
   // editor rico: só (re)escreve o conteúdo quando NÃO está com o cursor dentro — senão
@@ -1419,6 +1488,7 @@ function wire(){
   document.getElementById('clip-gen').onclick=generate;
   const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
   const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
+  const _rd2=document.getElementById('cfg-ref-date'); if(_rd2) _rd2.addEventListener('change', blRenderSelo);
   const cc=document.getElementById('clip-clear'); if(cc) cc.onclick=clearSel;
   // Config (mensagem/intro + Recent Publications + Earnings Review)
   document.getElementById('cfg-intro-on').onchange=e=>{ S.config.intro.on=e.target.checked; saveConfig(); };
