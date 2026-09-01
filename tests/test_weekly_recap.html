@@ -65,6 +65,69 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
      W.pontoAte([[ts(2026,8,27),null],[ts(2026,8,26),50]],s.fim).v===50);
 })();
 
+// ══ 2b. o CARIMBO da série é lido em UTC ═════════════════════════════════════
+// O bug de 01/09/2026: os robôs gravam o assessment à MEIA-NOITE UTC, e a tela lia o
+// dia no fuso do navegador — em Brasília a meia-noite UTC de 28/ago é 27/ago às 21h,
+// então TODAS as linhas apareciam carimbadas com um dia a menos ("27/ago" no
+// assessment de 28). O gabarito acima usa MEIO-DIA UTC e por isso nunca pegou nada.
+(function(){
+  const s=W.semanaDe(new Date(2026,7,31));
+  const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;      // como o robô grava de verdade
+  const serie=[[meia(2026,8,21),95.45],[meia(2026,8,28),98.60]];
+  const b=W.pontoAte(serie,s.fim), a=W.pontoAte(serie,s.ini);
+  ok('assessment carimbado à meia-noite UTC é do DIA dele, não do anterior',
+     W.dmes(b.data)==='28/ago', W.dmes(b.data));
+  ok('…dos dois lados da janela', W.dmes(a.data)==='21/ago', W.dmes(a.data));
+  ok('e o valor continua sendo o do dia pedido', b.v===98.60 && a.v===95.45);
+  ok('carimbo do meio do dia (série do Yahoo) continua no dia certo',
+     W.dmes(W.pontoAte([[ts(2026,8,28),1]],s.fim).data)==='28/ago');
+})();
+
+// ══ 2c. PREÇO DE TELA (weekly montado com o pregão aberto) ═══════════════════
+// Regra do analista (01/09/2026): rodando na sexta às ~16h, a coluna da direita é a
+// ÚLTIMA COTAÇÃO PUXADA, comparada com o FECHAMENTO de uma semana atrás.
+(function(){
+  const s=W.semanaDe(new Date(2026,7,28));                // a sexta é o próprio dia
+  const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;
+  const sexta=new Date(2026,7,28), pego=new Date(2026,7,28,16,42);
+  // série sem o dia de hoje: às 16h o fechamento da sexta ainda não existe
+  const base=()=>W.linhaDeSerie('VALE3',[[meia(2026,8,21),75.03],[meia(2026,8,27),77.10]],s,2,'R$ ');
+
+  const l=W.aplicarAoVivo(base(),78.39,sexta,pego);
+  ok('a tela substitui o último fechamento', l.fim.v===78.39, String(l.fim.v));
+  ok('…o Δ é tela ÷ fechamento de uma semana atrás', W.pct(l.delta)==='+4,48%', W.pct(l.delta));
+  ok('…o carimbo vira o dia de hoje', W.dmes(l.fim.data)==='28/ago', W.dmes(l.fim.data));
+  ok('…e a hora da puxada fica na linha', W.hhmm(l.aoVivo)==='16h42', W.hhmm(l.aoVivo));
+  ok('a coluna da esquerda NÃO se mexe', l.ini.v===75.03);
+
+  ok('sem preço ao vivo a linha continua no fechamento',
+     W.aplicarAoVivo(base(),null,sexta,pego).fim.v===77.10);
+  // trava anti-retrocesso: histórico mais NOVO que a cotação manda (robô parado)
+  const velho=W.aplicarAoVivo(base(),70.00,new Date(2026,7,25),new Date(2026,7,25,16,0));
+  ok('cotação mais VELHA que o histórico é ignorada', velho.fim.v===77.10, String(velho.fim.v));
+  ok('…e sem ela a linha não se diz ao vivo', !velho.aoVivo);
+  ok('o instante mais recente é o que a tela mostra',
+     W.hhmm(W.ultimoAoVivo([base(),l]))==='16h42');
+  ok('sem nenhuma linha ao vivo, não há instante', W.ultimoAoVivo([base()])===null);
+
+  // a legenda do e-mail tem de DIZER que não é fechamento
+  const mv={semana:s,precos:[l],acoes:[l],dias:[],relatorios:[]};
+  const htmlv=W.buildEmail(mv);
+  ok('o e-mail avisa que a coluna é a última cotação, com a hora',
+     htmlv.indexOf('contra a última cotação de 28/08/2026, às 16h42')>0);
+  ok('…e não chama isso de fechamento de 28/08',
+     htmlv.indexOf('Fechamento de 21/08/2026 contra 28/08/2026')<0);
+  const mf={semana:s,precos:[base()],acoes:[base()],dias:[],relatorios:[]};
+  ok('semana já encerrada continua fechamento contra fechamento',
+     W.buildEmail(mf).indexOf('Fechamento de 21/08/2026 contra 28/08/2026')>0);
+
+  // e a prosa tem de mudar de verbo junto com o número
+  const pv=W.aplicarAoVivo(base(),78.39,sexta,pego); pv.prosa='minério de ferro'; pv.unidadeProsa='US$/t';
+  const txt=W.rascunhoCommodities([pv]);
+  ok('rascunho com pregão aberto não diz "encerrou a semana"', txt.indexOf('encerrou')<0, txt);
+  ok('…diz "está em … na semana"', /está em .* na semana\.$/.test(txt), txt);
+})();
+
 // ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
 // Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
 // analista mandou]. A conta da lib tem de bater com a última coluna.
@@ -428,6 +491,23 @@ async function guardaDeEscrita(){
      !/function\s+deriveMultiples/.test(src) && !/evEbitdaY1\s*[:=]\s*[^,;]*\//.test(src));
   ok('empresa sem fechamento na data fica FORA da comp table (não inventa preço)',
      /if\(r\.livePrice==null\)\s*return;/.test(src));
+
+  // ── e o PREÇO DE TELA é a mesma régua nas TRÊS tabelas ────────────────────
+  // Se só a performance virasse tela, o mesmo papel sairia com dois preços dentro do
+  // mesmo e-mail (um na tabela de ações, outro na comp table).
+  ok('a tabela de ações aplica o preço de tela', /W\.aplicarAoVivo\(l,v\.price/.test(src));
+  ok('…a comp table também', /W\.aplicarAoVivo\(l,r\.price/.test(src));
+  ok('…e os preços das commodities idem', /W\.aplicarAoVivo\(l,r\.price,dia/.test(src));
+  ok('a cotação ao vivo vem na MESMA busca do histórico (sem ida extra ao banco)',
+     src.indexOf('quotes?select=ticker,daily,price,updated_at')>0);
+  ok('a tela só entra quando a sexta de referência é HOJE',
+     /function refEhHoje\(\)\{[^}]*ymd\(S\.sem\.fim\)===hojeSP\(\)/.test(src));
+  ok('…e "hoje" é medido no relógio de São Paulo, não no do navegador',
+     /hojeSP\(\)\{[^}]*America\/Sao_Paulo/.test(src));
+  ok('o preço ao vivo das commodities sai de `commodities.price` (o do carrossel)',
+     src.indexOf('commodities?select=code,price,assessed_at,updated_at')>0);
+  ok('falha na busca ao vivo NÃO derruba a tabela (fica no fechamento)',
+     /catch\(e\)\{ console\.warn\('preço ao vivo',e\); return; \}/.test(src));
 
   // e o Clipping segue dono da lista
   const clip = await (await fetch('/clipinator.html?v='+Date.now())).text();
