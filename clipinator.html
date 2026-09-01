@@ -24,7 +24,11 @@ html.dark{
   --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;}
+/* html com altura fixa + body flex-column FAZIA a barra global (.gnav, 54px) ENCOLHER:
+   body{height:100%} trava o body na altura da janela e, com o conteudo maior, o flex
+   espreme os filhos que podem encolher. So o min-height:100vh abaixo (a pagina cresce
+   com o conteudo) — o splash continua centralizado pelo .splash{flex:1}. */
+html{height:100%;}
 body{font-family:var(--font);background:var(--bg);color:var(--black);
   -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
 [hidden]{display:none!important}
