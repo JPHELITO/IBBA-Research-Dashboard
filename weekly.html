@@ -243,8 +243,9 @@ html.dark .tk.e{background:rgba(255,255,255,.09);}
             <label class="f">Notícias <button class="b sm" data-draft="noticias" style="float:right;margin-top:-3px">↻ rascunho</button></label>
             <textarea id="r-noticias" style="min-height:100px"></textarea>
           </div>
-          <div class="hint">Use <code>**negrito**</code> para destacar. O rascunho é montado a partir dos números
-            carregados abaixo — nunca digite um número à mão aqui.</div>
+          <div class="hint">Use <code>**negrito**</code> para destacar. O rascunho é montado a partir dos
+            números que a dashboard carregou para a data escolhida — os mesmos que você vê na prévia,
+            ao lado. Nunca digite um número à mão aqui.</div>
         </div>
       </div>
 
@@ -414,8 +415,14 @@ function effDate(a){const iso=a.published_at||a.found_at; if(!iso) return null;
   const d=new Date(iso); return isNaN(d)?null:ymd(d);}
 
 // ═══════════════ CARGA DOS DADOS ═════════════════════════════════════════════
+// A janela pedida ao banco começa 30 DIAS ANTES de `ini`, não em `ini`: o que a tabela
+// publica é o último assessment ATÉ cada ponta, e assessment não sai todo dia. Celulose
+// (Fastmarkets PIX) é SEMANAL, o Platts não publica em feriado, e a referência pode ser
+// uma segunda-feira — pedir só a janela exata devolveria série vazia na ponta esquerda e
+// a linha sairia com travessão. 30 dias garantem ao menos 3 assessments semanais antes de
+// `ini`; são ~30 pontos × 5 séries, o que não pesa no egress (ver 2026-08-19).
 async function carregarPrecos(){
-  const de=ymd(new Date(S.sem.ini.getFullYear(),S.sem.ini.getMonth(),S.sem.ini.getDate()-14));
+  const de=ymd(new Date(S.sem.ini.getFullYear(),S.sem.ini.getMonth(),S.sem.ini.getDate()-30));
   const ate=ymd(S.sem.fim);
   let rows=[];
   try{
@@ -522,7 +529,10 @@ async function carregarComps(){
 
   // 1) fechamento da sexta de CADA papel do Stock Guide (a mesma série da performance)
   const syms=[...new Set(comps.map(c=>c.yahoo_symbol).filter(Boolean))];
-  const precoNaData={};
+  // `datasPreco` = de que DIA é o preço de cada papel. Guardado porque a tabela de
+  // conferência saiu da tela: sem isso não há como responder "esse múltiplo é de quando?"
+  // quando um papel não teve pregão na data pedida.
+  const precoNaData={}, datasPreco=[];
   if(syms.length){
     try{
       const rows=await restGet(`quotes?select=ticker,daily,price,updated_at&ticker=in.(${syms.map(encodeURIComponent).join(',')})`);
@@ -530,7 +540,8 @@ async function carregarComps(){
       rows.forEach(r=>{
         const l={fim:W.pontoAte(r.daily||[],S.sem.fim)};
         if(hoje) W.aplicarAoVivo(l,r.price,hoje,r.updated_at?new Date(r.updated_at):null);
-        if(l.fim){ precoNaData[r.ticker]=l.fim.v; precoNaData[_rotuloDe(r.ticker)]=l.fim.v; }
+        if(l.fim){ precoNaData[r.ticker]=l.fim.v; precoNaData[_rotuloDe(r.ticker)]=l.fim.v;
+                   datasPreco.push(+l.fim.data); }
       });
     }catch(e){ console.warn('quotes comps',e); }
   }
@@ -562,7 +573,10 @@ async function carregarComps(){
                                                           linhas:porGrupo[g]}));
   Object.keys(porGrupo).forEach(g=>{ if(GRUPO_ORDEM.indexOf(g)<0)
     grupos.push({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:porGrupo[g]}); });
-  S.comps={y1:cfg.y1_label||'26E', grupos:grupos, nota:(cfg.comps_footnote||'').trim()};
+  const maisNova=datasPreco.length?Math.max.apply(null,datasPreco):null;
+  S.comps={y1:cfg.y1_label||'26E', grupos:grupos, nota:(cfg.comps_footnote||'').trim(),
+           dataPreco:maisNova?new Date(maisNova):null,
+           defasados:datasPreco.filter(t=>t!==maisNova).length};
 }
 // moeda do papel na comp table: o Stock Guide guarda a moeda de NEGOCIAÇÃO por empresa
 function _moedaComp(r){
@@ -587,65 +601,104 @@ async function carregarNoticias(){
 }
 
 // ═══════════════ DESENHO DOS PAINÉIS ═════════════════════════════════════════
-function cls(v){return v==null?'zero':v>0?'pos':v<0?'neg':'zero';}
-// "assessment de 27/ago" quando o ponto encontrado não é do dia pedido (celulose é
-// semanal): melhor dizer do que fingir que o número é da sexta.
-function selo(pt,alvo){
-  if(!pt||!alvo) return '';
-  const a=W.dmes(pt.data), b=W.dmes(alvo);
-  return a===b?'':`<span class="stale" title="assessment mais recente até a data pedida"> ${a}</span>`;
+// ── O QUE A DASHBOARD MONTOU SOZINHA ─────────────────────────────────────────
+// As quatro tabelas de conferência (preços, ações, relatórios, múltiplos) saíram da
+// coluna da esquerda em 01/09/2026, a pedido do analista: ele não mexe em nenhuma
+// delas, e todas já saem prontas na PRÉVIA do e-mail, ao lado. O que NÃO podia sair
+// junto é o DIAGNÓSTICO — número que não carrega some sem dar erro, e "sumiu da tela"
+// é exatamente o defeito que já custou uma lista de publicações (ver o adendo do SQL).
+// Então cada bloco virou UMA LINHA, num painel fechado que abre sozinho quando há aviso.
+//
+// A pergunta que estas linhas respondem é sempre a mesma: **de quando é este número?**
+// Celulose é assessment SEMANAL, feriado não tem pregão, e `quotes.daily` só guarda o
+// diário do último ano — em qualquer um desses casos o valor usado é o último anterior
+// à data pedida, e isso tem de estar dito em algum lugar.
+function _hhmmDe(linhas){ const v=W.ultimoAoVivo(linhas); return v?W.hhmm(v):null; }
+// Os rótulos cujo dado NÃO é da data de referência, já formatados ("BHKP 21/ago").
+function _defasados(linhas,alvo){
+  const a=W.dmes(alvo);
+  return linhas.filter(l=>l.fim&&l.fim.data&&W.dmes(l.fim.data)!==a)
+               .map(l=>esc(l.rotulo)+' <b>'+esc(W.dmes(l.fim.data))+'</b>');
+}
+function _autoLinha(rot,txt,subs){
+  return `<div class="auto-l"><div class="auto-k">${rot}</div><div>${txt}`
+    +(subs||[]).map(x=>`<div class="auto-s${x.av?' av':''}">${x.t}</div>`).join('')
+    +'</div></div>';
 }
 
-// Cabeçalho da coluna da direita: "28/ago" no recap de uma semana já encerrada;
-// "28/ago tela 16h42" quando o número é a cotação do momento, com o pregão aberto.
-function thFim(linhas){
-  const vivo=W.ultimoAoVivo(linhas);
-  return esc(W.dmes(S.sem.fim))+(vivo?` <span class="live">tela ${esc(W.hhmm(vivo))}</span>`:'');
-}
-// A mesma hora no contador do painel — quem olha o cartão de lado vê se o número
-// envelheceu (a página não fica repuxando sozinha; quem repuxa é o ↻ Recarregar).
-function metaVivo(linhas){
-  const vivo=W.ultimoAoVivo(linhas);
-  return vivo?` · última cotação às ${W.hhmm(vivo)}`:'';
-}
+function renderAuto(){
+  const box=document.getElementById('auto-box'); if(!box) return;
+  const tally=[]; let avisos=0;
 
-// ⚠️ SÓ LEITURA, por decisão do analista (31/08/2026): assessment é o número que a
-// fonte publicou. Havia caixa editável aqui como rede de segurança; ela saiu porque
-// preço "corrigido na mão" é preço que ninguém consegue auditar depois. Se um valor
-// faltar, a linha mostra travessão e o cabeçalho diz quantos faltaram — o conserto é
-// no robô, não no e-mail.
-function renderPrecos(){
-  const box=document.getElementById('pr-box');
-  const faltando=S.precos.filter(l=>!l.ini||!l.fim).length;
-  document.getElementById('pr-meta').textContent=
-    (faltando?`${faltando} sem histórico`:`${S.precos.length} de ${S.precos.length} com histórico`)
-    +metaVivo(S.precos);
-  box.innerHTML=
-    `<table class="data"><thead><tr><th>Ativo</th>
-      <th>${esc(W.dmes(S.sem.ini))}</th><th>${thFim(S.precos)}</th><th>Δ 7d</th></tr></thead><tbody>`
-    +S.precos.map(l=>`<tr>
-      <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.unidade)}</span></td>
-      <td>${l.ini?esc(W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
-      <td>${l.fim?esc(W.num(l.fim.v,l.casas)):'—'}${selo(l.fim,S.sem.fim)}</td>
-      <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
-    +'</tbody></table>';
-}
+  // ── 1. PREÇOS (commodities) ───────────────────────────────────────────────
+  // Regra: o último assessment publicado ATÉ a data pedida. Diário no minério e nos
+  // aços; SEMANAL na celulose — aí "o preço de quarta" é legitimamente o de sexta
+  // passada, e a linha diz de que dia ele é.
+  const pFalta=S.precos.filter(l=>!l.ini||!l.fim);
+  const pOk=S.precos.length-pFalta.length;
+  const pTela=_hhmmDe(S.precos), pDef=_defasados(S.precos,S.sem.fim);
+  const pSub=[];
+  if(pDef.length) pSub.push({t:'último assessment até '+esc(W.dmes(S.sem.fim))+': '+pDef.join(' · ')});
+  if(pFalta.length){ avisos++;
+    pSub.push({av:1,t:'sem histórico na janela: '+pFalta.map(l=>esc(l.rotulo)).join(', ')}); }
+  tally.push('Preços '+pOk+'/'+S.precos.length);
+  box.innerHTML=_autoLinha('Preços',
+    `${pOk} de ${S.precos.length} assessments`
+    +(pTela?` <span class="live">tela ${esc(pTela)}</span>`:''),pSub);
 
-function renderAcoes(){
-  const box=document.getElementById('ac-box');
-  const faltando=S.acoes.filter(l=>!l.ini||!l.fim).length;
-  document.getElementById('ac-meta').textContent=
-    `${S.acoes.length} papéis`+(faltando?` · ${faltando} sem histórico`:'')+metaVivo(S.acoes);
-  box.innerHTML=
-    `<table class="data"><thead><tr><th>Ativo</th>
-      <th>${esc(W.dmes(S.sem.ini))}</th><th>${thFim(S.acoes)}</th><th>Δ 7d</th></tr></thead><tbody>`
-    +(S.acoes.length?S.acoes.map(l=>`<tr>
-      <td>${esc(l.rotulo)}<br><span class="muted" style="font-size:10px;font-weight:400">${esc(l.nome||'')}</span></td>
-      <td>${l.ini?esc(l.prefixo+W.num(l.ini.v,l.casas)):'—'}${selo(l.ini,S.sem.ini)}</td>
-      <td>${l.fim?esc(l.prefixo+W.num(l.fim.v,l.casas)):'—'}${selo(l.fim,S.sem.fim)}</td>
-      <td class="${cls(l.delta)}">${esc(W.pct(l.delta))}</td></tr>`).join('')
-      :'<tr><td colspan="4" class="muted">Nenhum papel escolhido.</td></tr>')
-    +'</tbody></table>';
+  // ── 2. AÇÕES ──────────────────────────────────────────────────────────────
+  // O último fechamento até a data × o último fechamento até a data − 7. Quando a
+  // referência é HOJE a coluna da direita vira a cotação de tela (o pregão ainda está
+  // aberto) — é a mesma régua da comp table, senão o papel sairia com dois preços.
+  const aFalta=S.acoes.filter(l=>!l.ini||!l.fim);
+  const aTela=_hhmmDe(S.acoes), aDef=_defasados(S.acoes,S.sem.fim);
+  const aSub=[];
+  if(aDef.length) aSub.push({t:'último fechamento até '+esc(W.dmes(S.sem.fim))+': '+aDef.join(' · ')});
+  if(aFalta.length){ avisos++;
+    aSub.push({av:1,t:'sem histórico: '+aFalta.map(l=>esc(l.rotulo)).join(', ')}); }
+  tally.push('Ações '+S.acoes.length);
+  box.innerHTML+=_autoLinha('Ações',
+    `${S.acoes.length} papéis`+(aTela?` <span class="live">tela ${esc(aTela)}</span>`:''),aSub);
+
+  // ── 3. RELATÓRIOS + EARNINGS REVIEW ───────────────────────────────────────
+  // Automático: entra o que tem DATA dentro da janela. O cadastro é no Clipping, num
+  // lugar só. Relatório sem data nunca entra em weekly nenhum — por isso o aviso.
+  const er=S.earnings||{}, daSemana=W.relatoriosDaSemana(S.pubs,S.sem);
+  const erSemana=W.earningsDaSemana(er,S.sem);
+  const semData=(S.pubs||[]).concat((er.items)||[])
+    .filter(r=>(r.name||'').trim() && !String(r.date||'').slice(0,10)).length;
+  const rSub=[{t:'janela: '+esc(W.dbarra(S.sem.ini))+' (exclusive) a '+esc(W.dbarra(S.sem.fim))}];
+  const rot=esc((er.label||'Earnings Review').trim()||'Earnings Review');
+  if(!er.on) rSub.push({t:rot+' <b>desligado</b> no Clipping — não entra neste weekly'});
+  else if(!erSemana) rSub.push({t:rot+' ligado, mas nenhum item tem data na janela'});
+  else rSub.push({t:rot+': '+erSemana.itens.length+' na semana'});
+  if(semData){ avisos++;
+    rSub.push({av:1,t:semData+' relatório(s) <b>sem data</b> no Clipping — sem ela não entram em '
+      +'weekly nenhum. <a href="/clipinator.html" target="_blank" rel="noopener">Abrir o Clipping ↗</a>'}); }
+  const nRel=daSemana.length+(erSemana?erSemana.itens.length:0);
+  tally.push('Relatórios '+nRel);
+  box.innerHTML+=_autoLinha('Relatórios',
+    `${nRel} na semana`+(S.pubs.length?` <span class="auto-s" style="display:inline">de ${S.pubs.length} cadastrados</span>`:''),rSub);
+
+  // ── 4. MÚLTIPLOS ──────────────────────────────────────────────────────────
+  // A conta é a do Stock Guide (`SG.deriveComps`), alimentada com o preço da data de
+  // referência — a MESMA régua da tabela de ações.
+  const c=S.comps, nCo=c?c.grupos.reduce((k,g)=>k+g.linhas.length,0):0;
+  const cSub=[];
+  if(!c||!nCo){ avisos++;
+    cSub.push({av:1,t:'o Stock Guide não devolveu empresa com fechamento em '+esc(W.dbarra(S.sem.fim))}); }
+  else{
+    cSub.push({t:'preço de '+esc(W.dmes(c.dataPreco||S.sem.fim))+', o mesmo da tabela de ações'});
+    if(c.defasados) cSub.push({t:c.defasados+' empresa(s) com fechamento anterior a essa data'});
+  }
+  tally.push('Múltiplos '+nCo);
+  box.innerHTML+=_autoLinha('Múltiplos',
+    nCo?`${nCo} empresas · múltiplos ${esc(c.y1)}`:'—',cSub);
+
+  document.getElementById('auto-meta').innerHTML=
+    (avisos?`<b style="color:var(--orange)">⚠ ${avisos} aviso${avisos>1?'s':''}</b> · `:'')+esc(tally.join(' · '));
+  // abre sozinho quando há o que ver; nunca FECHA o que o analista abriu
+  if(avisos) document.getElementById('auto').open=true;
 }
 
 // ── Seletor de papéis: chips do que está no e-mail + painel para acrescentar ──
@@ -673,7 +726,7 @@ function renderTickers(){
 function tirarTicker(t){ S.tickers=S.tickers.filter(x=>x!==t); aplicarTickers(); }
 async function aplicarTickers(){
   renderTickers(); salvar();
-  await carregarAcoes(); renderAcoes(); atualizarPrevia();
+  await carregarAcoes(); renderAuto(); atualizarPrevia();
 }
 function abrirPainelTickers(){
   const pop=document.getElementById('tk-pop');
@@ -703,83 +756,6 @@ function desenharPainelTickers(busca){
     else S.tickers=S.tickers.filter(x=>x!==t);
     aplicarTickers();
   }));
-}
-
-// ⚠️ AUTOMÁTICO, por decisão do analista (31/08/2026). A lista é a MESMA do Clipping
-// (`clipping_config.recent_publications`), onde cada relatório agora carrega a DATA em
-// que saiu; aqui ela é só filtrada pela semana de referência. Cadastro é lá, num lugar
-// só — esta tela mostra o que entrou e o que ficou de fora, e por quê.
-function renderRelatorios(){
-  const box=document.getElementById('rep-box');
-  const daSemana=W.relatoriosDaSemana(S.pubs,S.sem);
-  const er=S.earnings||{}, erSemana=W.earningsDaSemana(er,S.sem);
-  const semData=(S.pubs||[]).concat((er.items)||[])
-    .filter(r=>(r.name||'').trim() && !String(r.date||'').slice(0,10)).length;
-  document.getElementById('rep-meta').textContent=
-    `${daSemana.length+(erSemana?erSemana.itens.length:0)} na semana`
-    +(S.pubs.length?` · ${S.pubs.length} cadastrados`:'');
-  const aviso=semData
-    ? `<div class="warn" style="margin:0 0 10px"><b>${semData} relatório(s) sem data</b> no Clipping — sem
-       ela não dá para saber de que semana são, e eles nunca entram num weekly.
-       <a href="/clipinator.html" target="_blank" style="color:var(--orange)">Abrir o Clipping ↗</a></div>` : '';
-  box.innerHTML=aviso+(daSemana.length
-    ? `<table class="data"><thead><tr><th>Data</th><th style="text-align:left">Relatório</th><th>Setor</th></tr></thead><tbody>`
-      +daSemana.map(r=>`<tr>
-        <td style="text-align:left;font-weight:600;white-space:nowrap">${esc(r.data)}</td>
-        <td style="text-align:left;font-weight:400">${esc(r.titulo)}
-          ${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener" title="Abrir o relatório" style="color:var(--orange);text-decoration:none"> ↗</a>`:'<span class="stale" title="sem link"> sem link</span>'}</td>
-        <td style="white-space:nowrap">${esc(r.setor)}</td></tr>`).join('')
-      +'</tbody></table>'
-    : '<div class="muted" style="font-size:12px">Nenhum relatório com data entre '
-      +esc(W.dbarra(S.sem.ini))+' e '+esc(W.dbarra(S.sem.fim))+'.</div>');
-
-  // ── Earnings Review: entra SÓ se o toggle do Clipping estiver ligado ──
-  // Estado sempre visível na tela, inclusive quando NÃO entra — senão o analista fica
-  // sem saber se o bloco ficou de fora por estar desligado ou por falta de data.
-  const cx=document.createElement('div');
-  cx.style.cssText='margin-top:12px;padding-top:11px;border-top:1px solid var(--border)';
-  const nItens=((er.items)||[]).length;
-  const rot=esc((er.label||'Earnings Review').trim()||'Earnings Review');
-  if(!er.on){
-    cx.innerHTML=`<div class="muted" style="font-size:11.5px"><b>${rot}</b> está
-      <b style="color:var(--gray-mid)">desligado</b> no Clipping — não entra neste weekly
-      (${nItens} item(ns) cadastrados). Ligue lá se quiser incluir.</div>`;
-  } else if(!erSemana){
-    cx.innerHTML=`<div class="muted" style="font-size:11.5px"><b>${rot}</b> está ligado, mas
-      nenhum dos ${nItens} item(ns) tem data dentro da semana.</div>`;
-  } else {
-    cx.innerHTML=`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;
-        letter-spacing:.06em;color:var(--orange);margin-bottom:6px">${rot} · ${erSemana.itens.length} na semana</div>`
-      +`<table class="data"><tbody>`
-      +erSemana.itens.map(r=>`<tr><td style="white-space:nowrap;width:60px">${esc(r.data)}</td>
-        <td style="text-align:left;font-weight:400">${esc(r.titulo)}</td></tr>`).join('')
-      +'</tbody></table>';
-  }
-  box.appendChild(cx);
-}
-
-function renderComps(){
-  const box=document.getElementById('cp-box'); if(!box) return;
-  const c=S.comps;
-  const n=c?c.grupos.reduce((k,g)=>k+g.linhas.length,0):0;
-  document.getElementById('cp-meta').textContent=
-    c?`${n} empresas · múltiplos ${c.y1}`:'sem dados do Stock Guide';
-  if(!c||!n){ box.innerHTML='<div class="muted" style="font-size:12px">Sem comp table: '
-    +'o Stock Guide não devolveu empresas com fechamento em '+esc(W.dbarra(S.sem.fim))+'.</div>'; return; }
-  box.innerHTML=`<table class="data"><thead><tr><th>Empresa</th><th>Preço</th><th>Target</th>
-      <th>Upside</th><th>EV/EBITDA</th><th>P/E</th><th>DY</th></tr></thead><tbody>`
-    +c.grupos.map(g=>`<tr><td colspan="7" style="padding-top:9px;font-size:9.5px;font-weight:700;
-        text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);border-bottom:none">${esc(g.titulo)}</td></tr>`
-      +g.linhas.map(l=>`<tr><td>${esc(l.nome)} <span class="muted" style="font-weight:400">${esc(l.ticker)}</span></td>
-        <td>${esc(l.preco)}</td><td>${esc(l.target||'—')}</td>
-        <td class="${cls(l.upside)}">${l.upside==null?'—':esc(W.pct(l.upside,0))}</td>
-        <td>${l.evEbitda==null?'—':esc(W.num(l.evEbitda,1))+'x'}</td>
-        <td>${l.pe==null?'—':esc(W.num(l.pe,1))+'x'}</td>
-        <td>${l.dy==null?'—':esc(W.num(l.dy,1))+'%'}</td></tr>`).join('')).join('')
-    +'</tbody></table>'
-    +'<div class="hint">Os preços são o fechamento de '+esc(W.dbarra(S.sem.fim))
-    +' — os mesmos da tabela de performance. Os múltiplos são recalculados nesse preço, '
-    +'pela mesma conta do Stock Guide.</div>';
 }
 
 function _takeCls(t){return t==='positive'?'p':t==='negative'?'n':'e';}
@@ -886,17 +862,13 @@ function flash(msg,ok){
   const el=document.getElementById('status');
   el.innerHTML=(ok?'<span class="ok">✓ </span>':'')+esc(msg);
   clearTimeout(flash._t);
-  flash._t=setTimeout(()=>{el.innerHTML='A prévia é o HTML que vai no e-mail — o mesmo em <b>Copiar</b> e em <b>.eml</b>.';},6000);
+  flash._t=setTimeout(()=>{el.innerHTML='A prévia é o HTML que vai no e-mail — o mesmo do <b>.eml</b>.';},6000);
 }
-async function copiar(){
-  try{
-    await navigator.clipboard.write([new ClipboardItem({
-      'text/html' :new Blob([_htmlAtual],{type:'text/html'}),
-      'text/plain':new Blob([_htmlAtual],{type:'text/plain'}),
-    })]);
-    flash('Copiado. Cole no Outlook com Ctrl+V.',true);
-  }catch(e){ console.warn(e); flash('O navegador recusou a área de transferência — use o .eml.'); }
-}
+// ⚠️ NÃO existe mais "Copiar para o Outlook" (saiu em 01/09/2026, a pedido do analista).
+// O caminho é UM só: baixar o .eml e abrir. Colar HTML pela área de transferência
+// dependia de o navegador liberar a API de clipboard rico (nem todo contexto libera) e
+// chegava no Outlook com a formatação já degradada; o .eml chega byte a byte como foi
+// montado. O teste confere que a API não voltou — por isso ela não é nomeada aqui.
 function baixarEml(){
   const m=modelo();
   // `message/rfc822` é o que faz o Windows abrir no Outlook em vez de no bloco de notas.
@@ -976,8 +948,7 @@ async function recarregar(){
   const salvos=(S.weekly.ref===ymd(S.sem.fim)&&S.weekly.dias)?S.weekly.dias:[];
   salvos.forEach(sd=>{const alvo=S.dias.find(d=>ymd(d.data)===sd.data); if(alvo) alvo.itens=sd.itens||[];});
 
-  document.getElementById('pr-box').innerHTML='<div class="muted">carregando…</div>';
-  document.getElementById('ac-box').innerHTML='<div class="muted">carregando…</div>';
+  document.getElementById('auto-meta').textContent='carregando…';
   document.getElementById('nw-box').innerHTML='<div class="muted">carregando…</div>';
 
   const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias(),
@@ -991,8 +962,7 @@ async function recarregar(){
     +'Supabase, o arquivo <code>admin/supabase_weekly_recap.sql</code>. Enquanto isso dá para digitar '
     +'os fechamentos à mão nas caixinhas da tabela de preços.</div>';
 
-  renderPrecos(); renderTickers(); renderAcoes(); renderRelatorios(); renderComps();
-  renderNoticias(); atualizarPrevia();
+  renderTickers(); renderAuto(); renderNoticias(); atualizarPrevia();
 }
 
 // Diz, em português, o par que está sendo comparado — o Δ é SEMPRE WoW (o mesmo dia
@@ -1031,7 +1001,6 @@ async function carregarConfig(){
 function wire(){
   document.getElementById('reload').addEventListener('click',()=>recarregar());
   document.getElementById('ref').addEventListener('change',()=>recarregar());
-  document.getElementById('copy').addEventListener('click',copiar);
   document.getElementById('eml').addEventListener('click',baixarEml);
   document.getElementById('draft-all').addEventListener('click',()=>{
     ['commodities','companhias','noticias'].forEach(rascunhar);
@@ -1133,10 +1102,11 @@ function wktestBoot(){
       evEbitda:r.evEbitdaY1,pe:r.peY1,dy:r.divYieldY1}); });
   S.comps={y1:'26E',
     grupos:GRUPO_ORDEM.filter(g=>pg[g]).map(g=>({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:pg[g]})),
-    nota:'Estimativas Itaú BBA. Preços de fechamento.'};
-  renderPrecos(); renderRelatorios(); renderComps(); renderNoticias();
+    nota:'Estimativas Itaú BBA. Preços de fechamento.',
+    dataPreco:S.sem.fim, defasados:0};
+  renderNoticias();
   carregarAcoes().then(()=>{
-    renderTickers(); renderAcoes();
+    renderTickers(); renderAuto();
     ['commodities','companhias','noticias'].forEach(rascunhar);
     atualizarPrevia();
   });
@@ -1147,6 +1117,9 @@ function wktestBoot(){
   // Padrão = a sexta mais recente (hoje, se hoje for sexta). É só o VALOR INICIAL:
   // daqui em diante qualquer dia útil que o analista escolher é respeitado.
   document.getElementById('ref').value=ymd(W.sextaMaisRecente(new Date()));
+  // O futuro fica de fora: não existe fechamento depois de hoje, e a tela devolveria os
+  // números de hoje carimbados com a data escolhida. `hojeSP()` é o relógio de São Paulo.
+  document.getElementById('ref').max=hojeSP();
   if(WKTEST){ wktestBoot(); return; }
   try{
     const {data:{session}}=await sbAuth.auth.getSession();

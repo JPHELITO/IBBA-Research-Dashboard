@@ -169,6 +169,48 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
   ok('…diz "está em … na semana"', /está em .* na semana\.$/.test(txt), txt);
 })();
 
+// ══ 2d. REFERÊNCIA FORA DE SEXTA, SÉRIE SEMANAL ══════════════════════════════
+// Exigência do analista (01/09/2026): *"os preços de celulose não são diários, aparecem
+// apenas na sexta, então usar o último 'mais atualizado' até aquela data… tem que fazer
+// sentido o que estamos fazendo"*. Ou seja: a comparação continua WoW, mas de assessment
+// a assessment — nunca comparando um número com ele mesmo, nunca inventando o dia.
+(function(){
+  const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;          // como o robô grava
+  const q=W.semanaDe(new Date(2026,7,26));                    // QUARTA 26/08
+  // celulose: só sextas
+  const semanal=[[meia(2026,8,7),566.00],[meia(2026,8,14),565.20],[meia(2026,8,21),563.64]];
+  const lp=W.linhaDeSerie('BHKP',semanal,q,2,'');
+  ok('semanal numa quarta: a ponta direita é o assessment de 21/ago', lp.fim.v===563.64);
+  ok('…e a esquerda é o de 14/ago, não o mesmo 21/ago (senão o Δ seria zero)',
+     lp.ini.v===565.20, String(lp.ini&&lp.ini.v));
+  ok('…as duas datas são as REAIS dos assessments',
+     W.dmes(lp.ini.data)+'|'+W.dmes(lp.fim.data)==='14/ago|21/ago',
+     W.dmes(lp.ini.data)+'|'+W.dmes(lp.fim.data));
+  ok('…e o Δ é a variação de um assessment para o outro',
+     W.pct(lp.delta)==='−0,28%', W.pct(lp.delta));
+
+  // minério: diário — aí a quarta compara com a quarta
+  const diaria=[[meia(2026,8,19),95.10],[meia(2026,8,20),95.30],[meia(2026,8,21),95.45],
+                [meia(2026,8,24),96.10],[meia(2026,8,25),97.00],[meia(2026,8,26),98.60]];
+  const ld=W.linhaDeSerie('IODEX',diaria,q,2,'');
+  ok('diário numa quarta: quarta 26/08 contra quarta 19/08',
+     ld.fim.v===98.60 && ld.ini.v===95.10, ld.ini.v+'→'+ld.fim.v);
+  ok('…com as duas pontas carimbadas no próprio dia',
+     W.dmes(ld.ini.data)+'|'+W.dmes(ld.fim.data)==='19/ago|26/ago',
+     W.dmes(ld.ini.data)+'|'+W.dmes(ld.fim.data));
+
+  // feriado na ponta: cai no pregão anterior, e a data DIZ isso
+  const comFeriado=[[meia(2026,8,19),95.10],[meia(2026,8,25),97.00]];
+  const lf=W.linhaDeSerie('IODEX',comFeriado,q,2,'');
+  ok('sem pregão na data pedida, usa o anterior e carimba a data real',
+     lf.fim.v===97.00 && W.dmes(lf.fim.data)==='25/ago', W.dmes(lf.fim&&lf.fim.data));
+
+  // e o e-mail continua honesto sobre QUE datas comparou
+  const html=W.buildEmail({semana:q,precos:[lp,ld],acoes:[],dias:[],relatorios:[]});
+  ok('o e-mail diz o par de datas da janela, não "a semana"',
+     html.indexOf('Fechamento de 19/08/2026 contra 26/08/2026')>0);
+})();
+
 // ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
 // Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
 // analista mandou]. A conta da lib tem de bater com a última coluna.
@@ -549,6 +591,38 @@ async function guardaDeEscrita(){
      src.indexOf('commodities?select=code,price,assessed_at,updated_at')>0);
   ok('falha na busca ao vivo NÃO derruba a tabela (fica no fechamento)',
      /catch\(e\)\{ console\.warn\('preço ao vivo',e\); return; \}/.test(src));
+
+  // ── a coluna da esquerda virou só o EDITOR (01/09/2026) ───────────────────
+  // As 4 tabelas de conferência saíram: o analista não mexia em nenhuma delas e todas
+  // já aparecem na prévia. O que não podia sair é o diagnóstico — daí o painel.
+  ['pr-box','ac-box','rep-box','cp-box'].forEach(id=>
+    ok('a tabela de conferência #'+id+' não está mais na tela', src.indexOf('"'+id+'"')<0));
+  ok('…e nenhuma função de desenho delas sobrou',
+     !/function render(Precos|Acoes|Relatorios|Comps)/.test(src));
+  ok('o painel de diagnóstico existe no lugar', src.indexOf('function renderAuto()')>0);
+  ok('…e ele abre sozinho quando há aviso',
+     /if\(avisos\)\s*document\.getElementById\('auto'\)\.open=true/.test(src));
+  ok('…dizendo de QUE DIA é cada número que não é da data pedida',
+     src.indexOf('function _defasados(')>0 && src.indexOf('último assessment até ')>0);
+  ok('o seletor de papéis sobreviveu (é escolha do analista, não leitura)',
+     src.indexOf('id="tk-box"')>0 && src.indexOf('function renderTickers()')>0);
+
+  // ── saída: só o .eml ─────────────────────────────────────────────────────
+  ok('não há mais BOTÃO "Copiar para o Outlook"',
+     !/id="copy"/.test(src) && src.indexOf('function copiar(')<0);
+  ok('…nem a API de área de transferência', src.indexOf('ClipboardItem')<0);
+  ok('…mas o comentário que explica a remoção segue no arquivo',
+     src.indexOf('Copiar para o Outlook')>0);
+  ok('…e o .eml continua sendo o caminho', src.indexOf('function baixarEml()')>0);
+
+  // ── a janela pedida ao banco tem folga para série SEMANAL ────────────────
+  // Celulose sai 1×/semana: pedir só o intervalo exato devolveria série vazia na ponta
+  // esquerda quando a referência é, por exemplo, uma segunda-feira.
+  ok('a busca de preços recua 30 dias antes de `ini` (celulose é semanal)',
+     /S\.sem\.ini\.getDate\(\)-30/.test(src));
+  ok('a comp table guarda de que DIA é o preço que usou',
+     src.indexOf('datasPreco')>0 && /dataPreco:/.test(src));
+  ok('o campo de data não aceita o futuro', /getElementById\('ref'\)\.max=hojeSP\(\)/.test(src));
 
   // e o Clipping segue dono da lista
   const clip = await (await fetch('/clipinator.html?v='+Date.now())).text();
