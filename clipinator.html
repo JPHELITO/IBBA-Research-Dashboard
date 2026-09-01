@@ -733,12 +733,46 @@ function blPct(v){ if(v==null||!isFinite(v)) return ''; return (v>=0?'+':'')+BL_
 // seguem usando os ADRs de Nova York, como sempre.
 const BL_EUROPE = [['RIO','RIO.L'],['GLEN','GLEN.L'],['AAL','AAL.L'],['MT','MT.AS']];
 const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
-// Commodity: [rótulo, code, unidade]. Cobre em USD/lb (é como o carrossel publica e como
-// o analista lê); minério e níquel vêm do coletor chinês (SGX e LME), os únicos vivos às
-// 06h da manhã. Nada aqui é convertido: a unidade é a da fonte.
-const BL_COMM = [['Iron Ore 62%','IRON_ORE_SGX','/ton'],['Copper','COPPER','/lb'],
-                 ['Brent','BRENT','/bbl'],['Nickel','NICKEL','/ton'],
-                 ['Gold','GOLD','/oz'],['Aluminum','ALUMINUM','/ton']];
+// As cotações em GRUPOS (2026-09-02). Cada linha: rótulo, code no banco, unidade e uma
+// nota curta quando ela muda o sentido do número.
+//
+// ⚠️ AS DUAS LINHAS DE MINÉRIO NÃO SÃO A MESMA COISA, e é por isso que as duas existem:
+//   62% = futuro do SGX (Cingapura), negocia 24h -> às 06h BRT ele está VIVO;
+//   61% = Iodex do Platts, assessment FÍSICO publicado uma vez por dia -> às 06h o número
+//         que temos ainda é o do pregão anterior.
+// A data do Platts sai do próprio `assessed_at`, nunca de um rótulo fixo tipo "d-1": no dia
+// em que o assessment sair cedo, a linha mostra a data de hoje sozinha.
+//
+// Cobre em USD/lb (é como o carrossel publica e como o analista lê). Nada é convertido: a
+// unidade é a da fonte. Celulose é PIX semanal — sem a data ao lado, o preço engana.
+const BL_GRUPOS = [
+  {rot:'Iron ore', linhas:[
+    {rot:'62%',  code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
+    {rot:'61%',  code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
+  ]},
+  {rot:'Metals & energy', linhas:[
+    {rot:'Copper',   code:'COPPER',   un:'/lb'},
+    {rot:'Brent',    code:'BRENT',    un:'/bbl'},
+    {rot:'Nickel',   code:'NICKEL',   un:'/t'},
+    {rot:'Gold',     code:'GOLD',     un:'/oz'},
+    {rot:'Aluminum', code:'ALUMINUM', un:'/t'},
+  ]},
+  {rot:'Pulp', semanal:true, linhas:[
+    {rot:'BHKP China', code:'PULP_BHKP_CHINA', un:'/t'},
+    {rot:'NBSK China', code:'PULP_NBSK_CHINA', un:'/t'},
+  ]},
+];
+const BL_CODES = BL_GRUPOS.reduce((a,g)=>a.concat(g.linhas.map(l=>l.code)),[]);
+const BL_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+// ⚠️ Data do banco vem 'AAAA-MM-DD'. `new Date('2026-08-31')` é lido como UTC e, no Brasil,
+// volta como 30/08 21h — a armadilha já documentada no CLAUDE.md. Parte a string na mão.
+function blDia(iso){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); if(!m) return '';
+  return m[3]+'/'+BL_MES[+m[2]-1];
+}
+// No WhatsApp não existe cor: alta e queda têm de vir do GLIFO, senão o leitor tem de ler
+// número por número para saber a direção.
+function blSeta(v){ return (v==null||!isFinite(v)) ? '·' : (v>0.005?'▲':(v<-0.005?'▼':'▬')); }
 const BL_TAKE = {'+':'(+)','-':'(-)','=':'(=)'};   // "no take" não vira símbolo nenhum
 const BL_MAX_IDADE_MIN = 45;                       // acima disso, avisa que o preço está velho
 
@@ -747,8 +781,10 @@ let _blPrices = null, _blDest = null, _blJob = null;
 async function blFetchPrices(){
   const {data:{session}} = await sbAuth.auth.getSession();
   const h = {apikey:SUPA_KEY, Authorization:'Bearer '+(session?session.access_token:SUPA_KEY)};
-  const cols = 'code,name,price,unit,change_pct,updated_at';
-  const codes = BL_COMM.map(c=>c[1]).join(',');
+  // assessed_at = quando o preço foi AVALIADO (Platts, PIX). updated_at = quando o robô
+  // gravou. Para o blast a que importa é a primeira: é ela que diz de que dia é o número.
+  const cols = 'code,name,price,unit,change_pct,assessed_at,updated_at';
+  const codes = BL_CODES.join(',');
   const tks = BL_EUROPE.concat(BL_AUS).map(x=>x[1]).concat(['SP500_FUT']).join(',');
   const [c,q] = await Promise.all([
     fetch(SUPA_URL+'/rest/v1/commodities?select='+cols+'&code=in.('+codes+')',{headers:h}).then(r=>r.json()),
@@ -789,26 +825,49 @@ function blBuild(){
   d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
 
   L.push('*HOW MARKETS ARE TRADING*','');
-  L.push('*GLOBAL*','');
+  L.push('*GLOBAL*');
   const sp=P.byTicker['SP500_FUT']; fresco(sp);
-  L.push('- US 500 Futures: '+(sp?blNum(sp.price):'')+((sp&&sp.change_pct!=null)?' ('+blPct(sp.change_pct)+')':''),'');
+  L.push(sp&&sp.price!=null
+    ? blSeta(sp.change_pct)+' US 500 fut. '+blNum(sp.price)+' · '+blPct(sp.change_pct)
+    : '· US 500 fut.');
+  L.push('');
 
   L.push('*COMMODITIES*','');
-  BL_COMM.forEach(function(x){
-    const rot=x[0], code=x[1], un=x[2], r=P.byCode[code]; fresco(r);
-    L.push((r&&r.price!=null) ? '- '+rot+': USD '+blNum(r.price)+un+' ('+blPct(r.change_pct)+')'
-                              : '- '+rot+':');
+  BL_GRUPOS.forEach(function(g){
+    // A data do grupo semanal (celulose) fica no CABEÇALHO, uma vez — repetir em cada
+    // linha é ruído, e sem ela um preço de terça passa por preço de hoje.
+    let cab='*'+g.rot+'*';
+    if(g.semanal){
+      const d=g.linhas.map(function(l){return (P.byCode[l.code]||{}).assessed_at;}).filter(Boolean)[0];
+      cab+=' _semanal'+(d?' · '+blDia(d):'')+'_';
+    }
+    L.push(cab);
+    g.linhas.forEach(function(l){
+      const r=P.byCode[l.code]; fresco(r);
+      if(!r||r.price==null){ L.push('· '+l.rot); return; }
+      let nota=l.nota||'';
+      if(l.notaPlatts) nota='Platts'+(r.assessed_at?', '+blDia(r.assessed_at):'');
+      L.push(blSeta(r.change_pct)+' '+l.rot+(nota?' _'+nota+'_ ·':'')
+             +' USD '+blNum(r.price)+l.un+' · '+blPct(r.change_pct));
+    });
+    L.push('');
   });
-  L.push('');
 
+  // Peers em linha corrida: seis papéis ocupavam dez linhas e são só variações.
+  function blPeers(lista){
+    const partes=lista.map(function(x){ const r=P.byTicker[x[1]]; fresco(r);
+      // Sem cotação sai "MT —" e NÃO "· MT": em linha corrida o separador já é um ponto,
+      // e os dois juntos viravam "· · MT". O travessão diz "não há número" sem ambiguidade.
+      return (r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
+                                     : x[0]+' —'; });
+    return partes.join(' · ');
+  }
   L.push('*GLOBAL PEERS*','');
-  L.push('*Europe - Live*','');
-  BL_EUROPE.forEach(function(x){ const r=P.byTicker[x[1]]; fresco(r);
-    L.push('- '+x[0]+': '+((r&&r.change_pct!=null)?blPct(r.change_pct):'')); });
+  L.push('*Europe - Live*');
+  L.push(blPeers(BL_EUROPE));
   L.push('');
-  L.push('*Australia - Overnight*','');
-  BL_AUS.forEach(function(x){ const r=P.byTicker[x[1]]; fresco(r);
-    L.push('- '+x[0]+': '+((r&&r.change_pct!=null)?blPct(r.change_pct):'')); });
+  L.push('*Australia - Overnight*');
+  L.push(blPeers(BL_AUS));
   L.push('');
 
   const H=blHeadlines();
