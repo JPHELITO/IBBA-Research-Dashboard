@@ -789,7 +789,7 @@ function blSeta(v){ return (v==null||!isFinite(v)) ? '·' : (v>0.005?'▲':(v<-0
 const BL_TAKE = {'+':'(+)','-':'(-)','=':'(=)'};   // "no take" não vira símbolo nenhum
 const BL_MAX_IDADE_MIN = 45;                       // acima disso, avisa que o preço está velho
 
-let _blPrices = null, _blDest = null, _blJob = null;
+let _blPrices = null, _blDest = null, _blJob = null, _blTrad = {};
 
 async function blFetchPrices(){
   const {data:{session}} = await sbAuth.auth.getSession();
@@ -808,6 +808,31 @@ async function blFetchPrices(){
   return {byCode, byTicker};
 }
 
+// ── Títulos traduzidos (notícia em português) ────────────────────────────────
+// No Word, matéria em português sai bilíngue: "Título original \\ English title". Quem
+// decide não é uma lista de domínios aqui — é o BACKEND, que preenche `translated_title`
+// só para as fontes bilíngues (Valor, Portal Celulose). Espelhamos a condição do
+// build.py ao pé da letra: se o campo existe, a manchete sai nas duas línguas.
+//
+// A tradução já está pronta antes de você clicar: o aquecedor (`warm_bodies.py`) chama o
+// mesmo `_fetch_and_translate` da geração, então às 06h ela normalmente já foi feita. Se
+// ainda não estiver, a linha sai só no original — nunca traduzida na hora, que atrasaria
+// o blast e gastaria IA por fora do orçamento de uma chamada.
+//
+// A RPC devolve a LINHA INTEIRA do cache (`to_jsonb(b)`), então dá para ler o campo sem
+// migração de SQL nenhuma. São chamadas minúsculas e vão todas em paralelo.
+async function blFetchTraducoes(urls){
+  const out={};
+  await Promise.all((urls||[]).map(async function(u){
+    try{
+      const b=await rpc('admin_get_clipping_body',{p_url:u});
+      const t=(b&&b.translated_title||'').trim();
+      if(t) out[u]=t;
+    }catch(e){ /* sem tradução a manchete sai no original; não é erro do blast */ }
+  }));
+  return out;
+}
+
 // As manchetes na ORDEM e com o SETOR que o analista definiu — a mesma fonte do Word.
 function blHeadlines(){
   const out={SM:[],PP:[],NR:[]};
@@ -815,7 +840,11 @@ function blHeadlines(){
     const c=S.byUrl[u]||{}, st=S.sel.get(u)||{};
     const sec=st.sector||'NR', sym=BL_TAKE[st.take]||'';
     const t=String(c.title||u).trim(), src=c.source_name||domainOf(u);
-    (out[sec]||out.NR).push(t+' ['+src+']'+(sym?' '+sym:''));
+    // Mesma forma do Word: original \\ tradução. O leitor do blast é o mesmo do clipping,
+    // e ver as duas manchetes diferentes para a mesma notícia confunde.
+    const tr=(_blTrad[u]||'').trim();
+    const titulo = (tr && tr!==t) ? t+' \\ '+tr : t;
+    (out[sec]||out.NR).push(titulo+' ['+src+']'+(sym?' '+sym:''));
   });
   return out;
 }
@@ -921,7 +950,11 @@ async function blGerar(){
   const comIA=document.getElementById('bl-ia').checked;
   btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Buscando os preços…';
   _blDest=null;
-  try{ _blPrices=await blFetchPrices(); }
+  try{
+    // preços e traduções em paralelo: nenhuma das duas espera a outra
+    const [pr,tr]=await Promise.all([blFetchPrices(), blFetchTraducoes(S.order)]);
+    _blPrices=pr; _blTrad=tr;
+  }
   catch(e){ _blPrices=null; st.className='gen-status err';
             st.textContent='Não consegui ler os preços: '+(e.message||e); btn.disabled=false; return; }
   blRender();                                    // o texto aparece AGORA, sem esperar a IA
