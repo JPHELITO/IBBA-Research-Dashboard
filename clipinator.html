@@ -746,18 +746,16 @@ const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
 // Cobre em USD/lb (é como o carrossel publica e como o analista lê). Nada é convertido: a
 // unidade é a da fonte. Celulose é PIX semanal — sem a data ao lado, o preço engana.
 const BL_GRUPOS = [
-  // Minério e metais num bloco SÓ (02/09). A divisão em dois grupos custava um nível de
-  // hierarquia — e o WhatsApp só tem dois — sem separar nada que o leitor precise separar.
-  // ⚠️ Sem o cabeçalho do grupo, o rótulo tem de voltar a ser INTEIRO: "62%" sozinho não
-  // diz de que se trata.
-  {rot:'Commodities', linhas:[
-    {rot:'Iron Ore 62%', code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
-    {rot:'Iron Ore 61%', code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
-    {rot:'Copper',       code:'COPPER',       un:'/lb'},
-    {rot:'Brent',        code:'BRENT',        un:'/bbl'},
-    {rot:'Nickel',       code:'NICKEL',       un:'/t'},
-    {rot:'Gold',         code:'GOLD',         un:'/oz'},
-    {rot:'Aluminum',     code:'ALUMINUM',     un:'/t'},
+  {rot:'Iron ore', linhas:[
+    {rot:'62%',  code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
+    {rot:'61%',  code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
+  ]},
+  {rot:'Metals & energy', linhas:[
+    {rot:'Copper',   code:'COPPER',   un:'/lb'},
+    {rot:'Brent',    code:'BRENT',    un:'/bbl'},
+    {rot:'Nickel',   code:'NICKEL',   un:'/t'},
+    {rot:'Gold',     code:'GOLD',     un:'/oz'},
+    {rot:'Aluminum', code:'ALUMINUM', un:'/t'},
   ]},
   // Celulose em DOIS grupos, como no carrossel da dashboard — e não por estética: China e
   // Europa têm datas de assessment DIFERENTES (medido em 01/09: China 28/ago, Europa 01/set),
@@ -785,28 +783,35 @@ function blDia(iso){
   const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); if(!m) return '';
   return m[3]+'/'+BL_MES[+m[2]-1];
 }
-// ── HIERARQUIA (02/09) ───────────────────────────────────────────────────────
-// O WhatsApp dá exatamente DUAS ferramentas de tipografia: negrito e itálico. Tamanho de
-// letra não existe. Com três níveis de título (HOW MARKETS ARE TRADING > COMMODITIES >
-// Iron ore) os três saíam IDÊNTICOS na tela — não dava para saber o que estava dentro do
-// quê. A saída não é caprichar no negrito, é achatar para dois níveis e dar ao primeiro um
-// sinal que não seja tipográfico:
-//     régua + CAIXA ALTA  = seção
-//     negrito caixa normal = bloco dentro dela
-// Sumiram junto os invólucros GLOBAL (embrulhava UMA linha) e GLOBAL PEERS (não dizia nada
-// que "Peers — Europe" já não diga). 13 rótulos em negrito viraram 9.
-const BL_REGUA = '━━━━━━━━━━━━━━━━';
+// ── HIERARQUIA DO BLAST (02/09) ──────────────────────────────────────────────
+// O WhatsApp dá negrito, itálico, tachado, monoespaçado e Unicode — e MAIS NADA. Não há
+// tamanho de letra. Com três níveis de título e uma só ferramenta (negrito), os três
+// saíam idênticos na tela e não dava para saber o que estava dentro do quê.
+//
+// A saída não é caprichar no negrito: é dar a cada nível um sinal DIFERENTE EM ESPÉCIE.
+//
+//   ▌ + CAIXA ALTA    seção      NEWS HIGHLIGHTS · HOW MARKETS ARE TRADING · HEADLINES
+//   ▪ + CAIXA ALTA    subdivisão GLOBAL · COMMODITIES · GLOBAL PEERS · S&M · P&P
+//   negrito puro      grupo      Iron ore · Metals & energy · Pulp China · Europe - Live
+//
+// O terceiro nível não leva marcador NENHUM, e é de propósito: a ausência de marcador já é
+// o sinal dele. Pôr um terceiro glifo aqui devolveria o problema — três marcas parecidas
+// competindo em vez de três degraus.
+//
+// ⚠️ Marcador é NEGRITO junto com o texto (*▌TÍTULO*), nunca solto antes do asterisco: o
+// WhatsApp só abre negrito quando o asterisco encosta em caractere não-espaço, então
+// "*▌ TÍTULO*" com espaço depois da barra funciona, mas "▌ *TÍTULO*" deixa a barra fina e
+// o título grosso — dois pesos na mesma linha, que é o oposto do que se quer.
+function blH1(t){ return '*▌'+t+'*'; }
+function blH2(t){ return '*▪ '+t+'*'; }
 
-// ⚠️ SETA, NUNCA EMOJI. Testamos 🟢/🔴 e o analista recusou: "volta para o antigo, ele vinha
-// preto no WhatsApp, estava clean". Emoji é a única coisa que o app pinta — caractere de
-// texto herda a cor da mensagem — mas o preto uniforme é o que ele quer. (E fica o registro:
-// 🔺 e 🔻 são os DOIS vermelhos, não servem como par de direção.)
-// A direção vem do GLIFO, senão o leitor lê número por número para achá-la.
+// No WhatsApp não existe cor: alta e queda têm de vir do GLIFO, senão o leitor tem de ler
+// número por número para saber a direção.
 function blSeta(v){ return (v==null||!isFinite(v)) ? '·' : (v>0.005?'▲':(v<-0.005?'▼':'▬')); }
 const BL_TAKE = {'+':'(+)','-':'(-)','=':'(=)'};   // "no take" não vira símbolo nenhum
 const BL_MAX_IDADE_MIN = 45;                       // acima disso, avisa que o preço está velho
 
-let _blPrices = null, _blDest = null, _blJob = null;
+let _blPrices = null, _blDest = null, _blJob = null, _blTrad = {};
 
 async function blFetchPrices(){
   const {data:{session}} = await sbAuth.auth.getSession();
@@ -825,6 +830,31 @@ async function blFetchPrices(){
   return {byCode, byTicker};
 }
 
+// ── Títulos traduzidos (notícia em português) ────────────────────────────────
+// No Word, matéria em português sai bilíngue: "Título original \\ English title". Quem
+// decide não é uma lista de domínios aqui — é o BACKEND, que preenche `translated_title`
+// só para as fontes bilíngues (Valor, Portal Celulose). Espelhamos a condição do
+// build.py ao pé da letra: se o campo existe, a manchete sai nas duas línguas.
+//
+// A tradução já está pronta antes de você clicar: o aquecedor (`warm_bodies.py`) chama o
+// mesmo `_fetch_and_translate` da geração, então às 06h ela normalmente já foi feita. Se
+// ainda não estiver, a linha sai só no original — nunca traduzida na hora, que atrasaria
+// o blast e gastaria IA por fora do orçamento de uma chamada.
+//
+// A RPC devolve a LINHA INTEIRA do cache (`to_jsonb(b)`), então dá para ler o campo sem
+// migração de SQL nenhuma. São chamadas minúsculas e vão todas em paralelo.
+async function blFetchTraducoes(urls){
+  const out={};
+  await Promise.all((urls||[]).map(async function(u){
+    try{
+      const b=await rpc('admin_get_clipping_body',{p_url:u});
+      const t=(b&&b.translated_title||'').trim();
+      if(t) out[u]=t;
+    }catch(e){ /* sem tradução a manchete sai no original; não é erro do blast */ }
+  }));
+  return out;
+}
+
 // As manchetes na ORDEM e com o SETOR que o analista definiu — a mesma fonte do Word.
 function blHeadlines(){
   const out={SM:[],PP:[],NR:[]};
@@ -832,7 +862,11 @@ function blHeadlines(){
     const c=S.byUrl[u]||{}, st=S.sel.get(u)||{};
     const sec=st.sector||'NR', sym=BL_TAKE[st.take]||'';
     const t=String(c.title||u).trim(), src=c.source_name||domainOf(u);
-    (out[sec]||out.NR).push(t+' ['+src+']'+(sym?' '+sym:''));
+    // Mesma forma do Word: original \\ tradução. O leitor do blast é o mesmo do clipping,
+    // e ver as duas manchetes diferentes para a mesma notícia confunde.
+    const tr=(_blTrad[u]||'').trim();
+    const titulo = (tr && tr!==t) ? t+' \\ '+tr : t;
+    (out[sec]||out.NR).push(titulo+' ['+src+']'+(sym?' '+sym:''));
   });
   return out;
 }
@@ -850,19 +884,19 @@ function blBuild(){
   L.push('Seguem abaixo os destaques da manhã.','');
   L.push('Abs!','Daniel Sasson – Itaú BBA','');
 
-  L.push(BL_REGUA,'*NEWS HIGHLIGHTS*','');
+  L.push(blH1('NEWS HIGHLIGHTS'),'');
   const d=(_blDest||[]).filter(function(x){return x&&x.trim();});
   d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
 
-  // O futuro do S&P abre a seção sem rótulo próprio: ele É a temperatura do mercado, e um
-  // cabeçalho "GLOBAL" para uma linha só era o nível de hierarquia que sobrava.
-  L.push(BL_REGUA,'*HOW MARKETS ARE TRADING*','');
+  L.push(blH1('HOW MARKETS ARE TRADING'),'');
+  L.push(blH2('GLOBAL'));
   const sp=P.byTicker['SP500_FUT']; fresco(sp);
   L.push(sp&&sp.price!=null
     ? blSeta(sp.change_pct)+' US 500 fut. '+blNum(sp.price)+' · '+blPct(sp.change_pct)
     : '· US 500 fut.');
   L.push('');
 
+  L.push(blH2('COMMODITIES'),'');
   BL_GRUPOS.forEach(function(g){
     // A data do grupo semanal (celulose) fica no CABEÇALHO, uma vez — repetir em cada
     // linha é ruído, e sem ela um preço de terça passa por preço de hoje.
@@ -900,17 +934,18 @@ function blBuild(){
       L.push((r&&r.change_pct!=null) ? blSeta(r.change_pct)+' '+x[0]+' '+blPct(r.change_pct)
                                      : '· '+x[0]); });
   }
-  L.push('*Peers — Europe, live*');
+  L.push(blH2('GLOBAL PEERS'),'');
+  L.push('*Europe - Live*');
   blPeers(BL_EUROPE);
   L.push('');
-  L.push('*Peers — Australia, overnight*');
+  L.push('*Australia - Overnight*');
   blPeers(BL_AUS);
   L.push('');
 
   const H=blHeadlines();
-  L.push(BL_REGUA,'*HEADLINES*','');
+  L.push(blH1('HEADLINES'),'');
   [['SM','S&M'],['PP','P&P']].forEach(function(x){
-    L.push('*'+x[1]+'*','');
+    L.push(blH2(x[1]),'');
     H[x[0]].forEach(function(h){ L.push(h,''); });
   });
   // NR não existe no formato do blast. Em vez de sumir com a notícia calado, a tela avisa
@@ -937,7 +972,11 @@ async function blGerar(){
   const comIA=document.getElementById('bl-ia').checked;
   btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Buscando os preços…';
   _blDest=null;
-  try{ _blPrices=await blFetchPrices(); }
+  try{
+    // preços e traduções em paralelo: nenhuma das duas espera a outra
+    const [pr,tr]=await Promise.all([blFetchPrices(), blFetchTraducoes(S.order)]);
+    _blPrices=pr; _blTrad=tr;
+  }
   catch(e){ _blPrices=null; st.className='gen-status err';
             st.textContent='Não consegui ler os preços: '+(e.message||e); btn.disabled=false; return; }
   blRender();                                    // o texto aparece AGORA, sem esperar a IA
