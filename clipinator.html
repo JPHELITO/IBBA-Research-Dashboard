@@ -137,6 +137,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .gen .btn.primary{width:100%;padding:9px;font-size:12.5px;}
 .gen-status{margin-top:10px;font-size:12px;color:var(--gray-mid);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.4;}
 .gen-status.ok{color:var(--green);} .gen-status.err{color:var(--red);}
+/* Blast do WhatsApp */
+.gen.blast{border-top:1px solid var(--border);}
+.gen.blast .btn.primary{width:auto;padding:7px 14px;}
+.bl-hint{font-size:11px;color:var(--gray-mid);}
+.bl-ck{font-size:11px;color:var(--gray-mid);display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
+.bl-out{width:100%;min-height:280px;margin-top:8px;padding:9px 10px;border:1px solid var(--border);
+        border-radius:8px;background:#fff;color:#111;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
+        white-space:pre;overflow:auto;resize:vertical;}
+.bl-warn{margin-top:6px;font-size:11px;color:#8a5a00;background:#fff6e5;border:1px solid #f0d9a8;
+         border-radius:6px;padding:6px 8px;line-height:1.45;}
+html.dark .bl-out{background:#0f1115;color:#e8e8e8;border-color:#2a2f38;}
+html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
 .spin2{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex-shrink:0;}
 .dl{display:inline-block;padding:6px 12px;border-radius:7px;background:var(--orange);color:#fff!important;text-decoration:none;font-weight:600;font-size:11.5px;}
 .dl:hover{opacity:.9;}
@@ -315,6 +327,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
         <div class="gen-status" id="clip-status"></div>
         <div id="clip-fails" class="fails" hidden></div>
       </div>
+
+      <!-- BLAST DO WHATSAPP - monta aqui, no navegador, o texto pronto p/ colar.
+           Precos e manchetes saem do banco (zero IA); so os 3 destaques sao
+           escritos por IA, num job separado e leve. Ver clipping/blast.py. -->
+      <div class="gen blast">
+        <div class="bar" style="margin-bottom:8px">
+          <b style="font-size:12px">Blast do WhatsApp</b>
+          <span class="bl-hint">precos ao vivo + as manchetes selecionadas</span>
+        </div>
+        <div class="bar" style="gap:6px;margin-bottom:8px">
+          <button class="btn primary" id="bl-gen" disabled>Gerar blast</button>
+          <button class="btn" id="bl-copy" disabled>Copiar</button>
+          <label class="bl-ck"><input type="checkbox" id="bl-ia" checked> destaques por IA</label>
+        </div>
+        <div class="gen-status" id="bl-status"></div>
+        <textarea id="bl-out" class="bl-out" spellcheck="false" readonly hidden></textarea>
+        <div class="bl-warn" id="bl-warn" hidden></div>
+      </div>
+
       <details class="ex-fold">
         <summary>Extras — mensagem · publicações · earnings · analistas</summary>
         <div class="ex-stack">
@@ -563,6 +594,7 @@ function renderSel(){
   const host=document.getElementById('clip-sel'); const cnt=document.getElementById('clip-count');
   if(cnt) cnt.innerHTML='<b>'+S.order.length+'</b> selecionadas';
   const gb=document.getElementById('clip-gen'); if(gb) gb.disabled=!S.order.length;
+  const bb=document.getElementById('bl-gen'); if(bb) bb.disabled=!S.order.length;
   if(!host) return;
   if(!S.order.length){ host.innerHTML='<div class="empty">Marque notícias à esquerda para montar o clipping.</div>'; return; }
   let html=''; let n=0;
@@ -660,6 +692,188 @@ function renderFailures(errors){
   });
   const rb=document.getElementById('clip-regen');
   if(rb) rb.onclick=()=>{ host.hidden=true; generate(); };
+}
+
+// ══ BLAST DO WHATSAPP ════════════════════════════════════════════════════════
+// O texto sai daqui, do navegador, e não do robô. A razão está em clipping/blast.py:
+// das três seções, duas são DADO (preços do banco + as manchetes que o analista já
+// selecionou, com o take e o setor dele) e uma é JULGAMENTO (quais 3 notícias importam).
+// Só o julgamento vai para a IA. Assim o blast aparece na hora, e nenhum número passa
+// por um modelo — que é onde nasce o erro que ninguém audita.
+//
+// ⚠️ pt-BR de propósito: o blast é escrito em português. A regra de en-US do CLAUDE.md
+// vale para as telas do CLIENTE; o Clipping é tela interna, como o resto desta página.
+const BL_MILHAR = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const BL_DEC2   = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+// >= 1000 perde as casas (16.663 lê melhor que 16.663,40 num celular); abaixo, 2 casas.
+function blNum(v){ if(v==null||!isFinite(v)) return ''; return Math.abs(v)>=1000?BL_MILHAR.format(v):BL_DEC2.format(v); }
+function blPct(v){ if(v==null||!isFinite(v)) return ''; return (v>=0?'+':'')+BL_DEC2.format(v)+'%'; }
+
+// Cotação: código no banco -> rótulo do blast. Os PEERS usam a linha da bolsa LOCAL, e
+// isso é o ponto todo (medido em 01/09/2026, barras de 5 min): às 06h BRT = 09:00 UTC a
+// NYSE está FECHADA, então RIO/BHP/MT de Nova York devolveriam o fechamento de ONTEM com
+// a variação de ONTEM — sairia no blast como "movimento da manhã", errado e calado.
+// Londres e Amsterdã abrem 07:00 UTC (vivas); a ASX fecha 06:12 UTC (o dia dela já é
+// definitivo). ⚠️ Isto vale SÓ para o blast: a dashboard, o heatmap e a aba Market
+// seguem usando os ADRs de Nova York, como sempre.
+const BL_EUROPE = [['RIO','RIO.L'],['GLEN','GLEN.L'],['AAL','AAL.L'],['MT','MT.AS']];
+const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
+// Commodity: [rótulo, code, unidade]. Cobre em USD/lb (é como o carrossel publica e como
+// o analista lê); minério e níquel vêm do coletor chinês (SGX e LME), os únicos vivos às
+// 06h da manhã. Nada aqui é convertido: a unidade é a da fonte.
+const BL_COMM = [['Iron Ore 62%','IRON_ORE_SGX','/ton'],['Copper','COPPER','/lb'],
+                 ['Brent','BRENT','/bbl'],['Nickel','NICKEL','/ton'],
+                 ['Gold','GOLD','/oz'],['Aluminum','ALUMINUM','/ton']];
+const BL_TAKE = {'+':'(+)','-':'(-)','=':'(=)'};   // "no take" não vira símbolo nenhum
+const BL_MAX_IDADE_MIN = 45;                       // acima disso, avisa que o preço está velho
+
+let _blPrices = null, _blDest = null, _blJob = null;
+
+async function blFetchPrices(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  const h = {apikey:SUPA_KEY, Authorization:'Bearer '+(session?session.access_token:SUPA_KEY)};
+  const cols = 'code,name,price,unit,change_pct,updated_at';
+  const codes = BL_COMM.map(c=>c[1]).join(',');
+  const tks = BL_EUROPE.concat(BL_AUS).map(x=>x[1]).concat(['SP500_FUT']).join(',');
+  const [c,q] = await Promise.all([
+    fetch(SUPA_URL+'/rest/v1/commodities?select='+cols+'&code=in.('+codes+')',{headers:h}).then(r=>r.json()),
+    fetch(SUPA_URL+'/rest/v1/quotes?select=ticker,price,change_pct,updated_at&ticker=in.('+tks+')',{headers:h}).then(r=>r.json()),
+  ]);
+  const byCode={}, byTicker={};
+  (c||[]).forEach(x=>byCode[x.code]=x); (q||[]).forEach(x=>byTicker[x.ticker]=x);
+  return {byCode, byTicker};
+}
+
+// As manchetes na ORDEM e com o SETOR que o analista definiu — a mesma fonte do Word.
+function blHeadlines(){
+  const out={SM:[],PP:[],NR:[]};
+  S.order.forEach(u=>{
+    const c=S.byUrl[u]||{}, st=S.sel.get(u)||{};
+    const sec=st.sector||'NR', sym=BL_TAKE[st.take]||'';
+    const t=String(c.title||u).trim(), src=c.source_name||domainOf(u);
+    (out[sec]||out.NR).push(t+' ['+src+']'+(sym?' '+sym:''));
+  });
+  return out;
+}
+
+function blBuild(){
+  const P=_blPrices||{byCode:{},byTicker:{}}, velhos=[];
+  const agora=Date.now();
+  const fresco=function(row){ if(!row||!row.updated_at) return;
+    const min=(agora-new Date(row.updated_at).getTime())/60000;
+    if(min>BL_MAX_IDADE_MIN) velhos.push(row.code||row.ticker); };
+
+  const L=[];
+  L.push('*ITAÚ BBA - S&M | P&P MORNING SUMMARY*','');
+  L.push('Olá, bom dia!','');
+  L.push('Seguem abaixo os destaques da manhã.','');
+  L.push('Abs!','Daniel Sasson – Itaú BBA','');
+
+  L.push('*NEWS HIGHLIGHTS*','');
+  const d=(_blDest||[]).filter(function(x){return x&&x.trim();});
+  d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
+
+  L.push('*HOW MARKETS ARE TRADING*','');
+  L.push('*GLOBAL*','');
+  const sp=P.byTicker['SP500_FUT']; fresco(sp);
+  L.push('- US 500 Futures: '+(sp?blNum(sp.price):'')+((sp&&sp.change_pct!=null)?' ('+blPct(sp.change_pct)+')':''),'');
+
+  L.push('*COMMODITIES*','');
+  BL_COMM.forEach(function(x){
+    const rot=x[0], code=x[1], un=x[2], r=P.byCode[code]; fresco(r);
+    L.push((r&&r.price!=null) ? '- '+rot+': USD '+blNum(r.price)+un+' ('+blPct(r.change_pct)+')'
+                              : '- '+rot+':');
+  });
+  L.push('');
+
+  L.push('*GLOBAL PEERS*','');
+  L.push('*Europe - Live*','');
+  BL_EUROPE.forEach(function(x){ const r=P.byTicker[x[1]]; fresco(r);
+    L.push('- '+x[0]+': '+((r&&r.change_pct!=null)?blPct(r.change_pct):'')); });
+  L.push('');
+  L.push('*Australia - Overnight*','');
+  BL_AUS.forEach(function(x){ const r=P.byTicker[x[1]]; fresco(r);
+    L.push('- '+x[0]+': '+((r&&r.change_pct!=null)?blPct(r.change_pct):'')); });
+  L.push('');
+
+  const H=blHeadlines();
+  L.push('*HEADLINES*','');
+  [['SM','S&M'],['PP','P&P']].forEach(function(x){
+    L.push('*'+x[1]+'*','');
+    H[x[0]].forEach(function(h){ L.push(h,''); });
+  });
+  // NR não existe no formato do blast. Em vez de sumir com a notícia calado, a tela avisa
+  // quantas ficaram de fora — quem decide o que fazer é o analista.
+  return {texto:L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n', velhos:velhos, nr:H.NR.length};
+}
+
+function blRender(){
+  const out=document.getElementById('bl-out'), cp=document.getElementById('bl-copy'),
+        wa=document.getElementById('bl-warn');
+  const r=blBuild();
+  out.value=r.texto; out.hidden=false; cp.disabled=false;
+  const av=[];
+  if(r.velhos.length){
+    const uniq=r.velhos.filter(function(v,i,a){return a.indexOf(v)===i;});
+    av.push('Preço com mais de '+BL_MAX_IDADE_MIN+' min: <b>'+esc(uniq.join(', '))+'</b> — o robô pode estar parado.');
+  }
+  if(r.nr) av.push('<b>'+r.nr+'</b> manchete(s) marcadas como NR ficaram de fora: o blast só tem S&M e P&P.');
+  if(av.length){ wa.innerHTML=av.join('<br>'); wa.hidden=false; } else { wa.hidden=true; }
+}
+
+async function blGerar(){
+  const btn=document.getElementById('bl-gen'), st=document.getElementById('bl-status');
+  const comIA=document.getElementById('bl-ia').checked;
+  btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Buscando os preços…';
+  _blDest=null;
+  try{ _blPrices=await blFetchPrices(); }
+  catch(e){ _blPrices=null; st.className='gen-status err';
+            st.textContent='Não consegui ler os preços: '+(e.message||e); btn.disabled=false; return; }
+  blRender();                                    // o texto aparece AGORA, sem esperar a IA
+  if(!comIA){ st.className='gen-status ok'; st.textContent='✓ Pronto (sem destaques).'; btn.disabled=false; return; }
+
+  st.innerHTML='<span class="spin2"></span> Preços prontos. Pedindo os 3 destaques à IA menos sobrecarregada…';
+  try{
+    const cfg=Object.assign({}, S.config, {blast:{only:true, n:3}});
+    const _rd=document.getElementById('cfg-ref-date');
+    _blJob=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:cfg, p_ref_date:(_rd&&_rd.value)||null});
+  }catch(e){
+    st.className='gen-status err';
+    st.innerHTML='Blast pronto <b>sem os destaques</b> (não consegui enfileirar: '+esc(e.message||String(e))+').';
+    btn.disabled=false; return;
+  }
+  const t0=Date.now();
+  while(Date.now()-t0 < 4*60*1000){
+    await new Promise(function(r){setTimeout(r,3000);});
+    let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:_blJob}))||[])[0]; }catch(e){ continue; }
+    if(!job) continue;
+    const b=(job.config||{}).blast||{};
+    if(job.status==='done'){
+      _blDest=b.destaques||[]; blRender();
+      st.className='gen-status ok';
+      st.innerHTML = _blDest.length
+        ? '✓ Pronto — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>.'
+        : '✓ Pronto, mas a IA não devolveu destaque'+(b.erro?' ('+esc(b.erro)+')':'')+'. A seção fica vazia, como o formato prevê.';
+      btn.disabled=false; return;
+    }
+    if(job.status==='error'){
+      st.className='gen-status err';
+      st.innerHTML='Blast pronto <b>sem os destaques</b> — a IA falhou: '+esc(job.error||'desconhecido');
+      btn.disabled=false; return;
+    }
+  }
+  st.className='gen-status err';
+  st.innerHTML='Blast pronto <b>sem os destaques</b> — a IA demorou demais (o robô do Actions pode estar iniciando).';
+  btn.disabled=false;
+}
+
+async function blCopiar(){
+  const out=document.getElementById('bl-out'), st=document.getElementById('bl-status');
+  try{ await navigator.clipboard.writeText(out.value); }
+  catch(e){ out.removeAttribute('readonly'); out.select(); document.execCommand('copy'); out.setAttribute('readonly',''); }
+  const antes=st.innerHTML, cls=st.className;
+  st.className='gen-status ok'; st.textContent='✓ Copiado — é só colar no WhatsApp.';
+  setTimeout(function(){ st.innerHTML=antes; st.className=cls; }, 2500);
 }
 
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
@@ -1193,6 +1407,8 @@ function wire(){
   document.getElementById('clip-add').onclick=addManual;
   document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
   document.getElementById('clip-gen').onclick=generate;
+  const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
+  const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
   const cc=document.getElementById('clip-clear'); if(cc) cc.onclick=clearSel;
   // Config (mensagem/intro + Recent Publications + Earnings Review)
   document.getElementById('cfg-intro-on').onchange=e=>{ S.config.intro.on=e.target.checked; saveConfig(); };
