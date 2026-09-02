@@ -787,6 +787,134 @@ def extract_cvm_url(html: str) -> str | None:
     return m.group(0).replace("&amp;", "&")
 
 
+# ── o DOCUMENTO em si (PDF na CVM) → título real + começo do texto ───────────
+# O link do Plantão abre um visualizador (frmExibirArquivoIPEExterno.aspx?ID=<protocolo>) que
+# carrega o PDF por um WebMethod em JSON (base64). Sem captcha (hdnHabilitaCaptcha = N, medido
+# em 2026-09-02). Reserva: o download direto exige numSequencia, que na prática é
+# protocolo − 475294 (identidade sequencial; conferido em 6 documentos do CSV IPE da CVM).
+CVM_EXIBIR_PDF = "https://www.rad.cvm.gov.br/ENETWEB/frmExibirArquivoIPEExterno.aspx/ExibirPDF"
+CVM_DOWNLOAD = ("https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE"
+                "&CodigoInstituicao=1&numProtocolo={p}&numSequencia={s}&numVersao=1")
+_SEQ_OFFSET = 475294
+_PROTO_RE = re.compile(r"[?&]ID=(\d+)")
+
+
+def cvm_protocol_from_url(url: str | None) -> int | None:
+    m = _PROTO_RE.search(url or "")
+    return int(m.group(1)) if m else None
+
+
+def fetch_cvm_pdf(protocol: int) -> bytes | None:
+    """Bytes do PDF de um protocolo IPE. WebMethod primeiro; download direto de reserva."""
+    import base64
+    try:
+        r = requests.post(CVM_EXIBIR_PDF, headers={**UA, "Content-Type": "application/json; charset=utf-8",
+                                                   "Accept": "application/json"},
+                          data=json.dumps({"codigoInstituicao": "2", "numeroProtocolo": str(protocol),
+                                           "token": "", "versaoCaptcha": ""}), timeout=120)
+        if r.ok:
+            d = (r.json() or {}).get("d")
+            if isinstance(d, str) and len(d) > 200 and d not in ("V2", "V3"):
+                b = base64.b64decode(d)
+                if b.startswith(b"%PDF"):
+                    return b
+    except Exception as e:  # noqa: BLE001
+        _log(f"  [cvm] ExibirPDF {protocol}: {e}")
+    try:
+        r = requests.get(CVM_DOWNLOAD.format(p=protocol, s=protocol - _SEQ_OFFSET), headers=UA, timeout=120)
+        if r.ok and r.content.startswith(b"%PDF"):
+            return r.content
+    except Exception as e:  # noqa: BLE001
+        _log(f"  [cvm] download {protocol}: {e}")
+    return None
+
+
+def pdf_first_page_text(pdf: bytes, max_pages: int = 2) -> str:
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf, filetype="pdf")
+        return "\n".join(doc[i].get_text() for i in range(min(max_pages, doc.page_count)))
+    except Exception as e:  # noqa: BLE001
+        _log(f"  [cvm] pdf: {e}")
+        return ""
+
+
+def doc_title_excerpt(text: str, company_name: str = "") -> tuple[str | None, str | None]:
+    """(título, trecho) a partir do texto do PDF.
+
+    Título = 1ª linha "de verdade" (≥ 12 caracteres, sem ser cabeçalho de empresa/CNPJ/NIRE/data
+    solta). Trecho = texto corrido a partir do título, ≤ 1.500 caracteres, espaços colapsados.
+    """
+    lines = [" ".join(l.split()) for l in (text or "").splitlines()]
+    lines = [l for l in lines if l]
+    if not lines:
+        return None, None
+    # cabeçalho de papel timbrado: nome/CNPJ/NIRE/"Companhia Aberta", cidade+data, tipo do
+    # documento seco ("COMUNICADO AO MERCADO", "FATO RELEVANTE"…) — nada disso é título
+    skip = re.compile(
+        r"^(CNPJ|NIRE|C[óo]digo CVM|Companhia Aberta|Capital (Aberto|Autorizado)|P[áa]gina|Page)\b"
+        r"|^(Rio de Janeiro|S[ãa]o Paulo|Belo Horizonte|Porto Alegre|Curitiba|Bras[íi]lia|Jundia[íi]|Vit[óo]ria)\s*[,–-]"
+        r"|^\W+$|\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}"
+        r"|^(COMUNICADO( AO MERCADO)?|FATO RELEVANTE|AVISO AOS ACIONISTAS|PRESS[ -]RELEASE|MATERIAL FACT|"
+        r"NOTICE TO (THE MARKET|SHAREHOLDERS)|EARNINGS RELEASE|RELEASE DE RESULTADOS)\W*$", re.I)
+    # o corpo começa aqui: "Cidade, data – A Empresa informa…" ou linha que continua uma frase
+    # (minúscula). Daí em diante não há título — o documento é só o comunicado corrido.
+    body_start = re.compile(
+        r"^(Rio de Janeiro|S[ãa]o Paulo|Belo Horizonte|Porto Alegre|Curitiba|Bras[íi]lia|Jundia[íi]|Vit[óo]ria|Nova Lima)\s*[,–-]"
+        r"|^[a-zà-ú]")
+    norm = lambda s: re.sub(r"[^a-z0-9]+", "", s.lower())  # noqa: E731
+    nm = norm(company_name) if company_name else ""
+    nm_first = norm(company_name.split()[0]) if company_name else ""
+    title = None
+    idx = 0
+    for k, l in enumerate(lines[:14]):
+        if body_start.search(l):
+            idx = k
+            break
+        if len(l) < 20 or skip.search(l):
+            continue
+        nl = norm(l)
+        # linha que é só o nome da empresa (com S.A./S/A/Inc. e variações)
+        if nm and (nl.startswith(nm) and len(nl) <= len(nm) + 6):
+            continue
+        if nm_first and re.search(r"\b(S\.?A\.?|S/A|INC\.?|LTDA\.?)\s*$", l, re.I) and nm_first in nl and len(l) < 60:
+            continue
+        title = l
+        idx = k
+        # candidato que é o COMEÇO de uma frase (sem pontuação final e a próxima linha continua
+        # em minúscula): estende até o fim da frase, senão o "título" para no meio
+        j = k + 1
+        while (j < len(lines) and len(title) < 220 and not re.search(r"[.:;!?»”]\s*$", title)
+               and re.match(r"^[a-zà-ú(“\"]", lines[j])):
+            title += " " + lines[j]
+            j += 1
+        title = (title[:177].rstrip() + "…") if len(title) > 180 else title
+        break
+    body = " ".join(lines[idx:])
+    excerpt = body[:1500].strip() or None
+    return title, excerpt
+
+
+def enrich_filing_doc(row: dict) -> dict:
+    """Preenche doc_title/doc_excerpt de um comunicado (só os newsworthy — o resto não vai p/ o feed)."""
+    p = cvm_protocol_from_url(row.get("cvm_url"))
+    if not p:
+        return row
+    pdf = fetch_cvm_pdf(p)
+    if not pdf:
+        return row
+    t, x = doc_title_excerpt(pdf_first_page_text(pdf), (COMPANIES.get(row.get("company"), {}) or {}).get("name", ""))
+    # press-release de resultados é TABELA: a "1ª linha" seria cabeçalho de coluna — deixa o
+    # título cair no padrão "{empresa} — {categoria}" (o trecho fica, p/ a IA)
+    if t and "press-release" in (row.get("category") or "").lower():
+        t = None
+    if t:
+        row["doc_title"] = t
+    if x:
+        row["doc_excerpt"] = x
+    return row
+
+
 def build_filing_rows(items: list[dict], known_ids: set[int] | None = None, detail_fn=None) -> list[dict]:
     """Itens do Plantão → mw_filings (só empresas da cobertura). detail_fn(id, dateTime) → url."""
     out = []
@@ -826,8 +954,13 @@ def run_filings(days: int, dry: bool) -> int:
     if got:
         known = {int(r["id"]) for r in got if r.get("id") is not None}
     rows = build_filing_rows(items, known, fetch_plantao_detail_url)
+    # documento em si (título real + trecho) só para o que vai ao feed de notícias
+    for r in rows:
+        if r.get("is_newsworthy") and r.get("cvm_url"):
+            enrich_filing_doc(r)
     n = upsert("mw_filings", rows, "id", dry)
-    _log(f"  plantão: {len(rows)} comunicados novos da cobertura → {n} gravados")
+    _log(f"  plantão: {len(rows)} comunicados novos da cobertura → {n} gravados "
+         f"({sum(1 for r in rows if r.get('doc_title'))} com título do documento)")
     return n
 
 

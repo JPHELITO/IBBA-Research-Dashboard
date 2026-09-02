@@ -156,9 +156,14 @@ create table if not exists public.mw_filings (
   flag          text,                        -- (R) reapresentação · (C) cancelado · (N) norma/nota
   cvm_url       text,                        -- link do documento na CVM (ENET)
   is_newsworthy boolean not null default false,
+  doc_title     text,                        -- 1ª linha do documento (o "assunto" real, ex.: "Vale informa nova composição…")
+  doc_excerpt   text,                        -- início do texto do documento (≤ 1.500 caracteres), p/ o feed e p/ a IA
   updated_at    timestamptz not null default now()
 );
 alter table public.mw_filings enable row level security;
+-- (idempotente p/ quem já criou a tabela antes destas colunas)
+alter table public.mw_filings add column if not exists doc_title text;
+alter table public.mw_filings add column if not exists doc_excerpt text;
 create index if not exists mw_filings_company_idx on public.mw_filings (company, published_at desc);
 create index if not exists mw_filings_pub_idx on public.mw_filings (published_at desc);
 

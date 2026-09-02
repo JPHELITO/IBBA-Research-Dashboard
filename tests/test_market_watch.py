@@ -268,6 +268,38 @@ def test_build_filing_rows_filtra_a_cobertura():
     assert all(r["id"] != rows[0]["id"] for r in mw.build_filing_rows(items, known, lambda i, d: None))
 
 
+def test_protocolo_da_url():
+    assert mw.cvm_protocol_from_url("https://www.rad.cvm.gov.br/ENETWEB/frmExibirArquivoIPEExterno.aspx?ID=1562150&flnk") == 1562150
+    assert mw.cvm_protocol_from_url("https://x/y?flnk") is None and mw.cvm_protocol_from_url(None) is None
+
+
+def test_titulo_e_trecho_do_documento():
+    txt = ("VALE S.A.\nCNPJ 33.592.510/0001-54\nCompanhia Aberta\n\n"
+           "Vale informa nova composição do Comitê de Auditoria e Riscos\n\n"
+           "Rio de Janeiro, 27 de agosto de 2026 – A Vale S.A. (“Vale”) informa que seu Conselho de\n"
+           "Administração aprovou, na presente data, a nova composição do Comitê.\n")
+    t, x = mw.doc_title_excerpt(txt, "Vale")
+    assert t == "Vale informa nova composição do Comitê de Auditoria e Riscos"
+    assert x.startswith("Vale informa nova composição") and "Conselho de Administração aprovou" in x
+    assert mw.doc_title_excerpt("", "Vale") == (None, None)
+    # papel timbrado + tipo do documento seco NÃO viram título (casos reais de 31/08/2026)
+    gerdau = ("METALÚRGICA GERDAU S.A.\nCNPJ nº 92.690.783/0001-09\nNIRE 35300520751\nCOMUNICADO AO MERCADO\n"
+              "A GERDAU S.A. e a METALÚRGICA GERDAU S.A. comunicam aos seus acionistas que…\n")
+    t, _ = mw.doc_title_excerpt(gerdau, "Metalúrgica Gerdau")
+    assert t.startswith("A GERDAU S.A. e a METALÚRGICA GERDAU S.A. comunicam")
+    # frase partida em linhas: o título é a frase inteira, não a 1ª linha
+    gerdau2 = ("METALÚRGICA GERDAU S.A.\nCNPJ nº 92.690.783/0001-09\nCOMUNICADO AO MERCADO\n"
+               "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus\n"
+               "acionistas e ao mercado em geral que concluíram a venda.\nMais texto.\n")
+    t, _ = mw.doc_title_excerpt(gerdau2, "Metalúrgica Gerdau")
+    assert t == "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus acionistas e ao mercado em geral que concluíram a venda."
+    # documento que começa direto no corpo ("Cidade, data – …"): sem título → cai no "{empresa} — {categoria}"
+    suzano = ("COMUNICADO AO MERCADO\nSUZANO S.A.\nCompanhia Aberta de Capital Autorizado\nCNPJ/MF No. 16.404.287/0001-55\n"
+              "São Paulo, 31 de agosto de 2026 – A Suzano S.A. (“Suzano”) informa que concluiu a emissão…\n")
+    t, x = mw.doc_title_excerpt(suzano, "Suzano")
+    assert t is None and x.startswith("São Paulo, 31 de agosto de 2026")
+
+
 def test_extract_cvm_url():
     html = _fx("mw_plantao_detail.html")
     assert mw.extract_cvm_url(html) == "https://www.rad.cvm.gov.br/ENETWEB/frmExibirArquivoIPEExterno.aspx?ID=1562150&flnk"
