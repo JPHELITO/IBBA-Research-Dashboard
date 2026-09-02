@@ -47,6 +47,15 @@ def test_date_iso():
     assert mw._date_iso("") is None
 
 
+def test_uniform_rows_iguala_as_chaves_do_lote():
+    # PostgREST recusa o lote inteiro (PGRST102) se uma linha tiver coluna a menos — medido no 1º semeio
+    rows = [{"ticker": "VALE3", "qty_total": 1, "qty_d0": 5}, {"ticker": "GGBR3", "qty_total": 2}]
+    out = mw.uniform_rows(rows)
+    assert all(set(r) == {"ticker", "qty_total", "qty_d0"} for r in out)
+    assert out[1]["qty_d0"] is None and out[0]["qty_d0"] == 5
+    assert mw.uniform_rows([]) == []
+
+
 def test_mapa_das_empresas_e_consistente():
     assert mw.LENDING_TO_COMPANY["KLBN4"] == "KLBN11"
     assert mw.LENDING_TO_COMPANY["GGBR3"] == "GGBR4"

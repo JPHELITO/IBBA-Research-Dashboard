@@ -205,10 +205,29 @@ def _hdr(extra: dict | None = None) -> dict:
     return h
 
 
+def uniform_rows(rows: list[dict]) -> list[dict]:
+    """Mesmas chaves em TODAS as linhas (faltante = None).
+
+    O PostgREST exige que todo objeto de um lote tenha o mesmo conjunto de colunas
+    (senão devolve PGRST102 "All object keys must match" e recusa o lote inteiro). Um papel
+    sem negócio eletrônico no dia não tem `qty_d0`, um comunicado sem PDF não tem
+    `doc_title` — aqui isso vira null explícito, que o Postgres aceita.
+    """
+    keys: list[str] = []
+    seen = set()
+    for r in rows:
+        for k in r:
+            if k not in seen:
+                seen.add(k)
+                keys.append(k)
+    return [{k: r.get(k) for k in keys} for r in rows]
+
+
 def upsert(table: str, rows: list[dict], on_conflict: str, dry: bool = False) -> int:
     """Upsert em lotes (merge-duplicates). Devolve quantas linhas mandou."""
     if not rows:
         return 0
+    rows = uniform_rows(rows)
     if dry:
         _log(f"  [dry-run] {table}: {len(rows)} linha(s) — ex.: {json.dumps(rows[0], ensure_ascii=False, default=str)[:300]}")
         return len(rows)

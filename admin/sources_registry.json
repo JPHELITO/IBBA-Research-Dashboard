@@ -316,7 +316,7 @@
       "how_pulled_txt": "raspagem de site + download de Excel",
       "confidence": "medium",
       "overdue_days": null,
-      "stale_min": 4320,
+      "stale_min": 64800,
       "window": null,
       "note": "Datas previstas de entrega de ITR/DFP das 7 empresas B3 da cobertura. A B3 não declara frequência; observado ~mensal (dia ~5). O robô checa 1×/dia e nunca sobrescreve evento cadastrado à mão. CSN e Aura não estão na fonte (segmento tradicional / BDR) e seguem manuais.",
       "log_keys": [
