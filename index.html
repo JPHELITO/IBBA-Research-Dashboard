@@ -874,6 +874,10 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   display:inline-flex;align-items:center;gap:3px;}
 .kv-badge.daily,.kv-badge.wk{background:rgba(140,140,140,.12);color:#686868;}
 .kv-badge.live{background:rgba(22,163,74,.12);color:var(--green);}
+/* extremo dos 12 meses (posição do último ponto na forma normalizada 0..1000) */
+.kv-badge.ext.hi{background:rgba(255,80,0,.14);color:var(--orange);}
+.kv-badge.ext.lo{background:rgba(37,99,235,.12);color:#1d4ed8;}
+html.dark .kv-badge.ext.lo{color:#93c5fd;}
 .kv-badge.live::before{content:'';width:4px;height:4px;border-radius:50%;
   background:var(--green);animation:syncpulse 2s ease-in-out infinite;}
 .kv-value{font-size:11.5px;font-weight:700;color:var(--black);
@@ -3429,6 +3433,13 @@ function _kvCard(c){
   const dateStr = _fmtAssessed(c.assessed_at, freq);
   // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
   const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${fcls}">${freq}</span>`;
+  // "12M high" / "12M low": a forma de 12 meses vem normalizada 0..1000 (0 = mínima do
+  // ano, 1000 = máxima), então o último ponto diz sozinho onde o preço está no intervalo.
+  // Só carimba nos extremos (≥97% / ≤3% do intervalo) — no meio não diz nada e não polui.
+  const shape12 = sp && sp.y && Array.isArray(sp.y.s) && sp.y.s.length >= 20 ? sp.y.s : null;
+  const posY = shape12 ? shape12[shape12.length-1] : null;
+  const extremo = posY == null ? '' : posY >= 970 ? `<span class="kv-badge ext hi" title="At the 12-month high">12M high</span>`
+                                    : posY <= 30 ? `<span class="kv-badge ext lo" title="At the 12-month low">12M low</span>` : '';
   // O gráfico é UM só e mostra 12 meses — é o contexto que o olho reconhece, e os quatro
   // números embaixo cobrem os horizontes. Sem as 4 janelas (formato antigo, ou o robô
   // ainda não recalculou) o cartão cai no desenho único de antes em vez de ficar vazio.
@@ -3441,7 +3452,7 @@ function _kvCard(c){
     + (semanal ? ' — variação da semana (assessment semanal)' : '')
     + (faltando.length ? ` — sem histórico suficiente para ${faltando.join(' e ')}` : '');
   return `<div class="cm-card ${pctCls}" title="${tip.replace(/"/g,'&quot;')}">
-    <div class="cm-top"><span class="cm-name">${c.name||''}</span>${badge}</div>
+    <div class="cm-top"><span class="cm-name">${c.name||''}</span>${extremo}${badge}</div>
     <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
     <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
     ${corpo}
