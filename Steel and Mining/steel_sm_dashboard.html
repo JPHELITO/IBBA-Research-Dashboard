@@ -113,6 +113,13 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .snav-btn.soon{opacity:.35;cursor:default;}
 .snav-btn.soon::before{display:none;}
 /* ⤓ Data — base bruta (empurrado p/ a direita da secondary-nav) */
+/* "Data through …" — até quando vai cada base (MAX(period) lido do próprio .db ao carregar) */
+.snav-asof{margin-left:auto;align-self:center;white-space:nowrap;font:500 10px var(--font);color:var(--gray-mid);
+  letter-spacing:.02em;padding:0 10px;}
+.snav-asof b{color:var(--gray-dark);font-weight:600;}
+.snav-asof .sep{opacity:.45;margin:0 5px;}
+.snav-asof + .dl-data-btn{margin-left:0;}
+@media(max-width:900px){.snav-asof{display:none;}}
 .dl-data-btn{margin:auto 0 auto auto;align-self:center;white-space:nowrap;
   font:600 10px var(--font);letter-spacing:.04em;cursor:pointer;border-radius:7px;
   padding:5px 12px;border:1px solid var(--orange);background:rgba(255,80,0,.10);color:var(--orange);
@@ -568,6 +575,7 @@ html.dark .cr-input{color-scheme:dark}
   <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
   <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
+  <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
           title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
@@ -1334,6 +1342,15 @@ async function openDB(){
   return new SQL.Database(await fetchDB());
 }
 
+// "Data through: SECEX Jun 2026 · IABr Jul 2026 …" — escreve na secondary-nav. parts=[[label,'YYYY-MM'],…]
+function _asOfBadge(parts){
+  const el=document.getElementById('snav-asof'); if(!el) return;
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const f=p=>{ const m=/^(\d{4})-(\d{2})/.exec(String(p||'')); return m?MON[+m[2]-1]+' '+m[1]:null; };
+  const ok=parts.map(([l,p])=>[l,f(p)]).filter(x=>x[1]);
+  el.innerHTML=ok.length?'Data through: '+ok.map(([l,p])=>`${l} <b>${p}</b>`).join('<span class="sep">·</span>'):'';
+}
+
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
 async function loadDB(){
   const el=document.getElementById('loading');
@@ -1355,6 +1372,11 @@ async function loadDB(){
       r.long_incl=(r.long_prod==null&&r.billets==null)?null:((r.long_prod||0)+(r.billets||0));
     }
     INDA=toObj(db.exec(`SELECT period,year,month,inventories,inv_months,purchases,sales,inv_yoy,hist_avg,sales_ltm,sales_ma3 FROM inda_distribution ORDER BY period`)[0]);
+    // "Data through …" na barra: até quando vai cada base (o mesmo MAX(period) que o painel de admin lê)
+    try{
+      const _last=t=>{ try{ const r=db.exec(`SELECT MAX(period) FROM ${t}`); return (r[0]&&r[0].values[0][0])||null; }catch(e){ return null; } };
+      _asOfBadge([['SECEX',_last('secex_imports')],['IABr',_last('iabr_production')],['INDA',_last('inda_distribution')],['Customs KR/CN',_last('pred_exports')]]);
+    }catch(e){}
 
     const rExp=toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,yoy_revenue,yoy_volume FROM secex_exports ORDER BY period,category`)[0]);
     const rImp=toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,yoy_revenue,yoy_volume FROM secex_imports ORDER BY period,category`)[0]);

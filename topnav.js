@@ -207,6 +207,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item" href="/market-watch.html">Market Watch</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
+    <a class="gn-item" href="/data.html" title="Data sources, freshness and glossary">Data</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gn-item gn-admin" id="gnav-weekly" href="/weekly.html" style="display:none">Weekly</a>\
@@ -237,6 +238,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a" href="/market.html">Market</a>\
     <a class="gnm-a" href="/market-watch.html">Market Watch</a>\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
+    <a class="gnm-a" href="/data.html">Data &amp; Glossary</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gnm-a adm gnm-admin" href="/weekly.html" style="display:none">Weekly</a>\

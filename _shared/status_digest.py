@@ -134,6 +134,64 @@ def evaluate(now: datetime) -> list[dict]:
     return out
 
 
+def publish_status(rows: list[dict], now: datetime) -> int:
+    """Grava o panorama na tabela `data_source_status` (Supabase) — é o que a página "Data"
+    da dashboard mostra ao CLIENTE (via RPC get_data_source_status). Uma linha por fonte,
+    upsert por key. Nunca levanta; devolve quantas gravou.
+
+    Por que aqui e não no navegador: o "até quando vai o dado" de cada base mensal é o
+    MAX(period) do .db committado — ler isso no cliente custaria baixar 46 MB. O robô lê no
+    Actions (segundos) e publica um resumo de 17 linhas.
+    """
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not (url and key and requests):
+        print("publish: sem SUPABASE_URL/KEY — nada gravado.")
+        return 0
+    state_of = {GREEN: "green", AMBER: "amber", RED: "red", GREY: "grey"}
+    # o status é escrito em português p/ o e-mail interno; o cliente lê em inglês
+    def _en(txt: str) -> str:
+        t = txt or ""
+        for pt, en in (("em dia", "on schedule"), ("aguardando", "waiting"), ("ATRASADO", "overdue"),
+                       ("vivo (há", "live ("), ("lento (há", "slow ("), ("PARADO (há", "stalled ("),
+                       ("sem leitura", "no reading"), (" min)", " min ago)"), (" h)", " h ago)"),
+                       ("vazio", "empty"), ("sem SUPABASE_URL/KEY", "not measured")):
+            t = t.replace(pt, en)
+        return t
+    payload = []
+    for r in rows:
+        s = r["src"]
+        payload.append({
+            "key": s["key"],
+            "label": s.get("client_label") or s["label"],
+            "client_desc": s.get("client_desc") or "",
+            "client_cadence": s.get("client_cadence") or "",
+            "sector": s["sector"],
+            "cadence": s["cadence"],
+            "how_pulled": registry.COMO_PUXA.get(s.get("how_pulled"), s.get("how_pulled") or ""),
+            "auto": bool(s.get("auto")),
+            "state": state_of.get(r["farol"], "grey"),
+            "status_text": _en(r["status"]),
+            "last_period": None if r["ultimo"] == "—" else r["ultimo"],
+            "next_expected": None if r["proximo"] == "—" else r["proximo"],
+            "checked_at": now.isoformat(),
+        })
+    try:
+        resp = requests.post(f"{url}/rest/v1/data_source_status?on_conflict=key",
+                             headers={"apikey": key, "Authorization": f"Bearer {key}",
+                                      "Content-Type": "application/json",
+                                      "Prefer": "resolution=merge-duplicates,return=minimal"},
+                             json=payload, timeout=40)
+        if not resp.ok:
+            print(f"publish: HTTP {resp.status_code} {resp.text[:200]} (rodou admin/supabase_data_page.sql?)")
+            return 0
+        print(f"publish: {len(payload)} fontes gravadas em data_source_status")
+        return len(payload)
+    except Exception as e:  # noqa: BLE001
+        print(f"publish falhou (ignorado): {e}")
+        return 0
+
+
 def _html(rows: list[dict], now: datetime) -> str:
     def sec_rows(sector, titulo):
         rs = [r for r in rows if r["src"]["sector"] == sector]
@@ -173,6 +231,8 @@ def main():
     ap.add_argument("--digest", action="store_true", help="sempre envia o panorama")
     ap.add_argument("--alert", action="store_true", help="só envia se houver 🔴")
     ap.add_argument("--print", dest="only_print", action="store_true", help="só imprime, não envia")
+    ap.add_argument("--publish", action="store_true",
+                    help="grava o panorama em data_source_status (página Data do cliente); combina com os outros")
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
     rows = evaluate(now)
@@ -184,7 +244,9 @@ def main():
     reds = [r for r in rows if r["farol"] == RED]
     print(f"\n  {len(reds)} atrasada(s)/parada(s).")
 
-    if a.only_print:
+    if a.publish:
+        publish_status(rows, now)
+    if a.only_print or (a.publish and not (a.digest or a.alert)):
         return
     html = _html(rows, now)
     if a.digest:
