@@ -96,6 +96,9 @@ a.model-dl svg{width:15px;height:15px;display:block}
    bloco fica solto no meio da página, e o resto da dash é cartão):
      · cartão branco no padrão da casa (borda, raio e sombra de .card);
      · por dentro, nenhuma chapa cinza e nenhum traço entre as linhas — só tipografia;
+     · o rótulo das COLUNAS é escrito DEITADO na lateral esquerda: em cima ele comia uma
+       linha inteira e empurrava a grade para baixo (o rótulo das LINHAS fica na célula de
+       canto, logo acima da coluna que nomeia);
      · a tinta é POSICIONAL, como nos nossos excéis: escurece em quadrados concêntricos
        até o meio da tabela (onde mora o caso-base do modelo) e some na borda;
      · o LARANJA continua exclusivo do spot de hoje — se a magnitude também fosse
@@ -139,18 +142,23 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 .s2-live i{width:5px;height:5px;border-radius:50%;background:var(--orange);
   animation:livepulse 2s ease-in-out infinite}
 .s2-scroll{overflow-x:auto}
+/* rótulo do eixo X deitado: a faixa acompanha a ALTURA da tabela (align-items:stretch)
+   e o texto corre de baixo para cima, como o rótulo do eixo de um gráfico */
+.s2-wrap{display:flex;align-items:stretch;gap:7px;min-width:0}
+.s2-vaxis{flex:none;writing-mode:vertical-rl;transform:rotate(180deg);
+  font:500 9.5px var(--font);color:var(--g-mid);letter-spacing:.3px;line-height:1.25;
+  text-align:center;display:flex;align-items:center;justify-content:center;padding:1px 0;
+  max-width:34px;overflow:hidden}   /* grade curta corta o texto — o rótulo inteiro fica no title */
 
 .s2-tbl{border-collapse:collapse;width:100%;font-size:11.5px;white-space:nowrap;
   font-variant-numeric:tabular-nums}
 .s2-tbl th,.s2-tbl td{padding:5px 7px;text-align:center;border:0}
-/* cabeçalhos SEM chapa cinza: só tipografia. O rótulo do eixo X atravessa o topo e o do
-   eixo Y fica na célula de canto — ninguém precisa virar a cabeça para ler. */
+/* cabeçalhos SEM chapa cinza: só tipografia. */
 .s2-tbl thead th{font:600 10px var(--font);color:var(--g-dark);background:none;
   text-transform:none;letter-spacing:.2px}
-.s2-tbl thead th.s2-xhead{font-weight:500;color:var(--g-mid);font-size:9.5px;padding-bottom:3px}
 .s2-tbl thead th.s2-corner{font:500 9px var(--font);color:var(--g-mid);text-align:left;
-  white-space:normal;line-height:1.15;max-width:92px;vertical-align:bottom}
-.s2-tbl thead tr:last-child th{padding-bottom:7px}
+  white-space:normal;line-height:1.15;max-width:74px;vertical-align:bottom}
+.s2-tbl thead th{padding-bottom:7px}
 .s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:none;
   text-align:right;padding-right:11px}
 .s2-num{font-variant-numeric:tabular-nums}
@@ -839,13 +847,15 @@ function _s2TableHtml(tab,byId,ctx){
      (parts.note?'<span class="s2-unit">'+esc(parts.note)+'</span>':'')+'</h3>'+
      (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
      '</div>';
-  h+='<div class="s2-scroll"><table class="s2-tbl"><thead>';
-  if(tab.colLabel){
-    h+='<tr>'+(hasRow?'<th class="s2-corner" rowspan="2">'+esc(tab.rowLabel||'')+'</th>':'')+
-       '<th class="s2-xhead" colspan="'+tab.colLevels.length+'">'+esc(tab.colLabel)+'</th></tr><tr>';
-  } else {
-    h+='<tr>'+(hasRow?'<th class="s2-corner">'+esc(tab.rowLabel||'')+'</th>':'');
-  }
+  // O rótulo das COLUNAS era uma faixa atravessando o topo: comia uma linha inteira do
+  // cartão e empurrava a grade para baixo. Agora ele é escrito DEITADO na lateral
+  // esquerda (pedido do analista, 2026-09-02) e o cabeçalho da tabela tem uma linha só —
+  // a grade começa no alto do cartão. O rótulo das LINHAS fica onde estava, na célula de
+  // canto, logo acima da coluna que ele nomeia.
+  h+='<div class="s2-scroll"><div class="s2-wrap">'+
+     (tab.colLabel?'<div class="s2-vaxis" title="'+esc(tab.colLabel)+'">'+esc(tab.colLabel)+'</div>':'')+
+     '<table class="s2-tbl"><thead>';
+  h+='<tr>'+(hasRow?'<th class="s2-corner">'+esc(tab.rowLabel||'')+'</th>':'');
   tab.colLevels.forEach(function(v,j){
     h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
   h+='</tr></thead><tbody>';
@@ -863,7 +873,7 @@ function _s2TableHtml(tab,byId,ctx){
     });
     h+='</tr>';
   });
-  h+='</tbody></table></div>';
+  h+='</tbody></table></div></div>';
   // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada
   if(colLive!=null&&(!hasRow||rowLive!=null)){
     const pubAt=_s2At(tab,rowLive,colLive);
