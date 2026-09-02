@@ -226,8 +226,15 @@ window.__RUN__=async function(){
   ok('o rótulo das colunas virou faixa DEITADA na lateral (o topo era uma linha inteira)',
      hK.indexOf('class="s2-vaxis"')>0 && hK.indexOf('s2-xhead')<0 &&
      /\.s2-vaxis\{[^}]*writing-mode:vertical-rl/.test(CSS));
-  ok('o cabeçalho da tabela tem UMA linha só — a grade começa no alto do cartão',
-     (hK.split('</thead>')[0].match(/<tr>/g)||[]).length===1);
+  // "coloque o título da linha também esticada acima do eixo horizontal": ele quebrava em
+  // três linhas dentro do cantinho e roubava 74px da largura da grade.
+  ok('o rótulo das LINHAS virou faixa esticada acima do eixo horizontal, alinhada à esquerda',
+     /<th class="s2-rowhead" colspan="10">Average FX 2027 \(USD\/BRL\)<\/th>/.test(hK) &&
+     /\.s2-tbl thead th\.s2-rowhead\{[^}]*text-align:left/.test(CSS));
+  ok('a célula de canto ficou VAZIA — é só o vão da coluna de níveis',
+     hK.indexOf('<th class="s2-corner"></th>')>0);
+  ok('nenhum rótulo de eixo sobrou DENTRO da grade',
+     hK.indexOf('Average FX 2027 (USD/BRL)</th><th')<0);
   ok('a faixa deitada leva o rótulo inteiro no tooltip (tabela curta pode cortar o texto)',
      /<div class="s2-vaxis" title="[^"]+">/.test(hK));
   ok('o rótulo das LINHAS continua na célula de canto, acima da coluna que ele nomeia',

@@ -96,9 +96,10 @@ a.model-dl svg{width:15px;height:15px;display:block}
    bloco fica solto no meio da página, e o resto da dash é cartão):
      · cartão branco no padrão da casa (borda, raio e sombra de .card);
      · por dentro, nenhuma chapa cinza e nenhum traço entre as linhas — só tipografia;
-     · o rótulo das COLUNAS é escrito DEITADO na lateral esquerda: em cima ele comia uma
-       linha inteira e empurrava a grade para baixo (o rótulo das LINHAS fica na célula de
-       canto, logo acima da coluna que nomeia);
+     · nenhum rótulo de eixo dentro da grade: o das COLUNAS é escrito DEITADO na lateral
+       esquerda (em cima ele comia uma linha inteira) e o das LINHAS é uma faixa ESTICADA
+       acima do eixo horizontal, alinhada à esquerda — em cima da coluna que ele nomeia
+       (no canto ele quebrava em três linhas e roubava 74px de largura da grade);
      · a tinta é POSICIONAL, como nos nossos excéis: escurece em quadrados concêntricos
        até o meio da tabela (onde mora o caso-base do modelo) e some na borda;
      · o LARANJA continua exclusivo do spot de hoje — se a magnitude também fosse
@@ -156,8 +157,11 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 /* cabeçalhos SEM chapa cinza: só tipografia. */
 .s2-tbl thead th{font:600 10px var(--font);color:var(--g-dark);background:none;
   text-transform:none;letter-spacing:.2px}
-.s2-tbl thead th.s2-corner{font:500 9px var(--font);color:var(--g-mid);text-align:left;
-  white-space:normal;line-height:1.15;max-width:74px;vertical-align:bottom}
+/* faixa esticada com o rótulo das LINHAS, alinhada à esquerda: ela nasce em cima da
+   coluna de níveis que nomeia, e não centralizada sobre os números das colunas */
+.s2-tbl thead th.s2-rowhead{font:500 9.5px var(--font);color:var(--g-mid);text-align:left;
+  letter-spacing:.3px;white-space:normal;padding-bottom:4px}
+.s2-tbl thead th.s2-corner{padding-left:0;padding-right:0}
 .s2-tbl thead th{padding-bottom:7px}
 .s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:none;
   text-align:right;padding-right:11px}
@@ -847,15 +851,20 @@ function _s2TableHtml(tab,byId,ctx){
      (parts.note?'<span class="s2-unit">'+esc(parts.note)+'</span>':'')+'</h3>'+
      (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
      '</div>';
-  // O rótulo das COLUNAS era uma faixa atravessando o topo: comia uma linha inteira do
-  // cartão e empurrava a grade para baixo. Agora ele é escrito DEITADO na lateral
-  // esquerda (pedido do analista, 2026-09-02) e o cabeçalho da tabela tem uma linha só —
-  // a grade começa no alto do cartão. O rótulo das LINHAS fica onde estava, na célula de
-  // canto, logo acima da coluna que ele nomeia.
+  // Os dois rótulos de eixo saíram de DENTRO da grade (pedidos do analista, 2026-09-02):
+  //   · o das COLUNAS era uma faixa atravessando o topo, comia uma linha inteira e
+  //     empurrava a grade para baixo → foi escrito DEITADO na lateral esquerda;
+  //   · o das LINHAS ficava na célula de canto, quebrava em três linhas e roubava 74px da
+  //     largura → virou uma faixa ESTICADA acima do eixo horizontal, com o texto à
+  //     ESQUERDA, logo em cima da coluna de níveis que ele nomeia (que é onde ele está no
+  //     Excel do analista: mesma linha do rótulo das colunas, na primeira coluna).
+  // A célula de canto ficou vazia de propósito — é só o vão da coluna dos níveis.
   h+='<div class="s2-scroll"><div class="s2-wrap">'+
      (tab.colLabel?'<div class="s2-vaxis" title="'+esc(tab.colLabel)+'">'+esc(tab.colLabel)+'</div>':'')+
      '<table class="s2-tbl"><thead>';
-  h+='<tr>'+(hasRow?'<th class="s2-corner">'+esc(tab.rowLabel||'')+'</th>':'');
+  if(hasRow&&tab.rowLabel) h+='<tr><th class="s2-rowhead" colspan="'+(tab.colLevels.length+1)+'">'+
+     esc(tab.rowLabel)+'</th></tr>';
+  h+='<tr>'+(hasRow?'<th class="s2-corner"></th>':'');
   tab.colLevels.forEach(function(v,j){
     h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
   h+='</tr></thead><tbody>';
