@@ -133,6 +133,13 @@ REGISTRY: list[dict] = [
          db="supabase", table="news_articles", cadence="live", fresh_col="found_at",
          how_pulled="pipeline", confidence="high", auto=True, stale_min=360,
          note="RSS+sitemaps+scrapers+Playwright. Auto-cura. Coluna de frescor = found_at."),
+    dict(key="market_watch", label="Market Watch (aluguel B3 · recompras/insiders/float CVM · comunicados)", sector="live",
+         db="supabase", table="mw_short_interest", cadence="live", fresh_col="updated_at",
+         how_pulled="mixed", confidence="medium", auto=True, stale_min=2880,
+         note="_shared/market_watch.py + update_market_watch.yml. Aluguel: API do BDI (últimos 21 dias úteis) "
+              "+ PDF diário do capítulo p/ histórico (desde dez/2025). CVM dados abertos: recompra (diário), "
+              "VLMO insiders (a CVM reatualiza semanalmente), FRE free float. Comunicados: Plantão de Notícias "
+              "da B3 (tempo real) com link do documento na CVM. Tudo público, sem login."),
     dict(key="b3_calendar", label="Cronograma de earnings (B3)", sector="live",
          db="supabase", table="exec_calendar_events", cadence="live",
          fresh_col="updated_at", how_pulled="site_scrape", confidence="medium",

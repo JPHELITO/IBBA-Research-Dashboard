@@ -287,6 +287,42 @@
         "news",
         "Notícias (News Hunter)"
       ]
+    },
+    {
+      "key": "market_watch",
+      "label": "Market Watch (aluguel B3 · recompras/insiders/float CVM · comunicados)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "mixed",
+      "how_pulled_txt": "várias fontes",
+      "confidence": "medium",
+      "overdue_days": null,
+      "stale_min": 2880,
+      "window": null,
+      "note": "_shared/market_watch.py + update_market_watch.yml. Aluguel: API do BDI (últimos 21 dias úteis) + PDF diário do capítulo p/ histórico (desde dez/2025). CVM dados abertos: recompra (diário), VLMO insiders (a CVM reatualiza semanalmente), FRE free float. Comunicados: Plantão de Notícias da B3 (tempo real) com link do documento na CVM. Tudo público, sem login.",
+      "log_keys": [
+        "market_watch",
+        "Market Watch (aluguel B3 · recompras/insiders/float CVM · comunicados)"
+      ]
+    },
+    {
+      "key": "b3_calendar",
+      "label": "Cronograma de earnings (B3)",
+      "sector": "live",
+      "cadence": "live",
+      "auto": true,
+      "how_pulled": "site_scrape",
+      "how_pulled_txt": "raspagem de site + download de Excel",
+      "confidence": "medium",
+      "overdue_days": null,
+      "stale_min": 4320,
+      "window": null,
+      "note": "Datas previstas de entrega de ITR/DFP das 7 empresas B3 da cobertura. A B3 não declara frequência; observado ~mensal (dia ~5). O robô checa 1×/dia e nunca sobrescreve evento cadastrado à mão. CSN e Aura não estão na fonte (segmento tradicional / BDR) e seguem manuais.",
+      "log_keys": [
+        "b3_calendar",
+        "Cronograma de earnings (B3)"
+      ]
     }
   ]
 }

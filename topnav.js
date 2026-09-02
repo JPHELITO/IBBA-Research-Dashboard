@@ -205,6 +205,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       <a href="/stock-guide.html#comp">Comp Table</a>\
       <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
+    <a class="gn-item" href="/market-watch.html">Market Watch</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
@@ -234,6 +235,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <div class="gnm-cat">More</div>\
     <a class="gnm-a" href="/news.html">News Hunter</a>\
     <a class="gnm-a" href="/market.html">Market</a>\
+    <a class="gnm-a" href="/market-watch.html">Market Watch</a>\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
