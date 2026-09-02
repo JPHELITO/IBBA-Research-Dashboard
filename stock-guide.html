@@ -89,15 +89,13 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .g6-actions{margin:0 0 12px}
 /* ══ TABELAS PUBLICADAS DO ANALISTA (sens2d) — só leitura ═══════════════════
    Primeiro a grade era uma FOTOCÓPIA do Excel (barra preta, cinza chapado, rótulo
-   girado 90°). Depois virou um .card por indicador — e aí ficou parecendo uma IMAGEM
-   colada dentro de um quadrado branco: moldura + sombra por fora e, por dentro, mais
-   faixas cinzas e um traço embaixo de cada linha. Três molduras para um dado só.
-   Agora só o DADO tem plano de fundo:
-     · o bloco não tem moldura, sombra nem fundo — é título, grade e a leitura no spot,
-       separados por respiro e um fio fino sob o cabeçalho;
-     · a grade em si é uma chapa branca (--s2-plate) sobre o fundo bege da página: ela
-       se recorta sozinha, sem precisar de borda;
-     · nenhum traço interno — quem organiza a leitura é a TINTA, não o grid;
+   girado 90°). O que fazia parecer "uma imagem colada num quadrado branco" não era o
+   cartão — eram as TRÊS molduras empilhadas: cartão por fora, faixas cinzas no
+   cabeçalho e um traço embaixo de cada linha, para um dado só. A limpeza foi POR
+   DENTRO; o cartão branco ficou (o analista pediu de volta em 2026-09-02: sem ele o
+   bloco fica solto no meio da página, e o resto da dash é cartão):
+     · cartão branco no padrão da casa (borda, raio e sombra de .card);
+     · por dentro, nenhuma chapa cinza e nenhum traço entre as linhas — só tipografia;
      · a tinta é POSICIONAL, como nos nossos excéis: escurece em quadrados concêntricos
        até o meio da tabela (onde mora o caso-base do modelo) e some na borda;
      · o LARANJA continua exclusivo do spot de hoje — se a magnitude também fosse
@@ -125,11 +123,12 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
   border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:7px 10px}
 .s2-sheet{font:700 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;
   letter-spacing:.5px;margin:22px 0 10px}
-.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));
-  gap:28px 36px;align-items:start}
+.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,510px),1fr));
+  gap:16px;align-items:start}
 
-/* ── um bloco por indicador: sem moldura, sem sombra, sem fundo ── */
-.s2-card{background:none;border:0;box-shadow:none;border-radius:0;padding:0;margin:0;min-width:0}
+/* ── um cartão por indicador (a chapa da grade É o fundo do cartão) ── */
+.s2-card{background:var(--s2-plate);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:12px 14px 11px;margin:0;min-width:0}
 .s2-chead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
   padding-bottom:6px;margin-bottom:9px;border-bottom:1px solid var(--border)}
 .s2-card h3{font:700 12px var(--font);text-transform:uppercase;letter-spacing:.45px;margin:0}
@@ -155,7 +154,8 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 .s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:none;
   text-align:right;padding-right:11px}
 .s2-num{font-variant-numeric:tabular-nums}
-/* a grade é uma chapa branca sobre o fundo da página: se recorta sem precisar de borda */
+/* a célula tem chapa OPACA própria (a mesma do cartão): a tinta laranja do spot é
+   background-COLOR, e sem chapa por baixo ela se misturaria ao que estivesse atrás */
 .s2-tbl td{background-color:var(--s2-plate);
   background-image:linear-gradient(rgba(var(--s2-ink),var(--h,0)),rgba(var(--s2-ink),var(--h,0)))}
 /* o meio da grade = caso-base do modelo (só carimba quando as premissas confirmam) */
@@ -173,7 +173,7 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 .s2-spot b{font:700 12.5px var(--font);color:var(--black);font-variant-numeric:tabular-nums}
 
 .s2-note{display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;font-size:10.5px;
-  color:var(--g-mid);margin-top:24px;line-height:1.5;max-width:1100px}
+  color:var(--g-mid);margin-top:18px;line-height:1.5;max-width:1100px}
 .s2-ramp{flex:none;width:66px;height:8px;border-radius:4px;margin-top:3px;
   background-color:var(--s2-plate);border:1px solid var(--border);
   background-image:linear-gradient(90deg,rgba(var(--s2-ink),0),rgba(var(--s2-ink),.17),
@@ -184,12 +184,15 @@ html.dark .s2-tbl td.s2-cell-hit{color:#fff}
 @media(max-width:900px){
   /* 1ª coluna ancorada: rolando de lado você não perde o nível do eixo Y (precisa de
      fundo próprio, senão o número da grade passa POR BAIXO do rótulo) */
-  .s2-tbl tbody th,.s2-tbl .s2-corner{position:sticky;left:0;z-index:2;background:var(--g-light)}
+  .s2-tbl tbody th,.s2-tbl .s2-corner{position:sticky;left:0;z-index:2;background:var(--s2-plate)}
 }
 @media(max-width:760px){
-  .s2-grid{grid-template-columns:1fr;gap:24px}
+  .s2-grid{grid-template-columns:1fr;gap:14px}
   .s2-kpi{min-width:136px;max-width:none;flex:1 1 136px}
-  .s2-scroll{margin:0 -2px}
+  .s2-card{padding:11px 11px 10px}
+  /* a grade usa a largura inteira do cartão; o respiro volta na 1ª coluna */
+  .s2-scroll{margin:0 -11px}
+  .s2-tbl thead th:first-child,.s2-tbl tbody th:first-child{padding-left:11px}
   .s2-tbl{font-size:10.5px}
   .s2-tbl th,.s2-tbl td{padding:4px 5px}
   .s2-tbl tbody th{padding-right:8px}
@@ -1009,8 +1012,12 @@ function sgRenderSensitivity(tables,drivers,marketValues,computedComps,config){
   // A aba mostra SO as tabelas publicadas. A grade adaptavel (grid6, com controles
   // deslizantes) esta desligada por decisao do usuario em 2026-08-25 — o codigo continua
   // no arquivo, dormente, e volta trocando esta condicao.
-  if(s2.length){ sgRenderSens2dTabs(s2,others,host); }
-  else if(g6.length){ sgRenderGrid6Tabs(g6,others,host); }
+  // A aba "Other" SAIU (pedido do analista, 2026-09-02): ela carregava as 2 sensibilidades
+  // de EXEMPLO antigas (dados fictícios de jun/2026) e aparecia ao lado das empresas, como
+  // se fosse mais uma. Passar `null` desliga a abinha nos dois caminhos; o formato antigo
+  // só desenha quando NÃO há tabela publicada nenhuma (aí é o que sobra para mostrar).
+  if(s2.length){ sgRenderSens2dTabs(s2,null,host); }
+  else if(g6.length){ sgRenderGrid6Tabs(g6,null,host); }
   else { _sgRenderPanels(others,host); }                 // formato antigo (estático / grid 1-3D)
 }
 // formato antigo: agrupa por painel (definition.panel); cada painel é um card
