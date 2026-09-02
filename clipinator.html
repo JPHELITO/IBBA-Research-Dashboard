@@ -745,17 +745,21 @@ const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
 //
 // Cobre em USD/lb (é como o carrossel publica e como o analista lê). Nada é convertido: a
 // unidade é a da fonte. Celulose é PIX semanal — sem a data ao lado, o preço engana.
+// ⚠️ TONELADA ESCREVE-SE '/ton' NO BLAST (padrão da casa, 02/09). '/dmt' FICA como está:
+// dry metric tonne é outra unidade, não outra grafia — o Platts avalia minério em seco e
+// o frete em úmido (USD/wmt), e apagar essa distinção esconderia informação que o analista
+// de minério usa. Linha nova de tonelada entra com '/ton'.
 const BL_GRUPOS = [
   {rot:'Iron ore', linhas:[
-    {rot:'62%',  code:'IRON_ORE_SGX', un:'/t',   nota:'futuro SGX'},
+    {rot:'62%',  code:'IRON_ORE_SGX', un:'/ton',   nota:'futuro SGX'},
     {rot:'61%',  code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
   ]},
   {rot:'Metals & energy', linhas:[
     {rot:'Copper',   code:'COPPER',   un:'/lb'},
     {rot:'Brent',    code:'BRENT',    un:'/bbl'},
-    {rot:'Nickel',   code:'NICKEL',   un:'/t'},
+    {rot:'Nickel',   code:'NICKEL',   un:'/ton'},
     {rot:'Gold',     code:'GOLD',     un:'/oz'},
-    {rot:'Aluminum', code:'ALUMINUM', un:'/t'},
+    {rot:'Aluminum', code:'ALUMINUM', un:'/ton'},
   ]},
   // Celulose em DOIS grupos, como no carrossel da dashboard — e não por estética: China e
   // Europa têm datas de assessment DIFERENTES (medido em 01/09: China 28/ago, Europa 01/set),
@@ -765,14 +769,14 @@ const BL_GRUPOS = [
   // ⚠️ O resale é publicado em YUAN e o robô já o converte para dólar antes de gravar
   // (prices.resale_cny_para_usd). Aqui não se converte nada: a unidade é a do banco.
   {rot:'Pulp China', semanal:true, linhas:[
-    {rot:'BHKP Net',     code:'PULP_BHKP_CHINA',       un:'/t'},
-    {rot:'NBSK Net',     code:'PULP_NBSK_CHINA',       un:'/t'},
-    {rot:'BHKP Resale',  code:'PULP_EUCA_RESALE_CN',   un:'/t'},
-    {rot:'NBSK Resale',  code:'PULP_RADIATA_RESALE_CN',un:'/t'},
+    {rot:'BHKP Net',     code:'PULP_BHKP_CHINA',       un:'/ton'},
+    {rot:'NBSK Net',     code:'PULP_NBSK_CHINA',       un:'/ton'},
+    {rot:'BHKP Resale',  code:'PULP_EUCA_RESALE_CN',   un:'/ton'},
+    {rot:'NBSK Resale',  code:'PULP_RADIATA_RESALE_CN',un:'/ton'},
   ]},
   {rot:'Pulp Europe', semanal:true, linhas:[
-    {rot:'BHKP', code:'PULP_BHKP_EUROPE', un:'/t'},
-    {rot:'NBSK', code:'PULP_NBSK_EUROPE', un:'/t'},
+    {rot:'BHKP', code:'PULP_BHKP_EUROPE', un:'/ton'},
+    {rot:'NBSK', code:'PULP_NBSK_EUROPE', un:'/ton'},
   ]},
 ];
 const BL_CODES = BL_GRUPOS.reduce((a,g)=>a.concat(g.linhas.map(l=>l.code)),[]);
