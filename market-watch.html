@@ -549,8 +549,11 @@ async function renderFilings(){
   const host=document.getElementById('fl-list');
   host.innerHTML=list.length?list.map(r=>{ const co=S.byCo[r.company]||{}; const hot=/fato relevante/i.test(r.category||'');
     const url=r.cvm_url&&/^https?:/i.test(r.cvm_url)?r.cvm_url:null;
+    // título REAL do documento (1ª linha do PDF, lido pelo robô) quando existe; senão a categoria
+    const label=r.doc_title||r.category||r.headline;
+    const sub=[co.name||'', r.doc_title?(r.category||''):'', r.doc_date?'document dated '+fDate(r.doc_date):'', r.flag?'('+r.flag+')':''].filter(Boolean).join(' · ');
     return `<div class="fl-item${hot?' hot':''}"><span class="when">${esc(fDT(r.published_at))}</span><span class="who">${esc(r.company)}</span>
-      <span class="what">${url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(r.category||r.headline)}</a>`:`<a>${esc(r.category||r.headline)}</a>`}<span class="cat">${esc(co.name||'')}${r.doc_date?' · document dated '+esc(fDate(r.doc_date)):''}${r.flag?' · ('+esc(r.flag)+')':''}</span></span>
+      <span class="what">${url?`<a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(r.doc_excerpt||'')}">${esc(label)}</a>`:`<a>${esc(label)}</a>`}<span class="cat">${esc(sub)}</span></span>
       <span>${hot?'<span class="tag hot">Material fact</span>':(r.is_newsworthy?'<span class="tag">Filing</span>':'<span class="tag dim">Routine</span>')}</span></div>`; }).join('')
     :'<div class="empty">No filings match.</div>';
   document.getElementById('fl-sub').textContent=`${list.length} of ${rows.length}`;
