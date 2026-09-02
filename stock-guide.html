@@ -88,32 +88,33 @@ a.model-dl svg{width:15px;height:15px;display:block}
 .g6-group .steppers{margin:0}
 .g6-actions{margin:0 0 12px}
 /* ══ TABELAS PUBLICADAS DO ANALISTA (sens2d) — só leitura ═══════════════════
-   Antes a grade era uma FOTOCÓPIA do Excel do modelo: barra de título PRETA,
-   cabeçalho cinza chapado (#A6A6A6), rótulo do eixo Y girado 90° na lateral e
-   moldura preta de 1,5px. Ficava um corpo estranho no meio da dash, onde todo
-   o resto é cartão branco + tabela .data. Aqui ela passa a falar a língua da
-   casa:
-     · cada tabela é um .card (branco, borda --border, raio 10, sombra leve);
-     · cabeçalho no padrão table.data (caixa alta 9,5px sobre --g-light);
-     · o rótulo do eixo X vira uma faixa que atravessa o topo da tabela e o do
-       eixo Y vai para a célula de canto — ninguém precisa virar a cabeça;
-     · a COR FICA NO DADO (mesma régua do heatmap da home): a magnitude entra
-       como tinta NEUTRA de alfa baixa e o LARANJA fica EXCLUSIVO do spot de
-       hoje — se os dois fossem laranja, brigariam pela atenção e o spot, que é
-       a informação que o cliente procura primeiro, sumiria no meio da grade.
-   ⚠️ A tinta da magnitude vai em background-IMAGE e a chapa do spot em
-   background-COLOR (mesmo truque do .hm-card da home): as duas em `background`
-   se apagariam — a alfa é inline (por célula) e a chapa vem da classe. */
-:root{--s2-ink:17,17,17}
-html.dark{--s2-ink:255,255,255}
+   Primeiro a grade era uma FOTOCÓPIA do Excel (barra preta, cinza chapado, rótulo
+   girado 90°). Depois virou um .card por indicador — e aí ficou parecendo uma IMAGEM
+   colada dentro de um quadrado branco: moldura + sombra por fora e, por dentro, mais
+   faixas cinzas e um traço embaixo de cada linha. Três molduras para um dado só.
+   Agora só o DADO tem plano de fundo:
+     · o bloco não tem moldura, sombra nem fundo — é título, grade e a leitura no spot,
+       separados por respiro e um fio fino sob o cabeçalho;
+     · a grade em si é uma chapa branca (--s2-plate) sobre o fundo bege da página: ela
+       se recorta sozinha, sem precisar de borda;
+     · nenhum traço interno — quem organiza a leitura é a TINTA, não o grid;
+     · a tinta é POSICIONAL, como nos nossos excéis: escurece em quadrados concêntricos
+       até o meio da tabela (onde mora o caso-base do modelo) e some na borda;
+     · o LARANJA continua exclusivo do spot de hoje — se a magnitude também fosse
+       laranja, brigaria com ele e o cliente perderia a informação que procura primeiro.
+   ⚠️ Camadas: a chapa e a tinta laranja do spot vão em background-COLOR (cores opacas,
+   já calculadas sobre a chapa) e a tinta da distância em background-IMAGE — as duas em
+   `background` se apagariam, porque a alfa é inline (--h, célula a célula). */
+:root{--s2-ink:17,17,17;--s2-plate:#fff;--s2-near:#FFF4EE;--s2-hit:#FFE3D6}
+html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d2419}
 
-.s2-top{margin:2px 0 18px}
+.s2-top{margin:2px 0 20px}
 .s2-hdr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .s2-name{font:700 15px var(--font);letter-spacing:.2px}
 .s2-meta{font:500 10.5px var(--font);color:var(--g-mid);letter-spacing:.2px}
 .s2-kpis{display:flex;flex-wrap:wrap;gap:10px}
-.s2-kpi{background:#fff;border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow);padding:9px 12px 10px;flex:0 1 auto;min-width:158px;max-width:280px}
+.s2-kpi{background:var(--s2-plate);border:1px solid var(--border);border-radius:var(--radius);
+  padding:9px 12px 10px;flex:0 1 auto;min-width:158px;max-width:280px}
 .s2-k{font:700 9px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.6px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s2-v{font:600 14.5px var(--font);margin-top:3px;letter-spacing:-.2px;font-variant-numeric:tabular-nums}
@@ -123,72 +124,75 @@ html.dark{--s2-ink:255,255,255}
 .s2-warn{margin-top:11px;font-size:11px;color:#8a6d1f;background:rgba(214,168,42,.13);
   border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:7px 10px}
 .s2-sheet{font:700 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;
-  letter-spacing:.5px;margin:20px 0 8px}
-.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,530px),1fr));gap:16px;align-items:start}
+  letter-spacing:.5px;margin:22px 0 10px}
+.s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));
+  gap:28px 36px;align-items:start}
 
-/* ── um cartão por indicador ── */
-.s2-card{padding:12px 14px 11px;margin-bottom:0;min-width:0}
-.s2-chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px}
-.s2-card h3{margin-bottom:0}
-.s2-axes{font-size:10px;color:var(--g-mid);margin-top:2px}
+/* ── um bloco por indicador: sem moldura, sem sombra, sem fundo ── */
+.s2-card{background:none;border:0;box-shadow:none;border-radius:0;padding:0;margin:0;min-width:0}
+.s2-chead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding-bottom:6px;margin-bottom:9px;border-bottom:1px solid var(--border)}
+.s2-card h3{font:700 12px var(--font);text-transform:uppercase;letter-spacing:.45px;margin:0}
+.s2-unit{font:500 10px var(--font);color:var(--g-mid);text-transform:none;letter-spacing:.2px;
+  margin-left:7px}
 .s2-live{flex:none;display:inline-flex;align-items:center;gap:5px;font:700 8.5px var(--font);
-  text-transform:uppercase;letter-spacing:.7px;color:var(--orange);background:rgba(255,80,0,.08);
-  border:1px solid rgba(255,80,0,.28);border-radius:20px;padding:2px 8px;white-space:nowrap}
+  text-transform:uppercase;letter-spacing:.7px;color:var(--orange);white-space:nowrap}
 .s2-live i{width:5px;height:5px;border-radius:50%;background:var(--orange);
   animation:livepulse 2s ease-in-out infinite}
 .s2-scroll{overflow-x:auto}
 
-.s2-tbl{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap;
+.s2-tbl{border-collapse:collapse;width:100%;font-size:11.5px;white-space:nowrap;
   font-variant-numeric:tabular-nums}
-.s2-tbl th,.s2-tbl td{padding:4px 6px;text-align:center;border-bottom:1px solid var(--border)}
-.s2-tbl thead th{font:600 9.5px var(--font);color:var(--g-dark);background:var(--g-light);
-  text-transform:uppercase;letter-spacing:.4px}
-/* o rótulo do eixo sai como o analista escreveu: em caixa alta "62% Fe (US$/t)"
-   viraria "62% FE (US$/T)" e a unidade deixaria de ser a unidade */
-.s2-tbl thead th.s2-xhead{color:var(--g-mid);letter-spacing:.6px;text-transform:none;font-size:9.5px}
-.s2-tbl thead th.s2-corner{background:var(--g-light);font:600 8.5px var(--font);color:var(--g-mid);
-  letter-spacing:.4px;text-transform:none;text-align:left;white-space:normal;line-height:1.15;max-width:98px}
-.s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:var(--g-light);
-  border-right:1px solid var(--border)}
-.s2-tbl tbody tr:last-child th,.s2-tbl tbody tr:last-child td{border-bottom:0}
+.s2-tbl th,.s2-tbl td{padding:5px 7px;text-align:center;border:0}
+/* cabeçalhos SEM chapa cinza: só tipografia. O rótulo do eixo X atravessa o topo e o do
+   eixo Y fica na célula de canto — ninguém precisa virar a cabeça para ler. */
+.s2-tbl thead th{font:600 10px var(--font);color:var(--g-dark);background:none;
+  text-transform:none;letter-spacing:.2px}
+.s2-tbl thead th.s2-xhead{font-weight:500;color:var(--g-mid);font-size:9.5px;padding-bottom:3px}
+.s2-tbl thead th.s2-corner{font:500 9px var(--font);color:var(--g-mid);text-align:left;
+  white-space:normal;line-height:1.15;max-width:92px;vertical-align:bottom}
+.s2-tbl thead tr:last-child th{padding-bottom:7px}
+.s2-tbl tbody th{font:600 10.5px var(--font);color:var(--g-dark);background:none;
+  text-align:right;padding-right:11px}
 .s2-num{font-variant-numeric:tabular-nums}
-/* tinta = magnitude dentro da PRÓPRIA tabela (--h vem inline, célula a célula) */
-.s2-tbl td{background-color:transparent;
+/* a grade é uma chapa branca sobre o fundo da página: se recorta sem precisar de borda */
+.s2-tbl td{background-color:var(--s2-plate);
   background-image:linear-gradient(rgba(var(--s2-ink),var(--h,0)),rgba(var(--s2-ink),var(--h,0)))}
+/* o meio da grade = caso-base do modelo (só carimba quando as premissas confirmam) */
+.s2-tbl td.s2-base{font-weight:700;outline:1px dashed rgba(var(--s2-ink),.4);outline-offset:-2px}
 /* laranja = onde o mercado está HOJE */
-.s2-tbl th.s2-hit{color:var(--orange);
-  background-image:linear-gradient(rgba(255,80,0,.13),rgba(255,80,0,.13))}
-.s2-tbl td.s2-cell-near{background-color:rgba(255,80,0,.05)}
-.s2-tbl td.s2-cell-hit{background-color:rgba(255,80,0,.15);font-weight:700;color:var(--black);
-  box-shadow:inset 0 0 0 1.5px var(--orange)}
+.s2-tbl th.s2-hit{color:var(--orange);font-weight:700}
+.s2-tbl td.s2-cell-near{background-color:var(--s2-near)}
+.s2-tbl td.s2-cell-hit{background-color:var(--s2-hit);font-weight:700;color:var(--black);
+  outline:1.5px solid var(--orange);outline-offset:-1px}
 /* leitura no ponto exato do spot (interpolada entre os níveis publicados) */
-.s2-spot{display:flex;align-items:baseline;gap:8px;margin-top:9px;padding-top:8px;
-  border-top:1px dashed var(--border);font-size:10px;color:var(--g-mid)}
+.s2-spot{display:flex;align-items:baseline;gap:8px;margin-top:10px;padding-top:8px;
+  border-top:1px solid var(--border);font-size:10px;color:var(--g-mid)}
 .s2-spot-k{font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--orange)}
 .s2-spot-x{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .s2-spot b{font:700 12.5px var(--font);color:var(--black);font-variant-numeric:tabular-nums}
 
-.s2-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;color:var(--g-mid);
-  margin-top:16px;line-height:1.45}
-.s2-ramp{flex:none;width:66px;height:8px;border-radius:4px;border:1px solid var(--border);
-  background-color:var(--white);
-  background-image:linear-gradient(90deg,rgba(var(--s2-ink),.008),rgba(var(--s2-ink),.06))}
-html.dark .s2-kpi{background:#1c2026}
+.s2-note{display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;font-size:10.5px;
+  color:var(--g-mid);margin-top:24px;line-height:1.5;max-width:1100px}
+.s2-ramp{flex:none;width:66px;height:8px;border-radius:4px;margin-top:3px;
+  background-color:var(--s2-plate);border:1px solid var(--border);
+  background-image:linear-gradient(90deg,rgba(var(--s2-ink),0),rgba(var(--s2-ink),.17),
+    rgba(var(--s2-ink),0))}
 html.dark .s2-warn{color:#e0c26a}
 html.dark .s2-tbl td.s2-cell-hit{color:#fff}
 
 @media(max-width:900px){
-  /* 1ª coluna ancorada: rolando de lado você não perde o nível do eixo Y */
-  .s2-tbl tbody th,.s2-tbl .s2-corner{position:sticky;left:0;z-index:2;box-shadow:1px 0 0 var(--border)}
+  /* 1ª coluna ancorada: rolando de lado você não perde o nível do eixo Y (precisa de
+     fundo próprio, senão o número da grade passa POR BAIXO do rótulo) */
+  .s2-tbl tbody th,.s2-tbl .s2-corner{position:sticky;left:0;z-index:2;background:var(--g-light)}
 }
 @media(max-width:760px){
-  .s2-grid{grid-template-columns:1fr}
+  .s2-grid{grid-template-columns:1fr;gap:24px}
   .s2-kpi{min-width:136px;max-width:none;flex:1 1 136px}
-  .s2-card{padding:11px 11px 10px}
-  .s2-scroll{margin:0 -11px}
-  .s2-tbl thead th:first-child,.s2-tbl tbody th:first-child{padding-left:11px}
+  .s2-scroll{margin:0 -2px}
   .s2-tbl{font-size:10.5px}
   .s2-tbl th,.s2-tbl td{padding:4px 5px}
+  .s2-tbl tbody th{padding-right:8px}
 }
 
 .g6d{font-size:9.5px;color:var(--g-mid);font-weight:600;margin-left:3px}
@@ -561,6 +565,120 @@ function _s2Def(t){ return (t&&t.definition)||{}; }
 function _s2Label(t){ const tk=_s2Def(t).ticker||''; const c=compByTicker(tk);
   return (c&&c.company_name)?c.company_name:(tk||t.title); }
 
+// ── O QUE A PÁGINA MOSTRA: EBITDA, EV/EBITDA, FCF e FCF yield, de 2027 ───────
+// O arquivo do analista traz mais coisa (dividend yield, margens, upside, às vezes 2026 e
+// 2027 lado a lado). O cliente lê uma tela só, e essas quatro são as que ele usa. O resto
+// continua IMPORTADO e guardado no banco — o corte é aqui, na hora de desenhar: para voltar
+// atrás basta mexer nesta lista, sem reimportar modelo nenhum.
+// "2027 de preferência": se a empresa tem grade de 2027, as de outro ano saem; quem não tem
+// 2027 continua mostrando o que publicou (melhor o ano do analista do que uma aba vazia).
+// Tabela sem ano no título ("FCF Ex-Prepayments", da CMIN) FICA: é a mesma grade das outras.
+const _S2_SHOW={ebitda:1,ev_ebitda:1,fcf:1,fcf_yield:1};
+const _S2_ANO=2027;
+function _s2Sheets(d){
+  const shs=((d&&d.sheets)||[]).map(function(sh){
+    return {name:sh.name, tables:(sh.tables||[]).filter(function(x){return !!_S2_SHOW[x.metric];})}; });
+  const tem=shs.some(function(sh){ return sh.tables.some(function(x){return Number(x.year)===_S2_ANO;}); });
+  return (tem?shs.map(function(sh){ return {name:sh.name, tables:sh.tables.filter(function(x){
+      return x.year==null||Number(x.year)===_S2_ANO; })}; }):shs)
+    .filter(function(sh){ return sh.tables.length; });
+}
+
+// ── TINTA: escurece até o MEIO da grade (o efeito dos nossos excéis) ─────────
+// Posicional, não por magnitude: o valor já está escrito na célula, e sombrear por valor
+// só repetia a informação com menos precisão. Quadrados concêntricos (distância de
+// Chebyshev) porque é assim que a grade é construída — o meio é o caso-base do modelo e
+// cada anel para fora é um passo de premissa.
+function _s2Ink(nRow,nCol){
+  const cr=(nRow-1)/2, cc=(nCol-1)/2;
+  const er=cr||1, ec=cc||1;               // grade de 1 linha: quem manda é a coluna
+  return function(i,j){
+    const d=Math.min(1,Math.max(Math.abs(i-cr)/er,Math.abs(j-cc)/ec));
+    const a=0.17*(1-d);
+    return a>0.003?(' style="--h:'+a.toFixed(3)+'"'):''; };
+}
+
+// ── o meio da grade é mesmo o caso-base do modelo? ──────────────────────────
+// Costuma ser: o analista monta a grade em volta das premissas que rodou. Mas é costume,
+// não regra — o Suzano publica a grade centrada em 550 enquanto o modelo roda com 570.
+// Então a página só carimba "base case" quando as premissas que vieram no ARQUIVO
+// confirmam o centro; se uma delas disser outra coisa, fica sem carimbo (a tinta continua
+// saindo do meio, que é o efeito visual pedido, mas ninguém afirma o que não conferiu).
+function _s2Norm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').replace(/\([^)]*\)/g,' ')
+  .replace(/[^a-z0-9]+/g,' ').trim(); }
+function _s2Ano(s){ const m=/\b(20\d\d)\b/.exec(String(s==null?'':s)); return m?Number(m[1]):null; }
+const _S2_STOP={avg:1,average:1,price:1,prices:1,net:1,rate:1,real:1,terms:1,the:1,of:1,and:1,
+  per:1,usd:1,brl:1,ton:1,tonne:1,t:1,lb:1,oz:1,mn:1,million:1};
+function _s2Toks(s){ return _s2Norm(s).split(' ').filter(function(w){
+  return w&&!_S2_STOP[w]&&!/^20\d\d$/.test(w); }); }
+// "Dom." e "Domestic" são a mesma palavra: o analista abrevia no rótulo da premissa e
+// escreve por extenso no eixo (só casa com 3 letras ou mais, p/ "US"/"BZ" não virarem coringa)
+function _s2TokEq(a,b){ if(a===b) return true;
+  const min=Math.min(a.length,b.length);
+  return min>=3 && (a.indexOf(b)===0||b.indexOf(a)===0); }
+// premissa do arquivo que vale para ESTE eixo. Três travas, todas tiradas de caso real:
+//   · TODA palavra da premissa tem de estar no eixo, e vence a que casar MAIS palavras — a
+//     Usiminas tem "volume growth" e "price growth" na mesma grade, e por uma palavra em
+//     comum ("steel") o preço estava sendo lido como se fosse o eixo de volume;
+//   · empate entre premissas de valores diferentes = ninguém fala pela grade, fica sem leitura;
+//   · o valor tem de cair DENTRO da grade — é o que impede a "Avg. Copper Price 2027" da Vale
+//     (em centavos por libra) de ser lida no eixo em US$/ton. Se a premissa que melhor casa
+//     está fora da faixa, o eixo fica SEM leitura em vez de cair numa premissa pior.
+// Ano: só desempata quando os DOIS declaram (a Usiminas escreve "Domestic Steel Volume" sem
+// ano; a CMIN escreve "Avg. Iron Ore Price 2026" contra uma grade de 2027, e essa cai fora).
+function _s2AssumFor(label,levels,assums){
+  if(!label||!levels||!levels.length) return null;
+  const tks=_s2Toks(label), ano=_s2Ano(label);
+  const mn=Math.min.apply(null,levels), mx=Math.max.apply(null,levels);
+  const pontuar=function(a){
+    const at=_s2Toks(a&&a.label); if(!at.length) return 0;
+    const ay=_s2Ano(a&&a.label);
+    if(ano!=null&&ay!=null&&ano!==ay) return 0;
+    for(let i=0;i<at.length;i++){
+      let ok=false;
+      for(let j=0;j<tks.length;j++) if(_s2TokEq(at[i],tks[j])){ ok=true; break; }
+      if(!ok) return 0;
+    }
+    return at.length; };
+  let melhor=null, empate=false;
+  (assums||[]).forEach(function(a){
+    const p=pontuar(a); if(!p) return;
+    const v=n(a&&a.value);
+    if(!melhor||p>melhor.p){ melhor={p:p,v:v}; empate=false; }
+    else if(p===melhor.p&&v!==melhor.v) empate=true; });
+  if(!melhor||empate) return null;
+  return (melhor.v==null||melhor.v<mn||melhor.v>mx)?null:melhor.v;
+}
+// índice do nível igual à premissa (tolerância de 1% do passo, por causa do FX com dízima)
+function _s2LevelIdx(levels,v){
+  if(v==null||!levels||levels.length<2) return -1;
+  const passo=Math.abs(levels[1]-levels[0])||1;
+  for(let i=0;i<levels.length;i++) if(Math.abs(levels[i]-v)<=passo*0.01) return i;
+  return -1;
+}
+// devolve {i,j,txt} da célula do meio quando ela É o caso-base; null quando não dá p/ afirmar
+function _s2BaseCell(tab,assums){
+  if(!tab||!tab.colLevels||!tab.colLevels.length) return null;
+  const cc=(tab.colLevels.length-1)/2; if(cc!==Math.floor(cc)) return null;   // grade par: sem meio
+  const rows=(tab.rowLevels&&tab.rowLevels.length)?tab.rowLevels:null;
+  let rc=0;
+  if(rows){ rc=(rows.length-1)/2; if(rc!==Math.floor(rc)) return null; }
+  const txt=[]; let confirmou=false;
+  const eixo=function(lab,lv,idx,pct){
+    const a=_s2AssumFor(lab,lv,assums);
+    if(a==null) return true;                       // o arquivo não diz: não confirma nem desmente
+    if(_s2LevelIdx(lv,a)!==idx) return false;      // desmente: o modelo roda em outro nível
+    confirmou=true;
+    // rótulo INTEIRO: é tooltip, tem espaço, e o eixo cortado ("...Pulp Net Price 2…")
+    // deixaria o cliente sem saber de que premissa se está falando
+    txt.push(lab+' = '+SG.sens2dAxisFormat(a,pct,NUM_LOC,SG.sens2dAxisDecimals(lv,pct)));
+    return true; };
+  if(!eixo(tab.colLabel,tab.colLevels,cc,SG.sens2dAxisIsPct(tab.colLabel,tab.colLevels))) return null;
+  if(rows&&!eixo(tab.rowLabel,rows,rc,SG.sens2dAxisIsPct(tab.rowLabel,rows))) return null;
+  return confirmou?{i:rc,j:cc,txt:txt.join(' · ')}:null;
+}
+
 // eixo -> serie ao vivo. Eixos de CRESCIMENTO/VOLUME/CUSTO nao tem equivalente na tela:
 // devolvem null e a tabela sai sem marcador de spot (em vez de fingir uma leitura).
 function _s2DriverKey(label){
@@ -604,7 +722,7 @@ function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[
 // AVISA em vez de inventar fator, porque o deflator nao vem no arquivo do analista.
 function _s2RealTermsAxis(d){
   let lab=null;
-  (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
+  _s2Sheets(d).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
     [t.colLabel,t.rowLabel].forEach(function(x){ if(!lab&&x&&/real\s*terms/i.test(x)) lab=x; }); }); });
   if(!lab) return null;
   const m=/^(\d{4})/.exec(String(d.model_date||''));
@@ -686,13 +804,12 @@ function _s2TitleParts(title){
   return {head:t, note:''};
 }
 
-// Uma tabela em HTML NO PADRÃO DA DASH. Antes era uma cópia do Excel do
-// analista: barra de título preta, cabeçalho cinza chapado e o rótulo do eixo Y
-// girado 90 graus na lateral. Agora: cartão branco, cabeçalho no estilo
-// table.data, rótulo do eixo X atravessando o topo e o do eixo Y na célula de
-// canto. A tinta neutra das células mostra a magnitude DENTRO da própria
-// tabela; o laranja marca só a linha/coluna do spot e o cruzamento dos dois,
-// que é o que o cliente procura primeiro.
+// Uma tabela em HTML no padrão da dash, e só o dado com plano de fundo: título,
+// grade e a leitura no spot. Sem cartão, sem faixa cinza e sem traço por dentro
+// — a TINTA é que organiza a leitura, escurecendo em quadrados concêntricos até
+// o meio da grade (o caso-base do modelo), como nos nossos excéis. O laranja
+// fica só com a linha/coluna do spot e o cruzamento dos dois, que é o que o
+// cliente procura primeiro.
 function _s2TableHtml(tab,byId,ctx){
   const met=tab.metric; const live=SG.SENS2D_METRICS[met]&&SG.SENS2D_METRICS[met].live;
   const pair=tab.pairId?byId[tab.pairId]:null;
@@ -710,17 +827,13 @@ function _s2TableHtml(tab,byId,ctx){
       ebitda:eb,mktcapModel:ctx.mcModel,mktcapLive:ctx.mcLive}):pub; };
   const vals=rows.map(function(rv,i){ return tab.colLevels.map(function(cv,j){
     return toScreen(tab.values[i]?tab.values[i][j]:null, pair&&pair.values[i]?pair.values[i][j]:null); }); });
-  // faixa da PRÓPRIA tabela manda na intensidade da tinta (nunca se compara entre tabelas)
-  let mn=Infinity,mx=-Infinity;
-  vals.forEach(function(r){ r.forEach(function(v){ if(v!=null&&isFinite(v)){ if(v<mn)mn=v; if(v>mx)mx=v; } }); });
-  const span=(isFinite(mn)&&isFinite(mx)&&mx>mn)?(mx-mn):0;
-  const ink=function(v){ if(!span||v==null||!isFinite(v)) return '';
-    return ' style="--h:'+(0.008+0.052*(v-mn)/span).toFixed(3)+'"'; };
+  const ink=_s2Ink(rows.length,tab.colLevels.length);
+  const base=_s2BaseCell(tab,(ctx&&ctx.def&&ctx.def.assumptions)||null);
   const parts=_s2TitleParts(tab.title);
 
-  let h='<div class="card s2-card">';
-  h+='<div class="s2-chead"><div><h3>'+esc(parts.head)+'</h3>'+
-     (parts.note?'<div class="s2-axes">'+esc(parts.note)+'</div>':'')+'</div>'+
+  let h='<div class="s2-card">';
+  h+='<div class="s2-chead"><h3>'+esc(parts.head)+
+     (parts.note?'<span class="s2-unit">'+esc(parts.note)+'</span>':'')+'</h3>'+
      (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
      '</div>';
   h+='<div class="s2-scroll"><table class="s2-tbl"><thead>';
@@ -740,7 +853,10 @@ function _s2TableHtml(tab,byId,ctx){
     tab.colLevels.forEach(function(cv,j){
       const v=vals[i][j];
       const hit=(i===ri&&j===cj)?' s2-cell-hit':((i===ri||j===cj)?' s2-cell-near':'');
-      h+='<td class="s2-num'+hit+'"'+ink(v)+'>'+esc(SG.sens2dFormat(v,met,NUM_LOC))+'</td>';
+      const eBase=!!(base&&base.i===i&&base.j===j);
+      h+='<td class="s2-num'+hit+(eBase?' s2-base':'')+'"'+
+         (eBase?' title="'+esc('Base case — the model runs at '+base.txt)+'"':'')+
+         ink(i,j)+'>'+esc(SG.sens2dFormat(v,met,NUM_LOC))+'</td>';
     });
     h+='</tr>';
   });
@@ -777,7 +893,7 @@ function _s2Short(s){ const t=String(s==null?'':s); const i=t.indexOf('(');
 // faixa de cada driver da empresa + onde o spot esta hoje
 function _s2DriverStrip(d,ctx){
   const seen={}; const out=[];
-  (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
+  _s2Sheets(d).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
     [[t.colLabel,t.colLevels],[t.rowLabel,t.rowLevels]].forEach(function(p){
       const lab=p[0], lv=p[1]; if(!lab||!lv||!lv.length||seen[lab]) return; seen[lab]=1;
       const pct=SG.sens2dAxisIsPct(lab,lv);
@@ -817,17 +933,35 @@ function _s2RenderPane(t,pane){
   if(ctx.mismatch) h+='<div class="s2-warn">Model currency and live price do not match — showing the numbers exactly as published.</div>';
   else if(ctx.mcLive==null) h+='<div class="s2-warn">No live quote right now — multiples and yields are shown as published.</div>';
   h+='</div>';
-  (d.sheets||[]).forEach(function(sh){
-    if((d.sheets||[]).length>1) h+='<div class="s2-sheet">'+esc(sh.name)+'</div>';
-    h+='<div class="s2-grid">';
-    (sh.tables||[]).forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
-    h+='</div>';
+  const shs=_s2Sheets(d);
+  if(!shs.length) h+='<div class="s2-warn">This model has no EBITDA, EV/EBITDA, FCF or FCF yield grid.</div>';
+  // sem unidade: o par de eixos é TÍTULO, e "(%)"/"(USD/ton)" já aparecem na grade
+  const semUn=function(s){ return String(s==null?'':s).replace(/\s*\([^)]*\)\s*$/,'').trim(); };
+  shs.forEach(function(sh){
+    if(shs.length>1) h+='<div class="s2-sheet">'+esc(sh.name)+'</div>';
+    // A Gerdau publica DOIS blocos com os MESMOS quatro indicadores e eixos diferentes
+    // (preço de aço × margem de EBITDA). Sem dizer qual é qual, a aba mostraria
+    // "EBITDA 2027" duas vezes e ninguém saberia o que mudou de um para o outro.
+    const grupos=[]; const ondeEsta={};
+    (sh.tables||[]).forEach(function(t){
+      const k=(t.colLabel||'')+' | '+(t.rowLabel||'');
+      if(ondeEsta[k]==null){ ondeEsta[k]=grupos.length; grupos.push({first:t,tables:[]}); }
+      grupos[ondeEsta[k]].tables.push(t); });
+    grupos.forEach(function(g){
+      if(grupos.length>1) h+='<div class="s2-sheet">'+
+        esc([semUn(g.first.colLabel),semUn(g.first.rowLabel)].filter(Boolean).join(' × '))+'</div>';
+      h+='<div class="s2-grid">';
+      g.tables.forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
+      h+='</div>';
+    });
   });
   const notaReal=_s2RealTermsNote(d,new Date().getFullYear());
-  h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading = magnitude within each grid (light to dark); '+
-     'orange marks where the market is trading today. EBITDA, FCF and margins are exactly as the analyst published. '+
-     'EV/EBITDA, yields, upside and P/NAV are recomputed at the current screen price: the net debt in each cell is '+
-     'the one embedded in the published EV.'+(notaReal?' '+esc(notaReal):'')+'</span></div>';
+  h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading deepens toward the centre of each grid, '+
+     'where the model runs — each ring out is one step of the analyst’s assumptions; a dashed cell marks the '+
+     'base case where the assumptions in the file confirm it. Orange marks where the market is trading today, and '+
+     '“At spot” reads the grid at the exact quote, interpolated between the published levels. EBITDA and '+
+     'FCF are exactly as the analyst published; EV/EBITDA and FCF yield are recomputed at the current screen price, '+
+     'with the net debt embedded in the published EV.'+(notaReal?' '+esc(notaReal):'')+'</span></div>';
   pane.innerHTML=h;
 }
 
@@ -1211,7 +1345,7 @@ function _sgExportTables(includeSens){
   const p=document.getElementById('peers-table'); if(_sgHasRows(p)) out.push({name:'Global Peers', title:'Global Peers', el:p});
   if(includeSens) document.querySelectorAll('#sens-host table').forEach((el,i)=>{
     if(!el.querySelector('tr')) return;
-    const card=el.closest('.card'), ttlEl=card&&card.querySelector('.sens-title,.sec-title,b,strong,h3');
+    const card=el.closest('.s2-card,.card'), ttlEl=card&&card.querySelector('.sens-title,.sec-title,b,strong,h3');
     out.push({name:'Sens '+(i+1), title:(ttlEl&&ttlEl.textContent.trim())||('Sensitivity '+(i+1)), el});
   });
   return out;

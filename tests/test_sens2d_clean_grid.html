@@ -1,0 +1,240 @@
+<!doctype html><meta charset="utf-8"><title>sensitivity — 4 indicadores, tinta do meio e caso-base</title>
+<body><pre id="out">rodando…</pre><script>
+/* Confere as três coisas que a aba Sensitivity passou a fazer (pedido do analista):
+
+     1. mostra SÓ EBITDA, EV/EBITDA, FCF e FCF yield — e, quando a empresa tem grade de
+        2027, é a de 2027 que fica (quem só publicou outro ano continua aparecendo);
+     2. a TINTA é posicional: escurece em quadrados concêntricos até o meio da grade, como
+        nos excéis da casa. Não depende mais do valor da célula;
+     3. o meio só é carimbado como CASO-BASE quando as premissas que vieram no arquivo
+        confirmam — o Suzano publica a grade centrada em 550 rodando o modelo a 570, e
+        carimbar o meio ali seria afirmar o que o arquivo desmente.
+
+   As funções vêm RECORTADAS do próprio stock-guide.html (mesmo método dos outros testes do
+   diretório): se alguém mexer nelas, o teste acompanha em vez de testar uma cópia velha. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+
+const MV={pulp_bhkp_china:563.64, fx_usdbrl:5.1806, iron_ore_61:99.7, copper:6.702};
+const QUATRO=['ebitda','ev_ebitda','fcf','fcf_yield'];
+
+window.__RUN__=async function(){
+  // o lib entra por fetch+eval, e não por <script src>: sem o carimbo de tempo o navegador
+  // serve a versão em cache e o teste avalia código VELHO sem avisar
+  new Function(await (await fetch('/stock-guide-lib.js?v='+Date.now())).text())();
+  const cru=(await (await fetch('/stock-guide.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ctx={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US', Math:Math,
+             isFinite:isFinite, String:String, Number:Number};
+  const BLOCO=cut(cru,'function _s2Def(t){','  return out;\n}');
+  const M=new Function('ctx',`with(ctx){ ${BLOCO}
+    return {_s2Sheets,_s2Ink,_s2BaseCell,_s2AssumFor,_s2LevelIdx,_s2TokEq,_s2TableHtml,_s2DriverStrip}; }`)(ctx);
+  const CSS=cut(cru,'<style>','</style>');
+  const DEF=await (await fetch('/tests/fixtures/sens2d_models.json?v='+Date.now())).json();
+  const metricas=d=>M._s2Sheets(d).reduce((a,sh)=>a.concat(sh.tables.map(t=>t.metric)),[]);
+  const titulos=d=>M._s2Sheets(d).reduce((a,sh)=>a.concat(sh.tables.map(t=>t.title.trim())),[]);
+
+  // ── 1. o corte dos indicadores ────────────────────────────────────────────
+  Object.keys(DEF).forEach(function(tk){
+    const m=metricas(DEF[tk]);
+    ok(tk+': só os 4 indicadores pedidos, sem repetir',
+       m.length===4 && QUATRO.every(x=>m.indexOf(x)>=0), m.join(', '));
+    ok(tk+': todas as grades que ficaram são de 2027 (ou sem ano no título, mesma grade)',
+       M._s2Sheets(DEF[tk]).every(sh=>sh.tables.every(t=>t.year==null||Number(t.year)===2027)));
+  });
+  ok('Vale: o dividend yield estava no arquivo e saiu da tela',
+     DEF.VALE3.sheets[0].tables.some(t=>t.metric==='div_yield') &&
+     metricas(DEF.VALE3).indexOf('div_yield')<0);
+  ok('CMIN: "FCF Ex-Prepayments" não tem ano no título e FICA (é a mesma grade das outras)',
+     titulos(DEF.CMIN3).indexOf('FCF Ex-Prepayments (BRL million)')>=0 &&
+     titulos(DEF.CMIN3).indexOf('FCF Yield Ex-Prepayments (%)')>=0);
+
+  // modelos fabricados: 2026+2027, só 2026, e um sem nenhum dos 4 indicadores
+  const tb=(id,metric,year,title)=>({id:id,title:title||(metric+' '+year),metric:metric,year:year,
+    kind:'2d',colLabel:'Iron ore 2027 (USD/ton)',colLevels:[90,95,100],rowLevels:null,values:[[1,2,3]]});
+  const doisAnos={sheets:[{name:'Sensitivity',tables:[tb('a','ebitda',2026),tb('b','ebitda',2027),
+    tb('c','fcf',2026),tb('d','fcf',2027),tb('e','margin',2027)]}]};
+  ok('empresa com 2026 e 2027 na mesma aba: fica só o 2027',
+     M._s2Sheets(doisAnos)[0].tables.map(t=>t.id).join()==='b,d',
+     M._s2Sheets(doisAnos)[0].tables.map(t=>t.id+'/'+t.year).join(' '));
+  const so2026={sheets:[{name:'S',tables:[tb('a','ebitda',2026),tb('b','fcf',2026)]}]};
+  ok('empresa que só publicou 2026 continua aparecendo (melhor o ano do analista que aba vazia)',
+     M._s2Sheets(so2026)[0].tables.length===2);
+  const soOutros={sheets:[{name:'S',tables:[tb('a','margin',2027),tb('b','upside',2027)]}]};
+  ok('modelo sem nenhum dos 4: a aba não quebra, fica sem tabela (e o pane avisa)',
+     M._s2Sheets(soOutros).length===0 &&
+     cru.indexOf('This model has no EBITDA, EV/EBITDA, FCF or FCF yield grid.')>0);
+  ok('aba inteira sem os 4 indicadores não vira aba vazia na tela',
+     M._s2Sheets({sheets:[{name:'A',tables:[tb('a','margin',2027)]},
+                          {name:'B',tables:[tb('b','ebitda',2027)]}]}).map(s=>s.name).join()==='B');
+  // o corte é só de EXIBIÇÃO: o arquivo importado continua inteiro no banco
+  ok('o corte não mexe no que foi importado (o def original segue com tudo)',
+     DEF.VALE3.sheets[0].tables.length===5 && metricas(DEF.VALE3).length===4);
+  // os cartões de faixa do topo seguem as tabelas que ficaram
+  ok('a régua de drivers do topo lê os eixos das tabelas visíveis',
+     M._s2DriverStrip(DEF.VALE3,{mv:MV}).length===2);
+
+  // ── 2. a tinta: distância até o MEIO, não magnitude ───────────────────────
+  const alfas=html=>(html.match(/<td[^>]*>/g)||[]).map(s=>{const m=/--h:([0-9.]+)/.exec(s); return m?Number(m[1]):0;});
+  const grade=(nR,nC,f)=>({id:'g',title:'EBITDA 2027 (BRL million)',metric:'ebitda',year:2027,pairId:null,
+    colLabel:'Iron ore 2027 (USD/ton)',colLevels:Array.from({length:nC},(_,j)=>90+j*2.5),
+    rowLabel:nR>1?'FX 2027 (USD/BRL)':null,rowLevels:nR>1?Array.from({length:nR},(_,i)=>5+i*0.1):null,
+    values:Array.from({length:nR},(_,i)=>Array.from({length:nC},(_,j)=>f?f(i,j):(1000+i*10+j)))});
+  const ctxSeco={def:null,comp:null,mcModel:null,mcLive:null,price:null,mismatch:false,mv:{}};
+  const g99=grade(9,9), A=alfas(M._s2TableHtml(g99,{},ctxSeco));
+  const at=(i,j)=>A[i*9+j];
+  ok('a célula do meio é a mais escura da grade',
+     at(4,4)===Math.max.apply(null,A) && at(4,4)>0.16, 'meio '+at(4,4));
+  ok('as quatro pontas ficam sem tinta nenhuma',
+     at(0,0)===0 && at(0,8)===0 && at(8,0)===0 && at(8,8)===0);
+  ok('escurece em quadrados concêntricos: cada anel para dentro é mais escuro',
+     at(0,4)<at(1,4) && at(1,4)<at(2,4) && at(2,4)<at(3,4) && at(3,4)<at(4,4),
+     [at(0,4),at(1,4),at(2,4),at(3,4),at(4,4)].join(' < '));
+  ok('o anel é QUADRADO (Chebyshev): a quina do anel tem a mesma tinta do meio do lado',
+     at(3,3)===at(3,4) && at(3,4)===at(4,3), at(3,3)+' '+at(3,4)+' '+at(4,3));
+  ok('simétrica nos dois eixos: (i,j) e o espelho têm a mesma tinta',
+     A.every((v,k)=>{const i=Math.floor(k/9), j=k%9; return v===at(8-i,8-j);}));
+  // o valor já está escrito na célula: sombrear por valor repetiria a informação com menos
+  // precisão — e era o que fazia antes (a faixa min–máx da própria tabela)
+  const dobro=alfas(M._s2TableHtml(grade(9,9,(i,j)=>(1000+i*10+j)*2),{},ctxSeco));
+  const embaralhado=alfas(M._s2TableHtml(grade(9,9,(i,j)=>(i*7+j*13)%97),{},ctxSeco));
+  ok('a tinta NÃO depende do valor: dobrar ou embaralhar a grade não muda nenhuma alfa',
+     dobro.join()===A.join() && embaralhado.join()===A.join());
+  const g19=alfas(M._s2TableHtml(grade(1,9),{},ctxSeco));
+  ok('grade de uma linha só: quem manda é a coluna (meio escuro, pontas limpas)',
+     g19[4]===Math.max.apply(null,g19) && g19[0]===0 && g19[8]===0, g19.join(' '));
+  const g44=alfas(M._s2TableHtml(grade(4,4),{},ctxSeco));
+  ok('grade de lado par não tem célula do meio, mas a tinta continua saindo do centro',
+     g44[5]===Math.max.apply(null,g44) && g44[5]===g44[6] && g44[0]===0, g44.join(' '));
+
+  // ── 3. o carimbo de caso-base ────────────────────────────────────────────
+  const assum=d=>d.assumptions||null;
+  const bc=(tk,i)=>M._s2BaseCell(DEF[tk].sheets[0].tables[i||0],assum(DEF[tk]));
+  ok('Klabin: as duas premissas do arquivo caem no meio → carimba',
+     !!bc('KLBN11') && bc('KLBN11').i===4 && bc('KLBN11').j===4,
+     bc('KLBN11')?bc('KLBN11').txt:'sem carimbo');
+  ok('Klabin: o carimbo diz em que nível o modelo roda',
+     /575/.test(bc('KLBN11').txt) && /5\.4/.test(bc('KLBN11').txt), bc('KLBN11').txt);
+  // a premissa de cobre da Vale vem em outra unidade (325 contra um eixo de 8.789–16.789):
+  // fora da faixa ela é IGNORADA, em vez de ser lida como se fosse o eixo
+  ok('Vale: minério confirma o meio e a premissa de cobre (outra unidade) é ignorada',
+     !!bc('VALE3') && bc('VALE3').i===4 && bc('VALE3').j===4 && /97\.5/.test(bc('VALE3').txt),
+     bc('VALE3')?bc('VALE3').txt:'sem carimbo');
+  ok('Vale: a premissa fora da faixa do eixo não vira leitura',
+     M._s2AssumFor('Avg. Copper Price 2027 (USD/ton)',DEF.VALE3.sheets[0].tables[0].rowLevels,
+                   assum(DEF.VALE3))===null);
+  // ⚠️ o caso que justifica o teste todo: a grade do Suzano está centrada em 550 e o modelo
+  // roda a 570. Carimbar o meio ali seria afirmar o que o próprio arquivo desmente.
+  ok('Suzano: modelo roda a 570 e a grade está centrada em 550 → NÃO carimba',
+     bc('SUZB3')===null, 'premissa '+assum(DEF.SUZB3)[0].value+
+     ' × meio da grade '+DEF.SUZB3.sheets[0].tables[0].colLevels[4]);
+  ok('CMIN: a premissa de minério do arquivo é de 2026 e a grade é de 2027 → não confirma nada',
+     bc('CMIN3')===null);
+  ok('premissa de outro ano não é lida como se fosse do eixo',
+     M._s2AssumFor('Average Iron Ore 61% Price 2027 (USD/ton)',
+                   DEF.CMIN3.sheets[0].tables[0].colLevels,assum(DEF.CMIN3))===null);
+  ok('sem premissa nenhuma no arquivo, ninguém carimba',
+     M._s2BaseCell(DEF.KLBN11.sheets[0].tables[0],null)===null &&
+     M._s2BaseCell(DEF.KLBN11.sheets[0].tables[0],[])===null);
+  ok('grade de lado par não tem meio: sem carimbo',
+     M._s2BaseCell({colLabel:'Iron ore 2027 (USD/ton)',colLevels:[90,95,100,105],rowLevels:null,values:[[1,2,3,4]]},
+                   [{label:'Avg. Iron Ore Price 2027',value:95}])===null);
+  // ⚠️ caso REAL da Usiminas: a mesma grade tem "volume growth" e "price growth", e por UMA
+  // palavra em comum ("steel") a premissa de preço estava sendo lida no eixo de volume — o que
+  // fazia a página achar que o modelo rodava fora do meio e engolir o carimbo.
+  const USIM={vol:'Domestic Steel Volume Growth 2027 (%)', pre:'Domestic Steel Price Growth 2027 (%)',
+    lvVol:[-0.04,-0.025,-0.01,0.005,0.02,0.035,0.05,0.065,0.08],
+    lvPre:[-0.045,-0.025,-0.005,0.015,0.035,0.055,0.075,0.095,0.115],
+    a:[{label:'Domestic Steel Volume',value:0.02},{label:'Avg. Dom. Steel Price 2027',value:0.035},
+       {label:'Stock Price',value:7.14}]};
+  ok('dois eixos de aço na mesma grade: cada premissa vai para o SEU eixo',
+     M._s2AssumFor(USIM.vol,USIM.lvVol,USIM.a)===0.02 && M._s2AssumFor(USIM.pre,USIM.lvPre,USIM.a)===0.035,
+     'volume '+M._s2AssumFor(USIM.vol,USIM.lvVol,USIM.a)+' · preço '+M._s2AssumFor(USIM.pre,USIM.lvPre,USIM.a));
+  ok('"Dom." é a mesma palavra que "Domestic" (o analista abrevia na premissa)',
+     M._s2TokEq('dom','domestic') && M._s2TokEq('domestic','dom'));
+  ok('sigla de 2 letras não vira coringa (senão "BZ margin" casaria com "Brazil price")',
+     !M._s2TokEq('bz','brazil') && !M._s2TokEq('us','usd'));
+  ok('premissa com palavra que não está no eixo não conta',
+     M._s2AssumFor('Average FX 2027 (USD/BRL)',[5,5.5,6],
+       [{label:'Avg. Net Pulp 2027',value:5.5}])===null);
+  ok('empate entre premissas de valores diferentes: ninguém fala pela grade',
+     M._s2AssumFor('Iron ore 2027 (USD/ton)',[90,95,100],
+       [{label:'Iron ore 2027',value:95},{label:'Ore iron 2027',value:100}])===null);
+  ok('a premissa que melhor casa está fora da faixa: o eixo fica SEM leitura, não cai numa pior',
+     M._s2AssumFor('Avg. Copper Price 2027 (USD/ton)',[8000,12000,16000],
+       [{label:'Avg. Copper Price 2027',value:325.36},{label:'Copper 2027',value:12000}])===null);
+  ok('a tolerância do nível é do tamanho do passo/100 (câmbio com dízima ainda casa)',
+     M._s2LevelIdx([5.008333333333334,5.108333333333333,5.208333333333333],5.108333333333331)===1 &&
+     M._s2LevelIdx([90,95,100],96)===-1);
+  const hK=M._s2TableHtml(DEF.KLBN11.sheets[0].tables[0],{},
+    {def:DEF.KLBN11,comp:null,mcModel:null,mcLive:null,price:null,mismatch:false,mv:MV});
+  ok('sai UM carimbo por tabela, com explicação no tooltip',
+     (hK.match(/s2-base/g)||[]).length===1 && hK.indexOf('Base case')>0);
+  const hS=M._s2TableHtml(DEF.SUZB3.sheets[0].tables[0],{},
+    {def:DEF.SUZB3,comp:null,mcModel:null,mcLive:null,price:null,mismatch:false,mv:MV});
+  ok('a tabela do Suzano sai sem carimbo nenhum (mas com a tinta do meio)',
+     hS.indexOf('s2-base')<0 && /--h:0\.17/.test(hS));
+  ok('o carimbo do caso-base perde para o laranja quando caem na mesma célula',
+     CSS.indexOf('.s2-tbl td.s2-base')<CSS.indexOf('.s2-tbl td.s2-cell-hit'));
+
+  // ── 3b. dois blocos de eixos na mesma aba (o caso da Gerdau) ─────────────
+  // O arquivo dela traz os MESMOS quatro indicadores duas vezes, com eixos diferentes
+  // (preço de aço × margem de EBITDA). Sem título, a aba mostra "EBITDA 2027" duas vezes.
+  const CTX2={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US', Math:Math,
+    isFinite:isFinite, String:String, Number:Number, Date:Date,
+    _SENS_CTX:{drivers:[],marketValues:MV,comps:[],config:{}}, compByTicker:function(){return null;}};
+  const PANE=new Function('ctx',`with(ctx){ ${cut(cru,'function _s2Def(t){','  pane.innerHTML=h;\n}')}
+    return {_s2RenderPane}; }`)(CTX2);
+  const doisEixos=(function(){
+    const mk=(id,metric,col,row)=>({id:id,title:metric.toUpperCase()+' 2027 (BRL million)',metric:metric,
+      year:2027,kind:'2d',pairId:null,colLabel:col,rowLabel:row,
+      colLevels:[-0.02,0,0.02],rowLevels:[-0.02,0,0.02],
+      values:[[1,2,3],[4,5,6],[7,8,9]]});
+    const A=['Brazil: Domestic Steel Price Growth 2027 (%)','North America Steel Price Growth 2027 (%)'];
+    const B=['BZ EBITDA Margin 2027 (%)','US EBITDA Margin 2027 (%)'];
+    const tb=[];
+    QUATRO.forEach((m,i)=>tb.push(mk('a'+i,m,A[0],A[1])));
+    QUATRO.forEach((m,i)=>tb.push(mk('b'+i,m,B[0],B[1])));
+    return {ticker:'GGBR4',sheets:[{name:'Sensitivity',tables:tb}],assumptions:[]};
+  })();
+  const pane={innerHTML:''};
+  PANE._s2RenderPane({id:9,title:'x',definition:doisEixos},pane);
+  const heads=(pane.innerHTML.match(/<div class="s2-sheet">([^<]*)</g)||[]).map(s=>s.replace(/^.*">/,''));
+  ok('dois blocos de eixos ganham TÍTULO com o par (senão "EBITDA 2027" aparece 2×)',
+     heads.length===2 && /Brazil.*×.*North America/.test(heads[0]) && /BZ EBITDA Margin.*×.*US EBITDA/.test(heads[1]),
+     heads.join(' | '));
+  ok('o título do bloco sai sem a unidade (o "(%)" já está na grade)',
+     heads.every(x=>x.indexOf('(%)')<0), heads.join(' | '));
+  ok('as 8 tabelas continuam desenhadas, 4 em cada bloco',
+     (pane.innerHTML.match(/class="s2-card"/g)||[]).length===8);
+  const umBloco={ticker:'X',sheets:[{name:'S',tables:doisEixos.sheets[0].tables.slice(0,4)}],assumptions:[]};
+  const p2={innerHTML:''}; PANE._s2RenderPane({id:9,title:'x',definition:umBloco},p2);
+  ok('um bloco só não ganha título nenhum (não há o que desambiguar)',
+     (p2.innerHTML.match(/s2-sheet/g)||[])===null || (p2.innerHTML.match(/s2-sheet/g)||[]).length===0);
+
+  // ── 4. a limpeza: nada de cartão, faixa cinza ou traço por dentro ─────────
+  ok('o bloco do indicador não é mais um .card (sem moldura, sombra ou fundo)',
+     hK.indexOf('class="s2-card"')>=0 && hK.indexOf('card s2-card')<0 &&
+     /\.s2-card\{background:none;border:0;box-shadow:none/.test(CSS));
+  ok('cabeçalho sem chapa cinza (era background:var(--g-light) nas três pontas)',
+     /\.s2-tbl thead th\{[^}]*background:none/.test(CSS) &&
+     /\.s2-tbl tbody th\{[^}]*background:none/.test(CSS));
+  ok('sem traço embaixo de cada linha: quem organiza a leitura é a tinta',
+     /\.s2-tbl th,\.s2-tbl td\{[^}]*border:0/.test(CSS));
+  ok('a grade é uma chapa opaca (senão a tinta laranja do spot come o fundo da célula)',
+     /\.s2-tbl td\{background-color:var\(--s2-plate\)/.test(CSS) &&
+     /--s2-plate:#fff/.test(CSS) && /html\.dark\{--s2-ink:255,255,255;--s2-plate:#1c2026/.test(CSS));
+  ok('a unidade saiu para o lado do título, em vez de virar uma segunda linha',
+     hK.indexOf('<span class="s2-unit">BRL million</span>')>0);
+  ok('a legenda explica a tinta nova (e não fala mais em magnitude)',
+     cru.indexOf('Shading deepens toward the centre')>0 && cru.indexOf('Shading = magnitude')<0);
+  ok('o Excel da página continua achando o título das tabelas de sensibilidade',
+     cru.indexOf("el.closest('.s2-card,.card')")>0);
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM');
+  return falhas;
+};
+window.__RUN__();
+</script>
