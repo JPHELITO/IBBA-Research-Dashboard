@@ -212,16 +212,21 @@ window.__RUN__=async function(){
   ok('um bloco só não ganha título nenhum (não há o que desambiguar)',
      (p2.innerHTML.match(/s2-sheet/g)||[])===null || (p2.innerHTML.match(/s2-sheet/g)||[]).length===0);
 
-  // ── 4. a limpeza: nada de cartão, faixa cinza ou traço por dentro ─────────
-  ok('o bloco do indicador não é mais um .card (sem moldura, sombra ou fundo)',
-     hK.indexOf('class="s2-card"')>=0 && hK.indexOf('card s2-card')<0 &&
-     /\.s2-card\{background:none;border:0;box-shadow:none/.test(CSS));
+  // ── 4. a limpeza é POR DENTRO: o cartão branco fica, as 3 molduras não ────
+  // O analista pediu o cartão de volta em 2026-09-02 ("achei que ficou meio feio sem
+  // borda… coloque dentro de um bloco branco igual era antes, mas mantenha o degradê").
+  // O que fazia parecer imagem colada eram as faixas cinzas e os traços internos.
+  ok('o bloco é um cartão branco no padrão da casa (borda, raio e sombra)',
+     hK.indexOf('class="s2-card"')>=0 &&
+     /\.s2-card\{background:var\(--s2-plate\);border:1px solid var\(--border\);border-radius:var\(--radius\);\s*box-shadow:var\(--shadow\)/.test(CSS));
+  ok('a aba "Other" saiu (as 2 sensibilidades de exemplo não aparecem ao lado das empresas)',
+     /sgRenderSens2dTabs\(s2,null,host\)/.test(cru) && /sgRenderGrid6Tabs\(g6,null,host\)/.test(cru));
   ok('cabeçalho sem chapa cinza (era background:var(--g-light) nas três pontas)',
      /\.s2-tbl thead th\{[^}]*background:none/.test(CSS) &&
      /\.s2-tbl tbody th\{[^}]*background:none/.test(CSS));
   ok('sem traço embaixo de cada linha: quem organiza a leitura é a tinta',
      /\.s2-tbl th,\.s2-tbl td\{[^}]*border:0/.test(CSS));
-  ok('a grade é uma chapa opaca (senão a tinta laranja do spot come o fundo da célula)',
+  ok('a célula usa a MESMA chapa do cartão (senão a tinta laranja do spot come o fundo)',
      /\.s2-tbl td\{background-color:var\(--s2-plate\)/.test(CSS) &&
      /--s2-plate:#fff/.test(CSS) && /html\.dark\{--s2-ink:255,255,255;--s2-plate:#1c2026/.test(CSS));
   ok('a unidade saiu para o lado do título, em vez de virar uma segunda linha',
