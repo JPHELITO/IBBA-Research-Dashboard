@@ -121,7 +121,14 @@ html.dark .tip{background:#0d0e11;color:#e8eaed;border:1px solid var(--border);}
 .note{font-size:11px;color:var(--gray-mid);padding:6px 0 0;}
 .ibba-tb button{font:600 10.5px var(--font)!important;}
 @media(max-width:700px){#app{padding:10px 10px 18px;}.mw-title{font-size:17px;}.kpi .v{font-size:16px;}.fl-item{grid-template-columns:1fr;gap:2px;}.tbl-wrap{max-height:none;}}
+/* ?embed=1 — dentro da gaveta do Market: sem a barra global, sem o título (a gaveta já tem o dela) */
+body.embed .gnav,body.embed .gnav-mob,body.embed .orange-rule{display:none!important;}
+body.embed #app{padding-top:10px;}
+body.embed .mw-title{display:none;}
 </style>
+<script>try{ const _p=new URLSearchParams(location.search); if(_p.get('embed')==='1'){ document.documentElement.classList.add('embed');
+  // dentro da gaveta do Market o tema é o do Market (escuro por padrão), não o global da dashboard
+  if(_p.get('theme')==='dark') document.documentElement.classList.add('dark'); else if(_p.get('theme')==='light') document.documentElement.classList.remove('dark'); } }catch(e){}</script>
 </head>
 <body>
 
@@ -578,6 +585,7 @@ function freshness(){
 // ── boot ─────────────────────────────────────────────────────────────────────
 ;(async()=>{
   wire();
+  if(document.documentElement.classList.contains('embed')) document.body.classList.add('embed');
   try{
     const {data:{session}}=await sbAuth.auth.getSession();
     if(!session){window.location.replace('/login.html');return}
