@@ -120,16 +120,18 @@ def evaluate(now: datetime) -> list[dict]:
             if err or not dt:
                 row.update(farol=GREY, status=f"sem leitura ({err or 'vazio'})")
             else:
-                mins = (now - dt).total_seconds() / 60
+                mins = max(0.0, (now - dt).total_seconds() / 60)
                 row["ultimo"] = dt.astimezone(timezone.utc).strftime("%d/%m %H:%M UTC")
                 row["proximo"] = "contínuo"
                 lim = s.get("stale_min", 240)
+                # "há 30442 min" não é leitura p/ ninguém: minutos até 2 h, horas até 2 dias, depois dias
+                ago = (f"{mins:.0f} min" if mins < 120 else f"{mins/60:.0f} h" if mins < 2880 else f"{mins/1440:.0f} d")
                 if mins <= lim:
-                    row.update(farol=GREEN, status=f"vivo (há {mins:.0f} min)")
+                    row.update(farol=GREEN, status=f"vivo (há {ago})")
                 elif mins <= lim * 2:
-                    row.update(farol=AMBER, status=f"lento (há {mins:.0f} min)")
+                    row.update(farol=AMBER, status=f"lento (há {ago})")
                 else:
-                    row.update(farol=RED, status=f"PARADO (há {mins/60:.0f} h)")
+                    row.update(farol=RED, status=f"PARADO (há {ago})")
         out.append(row)
     return out
 
@@ -154,7 +156,7 @@ def publish_status(rows: list[dict], now: datetime) -> int:
         t = txt or ""
         for pt, en in (("em dia", "on schedule"), ("aguardando", "waiting"), ("ATRASADO", "overdue"),
                        ("vivo (há", "live ("), ("lento (há", "slow ("), ("PARADO (há", "stalled ("),
-                       ("sem leitura", "no reading"), (" min)", " min ago)"), (" h)", " h ago)"),
+                       ("sem leitura", "no reading"), (" min)", " min ago)"), (" h)", " h ago)"), (" d)", " d ago)"),
                        ("vazio", "empty"), ("sem SUPABASE_URL/KEY", "not measured")):
             t = t.replace(pt, en)
         return t

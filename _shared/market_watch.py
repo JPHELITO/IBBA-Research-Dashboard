@@ -109,6 +109,14 @@ COMPANIES = {
     "RANI3":  dict(name="Irani",              cnpj="92.791.243/0001-03", b3="RANI", cls="ON",  lending=["RANI3"]),
     "AURA33": dict(name="Aura Minerals",      cnpj="07.857.093/0001-14", b3="AURA", cls="BDR", lending=["AURA33"]),
 }
+# razão social (como aparece no papel timbrado dos comunicados) — p/ não virar "título" do documento
+LEGAL_NAMES = {
+    "VALE3": ["VALE S.A."], "CMIN3": ["CSN MINERAÇÃO S.A."], "BRAP4": ["BRADESPAR S.A."],
+    "CSNA3": ["COMPANHIA SIDERÚRGICA NACIONAL", "CIA SIDERURGICA NACIONAL", "CSN"],
+    "GGBR4": ["GERDAU S.A.", "METALÚRGICA GERDAU S.A."], "GOAU4": ["METALÚRGICA GERDAU S.A.", "GERDAU S.A."],
+    "USIM5": ["USINAS SIDERÚRGICAS DE MINAS GERAIS S.A.", "USIMINAS"], "KLBN11": ["KLABIN S.A."],
+    "SUZB3": ["SUZANO S.A."], "RANI3": ["IRANI PAPEL E EMBALAGEM S.A."], "AURA33": ["AURA MINERALS INC.", "AURA MINERALS INC"],
+}
 CNPJ_TO_COMPANY = {v["cnpj"]: k for k, v in COMPANIES.items()}
 B3CODE_TO_COMPANY = {v["b3"]: k for k, v in COMPANIES.items()}
 LENDING_TO_COMPANY = {t: k for k, v in COMPANIES.items() for t in v["lending"]}
@@ -818,6 +826,11 @@ _SEQ_OFFSET = 475294
 _PROTO_RE = re.compile(r"[?&]ID=(\d+)")
 
 
+def _deaccent(s: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn")
+
+
 def cvm_protocol_from_url(url: str | None) -> int | None:
     m = _PROTO_RE.search(url or "")
     return int(m.group(1)) if m else None
@@ -858,7 +871,7 @@ def pdf_first_page_text(pdf: bytes, max_pages: int = 2) -> str:
         return ""
 
 
-def doc_title_excerpt(text: str, company_name: str = "") -> tuple[str | None, str | None]:
+def doc_title_excerpt(text: str, company_name: str = "", legal_names: list[str] | None = None) -> tuple[str | None, str | None]:
     """(título, trecho) a partir do texto do PDF.
 
     Título = 1ª linha "de verdade" (≥ 12 caracteres, sem ser cabeçalho de empresa/CNPJ/NIRE/data
@@ -881,9 +894,10 @@ def doc_title_excerpt(text: str, company_name: str = "") -> tuple[str | None, st
     body_start = re.compile(
         r"^(Rio de Janeiro|S[ãa]o Paulo|Belo Horizonte|Porto Alegre|Curitiba|Bras[íi]lia|Jundia[íi]|Vit[óo]ria|Nova Lima)\s*[,–-]"
         r"|^[a-zà-ú]")
-    norm = lambda s: re.sub(r"[^a-z0-9]+", "", s.lower())  # noqa: E731
+    norm = lambda s: re.sub(r"[^a-z0-9]+", "", _deaccent(s).lower())  # noqa: E731
     nm = norm(company_name) if company_name else ""
     nm_first = norm(company_name.split()[0]) if company_name else ""
+    legal = [norm(x) for x in (legal_names or []) if x]
     title = None
     idx = 0
     for k, l in enumerate(lines[:14]):
@@ -893,8 +907,10 @@ def doc_title_excerpt(text: str, company_name: str = "") -> tuple[str | None, st
         if len(l) < 20 or skip.search(l):
             continue
         nl = norm(l)
-        # linha que é só o nome da empresa (com S.A./S/A/Inc. e variações)
+        # linha que é só o nome da empresa (nome curto OU razão social, com S.A./S/A/Inc. e variações)
         if nm and (nl.startswith(nm) and len(nl) <= len(nm) + 6):
+            continue
+        if any(nl.startswith(lg) and len(nl) <= len(lg) + 6 for lg in legal):
             continue
         if nm_first and re.search(r"\b(S\.?A\.?|S/A|INC\.?|LTDA\.?)\s*$", l, re.I) and nm_first in nl and len(l) < 60:
             continue
@@ -907,7 +923,10 @@ def doc_title_excerpt(text: str, company_name: str = "") -> tuple[str | None, st
                and re.match(r"^[a-zà-ú(“\"]", lines[j])):
             title += " " + lines[j]
             j += 1
-        title = (title[:177].rstrip() + "…") if len(title) > 180 else title
+        if len(title) > 180:                      # corta em fronteira de palavra, nunca no meio ("mercad…")
+            cut = title[:177]
+            cut = cut[:cut.rfind(" ")] if " " in cut[100:] else cut
+            title = cut.rstrip(" ,;:") + "…"
         break
     body = " ".join(lines[idx:])
     excerpt = body[:1500].strip() or None
@@ -922,7 +941,8 @@ def enrich_filing_doc(row: dict) -> dict:
     pdf = fetch_cvm_pdf(p)
     if not pdf:
         return row
-    t, x = doc_title_excerpt(pdf_first_page_text(pdf), (COMPANIES.get(row.get("company"), {}) or {}).get("name", ""))
+    comp = row.get("company")
+    t, x = doc_title_excerpt(pdf_first_page_text(pdf), (COMPANIES.get(comp, {}) or {}).get("name", ""), LEGAL_NAMES.get(comp))
     # press-release de resultados é TABELA: a "1ª linha" seria cabeçalho de coluna — deixa o
     # título cair no padrão "{empresa} — {categoria}" (o trecho fica, p/ a IA)
     if t and "press-release" in (row.get("category") or "").lower():

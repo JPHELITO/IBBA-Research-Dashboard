@@ -307,6 +307,15 @@ def test_titulo_e_trecho_do_documento():
               "São Paulo, 31 de agosto de 2026 – A Suzano S.A. (“Suzano”) informa que concluiu a emissão…\n")
     t, x = mw.doc_title_excerpt(suzano, "Suzano")
     assert t is None and x.startswith("São Paulo, 31 de agosto de 2026")
+    # razão social ≠ nome curto ("CSN" × "COMPANHIA SIDERÚRGICA NACIONAL") — pego no 1º semeio
+    csn = ("COMPANHIA SIDERÚRGICA NACIONAL\nCNPJ/MF nº 33.042.730/0001-04\nNIRE 35.300.396.090\nCompanhia Aberta\n"
+           "COMUNICADO AO MERCADO\nA Companhia Siderúrgica Nacional informa aos seus acionistas que recebeu ofício da CVM.\n")
+    t, _ = mw.doc_title_excerpt(csn, "CSN", mw.LEGAL_NAMES["CSNA3"])
+    assert t.startswith("A Companhia Siderúrgica Nacional informa")
+    # frase longa corta em fronteira de palavra
+    longo = "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus acionistas e ao mercado em geral que " * 3 + "fim.\n"
+    t, _ = mw.doc_title_excerpt(longo, "Gerdau", mw.LEGAL_NAMES["GGBR4"])
+    assert t.endswith("…") and len(t) <= 180 and not t.endswith("mercad…") and t[-2] != " "
 
 
 def test_extract_cvm_url():
