@@ -221,6 +221,17 @@ window.__RUN__=async function(){
      /\.s2-card\{background:var\(--s2-plate\);border:1px solid var\(--border\);border-radius:var\(--radius\);\s*box-shadow:var\(--shadow\)/.test(CSS));
   ok('a aba "Other" saiu (as 2 sensibilidades de exemplo não aparecem ao lado das empresas)',
      /sgRenderSens2dTabs\(s2,null,host\)/.test(cru) && /sgRenderGrid6Tabs\(g6,null,host\)/.test(cru));
+  // O rótulo das colunas atravessava o topo e empurrava a grade para baixo; agora é escrito
+  // deitado na lateral (pedido do analista: "coloque o escrito deitado na vertical").
+  ok('o rótulo das colunas virou faixa DEITADA na lateral (o topo era uma linha inteira)',
+     hK.indexOf('class="s2-vaxis"')>0 && hK.indexOf('s2-xhead')<0 &&
+     /\.s2-vaxis\{[^}]*writing-mode:vertical-rl/.test(CSS));
+  ok('o cabeçalho da tabela tem UMA linha só — a grade começa no alto do cartão',
+     (hK.split('</thead>')[0].match(/<tr>/g)||[]).length===1);
+  ok('a faixa deitada leva o rótulo inteiro no tooltip (tabela curta pode cortar o texto)',
+     /<div class="s2-vaxis" title="[^"]+">/.test(hK));
+  ok('o rótulo das LINHAS continua na célula de canto, acima da coluna que ele nomeia',
+     hK.indexOf('class="s2-corner"')>0);
   ok('cabeçalho sem chapa cinza (era background:var(--g-light) nas três pontas)',
      /\.s2-tbl thead th\{[^}]*background:none/.test(CSS) &&
      /\.s2-tbl tbody th\{[^}]*background:none/.test(CSS));
