@@ -296,12 +296,21 @@ def test_titulo_e_trecho_do_documento():
               "A GERDAU S.A. e a METALÚRGICA GERDAU S.A. comunicam aos seus acionistas que…\n")
     t, _ = mw.doc_title_excerpt(gerdau, "Metalúrgica Gerdau")
     assert t.startswith("A GERDAU S.A. e a METALÚRGICA GERDAU S.A. comunicam")
-    # frase partida em linhas: o título é a frase inteira, não a 1ª linha
+    # ⚠️ Frase de abertura LONGA ou com a identificação legal NÃO é título. Medido em produção
+    #    (5 comunicados no feed): a da Gerdau saiu cortada no meio de uma lista e a da CSN era só
+    #    "(B3: CSNA3; NYSE: SID), em cumprimento ao disposto no artigo 157…" — num FATO RELEVANTE.
+    #    Manchete é rótulo: sem título, o feed usa "{empresa} — {categoria}" e o conteúdo vai no trecho.
     gerdau2 = ("METALÚRGICA GERDAU S.A.\nCNPJ nº 92.690.783/0001-09\nCOMUNICADO AO MERCADO\n"
-               "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus\n"
-               "acionistas e ao mercado em geral que concluíram a venda.\nMais texto.\n")
-    t, _ = mw.doc_title_excerpt(gerdau2, "Metalúrgica Gerdau")
-    assert t == "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus acionistas e ao mercado em geral que concluíram a venda."
+               "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus acionistas e o\n"
+               "mercado em geral que a Companhia, a Gerdau Aços Longos S.A. e a Gerdau Aços Especiais\n"
+               "concluíram a operação descrita no comunicado de 12 de agosto.\nMais texto.\n")
+    t, x = mw.doc_title_excerpt(gerdau2, "Metalúrgica Gerdau")
+    assert t is None and x.startswith("A GERDAU S.A.")
+    csn_fr = ("COMPANHIA SIDERÚRGICA NACIONAL\nCNPJ/MF nº 33.042.730/0001-04\nFATO RELEVANTE\n"
+              "Companhia Siderúrgica Nacional (“Companhia” ou “CSN”) (B3: CSNA3; NYSE: SID), em cumprimento\n"
+              "ao disposto no artigo 157 da Lei nº 6.404/1976, informa o quanto segue.\n")
+    t, x = mw.doc_title_excerpt(csn_fr, "CSN", mw.LEGAL_NAMES["CSNA3"])
+    assert t is None and x.startswith("Companhia Siderúrgica Nacional")
     # documento que começa direto no corpo ("Cidade, data – …"): sem título → cai no "{empresa} — {categoria}"
     suzano = ("COMUNICADO AO MERCADO\nSUZANO S.A.\nCompanhia Aberta de Capital Autorizado\nCNPJ/MF No. 16.404.287/0001-55\n"
               "São Paulo, 31 de agosto de 2026 – A Suzano S.A. (“Suzano”) informa que concluiu a emissão…\n")
@@ -312,10 +321,10 @@ def test_titulo_e_trecho_do_documento():
            "COMUNICADO AO MERCADO\nA Companhia Siderúrgica Nacional informa aos seus acionistas que recebeu ofício da CVM.\n")
     t, _ = mw.doc_title_excerpt(csn, "CSN", mw.LEGAL_NAMES["CSNA3"])
     assert t.startswith("A Companhia Siderúrgica Nacional informa")
-    # frase longa corta em fronteira de palavra
-    longo = "A GERDAU S.A. (“Companhia”) e a METALÚRGICA GERDAU S.A. vêm informar seus acionistas e ao mercado em geral que " * 3 + "fim.\n"
-    t, _ = mw.doc_title_excerpt(longo, "Gerdau", mw.LEGAL_NAMES["GGBR4"])
-    assert t.endswith("…") and len(t) <= 180 and not t.endswith("mercad…") and t[-2] != " "
+    # frase longa não vira título cortado — fica sem título (o corte no meio era o defeito)
+    longo = "A GERDAU S.A. e a METALÚRGICA GERDAU vêm informar seus acionistas e ao mercado em geral que " * 3 + "fim."
+    t, x = mw.doc_title_excerpt(longo, "Gerdau", mw.LEGAL_NAMES["GGBR4"])
+    assert t is None and x.startswith("A GERDAU S.A.")
 
 
 def test_extract_cvm_url():
