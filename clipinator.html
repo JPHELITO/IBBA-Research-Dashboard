@@ -96,7 +96,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .sel-sec:first-child{border-top:none;}
 .sel-sec b{color:var(--gray-dark);font-weight:700;margin-left:auto;
   background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 7px;font-size:9.5px;}
-.prev-row{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:7px;align-items:center;
+.prev-row{display:grid;grid-template-columns:auto auto 1fr auto auto auto;gap:7px;align-items:center;
   padding:9px 10px;border-bottom:1px solid var(--border);background:var(--card);transition:background .1s;}
 .prev-row:hover{background:var(--gray-light);}
 .prev-row.dragging{opacity:.4;}
@@ -129,6 +129,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .tag.pos{background:var(--green);color:#fff;} .tag.neu{background:#8a8f98;color:#fff;} .tag.neg{background:var(--red);color:#fff;}
 .prev-x{background:none;border:none;color:var(--gray-mid);font-size:15px;cursor:pointer;line-height:1;}
 .prev-x:hover{color:var(--red);}
+/* ★ DESTAQUE DO BLAST — o analista escolhe ate 3 noticias que TEM de virar destaque.
+   Mora a DIREITA do take (pedido do usuario, 03/09/2026) e fica quase invisivel enquanto
+   nao e marcado; marcado, vira uma bolinha laranja com o NUMERO, que e a ordem no blast. */
+.pin{width:19px;height:19px;flex-shrink:0;padding:0;border:1px solid transparent;border-radius:999px;
+  background:none;cursor:pointer;color:var(--gray-mid);opacity:.32;line-height:1;
+  font:700 10.5px var(--font);display:inline-flex;align-items:center;justify-content:center;
+  transition:opacity .12s,color .12s,background .12s;}
+.prev-row:hover .pin{opacity:.7;}
+.pin:hover{opacity:1;color:var(--orange);border-color:rgba(255,80,0,.5);}
+.pin.on,.prev-row:hover .pin.on,.pin.on:hover{opacity:1;background:var(--orange);border-color:var(--orange);color:#fff;}
+.pin:disabled,.prev-row:hover .pin:disabled{opacity:.16;cursor:not-allowed;}
+.pin:disabled:hover{color:var(--gray-mid);border-color:transparent;}
 .manual{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);}
 .manual input{flex:1;font:400 12px var(--font);background:var(--bg);color:var(--black);
   border:1px solid var(--border);border-radius:7px;padding:7px 9px;}
@@ -352,6 +364,7 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
           <button class="btn" id="bl-copy" disabled>Copiar</button>
           <label class="bl-ck"><input type="checkbox" id="bl-ia" checked> destaques por IA</label>
         </div>
+        <div class="bl-hint" id="bl-pin" style="margin-bottom:8px"></div>
         <div class="gen-status" id="bl-status"></div>
         <textarea id="bl-out" class="bl-out" spellcheck="false" readonly hidden></textarea>
         <div class="bl-warn" id="bl-warn" hidden></div>
@@ -421,7 +434,7 @@ const DEFAULT_ANALYSTS=[
   {name:'Marcelo Furlan Palhares, CFA',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t. +55 11 3073 3357  m.+55 11 97464 2801', email:'marcelo.palhares@itaubba.com'},
   {name:'João Paulo Luka Helito, CNPI',role:'Equity Research – Steel & Mining, Pulp and Paper and Cement', phone:'t.+55 11 3073 3005  m.+55 11 93452 7535',  email:'joao.helito@itaubba.com'},
 ];
-const S={ cand:[], byUrl:{}, sel:new Map(), order:[], hours:24, filter:'all', src:new Set(),
+const S={ cand:[], byUrl:{}, sel:new Map(), order:[], pins:[], hours:24, filter:'all', src:new Set(),
           config:{ intro:{on:false,text:DEFAULT_INTRO}, recent_publications:[], earnings_review:{on:false,label:'2Q26 Review',items:[]}, analysts:DEFAULT_ANALYSTS.map(a=>({...a})),
                    // Os 3 destaques do blast, por DATA do clipping. O Weekly le daqui
                    // (so le — quem manda na config do Clipping e o Clipping).
@@ -512,6 +525,29 @@ function secBtnsHTML(sec){
   return SECTORS.map(([v,l])=>`<button data-s="${v}" class="mini-btn sc${sec===v?' on':''}">${l}</button>`).join('');
 }
 
+// ── ★ DESTAQUES DO BLAST ESCOLHIDOS A MAO ────────────────────────────────────
+// Ate 3, sem minimo: o que o analista marcar a IA e OBRIGADA a escrever, e ela escolhe
+// so o que sobrar (0 marcados = ela escolhe os 3, como sempre foi). A ORDEM da marcacao
+// e a ordem no blast — por isso o numero, e nao um tique.
+const MAX_PINS=3;
+function pinOf(u){ const i=S.pins.indexOf(u); return i<0?0:i+1; }
+function pinBtnHTML(u){
+  const n=pinOf(u), cheio=!n && S.pins.length>=MAX_PINS;
+  const t = n ? `Destaque ${n} do blast — clique para desmarcar`
+         : cheio ? `Ja sao ${MAX_PINS} destaques marcados — desmarque um para trocar`
+                 : `Marcar como destaque do blast (a IA escreve este; maximo ${MAX_PINS})`;
+  return `<button class="pin${n?' on':''}" data-act="pin" title="${esc(t)}"${cheio?' disabled':''}>${n||'★'}</button>`;
+}
+function togglePin(u){
+  if(!S.sel.has(u)) return;                         // so entra no blast o que esta no clipping
+  const i=S.pins.indexOf(u);
+  if(i>=0) S.pins.splice(i,1);
+  else{ if(S.pins.length>=MAX_PINS) return; S.pins.push(u); }
+  renderSel(); saveDraft();
+}
+// ★ de notícia que saiu do clipping nao existe — some junto, sempre.
+function prunePins(){ S.pins=S.pins.filter(u=>S.sel.has(u)).slice(0,MAX_PINS); }
+
 // Estadão saiu do clipping (decisão do usuário 2026-07-31). O portão autoritativo é o SQL
 // admin_get_clipping_candidates, mas filtramos aqui também p/ valer JÁ no deploy (mesmo antes
 // de re-rodar o SQL) e barrar item de rascunho antigo. Mantém as outras 5 fontes intactas.
@@ -579,7 +615,7 @@ function renderList(){
 function togglePick(u,on){
   const c=S.byUrl[u]; if(!c) return;
   if(on){ if(!S.sel.has(u)){ S.sel.set(u,{take:c._take,sector:c._sec}); S.order.push(u); } }
-  else{ S.sel.delete(u); S.order=S.order.filter(x=>x!==u); }
+  else{ S.sel.delete(u); S.order=S.order.filter(x=>x!==u); S.pins=S.pins.filter(x=>x!==u); }
   renderList(); renderSel(); saveDraft();
 }
 function setTake(u,t){
@@ -606,6 +642,7 @@ function reorder(dragU, targetU, before){
 
 // ── render: painel de seleção (agrupado NR→S&M→P&P, numerado, drag, take+setor) ──
 function renderSel(){
+  prunePins(); blRenderPin();
   const host=document.getElementById('clip-sel'); const cnt=document.getElementById('clip-count');
   if(cnt) cnt.innerHTML='<b>'+S.order.length+'</b> selecionadas';
   const gb=document.getElementById('clip-gen'); if(gb) gb.disabled=!S.order.length;
@@ -630,6 +667,7 @@ function renderSel(){
           <span class="secs" data-act="sector">${secBtnsHTML(st.sector)}</span>
           <span class="tks" data-act="take">${takeBtnsHTML(st.take)}</span>
         </div>
+        ${pinBtnHTML(u)}
         <button class="prev-x" title="Remover">×</button>
       </div>`;
     });
@@ -639,6 +677,7 @@ function renderSel(){
     const u=row.dataset.u;
     row.querySelectorAll('.tks .mini-btn').forEach(b=>b.onclick=()=>setTake(u,b.dataset.t));
     row.querySelectorAll('.secs .mini-btn').forEach(b=>b.onclick=()=>setSector(u,b.dataset.s));
+    const pb=row.querySelector('.pin'); if(pb) pb.onclick=()=>togglePin(u);
     row.querySelector('.prev-x').onclick=()=>togglePick(u,false);
     const clearDrop=()=>host.querySelectorAll('.prev-row').forEach(r=>r.classList.remove('drop-above','drop-below'));
     const h=row.querySelector('.prev-h');
@@ -654,6 +693,7 @@ function renderSel(){
 function buildPayload(){
   return S.order.map((u,i)=>{ const c=S.byUrl[u]||{}; const st=S.sel.get(u)||{};
     const row={url:u, title:c.title||'', source_name:c.source_name||domainOf(u), take:st.take||'=', sector:st.sector||'NR', pos:i};
+    const pin=pinOf(u); if(pin) row.pin=pin;                            // ★ escolhido a mao → obrigatorio p/ a IA
     if(c._manualBody && c._manualBody.trim()) row.body=c._manualBody;   // corpo colado (item 8) → motor não re-raspa
     const ai=(c.take_llm||'').trim(); if(ai) row.take_ai=ai;             // take da IA (Onda 5) → correção p/ o few-shot
     return row; });
@@ -662,7 +702,7 @@ function buildPayload(){
 // ── Rascunho persistente (a pré-seleção fica salva no banco, por usuário) ──────
 function restoreDraft(rows){
   rows=(rows||[]).slice().sort((a,b)=>(a.pos||0)-(b.pos||0));
-  S.order=[]; S.sel.clear();
+  S.order=[]; S.sel.clear(); S.pins=[];
   rows.forEach(r=>{ const u=r.url; if(!u) return;
     if(_isDropped({url:u, source_name:r.source_name})) return;   // Estadão saiu do clipping (mesmo em rascunho antigo)
     if(!S.byUrl[u]){ // não está entre os candidatos atuais → item sintético p/ o painel de seleção
@@ -673,6 +713,7 @@ function restoreDraft(rows){
     if(r.body && S.byUrl[u]) S.byUrl[u]._manualBody=r.body;   // corpo colado sobrevive ao reload
     S.sel.set(u,{take:r.take||'=', sector:r.sector||'NR'}); S.order.push(u);
   });
+  S.pins=rows.filter(r=>r.pin&&S.sel.has(r.url)).sort((a,b)=>a.pin-b.pin).map(r=>r.url).slice(0,MAX_PINS);
 }
 async function loadDraft(){
   if(CLIPTEST) return;
@@ -685,7 +726,7 @@ function saveDraft(){
   clearTimeout(_saveT);
   _saveT=setTimeout(()=>{ rpc('admin_save_clipping_draft',{p_payload:buildPayload()}).catch(()=>{}); }, 800);
 }
-function clearSel(){ S.order=[]; S.sel.clear(); renderList(); renderSel(); saveDraft(); }
+function clearSel(){ S.order=[]; S.sel.clear(); S.pins=[]; renderList(); renderSel(); saveDraft(); }
 
 // ── Corpos que falharam: colar o texto e gerar de novo (item 8) ──────────────
 function renderFailures(errors){
@@ -1073,6 +1114,21 @@ function blCarimbar(destaques, provedor, nNoticias){
   blPodar(S.config.blast_highlights);
   saveConfig();
   return true;
+}
+
+// O combinado com a IA, escrito antes de clicar em Gerar: quantos destaques ja estao
+// decididos pelo analista (★) e quantos ela ainda escolhe. Sem isto ninguem sabe se
+// marcou 2 ou 3 — e a diferenca muda o blast inteiro.
+function blRenderPin(){
+  const el=document.getElementById('bl-pin'); if(!el) return;
+  const k=S.pins.length, iaEl=document.getElementById('bl-ia'), ia=!iaEl||iaEl.checked;
+  const uma=k===1, marc=uma?'marcada':'marcadas', esta=uma?'esta':'estas', r=MAX_PINS-k;
+  if(!ia){ el.innerHTML=(k?'★ '+k+' '+marc+', mas a <b>IA está desligada</b>: ':'IA desligada: ')
+                        +'o blast sai sem a seção de destaques.'; return; }
+  el.innerHTML = !k ? 'Nenhuma ★ marcada — a IA escolhe os '+MAX_PINS+' destaques.'
+    : (r<=0 ? '★ <b>'+k+'</b> '+marc+' — a IA escreve exatamente '+esta+', nesta ordem.'
+            : '★ <b>'+k+'</b> '+marc+' — a IA escreve '+esta+' e escolhe '
+              +(r===1?'mais 1':'mais '+r)+' entre as demais.');
 }
 
 // Selo ao lado do título do bloco, para nunca haver dúvida sobre o que está valendo.
@@ -1630,6 +1686,7 @@ function wire(){
   const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
   const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
   const _rd2=document.getElementById('cfg-ref-date'); if(_rd2) _rd2.addEventListener('change', blRenderSelo);
+  const _bi=document.getElementById('bl-ia'); if(_bi) _bi.addEventListener('change', blRenderPin);
   const cc=document.getElementById('clip-clear'); if(cc) cc.onclick=clearSel;
   // Config (mensagem/intro + Recent Publications + Earnings Review)
   document.getElementById('cfg-intro-on').onchange=e=>{ S.config.intro.on=e.target.checked; saveConfig(); };
@@ -1644,11 +1701,12 @@ function wire(){
   if(_hp) _hp.onclick=()=>triggerHunt('playwright','Platts + Fastmarkets',_hp);
   if(_hr) _hr.onclick=()=>triggerHunt('rss','notícias RSS',_hr);
   const _rd=document.getElementById('cfg-ref-date'); if(_rd && !_rd.value) _rd.value=todayBRT();
+  blRenderPin();
 }
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, suggestSector, suggestTake, togglePick, setTake, setSector, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
+window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl };
 
 ;(async()=>{
