@@ -910,7 +910,7 @@ html.dark .kv-badge.ext.lo{color:#93c5fd;}
 .cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
 .cm-unit{font-size:7.5px;font-weight:500;color:#686868;margin-left:3px;letter-spacing:0;}
-.cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-top:1px;}
+.cm-meta{display:flex;align-items:baseline;justify-content:space-between;gap:3px;margin-top:1px;}
 .cm-chg{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cm-date{font-size:8px;font-weight:500;color:#686868;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -3345,6 +3345,13 @@ function _fmtAssessed(iso, freq){
   if(isNaN(d)) return '';
   const today = new Date(); today.setHours(0,0,0,0);
   const days = Math.round((today - d) / 86400000);
+  // ⚠️ Nas SEMANAIS a cadência vem aqui, no lugar do selo. O espaço é curto e foi medido: a
+  // linha toda tem 80px e a variação come 34, então sobram ~43px para a data. "weekly 3d"
+  // dá 40px e cabe; "weekly · 3d" (44) e "weekly today" (51) não. Por isso o formato compacto
+  // e sem separador — e o "há quanto tempo" em dias, que numa semanal diz mais que a data:
+  // é como se enxerga que o assessment atrasou. Cabe até "weekly 12d" (43px); acima disso
+  // corta com reticências, e aí o corte já é o próprio aviso de que a fonte parou.
+  if(freq === 'Weekly') return days <= 0 ? 'weekly' : `weekly ${days}d`;
   if(days <= 0)  return 'today';
   if(days === 1) return 'yesterday';
   if(days < 7)   return days + 'd ago';
@@ -3438,8 +3445,11 @@ function _cmCabe(txt){
    descobrir isso redesenhando o cartão sairia caro. */
 function _kvTags(c){
   const freq = _freqOf(c);
-  // etiqueta só para Weekly/Live: "Daily" é a regra da casa e ocupava espaço à toa
-  const badge = freq === 'Daily' ? '' : `<span class="kv-badge ${freq === 'Weekly' ? 'wk' : 'live'}">${freq}</span>`;
+  // ⚠️ O selo "Weekly" SAIU (2026-09-03): a cadência agora é dita na linha da data, junto do
+  // "há quanto tempo" — dois pixels de informação no lugar de um selo que roubava a linha
+  // inteira dos selos em grupos onde só ele existia (as 6 de celulose). Sobra o "Live", que
+  // diz outra coisa: o preço é de mercado aberto, não um assessment publicado.
+  const badge = freq === 'Live' ? `<span class="kv-badge live">Live</span>` : '';
   // "12M high" / "12M low": a forma de 12 meses vem normalizada 0..1000 (0 = mínima do ano,
   // 1000 = máxima), então o último ponto diz sozinho onde o preço está no intervalo. Só
   // carimba nos extremos (≥97% / ≤3%) — no meio não diz nada e não polui.
