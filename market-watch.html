@@ -386,12 +386,12 @@ async function renderShortOverview(){
     h+=`<tr class="clickable" data-co="${esc(r.company)}" data-tk="${esc(r.ticker)}"><td class="l tk"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>${esc(r.ticker)}</td>
       <td class="l co">${esc(co.name||r.company)}</td><td>${fInt(r.qty_total)}</td><td><b>${fPct(r._pf)}</b></td><td>${fPct(r._po)}</td><td>${fMn(r.value_brl)}</td>
       <td>${r.rate_taker_avg==null?'—':fPct(r.rate_taker_avg)+' p.a.'}</td><td>${fDelta(r.qty_total,r.qty_1m,true)}</td>
-      <td class="l">${sparkSVG(r._spark,col)}</td><td class="l">${r._ctx?`<span class="ctx ${r._ctx.cls}">${esc(r._ctx.txt)}</span>`:'<span class="muted">—</span>'}</td><td class="co">${fDate(r.ref_date)}</td></tr>`; }
+      <td class="l">${sparkSVG(r._spark,'#FF5000')}</td><td class="l">${r._ctx?`<span class="ctx ${r._ctx.cls}">${esc(r._ctx.txt)}</span>`:'<span class="muted">—</span>'}</td><td class="co">${fDate(r.ref_date)}</td></tr>`; }
   tbl.innerHTML=h+'</tbody>';
   tbl.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ S.company=tr.dataset.co; S.ticker=tr.dataset.tk; renderCompanyChips(); render(); });
   const last=rows.map(r=>r.ref_date).sort().pop();
   document.getElementById('short-ov-sub').textContent=`${rows.length} tickers · latest ${fDate(last)}`;
-  document.getElementById('short-ov-foot').innerHTML=`Source: B3 Daily Bulletin (BDI) — <em>Empréstimos de ativos</em>: open positions (total of registered + electronic D+0/D+1 loans) and
+  document.getElementById('short-ov-foot').innerHTML=`Source: B3 Daily Bulletin (BDI), securities-lending chapter: open positions (total of registered + electronic D+0/D+1 loans) and
     the day's registered loans (taker rate = weighted average, % per year; on days with no trades B3 repeats the last rate). Free float and shares
     outstanding: CVM Reference Form (capital distribution), per share class — a PN ticker is measured against the PN float, units against
     unit-equivalents (1 ON + 4 PN), BDRs against total shares. Value = B3 balance in R$. Δ 1M = change in shares on loan vs. ~30 days earlier.`;
@@ -515,15 +515,15 @@ async function renderBuybacks(){
       <div class="row"><span>Approved</span><b>${fDate(r.decided_on)}</b></div>
       <div class="row"><span>Deadline</span><b>${fDate(r.expires_on)}${days!=null?` <span class="muted">(${days>=0?days+' days left':'expired'})</span>`:''}</b></div>
       ${elapsed!=null?`<div class="prog" title="time elapsed in the program window"><i style="width:${(elapsed*100).toFixed(0)}%"></i></div>`:''}
-      ${r.purpose?`<div class="row"><span>Purpose</span><b style="text-align:right;font-weight:500">${esc(r.purpose.toLowerCase())}</b></div>`:''}
+      ${r.purpose?`<div class="row"><span>Purpose</span><b style="text-align:right;font-weight:500">${esc(purposeEn(r.purpose))}</b></div>`:''}
       ${r.brokers&&r.brokers.length?`<div class="row"><span>Brokers</span><b style="text-align:right;font-weight:500">${esc(r.brokers.map(b=>b.split(' ')[0]).join(', '))}</b></div>`:''}</div>`; }).join('')
     :'<div class="empty">No active program.</div>';
   document.getElementById('bb-active-sub').textContent=`${active.length} active · ${S.company==='all'?'all companies':(S.byCo[S.company]||{}).name}`;
   let h='<thead><tr><th class="l">Company</th><th class="l">Approved</th><th class="l">Deadline</th><th class="l">Status</th><th class="l">Type</th><th>Qty ON</th><th>Qty PN</th><th>% circ.</th><th class="l">Purpose</th><th class="l">Brokers</th></tr></thead><tbody>';
   for(const r of rows){ const co=S.byCo[r.company]||{}; const qty=(r.qty_on||0)+(r.qty_pn||0), circ=(r.qty_circ_on||0)+(r.qty_circ_pn||0);
     h+=`<tr><td class="l tk">${esc(r.company)} <span class="co" style="font-weight:500">${esc(co.name||'')}</span></td><td class="l">${fDate(r.decided_on)}</td><td class="l">${fDate(r.expires_on)}</td>
-      <td class="l">${/andamento/i.test(r.status||'')?'<span class="tag ok">Active</span>':'<span class="tag">Closed</span>'}</td><td class="l">${esc(r.operation||'')}</td><td>${fInt(r.qty_on)}</td><td>${fInt(r.qty_pn)}</td><td>${fPct(pctOf(qty,circ),1)}</td>
-      <td class="l co" style="white-space:normal;max-width:260px">${esc((r.purpose||'').toLowerCase())}</td><td class="l co" style="white-space:normal;max-width:260px">${esc((r.brokers||[]).map(b=>b.split(' ')[0]).join(', '))}</td></tr>`; }
+      <td class="l">${/andamento/i.test(r.status||'')?'<span class="tag ok">Active</span>':'<span class="tag">Closed</span>'}</td><td class="l">${esc(opEn(r.operation))}</td><td>${fInt(r.qty_on)}</td><td>${fInt(r.qty_pn)}</td><td>${fPct(pctOf(qty,circ),1)}</td>
+      <td class="l co" style="white-space:normal;max-width:260px">${esc(purposeEn(r.purpose))}</td><td class="l co" style="white-space:normal;max-width:260px">${esc((r.brokers||[]).map(b=>b.split(' ')[0]).join(', '))}</td></tr>`; }
   document.getElementById('bb-table').innerHTML=rows.length?h+'</tbody>':'';
   document.getElementById('bb-hist-sub').textContent=`${rows.length} programs`;
   const tools=document.getElementById('bb-tools'); tools.innerHTML='';
@@ -531,6 +531,26 @@ async function renderBuybacks(){
     const aoa=[['Company','Approved','Deadline','Status','Type','Qty ON','Qty PN','Circulation ON','Circulation PN','Reason','Purpose','Brokers']].concat(rows.map(r=>[r.company,r.decided_on,r.expires_on,r.status,r.operation,r.qty_on,r.qty_pn,r.qty_circ_on,r.qty_circ_pn,r.reason,r.purpose,(r.brokers||[]).join('; ')]));
     IBBAExport.xlsxFromAOA([{name:'buybacks',aoa}],'market_watch_buybacks_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
 }
+
+// A CVM publica estes campos em português, num conjunto FECHADO de opções — dá p/ traduzir sem IA e sem
+// perder informação. Texto LIVRE da empresa (o `reason` do programa, o título do documento) fica no
+// original: ali traduzir seria reescrever o que a companhia disse.
+const _key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim().replace(/\.$/,'');
+const PURPOSE_EN={'AS ACOES PODERAO SER CANCELADAS':'Shares may be cancelled','AS ACOES VAO FICAR EM TESOURARIA':'Shares will be held in treasury'};
+const OP_EN={'COMPRA':'Buy','VENDA':'Sell'};
+const CAT_EN={'FATO RELEVANTE':'Material fact','COMUNICADO AO MERCADO':'Market announcement','OUTROS COMUNICADOS AO MERCADO':'Other market announcement',
+  'ATA REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes','ATA DE REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes',
+  'ATA ASSEMBLEIA GERAL ORDINARIA':'AGM minutes','ATA ASSEMBLEIA GERAL EXTRAORDINARIA':'EGM minutes','ATA DE ASSEMBLEIA GERAL EXTRAORDINARIA':'EGM minutes',
+  'DADOS FINANCEIROS PRESS RELEASE':'Earnings press release','APRESENTACAO A ANALISTAS AGENTES MERCADO':'Analyst / investor presentation',
+  'AVISO AOS ACIONISTAS':'Notice to shareholders','AVISO AOS DEBENTURISTAS':'Notice to debenture holders','CALENDARIO DE EVENTOS CORPORATIVOS':'Corporate events calendar',
+  'POLITICA DE NEGOCIACAO':'Share trading policy','ESTATUTO SOCIAL':'Bylaws','FORMULARIO DE REFERENCIA':'Reference Form (FRE)','INFORMACOES TRIMESTRAIS':'Quarterly financials (ITR)',
+  'DEMONSTRACOES FINANCEIRAS PADRONIZADAS':'Annual financials (DFP)','ESCLARECIMENTOS SOBRE CONSULTAS CVM BOVESPA':'Reply to a CVM/B3 query',
+  'ESCLARECIMENTOS SOBRE CONSULTAS CVM B3':'Reply to a CVM/B3 query','FORMULARIO DE INFORMACOES TRIMESTRAIS':'Quarterly financials (ITR)',
+  'RELATORIO ANUAL':'Annual report','ACORDO DE ACIONISTAS':'Shareholders agreement','LAUDO DE AVALIACAO':'Valuation report'};
+// desconhecido → devolve o original (nunca esconde a informação)
+const purposeEn=v=>v?(PURPOSE_EN[_key(v)]||String(v).toLowerCase()):'';
+const opEn=v=>v?(OP_EN[_key(v)]||v):'';
+const catEn=v=>v?(CAT_EN[_key(v)]||v):'';
 
 // ══════════════════════ INSIDERS ════════════════════════════════════════════
 const GROUP_EN={'Controlador ou Vinculado':'Controlling shareholder','Conselho de Administração ou Vinculado':'Board of directors','Diretor ou Vinculado':'Executive officers','Conselho Fiscal ou Vinculado':'Fiscal council','Órgão Estatutário ou Vinculado':'Statutory committees'};
@@ -574,8 +594,8 @@ async function renderFilings(){
   host.innerHTML=list.length?list.map(r=>{ const co=S.byCo[r.company]||{}; const hot=/fato relevante/i.test(r.category||'');
     const url=r.cvm_url&&/^https?:/i.test(r.cvm_url)?r.cvm_url:null;
     // título REAL do documento (1ª linha do PDF, lido pelo robô) quando existe; senão a categoria
-    const label=r.doc_title||r.category||r.headline;
-    const sub=[co.name||'', r.doc_title?(r.category||''):'', r.doc_date?'document dated '+fDate(r.doc_date):'', r.flag?'('+r.flag+')':''].filter(Boolean).join(' · ');
+    const label=r.doc_title||catEn(r.category)||r.headline;
+    const sub=[co.name||'', r.doc_title?catEn(r.category):'', r.doc_date?'document dated '+fDate(r.doc_date):'', r.flag?'('+r.flag+')':''].filter(Boolean).join(' · ');
     return `<div class="fl-item${hot?' hot':''}"><span class="when">${esc(fDT(r.published_at))}</span><span class="who">${esc(r.company)}</span>
       <span class="what">${url?`<a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(r.doc_excerpt||'')}">${esc(label)}</a>`:`<a>${esc(label)}</a>`}<span class="cat">${esc(sub)}</span></span>
       <span>${hot?'<span class="tag hot">Material fact</span>':(r.is_newsworthy?'<span class="tag">Filing</span>':'<span class="tag dim">Routine</span>')}</span></div>`; }).join('')
@@ -596,14 +616,18 @@ function wire(){
   if(EMBED){
     window.addEventListener('message',e=>{ if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
       if(m.type==='mw:set'){ let changed=false;
-        if(m.co&&S.byCo[m.co]&&S.company!==m.co){ S.company=m.co; S.ticker=null; renderCompanyChips(); changed=true; }
+        const co=m.co==='all'?'all':(m.co&&S.byCo[m.co]?m.co:null);
+        if(co&&S.company!==co){ S.company=co; S.ticker=null; renderCompanyChips(); changed=true; }
         const okTab=m.tab&&document.querySelector(`#tabs button[data-tab="${m.tab}"]`);
         if(okTab&&S.tab!==m.tab) setTab(m.tab); else if(changed) render();
         setTimeout(_postHeight,60); setTimeout(_postHeight,400); }
       else if(m.type==='mw:theme'){ document.documentElement.classList.toggle('dark',m.theme==='dark'); if(S.tab==='short'&&S.company!=='all') renderShortCompany(); }
+      else if(m.type==='mw:measure') _postHeight();
     });
     // observa o CONTEÚDO (#app): o body fica preso à altura do iframe e não cresceria com ele
     try{ const ro=new ResizeObserver(()=>_postHeight()); ro.observe(document.getElementById('app')); ro.observe(document.body); }catch(e){ setInterval(_postHeight,1500); }
+    // largura do iframe mudou (janela do pai): o observer nem sempre entrega a notificação de ENCOLHIMENTO
+    window.addEventListener('resize',()=>{ _postHeight(); setTimeout(_postHeight,150); });
   }
 }
 function freshness(){

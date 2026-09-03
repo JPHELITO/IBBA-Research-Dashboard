@@ -395,7 +395,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 /* ── abas internas do Market: Performance (o que sempre existiu) · Short interest · Buybacks · Insiders · Filings.
    As 4 últimas são o Market Watch da âncora (B3/CVM) embutido — market-watch.html?embed=1 num iframe que cresce
    até o conteúdo (o filho manda a altura por postMessage). Some p/ o cliente com a flag market_watch OFF. ── */
-.mtabs{grid-column:span 12;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border);margin:-4px 0 0;padding:0 4px}
+.mtabs{grid-column:span 12;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border);margin:0 0 -4px;padding:0 4px}
 .mtabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font:600 11.5px var(--font);letter-spacing:.02em;padding:8px 12px 9px;cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:color .12s}
 .mtabs button:hover{color:var(--text)}
 .mtabs button.on{color:var(--text);border-bottom-color:var(--orange)}
@@ -405,18 +405,13 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .mtabs.mt-off{display:none}
 .mtabs{overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
 @media(max-width:700px){.mtabs .mt-note{display:none}.mtabs button{padding:8px 9px 9px;font-size:11px}}
-/* enquanto uma aba do Market Watch está aberta, os cards de Performance saem de cena (o cabeçalho fica) */
-.mkt-grid.mw-on > .card:not(.ah-card){display:none}
+/* nas abas do Market Watch a grade da Performance sai INTEIRA — cabeçalho do ativo incluso (pedido do
+   analista): quem identifica a empresa ali são os chips do próprio Market Watch */
+.mkt-grid.mw-on > .card{display:none}
 .mw-host{grid-column:span 12;display:none}
 .mkt-grid.mw-on .mw-host{display:block}
 .mw-host iframe{width:100%;border:none;background:transparent;display:block;min-height:380px}
-#mw-none[hidden],#mw-frame[hidden]{display:none!important}
-/* âncora sem dado B3/CVM (peer estrangeiro, commodity): explica e dá o atalho p/ os nomes B3 */
-.co-none{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);padding:4px 0}
-.co-none .lbl{color:var(--mute)}
-.co-chip{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--font);color:var(--text);border:1px solid var(--border-2);background:var(--panel-2);border-radius:20px;padding:3px 9px;cursor:pointer}
-.co-chip:hover{border-color:var(--orange);color:var(--orange)}
-.co-chip i{width:7px;height:7px;border-radius:50%;display:inline-block}
+#mw-frame[hidden]{display:none!important}
 /* fatos curtos no cabeçalho (short · buyback · insiders) → abrem a aba correspondente */
 .ah-facts{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .ah-facts:empty{display:none}
@@ -495,6 +490,18 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
   <!-- terminal topbar -->
   <div class="mkt-wrap">
     <div class="mkt-grid">
+      <!-- abas internas: Performance (tudo que já existia — cabeçalho do ativo, gráfico, watchlist, thesis,
+           correlação, portfólio) e as 4 do Market Watch (B3/CVM). Nas 4, a grade inteira sai de cena. -->
+      <div class="mtabs mt-off" id="mtabs">
+        <button data-tab="performance" class="on">Performance</button>
+        <button data-tab="short">Short interest</button>
+        <button data-tab="buybacks">Buybacks</button>
+        <button data-tab="insiders">Insiders</button>
+        <button data-tab="filings">Filings</button>
+        <span class="mt-note" id="mt-note"></span>
+      </div>
+      <div class="mw-host" id="mw-host"><iframe id="mw-frame" title="Market Watch" hidden></iframe></div>
+
       <!-- P1 Asset header (câmbio + mercados + search no canto) -->
       <div class="card col-12 ah-card">
         <div class="ah-corner">
@@ -526,20 +533,6 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         </div>
         <div class="car-next" id="car-next"></div>
       </div>
-      <!-- abas internas: Performance (tudo que já existia) e as 4 do Market Watch (B3/CVM), dirigidas pela âncora -->
-      <div class="mtabs mt-off" id="mtabs">
-        <button data-tab="performance" class="on">Performance</button>
-        <button data-tab="short">Short interest</button>
-        <button data-tab="buybacks">Buybacks</button>
-        <button data-tab="insiders">Insiders</button>
-        <button data-tab="filings">Filings</button>
-        <span class="mt-note" id="mt-note"></span>
-      </div>
-      <div class="mw-host" id="mw-host">
-        <div class="card" id="mw-none" hidden><div class="card-body" id="mw-none-body"></div></div>
-        <iframe id="mw-frame" title="Market Watch" hidden></iframe>
-      </div>
-
       <!-- Single main chart (price / % change / ratio + range + dates + compare) -->
       <div class="card col-8" id="chart-card">
         <div class="card-head">
@@ -1144,7 +1137,7 @@ function _qa(){ return _anchor?byT(_anchor):null; }
 function renderAll(){
   renderHeader(); renderCarNext(); renderChart(); renderWatchlist(); renderThesis();
   renderCorr(); renderPortfolio(); _setRngBadges();
-  renderCompany();
+  renderMWTabs();
 }
 
 /* ══ ABAS INTERNAS — Performance (o de sempre) + o Market Watch da âncora (aluguel · recompras · insiders · comunicados) ══
@@ -1194,7 +1187,6 @@ function _mwClass(co){
   if(cls==='PN')  return {shares:k.shares_pn, float:k.float_pn, how:'preferred shares'};
   return {shares:k.shares_total, float:k.float_total, how:'total shares'};
 }
-const _CO_COLOR={iron_ore:'#B45309',steel:'#3B82F6',pulp_paper:'#22C55E',gold:'#EAB308'};
 function _mwFrame(){ return document.getElementById('mw-frame'); }
 function _mwTheme(){ return document.body.classList.contains('theme-light')?'light':'dark'; }
 function _mwPost(msg){ const f=_mwFrame(); if(!f||!f.contentWindow) return; try{ f.contentWindow.postMessage(msg, location.origin); }catch(e){} }
@@ -1209,50 +1201,39 @@ function setMTab(tab){
   const grid=document.querySelector('.mkt-grid'); if(grid) grid.classList.toggle('mw-on',tab!=='performance');
   _urlSync();
   if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
-  _noteInteract();                                    // o tour vive na Performance; aqui a âncora é escolha do usuário
-  renderCompany();
+  _noteInteract();                                    // o tour vive na Performance
+  // vindo da Performance a aba abre em ALL (pedido do analista); entre abas do MW, mantém a empresa escolhida lá dentro
+  _mwEnsureFrame(was==='performance'?'all':null, tab);
+  renderMWTabs();
 }
-// entra no Market Watch a partir de um atalho da aba (nome B3) — o mesmo caminho da watchlist
-function _mwGoto(co){ const t=_mwTickerOf(co); if(!t) return; _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); }
-function _renderCoNone(){
-  const body=document.getElementById('mw-none-body'); if(!body) return;
-  const q=_qa(); const who=q?(q.isComm?'a commodity':esc(q.name||_short(q.ticker))):'this asset';
-  const cos=Object.values(_mw.companies).sort((a,b)=>(a.display_order||0)-(b.display_order||0));
-  body.innerHTML=`<div class="co-none"><span class="lbl">Securities lending, buybacks, insiders and filings come from B3 and the CVM — ${who} is not listed in Brazil. Pick a Brazilian name:</span>`
-    +cos.map(c=>`<span class="co-chip" data-co="${esc(c.ticker)}"><i style="background:${_CO_COLOR[c.sector]||'var(--mute)'}"></i>${esc(c.ticker)}</span>`).join('')+'</div>';
-  body.querySelectorAll('.co-chip').forEach(el=>el.onclick=()=>_mwGoto(el.dataset.co));
-}
-// 1ª abertura carrega o filho já na empresa/aba/tema certos; depois só manda mensagens (sem recarregar)
+// 1ª abertura carrega o filho já na aba/tema certos; depois só manda mensagens (sem recarregar)
 function _mwEnsureFrame(co,tab){
   const f=_mwFrame(); if(!f) return;
   if(!f.dataset.src){ f.dataset.src='1'; _mwFrameReady=false;
-    f.src=`/market-watch.html?embed=1&theme=${_mwTheme()}&co=${encodeURIComponent(co)}&tab=${encodeURIComponent(tab)}`; }
-  else if(_mwFrameReady) _mwPost({type:'mw:set',co,tab});
+    f.src=`/market-watch.html?embed=1&theme=${_mwTheme()}&tab=${encodeURIComponent(tab)}`; }   // sem ?co= → o filho abre em All
+  else if(_mwFrameReady){ const m={type:'mw:set',tab}; if(co) m.co=co; _mwPost(m); }
   f.hidden=false;
 }
 function _mwOnMessage(e){
   if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
   const f=_mwFrame();
   if(m.type==='mw:height'){ if(f) f.style.height=Math.max(380,Math.ceil(+m.h||0))+'px'; }
-  else if(m.type==='mw:ready'){ _mwFrameReady=true; const co=_anchor?_mwCompanyOf(_anchor):null; if(co&&_mtab!=='performance') _mwPost({type:'mw:set',co,tab:_mtab}); }
-  else if(m.type==='mw:co'){ const t=m.co?_mwTickerOf(String(m.co)):null; if(t&&t!==_anchor){ _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); } }
+  else if(m.type==='mw:ready'){ _mwFrameReady=true; if(_mtab!=='performance') _mwPost({type:'mw:set',tab:_mtab}); }
+  // empresa escolhida nos chips do Market Watch → vira a âncora, então voltar p/ a Performance cai nela
+  else if(m.type==='mw:co'){ const t=m.co&&m.co!=='all'?_mwTickerOf(String(m.co)):null; if(t&&t!==_anchor){ _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); } }
 }
-// chamado no renderAll (a cada troca de âncora) e ao trocar de aba
-function renderCompany(){
+// chamado no renderAll (troca de âncora) e ao trocar de aba: barra + fatos do cabeçalho
+function renderMWTabs(){
   const bar=document.getElementById('mtabs'); if(!bar) return;
   const on=_mwEnabled(); bar.classList.toggle('mt-off',!on);
   const note=document.getElementById('mt-note');
   if(note) note.innerHTML=!on?'':(_isAdmin&&!_mwFlag)?'<b>flag market_watch OFF</b> — clients see Performance only':'B3 &amp; CVM public data';
   if(!on){ if(_mtab!=='performance') setMTab('performance'); return; }
+  if(_mtab!=='performance'&&window._mwRemede) window._mwRemede();   // auto-conserto: o ciclo de 60s remede a altura
   const co=_anchor?_mwCompanyOf(_anchor):null;
-  if(co) _mwLoadStatic().then(()=>_mwLoadCompany(co)).then(d=>{ _mw.data[co]=d; if(_anchor&&_mwCompanyOf(_anchor)===co) renderHeaderFacts(); }).catch(e=>console.warn('company facts',e));
-  else renderHeaderFacts();
-  if(_mtab==='performance') return;
-  const none=document.getElementById('mw-none'), f=_mwFrame();
-  if(co){ if(none) none.hidden=true; _mwEnsureFrame(co,_mtab); return; }
-  if(f) f.hidden=true;
-  if(none){ none.hidden=false; document.getElementById('mw-none-body').innerHTML='<div class="co-none"><span class="lbl">Loading…</span></div>'; }
-  _mwLoadStatic().then(()=>{ if(_mtab!=='performance'&&!(_anchor&&_mwCompanyOf(_anchor))) _renderCoNone(); }).catch(e=>console.warn('company row',e));
+  if(!co){ renderHeaderFacts(); return; }
+  _mwLoadStatic().then(()=>_mwLoadCompany(co)).then(d=>{ _mw.data[co]=d; if(_anchor&&_mwCompanyOf(_anchor)===co) renderHeaderFacts(); })
+    .catch(e=>console.warn('company facts',e));
 }
 /* fatos curtos no cabeçalho — short · buyback · insiders — clicáveis (abrem a aba). Só com o dado da empresa
    já em cache (renderHeader roda a cada 60 s; aqui nunca vai à rede). */
@@ -2047,6 +2028,11 @@ async function init(){
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
   document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab); };
   window.addEventListener('message',_mwOnMessage);
+  // a LARGURA do iframe mudando (janela, zoom) muda a altura do conteúdo → pede a medida de novo.
+  // Observar o próprio elemento é mais fiel que o evento resize da janela (pega qualquer causa).
+  { let t; window._mwRemede=()=>{ clearTimeout(t); t=setTimeout(()=>_mwPost({type:'mw:measure'}),160); };
+    try{ new ResizeObserver(window._mwRemede).observe(_mwFrame()); }catch(e){}
+    window.addEventListener('resize',window._mwRemede); }   // os dois: nem todo ambiente entrega os 2 sinais
   { const t=_qparam('tab'); if(t&&t!=='performance') setMTab(t); }   // deep link p/ uma aba do Market Watch
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
   document.getElementById('wl-manage').onclick=()=>openPicker('custom');
