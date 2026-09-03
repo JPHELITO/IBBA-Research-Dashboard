@@ -967,6 +967,12 @@ html.dark .cm-nohist{color:#79818F;}
    caixinha acesa). Isso devolveu a fileira inteira que elas ocupavam (~20px) para o gráfico dos
    cartões. Medido a 1600px: painel 521px, os 8 nomes somam 369px e o lado direito 114px. */
 .comm-tabs{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px;}
+/* troca de grupo: um respiro de 160ms em vez do corte seco (os 4-5 cartões são trocados de
+   uma vez com innerHTML — sem isso a virada "pisca") */
+.area-comm .kv-list.trocou{animation:commswap .16s ease-out;}
+@keyframes commswap{from{opacity:.35;}to{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.area-comm .kv-list.trocou{animation:none;}
+  .comm-tab .fill{animation:none!important;}}
 .comm-tab{position:relative;overflow:hidden;border:none;cursor:pointer;border-radius:5px;
   background:rgba(0,0,0,.045);color:var(--gray-mid);
   font:600 9px var(--font);letter-spacing:.04em;text-transform:uppercase;
@@ -975,9 +981,11 @@ html.dark .cm-nohist{color:#79818F;}
 .comm-tab.on{color:var(--black);background:rgba(255,80,0,.10);}
 .comm-tab .t{position:relative;}   /* o texto fica ACIMA do preenchimento */
 /* ⚠️ O preenchimento anima `transform`, NÃO `width`. Animar largura refaz o layout a cada
-   quadro — era isso que deixava o carregamento "travadão"; transform roda no compositor. */
+   quadro — era isso que deixava o carregamento "travadão"; transform roda no compositor.
+   `will-change` é o que garante a promoção da camada: sem ele o scaleX pode acabar no thread
+   principal, brigando com os relógios de rede da home (preços de 60s, notícias, pulse). */
 .comm-tab .fill{position:absolute;inset:0;transform:scaleX(0);transform-origin:left center;
-  background:rgba(255,80,0,.20);}
+  background:rgba(255,80,0,.20);will-change:transform;}
 .comm-tab.on .fill{transform:scaleX(1);}   /* sem animação (1 grupo só) a caixinha fica cheia */
 @keyframes commfill{from{transform:scaleX(0);}to{transform:scaleX(1);}}
 .kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
@@ -3452,6 +3460,7 @@ function _kvCard(c){
 // Grupos do carrossel: cada "página" tem um TÍTULO (dinâmico no cabeçalho) e uma
 // ORDEM FIXA de códigos. Os 4 core usam o code amigável (IODBZ00→IRON_ORE,
 // PLVHA00→MET_COAL, STHRZ02→HRC_CHINA, STCBM00→REBAR_TURKEY).
+let _commShownPage=-1;   // página já desenhada — separa troca de grupo de refresh de preço
 let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyDashboardConfig)
   {title:'Iron Ore + Pellet',  codes:['IRON_ORE','IOPRM00','IODFE00','IOMGD00','IOBFC04']},
   {title:'Brand assessments',  codes:['IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00']},
@@ -3538,38 +3547,58 @@ const PERIOD_ROWS = [['w','W'], ['m','M'], ['ytd','YTD'], ['y','1Y']];
 function _commPageCount(){ return COMM_GROUPS.length; }
 
 // Renderiza o grupo atual (título dinâmico + itens na ordem do grupo) + dots + barra de progresso.
+// A decisão "os nomes deste grupo cabem em uma linha?" é a MESMA sempre (depende do texto,
+// não do preço), mas media as caixas de linha de cada cartão a cada render — layout síncrono
+// forçado, no mesmo quadro em que a animação deveria estar correndo. Mede uma vez por grupo.
+const _commUmaLinha={};
 function _renderCommPage(){
   const list=document.getElementById('comm-list'); if(!list) return;
   const g=COMM_GROUPS[_commPage] || COMM_GROUPS[0];
   const items=g.codes.map(code=>_commByCode[code]).filter(Boolean);
+  const trocouDeGrupo = _commShownPage !== _commPage;
   list.innerHTML=items.length ? items.map(c=>_kvCard(c)).join('') : '<div class="kv-loading">—</div>';
   // O nome tem altura fixa de 2 linhas para os preços dos cartões vizinhos ficarem na mesma
   // altura. Quando NENHUM nome do grupo quebra, essa 2ª linha é só espaço vazio no topo —
-  // e o risquinho, lá embaixo, é quem paga (4 dos 7 grupos estavam assim). Aqui a segunda
-  // linha é devolvida ao desenho, e só quando o grupo inteiro dispensa. Medir as CAIXAS DE
+  // e o risquinho, lá embaixo, é quem paga (4 dos 7 grupos estavam assim). Medir as CAIXAS DE
   // LINHA com um Range: `scrollHeight` não serve, o bloco tem altura fixa e clamp, então
   // responde a altura da caixa (=2) mesmo com uma linha só de texto.
-  const cabeEmUma = [...list.querySelectorAll('.cm-name')].every(n=>{
-    const r=document.createRange(); r.selectNodeContents(n); return r.getClientRects().length<=1;
-  });
-  list.classList.toggle('uma-linha', cabeEmUma);
+  if(_commUmaLinha[_commPage]===undefined){
+    _commUmaLinha[_commPage] = [...list.querySelectorAll('.cm-name')].every(n=>{
+      const r=document.createRange(); r.selectNodeContents(n); return r.getClientRects().length<=1;
+    });
+  }
+  list.classList.toggle('uma-linha', _commUmaLinha[_commPage]);
+  if(trocouDeGrupo){                    // troca de grupo: um respiro curto em vez do corte seco
+    list.classList.remove('trocou'); void list.offsetWidth; list.classList.add('trocou');
+  }
   _updateMeta('comm-meta', _commUpdated);
+  _syncCommTabs(trocouDeGrupo);
+  _commShownPage=_commPage;
+}
+/* ⚠️ As caixinhas são montadas UMA vez. Antes elas eram refeitas com innerHTML a cada
+   `_renderCommPage` — e essa função também roda no refresh de preço (5 min) e no de formas
+   (1 h): a animação do preenchimento MORRIA e recomeçava do zero no meio do ciclo, levando
+   junto o `onanimationend` que vira a página. Agora o refresh de dado não encosta nelas: só
+   a troca de grupo move o `.on` e reinicia o preenchimento. */
+function _syncCommTabs(reiniciar){
+  const tabs=document.getElementById('comm-tabs'); if(!tabs) return;
   const n=_commPageCount();
-  const tabs=document.getElementById('comm-tabs');
-  if(tabs){
+  if(tabs.childElementCount!==n || tabs.dataset.sig!==COMM_GROUPS.map(g=>g.title).join('|')){
+    tabs.dataset.sig=COMM_GROUPS.map(g=>g.title).join('|');
     tabs.innerHTML=Array.from({length:n},(_,i)=>{
       const t=COMM_GROUPS[i].title||'';
-      return `<button class="comm-tab ${i===_commPage?'on':''}" data-p="${i}" title="${_esc(t)}">`
+      return `<button class="comm-tab" data-p="${i}" title="${_esc(t)}">`
            + `<span class="fill"></span><span class="t">${_esc(_commTabLabel(t))}</span></button>`;
     }).join('');
-    // a barrinha de tempo corre por baixo do nome ATIVO (o mesmo pixel diz onde você está e
-    // quanto falta p/ virar). Com um grupo só não há p/ onde virar: o traço fica cheio, parado.
-    const fill=tabs.querySelector('.comm-tab.on .fill');
-    if(fill && n>1){
-      fill.style.animation='none'; void fill.offsetWidth;                 // reflow p/ reiniciar
-      fill.style.animation=`commfill ${COMM_ROTATE_MS}ms linear forwards`;
-      fill.onanimationend=_commNext;
-    }
+    reiniciar=true;
+  }
+  [...tabs.children].forEach((b,i)=>b.classList.toggle('on', i===_commPage));
+  if(!reiniciar) return;
+  const fill=tabs.querySelector('.comm-tab.on .fill');
+  if(fill && n>1){
+    fill.style.animation='none'; void fill.offsetWidth;                 // reflow p/ reiniciar
+    fill.style.animation=`commfill ${COMM_ROTATE_MS}ms linear forwards`;
+    fill.onanimationend=_commNext;
   }
 }
 // Rótulo curto da aba: 8 grupos com o nome inteiro não cabem no painel. O nome completo fica
