@@ -392,46 +392,39 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 /* ══ COMPANY ROW — Market Watch dentro do Market (aluguel · recompras · insiders · comunicados),
    dirigido pela âncora. Some inteira quando a empresa não tem dado B3/CVM (peers estrangeiros,
    commodities) e quando a flag market_watch está desligada p/ o cliente. ═══════════════════════ */
-.co-tag{grid-column:span 12;display:flex;align-items:center;gap:10px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:2px 0 -6px}
-.co-tag .co-src{font-weight:500;letter-spacing:.02em;text-transform:none;color:var(--mute)}
-.co-tag .co-src b{color:var(--dim);font-weight:600}
-.co-off{display:none!important}
-.co-card .card-body{padding:11px 13px 12px}
-.co-kpis{display:flex;gap:16px;flex-wrap:wrap}
-.co-kpi .v{font:600 15px var(--mono);color:var(--text);letter-spacing:-.01em}
-.co-kpi .v.accent{color:var(--orange)}
-.co-kpi .l{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin-top:1px}
-.co-spark{height:44px;margin:9px 0 6px}
-.co-spark svg{width:100%;height:100%;display:block}
-.co-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;color:var(--mute)}
-.co-ctx{display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid var(--border-2);color:var(--dim);background:var(--panel-2)}
-.co-ctx.hi{color:var(--down);border-color:rgba(239,68,68,.45)}
-.co-ctx.lo{color:var(--up);border-color:rgba(34,197,94,.45)}
-.co-link{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--orange);cursor:pointer;white-space:nowrap}
-.co-link:hover{text-decoration:underline}
-.co-line{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.45}
-.co-line b{color:var(--text);font-weight:600}
-.co-empty{font-size:11.5px;color:var(--mute);padding:6px 0}
-.co-fl{display:flex;flex-direction:column}
-.co-fl .r{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border);font-size:11.5px}
-.co-fl .r:first-child{border-top:none}
-.co-fl .w{font:500 10.5px var(--mono);color:var(--mute)}
-.co-fl a{color:var(--text);text-decoration:none;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.co-fl a:hover{color:var(--orange)}
-.co-fl .r.hot a{font-weight:700}
-.co-fl .c{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);border:1px solid var(--border);border-radius:4px;padding:1px 6px;white-space:nowrap}
-.co-fl .r.hot .c{color:var(--orange);border-color:var(--orange)}
-.co-fl .r.dim a{color:var(--dim)}
-/* gaveta com o Market Watch completo da empresa (a página que já existe, embutida) */
-.co-drawer{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:flex;justify-content:flex-end}
-.co-drawer .pane{width:min(1180px,92vw);height:100%;background:var(--bg);border-left:1px solid var(--border-2);box-shadow:-20px 0 60px rgba(0,0,0,.6);display:flex;flex-direction:column}
-.co-drawer .ph{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
-.co-drawer .ph b{font-size:12.5px;color:var(--text)}
-.co-drawer .ph .mute{font-size:11px}
-.co-drawer .ph a{margin-left:auto;font-size:11px;color:var(--orange);text-decoration:none;font-weight:600}
-.co-drawer .ph .x{background:none;border:none;color:var(--mute);font-size:22px;cursor:pointer;line-height:1;margin-left:14px}
-.co-drawer .ph .x:hover{color:var(--text)}
-.co-drawer iframe{flex:1;width:100%;border:none;background:var(--bg)}
+/* ── abas internas do Market: Performance (o que sempre existiu) · Short interest · Buybacks · Insiders · Filings.
+   As 4 últimas são o Market Watch da âncora (B3/CVM) embutido — market-watch.html?embed=1 num iframe que cresce
+   até o conteúdo (o filho manda a altura por postMessage). Some p/ o cliente com a flag market_watch OFF. ── */
+.mtabs{grid-column:span 12;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border);margin:-4px 0 0;padding:0 4px}
+.mtabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font:600 11.5px var(--font);letter-spacing:.02em;padding:8px 12px 9px;cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:color .12s}
+.mtabs button:hover{color:var(--text)}
+.mtabs button.on{color:var(--text);border-bottom-color:var(--orange)}
+.mtabs button:disabled{opacity:.45;cursor:default}
+.mtabs .mt-note{margin-left:auto;font-size:10.5px;color:var(--mute);padding:0 6px 8px;white-space:nowrap}
+.mtabs .mt-note b{color:var(--orange)}
+.mtabs.mt-off{display:none}
+.mtabs{overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
+@media(max-width:700px){.mtabs .mt-note{display:none}.mtabs button{padding:8px 9px 9px;font-size:11px}}
+/* enquanto uma aba do Market Watch está aberta, os cards de Performance saem de cena (o cabeçalho fica) */
+.mkt-grid.mw-on > .card:not(.ah-card){display:none}
+.mw-host{grid-column:span 12;display:none}
+.mkt-grid.mw-on .mw-host{display:block}
+.mw-host iframe{width:100%;border:none;background:transparent;display:block;min-height:380px}
+#mw-none[hidden],#mw-frame[hidden]{display:none!important}
+/* âncora sem dado B3/CVM (peer estrangeiro, commodity): explica e dá o atalho p/ os nomes B3 */
+.co-none{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);padding:4px 0}
+.co-none .lbl{color:var(--mute)}
+.co-chip{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--font);color:var(--text);border:1px solid var(--border-2);background:var(--panel-2);border-radius:20px;padding:3px 9px;cursor:pointer}
+.co-chip:hover{border-color:var(--orange);color:var(--orange)}
+.co-chip i{width:7px;height:7px;border-radius:50%;display:inline-block}
+/* fatos curtos no cabeçalho (short · buyback · insiders) → abrem a aba correspondente */
+.ah-facts{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.ah-facts:empty{display:none}
+.ah-fact{display:inline-flex;align-items:center;gap:6px;font:600 10.5px var(--font);color:var(--dim);border:1px solid var(--border);background:var(--panel-2);border-radius:20px;padding:3px 9px;cursor:pointer}
+.ah-fact b{color:var(--text)}
+.ah-fact .k{color:var(--mute);font-weight:500}
+.ah-fact:hover{border-color:var(--orange)}
+.ah-fact.hot b{color:var(--orange)}
 @media(max-width:1024px){
   .col-8,.col-4,.col-12,.col-5,.col-7{grid-column:span 12}
   .ah-corner{position:static;justify-content:flex-end;margin-bottom:8px}
@@ -533,6 +526,19 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         </div>
         <div class="car-next" id="car-next"></div>
       </div>
+      <!-- abas internas: Performance (tudo que já existia) e as 4 do Market Watch (B3/CVM), dirigidas pela âncora -->
+      <div class="mtabs mt-off" id="mtabs">
+        <button data-tab="performance" class="on">Performance</button>
+        <button data-tab="short">Short interest</button>
+        <button data-tab="buybacks">Buybacks</button>
+        <button data-tab="insiders">Insiders</button>
+        <button data-tab="filings">Filings</button>
+        <span class="mt-note" id="mt-note"></span>
+      </div>
+      <div class="mw-host" id="mw-host">
+        <div class="card" id="mw-none" hidden><div class="card-body" id="mw-none-body"></div></div>
+        <iframe id="mw-frame" title="Market Watch" hidden></iframe>
+      </div>
 
       <!-- Single main chart (price / % change / ratio + range + dates + compare) -->
       <div class="card col-8" id="chart-card">
@@ -591,25 +597,6 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         <div class="card-body"><div class="thesis" id="thesis"></div></div>
       </div>
 
-      <!-- COMPANY ROW — Market Watch da âncora (B3/CVM). Some inteira quando não há dado (peers
-           estrangeiros, commodities) ou quando a flag market_watch está OFF p/ o cliente. -->
-      <div class="co-tag co-off" id="co-tag"><span id="co-tag-name">Company</span><span class="co-src" id="co-tag-src"></span></div>
-      <div class="card col-4 co-card co-off" id="co-short">
-        <div class="card-head"><span class="card-title">Positioning · short interest</span><span class="card-sub" id="co-short-sub"></span></div>
-        <div class="card-body" id="co-short-body"></div>
-      </div>
-      <div class="card col-4 co-card co-off" id="co-bb">
-        <div class="card-head"><span class="card-title">Capital returns · buybacks</span><span class="card-sub" id="co-bb-sub"></span></div>
-        <div class="card-body" id="co-bb-body"></div>
-      </div>
-      <div class="card col-4 co-card co-off" id="co-ins">
-        <div class="card-head"><span class="card-title">Insiders · last 12 months</span><span class="card-sub" id="co-ins-sub"></span></div>
-        <div class="card-body" id="co-ins-body"></div>
-      </div>
-      <div class="card col-12 co-card co-off" id="co-fl">
-        <div class="card-head"><span class="card-title">Official filings · CVM</span><span class="card-sub" id="co-fl-sub"></span></div>
-        <div class="card-body" id="co-fl-body"></div>
-      </div>
       <!-- Analytics (fast-follow): correlation matrix + portfolio simulator -->
       <div class="card col-5">
         <div class="card-head"><span class="card-title">Correlation</span><span class="rng-badge" id="rb-corr"></span><span class="card-sub" id="corr-sub"></span></div>
@@ -629,15 +616,6 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
     </div>
   </div>
 
-  <!-- gaveta: Market Watch completo da empresa (market-watch.html?embed=1) -->
-  <div class="co-drawer" id="co-drawer" hidden>
-    <div class="pane">
-      <div class="ph"><b id="co-drawer-title">Market Watch</b><span class="mute" id="co-drawer-sub">B3 &amp; CVM public data</span>
-        <a id="co-drawer-open" href="/market-watch.html" target="_blank" rel="noopener">Open full page ↗</a>
-        <button class="x" id="co-drawer-close" aria-label="Close">&times;</button></div>
-      <iframe id="co-drawer-frame" title="Market Watch"></iframe>
-    </div>
-  </div>
   <!-- "Other" comparison modal -->
   <div class="mdl-back" id="other-modal" hidden>
     <div class="mdl">
@@ -1156,7 +1134,7 @@ function afterSel(){
   _anchor=_sel[0]||null;
   if(_sel.length>1 && _chartMode==='price') _chartMode='pct';   // preço = 1 ativo por vez
   _ratioEnter();                                                // no Ratio: no máximo 2 (long=_sel[0], short=_sel[1])
-  if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; try{history.replaceState(null,'',`?t=${encodeURIComponent(_anchor)}`)}catch(e){} }
+  if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; _urlSync(); }
   renderAll();
 }
 
@@ -1169,22 +1147,24 @@ function renderAll(){
   renderCompany();
 }
 
-/* ══ COMPANY ROW — Market Watch da âncora (aluguel · recompras · insiders · comunicados) ══════
-   Dado das RPCs get_mw_* (B3/CVM, alimentadas por _shared/market_watch.py). Cache por sessão: cada
-   empresa é buscada UMA vez (o tour roda de graça). Só os 11 nomes B3 da cobertura têm dado; para
-   o resto (peers estrangeiros, commodities) a linha inteira some. Gate: flag market_watch ou admin. */
+/* ══ ABAS INTERNAS — Performance (o de sempre) + o Market Watch da âncora (aluguel · recompras · insiders · comunicados) ══
+   As 4 abas do Market Watch são o market-watch.html?embed=1 num iframe — zero duplicação de código. O pai manda
+   empresa/aba/tema por postMessage; o filho devolve a altura (o iframe cresce até o conteúdo, sem rolagem interna)
+   e a empresa escolhida nos chips dele (o cabeçalho do Market acompanha). Só os 11 nomes B3 têm dado; para o resto
+   (peers estrangeiros, commodities) a aba explica e dá o atalho. Gate: flag market_watch ou admin. */
 const MW_BY_TICKER={ 'VALE3.SA':'VALE3','VALE':'VALE3', 'CMIN3.SA':'CMIN3', 'CSNA3.SA':'CSNA3', 'GGBR4.SA':'GGBR4','GGB':'GGBR4',
   'GOAU4.SA':'GOAU4', 'USIM5.SA':'USIM5', 'KLBN11.SA':'KLBN11', 'SUZB3.SA':'SUZB3','SUZ':'SUZB3', 'RANI3.SA':'RANI3',
   'AURA33.SA':'AURA33','AUGO':'AURA33', 'BRAP3.SA':'BRAP4','BRAP4.SA':'BRAP4' };
+const MW_TABS=['short','buybacks','insiders','filings'];
 let _mwFlag=false;                                   // flag market_watch (lida no boot)
-const _mw={ ready:null, companies:{}, latest:{}, capital:{}, co:{} };   // co[ticker] = {series,buybacks,insiders,filings}
+let _mtab='performance';                             // aba interna aberta
+let _mwFrameReady=false;                             // o filho já carregou (mandou mw:ready)
+const _mw={ ready:null, companies:{}, latest:{}, capital:{}, co:{}, data:{} };   // cache por sessão (o tour não custa rede)
 const _MWL='en-US';
-const _mwInt=n=>n==null?'—':Math.round(n).toLocaleString(_MWL);
-const _mwCompact=n=>{ if(n==null)return '—'; const a=Math.abs(n); const s=a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(2)+'M':a>=1e3?(n/1e3).toFixed(1)+'k':String(Math.round(n)); return s; };
+const _mwCompact=n=>{ if(n==null)return '—'; const a=Math.abs(n); return a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(2)+'M':a>=1e3?(n/1e3).toFixed(1)+'k':String(Math.round(n)); };
 const _mwPct=(n,d)=>n==null?'—':n.toLocaleString(_MWL,{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d})+'%';
-const _mwDate=s=>{ if(!s)return '—'; return new Date(String(s).slice(0,10)+'T12:00:00Z').toLocaleDateString(_MWL,{month:'short',day:'2-digit',timeZone:'UTC'}); };
-const _mwDT=s=>{ if(!s)return '—'; return new Date(s).toLocaleString(_MWL,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}); };
 function _mwCompanyOf(ticker){ return MW_BY_TICKER[ticker]||null; }
+function _mwTickerOf(co){ return Object.keys(MW_BY_TICKER).filter(t=>MW_BY_TICKER[t]===co).find(t=>_quotes.some(q=>q.ticker===t))||null; }
 function _mwEnabled(){ return _isAdmin || _mwFlag; }
 async function _mwLoadStatic(){
   if(_mw.ready) return _mw.ready;
@@ -1196,16 +1176,12 @@ async function _mwLoadStatic(){
   })();
   return _mw.ready;
 }
+// só o que o CABEÇALHO precisa (recompras + insiders 12m; o aluguel vem do "latest" estático)
 async function _mwLoadCompany(co){
   if(_mw.co[co]) return _mw.co[co];
-  const d=new Date(); d.setDate(d.getDate()-100); const from=d.toISOString().slice(0,10);
   const m=new Date(); m.setMonth(m.getMonth()-13); const mFrom=m.toISOString().slice(0,10);
-  const p=Promise.all([
-    rpc('get_mw_short_interest',{p_company:co,p_from:from}).catch(()=>[]),
-    rpc('get_mw_buybacks',{p_company:co}).catch(()=>[]),
-    rpc('get_mw_insiders',{p_company:co,p_from:mFrom}).catch(()=>[]),
-    rpc('get_mw_filings',{p_company:co,p_limit:12}).catch(()=>[]),
-  ]).then(([series,buybacks,insiders,filings])=>({series,buybacks,insiders,filings}));
+  const p=Promise.all([ rpc('get_mw_buybacks',{p_company:co}).catch(()=>[]), rpc('get_mw_insiders',{p_company:co,p_from:mFrom}).catch(()=>[]) ])
+    .then(([buybacks,insiders])=>({buybacks,insiders}));
   _mw.co[co]=p; return p;
 }
 // float/ações da CLASSE do papel principal (mesma régua do market-watch.html)
@@ -1218,109 +1194,85 @@ function _mwClass(co){
   if(cls==='PN')  return {shares:k.shares_pn, float:k.float_pn, how:'preferred shares'};
   return {shares:k.shares_total, float:k.float_total, how:'total shares'};
 }
-function _mwStats(v){ v=v.filter(x=>x!=null); if(!v.length)return null; const n=v.length, avg=v.reduce((a,b)=>a+b,0)/n; const sd=Math.sqrt(v.reduce((a,b)=>a+(b-avg)*(b-avg),0)/Math.max(1,n-1)); return {n,avg,sd,max:Math.max(...v),min:Math.min(...v)}; }
-function _mwCtx(cur,st){ if(cur==null||!st||st.n<5)return null; if(cur>=st.max*0.995)return {c:'hi',t:'At 3M high'}; if(cur<=st.min*1.005)return {c:'lo',t:'At 3M low'}; if(cur>st.avg+st.sd)return {c:'hi',t:'Above 3M average'}; if(cur<st.avg-st.sd)return {c:'lo',t:'Below 3M average'}; return {c:'',t:'Near 3M average'}; }
-function _mwSpark(vals,st){
-  const v=vals.filter(x=>x!=null); if(v.length<3) return '';
-  const W=300,H=44,p=3, lo=Math.min(st.min,st.avg-st.sd), hi=Math.max(st.max,st.avg+st.sd), rg=(hi-lo)||1;
-  const y=val=>p+(1-(val-lo)/rg)*(H-2*p), x=i=>(i/(v.length-1))*W;
-  const d=v.map((val,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(val).toFixed(1)).join(' ');
-  const band=`<rect x="0" y="${y(st.avg+st.sd).toFixed(1)}" width="${W}" height="${Math.max(0,y(st.avg-st.sd)-y(st.avg+st.sd)).toFixed(1)}" fill="#FF5000" opacity=".10"/>`;
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${band}
-    <line x1="0" x2="${W}" y1="${y(st.avg).toFixed(1)}" y2="${y(st.avg).toFixed(1)}" stroke="#9DA7B3" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".8"/>
-    <path d="${d}" fill="none" stroke="#FF5000" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-    <circle cx="${x(v.length-1).toFixed(1)}" cy="${y(v[v.length-1]).toFixed(1)}" r="2.6" fill="#FF5000"/></svg>`;
+const _CO_COLOR={iron_ore:'#B45309',steel:'#3B82F6',pulp_paper:'#22C55E',gold:'#EAB308'};
+function _mwFrame(){ return document.getElementById('mw-frame'); }
+function _mwTheme(){ return document.body.classList.contains('theme-light')?'light':'dark'; }
+function _mwPost(msg){ const f=_mwFrame(); if(!f||!f.contentWindow) return; try{ f.contentWindow.postMessage(msg, location.origin); }catch(e){} }
+// URL: ?t=<âncora>&tab=<aba> — deep link p/ qualquer aba (a home manda ?t= p/ o Performance)
+function _urlSync(){ try{ const q=new URLSearchParams(); if(_anchor) q.set('t',_anchor); if(_mtab!=='performance') q.set('tab',_mtab);
+  const qs=q.toString(); history.replaceState(null,'',qs?'?'+qs:location.pathname); }catch(e){} }
+function setMTab(tab){
+  if(!MW_TABS.includes(tab)) tab='performance';
+  if(tab!=='performance' && !_mwEnabled()) tab='performance';
+  const was=_mtab; _mtab=tab;
+  document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  const grid=document.querySelector('.mkt-grid'); if(grid) grid.classList.toggle('mw-on',tab!=='performance');
+  _urlSync();
+  if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
+  _noteInteract();                                    // o tour vive na Performance; aqui a âncora é escolha do usuário
+  renderCompany();
 }
-function _mwHide(){ ['co-tag','co-short','co-bb','co-ins','co-fl'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.add('co-off'); }); }
-function _mwShow(){ ['co-tag','co-short','co-bb','co-ins','co-fl'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('co-off'); }); }
-let _mwToken=0, _mwShown=null;
+// entra no Market Watch a partir de um atalho da aba (nome B3) — o mesmo caminho da watchlist
+function _mwGoto(co){ const t=_mwTickerOf(co); if(!t) return; _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); }
+function _renderCoNone(){
+  const body=document.getElementById('mw-none-body'); if(!body) return;
+  const q=_qa(); const who=q?(q.isComm?'a commodity':esc(q.name||_short(q.ticker))):'this asset';
+  const cos=Object.values(_mw.companies).sort((a,b)=>(a.display_order||0)-(b.display_order||0));
+  body.innerHTML=`<div class="co-none"><span class="lbl">Securities lending, buybacks, insiders and filings come from B3 and the CVM — ${who} is not listed in Brazil. Pick a Brazilian name:</span>`
+    +cos.map(c=>`<span class="co-chip" data-co="${esc(c.ticker)}"><i style="background:${_CO_COLOR[c.sector]||'var(--mute)'}"></i>${esc(c.ticker)}</span>`).join('')+'</div>';
+  body.querySelectorAll('.co-chip').forEach(el=>el.onclick=()=>_mwGoto(el.dataset.co));
+}
+// 1ª abertura carrega o filho já na empresa/aba/tema certos; depois só manda mensagens (sem recarregar)
+function _mwEnsureFrame(co,tab){
+  const f=_mwFrame(); if(!f) return;
+  if(!f.dataset.src){ f.dataset.src='1'; _mwFrameReady=false;
+    f.src=`/market-watch.html?embed=1&theme=${_mwTheme()}&co=${encodeURIComponent(co)}&tab=${encodeURIComponent(tab)}`; }
+  else if(_mwFrameReady) _mwPost({type:'mw:set',co,tab});
+  f.hidden=false;
+}
+function _mwOnMessage(e){
+  if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
+  const f=_mwFrame();
+  if(m.type==='mw:height'){ if(f) f.style.height=Math.max(380,Math.ceil(+m.h||0))+'px'; }
+  else if(m.type==='mw:ready'){ _mwFrameReady=true; const co=_anchor?_mwCompanyOf(_anchor):null; if(co&&_mtab!=='performance') _mwPost({type:'mw:set',co,tab:_mtab}); }
+  else if(m.type==='mw:co'){ const t=m.co?_mwTickerOf(String(m.co)):null; if(t&&t!==_anchor){ _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); } }
+}
+// chamado no renderAll (a cada troca de âncora) e ao trocar de aba
 function renderCompany(){
-  const tag=document.getElementById('co-tag'); if(!tag) return;
+  const bar=document.getElementById('mtabs'); if(!bar) return;
+  const on=_mwEnabled(); bar.classList.toggle('mt-off',!on);
+  const note=document.getElementById('mt-note');
+  if(note) note.innerHTML=!on?'':(_isAdmin&&!_mwFlag)?'<b>flag market_watch OFF</b> — clients see Performance only':'B3 &amp; CVM public data';
+  if(!on){ if(_mtab!=='performance') setMTab('performance'); return; }
   const co=_anchor?_mwCompanyOf(_anchor):null;
-  if(!co || !_mwEnabled()){ _mwHide(); _mwShown=null; return; }
-  if(co===_mwShown) return;                          // mesma empresa já na tela (renderAll roda a cada clique) → nada a fazer
-  const tok=++_mwToken;
-  _mwShow();
-  const q=_qa(); const name=(q&&q.name)||co;
-  document.getElementById('co-tag-name').textContent='Company · '+name+' ('+co+')';
-  document.getElementById('co-tag-src').innerHTML='B3 &amp; CVM public data'+(_isAdmin&&!_mwFlag?' · <b>flag market_watch OFF — clients don\'t see this row</b>':'');
-  ['co-short-body','co-bb-body','co-ins-body','co-fl-body'].forEach(id=>{ document.getElementById(id).innerHTML='<div class="co-empty">Loading…</div>'; });
-  _mwLoadStatic().then(()=>_mwLoadCompany(co)).then(d=>{
-    if(tok!==_mwToken) return;                        // a âncora mudou enquanto carregava
-    _renderCoShort(co,d.series); _renderCoBuybacks(co,d.buybacks); _renderCoInsiders(co,d.insiders); _renderCoFilings(co,d.filings);
-    _mwShown=co;
-  }).catch(e=>{ console.warn('company row',e); if(tok===_mwToken){ _mwHide(); _mwShown=null; } });
+  if(co) _mwLoadStatic().then(()=>_mwLoadCompany(co)).then(d=>{ _mw.data[co]=d; if(_anchor&&_mwCompanyOf(_anchor)===co) renderHeaderFacts(); }).catch(e=>console.warn('company facts',e));
+  else renderHeaderFacts();
+  if(_mtab==='performance') return;
+  const none=document.getElementById('mw-none'), f=_mwFrame();
+  if(co){ if(none) none.hidden=true; _mwEnsureFrame(co,_mtab); return; }
+  if(f) f.hidden=true;
+  if(none){ none.hidden=false; document.getElementById('mw-none-body').innerHTML='<div class="co-none"><span class="lbl">Loading…</span></div>'; }
+  _mwLoadStatic().then(()=>{ if(_mtab!=='performance'&&!(_anchor&&_mwCompanyOf(_anchor))) _renderCoNone(); }).catch(e=>console.warn('company row',e));
 }
-function _renderCoShort(co,series){
-  const c=_mw.companies[co]||{}, main=c.ticker, rows=(series||[]).filter(r=>r.ticker===main).sort((a,b)=>a.ref_date<b.ref_date?-1:1);
-  const body=document.getElementById('co-short-body'), sub=document.getElementById('co-short-sub');
-  if(!rows.length){ body.innerHTML='<div class="co-empty">No securities-lending data yet.</div>'; sub.textContent=''; return; }
-  const cur=rows[rows.length-1], cls=_mwClass(co), pf=(cls.float&&cur.qty_total!=null)?cur.qty_total/cls.float*100:null;
-  const st=_mwStats(rows.map(r=>r.qty_total)), ctx=_mwCtx(cur.qty_total,st);
-  const d1=new Date(cur.ref_date+'T12:00:00Z'); d1.setUTCDate(d1.getUTCDate()-30); const m1s=d1.toISOString().slice(0,10);
-  const m1=rows.filter(r=>r.ref_date<=m1s).pop(); const d1m=(m1&&m1.qty_total)?(cur.qty_total/m1.qty_total-1)*100:null;
-  sub.textContent=main+' · B3 · through '+_mwDate(cur.ref_date);
-  body.innerHTML=`<div class="co-kpis">
-      <div class="co-kpi"><div class="v accent">${_mwCompact(cur.qty_total)}</div><div class="l">shares on loan</div></div>
-      <div class="co-kpi"><div class="v">${_mwPct(pf)}</div><div class="l">% free float</div></div>
-      <div class="co-kpi"><div class="v">${cur.rate_taker_avg==null?'—':_mwPct(cur.rate_taker_avg)}</div><div class="l">borrow rate p.a.</div></div>
-      <div class="co-kpi"><div class="v ${_signCls(d1m)==='up'?'':''}" style="color:${d1m>0?'var(--down)':d1m<0?'var(--up)':'var(--text)'}">${_pctStr(d1m,1)}</div><div class="l">Δ 1M</div></div></div>
-    <div class="co-spark">${_mwSpark(rows.map(r=>r.qty_total),st)}</div>
-    <div class="co-foot"><span>3-month · avg / ±1σ</span>${ctx?`<span class="co-ctx ${ctx.c}">${esc(ctx.t)}</span>`:''}<span class="co-link" data-tab="short">detail →</span></div>`;
-  body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'short');
-}
-function _renderCoBuybacks(co,rows){
-  const body=document.getElementById('co-bb-body'), sub=document.getElementById('co-bb-sub'); rows=rows||[];
-  const active=rows.filter(r=>/andamento/i.test(r.status||'')).sort((a,b)=>(b.decided_on||'').localeCompare(a.decided_on||''));
-  sub.textContent=rows.length?`${active.length} active · ${rows.length} programs since ${(rows[rows.length-1].decided_on||'').slice(0,4)}`:'';
-  if(!active.length){ body.innerHTML=`<div class="co-empty">No active buyback program.${rows.length?` Last one closed ${_mwDate(rows[0].expires_on)}.`:''}</div><div class="co-foot"><span class="co-link">history →</span></div>`; body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'buybacks'); return; }
-  const r=active[0], qty=(r.qty_on||0)+(r.qty_pn||0), circ=(r.qty_circ_on||0)+(r.qty_circ_pn||0), pct=(qty&&circ)?qty/circ*100:null;
-  const days=r.expires_on?Math.round((new Date(r.expires_on)-new Date(new Date().toISOString().slice(0,10)))/86400000):null;
-  const brokers=(r.brokers||[]).map(b=>b.split(' ')[0].replace(/,$/,'')).join(', ');
-  body.innerHTML=`<div class="co-kpis">
-      <div class="co-kpi"><div class="v accent">${_mwCompact(qty)}</div><div class="l">${r.qty_on&&r.qty_pn?'ON + PN':r.qty_pn?'PN':'ON'} authorized</div></div>
-      <div class="co-kpi"><div class="v">${_mwPct(pct,1)}</div><div class="l">% of float at approval</div></div>
-      <div class="co-kpi"><div class="v">${days==null?'—':days>=0?days+' d':'expired'}</div><div class="l">to deadline</div></div></div>
-    <div class="co-line">${r.operation==='Venda'?'<b>Sale</b> program':'<b>Buyback</b>'} approved <b>${_mwDate(r.decided_on)}</b> · deadline <b>${_mwDate(r.expires_on)}</b>${active.length>1?` · +${active.length-1} more active`:''}${brokers?`<br>Brokers: ${esc(brokers)}`:''}</div>
-    <div class="co-foot"><span>CVM open data · updated daily</span><span class="co-link">history (${rows.length}) →</span></div>`;
-  body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'buybacks');
-}
-const _MW_GROUP={'Controlador ou Vinculado':'Controller','Conselho de Administração ou Vinculado':'Board','Diretor ou Vinculado':'Officers','Conselho Fiscal ou Vinculado':'Fiscal council','Órgão Estatutário ou Vinculado':'Committees'};
-function _renderCoInsiders(co,rows){
-  const body=document.getElementById('co-ins-body'), sub=document.getElementById('co-ins-sub'); rows=rows||[];
+/* fatos curtos no cabeçalho — short · buyback · insiders — clicáveis (abrem a aba). Só com o dado da empresa
+   já em cache (renderHeader roda a cada 60 s; aqui nunca vai à rede). */
+function renderHeaderFacts(){
+  const host=document.getElementById('ah-facts'); if(!host) return;
+  const co=_anchor?_mwCompanyOf(_anchor):null, d=co&&_mw.data[co];
+  if(!co||!d||!_mwEnabled()){ host.innerHTML=''; return; }
+  const c=_mw.companies[co]||{}, lat=_mw.latest[co]||[], cur=lat.find(r=>r.ticker===c.ticker)||lat[0];
+  const cls=_mwClass(co), pf=(cur&&cls.float&&cur.qty_total!=null)?cur.qty_total/cls.float*100:null;
+  const today=new Date().toISOString().slice(0,10);
+  const active=(d.buybacks||[]).filter(r=>{ const st=String(r.status||'').toLowerCase(); if(st) return /andamento|ativo|active|open/.test(st); const end=r.deadline||r.end_date||''; return end?String(end).slice(0,10)>=today:false; });
   const y=new Date(); y.setMonth(y.getMonth()-12); const from=y.toISOString().slice(0,7)+'-01';
-  const trades=rows.filter(r=>/compra|venda/i.test(r.move_type||'')&&r.ref_month>=from);
-  const agg={}; for(const r of trades){ const g=_MW_GROUP[r.group_type]||r.group_type||'—'; const a=agg[g]||(agg[g]={buy:0,sell:0,n:0}); if(/compra/i.test(r.move_type)){a.buy+=r.qty||0;}else{a.sell+=r.qty||0;} a.n++; }
-  const groups=Object.entries(agg).sort((a,b)=>Math.abs(b[1].buy-b[1].sell)-Math.abs(a[1].buy-a[1].sell)).slice(0,3);
-  const months=[...new Set(rows.map(r=>r.ref_month))].sort(); sub.textContent=months.length?`CVM · reported through ${_mwDate(months[months.length-1]).replace(/ \d+$/,'')} ${months[months.length-1].slice(0,4)}`:'';
-  if(!trades.length){ body.innerHTML='<div class="co-empty">No insider buys or sells reported in the last 12 months.</div><div class="co-foot"><span class="co-link">log →</span></div>'; body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'insiders'); return; }
-  const last=trades.slice().sort((a,b)=>((b.move_date||'')).localeCompare(a.move_date||''))[0];
-  body.innerHTML=`<div class="co-kpis">${groups.map(([g,a])=>{ const net=a.buy-a.sell; return `<div class="co-kpi"><div class="v" style="color:${net>0?'var(--up)':net<0?'var(--down)':'var(--text)'}">${net>0?'+':''}${_mwCompact(net)}</div><div class="l">${esc(g)} · net · ${a.n} trades</div></div>`; }).join('')}</div>
-    <div class="co-line">Last: <b>${esc(_MW_GROUP[last.group_type]||last.group_type||'')}</b> ${/compra/i.test(last.move_type)?'<b style="color:var(--up)">buy</b>':'<b style="color:var(--down)">sell</b>'} ${_mwInt(last.qty)} ${esc(last.asset_class||'')}${last.unit_price?` @ R$ ${last.unit_price.toLocaleString(_MWL,{minimumFractionDigits:2,maximumFractionDigits:2})}`:''} · ${_mwDate(last.move_date)}${last.broker?` · ${esc(last.broker.split(' ')[0])}`:''}</div>
-    <div class="co-foot"><span>art. 11 CVM Res. 44 · monthly</span><span class="co-link">log →</span></div>`;
-  body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'insiders');
+  let net=0,n=0; (d.insiders||[]).forEach(r=>{ if(!/compra|venda/i.test(r.move_type||'')||(r.ref_month||'')<from) return; n++; net+=(/compra/i.test(r.move_type)?1:-1)*(+r.qty||0); });
+  const facts=[];
+  if(pf!=null) facts.push(`<span class="ah-fact" data-t="short"><span class="k">Short</span><b>${_mwPct(pf)}</b><span class="k">of float</span></span>`);
+  facts.push(`<span class="ah-fact${active.length?' hot':''}" data-t="buybacks"><span class="k">Buyback</span><b>${active.length?'active':'none'}</b></span>`);
+  if(n) facts.push(`<span class="ah-fact" data-t="insiders"><span class="k">Insiders 12m</span><b style="color:${net>0?'var(--up)':net<0?'var(--down)':'var(--text)'}">${net>0?'+':''}${_mwCompact(net)}</b><span class="k">net</span></span>`);
+  host.innerHTML=facts.join('');
+  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>setMTab(el.dataset.t));
 }
-function _renderCoFilings(co,rows){
-  const body=document.getElementById('co-fl-body'), sub=document.getElementById('co-fl-sub'); rows=rows||[];
-  if(!rows.length){ body.innerHTML='<div class="co-empty">No filings captured yet.</div>'; sub.textContent=''; return; }
-  const list=rows.slice().sort((a,b)=>(b.is_newsworthy?1:0)-(a.is_newsworthy?1:0)||String(b.published_at).localeCompare(String(a.published_at))).slice(0,5);
-  sub.textContent=`latest ${rows.length} · newsworthy first`;
-  body.innerHTML=`<div class="co-fl">${list.map(r=>{ const hot=/fato relevante/i.test(r.category||''); const url=/^https?:/i.test(r.cvm_url||'')?r.cvm_url:null; const label=r.doc_title||r.category||r.headline;
-    return `<div class="r${hot?' hot':''}${r.is_newsworthy?'':' dim'}"><span class="w">${esc(_mwDT(r.published_at))}</span>${url?`<a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(r.doc_excerpt||r.headline||'')}">${esc(label)}</a>`:`<a>${esc(label)}</a>`}<span class="c">${hot?'Material fact':r.is_newsworthy?esc((r.category||'').replace(/^Outros /,'')):'routine'}</span></div>`; }).join('')}</div>
-    <div class="co-foot"><span>B3 Plantão de Notícias → document filed with the CVM</span><span class="co-link">everything →</span></div>`;
-  body.querySelector('.co-link').onclick=()=>openCompanyDrawer(co,'filings');
-}
-function openCompanyDrawer(co,tab){
-  const d=document.getElementById('co-drawer'); if(!d) return;
-  // a gaveta segue o tema DO MARKET (escuro por padrão; theme-light se o usuário trocou aqui), não o global
-  const theme=document.body.classList.contains('theme-light')?'light':'dark';
-  const url=`/market-watch.html?co=${encodeURIComponent(co)}&tab=${encodeURIComponent(tab||'short')}&embed=1&theme=${theme}`;
-  document.getElementById('co-drawer-title').textContent=`Market Watch · ${(_mw.companies[co]||{}).name||co}`;
-  document.getElementById('co-drawer-open').href=url.replace(/&embed=1&theme=\w+$/,'');
-  const f=document.getElementById('co-drawer-frame'); if(f.getAttribute('src')!==url) f.setAttribute('src',url);
-  d.hidden=false; document.body.style.overflow='hidden';
-}
-function closeCompanyDrawer(){ const d=document.getElementById('co-drawer'); if(!d||d.hidden) return; d.hidden=true; document.body.style.overflow=''; }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
 function renderHeader(){
@@ -1347,7 +1299,9 @@ function renderHeader(){
     </div>
     <div class="ah-vsep"></div>
     <div class="ah-fx">${_fxCells()}</div>
-    <div class="ah-story">${_dayStory(q)}</div>`;
+    <div class="ah-story">${_dayStory(q)}</div>
+    <div class="ah-facts" id="ah-facts"></div>`;
+  renderHeaderFacts();
 }
 function _dayStory(q){
   const sec=TICKER_SECTOR[q.ticker];
@@ -1909,7 +1863,7 @@ function _carBuildOrder(){
   _carOrder=comps.map(q=>q.ticker);
 }
 function carShow(t){ _sel=[t]; _chartMode='price'; afterSel(); }   // foco limpo (é o próprio tour; não conta como interação)
-function _carAdvance(){ if(!_carAuto||_carOrder.length<2||_sel.length>1)return; _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
+function _carAdvance(){ if(!_carAuto||_carOrder.length<2||_sel.length>1||_mtab!=='performance')return; _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
 function _carIdleCheck(){ if(!_carAuto && Date.now()-_lastInteract>300000){ _carAuto=true; renderCarNext(); } }   // 5 min ocioso → retoma
 function setCarAuto(on){ _carAuto=on; if(on)_lastInteract=0; renderCarNext(); }
 function renderCarNext(){
@@ -1984,6 +1938,7 @@ function _applyTheme(){ var light = localStorage.getItem('ibba_theme')==='light'
   document.documentElement.classList.toggle('dark', !light);
   document.body.classList.toggle('theme-light', light);
   if(window.__syncThemeIcon) window.__syncThemeIcon();
+  _mwPost({type:'mw:theme',theme:_mwTheme()});   // o Market Watch embutido segue o tema do Market
 }
 
 /* ── export (SÓ admin): PNG + Excel dos gráficos/tabelas via export-lib.js ── */
@@ -2089,9 +2044,10 @@ async function init(){
   document.getElementById('other-close').onclick=closeOther;
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeOther(); closeCompanyDrawer(); } });
-  document.getElementById('co-drawer-close').onclick=closeCompanyDrawer;
-  document.getElementById('co-drawer').onclick=e=>{ if(e.target.id==='co-drawer') closeCompanyDrawer(); };
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
+  document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab); };
+  window.addEventListener('message',_mwOnMessage);
+  { const t=_qparam('tab'); if(t&&t!=='performance') setMTab(t); }   // deep link p/ uma aba do Market Watch
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
   document.getElementById('wl-manage').onclick=()=>openPicker('custom');
   _initSearch();

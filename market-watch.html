@@ -125,6 +125,16 @@ html.dark .tip{background:#0d0e11;color:#e8eaed;border:1px solid var(--border);}
 body.embed .gnav,body.embed .gnav-mob,body.embed .orange-rule{display:none!important;}
 body.embed #app{padding-top:10px;}
 body.embed .mw-title{display:none;}
+/* dentro das ABAS do Market o pai é quem troca de seção (Short/Buybacks/…): a barra do filho some e
+   a página não rola por dentro — o pai dá ao iframe a altura que o conteúdo pedir (postMessage) */
+body.embed #tabs{display:none;}
+body.embed{overflow:hidden;}
+body.embed #app{padding:2px 0 10px;}
+/* o iframe mede o conteúdo e o conteúdo NÃO pode medir o iframe: qualquer min-height em vh viraria um laço
+   (a altura só cresce, nunca encolhe ao trocar de aba). E o histórico diário rola por dentro, senão a aba
+   Short interest vira uma página de 8 mil pixels. */
+html.embed,body.embed,body.embed #app,body.embed .splash{min-height:0!important;height:auto!important;}
+body.embed .tbl-wrap{max-height:520px!important;overflow:auto;}
 </style>
 <script>try{ const _p=new URLSearchParams(location.search); if(_p.get('embed')==='1'){ document.documentElement.classList.add('embed');
   // dentro da gaveta do Market o tema é o do Market (escuro por padrão), não o global da dashboard
@@ -298,6 +308,13 @@ function tickerClass(tk){
   return c.share_class||'ON';
 }
 let LEND2CO={};
+// ── embutido no Market (?embed=1): conversa com o pai por postMessage (mesma origem) ─────────
+const EMBED=document.documentElement.classList.contains('embed');
+function _post(msg){ if(!EMBED||window.parent===window) return; try{ window.parent.postMessage(msg, location.origin); }catch(e){} }
+// altura do CONTEÚDO (#app), nunca do documento: scrollHeight do documento nunca fica abaixo da janela,
+// e a janela aqui É o iframe — medir por ele faria a altura só crescer, nunca encolher ao trocar de aba
+function _postHeight(){ const a=document.getElementById('app'); if(!a) return;
+  const h=Math.ceil(a.getBoundingClientRect().bottom+window.scrollY)+6; _post({type:'mw:height', h}); }
 
 // ── carga ────────────────────────────────────────────────────────────────────
 async function loadStatic(){
@@ -321,7 +338,7 @@ function renderCompanyChips(){
   const host=document.getElementById('co-row');
   host.querySelectorAll('.chip').forEach(e=>e.remove());
   const mk=(t,label,color)=>{ const c=document.createElement('span'); c.className='chip'+(S.company===t?' on':''); c.dataset.co=t;
-    c.innerHTML=(color?`<span class="dot" style="background:${color}"></span>`:'')+esc(label); c.onclick=()=>{ S.company=t; S.ticker=null; renderCompanyChips(); render(); }; host.appendChild(c); };
+    c.innerHTML=(color?`<span class="dot" style="background:${color}"></span>`:'')+esc(label); c.onclick=()=>{ S.company=t; S.ticker=null; renderCompanyChips(); render(); _post({type:'mw:co',co:t}); }; host.appendChild(c); };
   mk('all','All');
   S.companies.forEach(c=>mk(c.ticker,c.ticker,SECTOR_COLOR[c.sector]||'#888'));
 }
@@ -576,6 +593,18 @@ function wire(){
   document.getElementById('fl-search').oninput=e=>{ S.flQ=e.target.value; renderFilings(); };
   window.addEventListener('resize',()=>{ if(S.tab==='short'&&S.company!=='all') renderShortCompany(); });
   window.addEventListener('ibba:theme',()=>{ if(S.tab==='short'&&S.company!=='all') renderShortCompany(); });
+  if(EMBED){
+    window.addEventListener('message',e=>{ if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
+      if(m.type==='mw:set'){ let changed=false;
+        if(m.co&&S.byCo[m.co]&&S.company!==m.co){ S.company=m.co; S.ticker=null; renderCompanyChips(); changed=true; }
+        const okTab=m.tab&&document.querySelector(`#tabs button[data-tab="${m.tab}"]`);
+        if(okTab&&S.tab!==m.tab) setTab(m.tab); else if(changed) render();
+        setTimeout(_postHeight,60); setTimeout(_postHeight,400); }
+      else if(m.type==='mw:theme'){ document.documentElement.classList.toggle('dark',m.theme==='dark'); if(S.tab==='short'&&S.company!=='all') renderShortCompany(); }
+    });
+    // observa o CONTEÚDO (#app): o body fica preso à altura do iframe e não cresceria com ele
+    try{ const ro=new ResizeObserver(()=>_postHeight()); ro.observe(document.getElementById('app')); ro.observe(document.body); }catch(e){ setInterval(_postHeight,1500); }
+  }
 }
 function freshness(){
   const last=S.latest.map(r=>r.ref_date).sort().pop();
@@ -601,6 +630,7 @@ function freshness(){
     const tab=p.get('tab'); if(tab&&document.querySelector(`#tabs button[data-tab="${tab}"]`)) S.tab=tab;
     setTab(S.tab);
     document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    _post({type:'mw:ready'}); _postHeight();
   }catch(e){ console.error(e);
     const raw=String(e&&e.message||e); const notSetUp=/exist|not found|404|schema|PGRST|function/i.test(raw);
     document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:460px"><div style="font-size:32px">📉</div>'
