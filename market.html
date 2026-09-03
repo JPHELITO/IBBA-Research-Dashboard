@@ -409,6 +409,45 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .mw-host{grid-column:span 12;display:none}
 .mkt-grid.mw-on .mw-host{display:block}
 .mw-host iframe{width:100%;border:none;background:transparent;display:block;min-height:380px}
+/* ── aba Commodities: nativa (não é o iframe do Market Watch) ── */
+.ct-host{grid-column:span 12;display:none}
+.mkt-grid.tab-comm .ct-host{display:block}
+.ct-sub{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.ct-chips{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.ct-chip{font:600 10px var(--font);color:var(--dim);border:1px solid var(--border);background:var(--panel-2);
+  border-radius:20px;padding:2px 9px;cursor:pointer;white-space:nowrap}
+.ct-chip:hover{border-color:var(--orange);color:var(--text)}
+.ct-chip.on{background:var(--orange);border-color:var(--orange);color:#0d0e11}
+.ct-wrap{overflow-x:auto}
+table.ct{border-collapse:collapse;width:100%;font-size:11.5px;min-width:800px}
+table.ct th{font:700 9px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
+  text-align:right;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;
+  cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+table.ct th:hover{color:var(--text)}
+table.ct th.l,table.ct td.l{text-align:left}
+table.ct th .ar{color:var(--orange);margin-left:3px}
+table.ct td{padding:6px 9px;border-bottom:1px solid var(--border-2);text-align:right;
+  font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--dim)}
+table.ct tr:last-child td{border-bottom:none}
+table.ct tr.gr td{background:var(--panel-2);color:var(--mute);font:700 9px var(--font);
+  letter-spacing:.09em;text-transform:uppercase;padding:5px 9px}
+table.ct td.nm{color:var(--text);font-weight:600}
+table.ct td.v{color:var(--text);font-weight:700}
+table.ct td.v em{font-style:normal;font-size:8.5px;color:var(--mute);margin-left:4px}
+table.ct .up{color:var(--up);font-weight:600}
+table.ct .down{color:var(--down);font-weight:600}
+table.ct .flat{color:var(--mute)}
+table.ct .na{color:var(--mute);opacity:.6}
+.ct-rb{display:inline-flex;align-items:center;gap:7px}
+.ct-track{position:relative;display:inline-block;width:58px;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,#1d4ed8 0%,var(--border-2) 50%,#FF5000 100%);opacity:.6}
+.ct-dot{position:absolute;top:-2.5px;width:3px;height:8px;border-radius:1px;background:var(--text);transform:translateX(-50%)}
+.ct-n{font-size:10px;color:var(--mute);min-width:19px;text-align:right}
+.ct-tag{font:700 8px var(--font);letter-spacing:.04em;text-transform:uppercase;padding:1px 5px;border-radius:3px}
+.ct-tag.hi{background:rgba(255,80,0,.16);color:#FF8B45}
+.ct-tag.lo{background:rgba(37,99,235,.2);color:#93c5fd}
+.ct-sk{width:96px;height:20px;display:block}
+.ct-foot{font-size:10.5px;color:var(--mute);line-height:1.5;padding:9px 0 0}
 #mw-frame[hidden]{display:none!important}
 /* fatos curtos no cabeçalho (short · buyback · insiders) → abrem a aba correspondente */
 .ah-facts{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
@@ -492,12 +531,20 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
            correlação, portfólio) e as 4 do Market Watch (B3/CVM). Nas 4, a grade inteira sai de cena. -->
       <div class="mtabs mt-off" id="mtabs">
         <button data-tab="performance" class="on">Performance</button>
+        <button data-tab="commodities">Commodities</button>
         <button data-tab="short">Short interest</button>
         <button data-tab="buybacks">Buybacks</button>
         <button data-tab="insiders">Insiders</button>
         <button data-tab="filings">Filings</button>
       </div>
       <div class="mw-host" id="mw-host"><iframe id="mw-frame" title="Market Watch" hidden></iframe></div>
+      <div class="ct-host" id="ct-host">
+        <div class="card"><div class="card-head"><span class="card-title">Commodities</span>
+          <span class="card-sub" id="ct-sub"></span>
+          <div class="ct-chips" id="ct-chips"></div></div>
+          <div class="card-body"><div class="ct-wrap"><table class="ct" id="ct-table"></table></div>
+          <div class="ct-foot" id="ct-foot"></div></div></div>
+      </div>
 
       <!-- P1 Asset header (câmbio + mercados + search no canto) -->
       <div class="card col-12 ah-card">
@@ -1146,6 +1193,7 @@ const MW_BY_TICKER={ 'VALE3.SA':'VALE3','VALE':'VALE3', 'CMIN3.SA':'CMIN3', 'CSN
   'GOAU4.SA':'GOAU4', 'USIM5.SA':'USIM5', 'KLBN11.SA':'KLBN11', 'SUZB3.SA':'SUZB3','SUZ':'SUZB3', 'RANI3.SA':'RANI3',
   'AURA33.SA':'AURA33','AUGO':'AURA33', 'BRAP3.SA':'BRAP4','BRAP4.SA':'BRAP4' };
 const MW_TABS=['short','buybacks','insiders','filings'];
+const INNER_TABS=['commodities',...MW_TABS];   // tudo que NÃO é a Performance
 let _mwFlag=false;                                   // flag market_watch (lida no boot)
 let _mtab='performance';                             // aba interna aberta
 let _mwFrameReady=false;                             // o filho já carregou (mandou mw:ready)
@@ -1191,17 +1239,121 @@ function _mwPost(msg){ const f=_mwFrame(); if(!f||!f.contentWindow) return; try{
 function _urlSync(){ try{ const q=new URLSearchParams(); if(_anchor) q.set('t',_anchor); if(_mtab!=='performance') q.set('tab',_mtab);
   const qs=q.toString(); history.replaceState(null,'',qs?'?'+qs:location.pathname); }catch(e){} }
 function setMTab(tab){
-  if(!MW_TABS.includes(tab)) tab='performance';
+  if(!INNER_TABS.includes(tab)) tab='performance';
   if(tab!=='performance' && !_mwEnabled()) tab='performance';
   const was=_mtab; _mtab=tab;
   document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  const grid=document.querySelector('.mkt-grid'); if(grid) grid.classList.toggle('mw-on',tab!=='performance');
+  const grid=document.querySelector('.mkt-grid');
+  if(grid){ grid.classList.toggle('mw-on',tab!=='performance');      // esconde a grade da Performance
+            grid.classList.toggle('tab-comm',tab==='commodities'); } // e escolhe QUEM aparece no lugar
+  const f=_mwFrame(); if(f) f.hidden = !MW_TABS.includes(tab);
   _urlSync();
   if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
   _noteInteract();                                    // o tour vive na Performance
+  if(tab==='commodities'){ renderCommTable(); return; }
   // vindo da Performance a aba abre em ALL (pedido do analista); entre abas do MW, mantém a empresa escolhida lá dentro
   _mwEnsureFrame(was==='performance'?'all':null, tab);
   renderMWTabs();
+}
+
+/* ══ ABA COMMODITIES — as do carrossel numa tabela só ═══════════════════════════════════════
+   O carrossel da home mostra 4-5 por vez, girando: para comparar minério com frete e com aço
+   você espera a volta. Aqui as ~30 ficam numa tela, ordenáveis. Publica EXATAMENTE o que o
+   cartão já publica (preço, as 4 variações e a FORMA de 12 meses) — nada de número novo: a
+   série do assessment pago continua fora do navegador. A coluna "12M" é a posição do último
+   ponto na forma normalizada (0 = mínima do ano, 100 = máxima); com o preço de hoje e a
+   posição não se reconstrói a série (duas incógnitas, uma equação) — mesma régua do risquinho. */
+let _ctRows=null, _ctGroups=null, _ctSort={col:'grupo',dir:1}, _ctFilter='all';
+const CT_COLS=[
+  {k:'name', l:'Commodity', cls:'l'}, {k:'price', l:'Price'},
+  {k:'d', l:'D'}, {k:'w', l:'WoW'}, {k:'m', l:'MoM'}, {k:'ytd', l:'YTD'}, {k:'y', l:'YoY'},
+  {k:'pos', l:'12M range', cls:'l'}, {k:'shape', l:'12 months', cls:'l', nosort:true},
+];
+async function _ctLoad(){
+  if(_ctRows) return;
+  const cols='code,name,unit,price,change_pct,assessed_at,spark';
+  const [rows, groups] = await Promise.all([
+    restGet(`commodities?select=${cols}`),                       // ~50 KB, 1× por visita
+    (async()=>{ try{ return await rpc('get_commodity_groups'); }catch(e){ return null; } })(),
+  ]);
+  const gs=(groups||[]).filter(g=>g.is_visible!==false)
+    .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const grupoDe={};
+  gs.forEach(g=>(g.codes||[]).forEach((c,i)=>{ if(!grupoDe[c]) grupoDe[c]={t:g.title,o:g.sort_order||0,i}; }));
+  _ctGroups=gs;
+  _ctRows=(rows||[]).map(c=>{
+    const sp=(c.spark && !Array.isArray(c.spark)) ? c.spark : null;
+    const shape=sp && sp.y && Array.isArray(sp.y.s) && sp.y.s.length>=20 ? sp.y.s : null;
+    const semanal=FREQ_WEEKLY.has(c.code);
+    const g=grupoDe[c.code];
+    return {code:c.code, name:c.name||c.code, unit:c.unit||'', price:c.price, asof:c.assessed_at,
+      // nas semanais o "dia" é 0,00% quatro dias em cinco — o número do dia é o WoW (igual ao cartão)
+      d: semanal ? (sp&&sp.w?sp.w.c:null) : c.change_pct,
+      w:(sp&&sp.w)?sp.w.c:null, m:(sp&&sp.m)?sp.m.c:null,
+      ytd:(sp&&sp.ytd)?sp.ytd.c:null, y:(sp&&sp.y)?sp.y.c:null,
+      pos: shape ? shape[shape.length-1]/10 : null,   // 0..1000 → 0..100
+      shape, semanal,
+      grupo: g?g.t:'Not in the carousel', ordem: g?g.o:9999, pos_g: g?g.i:0};
+  });
+}
+function _ctPct(v){ if(v==null) return '<span class="na">—</span>';
+  const c=v>0?'up':v<0?'down':'flat'; return `<span class="${c}">${v>0?'+':''}${v.toFixed(Math.abs(v)>=100?0:2)}%</span>`; }
+function _ctPrice(v){ return v==null?'—':v.toLocaleString('en-US',{minimumFractionDigits:Math.abs(v)>=1000?0:2,maximumFractionDigits:Math.abs(v)>=1000?0:2}); }
+function _ctRange(pos){
+  if(pos==null) return '<span class="na">—</span>';
+  const p=Math.max(0,Math.min(100,pos));
+  const tag = p>=97?'<i class="ct-tag hi">12M high</i>' : p<=3?'<i class="ct-tag lo">12M low</i>' : '';
+  return `<span class="ct-rb"><span class="ct-track"><span class="ct-dot" style="left:${p.toFixed(0)}%"></span></span>`
+       + `<b class="ct-n">${p.toFixed(0)}</b>${tag}</span>`;
+}
+function _ctSpark(shape){
+  const v=(shape||[]).filter(x=>x!=null); if(v.length<3) return '<span class="na">—</span>';
+  const W=96,H=20,p=2, lo=Math.min(...v), hi=Math.max(...v), rg=(hi-lo)||1;
+  const d=v.map((y,i)=>(i?'L':'M')+((i/(v.length-1))*W).toFixed(1)+' '+(p+(1-(y-lo)/rg)*(H-2*p)).toFixed(1)).join(' ');
+  return `<svg class="ct-sk" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`
+       + `<path d="${d}" fill="none" stroke="#FF5000" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+async function renderCommTable(){
+  const tbl=document.getElementById('ct-table'); if(!tbl) return;
+  if(!_ctRows){ tbl.innerHTML='<tbody><tr><td class="l" style="padding:22px 9px">Loading…</td></tr></tbody>';
+    try{ await _ctLoad(); }catch(e){ console.warn('commodities table',e);
+      tbl.innerHTML='<tbody><tr><td class="l" style="padding:22px 9px">Could not load.</td></tr></tbody>'; return; } }
+  const chips=document.getElementById('ct-chips');
+  if(chips){ const ord={}; _ctRows.forEach(r=>{ if(ord[r.grupo]==null) ord[r.grupo]=r.ordem; });
+    const gs=['all',...Object.keys(ord).sort((a,b)=>ord[a]-ord[b])];
+    chips.innerHTML=gs.map(g=>`<span class="ct-chip ${_ctFilter===g?'on':''}" data-g="${esc(g)}">${esc(g==='all'?'All':g)}</span>`).join('');
+    chips.querySelectorAll('.ct-chip').forEach(el=>el.onclick=()=>{ _ctFilter=el.dataset.g; renderCommTable(); }); }
+  let rows=_ctRows.filter(r=>_ctFilter==='all'||r.grupo===_ctFilter);
+  const {col,dir}=_ctSort;
+  rows.sort((a,b)=>{
+    if(col==='grupo') return (a.ordem-b.ordem) || (a.pos_g-b.pos_g) || String(a.name).localeCompare(b.name);
+    const x=a[col], y=b[col];
+    if(x==null && y==null) return 0; if(x==null) return 1; if(y==null) return -1;   // vazio sempre no fim
+    return (typeof x==='string' ? String(x).localeCompare(String(y)) : x-y)*dir;
+  });
+  let h='<thead><tr>'+CT_COLS.map(c=>{
+    const seta = _ctSort.col===c.k ? `<span class="ar">${_ctSort.dir>0?'▲':'▼'}</span>` : '';
+    return `<th class="${c.cls||''}" data-k="${c.nosort?'':c.k}">${c.l}${seta}</th>`;
+  }).join('')+'</tr></thead><tbody>';
+  let g=null;
+  for(const r of rows){
+    if(col==='grupo' && r.grupo!==g){ g=r.grupo; h+=`<tr class="gr"><td colspan="${CT_COLS.length}">${esc(g)}</td></tr>`; }
+    h+=`<tr><td class="l nm">${esc(r.name)}${r.semanal?' <span class="ct-tag" style="opacity:.65">wk</span>':''}</td>`
+     + `<td class="v">${_ctPrice(r.price)}<em>${esc(r.unit)}</em></td>`
+     + `<td>${_ctPct(r.d)}</td><td>${_ctPct(r.w)}</td><td>${_ctPct(r.m)}</td><td>${_ctPct(r.ytd)}</td><td>${_ctPct(r.y)}</td>`
+     + `<td class="l">${_ctRange(r.pos)}</td><td class="l">${_ctSpark(r.shape)}</td></tr>`;
+  }
+  tbl.innerHTML=h+'</tbody>';
+  tbl.querySelectorAll('th[data-k]').forEach(th=>{ const k=th.dataset.k; if(!k) return;
+    th.onclick=()=>{ if(_ctSort.col===k) _ctSort.dir*=-1; else _ctSort={col:k,dir:k==='name'?1:-1}; renderCommTable(); }; });
+  const semForma=_ctRows.filter(r=>r.pos==null).length;
+  const sub=document.getElementById('ct-sub');
+  if(sub) sub.textContent=`${rows.length} of ${_ctRows.length} · Platts, Fastmarkets, Trading Economics and Yahoo`;
+  const foot=document.getElementById('ct-foot');
+  if(foot) foot.innerHTML='Click any header to sort. <b>12M range</b> is where today\'s price sits between the '
+    + 'low and the high of the last 12 months (0 = low, 100 = high) — the same reading as the 12M high/low badges on the home. '
+    + 'Weekly assessments (<span class="ct-tag" style="opacity:.65">wk</span>) show the week\'s move in the D column, since the day is flat four days out of five.'
+    + (semForma?` ${semForma} series have no 12-month history yet and show a dash.`:'');
 }
 // 1ª abertura carrega o filho já na aba/tema certos; depois só manda mensagens (sem recarregar)
 function _mwEnsureFrame(co,tab){
