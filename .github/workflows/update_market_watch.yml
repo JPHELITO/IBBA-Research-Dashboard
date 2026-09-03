@@ -1,0 +1,76 @@
+name: 📉 Market Watch — aluguel, recompras, insiders, free float, comunicados
+
+# Duas cadências no mesmo workflow:
+#   • a cada 30 min em dia útil (11h–00h UTC = 08h–21h BRT): comunicados do Plantão da B3
+#     (tempo real) + aluguel dos últimos dias pela API do BDI (a B3 publica o capítulo de
+#     empréstimos na madrugada seguinte; checar é barato e idempotente).
+#   • 1×/dia (12:10 UTC = 09:10 BRT): CVM — programas de recompra (diário), insiders (VLMO,
+#     a CVM reatualiza toda semana) e free float (FRE).
+#
+# Não commita nada (tudo vai para o Supabase) → sem concurrency com os workflows do .db.
+# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY (os mesmos dos outros robôs deste repo).
+# ⚠️ Pré-requisito de uma vez só: rodar admin/supabase_market_watch.sql no Supabase.
+# ⚠️ Cron só roda a partir do branch padrão (main). No staging, disparar à mão
+#    (workflow_dispatch) ou rodar o script localmente.
+
+on:
+  schedule:
+    - cron: "*/30 11-23 * * 1-5"   # comunicados + aluguel
+    - cron: "10 12 * * 1-5"        # CVM diário
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "all | short | filings | cvm | backfill"
+        default: "all"
+      dry_run:
+        description: "Só mostrar o que faria, sem gravar"
+        type: boolean
+        default: false
+      backfill_from:
+        description: "backfill: data inicial (YYYY-MM-DD)"
+        default: "2025-12-15"
+
+concurrency:
+  group: market-watch
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependências
+        run: pip install requests pymupdf pytest
+
+      - name: Testes dos parsers (fixtures reais)
+        run: python -m pytest tests/test_market_watch.py -q
+
+      - name: Rodar
+        run: |
+          MODE="${{ inputs.mode }}"
+          DRY=""; [ "${{ inputs.dry_run }}" = "true" ] && DRY="--dry-run"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "10 12 * * 1-5" ]; then MODE="cvm"; else MODE="short_filings"; fi
+          fi
+          echo "Modo: $MODE"
+          case "$MODE" in
+            all)            python _shared/market_watch.py --all $DRY ;;
+            short)          python _shared/market_watch.py --short $DRY ;;
+            filings)        python _shared/market_watch.py --filings --days 3 $DRY ;;
+            cvm)            python _shared/market_watch.py --buybacks --insiders --float $DRY ;;
+            short_filings)  python _shared/market_watch.py --short --filings --days 2 $DRY ;;
+            backfill)       python _shared/market_watch.py --backfill-pdf --from "${{ inputs.backfill_from }}" $DRY ;;
+            *)              echo "modo desconhecido: $MODE"; exit 0 ;;
+          esac
+
+      - name: Log update
+        if: ${{ inputs.dry_run != true }}
+        run: python _shared/log_update.py "market_watch" auto "robô market_watch.py"

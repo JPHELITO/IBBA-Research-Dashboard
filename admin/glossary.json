@@ -1,0 +1,117 @@
+{
+  "generated": "2026-09-02",
+  "note": "Glossary shown on data.html (client page). Edit here; the page fetches this file. Keep it plain-language, one sentence of 'what it is' and one of 'how we use it'.",
+  "sections": [
+    {
+      "id": "commodities",
+      "title": "Commodity prices",
+      "intro": "The carousel on the home page and the Market tab. Assessments are published prices from the named agency; futures/exchange prices are live.",
+      "items": [
+        {"term": "Iron ore fines 61% Fe (Iodex)", "unit": "US$/dmt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Platts' daily assessment of 61% Fe iron ore fines delivered to China (CFR Qingdao). Reference for Vale's and CSN Mineração's realised prices; the home carousel and the Steel & Mining prices tab use it."},
+        {"term": "Iron ore 62% Fe CFR China", "unit": "US$/t", "freq": "Daily", "source": "Trading Economics / SGX (Sina)", "where": "/market.html", "desc": "The 62% Fe benchmark used by the market at large. On the Market tab it is the driver line behind VALE3 and CMIN3; the SGX contract (FEF) is the exchange-traded version."},
+        {"term": "Iron ore fines 65% / 58% Fe", "unit": "US$/dmt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "High- and low-grade assessments. The spread between them is the market's price for quality — relevant to Vale's premium products."},
+        {"term": "Brand assessments (Pilbara Blend, Brazilian Blend, Newman, MAC, Jimblebar)", "unit": "US$/dmt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Prices of specific ore brands. Brazilian Blend Fines (BRBF) is Vale's flagship product; the others are the main Australian brands it competes with."},
+        {"term": "Pellet premium", "unit": "US$/dmt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Premium paid for direct-reduction/blast-furnace pellets over fines. A direct input to Vale's and CSN's pellet revenue."},
+        {"term": "Freight Brazil–China / Australia–China", "unit": "US$/wmt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Capesize freight rates on the two main iron ore routes. The Brazil route is roughly three times the Australian one, which is why freight matters more for Brazilian miners' netbacks."},
+        {"term": "Iron ore forward curve (+1Q, +2Q, +3Q, +1Y)", "unit": "US$/dmt", "freq": "Daily", "source": "S&P Global Platts (TSI swaps)", "where": "/index.html", "desc": "Swap prices for future quarters of the 62% Fe index. A downward-sloping curve (backwardation) means the market expects prices to fall."},
+        {"term": "HRC China", "unit": "US$/mt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Hot-rolled coil export price from China. The reference for import parity into Brazil and the main driver for CSN, Usiminas and Gerdau's flat steel pricing."},
+        {"term": "Rebar Turkey", "unit": "US$/mt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Turkish rebar export price, the global benchmark for long steel. Relevant for Gerdau's long-steel businesses."},
+        {"term": "Hard coking coal (HCC FOB Australia, Premium / Low Vol)", "unit": "US$/mt", "freq": "Daily", "source": "S&P Global Platts", "where": "/index.html", "desc": "Metallurgical coal for blast furnaces. Brazil imports essentially all of its coking coal, so this is a cash-cost line for the integrated steelmakers."},
+        {"term": "BHKP China Net (PIX)", "unit": "US$/t", "freq": "Weekly (Wednesday)", "source": "Fastmarkets FOEX", "where": "/index.html", "desc": "Bleached hardwood kraft pulp (eucalyptus) delivered to China, net of discounts. The single most important price for Suzano and a key one for Klabin and CMPC."},
+        {"term": "NBSK China Net (PIX)", "unit": "US$/t", "freq": "Weekly", "source": "Fastmarkets FOEX", "where": "/index.html", "desc": "Bleached softwood kraft pulp delivered to China. The BHKP–NBSK spread signals substitution pressure between the two fibres."},
+        {"term": "BHKP / NBSK China Resale", "unit": "US$/t", "freq": "Weekly", "source": "Fastmarkets (published in yuan)", "where": "/index.html", "desc": "Domestic Chinese resale price, converted by us from yuan to dollars: (yuan ÷ 1.13 VAT − 150) ÷ FX. A resale price below the net import price means the spot market is softer than the list price."},
+        {"term": "BHKP / NBSK Europe (PIX)", "unit": "US$/t", "freq": "Weekly", "source": "Fastmarkets FOEX", "where": "/index.html", "desc": "European pulp prices. Europe is the second market for Brazilian pulp and usually prices at a premium to China."},
+        {"term": "Copper (COMEX)", "unit": "US$/lb", "freq": "Live", "source": "Yahoo Finance (HG=F)", "where": "/index.html", "desc": "Front-month COMEX copper. Driver for Southern Copper, Grupo México and the Aura copper mines."},
+        {"term": "Gold (COMEX)", "unit": "US$/oz", "freq": "Live", "source": "Yahoo Finance (GC=F)", "where": "/index.html", "desc": "Front-month COMEX gold. The main driver for Aura Minerals."},
+        {"term": "Nickel (LME)", "unit": "US$/t", "freq": "Daily", "source": "LME via Sina", "where": "/index.html", "desc": "LME nickel cash price, used in the morning blast. Relevant to Vale Base Metals."},
+        {"term": "Brent / Aluminium", "unit": "US$/bbl · US$/t", "freq": "Live", "source": "Yahoo Finance (BZ=F, ALI=F)", "where": "/index.html", "desc": "Oil and aluminium references used in the morning blast and in cost discussions (fuel, energy)."}
+      ]
+    },
+    {
+      "id": "steel",
+      "title": "Steel & Mining data",
+      "intro": "The Steel & Mining dashboard (Prices, Domestic Market, Imports, Exports). Everything is monthly official data; the underlying tables can be downloaded with the ⤓ Data button.",
+      "items": [
+        {"term": "Import volume / import price (SECEX)", "unit": "kton · US$/t", "freq": "Monthly", "source": "MDIC – Comex Stat", "where": "/Steel and Mining/steel_sm_dashboard.html#imports", "desc": "Brazilian steel imports by product and country of origin from customs declarations. Price = customs value ÷ volume."},
+        {"term": "Export volume / domestic reference price", "unit": "kton · US$/t", "freq": "Monthly", "source": "MDIC – Comex Stat", "where": "/Steel and Mining/steel_sm_dashboard.html#exports", "desc": "Brazilian steel exports by product and destination. The export price is used as a proxy for the domestic reference price."},
+        {"term": "Import premium", "unit": "US$/t", "freq": "Monthly", "source": "Derived (SECEX)", "where": "/Steel and Mining/steel_sm_dashboard.html#prices", "desc": "Import price minus the domestic reference. Positive = imports are more expensive than domestic steel (protective); negative = domestic prices under pressure."},
+        {"term": "Import model — orange line", "unit": "kton", "freq": "Monthly", "source": "IBBA model on SECEX (55 anti-dumping products)", "where": "/Steel and Mining/steel_sm_dashboard.html#imports", "desc": "Our estimate of Brazilian imports of the 55 steel products subject to anti-dumping, from Korea and China, on the same tariff lines as the official series."},
+        {"term": "Customs-of-origin exports — black line (Korea, China)", "unit": "kton", "freq": "Monthly", "source": "KITA (Korea) · GACC (China)", "where": "/Steel and Mining/steel_sm_dashboard.html#imports", "desc": "What Korea and China report as steel shipped to Brazil. Ships take ~45 days, so this series anticipates the SECEX import line."},
+        {"term": "Crude steel production / domestic sales / apparent consumption", "unit": "kton", "freq": "Monthly", "source": "Aço Brasil (IABr)", "where": "/Steel and Mining/steel_sm_dashboard.html#domestic", "desc": "The Brazil Steel Institute's monthly performance report. Apparent consumption = domestic sales + imports; import penetration = imports ÷ apparent consumption."},
+        {"term": "Distributor inventory, purchases and sales (INDA)", "unit": "kton · months", "freq": "Monthly", "source": "INDA – In Data", "where": "/Steel and Mining/steel_sm_dashboard.html#domestic", "desc": "Flat steel distributors' stock and flows. Inventory in months = stock ÷ average monthly sales; a leading read on restocking cycles."},
+        {"term": "Iron ore exports", "unit": "kton", "freq": "Monthly", "source": "MDIC – Comex Stat (HS 260111/260112)", "where": "/Steel and Mining/steel_sm_dashboard.html#exports", "desc": "Brazilian iron ore fines and pellet exports by destination country."},
+        {"term": "Seasonality charts", "unit": "kton/month", "freq": "Monthly", "source": "Derived", "where": "/Steel and Mining/steel_sm_dashboard.html#domestic", "desc": "The same month across several years, side by side. Useful to separate a seasonal dip from a real change in demand."}
+      ]
+    },
+    {
+      "id": "pulp",
+      "title": "Pulp & Paper data",
+      "intro": "The Pulp & Paper dashboard (Pulp, Paper & Packaging). Monthly official and industry data.",
+      "items": [
+        {"term": "Pulp export volume / revenue by port", "unit": "kton · US$ mn", "freq": "Monthly", "source": "MDIC – Comex Stat (17 tariff lines)", "where": "/Pulp and Paper/pp_dashboard.html#pulp", "desc": "Brazilian pulp exports by port of shipment. Ports map roughly to producers (Santos → Suzano/Klabin, Vitória → Suzano, Paranaguá → Klabin/Arauco)."},
+        {"term": "Average export price", "unit": "US$/t", "freq": "Monthly", "source": "Derived (SECEX)", "where": "/Pulp and Paper/pp_dashboard.html#pulp", "desc": "Export revenue ÷ volume. Lags the PIX price by roughly one to two months because of shipping and invoicing."},
+        {"term": "Paper production / sales / imports / exports (IBÁ)", "unit": "kton", "freq": "Monthly", "source": "Ibá – Brazilian Tree Industry", "where": "/Pulp and Paper/pp_dashboard.html#paper", "desc": "Monthly paper statistics by grade. Read by machine vision from the published PDF and checked against the totals printed in it."},
+        {"term": "Corrugated shipments (Empapel / IBPO)", "unit": "kton · kton/day", "freq": "Monthly", "source": "Empapel", "where": "/Pulp and Paper/pp_dashboard.html#paper", "desc": "Corrugated packaging shipments, the demand indicator for Klabin's and Irani's packaging businesses. Shipments per working day remove calendar effects."},
+        {"term": "China woodchip imports (GACC)", "unit": "M BDMT", "freq": "Monthly", "source": "General Administration of Customs of China", "where": "/Pulp and Paper/pp_dashboard.html#pulp", "desc": "Chinese imports of hardwood and softwood chips by origin (Vietnam, Australia, others). Chips are the fibre for Chinese integrated mills — a proxy for Chinese pulp production."},
+        {"term": "LTM shipments", "unit": "kton", "freq": "Monthly", "source": "Derived", "where": "/Pulp and Paper/pp_dashboard.html#paper", "desc": "Sum of the last twelve months. Smooths seasonality and revisions."}
+      ]
+    },
+    {
+      "id": "news",
+      "title": "News Hunter",
+      "intro": "The news feed on the home page and the News Hunter tab.",
+      "items": [
+        {"term": "Take (+ / − / =)", "unit": "", "freq": "Continuous", "source": "IBBA AI classifier", "where": "/news.html", "desc": "Our AI's reading of whether the headline is positive, negative or neutral for the covered companies — always from the covered companies' point of view (e.g., a fall in iron ore is negative for Vale, positive for steelmakers)."},
+        {"term": "No take", "unit": "", "freq": "", "source": "IBBA AI classifier", "where": "/news.html", "desc": "The story is on topic but has no clear direction for the coverage (methodology notes, events, general macro)."},
+        {"term": "PRIMARY", "unit": "", "freq": "Real time", "source": "CVM / B3", "where": "/news.html", "desc": "An official filing by the company itself (material fact, market announcement, shareholder notice, press release), taken from B3's real-time feed with the document filed with the CVM. Not press coverage."},
+        {"term": "S&M / P&P / NR tags", "unit": "", "freq": "", "source": "IBBA", "where": "/news.html", "desc": "Sector of the story: Steel & Mining, Pulp & Paper, or Natural Resources when it is macro or cross-sector."},
+        {"term": "Sources", "unit": "", "freq": "", "source": "", "where": "/news.html", "desc": "S&P Platts and Fastmarkets (subscription terminals, read with our credentials), Brazilian press (Valor, Folha, Estadão, InfoMoney, Exame…), sector publications (Mining.com, GMK Center, SteelRadar, Portal Celulose, Papnews…), Reuters and Chinese sources (SCMP, Global Times)."}
+      ]
+    },
+    {
+      "id": "pulse",
+      "title": "Market Pulse",
+      "intro": "The panel on the home page with the tone of the day's news and the expected opening gap.",
+      "items": [
+        {"term": "News tone gauge", "unit": "", "freq": "Daily (resets at midnight BRT)", "source": "IBBA", "where": "/index.html", "desc": "Balance of positive vs negative takes on the news published today. It describes the newsflow; it is not a forecast."},
+        {"term": "Overnight", "unit": "%", "freq": "Before the open", "source": "IBBA (34 instruments)", "where": "/index.html", "desc": "What moved abroad while Brazil slept: iron ore in Singapore, Chinese steel, ADRs in pre-market, FX, US futures — grouped by theme with the headline that explains each driver."},
+        {"term": "At the Open — expected gap", "unit": "%", "freq": "Before the open", "source": "IBBA model", "where": "/index.html", "desc": "Expected opening move of each covered stock given the overnight drivers, with an 80% band. The model publishes a name only when its measured out-of-sample accuracy (IC) is above our threshold; the scoreboard shows the realised hit rate."},
+        {"term": "IC (information coefficient)", "unit": "", "freq": "", "source": "IBBA model", "where": "/index.html", "desc": "Correlation between predicted and realised gaps on days the model did not see. Above ~0.5 is strong; the panel shows it per company."}
+      ]
+    },
+    {
+      "id": "stock_guide",
+      "title": "Stock Guide",
+      "intro": "Comp table, global peers and sensitivity tables.",
+      "items": [
+        {"term": "Multiples recomputed live", "unit": "x", "freq": "Live", "source": "IBBA estimates + live price", "where": "/stock-guide.html#comp", "desc": "EV/EBITDA, P/E, P/CE, dividend yield and upside are recalculated with the latest share price on top of our published estimates (2026E/2027E). Net debt/EBITDA does not depend on price."},
+        {"term": "Target price / upside", "unit": "local currency · %", "freq": "On each model update", "source": "IBBA", "where": "/stock-guide.html#comp", "desc": "Our 12-month target and the distance from the current price. Rating: OP outperform, MP market perform, UP underperform."},
+        {"term": "Sensitivity tables", "unit": "", "freq": "On each model update", "source": "IBBA models", "where": "/stock-guide.html#sens", "desc": "The 9×9 grids published in the analyst's own model (e.g., iron ore × FX for Vale): EBITDA, EV/EBITDA, FCF and FCF yield. The orange marker shows where today's spot price sits on the grid."},
+        {"term": "Global peers", "unit": "x", "freq": "Live", "source": "Consensus + live prices", "where": "/stock-guide.html#comp", "desc": "International comparables (BHP, Rio Tinto, ArcelorMittal, Nucor, Stora Enso…) on the same multiples."}
+      ]
+    },
+    {
+      "id": "market_watch",
+      "title": "Market Watch",
+      "intro": "Public B3 and CVM data on positioning, capital returns and insiders.",
+      "items": [
+        {"term": "Shares on loan (short interest)", "unit": "shares · R$", "freq": "Daily (B3 publishes next morning)", "source": "B3 Daily Bulletin — securities lending", "where": "/market-watch.html", "desc": "Total open securities-lending position of a ticker (registered + electronic loans). The closest public proxy for the short position in Brazil."},
+        {"term": "% of free float", "unit": "%", "freq": "Daily", "source": "B3 + CVM Reference Form", "where": "/market-watch.html", "desc": "Shares on loan ÷ shares in circulation of the SAME class: a PN ticker is measured against the PN float, units against unit-equivalents (1 ON + 4 PN), BDRs against total shares."},
+        {"term": "Borrow rate (taker)", "unit": "% per year", "freq": "Daily", "source": "B3", "where": "/market-watch.html", "desc": "Annualised fee paid to borrow the stock, weighted by the day's registered loans. Rising rates with rising loans = shorts crowding in; B3 repeats the last rate on days with no trades."},
+        {"term": "Buyback programs", "unit": "shares", "freq": "Daily", "source": "CVM open data", "where": "/market-watch.html?tab=buybacks", "desc": "Programs approved by the board: authorised quantity, share of the float at approval, deadline and appointed brokers. The CVM does not publish execution; that comes from the companies."},
+        {"term": "Insider trading", "unit": "shares · R$", "freq": "Monthly (filed by the 10th)", "source": "CVM — art. 11 Resolution 44", "where": "/market-watch.html?tab=insiders", "desc": "Purchases and sales by the controlling shareholder, board, officers, fiscal council and committees (and related persons), with price, volume and broker."},
+        {"term": "Filings", "unit": "", "freq": "Real time", "source": "B3 Plantão de Notícias → CVM", "where": "/market-watch.html?tab=filings", "desc": "Every document the company files: material facts, announcements, minutes, presentations, statements. 'Newsworthy' keeps the ones that carry news."}
+      ]
+    },
+    {
+      "id": "macro",
+      "title": "Macro & FX",
+      "intro": "Rates and currencies used across the dashboard.",
+      "items": [
+        {"term": "USD/BRL, USD/CNY, USD/CLP, USD/MXN, USD/AUD, USD/CAD, USD/EUR", "unit": "", "freq": "Live", "source": "Yahoo Finance", "where": "/index.html", "desc": "Exchange rates of Brazil, China (iron ore and steel demand), Chile and Mexico (CMPC, Copec, Grupo México trade in local currency) and the currencies of competing commodity exporters."},
+        {"term": "Selic, CDI, IPCA 12m, GDP", "unit": "%", "freq": "Daily / monthly", "source": "Central Bank of Brazil (SGS)", "where": "/index.html", "desc": "Policy rate, interbank rate, 12-month inflation and quarterly GDP."},
+        {"term": "US 10-year yield", "unit": "%", "freq": "Live", "source": "Yahoo Finance (^TNX)", "where": "/index.html", "desc": "Global risk-free reference; moves with gold and with emerging-market flows."}
+      ]
+    }
+  ]
+}

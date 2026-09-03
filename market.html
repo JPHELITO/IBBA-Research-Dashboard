@@ -389,6 +389,37 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .spin{width:34px;height:34px;border:3px solid var(--border-2);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* ══ COMPANY ROW — Market Watch dentro do Market (aluguel · recompras · insiders · comunicados),
+   dirigido pela âncora. Some inteira quando a empresa não tem dado B3/CVM (peers estrangeiros,
+   commodities) e quando a flag market_watch está desligada p/ o cliente. ═══════════════════════ */
+/* ── abas internas do Market: Performance (o que sempre existiu) · Short interest · Buybacks · Insiders · Filings.
+   As 4 últimas são o Market Watch da âncora (B3/CVM) embutido — market-watch.html?embed=1 num iframe que cresce
+   até o conteúdo (o filho manda a altura por postMessage). Some p/ o cliente com a flag market_watch OFF. ── */
+.mtabs{grid-column:span 12;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border);margin:0 0 -4px;padding:0 4px}
+.mtabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font:600 11.5px var(--font);letter-spacing:.02em;padding:8px 12px 9px;cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:color .12s}
+.mtabs button:hover{color:var(--text)}
+.mtabs button.on{color:var(--text);border-bottom-color:var(--orange)}
+.mtabs button:disabled{opacity:.45;cursor:default}
+.mtabs .mt-note{margin-left:auto;font-size:10.5px;color:var(--mute);padding:0 6px 8px;white-space:nowrap}
+.mtabs .mt-note b{color:var(--orange)}
+.mtabs.mt-off{display:none}
+.mtabs{overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
+@media(max-width:700px){.mtabs .mt-note{display:none}.mtabs button{padding:8px 9px 9px;font-size:11px}}
+/* nas abas do Market Watch a grade da Performance sai INTEIRA — cabeçalho do ativo incluso (pedido do
+   analista): quem identifica a empresa ali são os chips do próprio Market Watch */
+.mkt-grid.mw-on > .card{display:none}
+.mw-host{grid-column:span 12;display:none}
+.mkt-grid.mw-on .mw-host{display:block}
+.mw-host iframe{width:100%;border:none;background:transparent;display:block;min-height:380px}
+#mw-frame[hidden]{display:none!important}
+/* fatos curtos no cabeçalho (short · buyback · insiders) → abrem a aba correspondente */
+.ah-facts{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.ah-facts:empty{display:none}
+.ah-fact{display:inline-flex;align-items:center;gap:6px;font:600 10.5px var(--font);color:var(--dim);border:1px solid var(--border);background:var(--panel-2);border-radius:20px;padding:3px 9px;cursor:pointer}
+.ah-fact b{color:var(--text)}
+.ah-fact .k{color:var(--mute);font-weight:500}
+.ah-fact:hover{border-color:var(--orange)}
+.ah-fact.hot b{color:var(--orange)}
 @media(max-width:1024px){
   .col-8,.col-4,.col-12,.col-5,.col-7{grid-column:span 12}
   .ah-corner{position:static;justify-content:flex-end;margin-bottom:8px}
@@ -459,6 +490,18 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
   <!-- terminal topbar -->
   <div class="mkt-wrap">
     <div class="mkt-grid">
+      <!-- abas internas: Performance (tudo que já existia — cabeçalho do ativo, gráfico, watchlist, thesis,
+           correlação, portfólio) e as 4 do Market Watch (B3/CVM). Nas 4, a grade inteira sai de cena. -->
+      <div class="mtabs mt-off" id="mtabs">
+        <button data-tab="performance" class="on">Performance</button>
+        <button data-tab="short">Short interest</button>
+        <button data-tab="buybacks">Buybacks</button>
+        <button data-tab="insiders">Insiders</button>
+        <button data-tab="filings">Filings</button>
+        <span class="mt-note" id="mt-note"></span>
+      </div>
+      <div class="mw-host" id="mw-host"><iframe id="mw-frame" title="Market Watch" hidden></iframe></div>
+
       <!-- P1 Asset header (câmbio + mercados + search no canto) -->
       <div class="card col-12 ah-card">
         <div class="ah-corner">
@@ -490,7 +533,6 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         </div>
         <div class="car-next" id="car-next"></div>
       </div>
-
       <!-- Single main chart (price / % change / ratio + range + dates + compare) -->
       <div class="card col-8" id="chart-card">
         <div class="card-head">
@@ -1085,7 +1127,7 @@ function afterSel(){
   _anchor=_sel[0]||null;
   if(_sel.length>1 && _chartMode==='price') _chartMode='pct';   // preço = 1 ativo por vez
   _ratioEnter();                                                // no Ratio: no máximo 2 (long=_sel[0], short=_sel[1])
-  if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; try{history.replaceState(null,'',`?t=${encodeURIComponent(_anchor)}`)}catch(e){} }
+  if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; _urlSync(); }
   renderAll();
 }
 
@@ -1095,6 +1137,122 @@ function _qa(){ return _anchor?byT(_anchor):null; }
 function renderAll(){
   renderHeader(); renderCarNext(); renderChart(); renderWatchlist(); renderThesis();
   renderCorr(); renderPortfolio(); _setRngBadges();
+  renderMWTabs();
+}
+
+/* ══ ABAS INTERNAS — Performance (o de sempre) + o Market Watch da âncora (aluguel · recompras · insiders · comunicados) ══
+   As 4 abas do Market Watch são o market-watch.html?embed=1 num iframe — zero duplicação de código. O pai manda
+   empresa/aba/tema por postMessage; o filho devolve a altura (o iframe cresce até o conteúdo, sem rolagem interna)
+   e a empresa escolhida nos chips dele (o cabeçalho do Market acompanha). Só os 11 nomes B3 têm dado; para o resto
+   (peers estrangeiros, commodities) a aba explica e dá o atalho. Gate: flag market_watch ou admin. */
+const MW_BY_TICKER={ 'VALE3.SA':'VALE3','VALE':'VALE3', 'CMIN3.SA':'CMIN3', 'CSNA3.SA':'CSNA3', 'GGBR4.SA':'GGBR4','GGB':'GGBR4',
+  'GOAU4.SA':'GOAU4', 'USIM5.SA':'USIM5', 'KLBN11.SA':'KLBN11', 'SUZB3.SA':'SUZB3','SUZ':'SUZB3', 'RANI3.SA':'RANI3',
+  'AURA33.SA':'AURA33','AUGO':'AURA33', 'BRAP3.SA':'BRAP4','BRAP4.SA':'BRAP4' };
+const MW_TABS=['short','buybacks','insiders','filings'];
+let _mwFlag=false;                                   // flag market_watch (lida no boot)
+let _mtab='performance';                             // aba interna aberta
+let _mwFrameReady=false;                             // o filho já carregou (mandou mw:ready)
+const _mw={ ready:null, companies:{}, latest:{}, capital:{}, co:{}, data:{} };   // cache por sessão (o tour não custa rede)
+const _MWL='en-US';
+const _mwCompact=n=>{ if(n==null)return '—'; const a=Math.abs(n); return a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(2)+'M':a>=1e3?(n/1e3).toFixed(1)+'k':String(Math.round(n)); };
+const _mwPct=(n,d)=>n==null?'—':n.toLocaleString(_MWL,{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d})+'%';
+function _mwCompanyOf(ticker){ return MW_BY_TICKER[ticker]||null; }
+function _mwTickerOf(co){ return Object.keys(MW_BY_TICKER).filter(t=>MW_BY_TICKER[t]===co).find(t=>_quotes.some(q=>q.ticker===t))||null; }
+function _mwEnabled(){ return _isAdmin || _mwFlag; }
+async function _mwLoadStatic(){
+  if(_mw.ready) return _mw.ready;
+  _mw.ready=(async()=>{
+    const [cos,lat,cap]=await Promise.all([rpc('get_mw_companies'),rpc('get_mw_short_latest').catch(()=>[]),rpc('get_mw_share_capital').catch(()=>[])]);
+    (cos||[]).forEach(c=>_mw.companies[c.ticker]=c);
+    (lat||[]).forEach(r=>{ (_mw.latest[r.company]=_mw.latest[r.company]||[]).push(r); });
+    (cap||[]).forEach(k=>_mw.capital[k.company]=k);
+  })();
+  return _mw.ready;
+}
+// só o que o CABEÇALHO precisa (recompras + insiders 12m; o aluguel vem do "latest" estático)
+async function _mwLoadCompany(co){
+  if(_mw.co[co]) return _mw.co[co];
+  const m=new Date(); m.setMonth(m.getMonth()-13); const mFrom=m.toISOString().slice(0,10);
+  const p=Promise.all([ rpc('get_mw_buybacks',{p_company:co}).catch(()=>[]), rpc('get_mw_insiders',{p_company:co,p_from:mFrom}).catch(()=>[]) ])
+    .then(([buybacks,insiders])=>({buybacks,insiders}));
+  _mw.co[co]=p; return p;
+}
+// float/ações da CLASSE do papel principal (mesma régua do market-watch.html)
+function _mwClass(co){
+  const c=_mw.companies[co]||{}, k=_mw.capital[co]; if(!k) return {shares:null,float:null,how:''};
+  const cls=c.share_class||'ON';
+  if(cls==='UNT') return {shares:Math.round(((k.shares_on||0)+(k.shares_pn||0))/5)||null, float:Math.round(((k.float_on||0)+(k.float_pn||0))/5)||null, how:'unit-equivalents'};
+  if(cls==='ON')  return {shares:k.shares_on, float:k.float_on, how:'common shares'};
+  if(cls==='PNA'||cls==='PNB'){ const f=(k.float_by_class||{})[cls]; return {shares:k.shares_pn, float:f!=null?f:k.float_pn, how:cls+' shares'}; }
+  if(cls==='PN')  return {shares:k.shares_pn, float:k.float_pn, how:'preferred shares'};
+  return {shares:k.shares_total, float:k.float_total, how:'total shares'};
+}
+function _mwFrame(){ return document.getElementById('mw-frame'); }
+function _mwTheme(){ return document.body.classList.contains('theme-light')?'light':'dark'; }
+function _mwPost(msg){ const f=_mwFrame(); if(!f||!f.contentWindow) return; try{ f.contentWindow.postMessage(msg, location.origin); }catch(e){} }
+// URL: ?t=<âncora>&tab=<aba> — deep link p/ qualquer aba (a home manda ?t= p/ o Performance)
+function _urlSync(){ try{ const q=new URLSearchParams(); if(_anchor) q.set('t',_anchor); if(_mtab!=='performance') q.set('tab',_mtab);
+  const qs=q.toString(); history.replaceState(null,'',qs?'?'+qs:location.pathname); }catch(e){} }
+function setMTab(tab){
+  if(!MW_TABS.includes(tab)) tab='performance';
+  if(tab!=='performance' && !_mwEnabled()) tab='performance';
+  const was=_mtab; _mtab=tab;
+  document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  const grid=document.querySelector('.mkt-grid'); if(grid) grid.classList.toggle('mw-on',tab!=='performance');
+  _urlSync();
+  if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
+  _noteInteract();                                    // o tour vive na Performance
+  // vindo da Performance a aba abre em ALL (pedido do analista); entre abas do MW, mantém a empresa escolhida lá dentro
+  _mwEnsureFrame(was==='performance'?'all':null, tab);
+  renderMWTabs();
+}
+// 1ª abertura carrega o filho já na aba/tema certos; depois só manda mensagens (sem recarregar)
+function _mwEnsureFrame(co,tab){
+  const f=_mwFrame(); if(!f) return;
+  if(!f.dataset.src){ f.dataset.src='1'; _mwFrameReady=false;
+    f.src=`/market-watch.html?embed=1&theme=${_mwTheme()}&tab=${encodeURIComponent(tab)}`; }   // sem ?co= → o filho abre em All
+  else if(_mwFrameReady){ const m={type:'mw:set',tab}; if(co) m.co=co; _mwPost(m); }
+  f.hidden=false;
+}
+function _mwOnMessage(e){
+  if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
+  const f=_mwFrame();
+  if(m.type==='mw:height'){ if(f) f.style.height=Math.max(380,Math.ceil(+m.h||0))+'px'; }
+  else if(m.type==='mw:ready'){ _mwFrameReady=true; if(_mtab!=='performance') _mwPost({type:'mw:set',tab:_mtab}); }
+  // empresa escolhida nos chips do Market Watch → vira a âncora, então voltar p/ a Performance cai nela
+  else if(m.type==='mw:co'){ const t=m.co&&m.co!=='all'?_mwTickerOf(String(m.co)):null; if(t&&t!==_anchor){ _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); } }
+}
+// chamado no renderAll (troca de âncora) e ao trocar de aba: barra + fatos do cabeçalho
+function renderMWTabs(){
+  const bar=document.getElementById('mtabs'); if(!bar) return;
+  const on=_mwEnabled(); bar.classList.toggle('mt-off',!on);
+  const note=document.getElementById('mt-note');
+  if(note) note.innerHTML=!on?'':(_isAdmin&&!_mwFlag)?'<b>flag market_watch OFF</b> — clients see Performance only':'B3 &amp; CVM public data';
+  if(!on){ if(_mtab!=='performance') setMTab('performance'); return; }
+  if(_mtab!=='performance'&&window._mwRemede) window._mwRemede();   // auto-conserto: o ciclo de 60s remede a altura
+  const co=_anchor?_mwCompanyOf(_anchor):null;
+  if(!co){ renderHeaderFacts(); return; }
+  _mwLoadStatic().then(()=>_mwLoadCompany(co)).then(d=>{ _mw.data[co]=d; if(_anchor&&_mwCompanyOf(_anchor)===co) renderHeaderFacts(); })
+    .catch(e=>console.warn('company facts',e));
+}
+/* fatos curtos no cabeçalho — short · buyback · insiders — clicáveis (abrem a aba). Só com o dado da empresa
+   já em cache (renderHeader roda a cada 60 s; aqui nunca vai à rede). */
+function renderHeaderFacts(){
+  const host=document.getElementById('ah-facts'); if(!host) return;
+  const co=_anchor?_mwCompanyOf(_anchor):null, d=co&&_mw.data[co];
+  if(!co||!d||!_mwEnabled()){ host.innerHTML=''; return; }
+  const c=_mw.companies[co]||{}, lat=_mw.latest[co]||[], cur=lat.find(r=>r.ticker===c.ticker)||lat[0];
+  const cls=_mwClass(co), pf=(cur&&cls.float&&cur.qty_total!=null)?cur.qty_total/cls.float*100:null;
+  const today=new Date().toISOString().slice(0,10);
+  const active=(d.buybacks||[]).filter(r=>{ const st=String(r.status||'').toLowerCase(); if(st) return /andamento|ativo|active|open/.test(st); const end=r.deadline||r.end_date||''; return end?String(end).slice(0,10)>=today:false; });
+  const y=new Date(); y.setMonth(y.getMonth()-12); const from=y.toISOString().slice(0,7)+'-01';
+  let net=0,n=0; (d.insiders||[]).forEach(r=>{ if(!/compra|venda/i.test(r.move_type||'')||(r.ref_month||'')<from) return; n++; net+=(/compra/i.test(r.move_type)?1:-1)*(+r.qty||0); });
+  const facts=[];
+  if(pf!=null) facts.push(`<span class="ah-fact" data-t="short"><span class="k">Short</span><b>${_mwPct(pf)}</b><span class="k">of float</span></span>`);
+  facts.push(`<span class="ah-fact${active.length?' hot':''}" data-t="buybacks"><span class="k">Buyback</span><b>${active.length?'active':'none'}</b></span>`);
+  if(n) facts.push(`<span class="ah-fact" data-t="insiders"><span class="k">Insiders 12m</span><b style="color:${net>0?'var(--up)':net<0?'var(--down)':'var(--text)'}">${net>0?'+':''}${_mwCompact(net)}</b><span class="k">net</span></span>`);
+  host.innerHTML=facts.join('');
+  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>setMTab(el.dataset.t));
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
@@ -1122,7 +1280,9 @@ function renderHeader(){
     </div>
     <div class="ah-vsep"></div>
     <div class="ah-fx">${_fxCells()}</div>
-    <div class="ah-story">${_dayStory(q)}</div>`;
+    <div class="ah-story">${_dayStory(q)}</div>
+    <div class="ah-facts" id="ah-facts"></div>`;
+  renderHeaderFacts();
 }
 function _dayStory(q){
   const sec=TICKER_SECTOR[q.ticker];
@@ -1684,7 +1844,7 @@ function _carBuildOrder(){
   _carOrder=comps.map(q=>q.ticker);
 }
 function carShow(t){ _sel=[t]; _chartMode='price'; afterSel(); }   // foco limpo (é o próprio tour; não conta como interação)
-function _carAdvance(){ if(!_carAuto||_carOrder.length<2||_sel.length>1)return; _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
+function _carAdvance(){ if(!_carAuto||_carOrder.length<2||_sel.length>1||_mtab!=='performance')return; _carIdx=(_carIdx+1)%_carOrder.length; carShow(_carOrder[_carIdx]); }
 function _carIdleCheck(){ if(!_carAuto && Date.now()-_lastInteract>300000){ _carAuto=true; renderCarNext(); } }   // 5 min ocioso → retoma
 function setCarAuto(on){ _carAuto=on; if(on)_lastInteract=0; renderCarNext(); }
 function renderCarNext(){
@@ -1759,6 +1919,7 @@ function _applyTheme(){ var light = localStorage.getItem('ibba_theme')==='light'
   document.documentElement.classList.toggle('dark', !light);
   document.body.classList.toggle('theme-light', light);
   if(window.__syncThemeIcon) window.__syncThemeIcon();
+  _mwPost({type:'mw:theme',theme:_mwTheme()});   // o Market Watch embutido segue o tema do Market
 }
 
 /* ── export (SÓ admin): PNG + Excel dos gráficos/tabelas via export-lib.js ── */
@@ -1865,6 +2026,14 @@ async function init(){
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
+  document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab); };
+  window.addEventListener('message',_mwOnMessage);
+  // a LARGURA do iframe mudando (janela, zoom) muda a altura do conteúdo → pede a medida de novo.
+  // Observar o próprio elemento é mais fiel que o evento resize da janela (pega qualquer causa).
+  { let t; window._mwRemede=()=>{ clearTimeout(t); t=setTimeout(()=>_mwPost({type:'mw:measure'}),160); };
+    try{ new ResizeObserver(window._mwRemede).observe(_mwFrame()); }catch(e){}
+    window.addEventListener('resize',window._mwRemede); }   // os dois: nem todo ambiente entrega os 2 sinais
+  { const t=_qparam('tab'); if(t&&t!=='performance') setMTab(t); }   // deep link p/ uma aba do Market Watch
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
   document.getElementById('wl-manage').onclick=()=>openPicker('custom');
   _initSearch();
@@ -1897,7 +2066,10 @@ async function boot(){
     let role=null; try{ role=await rpc('get_my_role'); }catch(e){}
     _isAdmin = role==='admin';
     let enabled=false;
-    try{ const fl=await rpc('get_dashboard_flags'); if(Array.isArray(fl)) enabled=fl.some(f=>(f.key==='market'||f.flag==='market'||f.name==='market')&&(f.enabled||f.value||f.is_enabled)); }catch(e){}
+    try{ const fl=await rpc('get_dashboard_flags'); if(Array.isArray(fl)){
+      enabled=fl.some(f=>(f.key==='market'||f.flag==='market'||f.name==='market')&&(f.enabled||f.value||f.is_enabled));
+      _mwFlag=fl.some(f=>f.key==='market_watch'&&!!f.enabled);   // linha Company (Market Watch) p/ o cliente
+    } }catch(e){}
     if(!_isAdmin && !enabled){ showDenied(); return; }
     showApp();
     await init();

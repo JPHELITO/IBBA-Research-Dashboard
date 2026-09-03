@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Market Watch</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;
+  --bg:#EBE8E2;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.06);--rule:#EEEAE3;--tint:#F7F4EE;
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);--rule:#262b33;--tint:#20252c;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;min-height:100vh;}
+[hidden]{display:none!important}
+.splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;background:var(--bg);z-index:2000;color:var(--gray-mid);}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{margin-top:8px;font:600 12px var(--font);color:var(--orange);text-decoration:none;border:1px solid var(--border);padding:8px 14px;border-radius:8px;}
+
+#app{flex:1;display:flex;flex-direction:column;min-height:0;padding:14px 20px 26px;gap:12px;max-width:1460px;width:100%;margin:0 auto;}
+.mw-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.mw-title{font-size:21px;font-weight:700;letter-spacing:-.01em;}
+.mw-title small{display:block;font-size:11.5px;font-weight:500;color:var(--gray-mid);margin-top:2px;}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);}
+.seg button{font:600 12px var(--font);border:none;background:none;color:var(--gray-mid);padding:7px 15px;cursor:pointer;}
+.seg button.on{background:var(--black);color:var(--white);}
+.mw-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gray-dark);
+  border:1px solid var(--border);background:var(--card);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;transition:all .12s;}
+.chip .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.chip:hover{border-color:var(--gray-mid);}
+.chip.on{background:var(--black);color:var(--white);border-color:var(--black);}
+.chip.small{font-size:10.5px;padding:3px 9px;}
+.co-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.co-row .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);margin-right:4px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--rule);flex-wrap:wrap;}
+.card-title{font-size:12.5px;font-weight:700;letter-spacing:.02em;}
+.card-sub{font-size:11px;color:var(--gray-mid);font-weight:500;}
+.card-tools{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.card-body{padding:12px 14px;}
+.grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:12px;align-items:start;}
+@media(max-width:1000px){.grid2{grid-template-columns:1fr;}}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;}
+.kpi{background:var(--tint);border:1px solid var(--rule);border-radius:8px;padding:9px 11px;}
+.kpi .k{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-mid);}
+.kpi .v{font-size:19px;font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums;}
+.kpi .v.orange{color:var(--orange);}
+.kpi .s{font-size:10.5px;color:var(--gray-mid);margin-top:1px;font-variant-numeric:tabular-nums;}
+.ctx{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;border-radius:6px;padding:4px 9px;border:1px solid var(--rule);background:var(--tint);color:var(--gray-dark);}
+.ctx b{font-weight:700;}
+.ctx.hi{color:var(--red);}.ctx.lo{color:var(--green);}
+
+table.data{width:100%;border-collapse:collapse;font-size:12px;}
+table.data th{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);
+  text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--card);}
+table.data th.l,table.data td.l{text-align:left;}
+table.data td{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+table.data tr:last-child td{border-bottom:none;}
+table.data tr.clickable{cursor:pointer;}
+table.data tr.clickable:hover td{background:var(--tint);}
+table.data td.tk{font-weight:700;}
+table.data td.co{color:var(--gray-mid);}
+.pos{color:var(--green);font-weight:600;}.neg{color:var(--red);font-weight:600;}
+.tbl-wrap{overflow:auto;max-height:520px;}
+.tbl-wrap.tall{max-height:680px;}
+.spark{width:96px;height:24px;vertical-align:middle;}
+.tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:2px 6px;border:1px solid var(--rule);color:var(--gray-mid);background:var(--tint);}
+.tag.hot{color:#fff;background:var(--orange);border-color:var(--orange);}
+.tag.ok{color:var(--green);border-color:rgba(22,163,74,.35);}
+.tag.dim{opacity:.7;}
+.foot{font-size:10.5px;color:var(--gray-mid);line-height:1.5;padding:10px 14px;border-top:1px solid var(--rule);}
+.foot a{color:var(--orange);text-decoration:none;}
+.empty{padding:34px 16px;text-align:center;color:var(--gray-mid);font-size:13px;}
+.chart-wrap{position:relative;width:100%;height:300px;}
+.chart-wrap svg{width:100%;height:100%;display:block;}
+.tip{position:absolute;pointer-events:none;background:var(--black);color:var(--white);font-size:11px;border-radius:6px;padding:6px 9px;transform:translate(-50%,-115%);white-space:nowrap;display:none;z-index:5;box-shadow:var(--shadow);}
+html.dark .tip{background:#0d0e11;color:#e8eaed;border:1px solid var(--border);}
+.prog{height:6px;background:var(--rule);border-radius:4px;overflow:hidden;margin-top:6px;}
+.prog i{display:block;height:100%;background:var(--orange);}
+.bb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+.bb{border:1px solid var(--rule);border-radius:8px;padding:11px 12px;background:var(--tint);}
+.bb .h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;}
+.bb .h .co{color:var(--gray-mid);font-weight:600;}
+.bb .row{display:flex;justify-content:space-between;font-size:11.5px;margin-top:5px;gap:10px;}
+.bb .row span:first-child{color:var(--gray-mid);}
+.bb .row b{font-variant-numeric:tabular-nums;}
+.fl{display:flex;flex-direction:column;}
+.fl-item{display:grid;grid-template-columns:118px 90px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 10px;border-bottom:1px solid var(--rule);font-size:12.5px;}
+.fl-item:last-child{border-bottom:none;}
+.fl-item .when{font-size:11px;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
+.fl-item .who{font-weight:700;}
+.fl-item .what a{color:var(--black);text-decoration:none;font-weight:500;}
+.fl-item .what a:hover{color:var(--orange);}
+.fl-item .what .cat{display:block;font-size:10.5px;color:var(--gray-mid);margin-top:1px;}
+.fl-item.hot .what a{font-weight:700;}
+.search{font:500 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--black);border-radius:8px;padding:6px 10px;min-width:200px;}
+.sel{font:500 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--gray-dark);border-radius:8px;padding:6px 9px;cursor:pointer;}
+.note{font-size:11px;color:var(--gray-mid);padding:6px 0 0;}
+.ibba-tb button{font:600 10.5px var(--font)!important;}
+@media(max-width:700px){#app{padding:10px 10px 18px;}.mw-title{font-size:17px;}.kpi .v{font-size:16px;}.fl-item{grid-template-columns:1fr;gap:2px;}.tbl-wrap{max-height:none;}}
+/* ?embed=1 — dentro da gaveta do Market: sem a barra global, sem o título (a gaveta já tem o dela) */
+body.embed .gnav,body.embed .gnav-mob,body.embed .orange-rule{display:none!important;}
+body.embed #app{padding-top:10px;}
+body.embed .mw-title{display:none;}
+/* dentro das ABAS do Market o pai é quem troca de seção (Short/Buybacks/…): a barra do filho some e
+   a página não rola por dentro — o pai dá ao iframe a altura que o conteúdo pedir (postMessage) */
+body.embed #tabs{display:none;}
+body.embed{overflow:hidden;}
+body.embed #app{padding:2px 0 10px;}
+/* o iframe mede o conteúdo e o conteúdo NÃO pode medir o iframe: qualquer min-height em vh viraria um laço
+   (a altura só cresce, nunca encolhe ao trocar de aba). E o histórico diário rola por dentro, senão a aba
+   Short interest vira uma página de 8 mil pixels. */
+html.embed,body.embed,body.embed #app,body.embed .splash{min-height:0!important;height:auto!important;}
+body.embed .tbl-wrap{max-height:520px!important;overflow:auto;}
+</style>
+<script>try{ const _p=new URLSearchParams(location.search); if(_p.get('embed')==='1'){ document.documentElement.classList.add('embed');
+  // dentro da gaveta do Market o tema é o do Market (escuro por padrão), não o global da dashboard
+  if(_p.get('theme')==='dark') document.documentElement.classList.add('dark'); else if(_p.get('theme')==='light') document.documentElement.classList.remove('dark'); } }catch(e){}</script>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading Market Watch…</div></div>
+<div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
+  <div class="muted" style="max-width:380px">This section is not enabled for your account.</div>
+  <a class="hbtn" href="/index.html">← Back to home</a></div>
+
+<div id="app" hidden>
+  <div class="mw-top">
+    <div class="mw-title">Market Watch<small id="mw-sub">Securities lending, buybacks, insiders and official filings — B3 &amp; CVM public data</small></div>
+    <div class="seg" id="tabs">
+      <button data-tab="short" class="on">Short Interest</button>
+      <button data-tab="buybacks">Buybacks</button>
+      <button data-tab="insiders">Insiders</button>
+      <button data-tab="filings">Filings</button>
+    </div>
+    <div class="mw-right"><span class="muted" id="mw-fresh"></span></div>
+  </div>
+  <div class="co-row" id="co-row"><span class="lbl">Company</span></div>
+
+  <!-- ══ SHORT INTEREST ══ -->
+  <div id="pane-short">
+    <div id="short-overview" class="card">
+      <div class="card-head"><span class="card-title">Shares on loan — latest by ticker</span>
+        <span class="card-sub" id="short-ov-sub"></span>
+        <div class="card-tools" id="short-ov-tools"></div></div>
+      <div class="tbl-wrap"><table class="data" id="short-ov-table"></table></div>
+      <div class="foot" id="short-ov-foot"></div>
+    </div>
+    <div id="short-company" hidden>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><span class="card-title" id="sc-title">—</span>
+          <div class="chips" id="sc-tickers"></div>
+          <div class="card-tools" id="sc-tools"></div></div>
+        <div class="card-body">
+          <div class="kpis" id="sc-kpis"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="sc-ctx"></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><span class="card-title" id="sc-chart-title">Shares on loan</span>
+            <div class="chips" id="sc-metric">
+              <span class="chip small on" data-m="pct_float">% free float</span>
+              <span class="chip small" data-m="qty">Shares</span>
+              <span class="chip small" data-m="value">R$ mn</span>
+              <span class="chip small" data-m="rate">Borrow rate</span>
+            </div>
+            <div class="card-tools">
+              <div class="chips" id="sc-range">
+                <span class="chip small" data-r="30">1M</span><span class="chip small" data-r="90">3M</span>
+                <span class="chip small on" data-r="180">6M</span><span class="chip small" data-r="365">1Y</span>
+                <span class="chip small" data-r="0">All</span></div>
+              <span id="sc-chart-tools"></span></div></div>
+          <div class="card-body"><div class="chart-wrap" id="sc-chart"><div class="tip" id="sc-tip"></div></div>
+            <div class="note" id="sc-chart-note"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Daily history</span><span class="card-sub" id="sc-hist-sub"></span>
+            <div class="card-tools" id="sc-hist-tools"></div></div>
+          <div class="tbl-wrap"><table class="data" id="sc-hist"></table></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px"><div class="foot" id="sc-foot"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ BUYBACKS ══ -->
+  <div id="pane-buybacks" hidden>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-head"><span class="card-title">Active programs</span><span class="card-sub" id="bb-active-sub"></span></div>
+      <div class="card-body"><div class="bb-grid" id="bb-active"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Program history</span><span class="card-sub" id="bb-hist-sub"></span>
+        <div class="card-tools" id="bb-tools"></div></div>
+      <div class="tbl-wrap tall"><table class="data" id="bb-table"></table></div>
+      <div class="foot">Source: CVM open data — <em>Programas de Recompra de Ações</em> (updated daily). The CVM dataset reports the
+        <b>authorized</b> quantity, the shares in circulation at approval, the deadline and the brokers appointed; it does not report
+        how many shares were actually repurchased — that comes from the companies' own disclosures.</div>
+    </div>
+  </div>
+
+  <!-- ══ INSIDERS ══ -->
+  <div id="pane-insiders" hidden>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-head"><span class="card-title">Net trading by group — last 12 months</span><span class="card-sub" id="in-sum-sub"></span>
+        <div class="card-tools" id="in-sum-tools"></div></div>
+      <div class="tbl-wrap"><table class="data" id="in-summary"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Transactions</span><span class="card-sub" id="in-log-sub"></span>
+        <div class="card-tools"><div class="chips" id="in-filter">
+          <span class="chip small on" data-f="trades">Buys &amp; sells</span><span class="chip small" data-f="all">All movements</span>
+          <span class="chip small" data-f="balances">Month-end balances</span></div><span id="in-log-tools"></span></div></div>
+      <div class="tbl-wrap tall"><table class="data" id="in-log"></table></div>
+      <div class="foot">Source: CVM open data — <em>Valores Mobiliários Negociados e Detidos</em> (art. 11, CVM Resolution 44), the consolidated
+        monthly form filed by each company. Groups: controlling shareholder, board, executive officers, fiscal council and statutory
+        committees (and people linked to them). The CVM refreshes the file weekly; a restatement replaces the month it refers to.</div>
+    </div>
+  </div>
+
+  <!-- ══ FILINGS ══ -->
+  <div id="pane-filings" hidden>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Official filings</span><span class="card-sub" id="fl-sub"></span>
+        <div class="card-tools">
+          <div class="chips" id="fl-filter"><span class="chip small on" data-f="news">Newsworthy</span><span class="chip small" data-f="all">Everything</span></div>
+          <input class="search" id="fl-search" placeholder="Search headline…"/></div></div>
+      <div class="fl" id="fl-list"></div>
+      <div class="foot">Source: B3 <em>Plantão de Notícias</em> (real time) — each headline links to the document filed with the CVM (ENET).
+        "Newsworthy" keeps material facts, market announcements, shareholder notices, stake changes, CVM/B3 clarifications and
+        press releases; minutes, insider position forms, presentations and periodic statements are under "Everything".
+        (R) restatement · (C) cancelled · (N) rule/note.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase + auth (mesmo molde do calendário) ──────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){
+  const {data,error} = (args===undefined) ? await sbAuth.rpc(name) : await sbAuth.rpc(name,args);
+  if(error) throw new Error(name+': '+(error.message||error));
+  return data;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+// ── formatação (tela de cliente = en-US; regra nº 7 do projeto) ──────────────
+const L='en-US';
+const fInt=n=>n==null?'—':Math.round(n).toLocaleString(L);
+const fMn=n=>n==null?'—':(n/1e6).toLocaleString(L,{minimumFractionDigits:1,maximumFractionDigits:1});
+const fPct=(n,d=2)=>n==null?'—':n.toLocaleString(L,{minimumFractionDigits:d,maximumFractionDigits:d})+'%';
+const fNum=(n,d=2)=>n==null?'—':n.toLocaleString(L,{minimumFractionDigits:d,maximumFractionDigits:d});
+const fDate=s=>{ if(!s) return '—'; const d=new Date(s.slice(0,10)+'T12:00:00Z'); return d.toLocaleDateString(L,{month:'short',day:'2-digit',year:'numeric',timeZone:'UTC'}); };
+const fDT=s=>{ if(!s) return '—'; const d=new Date(s); return d.toLocaleString(L,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}); };
+const fDelta=(cur,prev,pct)=>{ if(cur==null||prev==null||!prev) return '<span class="muted">—</span>'; const d=pct?(cur/prev-1)*100:cur-prev; const s=d>0?'+':''; return `<span class="${d>0.0001?'pos':(d<-0.0001?'neg':'')}">${s}${pct?d.toFixed(1)+'%':fInt(d)}</span>`; };
+const SECTOR_COLOR={iron_ore:'#B45309',steel:'#1565C0',pulp_paper:'#2E7D32',gold:'#C9A227'};
+
+// ── estado ───────────────────────────────────────────────────────────────────
+const S={ tab:'short', company:'all', ticker:null, metric:'pct_float', range:180,
+  companies:[], byCo:{}, latest:[], capital:{}, series:{}, buybacks:{}, insiders:{}, filings:{}, inFilter:'trades', flFilter:'news', flQ:'' };
+
+// ── free float / ações por CLASSE do papel negociado ────────────────────────
+// Um papel é uma classe: GGBR4 é PN, USIM5 é PNA, KLBN11 é unit (1 ON + 4 PN). O aluguel
+// é por papel, então o denominador tem que ser a classe certa — usar o total da empresa
+// subestimaria o short de um PN. Unit: (ON+PN)/5 = quantas units caberiam no capital.
+function classShares(tk){
+  const co=S.byCo[tk]||S.byCo[LEND2CO[tk]]; const k=S.capital[LEND2CO[tk]]; if(!k) return {shares:null,float:null,how:''};
+  const cls=tickerClass(tk);
+  if(cls==='UNT') return {shares:(k.shares_on||0)+(k.shares_pn||0)?Math.round(((k.shares_on||0)+(k.shares_pn||0))/5):null,
+                          float:(k.float_on!=null||k.float_pn!=null)?Math.round(((k.float_on||0)+(k.float_pn||0))/5):null,how:'unit-equivalents (1 ON + 4 PN)'};
+  if(cls==='ON')  return {shares:k.shares_on, float:k.float_on, how:'common shares'};
+  if(cls==='PNA'||cls==='PNB'){ const fbc=(k.float_by_class||{})[cls]; return {shares:k.shares_pn, float:fbc!=null?fbc:k.float_pn, how:cls+' preferred shares'}; }
+  if(cls==='PN')  return {shares:k.shares_pn, float:k.float_pn, how:'preferred shares'};
+  return {shares:k.shares_total, float:k.float_total, how:'total shares (BDR 1:1)'};
+}
+function tickerClass(tk){
+  const co=LEND2CO[tk]; const c=S.byCo[co]||{};
+  if(tk===co) return c.share_class||'ON';
+  const n=tk.replace(/^[A-Z]+/,'');
+  if(n==='11') return 'UNT'; if(n==='3') return 'ON'; if(n==='4') return 'PN'; if(n==='5') return (co==='USIM5'?'PNA':'PN'); if(n==='6') return 'PNB'; if(n==='33'||n==='34') return 'BDR';
+  return c.share_class||'ON';
+}
+let LEND2CO={};
+// ── embutido no Market (?embed=1): conversa com o pai por postMessage (mesma origem) ─────────
+const EMBED=document.documentElement.classList.contains('embed');
+function _post(msg){ if(!EMBED||window.parent===window) return; try{ window.parent.postMessage(msg, location.origin); }catch(e){} }
+// altura do CONTEÚDO (#app), nunca do documento: scrollHeight do documento nunca fica abaixo da janela,
+// e a janela aqui É o iframe — medir por ele faria a altura só crescer, nunca encolher ao trocar de aba
+function _postHeight(){ const a=document.getElementById('app'); if(!a) return;
+  const h=Math.ceil(a.getBoundingClientRect().bottom+window.scrollY)+6; _post({type:'mw:height', h}); }
+
+// ── carga ────────────────────────────────────────────────────────────────────
+async function loadStatic(){
+  S.companies=await rpc('get_mw_companies')||[];
+  S.byCo={}; LEND2CO={};
+  S.companies.forEach(c=>{ S.byCo[c.ticker]=c; (c.lending_tickers||[c.ticker]).forEach(t=>LEND2CO[t]=c.ticker); LEND2CO[c.ticker]=c.ticker; });
+  const [latest,cap]=await Promise.all([rpc('get_mw_short_latest').catch(()=>[]), rpc('get_mw_share_capital').catch(()=>[])]);
+  S.latest=latest||[]; S.capital={}; (cap||[]).forEach(k=>S.capital[k.company]=k);
+}
+async function seriesFor(co){
+  if(S.series[co]) return S.series[co];
+  const rows=await rpc('get_mw_short_interest',{p_company:co,p_from:null})||[];
+  S.series[co]=rows; return rows;
+}
+async function buybacksFor(co){ const k=co||'all'; if(S.buybacks[k]) return S.buybacks[k]; const r=await rpc('get_mw_buybacks',{p_company:co==='all'?null:co})||[]; S.buybacks[k]=r; return r; }
+async function insidersFor(co){ const k=co||'all'; if(S.insiders[k]) return S.insiders[k]; const from=new Date(); from.setMonth(from.getMonth()-14); const r=await rpc('get_mw_insiders',{p_company:co==='all'?null:co,p_from:from.toISOString().slice(0,10)})||[]; S.insiders[k]=r; return r; }
+async function filingsFor(co){ const k=co||'all'; if(S.filings[k]) return S.filings[k]; const r=await rpc('get_mw_filings',{p_company:co==='all'?null:co,p_limit:600})||[]; S.filings[k]=r; return r; }
+
+// ── chips de empresa + abas ──────────────────────────────────────────────────
+function renderCompanyChips(){
+  const host=document.getElementById('co-row');
+  host.querySelectorAll('.chip').forEach(e=>e.remove());
+  const mk=(t,label,color)=>{ const c=document.createElement('span'); c.className='chip'+(S.company===t?' on':''); c.dataset.co=t;
+    c.innerHTML=(color?`<span class="dot" style="background:${color}"></span>`:'')+esc(label); c.onclick=()=>{ S.company=t; S.ticker=null; renderCompanyChips(); render(); _post({type:'mw:co',co:t}); }; host.appendChild(c); };
+  mk('all','All');
+  S.companies.forEach(c=>mk(c.ticker,c.ticker,SECTOR_COLOR[c.sector]||'#888'));
+}
+function setTab(t){ S.tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  ['short','buybacks','insiders','filings'].forEach(p=>document.getElementById('pane-'+p).hidden=(p!==t)); render(); }
+
+async function render(){
+  try{
+    if(S.tab==='short') await renderShort();
+    else if(S.tab==='buybacks') await renderBuybacks();
+    else if(S.tab==='insiders') await renderInsiders();
+    else await renderFilings();
+  }catch(e){ console.error(e); }
+}
+
+// ══════════════════════ SHORT INTEREST ══════════════════════════════════════
+function stats(vals){ const v=vals.filter(x=>x!=null); if(!v.length) return null; const n=v.length, avg=v.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(v.reduce((a,b)=>a+(b-avg)*(b-avg),0)/Math.max(1,n-1)); return {n,avg,sd,max:Math.max(...v),min:Math.min(...v)}; }
+function context(cur,st){ if(cur==null||!st||st.n<5) return null;
+  if(cur>=st.max*0.995) return {cls:'hi',txt:'At period high'}; if(cur<=st.min*1.005) return {cls:'lo',txt:'At period low'};
+  if(cur>st.avg+st.sd) return {cls:'hi',txt:'Above period average'}; if(cur<st.avg-st.sd) return {cls:'lo',txt:'Below period average'};
+  return {cls:'',txt:'Near period average'}; }
+function pctFloat(row){ const c=classShares(row.ticker); return (c.float&&row.qty_total!=null)?row.qty_total/c.float*100:null; }
+function pctOut(row){ const c=classShares(row.ticker); return (c.shares&&row.qty_total!=null)?row.qty_total/c.shares*100:null; }
+function sparkSVG(vals,color){ const v=vals.filter(x=>x!=null); if(v.length<2) return ''; const w=96,h=24,mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1;
+  const pts=v.map((y,i)=>[(i/(v.length-1))*w, h-2-((y-mn)/rg)*(h-4)]); const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const last=pts[pts.length-1]; return `<svg class="spark" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2" fill="${color}"/></svg>`; }
+
+async function renderShort(){
+  const ov=document.getElementById('short-overview'), sc=document.getElementById('short-company');
+  if(S.company==='all'){ ov.hidden=false; sc.hidden=true; await renderShortOverview(); }
+  else{ ov.hidden=true; sc.hidden=false; await renderShortCompany(); }
+}
+async function renderShortOverview(){
+  const rows=S.latest.slice();
+  const tbl=document.getElementById('short-ov-table');
+  if(!rows.length){ tbl.innerHTML=''; document.getElementById('short-ov-foot').innerHTML='<div class="empty">No securities-lending data yet — the robot has not run.</div>'; return; }
+  // sparkline de 3 meses: precisa das séries (carrega as 11 em paralelo, 1× por sessão)
+  await Promise.all([...new Set(rows.map(r=>r.company))].map(seriesFor));
+  const from=new Date(); from.setDate(from.getDate()-90); const fromS=from.toISOString().slice(0,10);
+  rows.forEach(r=>{ r._pf=pctFloat(r); r._po=pctOut(r); const ser=(S.series[r.company]||[]).filter(x=>x.ticker===r.ticker&&x.ref_date>=fromS); r._spark=ser.map(x=>x.qty_total); r._st=stats(ser.map(x=>x.qty_total)); r._ctx=context(r.qty_total,r._st); });
+  rows.sort((a,b)=>(b._pf||0)-(a._pf||0));
+  let h='<thead><tr><th class="l">Ticker</th><th class="l">Company</th><th>Shares on loan</th><th>% free float</th><th>% shares out.</th><th>Value (R$ mn)</th><th>Borrow rate</th><th>Δ 1M</th><th class="l">3-month trend</th><th class="l">vs. 3-month range</th><th>Date</th></tr></thead><tbody>';
+  for(const r of rows){ const co=S.byCo[r.company]||{}; const col=SECTOR_COLOR[co.sector]||'#888';
+    h+=`<tr class="clickable" data-co="${esc(r.company)}" data-tk="${esc(r.ticker)}"><td class="l tk"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>${esc(r.ticker)}</td>
+      <td class="l co">${esc(co.name||r.company)}</td><td>${fInt(r.qty_total)}</td><td><b>${fPct(r._pf)}</b></td><td>${fPct(r._po)}</td><td>${fMn(r.value_brl)}</td>
+      <td>${r.rate_taker_avg==null?'—':fPct(r.rate_taker_avg)+' p.a.'}</td><td>${fDelta(r.qty_total,r.qty_1m,true)}</td>
+      <td class="l">${sparkSVG(r._spark,'#FF5000')}</td><td class="l">${r._ctx?`<span class="ctx ${r._ctx.cls}">${esc(r._ctx.txt)}</span>`:'<span class="muted">—</span>'}</td><td class="co">${fDate(r.ref_date)}</td></tr>`; }
+  tbl.innerHTML=h+'</tbody>';
+  tbl.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ S.company=tr.dataset.co; S.ticker=tr.dataset.tk; renderCompanyChips(); render(); });
+  const last=rows.map(r=>r.ref_date).sort().pop();
+  document.getElementById('short-ov-sub').textContent=`${rows.length} tickers · latest ${fDate(last)}`;
+  document.getElementById('short-ov-foot').innerHTML=`Source: B3 Daily Bulletin (BDI), securities-lending chapter: open positions (total of registered + electronic D+0/D+1 loans) and
+    the day's registered loans (taker rate = weighted average, % per year; on days with no trades B3 repeats the last rate). Free float and shares
+    outstanding: CVM Reference Form (capital distribution), per share class — a PN ticker is measured against the PN float, units against
+    unit-equivalents (1 ON + 4 PN), BDRs against total shares. Value = B3 balance in R$. Δ 1M = change in shares on loan vs. ~30 days earlier.`;
+  const tools=document.getElementById('short-ov-tools'); tools.innerHTML='';
+  if(window.IBBAExport) tools.appendChild(IBBAExport.toolbar([{label:'XLS',title:'Download this table (Excel)',onClick:()=>{
+    const aoa=[['Ticker','Company','Shares on loan','% free float','% shares out','Value R$','Borrow rate % p.a.','Shares on loan 1M ago','Date']].concat(rows.map(r=>[r.ticker,(S.byCo[r.company]||{}).name||r.company,r.qty_total,r._pf,r._po,r.value_brl,r.rate_taker_avg,r.qty_1m,r.ref_date]));
+    IBBAExport.xlsxFromAOA([{name:'short_interest',aoa}],'market_watch_short_interest_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
+}
+
+async function renderShortCompany(){
+  const co=S.byCo[S.company]; if(!co) return;
+  const all=await seriesFor(S.company);
+  const tks=[...new Set(all.map(r=>r.ticker))].sort((a,b)=>(a===S.company?-1:b===S.company?1:a.localeCompare(b)));
+  if(!S.ticker||!tks.includes(S.ticker)) S.ticker=tks.includes(S.company)?S.company:(tks[0]||S.company);
+  document.getElementById('sc-title').textContent=`${co.name} — ${S.ticker}`;
+  const tkHost=document.getElementById('sc-tickers'); tkHost.innerHTML='';
+  tks.forEach(t=>{ const c=document.createElement('span'); c.className='chip small'+(t===S.ticker?' on':''); c.textContent=t; c.onclick=()=>{ S.ticker=t; renderShortCompany(); }; tkHost.appendChild(c); });
+  const ser=all.filter(r=>r.ticker===S.ticker).sort((a,b)=>a.ref_date<b.ref_date?-1:1);
+  if(!ser.length){ document.getElementById('sc-kpis').innerHTML='<div class="empty">No data for this ticker yet.</div>'; document.getElementById('sc-hist').innerHTML=''; drawChart([]); return; }
+  const cur=ser[ser.length-1], cs=classShares(S.ticker);
+  const pf=r=>(cs.float&&r.qty_total!=null)?r.qty_total/cs.float*100:null;
+  const po=r=>(cs.shares&&r.qty_total!=null)?r.qty_total/cs.shares*100:null;
+  // KPIs
+  const back=(days)=>{ const d=new Date(cur.ref_date+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()-days); const s=d.toISOString().slice(0,10); const c=ser.filter(r=>r.ref_date<=s); return c.length?c[c.length-1]:null; };
+  const m1=back(30), m3=back(90);
+  document.getElementById('sc-kpis').innerHTML=[
+    ['Shares on loan', fInt(cur.qty_total), m1?`vs 1M: ${fDelta(cur.qty_total,m1.qty_total,true).replace(/<[^>]+>/g,'')}`:'', true],
+    ['% of free float', fPct(pf(cur)), cs.float?`float ${fInt(cs.float)} · ${cs.how}`:'free float unavailable', false],
+    ['% of shares out.', fPct(po(cur)), cs.shares?`${fInt(cs.shares)} ${cs.how}`:'', false],
+    ['Value on loan', 'R$ '+fMn(cur.value_brl)+' mn', cur.avg_price!=null?`avg. price R$ ${fNum(cur.avg_price,2)}`:'', false],
+    ['Borrow rate (taker)', cur.rate_taker_avg==null?'—':fPct(cur.rate_taker_avg)+' p.a.', cur.rate_taker_min!=null?`day range ${fPct(cur.rate_taker_min)}–${fPct(cur.rate_taker_max)}`:'', false],
+    ['Loans traded today', fInt(cur.qty_day), cur.contracts_day!=null?`${fInt(cur.contracts_day)} contracts · R$ ${fMn(cur.value_day)} mn`:'', false],
+  ].map(([k,v,s,o])=>`<div class="kpi"><div class="k">${esc(k)}</div><div class="v${o?' orange':''}">${v}</div><div class="s">${s}</div></div>`).join('');
+  // contexto (posição vs. período do gráfico)
+  const rangeRows=rangeSlice(ser);
+  const stQ=stats(rangeRows.map(r=>r.qty_total)), stR=stats(rangeRows.map(r=>r.rate_taker_avg));
+  const cq=context(cur.qty_total,stQ), cr=context(cur.rate_taker_avg,stR);
+  const lbl=rangeLabel();
+  document.getElementById('sc-ctx').innerHTML=(cq?`<span class="ctx ${cq.cls}">Shares on loan · <b>${esc(cq.txt)}</b> · ${lbl} range ${fInt(stQ.min)}–${fInt(stQ.max)}, avg ${fInt(stQ.avg)}</span>`:'')
+    +(cr&&stR?`<span class="ctx ${cr.cls}">Borrow rate · <b>${esc(cr.txt)}</b> · ${lbl} range ${fPct(stR.min)}–${fPct(stR.max)}, avg ${fPct(stR.avg)}</span>`:'');
+  // gráfico
+  const mk=S.metric; const val=r=>mk==='pct_float'?pf(r):mk==='qty'?r.qty_total:mk==='value'?(r.value_brl==null?null:r.value_brl/1e6):r.rate_taker_avg;
+  const pts=rangeRows.map(r=>({d:r.ref_date,y:val(r)})).filter(p=>p.y!=null);
+  const title={pct_float:'Shares on loan — % of free float',qty:'Shares on loan',value:'Value on loan — R$ mn',rate:'Borrow rate — taker, % p.a.'}[mk];
+  document.getElementById('sc-chart-title').textContent=title;
+  drawChart(pts,{fmt:mk==='qty'?fInt:(mk==='value'?(v=>fNum(v,1)):(v=>fPct(v)))});
+  document.getElementById('sc-chart-note').textContent=pts.length?`${pts.length} trading days · dashed lines: period max, +1σ, average, −1σ, min`:'';
+  // tabela
+  const hist=ser.slice().reverse();
+  let h='<thead><tr><th class="l">Date</th><th>Shares on loan</th><th>Δ day</th><th>% float</th><th>Value (R$ mn)</th><th>Taker rate</th><th>Day range</th><th>Loans (day)</th></tr></thead><tbody>';
+  for(let i=0;i<hist.length;i++){ const r=hist[i], p=hist[i+1];
+    h+=`<tr><td class="l">${fDate(r.ref_date)}</td><td>${fInt(r.qty_total)}</td><td>${fDelta(r.qty_total,p&&p.qty_total,false)}</td><td>${fPct(pf(r))}</td><td>${fMn(r.value_brl)}</td><td>${r.rate_taker_avg==null?'—':fPct(r.rate_taker_avg)}</td><td class="co">${r.rate_taker_min==null?'—':fPct(r.rate_taker_min)+'–'+fPct(r.rate_taker_max)}</td><td class="co">${fInt(r.qty_day)}</td></tr>`; }
+  document.getElementById('sc-hist').innerHTML=h+'</tbody>';
+  document.getElementById('sc-hist-sub').textContent=`${ser.length} days · since ${fDate(ser[0].ref_date)}`;
+  document.getElementById('sc-foot').innerHTML=`<b>How to read.</b> Shares on loan is B3's total open securities-lending position for ${esc(S.ticker)} (registered + electronic D+0 and D+1 loans)
+    — the closest public proxy for the short position. The taker rate is the annualized fee paid to borrow, weighted by the day's registered loans. Free float
+    (${esc(cs.how)}) and shares outstanding come from ${esc(co.name)}'s latest CVM Reference Form${S.capital[S.company]&&S.capital[S.company].ref_date?' ('+esc(S.capital[S.company].ref_date.slice(0,4))+')':''}.
+    Source rows marked <em>bdi_pdf</em> were read from the daily BDI PDF (history); recent days come from the BDI API.`;
+  const tools=document.getElementById('sc-hist-tools'); tools.innerHTML='';
+  if(window.IBBAExport) tools.appendChild(IBBAExport.toolbar([{label:'XLS',title:'Download history (Excel)',onClick:()=>{
+    const aoa=[['Date','Ticker','Shares on loan','% free float','% shares out','Value R$','Avg price','Taker rate avg %','Taker min %','Taker max %','Donor avg %','Contracts day','Qty day','Value day R$','Source']].concat(ser.map(r=>[r.ref_date,r.ticker,r.qty_total,pf(r),po(r),r.value_brl,r.avg_price,r.rate_taker_avg,r.rate_taker_min,r.rate_taker_max,r.rate_donor_avg,r.contracts_day,r.qty_day,r.value_day,r.source]));
+    IBBAExport.xlsxFromAOA([{name:S.ticker,aoa}],'market_watch_'+S.ticker+'_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
+  const ct=document.getElementById('sc-chart-tools'); ct.innerHTML='';
+  if(window.IBBAExport) ct.appendChild(IBBAExport.toolbar([{label:'PNG',title:'Download chart image',onClick:()=>{ const svg=document.querySelector('#sc-chart svg'); if(!svg) return; IBBAExport.pngFromSVG(svg,'market_watch_'+S.ticker+'_'+S.metric+'_'+IBBAExport.stamp(),{bg:IBBAExport.resolveBg(document.getElementById('sc-chart')),title:co.name+' ('+S.ticker+') — '+title,sub:rangeLabel(),legend:[{name:S.ticker,color:'#FF5000'}]}); }}]));
+}
+function rangeSlice(ser){ if(!S.range||!ser.length) return ser; const last=ser[ser.length-1].ref_date; const d=new Date(last+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()-S.range); const s=d.toISOString().slice(0,10); return ser.filter(r=>r.ref_date>=s); }
+function rangeLabel(){ return ({30:'1M',90:'3M',180:'6M',365:'1Y',0:'all-time'})[S.range]||''; }
+
+// ── gráfico SVG (linha + faixas estatísticas) ────────────────────────────────
+function drawChart(pts,opt){
+  opt=opt||{}; const host=document.getElementById('sc-chart'); const tip=document.getElementById('sc-tip');
+  host.querySelectorAll('svg').forEach(s=>s.remove());
+  // largura mínima: durante um resize/pane escondido o host pode medir quase zero → o SVG
+  // é desenhado numa largura útil e o viewBox escala (evita <rect width="-15">)
+  const W=Math.max(host.clientWidth||0,320), H=host.clientHeight||300, padL=54, padR=16, padT=14, padB=26;
+  const dark=document.documentElement.classList.contains('dark');
+  const ns='http://www.w3.org/2000/svg'; const svg=document.createElementNS(ns,'svg'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const el=(t,a,txt)=>{ const e=document.createElementNS(ns,t); for(const k in a) e.setAttribute(k,a[k]); if(txt!=null) e.textContent=txt; svg.appendChild(e); return e; };
+  if(pts.length<2){ el('text',{x:W/2,y:H/2,'text-anchor':'middle',fill:dark?'#828892':'#737373','font-size':13,'font-family':'Inter,sans-serif'},'Not enough data for this range.'); host.appendChild(svg); return; }
+  const ys=pts.map(p=>p.y), st=stats(ys); let lo=Math.min(st.min, st.avg-st.sd), hi=Math.max(st.max, st.avg+st.sd); if(hi===lo){hi=lo+1;} const pad=(hi-lo)*0.08; lo-=pad; hi+=pad; if(lo<0&&st.min>=0) lo=0;
+  const x=i=>padL+(i/(pts.length-1))*(W-padL-padR), y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
+  const grid=dark?'#262b33':'#EEEAE3', axis=dark?'#828892':'#737373', fmt=opt.fmt||(v=>fNum(v,2));
+  // grade + eixo y
+  const ticks=5; for(let i=0;i<=ticks;i++){ const v=lo+(hi-lo)*i/ticks; el('line',{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:grid,'stroke-width':1}); el('text',{x:padL-6,y:y(v)+4,'text-anchor':'end',fill:axis,'font-size':10,'font-family':'Inter,sans-serif'},fmt(v)); }
+  // eixo x (≤ 8 rótulos)
+  const step=Math.max(1,Math.round(pts.length/7)); for(let i=0;i<pts.length;i+=step){ el('text',{x:x(i),y:H-8,'text-anchor':'middle',fill:axis,'font-size':10,'font-family':'Inter,sans-serif'},fDate(pts[i].d).replace(/, \d{4}$/,'')); }
+  // faixa ±1σ + linhas de referência
+  el('rect',{x:padL,y:y(st.avg+st.sd),width:W-padL-padR,height:Math.max(0,y(st.avg-st.sd)-y(st.avg+st.sd)),fill:'#FF5000',opacity:dark?.08:.06});
+  const ref=[[st.max,'max'],[st.avg+st.sd,'+1σ'],[st.avg,'avg'],[st.avg-st.sd,'−1σ'],[st.min,'min']];
+  for(const [v,l] of ref){ el('line',{x1:padL,x2:W-padR,y1:y(v),y2:y(v),stroke:axis,'stroke-width':1,'stroke-dasharray':l==='avg'?'6 4':'2 4',opacity:l==='avg'?.9:.55}); el('text',{x:W-padR-2,y:y(v)-3,'text-anchor':'end',fill:axis,'font-size':9,'font-family':'Inter,sans-serif'},l+' '+fmt(v)); }
+  // área + linha
+  const d=pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.y).toFixed(1)).join(' ');
+  el('path',{d:d+` L${x(pts.length-1).toFixed(1)} ${(H-padB).toFixed(1)} L${padL} ${(H-padB).toFixed(1)} Z`,fill:'#FF5000',opacity:.10});
+  el('path',{d,fill:'none',stroke:'#FF5000','stroke-width':2,'stroke-linejoin':'round'});
+  const last=pts[pts.length-1]; el('circle',{cx:x(pts.length-1),cy:y(last.y),r:3.5,fill:'#FF5000'});
+  el('text',{x:Math.min(x(pts.length-1)+6,W-padR-40),y:y(last.y)-8,fill:dark?'#e8eaed':'#111',
+    'font-size':11,'font-weight':700,'font-family':'Inter,sans-serif'},fmt(last.y));
+  // hover
+  const hov=el('line',{x1:0,x2:0,y1:padT,y2:H-padB,stroke:axis,'stroke-width':1,opacity:0});
+  const dot=el('circle',{cx:0,cy:0,r:3,fill:dark?'#e8eaed':'#111',opacity:0});
+  svg.addEventListener('mousemove',ev=>{ const r=svg.getBoundingClientRect(); const px=(ev.clientX-r.left)*(W/r.width); let i=Math.round((px-padL)/(W-padL-padR)*(pts.length-1)); i=Math.max(0,Math.min(pts.length-1,i));
+    hov.setAttribute('x1',x(i)); hov.setAttribute('x2',x(i)); hov.setAttribute('opacity',.5); dot.setAttribute('cx',x(i)); dot.setAttribute('cy',y(pts[i].y)); dot.setAttribute('opacity',1);
+    tip.style.display='block'; tip.style.left=(x(i)*(r.width/W))+'px'; tip.style.top=(y(pts[i].y)*(r.height/H))+'px'; tip.innerHTML=`<b>${fmt(pts[i].y)}</b> · ${esc(fDate(pts[i].d))}`; });
+  svg.addEventListener('mouseleave',()=>{ hov.setAttribute('opacity',0); dot.setAttribute('opacity',0); tip.style.display='none'; });
+  host.appendChild(svg);
+}
+
+// ══════════════════════ BUYBACKS ════════════════════════════════════════════
+async function renderBuybacks(){
+  const rows=await buybacksFor(S.company);
+  const active=rows.filter(r=>/andamento/i.test(r.status||''));
+  const host=document.getElementById('bb-active');
+  const today=new Date().toISOString().slice(0,10);
+  const pctOf=(q,c)=>(q&&c)?q/c*100:null;
+  host.innerHTML=active.length?active.map(r=>{ const co=S.byCo[r.company]||{}; const days=r.expires_on?Math.round((new Date(r.expires_on)-new Date(today))/86400000):null;
+    const start=r.decided_on?new Date(r.decided_on):null, end=r.expires_on?new Date(r.expires_on):null; const elapsed=(start&&end&&end>start)?Math.max(0,Math.min(1,(new Date(today)-start)/(end-start))):null;
+    const qty=(r.qty_on||0)+(r.qty_pn||0); const circ=(r.qty_circ_on||0)+(r.qty_circ_pn||0);
+    return `<div class="bb"><div class="h">${esc(co.name||r.company)} <span class="co">${esc(r.company)}</span> <span class="tag ${r.operation==='Venda'?'dim':'ok'}" style="margin-left:auto">${esc(r.operation==='Venda'?'Sale':'Buyback')}</span></div>
+      <div class="row"><span>Authorized</span><b>${fInt(qty)} ${r.qty_on&&r.qty_pn?'(ON+PN)':r.qty_pn?'PN':'ON'}</b></div>
+      <div class="row"><span>% of shares in circulation</span><b>${fPct(pctOf(qty,circ),1)}</b></div>
+      <div class="row"><span>Approved</span><b>${fDate(r.decided_on)}</b></div>
+      <div class="row"><span>Deadline</span><b>${fDate(r.expires_on)}${days!=null?` <span class="muted">(${days>=0?days+' days left':'expired'})</span>`:''}</b></div>
+      ${elapsed!=null?`<div class="prog" title="time elapsed in the program window"><i style="width:${(elapsed*100).toFixed(0)}%"></i></div>`:''}
+      ${r.purpose?`<div class="row"><span>Purpose</span><b style="text-align:right;font-weight:500">${esc(purposeEn(r.purpose))}</b></div>`:''}
+      ${r.brokers&&r.brokers.length?`<div class="row"><span>Brokers</span><b style="text-align:right;font-weight:500">${esc(r.brokers.map(b=>b.split(' ')[0]).join(', '))}</b></div>`:''}</div>`; }).join('')
+    :'<div class="empty">No active program.</div>';
+  document.getElementById('bb-active-sub').textContent=`${active.length} active · ${S.company==='all'?'all companies':(S.byCo[S.company]||{}).name}`;
+  let h='<thead><tr><th class="l">Company</th><th class="l">Approved</th><th class="l">Deadline</th><th class="l">Status</th><th class="l">Type</th><th>Qty ON</th><th>Qty PN</th><th>% circ.</th><th class="l">Purpose</th><th class="l">Brokers</th></tr></thead><tbody>';
+  for(const r of rows){ const co=S.byCo[r.company]||{}; const qty=(r.qty_on||0)+(r.qty_pn||0), circ=(r.qty_circ_on||0)+(r.qty_circ_pn||0);
+    h+=`<tr><td class="l tk">${esc(r.company)} <span class="co" style="font-weight:500">${esc(co.name||'')}</span></td><td class="l">${fDate(r.decided_on)}</td><td class="l">${fDate(r.expires_on)}</td>
+      <td class="l">${/andamento/i.test(r.status||'')?'<span class="tag ok">Active</span>':'<span class="tag">Closed</span>'}</td><td class="l">${esc(opEn(r.operation))}</td><td>${fInt(r.qty_on)}</td><td>${fInt(r.qty_pn)}</td><td>${fPct(pctOf(qty,circ),1)}</td>
+      <td class="l co" style="white-space:normal;max-width:260px">${esc(purposeEn(r.purpose))}</td><td class="l co" style="white-space:normal;max-width:260px">${esc((r.brokers||[]).map(b=>b.split(' ')[0]).join(', '))}</td></tr>`; }
+  document.getElementById('bb-table').innerHTML=rows.length?h+'</tbody>':'';
+  document.getElementById('bb-hist-sub').textContent=`${rows.length} programs`;
+  const tools=document.getElementById('bb-tools'); tools.innerHTML='';
+  if(window.IBBAExport&&rows.length) tools.appendChild(IBBAExport.toolbar([{label:'XLS',title:'Download programs (Excel)',onClick:()=>{
+    const aoa=[['Company','Approved','Deadline','Status','Type','Qty ON','Qty PN','Circulation ON','Circulation PN','Reason','Purpose','Brokers']].concat(rows.map(r=>[r.company,r.decided_on,r.expires_on,r.status,r.operation,r.qty_on,r.qty_pn,r.qty_circ_on,r.qty_circ_pn,r.reason,r.purpose,(r.brokers||[]).join('; ')]));
+    IBBAExport.xlsxFromAOA([{name:'buybacks',aoa}],'market_watch_buybacks_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
+}
+
+// A CVM publica estes campos em português, num conjunto FECHADO de opções — dá p/ traduzir sem IA e sem
+// perder informação. Texto LIVRE da empresa (o `reason` do programa, o título do documento) fica no
+// original: ali traduzir seria reescrever o que a companhia disse.
+const _key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim().replace(/\.$/,'');
+const PURPOSE_EN={'AS ACOES PODERAO SER CANCELADAS':'Shares may be cancelled','AS ACOES VAO FICAR EM TESOURARIA':'Shares will be held in treasury'};
+const OP_EN={'COMPRA':'Buy','VENDA':'Sell'};
+const CAT_EN={'FATO RELEVANTE':'Material fact','COMUNICADO AO MERCADO':'Market announcement','OUTROS COMUNICADOS AO MERCADO':'Other market announcement',
+  'ATA REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes','ATA DE REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes',
+  'ATA ASSEMBLEIA GERAL ORDINARIA':'AGM minutes','ATA ASSEMBLEIA GERAL EXTRAORDINARIA':'EGM minutes','ATA DE ASSEMBLEIA GERAL EXTRAORDINARIA':'EGM minutes',
+  'DADOS FINANCEIROS PRESS RELEASE':'Earnings press release','APRESENTACAO A ANALISTAS AGENTES MERCADO':'Analyst / investor presentation',
+  'AVISO AOS ACIONISTAS':'Notice to shareholders','AVISO AOS DEBENTURISTAS':'Notice to debenture holders','CALENDARIO DE EVENTOS CORPORATIVOS':'Corporate events calendar',
+  'POLITICA DE NEGOCIACAO':'Share trading policy','ESTATUTO SOCIAL':'Bylaws','FORMULARIO DE REFERENCIA':'Reference Form (FRE)','INFORMACOES TRIMESTRAIS':'Quarterly financials (ITR)',
+  'DEMONSTRACOES FINANCEIRAS PADRONIZADAS':'Annual financials (DFP)','ESCLARECIMENTOS SOBRE CONSULTAS CVM BOVESPA':'Reply to a CVM/B3 query',
+  'ESCLARECIMENTOS SOBRE CONSULTAS CVM B3':'Reply to a CVM/B3 query','FORMULARIO DE INFORMACOES TRIMESTRAIS':'Quarterly financials (ITR)',
+  'RELATORIO ANUAL':'Annual report','ACORDO DE ACIONISTAS':'Shareholders agreement','LAUDO DE AVALIACAO':'Valuation report'};
+// desconhecido → devolve o original (nunca esconde a informação)
+const purposeEn=v=>v?(PURPOSE_EN[_key(v)]||String(v).toLowerCase()):'';
+const opEn=v=>v?(OP_EN[_key(v)]||v):'';
+const catEn=v=>v?(CAT_EN[_key(v)]||v):'';
+
+// ══════════════════════ INSIDERS ════════════════════════════════════════════
+const GROUP_EN={'Controlador ou Vinculado':'Controlling shareholder','Conselho de Administração ou Vinculado':'Board of directors','Diretor ou Vinculado':'Executive officers','Conselho Fiscal ou Vinculado':'Fiscal council','Órgão Estatutário ou Vinculado':'Statutory committees'};
+const MOVE_EN={'Compra à vista':'Buy','Venda à vista':'Sell','Saldo Inicial':'Opening balance','Saldo Final':'Closing balance','Outras Entradas':'Other inflow','Outras Saídas':'Other outflow','Posse':'Took office','Desligamento/saída':'Left office','Ações de plano de remuneração':'Compensation plan shares','Units de plano de remuneração':'Compensation plan units','Desdobramento/bonificação':'Split / bonus','Grupamento':'Reverse split','Contratação de empréstimo (locador)':'Loan (lender)','Devolução de empréstimo (locador)':'Loan returned (lender)','Contratação de empréstimo (locatário)':'Loan (borrower)','Devolução de empréstimo (locatário)':'Loan returned (borrower)','Doação':'Donation','Herança':'Inheritance','Exercício de opção':'Option exercise'};
+const gEn=g=>GROUP_EN[g]||(g||'—'); const mEn=m=>MOVE_EN[m]||(m||'—');
+const isTrade=r=>/compra|venda/i.test(r.move_type||'');
+async function renderInsiders(){
+  const rows=await insidersFor(S.company);
+  // resumo 12 meses: compras/vendas por empresa × grupo
+  const from=new Date(); from.setMonth(from.getMonth()-12); const fromS=from.toISOString().slice(0,7)+'-01';
+  const agg={};
+  for(const r of rows){ if(!isTrade(r)||r.ref_month<fromS) continue; const k=r.company+'|'+(r.group_type||''); const a=agg[k]||(agg[k]={company:r.company,group:r.group_type,buyQ:0,buyV:0,sellQ:0,sellV:0,n:0,last:null});
+    const q=r.qty||0, v=r.volume||0; if(/compra/i.test(r.move_type)){a.buyQ+=q;a.buyV+=v;} else {a.sellQ+=q;a.sellV+=v;} a.n++; if(!a.last||(r.move_date||'')>a.last) a.last=r.move_date; }
+  const sum=Object.values(agg).sort((a,b)=>a.company.localeCompare(b.company)||(b.buyV+b.sellV)-(a.buyV+a.sellV));
+  let h='<thead><tr><th class="l">Company</th><th class="l">Group</th><th>Buys (shares)</th><th>Buys (R$ mn)</th><th>Sells (shares)</th><th>Sells (R$ mn)</th><th>Net (shares)</th><th>Trades</th><th class="l">Last trade</th></tr></thead><tbody>';
+  for(const a of sum){ const net=a.buyQ-a.sellQ; h+=`<tr><td class="l tk">${esc(a.company)}</td><td class="l">${esc(gEn(a.group))}</td><td>${fInt(a.buyQ)}</td><td>${fMn(a.buyV)}</td><td>${fInt(a.sellQ)}</td><td>${fMn(a.sellV)}</td><td class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fInt(net)}</td><td>${a.n}</td><td class="l co">${fDate(a.last)}</td></tr>`; }
+  document.getElementById('in-summary').innerHTML=sum.length?h+'</tbody>':'';
+  document.getElementById('in-sum-sub').textContent=sum.length?`${sum.length} group${sum.length>1?'s':''} with trades since ${fDate(fromS)}`:'No buys or sells reported in the last 12 months';
+  // log
+  let list=rows.filter(r=>S.inFilter==='trades'?isTrade(r):S.inFilter==='balances'?r.is_balance:!r.is_balance);
+  list=list.slice().sort((a,b)=>((b.move_date||b.ref_month)+'').localeCompare((a.move_date||a.ref_month)+''));
+  let g='<thead><tr><th class="l">Date</th><th class="l">Company</th><th class="l">Group</th><th class="l">Entity</th><th class="l">Movement</th><th class="l">Asset</th><th>Quantity</th><th>Price (R$)</th><th>Volume (R$)</th><th class="l">Broker</th></tr></thead><tbody>';
+  for(const r of list.slice(0,800)){ const buy=/compra/i.test(r.move_type||''), sell=/venda/i.test(r.move_type||'');
+    g+=`<tr><td class="l">${fDate(r.move_date||r.ref_month)}${r.move_date?'':' <span class="muted">(month)</span>'}</td><td class="l tk">${esc(r.company)}</td><td class="l">${esc(gEn(r.group_type))}</td><td class="l co">${esc(r.entity_type||'')}</td>
+      <td class="l"><span class="${buy?'pos':sell?'neg':''}">${esc(mEn(r.move_type))}</span>${r.move_desc?` <span class="muted">${esc(r.move_desc)}</span>`:''}</td><td class="l">${esc(r.asset_class||r.asset_type||'')}</td>
+      <td>${fInt(r.qty)}</td><td>${r.unit_price?fNum(r.unit_price,2):'—'}</td><td>${r.volume?fInt(r.volume):'—'}</td><td class="l co">${esc(r.broker||'')}</td></tr>`; }
+  document.getElementById('in-log').innerHTML=list.length?g+'</tbody>':'<tbody><tr><td class="l muted">Nothing to show.</td></tr></tbody>';
+  document.getElementById('in-log-sub').textContent=`${list.length} row${list.length!==1?'s':''}${list.length>800?' (showing 800)':''} · reported months: ${[...new Set(rows.map(r=>r.ref_month))].sort().slice(-1).map(m=>fDate(m).replace(/^(\w+) \d+, /,'$1 '))[0]||'—'} latest`;
+  const t1=document.getElementById('in-log-tools'); t1.innerHTML='';
+  if(window.IBBAExport&&list.length) t1.appendChild(IBBAExport.toolbar([{label:'XLS',title:'Download transactions (Excel)',onClick:()=>{
+    const aoa=[['Date','Month','Company','Group','Entity type','Entity','Movement','Description','Operation','Asset type','Asset class','Quantity','Unit price','Volume','Broker','Version']].concat(list.map(r=>[r.move_date,r.ref_month,r.company,r.group_type,r.entity_type,r.entity,r.move_type,r.move_desc,r.operation,r.asset_type,r.asset_class,r.qty,r.unit_price,r.volume,r.broker,r.doc_version]));
+    IBBAExport.xlsxFromAOA([{name:'insiders',aoa}],'market_watch_insiders_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
+}
+
+// ══════════════════════ FILINGS ═════════════════════════════════════════════
+async function renderFilings(){
+  const rows=await filingsFor(S.company);
+  const q=S.flQ.trim().toLowerCase();
+  const list=rows.filter(r=>(S.flFilter==='all'||r.is_newsworthy)&&(!q||(r.headline||'').toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q)));
+  const host=document.getElementById('fl-list');
+  host.innerHTML=list.length?list.map(r=>{ const co=S.byCo[r.company]||{}; const hot=/fato relevante/i.test(r.category||'');
+    const url=r.cvm_url&&/^https?:/i.test(r.cvm_url)?r.cvm_url:null;
+    // título REAL do documento (1ª linha do PDF, lido pelo robô) quando existe; senão a categoria
+    const label=r.doc_title||catEn(r.category)||r.headline;
+    const sub=[co.name||'', r.doc_title?catEn(r.category):'', r.doc_date?'document dated '+fDate(r.doc_date):'', r.flag?'('+r.flag+')':''].filter(Boolean).join(' · ');
+    return `<div class="fl-item${hot?' hot':''}"><span class="when">${esc(fDT(r.published_at))}</span><span class="who">${esc(r.company)}</span>
+      <span class="what">${url?`<a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(r.doc_excerpt||'')}">${esc(label)}</a>`:`<a>${esc(label)}</a>`}<span class="cat">${esc(sub)}</span></span>
+      <span>${hot?'<span class="tag hot">Material fact</span>':(r.is_newsworthy?'<span class="tag">Filing</span>':'<span class="tag dim">Routine</span>')}</span></div>`; }).join('')
+    :'<div class="empty">No filings match.</div>';
+  document.getElementById('fl-sub').textContent=`${list.length} of ${rows.length}`;
+}
+
+// ── fios ─────────────────────────────────────────────────────────────────────
+function wire(){
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+  document.getElementById('sc-metric').onclick=e=>{ const c=e.target.closest('.chip'); if(!c) return; S.metric=c.dataset.m; document.querySelectorAll('#sc-metric .chip').forEach(x=>x.classList.toggle('on',x===c)); renderShortCompany(); };
+  document.getElementById('sc-range').onclick=e=>{ const c=e.target.closest('.chip'); if(!c) return; S.range=+c.dataset.r; document.querySelectorAll('#sc-range .chip').forEach(x=>x.classList.toggle('on',x===c)); renderShortCompany(); };
+  document.getElementById('in-filter').onclick=e=>{ const c=e.target.closest('.chip'); if(!c) return; S.inFilter=c.dataset.f; document.querySelectorAll('#in-filter .chip').forEach(x=>x.classList.toggle('on',x===c)); renderInsiders(); };
+  document.getElementById('fl-filter').onclick=e=>{ const c=e.target.closest('.chip'); if(!c) return; S.flFilter=c.dataset.f; document.querySelectorAll('#fl-filter .chip').forEach(x=>x.classList.toggle('on',x===c)); renderFilings(); };
+  document.getElementById('fl-search').oninput=e=>{ S.flQ=e.target.value; renderFilings(); };
+  window.addEventListener('resize',()=>{ if(S.tab==='short'&&S.company!=='all') renderShortCompany(); });
+  window.addEventListener('ibba:theme',()=>{ if(S.tab==='short'&&S.company!=='all') renderShortCompany(); });
+  if(EMBED){
+    window.addEventListener('message',e=>{ if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
+      if(m.type==='mw:set'){ let changed=false;
+        const co=m.co==='all'?'all':(m.co&&S.byCo[m.co]?m.co:null);
+        if(co&&S.company!==co){ S.company=co; S.ticker=null; renderCompanyChips(); changed=true; }
+        const okTab=m.tab&&document.querySelector(`#tabs button[data-tab="${m.tab}"]`);
+        if(okTab&&S.tab!==m.tab) setTab(m.tab); else if(changed) render();
+        setTimeout(_postHeight,60); setTimeout(_postHeight,400); }
+      else if(m.type==='mw:theme'){ document.documentElement.classList.toggle('dark',m.theme==='dark'); if(S.tab==='short'&&S.company!=='all') renderShortCompany(); }
+      else if(m.type==='mw:measure') _postHeight();
+    });
+    // observa o CONTEÚDO (#app): o body fica preso à altura do iframe e não cresceria com ele
+    try{ const ro=new ResizeObserver(()=>_postHeight()); ro.observe(document.getElementById('app')); ro.observe(document.body); }catch(e){ setInterval(_postHeight,1500); }
+    // largura do iframe mudou (janela do pai): o observer nem sempre entrega a notificação de ENCOLHIMENTO
+    window.addEventListener('resize',()=>{ _postHeight(); setTimeout(_postHeight,150); });
+  }
+}
+function freshness(){
+  const last=S.latest.map(r=>r.ref_date).sort().pop();
+  document.getElementById('mw-fresh').textContent=last?`Lending data through ${fDate(last)}`:'';
+}
+
+// ── boot ─────────────────────────────────────────────────────────────────────
+;(async()=>{
+  wire();
+  if(document.documentElement.classList.contains('embed')) document.body.classList.add('embed');
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Portão: admin vê mesmo com a flag desligada; cliente só com a flag ON (rollout seguro).
+    let flagOn=false, isAdmin=false;
+    try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role',e); }
+    try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='market_watch'); if(row) flagOn=!!row.enabled; }catch(e){ console.warn('flags',e); }
+    if(!flagOn&&!isAdmin){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; return; }
+    await loadStatic(); renderCompanyChips(); freshness();
+    const p=new URLSearchParams(location.search); const co=p.get('co'); if(co&&S.byCo[co]){ S.company=co; renderCompanyChips(); }
+    const tab=p.get('tab'); if(tab&&document.querySelector(`#tabs button[data-tab="${tab}"]`)) S.tab=tab;
+    setTab(S.tab);
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    _post({type:'mw:ready'}); _postHeight();
+  }catch(e){ console.error(e);
+    const raw=String(e&&e.message||e); const notSetUp=/exist|not found|404|schema|PGRST|function/i.test(raw);
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:460px"><div style="font-size:32px">📉</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Market Watch unavailable</div>'
+      +'<div class="muted">'+esc(notSetUp?'Market Watch isn’t set up yet — the one-time database step (admin/supabase_market_watch.sql) hasn’t been run in Supabase.':raw)+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Back to home</a></div>'; }
+})();
+</script>
+</body>
+</html>

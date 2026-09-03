@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Data &amp; Glossary</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/topnav.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;--amber:#b45309;
+  --bg:#EBE8E2;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.06);--rule:#EEEAE3;--tint:#F7F4EE;
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);--rule:#262b33;--tint:#20252c;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+[hidden]{display:none!important}
+.splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);z-index:2000;color:var(--gray-mid);}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{margin-top:8px;font:600 12px var(--font);color:var(--orange);text-decoration:none;border:1px solid var(--border);padding:8px 14px;border-radius:8px;}
+#app{flex:1;display:flex;flex-direction:column;min-height:0;padding:14px 20px 26px;gap:12px;max-width:1240px;width:100%;margin:0 auto;}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.title{font-size:21px;font-weight:700;letter-spacing:-.01em;}
+.title small{display:block;font-size:11.5px;font-weight:500;color:var(--gray-mid);margin-top:2px;}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);}
+.seg button{font:600 12px var(--font);border:none;background:none;color:var(--gray-mid);padding:7px 15px;cursor:pointer;}
+.seg button.on{background:var(--black);color:var(--white);}
+.right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--rule);flex-wrap:wrap;}
+.card-title{font-size:12.5px;font-weight:700;letter-spacing:.02em;}
+.card-sub{font-size:11px;color:var(--gray-mid);font-weight:500;}
+.card-body{padding:12px 14px;}
+.lede{font-size:13px;color:var(--gray-dark);line-height:1.55;max-width:80ch;}
+table.data{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.data th{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+table.data td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;}
+table.data tr:last-child td{border-bottom:none;}
+table.data td.name{font-weight:700;white-space:nowrap;}
+table.data td.desc{color:var(--gray-dark);max-width:420px;}
+table.data td.n{white-space:nowrap;font-variant-numeric:tabular-nums;}
+td.sec-h{background:var(--tint);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid);padding:7px 10px;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--gray-mid);}
+.dot.green{background:var(--green);}.dot.amber{background:var(--amber);}.dot.red{background:var(--red);}
+.st{font-size:11px;font-weight:600;}
+.st.green{color:var(--green);}.st.amber{color:var(--amber);}.st.red{color:var(--red);}.st.grey{color:var(--gray-mid);}
+.tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:2px 6px;border:1px solid var(--rule);color:var(--gray-mid);background:var(--tint);margin-left:6px;}
+.tbl-wrap{overflow:auto;}
+.foot{font-size:10.5px;color:var(--gray-mid);line-height:1.5;padding:10px 14px;border-top:1px solid var(--rule);}
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gray-dark);border:1px solid var(--border);background:var(--card);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;}
+.chip.on{background:var(--black);color:var(--white);border-color:var(--black);}
+.search{font:500 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--black);border-radius:8px;padding:6px 10px;min-width:220px;}
+.gl-sec{margin-bottom:14px;}
+.gl-sec h3{font-size:13px;font-weight:700;padding:10px 14px 4px;}
+.gl-sec .intro{font-size:12px;color:var(--gray-mid);padding:0 14px 8px;max-width:90ch;}
+.where{font-size:11px;color:var(--orange);text-decoration:none;font-weight:600;white-space:nowrap;}
+.where:hover{text-decoration:underline;}
+.empty{padding:30px;text-align:center;color:var(--gray-mid);font-size:13px;}
+mark{background:rgba(255,80,0,.18);color:inherit;border-radius:2px;padding:0 1px;}
+@media(max-width:700px){#app{padding:10px 10px 18px;}.title{font-size:17px;}table.data td.desc{max-width:none;}}
+</style>
+</head>
+<body>
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading…</div></div>
+<div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
+  <div class="muted" style="max-width:380px">This section is not enabled for your account.</div>
+  <a class="hbtn" href="/index.html">← Back to home</a></div>
+
+<div id="app" hidden>
+  <div class="top">
+    <div class="title">Data &amp; Glossary<small>Where every number on this dashboard comes from — how often it updates, when it last did, and what each indicator means</small></div>
+    <div class="seg" id="tabs"><button data-tab="sources" class="on">Sources &amp; freshness</button><button data-tab="glossary">Glossary</button></div>
+    <div class="right" id="right-tools"></div>
+  </div>
+
+  <div id="pane-sources" class="card">
+    <div class="card-head"><span class="card-title">Data sources</span><span class="card-sub" id="src-sub"></span></div>
+    <div class="card-body"><p class="lede">This table is written by the same robot that monitors our data pipeline, including the sources that are late or waiting for the next release. "Last data" is the most recent period in the database (monthly sources) or the last refresh (live feeds). Green = on schedule, amber = waiting for the next release, red = overdue, grey = no reading.</p></div>
+    <div class="tbl-wrap"><table class="data" id="src-table"></table></div>
+    <div class="foot" id="src-foot"></div>
+  </div>
+
+  <div id="pane-glossary" class="card" hidden>
+    <div class="card-head"><span class="card-title">Glossary of indicators</span><span class="card-sub" id="gl-sub"></span>
+      <div class="right"><div class="chips" id="gl-chips"></div><input class="search" id="gl-search" placeholder="Search term, source or description…"/></div></div>
+    <div id="gl-body"></div>
+    <div class="foot">Unit and frequency are those of the source. "Where" opens the page of the dashboard that shows the indicator. Prices from S&amp;P Global Platts and Fastmarkets are subscription assessments displayed under our licence; official statistics come from the Brazilian government (MDIC/Comex Stat, Central Bank), industry associations (Aço Brasil, INDA, Ibá, Empapel), B3 and the CVM.</div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){ const {data,error}=(args===undefined)?await sbAuth.rpc(name):await sbAuth.rpc(name,args); if(error) throw new Error(name+': '+(error.message||error)); return data; }
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const L='en-US';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fPeriod(p){ if(!p) return '—'; const m=/^(\d{4})-(\d{2})$/.exec(p); if(m) return MON[+m[2]-1]+' '+m[1]; return p; }
+function fAgo(iso){ if(!iso) return ''; const s=(Date.now()-new Date(iso))/1000; if(s<3600) return Math.round(s/60)+' min ago'; if(s<86400) return Math.round(s/3600)+' h ago'; return Math.round(s/86400)+' d ago'; }
+const S={tab:'sources', glossary:null, glSec:'all', glQ:''};
+const SEC_LABEL={steel:'Steel & Mining', pulp:'Pulp & Paper', live:'Live feeds (prices, news, market data)'};
+const ST_TXT={green:'On schedule',amber:'Waiting for release',red:'Overdue',grey:'No reading'};
+
+async function renderSources(){
+  let rows=[];
+  try{ rows=await rpc('get_data_source_status')||[]; }catch(e){ console.warn(e); }
+  const tbl=document.getElementById('src-table');
+  if(!rows.length){ tbl.innerHTML=''; document.getElementById('src-foot').innerHTML='<div class="empty">The freshness table has not been published yet.</div>'; return; }
+  let h='<thead><tr><th>Source</th><th>What it is</th><th>Expected cadence</th><th>Last data</th><th>Status</th></tr></thead><tbody>';
+  let cur=null;
+  for(const r of rows){
+    if(r.sector!==cur){ cur=r.sector; h+=`<tr><td class="sec-h" colspan="5">${esc(SEC_LABEL[cur]||cur||'')}</td></tr>`; }
+    const last = r.cadence==='monthly' ? fPeriod(r.last_period) : (r.last_period||'—');
+    h+=`<tr><td class="name"><span class="dot ${esc(r.state)}"></span>${esc(r.label)}${r.auto?'':'<span class="tag" title="Entered by the team from the source">manual</span>'}</td>
+      <td class="desc">${esc(r.client_desc||'')}<div class="muted" style="font-size:11px;margin-top:3px">${esc(r.how_pulled||'')}</div></td>
+      <td class="desc" style="max-width:260px">${esc(r.client_cadence||'')}</td>
+      <td class="n"><b>${esc(last)}</b>${r.cadence==='monthly'&&r.next_expected?`<div class="muted" style="font-size:11px">next: ${esc(fPeriod(r.next_expected))}</div>`:''}</td>
+      <td class="n"><span class="st ${esc(r.state)}">${esc(ST_TXT[r.state]||r.state)}</span><div class="muted" style="font-size:11px">${esc(r.status_text||'')}</div></td></tr>`;
+  }
+  tbl.innerHTML=h+'</tbody>';
+  const checked=rows.map(r=>r.checked_at).filter(Boolean).sort().pop();
+  document.getElementById('src-sub').textContent=`${rows.length} sources · checked ${fAgo(checked)}`;
+  const g=rows.filter(r=>r.state==='green').length, a=rows.filter(r=>r.state==='amber').length, rd=rows.filter(r=>r.state==='red').length;
+  document.getElementById('src-foot').innerHTML=`${g} on schedule · ${a} waiting · ${rd} overdue. Monthly sources are considered on schedule until the source's usual publication window has passed; "manual" sources are entered by the team from files the source does not publish through an API. Last check: ${checked?new Date(checked).toLocaleString(L,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'})+' (Brasília)':'—'}.`;
+}
+
+async function loadGlossary(){
+  if(S.glossary) return S.glossary;
+  const r=await fetch('/admin/glossary.json?v='+Date.now()); if(!r.ok) throw new Error('glossary.json HTTP '+r.status);
+  S.glossary=await r.json(); return S.glossary;
+}
+function hl(s,q){ if(!q) return esc(s); const i=String(s||'').toLowerCase().indexOf(q); if(i<0) return esc(s); return esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>'+esc(s.slice(i+q.length)); }
+async function renderGlossary(){
+  const g=await loadGlossary();
+  const chips=document.getElementById('gl-chips');
+  if(!chips.children.length){
+    const mk=(id,label)=>{ const c=document.createElement('span'); c.className='chip'+(S.glSec===id?' on':''); c.dataset.id=id; c.textContent=label; c.onclick=()=>{ S.glSec=id; chips.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c)); renderGlossary(); }; chips.appendChild(c); };
+    mk('all','All'); g.sections.forEach(s=>mk(s.id,s.title));
+  }
+  const q=S.glQ.trim().toLowerCase();
+  let total=0, shown=0, html='';
+  for(const sec of g.sections){
+    total+=sec.items.length;
+    if(S.glSec!=='all'&&S.glSec!==sec.id) continue;
+    const items=sec.items.filter(it=>!q||[it.term,it.desc,it.source,it.unit].join(' ').toLowerCase().includes(q));
+    if(!items.length) continue;
+    shown+=items.length;
+    html+=`<div class="gl-sec"><h3>${esc(sec.title)}</h3>${sec.intro?`<div class="intro">${esc(sec.intro)}</div>`:''}
+      <div class="tbl-wrap"><table class="data"><thead><tr><th>Indicator</th><th>Unit</th><th>Frequency</th><th>Source</th><th>What it is · how we use it</th><th>Where</th></tr></thead><tbody>`;
+    for(const it of items){
+      html+=`<tr><td class="name" style="white-space:normal;min-width:180px">${hl(it.term,q)}</td><td class="n">${esc(it.unit||'—')}</td><td class="n">${esc(it.freq||'—')}</td><td>${hl(it.source||'',q)}</td><td class="desc">${hl(it.desc||'',q)}</td><td>${it.where?`<a class="where" href="${esc(it.where)}">Open →</a>`:''}</td></tr>`;
+    }
+    html+='</tbody></table></div></div>';
+  }
+  document.getElementById('gl-body').innerHTML=html||'<div class="empty">No indicator matches.</div>';
+  document.getElementById('gl-sub').textContent=`${shown} of ${total} indicators`;
+}
+
+function setTab(t){ S.tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.getElementById('pane-sources').hidden=(t!=='sources'); document.getElementById('pane-glossary').hidden=(t!=='glossary');
+  (t==='sources'?renderSources():renderGlossary()).catch(e=>console.error(e)); }
+
+;(async()=>{
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+  document.getElementById('gl-search').oninput=e=>{ S.glQ=e.target.value; renderGlossary(); };
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    let flagOn=false, isAdmin=false;
+    try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){}
+    try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='data_page'); if(row) flagOn=!!row.enabled; }catch(e){}
+    if(!flagOn&&!isAdmin){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; return; }
+    const p=new URLSearchParams(location.search); if(p.get('tab')==='glossary') S.tab='glossary';
+    if(p.get('q')){ S.glQ=p.get('q'); document.getElementById('gl-search').value=S.glQ; }
+    setTab(S.tab);
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+  }catch(e){ console.error(e);
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:460px"><div style="font-size:32px">📚</div><div style="font-weight:700;margin:8px 0 4px">Data page unavailable</div><div class="muted">'+esc(String(e&&e.message||e))+'</div><a class="hbtn" href="/index.html" style="margin-top:12px">← Back to home</a></div>'; }
+})();
+</script>
+</body>
+</html>

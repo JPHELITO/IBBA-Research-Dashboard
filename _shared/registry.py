@@ -133,15 +133,82 @@ REGISTRY: list[dict] = [
          db="supabase", table="news_articles", cadence="live", fresh_col="found_at",
          how_pulled="pipeline", confidence="high", auto=True, stale_min=360,
          note="RSS+sitemaps+scrapers+Playwright. Auto-cura. Coluna de frescor = found_at."),
+    dict(key="market_watch", label="Market Watch (aluguel B3 · recompras/insiders/float CVM · comunicados)", sector="live",
+         db="supabase", table="mw_short_interest", cadence="live", fresh_col="updated_at",
+         how_pulled="mixed", confidence="medium", auto=True, stale_min=2880,
+         note="_shared/market_watch.py + update_market_watch.yml. Aluguel: API do BDI (últimos 21 dias úteis) "
+              "+ PDF diário do capítulo p/ histórico (desde dez/2025). CVM dados abertos: recompra (diário), "
+              "VLMO insiders (a CVM reatualiza semanalmente), FRE free float. Comunicados: Plantão de Notícias "
+              "da B3 (tempo real) com link do documento na CVM. Tudo público, sem login."),
     dict(key="b3_calendar", label="Cronograma de earnings (B3)", sector="live",
          db="supabase", table="exec_calendar_events", cadence="live",
          fresh_col="updated_at", how_pulled="site_scrape", confidence="medium",
-         auto=True, stale_min=4320,
+         auto=True, stale_min=64800,
+         # 45 dias: o updated_at só muda quando a B3 muda uma DATA (~mensal); o robô checa todo
+         # dia. Com 3 dias (valor antigo) a fonte aparecia PARADA na página Data sem estar.
          note="Datas previstas de entrega de ITR/DFP das 7 empresas B3 da cobertura. "
               "A B3 não declara frequência; observado ~mensal (dia ~5). O robô checa "
               "1×/dia e nunca sobrescreve evento cadastrado à mão. CSN e Aura não "
               "estão na fonte (segmento tradicional / BDR) e seguem manuais."),
 ]
+
+# ── texto p/ o CLIENTE (página "Data" da dashboard — inglês, sem jargão interno) ────────
+# key → (label, o que é / de onde vem, cadência esperada). O robô status_digest.py --publish
+# leva isto junto com o estado (verde/amarelo/vermelho) p/ a tabela data_source_status.
+CLIENT_INFO = {
+    "secex_steel":       ("Brazil steel foreign trade (SECEX)",
+                          "Monthly imports and exports of steel products by country and product, from the Ministry of Development's Comex Stat database.",
+                          "Monthly · published in the first ~10 days of the month for the previous month"),
+    "import_prediction": ("Import model — orange line",
+                          "Our model of Brazilian imports of the 55 anti-dumping steel products from Korea and China, built on the same SECEX base.",
+                          "Monthly · together with SECEX"),
+    "iron_ore":          ("Iron ore exports (SECEX)",
+                          "Brazilian iron ore fines and pellet exports by destination, from Comex Stat.",
+                          "Monthly · first ~10 days of the month"),
+    "iabr":              ("Brazil steel output & sales (Aço Brasil / IABr)",
+                          "Crude steel production, domestic sales, apparent consumption and import penetration published by the Brazil Steel Institute.",
+                          "Monthly · 2nd–3rd week, for the previous month; retroactive revisions are incorporated"),
+    "pred_korea":        ("Korea customs — steel shipped to Brazil (black line)",
+                          "Korean export declarations of steel to Brazil (KITA) — the 'black line' that anticipates SECEX imports.",
+                          "Monthly · after month-end, entered by the team"),
+    "pred_china":        ("China customs — steel shipped to Brazil (black line)",
+                          "Chinese export declarations of steel (HS 72) to Brazil from the General Administration of Customs.",
+                          "Monthly · ~20th of the following month, entered by the team"),
+    "inda":              ("Flat steel distributors (INDA)",
+                          "Distributor purchases, sales and inventories of flat steel, from the In Data report of the distributors' association.",
+                          "Monthly · mid-month, ~2 months after the reference month"),
+    "pulp_secex":        ("Brazil pulp exports by port (SECEX)",
+                          "Monthly pulp export volume and revenue by port of shipment, from Comex Stat (17 tariff lines).",
+                          "Monthly · first ~12 days of the month"),
+    "iba_paper":         ("Brazil paper statistics (IBÁ)",
+                          "Paper production, sales, imports, exports and apparent consumption from the Brazilian Tree Industry monthly report.",
+                          "Monthly · ~2 months after the reference month"),
+    "empapel":           ("Corrugated board shipments (Empapel)",
+                          "Corrugated packaging shipments (IBPO index) — the preliminary figure comes ~mid-month and is revised to the official number.",
+                          "Monthly · preliminary ~15th, official the following month"),
+    "gacc":              ("China woodchip imports (GACC)",
+                          "Chinese customs imports of hardwood and softwood woodchips by origin — a read on pulp fibre demand.",
+                          "Monthly · ~20th of the following month"),
+    "quotes":            ("Share prices",
+                          "Prices of the covered companies, peers and indices (B3, NYSE, Santiago, Mexico) from Yahoo Finance.",
+                          "Continuous · ~5 minutes during trading hours"),
+    "commodities":       ("Commodity prices",
+                          "Iron ore, steel, coal, pulp, copper, gold, oil and aluminium — S&P Platts, Fastmarkets, SGX/LME (via Sina) and Yahoo Finance.",
+                          "Continuous · Platts/Yahoo intraday; Fastmarkets pulp weekly"),
+    "macro":             ("Macro & FX",
+                          "Exchange rates and US yields (Yahoo Finance) plus Selic, CDI, IPCA and GDP from the Central Bank of Brazil.",
+                          "Continuous · a few times a day"),
+    "news":              ("News Hunter",
+                          "Headlines from the Brazilian and international press, sector publications, Platts and Fastmarkets, classified by our AI take.",
+                          "Continuous · every ~5 minutes"),
+    "b3_calendar":       ("Earnings calendar (B3)",
+                          "Expected filing dates of quarterly and annual results from B3's corporate events schedule.",
+                          "Daily check · B3 updates roughly monthly"),
+    "market_watch":      ("Market Watch (B3 & CVM)",
+                          "Securities lending (short interest), buyback programs, insider trading and official filings of the covered companies.",
+                          "Lending & filings every 30 min on business days; CVM datasets daily"),
+}
+
 
 # ── acessores ────────────────────────────────────────────────────────────────
 def _norm(s: dict) -> dict:
@@ -149,6 +216,11 @@ def _norm(s: dict) -> dict:
     s.setdefault("recipients", DEFAULT_RECIPIENTS)
     if s["cadence"] == "live":
         s.setdefault("fresh_col", "updated_at")   # quotes/commodities/macro; news usa found_at
+    ci = CLIENT_INFO.get(s["key"])
+    if ci:
+        s.setdefault("client_label", ci[0])
+        s.setdefault("client_desc", ci[1])
+        s.setdefault("client_cadence", ci[2])
     return s
 
 REGISTRY = [_norm(s) for s in REGISTRY]

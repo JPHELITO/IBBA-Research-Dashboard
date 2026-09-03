@@ -15,6 +15,7 @@ on:
   schedule:
     - cron: "0 11 * * 1"   # segunda, 11:00 UTC ≈ 08:00 BRT
     - cron: "0 11 * * 4"   # quinta
+    - cron: "30 12 * * *"  # TODO DIA 09:30 BRT: só publica o panorama p/ a página "Data" do cliente (sem e-mail)
 
 concurrency:
   group: status-digest
@@ -42,7 +43,12 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
-            if [ "${{ github.event.schedule }}" = "0 11 * * 1" ]; then MODE="digest"; else MODE="alert"; fi
+            case "${{ github.event.schedule }}" in
+              "0 11 * * 1")  MODE="digest" ;;
+              "30 12 * * *") MODE="publish" ;;
+              *)             MODE="alert" ;;
+            esac
           fi
           echo "Modo: $MODE"
-          python _shared/status_digest.py --$MODE
+          # digest/alert também publicam o panorama (a página Data fica no máximo 1 dia atrás)
+          if [ "$MODE" = "publish" ]; then python _shared/status_digest.py --publish; else python _shared/status_digest.py --$MODE --publish; fi
