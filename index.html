@@ -963,17 +963,23 @@ html.dark .cm-nohist{color:#79818F;}
    tempo (que era uma linha de 2px no rodapé) corre por baixo do nome ATIVO: o mesmo pixel
    informa onde você está E quanto falta para virar. `flex-wrap` porque 8 grupos não cabem
    numa linha em painel estreito — aí quebra em duas, sozinho. */
-.comm-tabs{flex:none;display:flex;flex-wrap:wrap;gap:1px 2px;padding:0 11px 5px;}
-.comm-tab{position:relative;overflow:hidden;border:none;background:none;cursor:pointer;
-  font:600 9.5px var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);
-  padding:3px 6px 5px;border-radius:5px;white-space:nowrap;transition:color .12s,background .12s;}
-.comm-tab:hover{color:var(--black);background:rgba(0,0,0,.045);}
-.comm-tab.on{color:var(--black);}
-.comm-tab .fill{position:absolute;left:6px;right:6px;bottom:1px;height:2px;border-radius:2px;
-  background:var(--border);}
-.comm-tab .fill i{display:block;height:100%;width:0;background:var(--orange);border-radius:2px;}
-.comm-tab.on .fill i{width:100%;}   /* sem animação (1 grupo só) o traço fica cheio */
-@keyframes commfill{from{width:0;}to{width:100%;}}
+/* As abas moram na LINHA DO TÍTULO (o título fixo "Commodities" saiu — quem nomeia o grupo é a
+   caixinha acesa). Isso devolveu a fileira inteira que elas ocupavam (~20px) para o gráfico dos
+   cartões. Medido a 1600px: painel 521px, os 8 nomes somam 369px e o lado direito 114px. */
+.comm-tabs{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px;}
+.comm-tab{position:relative;overflow:hidden;border:none;cursor:pointer;border-radius:5px;
+  background:rgba(0,0,0,.045);color:var(--gray-mid);
+  font:600 9px var(--font);letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 6px;white-space:nowrap;transition:color .12s,background .12s;}
+.comm-tab:hover{color:var(--black);background:rgba(0,0,0,.08);}
+.comm-tab.on{color:var(--black);background:rgba(255,80,0,.10);}
+.comm-tab .t{position:relative;}   /* o texto fica ACIMA do preenchimento */
+/* ⚠️ O preenchimento anima `transform`, NÃO `width`. Animar largura refaz o layout a cada
+   quadro — era isso que deixava o carregamento "travadão"; transform roda no compositor. */
+.comm-tab .fill{position:absolute;inset:0;transform:scaleX(0);transform-origin:left center;
+  background:rgba(255,80,0,.20);}
+.comm-tab.on .fill{transform:scaleX(1);}   /* sem animação (1 grupo só) a caixinha fica cheia */
+@keyframes commfill{from{transform:scaleX(0);}to{transform:scaleX(1);}}
 .kv-loading{padding:24px;text-align:center;color:var(--gray-mid);font-size:11px;}
 
 /* ── FOOTER: removido da home (2026-08-31). O CSS fica porque as OUTRAS paginas
@@ -1081,7 +1087,7 @@ html.dark .cm-nohist{color:#79818F;}
   .kv-row{padding:9px 13px;gap:8px;}
   .kv-name{font-size:12.5px;} .kv-value{font-size:13px;} .kv-change{font-size:11.5px;min-width:52px;}
   .kv-date{font-size:9.5px;} .kv-unit{font-size:9px;}
-  .comm-tab{font-size:11px;padding:4px 8px 6px;}
+  .comm-tab{font-size:11px;padding:4px 9px;}
 
   .footer{padding:14px 16px;}
   /* popover do heatmap ocupa a tela inteira (a lista de 2 colunas não cabe em 375px) */
@@ -1267,9 +1273,10 @@ html.dark .cm-hero{color:#8A93A2;}
 html.dark .cm-row.up{color:#4ADE80;}html.dark .cm-row.down{color:#F87171;}
 html.dark .cm-row.flat{color:#98A1AF;}
 html.dark .kv-badge.daily,html.dark .kv-badge.wk{background:rgba(255,255,255,.055);color:#79818F;}
-html.dark .comm-tab:hover{background:rgba(255,255,255,.06);}
-html.dark .comm-tab.on{color:#fff;}
-html.dark .comm-tab .fill{background:#1A1F28;}
+html.dark .comm-tab{background:rgba(255,255,255,.055);}
+html.dark .comm-tab:hover{background:rgba(255,255,255,.10);}
+html.dark .comm-tab.on{color:#fff;background:rgba(255,80,0,.14);}
+html.dark .comm-tab .fill{background:rgba(255,80,0,.26);}
 
 /* ── EVENTS ──────────────────────────────────────────────────────────────── */
 html.dark .ev-t{color:#DDE2EA;}
@@ -1517,7 +1524,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- COMMODITIES -->
   <div class="sec area-comm">
     <div class="sec-head">
-      <span class="sec-title" id="comm-title">Commodities</span>
+      <div class="comm-tabs" id="comm-tabs"></div>
       <div class="hm-head-right">
         <!-- o seletor D/WoW/MoM/YTD/YoY saiu: cada cartão mostra os 4 períodos de uma vez.
              O nome do grupo saiu daqui e virou a fileira de abas abaixo — agora quem diz
@@ -1526,7 +1533,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
         <span class="sec-meta" id="comm-meta">—</span>
       </div>
     </div>
-    <div class="comm-tabs" id="comm-tabs"></div>
     <div class="kv-list" id="comm-list">
       <div class="kv-loading">Loading commodities…</div>
     </div>
@@ -3554,11 +3560,11 @@ function _renderCommPage(){
     tabs.innerHTML=Array.from({length:n},(_,i)=>{
       const t=COMM_GROUPS[i].title||'';
       return `<button class="comm-tab ${i===_commPage?'on':''}" data-p="${i}" title="${_esc(t)}">`
-           + `${_esc(_commTabLabel(t))}<span class="fill"><i></i></span></button>`;
+           + `<span class="fill"></span><span class="t">${_esc(_commTabLabel(t))}</span></button>`;
     }).join('');
     // a barrinha de tempo corre por baixo do nome ATIVO (o mesmo pixel diz onde você está e
     // quanto falta p/ virar). Com um grupo só não há p/ onde virar: o traço fica cheio, parado.
-    const fill=tabs.querySelector('.comm-tab.on .fill i');
+    const fill=tabs.querySelector('.comm-tab.on .fill');
     if(fill && n>1){
       fill.style.animation='none'; void fill.offsetWidth;                 // reflow p/ reiniciar
       fill.style.animation=`commfill ${COMM_ROTATE_MS}ms linear forwards`;
@@ -3568,7 +3574,7 @@ function _renderCommPage(){
 }
 // Rótulo curto da aba: 8 grupos com o nome inteiro não cabem no painel. O nome completo fica
 // no `title` (hover). Grupo renomeado no /admin cai no derivado — nunca fica sem rótulo.
-const COMM_TAB_SHORT={'Iron Ore + Pellet':'Iron ore','Brand assessments':'Brands','Freight + HCC':'Freight',
+const COMM_TAB_SHORT={'Iron Ore + Pellet':'Iron','Brand assessments':'Brands','Freight + HCC':'Freight',
   'Forward Curve':'Curve','Steel':'Steel','Base & Precious Metals':'Metals','Steel + Other Ores':'Steel',
   'Pulp China (PIX)':'Pulp CN','Pulp Europe (PIX)':'Pulp EU'};
 function _commTabLabel(t){
@@ -3585,7 +3591,7 @@ function _commGoto(p){ const n=_commPageCount(); _commPage=((p%n)+n)%n; _renderC
 function _initCommCarousel(){
   const box=document.querySelector('.area-comm'); if(!box) return;
   box.addEventListener('click', e=>{ const d=e.target.closest('.comm-tab'); if(d) _commGoto(+d.dataset.p); });
-  const _fill=()=>box.querySelector('.comm-tab.on .fill i');
+  const _fill=()=>box.querySelector('.comm-tab.on .fill');
   box.addEventListener('mouseenter', ()=>{ const b=_fill(); if(b) b.style.animationPlayState='paused'; });
   box.addEventListener('mouseleave', ()=>{ const b=_fill(); if(b) b.style.animationPlayState='running'; });
 }
