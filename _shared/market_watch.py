@@ -894,6 +894,16 @@ def doc_title_excerpt(text: str, company_name: str = "", legal_names: list[str] 
     body_start = re.compile(
         r"^(Rio de Janeiro|S[ãa]o Paulo|Belo Horizonte|Porto Alegre|Curitiba|Bras[íi]lia|Jundia[íi]|Vit[óo]ria|Nova Lima)\s*[,–-]"
         r"|^[a-zà-ú]")
+    # ⚠️ Muitos documentos não têm título: a 1ª linha útil já é a FRASE DE ABERTURA da carta.
+    # Medido em produção: a da CSN era só a identificação legal ("(B3: CSNA3; NYSE: SID), em
+    # cumprimento ao disposto no artigo 157…") num FATO RELEVANTE, e a da Gerdau saía cortada no
+    # meio de uma lista. Manchete tem de ser RÓTULO; o conteúdo já vai no trecho (1.500 chars).
+    # Quando bate aqui, o documento fica sem título e o feed usa "{empresa} — {categoria}".
+    boiler = re.compile(
+        r"[(\[][“\"']?(Companhia|Emissora|Sociedade|Company)[”\"']?\s*(ou|or|[,)])"
+        r"|\(\s*(B3|BM&FBOVESPA|NYSE|NASDAQ|BOVESPA)\s*:"
+        r"|em (cumprimento|atendimento) a[o]?|nos termos d[aeo]"
+        r"|Lei n[ºo°]\s*6\.?404|Resolu[çc][ãa]o CVM n[ºo°]", re.I)
     norm = lambda s: re.sub(r"[^a-z0-9]+", "", _deaccent(s).lower())  # noqa: E731
     nm = norm(company_name) if company_name else ""
     nm_first = norm(company_name.split()[0]) if company_name else ""
@@ -923,10 +933,10 @@ def doc_title_excerpt(text: str, company_name: str = "", legal_names: list[str] 
                and re.match(r"^[a-zà-ú(“\"]", lines[j])):
             title += " " + lines[j]
             j += 1
-        if len(title) > 180:                      # corta em fronteira de palavra, nunca no meio ("mercad…")
-            cut = title[:177]
-            cut = cut[:cut.rfind(" ")] if " " in cut[100:] else cut
-            title = cut.rstrip(" ,;:") + "…"
+        # frase que NÃO cabe é fragmento, não título — e boilerplate jurídico não informa nada
+        if len(title) > 180 or boiler.search(title):
+            title = None
+            break
         break
     body = " ".join(lines[idx:])
     excerpt = body[:1500].strip() or None
