@@ -1,0 +1,732 @@
+CNPJ_Companhia;Nome_Companhia;Data_Referencia;Versao;Tipo_Empresa;Empresa;Tipo_Cargo;Tipo_Movimentacao;Descricao_Movimentacao;Tipo_Operacao;Tipo_Ativo;Caracteristica_Valor_Mobiliario;Intermediario;Data_Movimentacao;Quantidade;Preco_Unitario;Volume
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;94314;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;726534;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;5211;;
+33.592.510/0001-54;VALE S.A.;2026-01-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Venda à vista;;Débito;Ações;ON;Planner Corretora de Valores S.A.;2026-01-22;3600;84.0800000000;302688.0000000000
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;94314;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra;;Crédito;Opção de Venda;ADR;Bank CIC (Switzerland) Ltda;2026-02-18;25000;12.8459160000;321147.9000000000
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;726534;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;94314;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra;;Crédito;Opção de Venda;ADR;Bank CIC (Switzerland) Ltda;2026-02-18;25000;12.8459160000;321147.9000000000
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Outros;ADR;Bank CIC (Switzerland) Ltda;2026-02-18;32000;84.0628581250;2690011.4600000000
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;726534;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-02-01;2;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;154368;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;ADR;;;25000;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;SELL OPEN OPTIONS ON EQUITY MATURITY 180926;;;-25000;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;600000;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;156628;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1453068;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;200;;
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;41908;84.4800000000;3540387.8400000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;5024;84.4800000000;424427.5200000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;30907;84.4800000000;2611023.3600000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;3705;84.4800000000;312998.4000000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;29830;84.4800000000;2520038.4000000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;10302;84.4800000000;870312.9600000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;1235;84.4800000000;104332.8000000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;7475;84.4800000000;631488.0000000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Ações de plano de remuneração;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-03-03;727;84.4800000000;61416.9600000000
+33.592.510/0001-54;VALE S.A.;2026-03-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;3222;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;SELL OPEN OPTIONS ON EQUITY MATURITY 180926;;;-25000;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;62314;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;857647;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Ações;ON;Ágora Corretora de Títulos e Valores Mobiliários;2026-04-01;12990;83.0000000000;1078170.0000000000
+33.592.510/0001-54;VALE S.A.;2026-04-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;SELL OPEN OPTIONS ON EQUITY MATURITY 180926;;;-25000;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;62314;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;870637;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-05-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77184;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;SELL OPEN OPTIONS ON EQUITY MATURITY 180926;;;-25000;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;62314;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;XP Investimentos CTVM S.A.;2026-06-16;338;81.6700000000;27604.4600000000
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;BTG PACTUAL CTVM S.A.;2026-06-17;9;81.0188888889;729.1700000001
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Ações;ON;XP Investimentos CTVM S.A.;2026-06-16;200;81.8500000000;16370.0000000000
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Ações;ON;XP Investimentos CTVM S.A.;2026-06-16;5;81.8200000000;409.1000000000
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Ações;ON;XP Investimentos CTVM S.A.;2026-06-16;44;81.8300000000;3600.5200000000
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;870637;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-06-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;77282;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Opção de Venda;SELL OPEN OPTIONS ON EQUITY MATURITY 180926;;;-25000;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;91911TAH68  BONDS EMITIDOS PELA VALE OVERSEAS LTD;;;300000;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;62314;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;BTG PACTUAL CTVM S.A.;2026-07-01;1;78.0400000000;78.0400000000
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;BTG PACTUAL CTVM S.A.;2026-07-02;1;78.2300000000;78.2300000000
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;870637;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Debêntures;BRVALEDBS002;;;100;;
+33.592.510/0001-54;VALE S.A.;2026-07-01;1;Companhia;VALE S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1611;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1452043493;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;460251874;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;21435176;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;1066411;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-01-06;70000;3.7653428571;263573.9999970000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-01-13;50000;3.7553200000;187766.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-01-16;40000;3.7608500000;150434.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-01-23;30000;3.9162666667;117488.0000010000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-01-09;40000;3.7281000000;149124.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Venda à vista;;Débito;Ações;ON;-;2026-01-20;1;3.7300000000;3.7300000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;42517191;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;129534447;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;448844;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;446618;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Ações;ON;;2026-01-20;1;3.7300000000;3.7300000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;3163990;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;12711590;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;119581;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Units;KLBN11;;2026-01-01;85145;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Ações;ON;;2026-01-01;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Ações;PN;;2026-01-01;18;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Ações;PN;;2026-01-08;2;3.6800000000;7.3600000000
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;260601;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;465737;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;885;;
+89.637.490/0001-45;KLABIN S.A.;2026-01-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Venda à vista;;Débito;Ações;PN;;2026-01-12;22219;3.7700000000;83765.6300000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1452273492;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;460251874;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;21435176;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;1066411;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-02-12;20000;4.0977500000;81955.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-02-23;20000;4.0256000000;80512.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-02-20;20000;4.0291500000;80583.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-02-27;20000;4.1315500000;82631.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;42517190;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;129534447;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;448844;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;446618;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;3163993;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;12711606;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;204726;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desdobramento/bonificação;;Crédito;Ações;PN;;2026-02-26;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;205199;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;88464;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;66703;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;51586;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;52393;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;73754;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;11931;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Units de plano de remuneração;;Crédito;Units;KLBN11;;2026-02-26;18766;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;260601;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;443518;;
+89.637.490/0001-45;KLABIN S.A.;2026-02-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;885;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1452353492;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;460251874;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;21435176;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;1066411;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-03-06;40000;3.9350000000;157400.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;42517190;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;129534447;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;448844;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;446618;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;3163993;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;12711624;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;773522;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;Transferência de custódia;Crédito;Units;KLBN11;XP Investimentos;2026-03-20;104786;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;Partilha de bens;Débito;Units;KLBN11;;2026-03-26;50000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;Transferência de custódia;Débito;Units;KLBN11;Itaú;2026-03-20;104786;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;260601;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;443518;;
+89.637.490/0001-45;KLABIN S.A.;2026-03-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;885;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;;Saldo Inicial;;Crédito;Ações;ON;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;;Saldo Inicial;;Crédito;Ações;PN;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1392443490;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;345721378;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;19505959;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;742074;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27015120;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6753780;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;37221032;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;19551219;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;93052;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;566232;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;623923;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;1559;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;9416976;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;20139240;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;50348;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;275366;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;18977337;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3790803;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;14718814;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;36797;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;22675652;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1064946;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;2662;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;199;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;366;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1927359;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;156325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;222200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;389;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;64761;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;64761;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235975;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2492660;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;992691;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;18948;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;222200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;13158257;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;5818487;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;22675654;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1064950;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;2662;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055499;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800417;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800420;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800420;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;55550;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;617232;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;21196674;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;79713812;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;199284;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;494784;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235975;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;861213;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1701690;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;4253;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1130853;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2641738;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;6603;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;611649;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2423527;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;6057;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;707238;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1208135;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;3019;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;26441048;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;78496047;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;196239;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4586325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18345302;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;22000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4586325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18345302;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;22000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18919661;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;23435;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;100508230;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;243582190;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;2155861;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;787413;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Desligamento/saída;;Débito;Ações;ON;;2026-04-07;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Desligamento/saída;;Débito;Ações;PN;;2026-04-07;8;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;555940;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;3956349;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;CPR KLABIN - AGO/2035;;2026-04-07;497;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;82500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;459800;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;57080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;413320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;95651;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;11000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;305041;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;1;;2026-04-01;10827520;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;11337585;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1349854;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;58993;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6830483;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;629354;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;674404;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;29374;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1864930;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6633000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;219340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;18977337;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6831798;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;448844;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;Bond KLAB 7% 2049 (ISIN USA35155AB50);;2026-04-07;500000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;Bond KLAB 5.75% 2029 (ISIN USA35155AA77):;;2026-04-07;500000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1683103;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;2835470;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2223760;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;555940;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;591635;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;11792124;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2028387;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;5;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1111000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;4400000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;82500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;330000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;459800;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1839200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;57080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;228320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;413320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1653280;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;95651;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;382604;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;11000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;44000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;305041;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1220164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;10827520;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;43310080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;11337585;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;45350340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18919656;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1349854;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;5399416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;58993;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235972;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6830483;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27321932;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;629354;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2517416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;674404;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2697616;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;29374;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;117496;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1864930;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;7459720;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6633000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;26532000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;219340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;877360;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6831798;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27327192;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;448844;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1713522;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;5122955;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;13194377;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;222200;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;726539;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;827587;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;124958;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;140164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;566236;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;160645;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;318954;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;790991;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;120687;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;827587;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;3310371;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;174958;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;699834;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;140164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;560668;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;565966;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2263880;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;160645;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;642602;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1317518;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;318954;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE POSIÇÃO INICIAL DECLARADA EM DUPLICIDADE;Débito;Units;KLBN11;;2026-04-01;1811;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;Acordo judicial (partilha de bens);Débito;Units;KLBN11;Itaú Corretora;2026-04-02;184700;19.2600000000;3557322.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;975691;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;3902786;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;120687;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;482748;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Ações;PN;;2026-04-07;4;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Units;KLBN11;;2026-04-07;2093;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Units;KLBN11;;2026-04-07;48;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Ações;PN;;2026-04-01;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Units;KLBN11;;2026-04-07;1811;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Posse;;Crédito;Ações;PN;;2026-04-07;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;260601;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;443518;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Outros;CRA Klabin 05/2034;;;100;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;1584;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;84260;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;2646;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Ações;ON;;2026-04-01;1732;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1732;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-01;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DA POSIÇÃO ACIONÁRIA DEVIDO À REELEIÇÃO DA CONSELHEIRA;Débito;Ações;ON;;2026-04-01;64000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;88957;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1408;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;84260;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;337040;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2646;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;10584;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6928;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1392443490;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;345721378;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;19505959;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;742074;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;37221032;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;19551219;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;93052;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;566232;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;623923;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;1559;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;9416976;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;20139240;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;50348;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;275366;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;18977337;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3790803;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;14718814;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;36797;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;22675652;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1064946;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;2662;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;199;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;366;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1927359;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;156325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;222200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;389;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2492660;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;992691;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;18948;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;222200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055499;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800417;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800420;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3055500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800420;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;17000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;55550;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;617232;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;21196674;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;79713812;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;199284;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27015120;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6753780;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;494784;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235975;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;861213;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1701690;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;4253;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1130853;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2641738;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;6603;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;611649;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2423527;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;6057;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;707238;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1208135;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;3019;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;26441048;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;78496047;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;196239;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4586325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18345302;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;22000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4586325;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18345302;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;22000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18919661;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;23435;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;22675654;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1064950;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;2662;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;5818487;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;13158257;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;64761;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235975;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;64761;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Controlador ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Units;KLBN11;;2026-04-01;589;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;102467192;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;244064943;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;2378061;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;839119;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Desligamento/saída;;Débito;Ações;ON;;2026-04-07;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Desligamento/saída;;Débito;Ações;PN;;2026-04-07;8;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;555940;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;3956349;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;82500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;219340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;29374;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1864930;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6633000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;413320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;120687;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;629354;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;674404;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1683103;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6830483;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;58993;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1349854;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;10827520;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;11337585;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;6831798;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;305041;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;11000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;95651;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;57080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;459800;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;CPR KLABIN - AGO2035;;2026-04-07;497;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;18977337;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;448844;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;BOND KLAB 7 2049 ISIN USA35155AB50;;2026-04-07;500000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;BOND KLAB 575 2029 ISIN USA35155AA77;;2026-04-07;500000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;2;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Outros;ADR;;2026-04-07;2835470;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-07;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Entradas;Correção de posição;Crédito;Units;KLBN11;;2026-04-01;29374;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2223760;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;555940;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;3916349;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;15825397;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;82500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;330000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;219340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;877360;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;29374;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;117496;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1864930;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;7459720;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6633000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;26532000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;413320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1653280;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;120687;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;482748;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;629354;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2517416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;674404;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2697616;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1713522;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6800416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;28074;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6830483;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27321932;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;58993;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;235972;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1349854;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;5399416;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;4729914;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;18919656;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1111000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;4400000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;10827520;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;43310080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;11337585;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;45350340;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;6831798;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;27327192;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Outros;ADR;;2026-04-01;448844;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2028387;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;5;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;305041;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1220164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;11000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;44000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;95651;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;382604;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;57080;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;228320;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;459800;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1839200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;3163993;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;12711624;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;729285;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;975691;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;827587;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;174958;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;566236;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;160645;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;318954;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;140164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-01;4;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-01;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-01;1;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;CORREÇÃO DE POSIÇÃO;Crédito;Ações;PN;;2026-04-01;8;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;ACORDO JUDICIAL (PARTILHA DE BENS);Débito;Units;KLBN11;Itaú Corretora;2026-04-02;184700;19.2600000000;3557322.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;975691;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;3902786;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;827587;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;3310371;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;174958;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;699833;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;565966;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;2263879;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;160645;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;642601;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;1317518;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;318954;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;140164;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;560668;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Saídas;AJUSTE DE POSIÇÃO INICIAL DECLARADA EM DUPLICIDADE;Débito;Units;KLBN11;;2026-04-01;1811;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;260601;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;443518;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Outros;CRA KLABIN 052034;;;100;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;1584;;
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;SALDO INICIAL;Crédito;Ações;PN;;2026-04-01;3;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Ações;ON;;2026-04-01;1732;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;1732;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;84260;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Entradas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Crédito;Units;KLBN11;;2026-04-01;2646;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;88957;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;1408;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;6928;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DA POSIÇÃO ACIONÁRIA DEVIDO À REELEIÇÃO DA CONSELHEIRA;Débito;Ações;ON;;2026-04-01;64000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;84260;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;337040;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;ON;;2026-04-01;2646;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-04-01;2;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Outras Saídas;AJUSTE DE METODOLOGIA DE APRESENTAÇÃO DE FORMULÁRIO;Débito;Ações;PN;;2026-04-01;10584;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1208081570;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;39540364;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;568851;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;24162794;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 575 2029 ISIN USA35155AA77;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 7 2049 ISIN USA35155AB50;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;CPR KLABIN - AGO2035;;;497;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;60566476;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-06;23300;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;;2026-05-12;117500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;;2026-05-26;118400;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Ágora CTVM;2026-05-06;1147500;3.4858396514;4000000.9999815000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Ágora CTVM;2026-05-21;300400;3.3283355526;999832.0000010400
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Ágora CTVM;2026-05-29;294000;3.4016428571;1000082.9999874000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-26;541400;3.3730901367;1826191.0000093800
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-21;300900;3.3222964440;999678.9999996000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;;2026-05-22;301400;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;;2026-05-25;648500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-06;260000;3.5138076923;913589.9999980000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-07;40000;3.4400000000;137600.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-08;5600;3.4500000000;19320.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-12;12900;3.4000000000;43860.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-13;70000;3.3962714286;237739.0000020000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Santander CTVM;2026-05-14;100000;3.4200000000;342000.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-15;30000;3.3200000000;99600.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Santander CTVM;2026-05-15;40000;3.3200000000;132800.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-19;50000;3.2431000000;162155.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-20;50000;3.3300000000;166500.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-05-22;73800;3.3200000000;245016.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-11;17400;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-12;5900;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-13;2900;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-18;3000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-19;3000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;28;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;55815;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;3707009;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-06;25000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-06;100;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-22;308;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-18;10000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;212090;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;61447;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;57436;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;69446;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;52111;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;59395;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;37401;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Outras Entradas;AÇÕES ADQUIRIDAS NO ILP 2026;Crédito;Units;KLBN11;;2026-05-26;20978;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CTVM;2026-05-07;58700;17.0548112436;1001117.4199993200
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CTVM;2026-05-08;4700;17.2400000000;81028.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CTVM;2026-05-12;2500;17.1500000000;42875.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CTVM;2026-05-27;7500;17.0000000000;127500.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;106555;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;12;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Outros;CRA KLABIN 052034;;;100;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;90222;;
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-13;2398;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-19;2500;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-20;1200;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-05-25;1800;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Ações;PN;;2026-05-13;298;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Ações;ON;;2026-05-15;9000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-05-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Ações;PN;;2026-05-29;22000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1208081570;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;44042664;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;568851;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;24162794;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 575 2029 ISIN USA35155AA77;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 7 2049 ISIN USA35155AB50;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;CPR KLABIN - AGO2035;;;497;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;60621976;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Itaú Corretora de Valores S/A;2026-06-11;60000;3.3500000000;201000.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;28;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;55815;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;4239315;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-06-10;100;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CCTVM;2026-06-05;5000;17.2500000000;86250.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CCTVM;2026-06-05;5000;17.1500000000;85750.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Venda à vista;;Débito;Units;KLBN11;XP Investimentos CCTVM;2026-06-15;12000;17.3200000000;207840.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;115555;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;22310;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Outros;CRA KLABIN 052034;;;100;;
+89.637.490/0001-45;KLABIN S.A.;2026-06-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;98120;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;1208081570;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Controlador ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;0;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;44102664;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;568851;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;ADR;;;24162794;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 575 2029 ISIN USA35155AA77;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;BOND KLAB 7 2049 ISIN USA35155AB50;;;500000;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Outros;CPR KLABIN - AGO2035;;;497;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;60621976;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Santander Corretora de Câmbio e Valores Mobiliários S.A;2026-07-07;30000;3.4519333333;103557.9999990000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Ações;ON;Santander Corretora de Câmbio e Valores Mobiliários S.A;2026-07-14;36000;3.5100000000;126360.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Compra à vista;;Crédito;Units;KLBN11;;2026-07-15;41;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho de Administração ou Vinculado;Venda à vista;;Débito;Units;KLBN11;;2026-07-31;41;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;28;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;55815;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;4217415;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desligamento/saída;;Débito;Ações;ON;;2026-07-01;5;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desligamento/saída;;Débito;Ações;PN;;2026-07-01;44;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Diretor ou Vinculado;Desligamento/saída;;Débito;Units;KLBN11;;2026-07-01;985768;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;ON;;;115555;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Ações;PN;;;22310;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Outros;CRA KLABIN 052034;;;100;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Saldo Inicial;;Crédito;Units;KLBN11;;;98120;;
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Ações;PN;;2026-07-03;22001;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Compra à vista;;Crédito;Ações;PN;;2026-07-08;3000;0.0000000000;0.0000000000
+89.637.490/0001-45;KLABIN S.A.;2026-07-01;1;Companhia;KLABIN S.A.;Conselho Fiscal ou Vinculado;Venda à vista;;Débito;Ações;PN;;2026-07-02;22001;0.0000000000;0.0000000000

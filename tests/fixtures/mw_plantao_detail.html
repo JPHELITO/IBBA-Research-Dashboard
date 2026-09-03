@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Plantão de Notícias</title>
+    <script type="text/javascript" src="/PlantaoNoticias/ruxitagentjs_ICANVfgqru_10343260715123811.js" data-dtconfig="rid=RID_909507757|rpid=369975260|domain=b3.com.br|reportUrl=/PlantaoNoticias/rb_ea8d7b8f-040c-423b-b726-54310cab2c40|app=fd69ce40c52bd20e|cuc=kju5m9kg|owasp=1|mel=100000|featureHash=ICANVfgqru|dpvc=1|lastModification=1787924508740|tp=500,50,0|rdnt=1|uxrgce=1|srbbv=2|agentUri=/PlantaoNoticias/ruxitagentjs_ICANVfgqru_10343260715123811.js"></script><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat" />
+    <link rel="stylesheet" href="../../../../Template/css/foundation_plantao.css" />
+    <link rel="stylesheet" href="../../../../Template/css/jquery.ui.datepicker.css" />
+    <link rel="stylesheet" href="../../../../Template/css/app.css" />
+</head>
+<body id="body">
+    <div id="divContainerIframe">
+        <div class="contain-to-grid">
+            <nav class="top-bar" data-topbar role="navigation">
+                <ul class="left">
+                    <li class="show-for-large-up"><img src="../../../../Template/img/logo-b3.png" alt="B3" /></li>
+                </ul>
+                <ul class="title-area">
+                    <li class="name">
+                        <h1><a href="#" onclick="javascript: limpaFiltrosPesquisa();document.location.href='Index?agencia=18'" id="logo">Plantão de Notícias</a></h1>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div class="row">
+            <div class="large-12 columns">
+                <br />
+                <label>Selecione um ou mais critérios para realizar sua busca.</label>
+                <label id="texto30">Você pode realizar várias consultas, sempre dentro do intervalo máximo de até 30 dias:</label>
+                <br />
+            </div>
+
+            <form data-abide>
+                <div class="large-3 columns">
+                    <input type="text" id="txtPalavraChave" placeholder="Procurar por" maxlength="30">
+                </div>
+                <div class="large-2 columns">
+                    <input type="text" class="datepicker" placeholder="De" id="txtPeriodoDe" autocomplete="off">
+                </div>
+                <div class="large-2 columns" id="divPeriodoAte">
+                    <input type="text" class="datepicker" placeholder="Para" id="txtPeriodoAte" autocomplete="off">
+                </div>
+                <div class="large-3 columns">
+                    <button type="button" class="button" id="btnBuscar" onclick="pesquisarListaNoticias();" aria-label="Buscar">Buscar</button>
+                    &nbsp;
+                    <button type="button" class="button" id="btnLimpar" onclick="javascript: limpaFiltrosPesquisa();document.location.href='Index?agencia=18'" aria-label="Limpar filtro">Limpar</button>
+                </div>
+                <div class="large-1 columns">
+                    <div class="load" id="divload">
+                        <img src="../../../../Template/img/loading.gif" alt="">
+                    </div>
+                </div>
+                <div class="large-1 columns">
+                    <a href="#" onclick="mudarVisualizacao(1);" id="linkModoVisual" aria-label="">
+                        <img id="imgModoVisual" src="../../../../Template/img/baseline_view_module_black_18dp.png" alt="Visualização Card" />
+                    </a>
+                    <a href="#" onclick="mudarVisualizacao(2);" id="linkModoLista" aria-label="">
+                        <img id="imgModoLista" src="../../../../Template/img/baseline_list_black_18dp.png" alt="Visualização Lista" />
+                    </a>
+                </div>
+            </form>
+            <div class="large-12 columns">
+                <hr>
+                
+    <div class="row">
+        <div class="large-12 columns">
+
+            <h4>VALE (VALE-NM) - Outros Comunicados ao Mercado - 27/08/26</h4>
+            <br />
+            <pre id="conteudoDetalhe" style="width: auto;white-space: break-spaces;">VALE (VALE-NM) - Outros Comunicados ao Mercado - 27/08/26  
+ 
+https://www.rad.cvm.gov.br/ENETWEB/frmExibirArquivoIPEExterno.aspx?ID=1562150&amp;flnk
+ 
+(R) = Reapresentacao
+(C) = Documento Cancelado
+(N) = Norma / Notas</pre>
+        </div>
+    </div>
+
+<div class="row">
+    <div class="large-10 columns end" style="text-align: right">
+        <a role="button" id="btnVoltar" href="Index?agencia=18&busca=F" class="button">Visualizar Todas Notícias</a>
+    </div>
+</div>
+            </div>
+        </div>
+        <footer>
+            <div class="row">
+                <div class="large-6 columns">
+                    <ul class="inline-list links-footer">
+                        <li><a href="https://www.b3.com.br/pt_br/canais-de-atendimento/" target="_blank">Canais de Atendimento</a></li>
+                    </ul>
+                </div>
+
+                <div class="large-6 columns">
+                    <ul class="inline-list icones right sociais">
+                        <li><a target="_blank" href="https://www.glassdoor.com.br/Vis%C3%A3o-geral/Trabalhar-na-B3-EI_IE2251402.13%2c15.htm"><img alt="Glassdoor" src="../../../../Template/img/Logo_Glassdoor.png"></a></li>
+                        <li><a target="_blank" href="https://www.instagram.com/b3_oficial/"><img alt="Instagram" src="../../../../Template/img/ico-insta.png"></a></li>
+                        <li><a target="_blank" href="https://www.facebook.com/SomosB3/"><img alt="Facebook" src="../../../../Template/img/ico-facebook.png"></a></li>
+                        <li><a target="_blank" href="https://mobile.twitter.com/b3_oficial"><img alt="Twitter" src="../../../../Template/img/ico-twitter.png"></a></li>
+                        <li><a target="_blank" href="https://www.linkedin.com/company/16250509/"><img alt="Linkedin" src="../../../../Template/img/ico-linkedin.png"></a></li>
+                        <li><a target="_blank" href="https://www.youtube.com/user/bmfbovespa"><img alt="Youtube" src="../../../../Template/img/ico-youtube.png"></a></li>
+                    </ul>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script src="../../../../Template/Scripts/vendor/modernizr.js"></script>
+    <script src="../../../../Template/Scripts/vendor/jquery.js"></script>
+    <script src="../../../../Template/Scripts/vendor/jquery.ui.core.js"></script>
+    <script src="../../../../Template/Scripts/DataTable/datatables.min.js"></script>
+    <script src="../../../../Template/Scripts/vendor/jquery.ui.datepicker.js"></script>
+    <script src="../../../../Template/Scripts/vendor/jquery.ui.datepicker-pt-BR.js"></script>
+    <script src="../../../../Template/Scripts/foundation.min.js"></script>
+    <script src="../../../../Template/Scripts/foundation/foundation.topbar.js"></script>
+    <script src="../../../../Template/Scripts/responsive-tables.js"></script>
+    <script src="/PlantaoNoticias/Script/plantaoNoticia.min.js"></script>
+    <link href="/PlantaoNoticias/Script/layout.css" rel="stylesheet" />
+
+    <script>
+        $(document).ready(function () {
+            tratarHyperLynk();
+        });
+    </script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics-->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-99990786-5"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'UA-99990786-5');
+    </script>
+    
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a34f7d507eaecb34',t:'MTc4ODM4MzMwMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
