@@ -92,20 +92,6 @@ body{height:100vh;overflow:hidden;}
 #stage{width:1920px;height:calc((100vh - 68px) / var(--app-scale,1));flex:none;margin-top:12px;
   display:flex;flex-direction:column;overflow:hidden;
   transform:scale(var(--app-scale,1));transform-origin:top left;}
-/* ── What's new — faixa fina acima da grade (flag whats_new; conteúdo do /admin → Novidades) ── */
-.wn-bar{flex:none;display:flex;align-items:center;gap:12px;margin:0 12px 8px;padding:6px 12px 6px 10px;
-  background:var(--card,#fff);border:1px solid var(--rule,#E4E0D8);border-left:3px solid var(--orange);border-radius:8px;
-  font-size:11.5px;color:var(--black);min-height:32px;}
-.wn-bar.empty{display:none!important;}
-.wn-tag{flex:none;font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);}
-.wn-item{display:flex;align-items:baseline;gap:8px;min-width:0;}
-.wn-item b{white-space:nowrap;}
-.wn-item span{color:var(--gray-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wn-item a{color:var(--orange);font-weight:600;text-decoration:none;white-space:nowrap;}
-.wn-item a:hover{text-decoration:underline;}
-.wn-x{margin-left:auto;flex:none;border:none;background:none;color:var(--gray-mid);font-size:16px;line-height:1;cursor:pointer;padding:0 2px;}
-.wn-x:hover{color:var(--black);}
-html.dark .wn-bar{background:#1c2026;border-color:#2b3038;border-left-color:var(--orange);}
 
 /* ══ HEADER ════════════════════════════════════════════════════════════════ */
 .header{background:var(--black);flex:none;display:flex;align-items:center;
@@ -1345,8 +1331,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 <div id="stage">
 
-<!-- What's new: 1 linha por novidade não vista (get_changelog); some ao fechar (localStorage ibba_whatsnew_seen) -->
-<div class="wn-bar empty" id="wn-bar" data-flag="whats_new"><span class="wn-tag">New</span><div id="wn-items" style="display:flex;gap:18px;min-width:0;overflow:hidden"></div><button class="wn-x" id="wn-x" title="Dismiss" aria-label="Dismiss">×</button></div>
 
 <!-- HERO removido a pedido do usuario (2026-06-18) -->
 
@@ -1609,6 +1593,9 @@ function applyFlags(flags, isAdmin){
     document.head.appendChild(s);
   }
   const on = {}; flags.forEach(f => { on[f.key] = f.enabled; });
+  // o menu (topnav.js) é global e não consulta flags: deixamos aqui o recado de quem pode abrir a
+  // página Data — senão o cliente clica no item e leva um 'Unavailable'.
+  try{ localStorage.setItem('ibba_data_on', (on['data_page']===true||isAdmin)?'1':'0'); }catch(e){}
   for(const key in FLAG_SEL){
     document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
       el.classList.remove('admin-off');
@@ -1630,24 +1617,8 @@ function applyFlags(flags, isAdmin){
   try{ localStorage.setItem('ibba_events_on', _calOn?'1':'0'); }catch(e){}   // lembra p/ o próximo load (anti-flash)
   if(_calOn && typeof loadEvents==='function') loadEvents();
   // What's new: só com a flag ON (admin vê OFF com o selo). Conteúdo vem do /admin → Novidades.
-  try{ loadWhatsNew(on['whats_new']===true, isAdmin); }catch(e){ console.warn('whats_new', e); }
 }
 // ── What's new (faixa acima da grade) ──────────────────────────────────────
-async function loadWhatsNew(flagOn, isAdmin){
-  const bar=document.getElementById('wn-bar'); if(!bar) return;
-  bar.classList.remove('admin-off');
-  if(!flagOn && !isAdmin){ bar.classList.add('empty'); return; }
-  let items=[];
-  try{ const r=await sbAuth.rpc('get_changelog',{p_limit:3}); items=(r&&r.data)||[]; }catch(e){ items=[]; }
-  let seen=0; try{ seen=parseInt(localStorage.getItem('ibba_whatsnew_seen')||'0',10)||0; }catch(e){}
-  const fresh=items.filter(it=>it.is_visible!==false && it.id>seen);
-  if(!fresh.length){ bar.classList.add('empty'); return; }
-  document.getElementById('wn-items').innerHTML=fresh.slice(0,2).map(it=>
-    `<div class="wn-item"><b>${_evEsc(it.title)}</b><span title="${_evEsc(it.body||'')}">${_evEsc(it.body||'')}</span>${it.link?`<a href="${_evEsc(it.link)}">Open →</a>`:''}</div>`).join('');
-  bar.classList.remove('empty');
-  if(!flagOn && isAdmin) bar.classList.add('admin-off');
-  const x=document.getElementById('wn-x'); if(x) x.onclick=()=>{ try{ localStorage.setItem('ibba_whatsnew_seen', String(Math.max(...items.map(i=>i.id)))); }catch(e){} bar.classList.add('empty'); };
-}
 /* ── PRÉ-CARGA das dashboards pesadas (M&M lê um SQLite de ~47 MB no navegador) ─────────
    Quando o mouse PARA sobre o card do setor (180ms = intenção, não passagem), começamos a
    baixar o banco em segundo plano. No clique o arquivo já está no cache → a página abre na

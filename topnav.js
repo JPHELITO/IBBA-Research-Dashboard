@@ -206,7 +206,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
-    <a class="gn-item" href="/data.html" title="Data sources, freshness and glossary">Data</a>\
+    <a class="gn-item" id="gnav-data" href="/data.html" title="Data sources, freshness and glossary" style="display:none">Data</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gn-item gn-admin" id="gnav-weekly" href="/weekly.html" style="display:none">Weekly</a>\
@@ -236,7 +236,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a" href="/news.html">News Hunter</a>\
     <a class="gnm-a" href="/market.html">Market</a>\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
-    <a class="gnm-a" href="/data.html">Data &amp; Glossary</a>\
+    <a class="gnm-a gnm-data" href="/data.html" style="display:none">Data &amp; Glossary</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gnm-a adm gnm-admin" href="/weekly.html" style="display:none">Weekly</a>\
@@ -359,8 +359,15 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     [].slice.call(document.querySelectorAll('.gnm-admin')).forEach(function(a){ a.style.display = show ? 'flex' : 'none'; });
     _fitTeam();   // os 3 botões de admin mudam a largura da barra → re-avalia se os nomes cabem
   }
+  // O menu e global e nao consulta o Supabase. A home grava em ibba_data_on quem pode abrir a pagina
+  // Data (flag data_page ou admin) - sem isso o cliente veria o item e levaria um 'Unavailable'.
+  function _setDataLink(on){
+    var d=document.getElementById('gnav-data'); if(d) d.style.display=on?'':'none';
+    var m=document.querySelector('.gnm-data'); if(m) m.style.display=on?'':'none';
+  }
   function revealAdmin(tries){
     tries = tries || 0;
+    try{ _setDataLink(localStorage.getItem('ibba_data_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     // Cache: aplica o estado admin NA HORA (sem esperar o RPC) → os botões Admin/Clipinator não
     // "pipocam" depois dos demais. Roda ainda dentro do inject(), antes do 1º paint.
     try{ if(localStorage.getItem('ibba_is_admin')==='1') _setAdminLinks(true); }catch(e){}
@@ -369,6 +376,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       var isAdmin = !!(r && r.data === 'admin');
       try{ localStorage.setItem('ibba_is_admin', isAdmin?'1':'0'); }catch(e){}
       _setAdminLinks(isAdmin);   // reconcilia com a verdade do servidor (mostra p/ admin, esconde se o cache errou)
+      if(isAdmin) _setDataLink(true);
     }).catch(function(){}); return; }
     // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
     // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).

@@ -298,7 +298,6 @@ html.dark .ov-card{background:#20242b}
       <button data-tab="team" onclick="showTab('team')">👥 Analistas</button>
       <button data-tab="comm" onclick="showTab('comm')">🛢️ Commodities</button>
       <button data-tab="heatmap" onclick="showTab('heatmap')">🗺️ Heatmap</button>
-      <button data-tab="changelog" onclick="showTab('changelog')">📢 Novidades</button>
 
       <div class="side-grp">Dados &amp; operação</div>
       <button data-tab="status" onclick="showTab('status')">🩺 Status das fontes</button>
@@ -378,34 +377,6 @@ html.dark .ov-card{background:#20242b}
     </section>
 
     <!-- ── Analistas (Research Team) ────────────────────────────────────── -->
-    <!-- ── Novidades (What's new na home) ─────────────────────────────── -->
-    <section id="tab-changelog" hidden>
-      <div class="card">
-        <h2>Novidades (What's new)</h2>
-        <p class="sub">Cada item vira uma faixa no topo da home do cliente (a flag <code>whats_new</code> precisa estar ligada). O cliente fecha a faixa e ela só volta quando houver item novo. Escreva em inglês — é o que o cliente lê.</p>
-        <div id="cl-list" class="status">Carregando…</div>
-        <div class="row" style="margin-top:12px"><button class="btn" onclick="clEdit(null)">+ Nova novidade</button></div>
-      </div>
-      <div class="card" id="cl-form-card" hidden>
-        <h2 id="cl-form-title">Nova novidade</h2>
-        <div class="field">
-          <label class="lbl">Data</label>
-          <input class="in" id="cl-date" type="date">
-          <label class="lbl">Título (curto, em inglês)</label>
-          <input class="in" id="cl-title" placeholder="Market Watch is live">
-          <label class="lbl">Texto (1–2 frases)</label>
-          <textarea class="in" id="cl-body" rows="3" placeholder="Securities lending, buybacks, insiders and official filings for the covered companies."></textarea>
-          <label class="lbl">Link (opcional — página da dashboard)</label>
-          <input class="in" id="cl-link" placeholder="/market-watch.html">
-          <label class="lbl"><input type="checkbox" id="cl-visible" checked> Visível para o cliente</label>
-        </div>
-        <div class="row" style="margin-top:10px;gap:8px">
-          <button class="btn" onclick="clSave()">Salvar</button>
-          <button class="btn ghost" onclick="document.getElementById('cl-form-card').hidden=true">Cancelar</button>
-        </div>
-        <p class="sub" id="cl-msg"></p>
-      </div>
-    </section>
 
     <section id="tab-team" hidden>
       <div class="card">
@@ -1075,13 +1046,12 @@ function renderResult(res, caption){
 function esc(v){ return v==null ? '<span class="muted">∅</span>' : String(v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) }
 
 // ── Navegação por abas ───────────────────────────────────────────────────
-const TABS=['overview','status','github','stockguide','calendar','db','flags','team','comm','heatmap','users','changelog']
+const TABS=['overview','status','github','stockguide','calendar','db','flags','team','comm','heatmap','users']
 function showTab(name){
   document.querySelectorAll('.side button[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===name))
   TABS.forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.hidden=(t!==name) })
   if(name==='overview') loadOverview()
   if(name==='status') loadStatus()
-  if(name==='changelog') loadChangelog()
   if(name==='github'){ loadGithubRuns(); checkPat() }   // o token do robô mora aqui agora (a aba "Atualizar dados" foi aposentada)
   if(name==='stockguide') loadStockGuide()
   if(name==='calendar') loadCalAdmin()
@@ -1115,7 +1085,6 @@ const FLAG_META={
   exec_calendar: {g:'pages',       l:'Executive Calendar', d:'Calendário de eventos (nav + página + card "Events" na home)'},
   market_watch:  {g:'pages',       l:'Market Watch',      d:'Aluguel de ações (short interest), recompras, insiders e comunicados B3/CVM (nav + página)'},
   data_page:     {g:'pages',       l:'Data & Glossary',   d:'Página com as fontes, o frescor de cada uma e o glossário de indicadores (nav + página)'},
-  whats_new:     {g:'home_panels', l:'What\'s new',       d:'Faixa de novidades no topo da home (conteúdo na aba Novidades)'},
   stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
   stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
   pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
@@ -1155,44 +1124,6 @@ async function loadFlags(){
     host.appendChild(wrap)
   })
   _flagCounts()
-}
-
-// ── Novidades (What's new) ───────────────────────────────────────────────
-let _cl=[], _clId=null
-async function loadChangelog(){
-  const host=document.getElementById('cl-list'); host.textContent='Carregando…'
-  const {data,error}=await sbAuth.rpc('get_changelog',{p_limit:50})
-  if(error){ host.textContent='Erro: '+error.message+'  (rodou o admin/supabase_data_page.sql?)'; return }
-  _cl=data||[]
-  if(!_cl.length){ host.innerHTML='<span class="muted">Nenhuma novidade cadastrada.</span>'; return }
-  host.innerHTML='<div class="tbl-wrap"><table class="data"><thead><tr><th>Data</th><th>Título</th><th>Texto</th><th>Link</th><th></th><th></th></tr></thead><tbody>'
-    +_cl.map(c=>`<tr class="${c.is_visible?'':'muted'}"><td>${esc(c.published_on)}</td><td><b>${esc(c.title)}</b>${c.is_visible?'':' <span class="muted">(oculta)</span>'}</td><td style="white-space:normal;max-width:420px">${esc(c.body)}</td><td>${c.link?`<a href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a>`:''}</td>
-      <td><button class="btn ghost" onclick="clEdit(${c.id})">Editar</button></td><td><button class="btn ghost" onclick="clDelete(${c.id})">Excluir</button></td></tr>`).join('')+'</tbody></table></div>'
-}
-function clEdit(id){
-  _clId=id; const c=_cl.find(x=>x.id===id)||{}
-  document.getElementById('cl-form-title').textContent=id?'Editar novidade':'Nova novidade'
-  document.getElementById('cl-date').value=c.published_on||new Date().toISOString().slice(0,10)
-  document.getElementById('cl-title').value=c.title||''
-  document.getElementById('cl-body').value=c.body||''
-  document.getElementById('cl-link').value=c.link||''
-  document.getElementById('cl-visible').checked=c.is_visible!==false
-  document.getElementById('cl-msg').textContent=''
-  document.getElementById('cl-form-card').hidden=false
-}
-async function clSave(){
-  const p={published_on:document.getElementById('cl-date').value, title:document.getElementById('cl-title').value.trim(),
-    body:document.getElementById('cl-body').value.trim(), link:document.getElementById('cl-link').value.trim(), is_visible:document.getElementById('cl-visible').checked}
-  if(!p.title){ document.getElementById('cl-msg').textContent='Título obrigatório.'; return }
-  const {error}=await sbAuth.rpc('admin_upsert_changelog',{p_id:_clId,p_data:p})
-  if(error){ document.getElementById('cl-msg').textContent='Erro ao salvar: '+error.message; return }
-  document.getElementById('cl-form-card').hidden=true; loadChangelog()
-}
-async function clDelete(id){
-  if(!confirm('Excluir esta novidade?')) return
-  const {error}=await sbAuth.rpc('admin_delete_changelog',{p_id:id})
-  if(error){ alert('Erro: '+error.message); return }
-  loadChangelog()
 }
 
 // ── Analistas (team) ─────────────────────────────────────────────────────
