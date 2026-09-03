@@ -3592,11 +3592,24 @@ function _syncCommTabs(reiniciar){
     }).join('');
     reiniciar=true;
   }
-  [...tabs.children].forEach((b,i)=>b.classList.toggle('on', i===_commPage));
+  // 🔴 CANCELAR A CONTAGEM ANTERIOR É OBRIGATÓRIO. Enquanto as caixinhas eram refeitas a cada
+  // render, o innerHTML matava a animação velha junto. Mantendo os elementos, ela continua
+  // correndo escondida: some com a página que o usuário escolheu no clique (o `onanimationend`
+  // dela ainda dispara `_commNext` uns segundos depois) E fica acesa, porque `forwards` segura
+  // o scaleX(1). Era isso que virava bagunça: várias caixinhas cheias e a página pulando sozinha.
+  // Só UMA contagem existe por vez, sempre a do grupo ativo.
+  [...tabs.children].forEach((b,i)=>{
+    const ativa = i===_commPage;
+    b.classList.toggle('on', ativa);
+    if(ativa) return;
+    const f=b.querySelector('.fill');
+    if(f){ f.onanimationend=null; f.style.animation='none'; }   // apaga e zera a caixinha antiga
+  });
   if(!reiniciar) return;
   const fill=tabs.querySelector('.comm-tab.on .fill');
   if(fill && n>1){
-    fill.style.animation='none'; void fill.offsetWidth;                 // reflow p/ reiniciar
+    fill.onanimationend=null;                                  // nunca deixar duas contagens vivas
+    fill.style.animation='none'; void fill.offsetWidth;        // reflow p/ reiniciar do zero
     fill.style.animation=`commfill ${COMM_ROTATE_MS}ms linear forwards`;
     fill.onanimationend=_commNext;
   }
