@@ -510,8 +510,8 @@ async function renderBuybacks(){
     const start=r.decided_on?new Date(r.decided_on):null, end=r.expires_on?new Date(r.expires_on):null; const elapsed=(start&&end&&end>start)?Math.max(0,Math.min(1,(new Date(today)-start)/(end-start))):null;
     const qty=(r.qty_on||0)+(r.qty_pn||0); const circ=(r.qty_circ_on||0)+(r.qty_circ_pn||0);
     return `<div class="bb"><div class="h">${esc(co.name||r.company)} <span class="co">${esc(r.company)}</span> <span class="tag ${r.operation==='Venda'?'dim':'ok'}" style="margin-left:auto">${esc(r.operation==='Venda'?'Sale':'Buyback')}</span></div>
-      <div class="row"><span>Authorized</span><b>${fInt(qty)} ${r.qty_on&&r.qty_pn?'(ON+PN)':r.qty_pn?'PN':'ON'}</b></div>
-      <div class="row"><span>% of shares in circulation</span><b>${fPct(pctOf(qty,circ),1)}</b></div>
+      <div class="row"><span>Authorized</span><b>${(r.qty_on||r.qty_pn)?`${fInt(qty)} ${r.qty_on&&r.qty_pn?'(ON+PN)':r.qty_pn?'PN':'ON'}`:r.authorized_usd?`US$ ${fInt(r.authorized_usd)}`:'—'}</b></div>
+      ${(r.qty_on||r.qty_pn)?`<div class="row"><span>% of shares in circulation</span><b>${fPct(pctOf(qty,circ),1)}</b></div>`:''}
       <div class="row"><span>Approved</span><b>${fDate(r.decided_on)}</b></div>
       <div class="row"><span>Deadline</span><b>${fDate(r.expires_on)}${days!=null?` <span class="muted">(${days>=0?days+' days left':'expired'})</span>`:''}</b></div>
       ${elapsed!=null?`<div class="prog" title="time elapsed in the program window"><i style="width:${(elapsed*100).toFixed(0)}%"></i></div>`:''}
@@ -528,7 +528,7 @@ async function renderBuybacks(){
   document.getElementById('bb-hist-sub').textContent=`${rows.length} programs`;
   const tools=document.getElementById('bb-tools'); tools.innerHTML='';
   if(window.IBBAExport&&rows.length) tools.appendChild(IBBAExport.toolbar([{label:'XLS',title:'Download programs (Excel)',onClick:()=>{
-    const aoa=[['Company','Approved','Deadline','Status','Type','Qty ON','Qty PN','Circulation ON','Circulation PN','Reason','Purpose','Brokers']].concat(rows.map(r=>[r.company,r.decided_on,r.expires_on,r.status,r.operation,r.qty_on,r.qty_pn,r.qty_circ_on,r.qty_circ_pn,r.reason,r.purpose,(r.brokers||[]).join('; ')]));
+    const aoa=[['Company','Approved','Deadline','Status','Type','Qty ON','Qty PN','Circulation ON','Circulation PN','Authorized (US$)','Reason','Purpose','Brokers']].concat(rows.map(r=>[r.company,r.decided_on,r.expires_on,r.status,r.operation,r.qty_on,r.qty_pn,r.qty_circ_on,r.qty_circ_pn,r.authorized_usd,r.reason,r.purpose,(r.brokers||[]).join('; ')]));
     IBBAExport.xlsxFromAOA([{name:'buybacks',aoa}],'market_watch_buybacks_'+IBBAExport.stamp()).catch(()=>alert('Could not build the Excel file.')); }}]));
 }
 
@@ -536,7 +536,8 @@ async function renderBuybacks(){
 // perder informação. Texto LIVRE da empresa (o `reason` do programa, o título do documento) fica no
 // original: ali traduzir seria reescrever o que a companhia disse.
 const _key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim().replace(/\.$/,'');
-const PURPOSE_EN={'AS ACOES PODERAO SER CANCELADAS':'Shares may be cancelled','AS ACOES VAO FICAR EM TESOURARIA':'Shares will be held in treasury'};
+const PURPOSE_EN={'AS ACOES PODERAO SER CANCELADAS':'Shares may be cancelled','AS ACOES VAO FICAR EM TESOURARIA':'Shares will be held in treasury',
+  'PARA MANUTENCAO EM TESOURARIA POSTERIOR CANCELAMENTO OU ALIENACAO':'Shares/BDRs may be held in treasury, later cancelled or resold'};
 const OP_EN={'COMPRA':'Buy','VENDA':'Sell'};
 const CAT_EN={'FATO RELEVANTE':'Material fact','COMUNICADO AO MERCADO':'Market announcement','OUTROS COMUNICADOS AO MERCADO':'Other market announcement',
   'ATA REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes','ATA DE REUNIAO DO CONSELHO DE ADMINISTRACAO':'Board meeting minutes',

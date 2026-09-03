@@ -896,8 +896,12 @@ html.dark .kv-badge.ext.lo{color:#93c5fd;}
 .cm-name{font-size:9.5px;font-weight:600;color:#686868;letter-spacing:.02em;
   line-height:1.25;height:2.5em;overflow:hidden;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.cm-top{display:flex;align-items:flex-start;gap:4px;min-width:0;}
-.cm-top .cm-name{flex:1;min-width:0;}
+/* nas 5-por-linha (Iron Ore + Pellet) o nome + os selos (Weekly/12M high) não cabem numa linha só —
+   "Pellet Premium" é o único cartão com os DOIS selos juntos. `flex:1` puro tem flex-basis:0%, que
+   NUNCA aciona o wrap (o nome não pesa nada na conta do wrap e é espremido a ~0px, os selos ficam
+   por cima). `flex-basis:auto` faz o wrap contar o tamanho de verdade; o `min-width` é o piso. ── */
+.cm-top{display:flex;align-items:flex-start;flex-wrap:wrap;gap:1px 4px;min-width:0;}
+.cm-top .cm-name{flex:1 1 auto;min-width:54px;}
 .cm-val{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;}
 .cm-unit{font-size:7.5px;font-weight:500;color:#686868;margin-left:3px;letter-spacing:0;}

@@ -400,11 +400,9 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .mtabs button:hover{color:var(--text)}
 .mtabs button.on{color:var(--text);border-bottom-color:var(--orange)}
 .mtabs button:disabled{opacity:.45;cursor:default}
-.mtabs .mt-note{margin-left:auto;font-size:10.5px;color:var(--mute);padding:0 6px 8px;white-space:nowrap}
-.mtabs .mt-note b{color:var(--orange)}
 .mtabs.mt-off{display:none}
 .mtabs{overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
-@media(max-width:700px){.mtabs .mt-note{display:none}.mtabs button{padding:8px 9px 9px;font-size:11px}}
+@media(max-width:700px){.mtabs button{padding:8px 9px 9px;font-size:11px}}
 /* nas abas do Market Watch a grade da Performance sai INTEIRA — cabeçalho do ativo incluso (pedido do
    analista): quem identifica a empresa ali são os chips do próprio Market Watch */
 .mkt-grid.mw-on > .card{display:none}
@@ -498,7 +496,6 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
         <button data-tab="buybacks">Buybacks</button>
         <button data-tab="insiders">Insiders</button>
         <button data-tab="filings">Filings</button>
-        <span class="mt-note" id="mt-note"></span>
       </div>
       <div class="mw-host" id="mw-host"><iframe id="mw-frame" title="Market Watch" hidden></iframe></div>
 
@@ -1218,7 +1215,7 @@ function _mwOnMessage(e){
   if(e.origin!==location.origin) return; const m=e.data||{}; if(!m||typeof m.type!=='string') return;
   const f=_mwFrame();
   if(m.type==='mw:height'){ if(f) f.style.height=Math.max(380,Math.ceil(+m.h||0))+'px'; }
-  else if(m.type==='mw:ready'){ _mwFrameReady=true; if(_mtab!=='performance') _mwPost({type:'mw:set',tab:_mtab}); }
+  else if(m.type==='mw:ready'){ _mwFrameReady=true; _mwPost({type:'mw:theme',theme:_mwTheme()}); if(_mtab!=='performance') _mwPost({type:'mw:set',tab:_mtab}); }
   // empresa escolhida nos chips do Market Watch → vira a âncora, então voltar p/ a Performance cai nela
   else if(m.type==='mw:co'){ const t=m.co&&m.co!=='all'?_mwTickerOf(String(m.co)):null; if(t&&t!==_anchor){ _noteInteract(); _sel=[t]; _chartMode='price'; afterSel(); } }
 }
@@ -1226,8 +1223,6 @@ function _mwOnMessage(e){
 function renderMWTabs(){
   const bar=document.getElementById('mtabs'); if(!bar) return;
   const on=_mwEnabled(); bar.classList.toggle('mt-off',!on);
-  const note=document.getElementById('mt-note');
-  if(note) note.innerHTML=!on?'':(_isAdmin&&!_mwFlag)?'<b>flag market_watch OFF</b> — clients see Performance only':'B3 &amp; CVM public data';
   if(!on){ if(_mtab!=='performance') setMTab('performance'); return; }
   if(_mtab!=='performance'&&window._mwRemede) window._mwRemede();   // auto-conserto: o ciclo de 60s remede a altura
   const co=_anchor?_mwCompanyOf(_anchor):null;
