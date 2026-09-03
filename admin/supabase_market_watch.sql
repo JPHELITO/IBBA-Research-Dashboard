@@ -113,11 +113,23 @@ create table if not exists public.mw_buyback_programs (
   qty_pn        bigint,
   qty_circ_on   bigint,                      -- ações em circulação declaradas no programa
   qty_circ_pn   bigint,
+  authorized_usd numeric,                    -- programa denominado em US$ (emissor estrangeiro/BDR, RCVM 77 —
+                                              -- não existe no dataset CVM_RECOMPRA; ver nota abaixo), null nos demais
   brokers       text[] not null default '{}',
   updated_at    timestamptz not null default now()
 );
 alter table public.mw_buyback_programs enable row level security;
+-- (idempotente p/ quem já criou a tabela antes desta coluna)
+alter table public.mw_buyback_programs add column if not exists authorized_usd numeric;
 create index if not exists mw_buyback_programs_company_idx on public.mw_buyback_programs (company, decided_on desc);
+-- ⚠️ AURA33 é emissora estrangeira (categoria 'A', BDR) — o programa de recompra dela é regido pela
+-- RCVM 77/80 (Anexo G), NÃO pelo regime doméstico do dataset CVM_RECOMPRA (que só cobre ON/PN de
+-- companhias brasileiras). Conferido ao vivo em 2026-09-03: o CSV aberto da CVM não tem NENHUMA linha
+-- da Aura, por CNPJ nem por nome — não é filtro nosso, o dataset público mesmo não cobre esse regime.
+-- Por isso este UM programa (Fato Relevante de 18/mai/2026, US$200mi, ON+BDR) é semeado à mão — não
+-- existe robô para isto (não há fonte estruturada para automatizar). Se a Aura anunciar um programa
+-- NOVO, ele vai aparecer como comunicado na aba Filings (isso já é automático); repetir o mesmo semeio
+-- manual em mw_buyback_programs se quiser um card de Buyback para ele.
 
 -- ───────────── 5) INSIDERS (CVM — art. 11 Res. 44, formulário consolidado mensal) ─────────────
 create table if not exists public.mw_insider_moves (
