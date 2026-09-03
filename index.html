@@ -3407,6 +3407,32 @@ function _cmRow(rotulo, per){
   </div>`;
 }
 
+/* Nome CURTO do cartão — só na home. Medido: num grupo de 5 o nome tem 80px, e nove nomes
+   estouravam, quebrando em duas linhas e comendo a altura do gráfico em TODO o grupo (a caixa
+   do nome tem altura fixa para os preços não dançarem). O que sai é o que o GRUPO já diz:
+   "Fines" nas marcas (todas são fines) e "Freight" no frete. O nome inteiro continua no banco,
+   na tabela da aba Market, no blast e no `title` do cartão (hover) — isto é só exibição.
+   ⚠️ Nome novo que não estiver aqui e não couber volta a quebrar em duas linhas, como antes:
+   degrada, não estraga. Medir com `_cmCabe()` no console antes de acrescentar. */
+const COMM_CARD_SHORT={
+  'Pilbara Blend Fines':'Pilbara Blend',        // 91px -> 63
+  'Brazilian Blend Fines':'Brazilian Blend',    // 100 -> 71
+  'Newman High Grade Fines':'Newman HG',        // 126 -> 59 ("Newman High Grade" ainda dá 98)
+  'Mining Area C Fines':'Mining Area C',        // 96 -> 68
+  'Jimblebar Fines':'Jimblebar',                // 76 -> 48 (cabia, mas fica igual às irmãs)
+  'Freight Brazil-China':'Brazil-China',        // 96 -> 60
+  'Freight Australia-China':'Australia-China',  // 111 -> 75
+  'HCC FOB AUS Premium':'HCC Premium',          // 112 -> 67 (distingue do "HCC Low Vol")
+};
+// mede um nome na fonte real do cartão — p/ conferir um candidato antes de pôr no mapa acima
+function _cmCabe(txt){
+  const el=document.querySelector('.cm-name'); if(!el) return null;
+  const cs=getComputedStyle(el), cv=document.createElement('canvas').getContext('2d');
+  cv.font=`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const w=Math.ceil(cv.measureText(txt).width+(parseFloat(cs.letterSpacing)||0)*txt.length);
+  return {texto:txt, largura:w, disponivel:Math.round(el.getBoundingClientRect().width), cabe:w<=el.getBoundingClientRect().width};
+}
+
 /* Selos do cartão: cadência (Weekly/Live) e extremo dos 12 meses. Fora do `_kvCard` porque
    o render do grupo precisa saber se ALGUÉM tem selo para reservar a linha em todos — e
    descobrir isso redesenhando o cartão sairia caro. */
@@ -3462,7 +3488,7 @@ function _kvCard(c){
     + (semanal ? ' — variação da semana (assessment semanal)' : '')
     + (faltando.length ? ` — sem histórico suficiente para ${faltando.join(' e ')}` : '');
   return `<div class="cm-card ${pctCls}" title="${tip.replace(/"/g,'&quot;')}">
-    <div class="cm-top"><span class="cm-name">${c.name||''}</span></div>
+    <div class="cm-top"><span class="cm-name">${COMM_CARD_SHORT[c.name] || c.name || ''}</span></div>
     <div class="cm-tags">${_kvTags(c)}</div>
     <div class="cm-val">${valStr}${unit?`<span class="cm-unit">${unit}</span>`:''}</div>
     <div class="cm-meta"><span class="cm-chg">${pctStr}</span><span class="cm-date">${dateStr}</span></div>
