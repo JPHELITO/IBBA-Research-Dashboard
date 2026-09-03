@@ -1,0 +1,99 @@
+<!doctype html><meta charset="utf-8"><title>clipping — ★ destaques marcados a mao</title>
+<body><pre id="out">rodando…</pre>
+<iframe id="fr" src="/clipinator.html?cliptest=1" style="width:1200px;height:700px;border:1px solid #ccc"></iframe>
+<script>
+/* Os ★ do blast: o analista marca ate 3 noticias que ELE quer nos destaques, e a IA
+   escreve essas e escolhe so o que sobrar. Marcar zero = comportamento antigo.
+
+   Este teste roda a PAGINA DE VERDADE dentro de um iframe (o hook ?cliptest=1 pula o
+   login e expoe window.CLIP), entao nada aqui e copia de codigo: se a regra mudar no
+   clipinator.html, o teste quebra.
+
+   Rodar: servir a pasta IBBA-Research-Dashboard e abrir /tests/test_clipping_pins.html */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const U=i=>'https://ex.com/'+i;
+const fim=u=>String(u).split('/').pop();
+
+function esperar(fr){ return new Promise(res=>{
+  const olha=()=>{ const w=fr.contentWindow;
+    if(w && w.CLIP && w.CLIP.togglePin && fr.contentDocument.getElementById('clip-sel')) res(w.CLIP);
+    else setTimeout(olha,60); };
+  olha(); }); }
+
+(async function(){
+  const fr=document.getElementById('fr');
+  const C=await esperar(fr), D=fr.contentDocument;
+  const mk=(i,sec,src)=>({url:U(i),title:'Noticia '+i,source_name:src,domain:'ex.com',
+                          sector:sec,take_llm:'+',found_at:new Date().toISOString()});
+  const linhas=()=>[...D.querySelectorAll('#clip-sel .prev-row')];
+  const botao=i=>{ const r=linhas().find(r=>r.dataset.u===U(i)); return r&&r.querySelector('.pin'); };
+  const rotulo=i=>{ const b=botao(i); return b?b.textContent:null; };
+  const marcadas=()=>C.buildPayload().filter(x=>x.pin).map(x=>fim(x.url)+':'+x.pin);
+  const legenda=()=>D.getElementById('bl-pin').textContent;
+
+  C.setCandidates([mk(1,'mining','Platts'),mk(2,'pulp','Fastmarkets'),mk(3,'mining','Valor'),
+                   mk(4,'steel','Mining.com'),mk(5,'pulp','Portal Celulose')]);
+  [1,2,3,4,5].forEach(i=>C.togglePick(U(i),true));
+
+  // ── 1) sem marcar nada, nada muda: e o blast de sempre ─────────────────────
+  ok('sem ★ o payload nao carrega marcacao nenhuma', marcadas().length===0, marcadas().join());
+  ok('…e a tela avisa que a IA escolhe os 3', /IA escolhe os 3/.test(legenda()), legenda());
+  ok('toda linha selecionada tem o botao ★', linhas().every(r=>r.querySelector('.pin')));
+
+  // ── 2) o ★ mora a DIREITA do take (pedido do usuario, 03/09/2026) ──────────
+  const r1=linhas()[0], filhos=[...r1.children];
+  ok('o ★ vem depois do bloco de take/setor na linha',
+     filhos.findIndex(e=>e.classList.contains('pin')) > filhos.findIndex(e=>e.classList.contains('prev-ctl')));
+  ok('…e antes do X de remover',
+     filhos.findIndex(e=>e.classList.contains('pin')) < filhos.findIndex(e=>e.classList.contains('prev-x')));
+
+  // ── 3) marcar: o numero e a ORDEM do clique, nao a ordem da lista ──────────
+  botao(3).click(); botao(1).click();
+  ok('a 1a marcada vira ★1 e a 2a vira ★2', rotulo(3)==='1' && rotulo(1)==='2', rotulo(3)+'/'+rotulo(1));
+  ok('as nao marcadas seguem com a estrela vazia', rotulo(2)==='★' && rotulo(4)==='★');
+  ok('o payload leva a marcacao (e o que vai no job)',
+     marcadas().sort().join()==='1:2,3:1', marcadas().join());
+  ok('a legenda diz quantas a IA ainda escolhe', /escolhe mais 1/.test(legenda()), legenda());
+
+  // ── 4) o teto de 3 e do codigo, nao da boa vontade do usuario ─────────────
+  botao(4).click();
+  ok('com 3 marcadas o botao das outras fica travado', botao(2).disabled===true);
+  botao(2).click(); C.togglePin(U(5));            // clique E chamada direta
+  ok('a 4a marcacao nao entra de jeito nenhum', C.S.pins.length===3, 'n='+C.S.pins.length);
+  ok('…e a legenda diz que a IA nao escolhe mais nada',
+     /exatamente estas/.test(legenda()), legenda());
+
+  // ── 5) desmarcar renumera (senao sobraria um ★3 sem ★2) ───────────────────
+  botao(3).click();
+  ok('desmarcar a ★1 renumera as demais', rotulo(1)==='1' && rotulo(4)==='2', rotulo(1)+'/'+rotulo(4));
+  ok('e a marcada que saiu volta a ser estrela vazia', rotulo(3)==='★');
+
+  // ── 6) noticia fora do clipping nao pode ser destaque ─────────────────────
+  C.togglePick(U(1),false);
+  ok('tirar do clipping tira o ★ junto', C.S.pins.indexOf(U(1))<0 && rotulo(4)==='1',
+     C.S.pins.map(fim).join());
+
+  // ── 7) rascunho: as ★ voltam com a pagina, na mesma ordem ─────────────────
+  botao(2).click();                                        // agora: 4=1, 2=2
+  const rascunho=C.buildPayload();
+  C.restoreDraft(rascunho.slice().reverse());              // chega fora de ordem, de proposito
+  ok('o rascunho devolve as mesmas ★', C.S.pins.map(fim).join()==='4,2', C.S.pins.map(fim).join());
+  ok('…e o payload sai identico ao que entrou',
+     JSON.stringify(C.buildPayload().filter(x=>x.pin))===JSON.stringify(rascunho.filter(x=>x.pin)));
+
+  // ── 8) o motor do blast tem de RECEBER a marcacao ────────────────────────
+  const src=await (await fetch('/clipinator.html?v='+Date.now())).text();
+  ok('o blast enfileira com buildPayload (o mesmo que carrega a ★)',
+     /admin_enqueue_clipping.,\{p_payload:buildPayload\(\)/.test(src.replace(/\s+/g,'')) ||
+     src.indexOf('p_payload:buildPayload()')>0);
+  ok('e o payload so ganha o campo pin quando ha marcacao',
+     /const pin=pinOf\(u\); if\(pin\) row\.pin=pin;/.test(src));
+
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=
+    R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+})().catch(e=>{ document.getElementById('out').textContent='ERRO: '+(e&&e.message||e);
+                window.__RESULT__={total:R.length,falhas:R.length||1,linhas:R.concat('ERRO '+e)}; });
+</script>
+</body>
