@@ -221,24 +221,32 @@ window.__RUN__=async function(){
      /\.s2-card\{background:var\(--s2-plate\);border:1px solid var\(--border\);border-radius:var\(--radius\);\s*box-shadow:var\(--shadow\)/.test(CSS));
   ok('a aba "Other" saiu (as 2 sensibilidades de exemplo não aparecem ao lado das empresas)',
      /sgRenderSens2dTabs\(s2,null,host\)/.test(cru) && /sgRenderGrid6Tabs\(g6,null,host\)/.test(cru));
-  // O rótulo das colunas atravessava o topo e empurrava a grade para baixo; agora é escrito
-  // deitado na lateral (pedido do analista: "coloque o escrito deitado na vertical").
-  ok('o rótulo das colunas virou faixa DEITADA na lateral (o topo era uma linha inteira)',
-     hK.indexOf('class="s2-vaxis"')>0 && hK.indexOf('s2-xhead')<0 &&
-     /\.s2-vaxis\{[^}]*writing-mode:vertical-rl/.test(CSS));
-  // "coloque o título da linha também esticada acima do eixo horizontal": ele quebrava em
-  // três linhas dentro do cantinho e roubava 74px da largura da grade.
-  ok('o rótulo das LINHAS virou faixa esticada acima do eixo horizontal, alinhada à esquerda',
-     /<th class="s2-rowhead" colspan="10">Average FX 2027 \(USD\/BRL\)<\/th>/.test(hK) &&
-     /\.s2-tbl thead th\.s2-rowhead\{[^}]*text-align:left/.test(CSS));
+  // Cada rótulo no eixo que ele nomeia (2026-09-04): estavam TROCADOS — o nome do eixo
+  // vertical era escrito deitado na horizontal e o do horizontal, na vertical.
+  const tabK=DEF.KLBN11.sheets[0].tables[0];
+  ok('a faixa DEITADA na lateral leva o rótulo das LINHAS (o eixo vertical)',
+     hK.indexOf('<div class="s2-vaxis" title="'+esc(tabK.rowLabel)+'">'+esc(tabK.rowLabel)+'</div>')>0 &&
+     /\.s2-vaxis\{[^}]*writing-mode:vertical-rl/.test(CSS), tabK.rowLabel);
+  ok('a faixa ESTICADA no topo leva o rótulo das COLUNAS (o eixo horizontal)',
+     hK.indexOf('<th class="s2-colhead" colspan="'+tabK.colLevels.length+'">'+esc(tabK.colLabel)+'</th>')>0 &&
+     /\.s2-tbl thead th\.s2-colhead\{[^}]*text-align:center/.test(CSS), tabK.colLabel);
+  ok('o rótulo do eixo vertical NÃO aparece deitado no topo, nem o do horizontal na lateral',
+     hK.indexOf('s2-colhead" colspan="'+tabK.colLevels.length+'">'+esc(tabK.rowLabel))<0 &&
+     hK.indexOf('s2-vaxis" title="'+esc(tabK.colLabel))<0);
+  ok('a faixa do topo fica FORA da célula de canto (senão o texto sai deslocado à esquerda)',
+     /<th class="s2-corner"><\/th><th class="s2-colhead"/.test(hK));
   ok('a célula de canto ficou VAZIA — é só o vão da coluna de níveis',
      hK.indexOf('<th class="s2-corner"></th>')>0);
   ok('nenhum rótulo de eixo sobrou DENTRO da grade',
-     hK.indexOf('Average FX 2027 (USD/BRL)</th><th')<0);
+     hK.indexOf(esc(tabK.rowLabel)+'</th><th')<0);
   ok('a faixa deitada leva o rótulo inteiro no tooltip (tabela curta pode cortar o texto)',
      /<div class="s2-vaxis" title="[^"]+">/.test(hK));
-  ok('o rótulo das LINHAS continua na célula de canto, acima da coluna que ele nomeia',
-     hK.indexOf('class="s2-corner"')>0);
+  ok('tabela 1-D (sem linhas) não ganha faixa deitada, só a do topo',
+     (function(){ const h1=M._s2TableHtml({id:'u',title:'EBITDA 2027 (BRL million)',metric:'ebitda',
+         year:2027,pairId:null,colLabel:'Iron ore 2027 (USD/ton)',colLevels:[90,95,100],
+         rowLabel:null,rowLevels:null,values:[[1,2,3]]},{},ctxSeco);
+       return h1.indexOf('s2-vaxis')<0 && h1.indexOf('s2-corner')<0 &&
+              h1.indexOf('<th class="s2-colhead" colspan="3">Iron ore 2027 (USD/ton)</th>')>0; })());
   ok('cabeçalho sem chapa cinza (era background:var(--g-light) nas três pontas)',
      /\.s2-tbl thead th\{[^}]*background:none/.test(CSS) &&
      /\.s2-tbl tbody th\{[^}]*background:none/.test(CSS));
