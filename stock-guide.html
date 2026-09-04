@@ -143,8 +143,8 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 .s2-live i{width:5px;height:5px;border-radius:50%;background:var(--orange);
   animation:livepulse 2s ease-in-out infinite}
 .s2-scroll{overflow-x:auto}
-/* rótulo do eixo X deitado: a faixa acompanha a ALTURA da tabela (align-items:stretch)
-   e o texto corre de baixo para cima, como o rótulo do eixo de um gráfico */
+/* rótulo do eixo VERTICAL (as linhas) deitado: a faixa acompanha a ALTURA da tabela
+   (align-items:stretch) e o texto corre de baixo para cima, como num gráfico */
 .s2-wrap{display:flex;align-items:stretch;gap:7px;min-width:0}
 .s2-vaxis{flex:none;writing-mode:vertical-rl;transform:rotate(180deg);
   font:500 9.5px var(--font);color:var(--g-mid);letter-spacing:.3px;line-height:1.25;
@@ -157,9 +157,9 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
 /* cabeçalhos SEM chapa cinza: só tipografia. */
 .s2-tbl thead th{font:600 10px var(--font);color:var(--g-dark);background:none;
   text-transform:none;letter-spacing:.2px}
-/* faixa esticada com o rótulo das LINHAS, alinhada à esquerda: ela nasce em cima da
-   coluna de níveis que nomeia, e não centralizada sobre os números das colunas */
-.s2-tbl thead th.s2-rowhead{font:500 9.5px var(--font);color:var(--g-mid);text-align:left;
+/* faixa esticada com o rótulo das COLUNAS, centrada sobre os níveis que ela nomeia
+   (a célula de canto fica de fora do colspan, senão o texto sai deslocado à esquerda) */
+.s2-tbl thead th.s2-colhead{font:500 9.5px var(--font);color:var(--g-mid);text-align:center;
   letter-spacing:.3px;white-space:normal;padding-bottom:4px}
 .s2-tbl thead th.s2-corner{padding-left:0;padding-right:0}
 .s2-tbl thead th{padding-bottom:7px}
@@ -851,19 +851,19 @@ function _s2TableHtml(tab,byId,ctx){
      (parts.note?'<span class="s2-unit">'+esc(parts.note)+'</span>':'')+'</h3>'+
      (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
      '</div>';
-  // Os dois rótulos de eixo saíram de DENTRO da grade (pedidos do analista, 2026-09-02):
-  //   · o das COLUNAS era uma faixa atravessando o topo, comia uma linha inteira e
-  //     empurrava a grade para baixo → foi escrito DEITADO na lateral esquerda;
-  //   · o das LINHAS ficava na célula de canto, quebrava em três linhas e roubava 74px da
-  //     largura → virou uma faixa ESTICADA acima do eixo horizontal, com o texto à
-  //     ESQUERDA, logo em cima da coluna de níveis que ele nomeia (que é onde ele está no
-  //     Excel do analista: mesma linha do rótulo das colunas, na primeira coluna).
+  // Os dois rótulos de eixo ficam FORA da grade, cada um no eixo que ele nomeia
+  // (correcao de 2026-09-04: estavam trocados — o nome do eixo vertical era escrito na
+  // horizontal e vice-versa):
+  //   · o das LINHAS é a faixa DEITADA na lateral esquerda, ao lado da coluna de níveis
+  //     que ele nomeia (antes ele quebrava em três linhas dentro da célula de canto);
+  //   · o das COLUNAS é a faixa ESTICADA acima do eixo horizontal, centrada sobre os
+  //     níveis que ele nomeia (antes atravessava o topo e comia uma linha inteira).
   // A célula de canto ficou vazia de propósito — é só o vão da coluna dos níveis.
   h+='<div class="s2-scroll"><div class="s2-wrap">'+
-     (tab.colLabel?'<div class="s2-vaxis" title="'+esc(tab.colLabel)+'">'+esc(tab.colLabel)+'</div>':'')+
+     (hasRow&&tab.rowLabel?'<div class="s2-vaxis" title="'+esc(tab.rowLabel)+'">'+esc(tab.rowLabel)+'</div>':'')+
      '<table class="s2-tbl"><thead>';
-  if(hasRow&&tab.rowLabel) h+='<tr><th class="s2-rowhead" colspan="'+(tab.colLevels.length+1)+'">'+
-     esc(tab.rowLabel)+'</th></tr>';
+  if(tab.colLabel) h+='<tr>'+(hasRow?'<th class="s2-corner"></th>':'')+
+     '<th class="s2-colhead" colspan="'+tab.colLevels.length+'">'+esc(tab.colLabel)+'</th></tr>';
   h+='<tr>'+(hasRow?'<th class="s2-corner"></th>':'');
   tab.colLevels.forEach(function(v,j){
     h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
