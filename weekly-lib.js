@@ -513,9 +513,20 @@ function _blocoNoticias(dias) {
           ? '<a href="' + _esc(it.link) + '" style="color:' + T.body + ';text-decoration:none">' + txt + '</a>'
           : txt, 'margin:0 0 6pt 0;line-height:16.5pt');
       }).join('');
-      return '<div style="' + (k ? 'margin-top:13.5pt;padding-top:12pt;border-top:1px solid ' + T.border + ';' : '') + '">' +
-        _p('<b style="font-family:' + T.sans + ';font-size:9pt;color:' + T.mute +
-           ';letter-spacing:1pt">' + _esc(String(d.rotulo).toUpperCase()) + '</b>', 'margin:0 0 8pt 0') +
+      // O rótulo do dia era cinza-claro (T.mute) e colado na régua de cima: quem lia
+      // corrido não achava onde uma terça virava quarta. Agora o dia sai na TINTA
+      // FORTE, com um tracinho laranja do lado (o mesmo do olho de seção), e a régua
+      // ganha ar em cima e embaixo — sem virar um vão que quebre a leitura em blocos.
+      var etiqueta =
+        '<table role="presentation" border="0" cellspacing="0" cellpadding="0"><tr>' +
+        '<td width="14" valign="middle" style="width:14px;padding:0 6pt 0 0">' +
+          _regua(T.accent, '1.5pt', 14) + '</td>' +
+        '<td valign="middle">' +
+          _p('<b style="font-family:' + T.sans + ';font-size:9pt;color:' + T.ink +
+             ';letter-spacing:1.15pt">' + _esc(String(d.rotulo).toUpperCase()) + '</b>') + '</td>' +
+        '</tr></table>';
+      return '<div style="' + (k ? 'margin-top:18pt;padding-top:16.5pt;border-top:1px solid ' + T.border + ';' : '') + '">' +
+        etiqueta + _vao(7.5) +
         itens + '</div>';
     }).join('') + '</td></tr>';
 }
@@ -529,30 +540,43 @@ function _blocoNoticias(dias) {
 function _tabelaComps(comps) {
   var grupos = (comps && comps.grupos || []).filter(function (g) { return (g.linhas || []).length; });
   if (!grupos.length) return '';
-  var y1 = comps.y1 || '26E';
-  var COLS = ['PREÇO', 'TARGET', 'UPSIDE', 'EV/EBITDA ' + y1, 'P/E ' + y1, 'DY ' + y1];
+  var y1 = comps.y1 || '26E', y2 = comps.y2 || '';
+  // Cabeçalho em DUAS linhas: rótulo em cima, ano embaixo. É o que deixa caber
+  // EV/EBITDA e Dividend Yield nos dois anos dentro dos 640px do e-mail — numa
+  // linha só, "EV/EBITDA 2026E  EV/EBITDA 2027E" empurra a tabela para fora.
+  // O P/E saiu no lugar do EV/EBITDA do ano seguinte (pedido do analista, 08/09/2026):
+  // múltiplo de lucro é ruído em siderurgia (CSN e CMPC já saíam sem número).
+  var COLS = [{t: 'PREÇO'}, {t: 'TARGET'}, {t: 'UPSIDE'},
+              {t: 'EV/EBITDA', y: y1}, {t: 'EV/EBITDA', y: y2},
+              {t: 'DIV. YIELD', y: y1}, {t: 'DIV. YIELD', y: y2}];
   var s8 = 'font-family:' + T.sans + ';font-size:8.5pt;';
   var s7 = 'font-family:' + T.sans + ';font-size:7.5pt;';
+  // Números CENTRADOS na coluna (antes iam encostados na direita, o que com colunas
+  // largas jogava o valor para o canto e fazia a tabela parecer torta).
+  var CENTRO = 'text-align:center';
+  var PADCEL = '6pt 3pt';
 
   var corpo = grupos.map(function (g, gi) {
     var cab = '<tr>' +
-      '<td style="background:' + T.ink + ';padding:6.75pt 10.5pt' +
+      '<td valign="bottom" style="background:' + T.ink + ';padding:6pt 10.5pt' +
         (gi === 0 ? ';border-radius:12px 0 0 0' : '') + '">' +
         _p('<b style="' + s7 + 'color:#FFFFFF;letter-spacing:.9pt">' + _esc(g.titulo) + '</b>') + '</td>' +
       COLS.map(function (c, i) {
-        return '<td style="background:' + T.ink + ';padding:6.75pt 3.75pt' +
+        return '<td valign="bottom" align="center" style="background:' + T.ink + ';padding:6pt 3pt' +
           (gi === 0 && i === COLS.length - 1 ? ';border-radius:0 12px 0 0' : '') + '">' +
           _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:#FFFFFF;letter-spacing:.3pt">' +
-             _esc(c) + '</b>', 'text-align:right') + '</td>';
+             _esc(c.t) + '</b>', CENTRO) +
+          _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:#9AA1AA;letter-spacing:.3pt">' +
+             (c.y ? _esc(c.y) : '&nbsp;') + '</b>', CENTRO + ';margin:1pt 0 0 0') + '</td>';
       }).join('') + '</tr>';
 
     var linhas = g.linhas.map(function (l, i) {
       var ult = (gi === grupos.length - 1) && (i === g.linhas.length - 1);
       var borda = ult ? '' : 'border-bottom:1px solid ' + T.line + ';';
       var cel = function (txt, cor, negrito) {
-        return '<td style="' + borda + 'padding:6pt 3.75pt">' +
+        return '<td align="center" nowrap="nowrap" style="' + borda + 'padding:' + PADCEL + '">' +
           _p('<' + (negrito ? 'b' : 'span') + ' style="' + s8 + 'color:' + (cor || T.soft) + '">' +
-             txt + '</' + (negrito ? 'b' : 'span') + '>', 'text-align:right') + '</td>';
+             txt + '</' + (negrito ? 'b' : 'span') + '>', CENTRO) + '</td>';
       };
       return '<tr>' +
         '<td style="' + borda + 'padding:6pt 10.5pt">' +
@@ -562,9 +586,10 @@ function _tabelaComps(comps) {
         cel(_esc(l.target || '—')) +
         // o upside é a leitura do analista: verde quando o alvo está acima do preço
         cel(l.upside == null ? '—' : pct(l.upside, 0), corDe(l.upside), true) +
-        cel(l.evEbitda == null ? '—' : num(l.evEbitda, 1) + 'x') +
-        cel(l.pe == null ? '—' : num(l.pe, 1) + 'x') +
-        cel(l.dy == null ? '—' : num(l.dy, 1) + '%') +
+        cel(l.evEbitda  == null ? '—' : num(l.evEbitda, 1) + 'x') +
+        cel(l.evEbitda2 == null ? '—' : num(l.evEbitda2, 1) + 'x') +
+        cel(l.dy  == null ? '—' : num(l.dy, 1) + '%') +
+        cel(l.dy2 == null ? '—' : num(l.dy2, 1) + '%') +
         '</tr>';
     }).join('');
     return cab + linhas;

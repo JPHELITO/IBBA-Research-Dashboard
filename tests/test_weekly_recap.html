@@ -368,15 +368,15 @@ const MODELO={
 };
 MODELO.earnings={label:'2Q26 Review',itens:[{data:'25/ago',setor:'Steel & Mining',
   titulo:'Vale 2Q26: em linha',link:'https://x/er'}]};
-MODELO.comps={y1:'26E',nota:'Estimativas Itaú BBA.',grupos:[
+MODELO.comps={y1:'26E',y2:'27E',nota:'Estimativas Itaú BBA.',grupos:[
   {titulo:'MINERAÇÃO',linhas:[
     {nome:'Vale',ticker:'VALE3',preco:'R$ 78,39',target:'R$ 95,00',upside:21.19,
-     evEbitda:4.68,pe:8.23,dy:6.07}]},
+     evEbitda:4.68,evEbitda2:4.21,dy:6.07,dy2:6.55}]},
   {titulo:'SIDERURGIA',linhas:[
     {nome:'CSN',ticker:'CSNA3',preco:'R$ 5,23',target:'R$ 7,00',upside:33.84,
-     evEbitda:4.99,pe:17.39,dy:2.88},
+     evEbitda:4.99,evEbitda2:4.55,dy:2.88,dy2:3.10},
     {nome:'Sem modelo',ticker:'XPTO3',preco:'R$ 1,00',target:'',upside:null,
-     evEbitda:null,pe:null,dy:null}]},
+     evEbitda:null,evEbitda2:null,dy:null,dy2:null}]},
 ]};
 const HTML=W.buildEmail(MODELO);
 (function(){
@@ -412,6 +412,14 @@ const HTML=W.buildEmail(MODELO);
      && HTML.indexOf('Abrir o relatório ↗')>0);
   ok('o dia com notícia aparece; o dia vazio não',
      HTML.indexOf('SEGUNDA, 24/AGO')>0 && HTML.indexOf('TERÇA, 25/AGO')<0);
+  // o rótulo do dia estava em cinza-claro e passava batido (pedido de 08/09/2026)
+  ok('o rótulo do dia sai na tinta forte, não no cinza de legenda',
+     /color:#16191D;letter-spacing:1\.15pt">SEGUNDA, 24\/AGO/.test(HTML));
+  const doisDias=W.buildEmail(Object.assign({},MODELO,{dias:[
+    {rotulo:'Segunda, 24/ago',itens:[{texto:'a'}]},
+    {rotulo:'Terça, 25/ago', itens:[{texto:'b'}]}]}));
+  ok('…e a virada de um dia para o outro tem régua COM respiro dos dois lados',
+     /margin-top:18pt;padding-top:16\.5pt;border-top:1px solid/.test(doisDias));
   ok('a assinatura fecha o e-mail', HTML.indexOf('Daniel Sasson, CFA')>0);
 
   // — tamanho dos RÓTULOS (o analista achou os títulos pequenos ao lado das tabelas) —
@@ -419,7 +427,7 @@ const HTML=W.buildEmail(MODELO);
   const tam=(re)=>{const m=HTML.match(re); return m?parseFloat(m[1]):0;};
   const tSec =tam(/font-size:([\d.]+)pt;color:#16191D;letter-spacing:1\.05pt/);
   const tOlho=tam(/font-size:([\d.]+)pt;color:#D94400;letter-spacing:\.9pt/);
-  const tDia =tam(/font-size:([\d.]+)pt;color:#8B929B;letter-spacing:1pt/);
+  const tDia =tam(/font-size:([\d.]+)pt;color:#16191D;letter-spacing:1\.15pt/);
   const tTh  =tam(/font-size:([\d.]+)pt;color:#FFFFFF;letter-spacing:\.3pt/);
   ok('o título de seção ficou maior que o corpo da tabela (8,5pt)', tSec>8.5, tSec+'pt');
   ok('o olho do cartão também', tOlho>=8, tOlho+'pt');
@@ -448,13 +456,24 @@ const HTML=W.buildEmail(MODELO);
      HTML.indexOf('2Q26 REVIEW')>0 && HTML.indexOf('Vale 2Q26: em linha')>0);
   ok('a comp table entra com o cabeçalho preto por setor',
      HTML.indexOf('MINERAÇÃO')>0 && HTML.indexOf('SIDERURGIA')>0);
-  ok('…com as 6 colunas escolhidas, no ano do modelo',
-     ['PREÇO','TARGET','UPSIDE','EV/EBITDA 26E','P/E 26E','DY 26E']
-       .every(c=>HTML.indexOf(c)>0));
+  ok('…com as 7 colunas escolhidas, e os DOIS anos do modelo no cabeçalho',
+     ['PREÇO','TARGET','UPSIDE','EV/EBITDA','DIV. YIELD']
+       .every(c=>HTML.indexOf(c)>0) &&
+     (HTML.match(/>EV\/EBITDA</g)||[]).length===2*MODELO.comps.grupos.length &&
+     (HTML.match(/>DIV\. YIELD</g)||[]).length===2*MODELO.comps.grupos.length &&
+     (HTML.match(/>26E</g)||[]).length===2*MODELO.comps.grupos.length &&
+     (HTML.match(/>27E</g)||[]).length===2*MODELO.comps.grupos.length);
   ok('…e sem as colunas que ficaram de fora (o e-mail tem 640px)',
-     HTML.indexOf('ND/EBITDA')<0 && HTML.indexOf('P/CE')<0);
-  ok('múltiplo sai com uma casa e o "x"', HTML.indexOf('4,7x')>0, 'ev=4,68');
-  ok('dividend yield sai com o %', HTML.indexOf('6,1%')>0);
+     HTML.indexOf('ND/EBITDA')<0 && HTML.indexOf('P/CE')<0 && HTML.indexOf('P/E')<0);
+  ok('múltiplo sai com uma casa e o "x", nos dois anos',
+     HTML.indexOf('4,7x')>0 && HTML.indexOf('4,2x')>0, 'ev 26E=4,68 · 27E=4,21');
+  ok('dividend yield sai com o %, nos dois anos',
+     HTML.indexOf('6,1%')>0 && HTML.indexOf('6,6%')>0);
+  // (a tabela de PREÇOS continua alinhada à direita: lá as colunas são estreitas e
+  //  o olho compara duas cotações uma embaixo da outra)
+  const tblComps=HTML.slice(HTML.indexOf('MINERAÇÃO'),HTML.indexOf('Estimativas Itaú BBA.'));
+  ok('os números da comp table saem CENTRADOS na coluna, não encostados na direita',
+     /text-align:center"><span[^>]*>4,7x</.test(tblComps) && tblComps.indexOf('text-align:right')<0);
   ok('upside sem casa decimal e em verde',
      HTML.indexOf('+21%')>0 && HTML.indexOf('color:'+W.T.green+'">+21%')>0);
   ok('empresa sem modelo sai com travessão, não com zero',
