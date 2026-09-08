@@ -81,7 +81,57 @@ jobs:
       - name: Build web DB (slim + gzip)
         run: python "Steel and Mining/build_web_db.py"
 
-      # ── 5. Enviar e-mail de notificação ─────────────────────────────────────
+      # ── 6. Commit e push do DB atualizado ───────────────────────────────────
+      # NÃO usar git-auto-commit-action: o file_pattern sofre word-split e o
+      # espaço em "Steel and Mining" faz o git não achar o arquivo →
+      # "Working tree clean. Nothing to commit." (bug histórico). Commit manual
+      # com o caminho entre aspas resolve.
+      - name: Commit & push updated DB
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || github.event.inputs.backfill_sh6 == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no .db — nada a commitar."
+          else
+            if [ "${{ github.event.inputs.backfill_sh6 }}" = "true" ]; then
+              MSG="data: popula secex_sh6_country/urf (quebras SH6xPais/URF) + dropa secex_port"
+            else
+              MSG="data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
+            fi
+            git commit -m "$MSG"
+            git pull --rebase --autostash || true
+            git push
+            echo "✅ steel_sm.db commitado e pushado"
+          fi
+
+      # ── 6b. Registra no painel admin (update_log) que rodou AUTOMÁTICO ────────
+      - name: Log auto-update (painel admin)
+        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ "$NEW_DATA" = "true" ]; then python _shared/log_update.py "SECEX" auto "cron MDIC ${LATEST_PERIOD}"; fi
+          if [ "$IRON_NEW_DATA" = "true" ]; then python _shared/log_update.py "Minério" auto "cron MDIC"; fi
+
+      # ── 7. Log final ────────────────────────────────────────────────────────
+      - name: Summary
+        run: |
+          if [ "$NEW_DATA" = "true" ]; then
+            echo "✅ Novo dado inserido: $LATEST_PERIOD — DB commitado e e-mail enviado."
+          else
+            echo "ℹ️  Nenhum dado novo. DB inalterado."
+          fi
+
+      # ── AVISO POR E-MAIL — POR ÚLTIMO, DE PROPÓSITO ───────────────────────
+      # 2026-09-08: este passo ficava ANTES do commit. Com a senha de app do
+      # Gmail vencida ele falhava (535 BadCredentials), o job morria ali e o
+      # "Commit & push" era PULADO → o dado de agosto/2026 existia no runner e
+      # nunca chegou na dashboard. Agora o dado é gravado primeiro e o e-mail
+      # vem depois: se o SMTP estiver morto o job fica VERMELHO (o alarme
+      # continua), mas a base já subiu.
       - name: Send email notification
         if: env.NEW_DATA == 'true'
         uses: dawidd6/action-send-mail@v3
@@ -108,46 +158,3 @@ jobs:
             ---
             Itaú BBA — Equity Research | Steel & Mining
             (mensagem automática gerada pelo GitHub Actions)
-
-      # ── 6. Commit e push do DB atualizado ───────────────────────────────────
-      # NÃO usar git-auto-commit-action: o file_pattern sofre word-split e o
-      # espaço em "Steel and Mining" faz o git não achar o arquivo →
-      # "Working tree clean. Nothing to commit." (bug histórico). Commit manual
-      # com o caminho entre aspas resolve.
-      - name: Commit & push updated DB
-        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true' || github.event.inputs.backfill_sh6 == 'true'
-        run: |
-          git config user.name  "IBBA Bot"
-          git config user.email "bot@itaubba.com"
-          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz"
-          if git diff --staged --quiet; then
-            echo "::warning::sem mudança no .db — nada a commitar."
-          else
-            if [ "${{ github.event.inputs.backfill_sh6 }}" = "true" ]; then
-              MSG="data: popula secex_sh6_country/urf (quebras SH6xPais/URF) + dropa secex_port"
-            else
-              MSG="data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
-            fi
-            git commit -m "$MSG"
-            git push
-            echo "✅ steel_sm.db commitado e pushado"
-          fi
-
-      # ── 6b. Registra no painel admin (update_log) que rodou AUTOMÁTICO ────────
-      - name: Log auto-update (painel admin)
-        if: env.NEW_DATA == 'true' || env.IRON_NEW_DATA == 'true'
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          if [ "$NEW_DATA" = "true" ]; then python _shared/log_update.py "SECEX" auto "cron MDIC ${LATEST_PERIOD}"; fi
-          if [ "$IRON_NEW_DATA" = "true" ]; then python _shared/log_update.py "Minério" auto "cron MDIC"; fi
-
-      # ── 7. Log final ────────────────────────────────────────────────────────
-      - name: Summary
-        run: |
-          if [ "$NEW_DATA" = "true" ]; then
-            echo "✅ Novo dado inserido: $LATEST_PERIOD — DB commitado e e-mail enviado."
-          else
-            echo "ℹ️  Nenhum dado novo. DB inalterado."
-          fi

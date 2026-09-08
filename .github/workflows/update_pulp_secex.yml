@@ -41,26 +41,6 @@ jobs:
       - name: DB size gate (<50 MB p/ sql.js)
         run: python _shared/check_db_size.py "Pulp and Paper/pulp_paper.db"
 
-      - name: Send email notification
-        if: env.PULP_NEW_DATA == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port:    587
-          secure:         false
-          username:       ${{ secrets.SMTP_USER }}
-          password:       ${{ secrets.SMTP_PASS }}
-          to:             joao.helito@itaubba.com
-          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 Celulose por porto (SECEX) — novo dado: ${{ env.PULP_LATEST }}"
-          body: |
-            A exportação de celulose por porto (SECEX/MDIC ao vivo) foi atualizada
-            automaticamente no dashboard de Pulp & Paper.
-
-            📅 Novo período: ${{ env.PULP_LATEST }}
-            ---
-            Itaú BBA — Equity Research | Pulp & Paper (mensagem automática)
-
       - name: Commit & push updated DB
         if: env.PULP_NEW_DATA == 'true' || github.event.inputs.backfill == 'true'
         run: |
@@ -82,3 +62,30 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python _shared/log_update.py "Celulose" auto "cron MDIC ${PULP_LATEST}"
+
+      # ── AVISO POR E-MAIL — POR ÚLTIMO, DE PROPÓSITO ───────────────────────
+      # 2026-09-08: este passo ficava ANTES do commit. Com a senha de app do
+      # Gmail vencida ele falhava (535 BadCredentials), o job morria ali e o
+      # "Commit & push" era PULADO → o dado de agosto/2026 existia no runner e
+      # nunca chegou na dashboard. Agora o dado é gravado primeiro e o e-mail
+      # vem depois: se o SMTP estiver morto o job fica VERMELHO (o alarme
+      # continua), mas a base já subiu.
+      - name: Send email notification
+        if: env.PULP_NEW_DATA == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port:    587
+          secure:         false
+          username:       ${{ secrets.SMTP_USER }}
+          password:       ${{ secrets.SMTP_PASS }}
+          to:             joao.helito@itaubba.com
+          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
+          subject:        "🔔 Celulose por porto (SECEX) — novo dado: ${{ env.PULP_LATEST }}"
+          body: |
+            A exportação de celulose por porto (SECEX/MDIC ao vivo) foi atualizada
+            automaticamente no dashboard de Pulp & Paper.
+
+            📅 Novo período: ${{ env.PULP_LATEST }}
+            ---
+            Itaú BBA — Equity Research | Pulp & Paper (mensagem automática)
