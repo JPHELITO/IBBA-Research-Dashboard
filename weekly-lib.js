@@ -541,34 +541,52 @@ function _tabelaComps(comps) {
   var grupos = (comps && comps.grupos || []).filter(function (g) { return (g.linhas || []).length; });
   if (!grupos.length) return '';
   var y1 = comps.y1 || '26E', y2 = comps.y2 || '';
-  // Cabeçalho em DUAS linhas: rótulo em cima, ano embaixo. É o que deixa caber
-  // EV/EBITDA e Dividend Yield nos dois anos dentro dos 640px do e-mail — numa
-  // linha só, "EV/EBITDA 2026E  EV/EBITDA 2027E" empurra a tabela para fora.
+  // Cabeçalho em DUAS FAIXAS, como numa comp table de research: em cima o nome do
+  // múltiplo, UMA VEZ SÓ, centrado sobre as duas colunas (colspan); embaixo, o ano de
+  // cada uma. Escrever "EV/EBITDA" duas vezes lado a lado, além de repetitivo, não
+  // caberia nos 640px do e-mail.
   // O P/E saiu no lugar do EV/EBITDA do ano seguinte (pedido do analista, 08/09/2026):
   // múltiplo de lucro é ruído em siderurgia (CSN e CMPC já saíam sem número).
-  var COLS = [{t: 'PREÇO'}, {t: 'TARGET'}, {t: 'UPSIDE'},
-              {t: 'EV/EBITDA', y: y1}, {t: 'EV/EBITDA', y: y2},
-              {t: 'DIV. YIELD', y: y1}, {t: 'DIV. YIELD', y: y2}];
+  var SIMPLES = ['PREÇO', 'TARGET', 'UPSIDE'];            // uma coluna cada
+  var PARES   = ['EV/EBITDA', 'DIV. YIELD'];              // duas colunas cada (y1 e y2)
   var s8 = 'font-family:' + T.sans + ';font-size:8.5pt;';
   var s7 = 'font-family:' + T.sans + ';font-size:7.5pt;';
+  var s65 = 'font-family:' + T.sans + ';font-size:6.5pt;letter-spacing:.3pt;';
   // Números CENTRADOS na coluna (antes iam encostados na direita, o que com colunas
   // largas jogava o valor para o canto e fazia a tabela parecer torta).
   var CENTRO = 'text-align:center';
   var PADCEL = '6pt 3pt';
+  // ⚠️ Sem `rowspan`: o motor do Word é irregular com célula que atravessa linha. As
+  // colunas de uma faixa só levam um espaço em branco na faixa de baixo — o preto é
+  // chapado, então a emenda não aparece.
+  var CIMA = '6pt 3pt 1.5pt 3pt', BAIXO = '0 3pt 6pt 3pt';
 
   var corpo = grupos.map(function (g, gi) {
-    var cab = '<tr>' +
-      '<td valign="bottom" style="background:' + T.ink + ';padding:6pt 10.5pt' +
-        (gi === 0 ? ';border-radius:12px 0 0 0' : '') + '">' +
-        _p('<b style="' + s7 + 'color:#FFFFFF;letter-spacing:.9pt">' + _esc(g.titulo) + '</b>') + '</td>' +
-      COLS.map(function (c, i) {
-        return '<td valign="bottom" align="center" style="background:' + T.ink + ';padding:6pt 3pt' +
-          (gi === 0 && i === COLS.length - 1 ? ';border-radius:0 12px 0 0' : '') + '">' +
-          _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:#FFFFFF;letter-spacing:.3pt">' +
-             _esc(c.t) + '</b>', CENTRO) +
-          _p('<b style="font-family:' + T.sans + ';font-size:6.5pt;color:#9AA1AA;letter-spacing:.3pt">' +
-             (c.y ? _esc(c.y) : '&nbsp;') + '</b>', CENTRO + ';margin:1pt 0 0 0') + '</td>';
-      }).join('') + '</tr>';
+    var rotulo = function (txt, span, canto) {
+      return '<td' + (span > 1 ? ' colspan="' + span + '"' : '') + ' align="center" nowrap="nowrap"' +
+        ' style="background:' + T.ink + ';padding:' + CIMA + (canto || '') + '">' +
+        _p('<b style="' + s65 + 'color:#FFFFFF">' + _esc(txt) + '</b>', CENTRO) + '</td>';
+    };
+    var ano = function (txt) {
+      return '<td align="center" nowrap="nowrap" style="background:' + T.ink + ';padding:' + BAIXO + '">' +
+        _p('<b style="' + s65 + 'color:#9AA1AA">' + (txt ? _esc(txt) : '&nbsp;') + '</b>', CENTRO) + '</td>';
+    };
+    var cab =
+      '<tr>' +
+        '<td style="background:' + T.ink + ';padding:6pt 10.5pt 1.5pt 10.5pt' +
+          (gi === 0 ? ';border-radius:12px 0 0 0' : '') + '">' +
+          _p('<b style="' + s7 + 'color:#FFFFFF;letter-spacing:.9pt">' + _esc(g.titulo) + '</b>') + '</td>' +
+        SIMPLES.map(function (c) { return rotulo(c, 1); }).join('') +
+        PARES.map(function (c, i) {
+          return rotulo(c, 2, gi === 0 && i === PARES.length - 1 ? ';border-radius:0 12px 0 0' : '');
+        }).join('') +
+      '</tr>' +
+      '<tr>' +
+        '<td style="background:' + T.ink + ';padding:0 10.5pt 6pt 10.5pt">' +
+          _p('<b style="' + s65 + 'color:' + T.ink + '">&nbsp;</b>') + '</td>' +
+        SIMPLES.map(function () { return ano(''); }).join('') +
+        PARES.map(function () { return ano(y1) + ano(y2); }).join('') +
+      '</tr>';
 
     var linhas = g.linhas.map(function (l, i) {
       var ult = (gi === grupos.length - 1) && (i === g.linhas.length - 1);

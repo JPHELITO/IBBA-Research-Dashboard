@@ -456,13 +456,17 @@ const HTML=W.buildEmail(MODELO);
      HTML.indexOf('2Q26 REVIEW')>0 && HTML.indexOf('Vale 2Q26: em linha')>0);
   ok('a comp table entra com o cabeçalho preto por setor',
      HTML.indexOf('MINERAÇÃO')>0 && HTML.indexOf('SIDERURGIA')>0);
+  const nG=MODELO.comps.grupos.length;
   ok('…com as 7 colunas escolhidas, e os DOIS anos do modelo no cabeçalho',
      ['PREÇO','TARGET','UPSIDE','EV/EBITDA','DIV. YIELD']
        .every(c=>HTML.indexOf(c)>0) &&
-     (HTML.match(/>EV\/EBITDA</g)||[]).length===2*MODELO.comps.grupos.length &&
-     (HTML.match(/>DIV\. YIELD</g)||[]).length===2*MODELO.comps.grupos.length &&
-     (HTML.match(/>26E</g)||[]).length===2*MODELO.comps.grupos.length &&
-     (HTML.match(/>27E</g)||[]).length===2*MODELO.comps.grupos.length);
+     (HTML.match(/>26E</g)||[]).length===2*nG && (HTML.match(/>27E</g)||[]).length===2*nG);
+  // o nome do múltiplo sai UMA VEZ, centrado sobre as duas colunas de ano (colspan)
+  ok('…e o rótulo do múltiplo é um só, fundido sobre 26E e 27E',
+     (HTML.match(/>EV\/EBITDA</g)||[]).length===nG &&
+     (HTML.match(/>DIV\. YIELD</g)||[]).length===nG &&
+     (HTML.match(/colspan="2"/g)||[]).length===2*nG &&
+     /colspan="2"[^>]*>[\s\S]{0,160}?>EV\/EBITDA</.test(HTML));
   ok('…e sem as colunas que ficaram de fora (o e-mail tem 640px)',
      HTML.indexOf('ND/EBITDA')<0 && HTML.indexOf('P/CE')<0 && HTML.indexOf('P/E')<0);
   ok('múltiplo sai com uma casa e o "x", nos dois anos',
