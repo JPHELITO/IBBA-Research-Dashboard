@@ -3,9 +3,7 @@
 updater_sm.py — Steel & Mining SECEX Auto-Updater
 ==================================================
 Modos:
-  --update      Reconfere a janela (REVISE_YEARS) no MDIC e aplica mês novo E revisões
-  --reconcile   Só audita: compara a dash com o MDIC e sai 1 se divergir (não grava)
-  --anos A B    Janela explícita (ex.: --anos 2025 2026), p/ reprocessar histórico
+  --update      Baixa os CSVs bulk do MDIC e aplica novos meses ao DB
   --backfill    Reprocessa TODOS os anos históricos com a nova classificação NCM
   --check       Apenas verifica o último mês disponível no MDIC
 
@@ -55,10 +53,6 @@ STEEL_SH6 = _dict.sh6_set("steel")
 RECENT_FROM = f"{datetime.utcnow().year - 6}-01"
 # Quantos países "principais" manter por direção nas quebras SH6×País (resto = "Outros").
 TOP_COUNTRIES_N = 15
-# Quantos ANOS o --update reconfere a cada rodada (o corrente + os anteriores). O MDIC
-# revisa meses já publicados; 2 anos cobre com folga o que ele mexe (medido: ano fechado
-# não muda mais). Ver _janela_anos().
-REVISE_YEARS = int(os.environ.get("SECEX_REVISE_YEARS", "2"))
 
 # ── E-mail ─────────────────────────────────────────────────────────────────────
 EMAIL_RECIPIENTS = ["joao.helito@itaubba.com"]   # 2026-08-03: só o e-mail do Itaú (sem gmail)
@@ -520,222 +514,94 @@ def _download_mdic_year(year: int, direction: str, pais_map: dict,
 # ─────────────────────────────────────────────────────────────────────────────
 # ATUALIZAÇÃO INCREMENTAL
 # ─────────────────────────────────────────────────────────────────────────────
-def _janela_anos(n=None) -> list:
-    """Anos que o --update reconfere a cada rodada: o corrente e os (n-1) anteriores.
-
-    Por que reconferir o ano inteiro em vez de "só o mês novo": o MDIC REVISA meses já
-    publicados. Medido em 08/09/2026 contra o CSV ao vivo — 2025 (ano fechado) não mexe
-    mais (0 divergências em 24 mês×direção), mas o ano CORRENTE revisa de verdade, e
-    feio: a exportação de revestidos p/ a Argentina em 2026-04 caiu de 69,84 kt (o que a
-    dash guardava) para 25,88 kt, −63%, confirmado pelo CSV bulk E pela API do Comex
-    Stat. O `only_after=latest_in_db` antigo gravava só o mês novo e descartava a revisão
-    em silêncio — a dash congelava no 1º número divulgado, o mesmo bug que o IABr teve.
+def update_from_mdic(conn, force_reload=False):
     """
-    n = n or REVISE_YEARS
-    atual = datetime.utcnow().year
-    return list(range(atual - n + 1, atual + 1))
-
-
-def _sincroniza_country(conn, rows, direction, dry_run=False, forcar=False):
-    """Grava secex_country SÓ ONDE O NÚMERO MUDOU, nos períodos que `rows` cobre.
-
-    Reescrever linha igual mexeria no `updated_at` → o .db mudaria a cada rodada e o robô
-    commitaria todo dia à toa. Devolve (novas, revisadas, removidas, periodos_mexidos).
+    Verifica se há novos meses publicados pelo MDIC e os insere no DB.
+    Retorna (new_data: bool, new_period: str | None).
     """
-    periodos = sorted({r[0] for r in rows})
-    if not periodos:
-        return 0, 0, 0, set()
-    marcas = ",".join("?" * len(periodos))
-    atual = {
-        (p, d, c, ctry): (round(kt or 0.0, 6), round(usd or 0.0, 6))
-        for p, d, c, ctry, kt, usd in conn.execute(
-            f"SELECT period,direction,category,country,volume_ktons,revenue_usd_mn "
-            f"FROM secex_country WHERE direction=? AND period IN ({marcas})",
-            (direction, *periodos))
-    }
-    gravar, novas, revisadas, mexidos, vivos = [], 0, 0, set(), set()
-    for (p, d, cat, ctry, kt, usd, _ts) in rows:
-        k = (p, d, cat, ctry)
-        vivos.add(k)
-        antes = atual.get(k)
-        if antes is None:
-            novas += 1
-        elif antes != (round(kt, 6), round(usd, 6)):
-            revisadas += 1
-        elif not forcar:
-            continue                      # igual: não toca (nem no updated_at)
-        gravar.append((p, d, cat, ctry, kt, usd, NOW))
-        mexidos.add(p)
+    print("\n[MDIC] Verificando novos dados SECEX...")
 
-    # Linha que existia e sumiu da fonte: dentro da janela o CSV do ano é a verdade
-    # COMPLETA, então a órfã tem que sair (senão fica um número fantasma na dash).
-    sumidas = [k for k in atual if k not in vivos]
-    if not dry_run:
-        if gravar:
-            upsert_country(conn, gravar)
-        if sumidas:
-            conn.executemany(
-                "DELETE FROM secex_country WHERE period=? AND direction=? "
-                "AND category=? AND country=?", sumidas)
-            conn.commit()
-    mexidos.update(k[0] for k in sumidas)
-    return novas, revisadas, len(sumidas), mexidos
-
-
-def _sincroniza_import_prediction(conn, rows, dry_run=False, forcar=False):
-    """Mesma regra da _sincroniza_country, na linha laranja (import_prediction)."""
-    periodos = sorted({r[0] for r in rows})
-    if not periodos:
-        return 0, 0, set()
-    marcas = ",".join("?" * len(periodos))
-    atual = {
-        (p, prod, ctry): (round(v or 0.0, 6), round(kg or 0.0, 6))
-        for p, prod, ctry, v, kg in conn.execute(
-            f"SELECT period,product,country,value_usd,volume_kg FROM import_prediction "
-            f"WHERE period IN ({marcas})", tuple(periodos))
-    }
-    gravar, novas, revisadas, mexidos = [], 0, 0, set()
-    for (p, prod, ctry, usd, kg, _ts) in rows:
-        antes = atual.get((p, prod, ctry))
-        if antes is None:
-            novas += 1
-        elif antes != (round(usd, 6), round(kg, 6)):
-            revisadas += 1
-        elif not forcar:
-            continue
-        gravar.append((p, prod, ctry, usd, kg, NOW))
-        mexidos.add(p)
-    if gravar and not dry_run:
-        upsert_import_prediction(conn, gravar)
-    return novas, revisadas, mexidos
-
-
-def _sincroniza_sh6(conn, acc_country, acc_urf, dry_run=False):
-    """Reescreve as quebras SH6 da JANELA inteira, mas só quando o conjunto mudou.
-
-    Aqui não dá para comparar linha a linha como nas outras: o top-15 de países é
-    RECALCULADO a cada rodada, então um país pode entrar/sair de "Outros" e a linha
-    antiga fica órfã (foi essa a armadilha que quase transformou exportação de placa
-    para a Alemanha em "revisão" na auditoria de 08/09). Apagar e reescrever a janela é
-    o que mantém a tabela internamente coerente.
-    """
-    if not acc_country:
-        return 0, set()
-    keep_by_dir = {"imp": _top_countries(conn, "imp"), "exp": _top_countries(conn, "exp")}
-    novas_c = _sh6_country_rows(acc_country, keep_by_dir)
-    novas_u = _sh6_urf_rows(acc_urf)
-    janela = sorted({k[0] for k in acc_country})
-    dirs   = sorted({k[1] for k in acc_country})
-    mp, md = ",".join("?" * len(janela)), ",".join("?" * len(dirs))
-
-    def _conjunto(tabela, col):
-        return {(p, d, s, x, round(kt or 0.0, 6), round(usd or 0.0, 6))
-                for p, d, s, x, kt, usd in conn.execute(
-                    f"SELECT period,direction,sh6,{col},volume_ktons,revenue_usd_mn "
-                    f"FROM {tabela} WHERE period IN ({mp}) AND direction IN ({md})",
-                    (*janela, *dirs))}
-
-    quer_c = {(p, d, s, x, round(kt, 6), round(usd, 6)) for p, d, s, x, kt, usd in novas_c}
-    quer_u = {(p, d, s, x, round(kt, 6), round(usd, 6)) for p, d, s, x, kt, usd in novas_u}
-    if (quer_c == _conjunto("secex_sh6_country", "country")
-            and quer_u == _conjunto("secex_sh6_urf", "port")):
-        return 0, set()
-    if not dry_run:
-        conn.execute(f"DELETE FROM secex_sh6_country WHERE period IN ({mp}) "
-                     f"AND direction IN ({md})", (*janela, *dirs))
-        conn.execute(f"DELETE FROM secex_sh6_urf     WHERE period IN ({mp}) "
-                     f"AND direction IN ({md})", (*janela, *dirs))
-        upsert_sh6_country(conn, novas_c)
-        upsert_sh6_urf(conn, novas_u)
-        # janela rolante: poda o que saiu dos ~6 anos (mantém o .db sob controle)
-        conn.execute("DELETE FROM secex_sh6_country WHERE period < ?", (RECENT_FROM,))
-        conn.execute("DELETE FROM secex_sh6_urf     WHERE period < ?", (RECENT_FROM,))
-        conn.commit()
-    return len(novas_c), set(janela)
-
-
-def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
-    """Reconfere a janela de anos no MDIC e aplica o que mudou — mês NOVO e REVISÃO.
-
-    Devolve (mudou: bool, ultimo_periodo: str | None).
-    Com dry_run=True não escreve nada: é o modo --reconcile (auditoria).
-    """
-    anos = anos or _janela_anos()
-    rotulo = "RECONCILE" if dry_run else "MDIC"
-    print(f"\n[{rotulo}] Reconferindo {anos[0]}-{anos[-1]} no MDIC "
-          f"({'sem gravar' if dry_run else 'grava so o que mudou'})...")
+    latest_in_db = get_latest_period(conn, "imp") or "2009-12"
+    pred_latest = (conn.execute("SELECT MAX(period) FROM import_prediction").fetchone()[0]) or "1996-01"
+    print(f"  Último período no DB: secex={latest_in_db} | import_prediction={pred_latest}")
 
     pais_map = fetch_pais_lookup()
-    port_map = build_port_map(fetch_urf_lookup())
+    urf_map  = fetch_urf_lookup()
+    port_map = build_port_map(urf_map)
+    sh6_latest = conn.execute("SELECT MAX(period) FROM secex_sh6_country").fetchone()[0]
+    print(f"  Último período SH6 (país/urf): {sh6_latest or '—'}")
 
-    antes_max = get_latest_period(conn, "imp")
-    print(f"  Ultimo periodo no DB antes desta rodada: {antes_max or '—'}")
+    current_year = datetime.utcnow().year
+    years_to_check = [current_year - 1, current_year] \
+                     if datetime.utcnow().month <= 2 else [current_year]
 
-    mes_novo, revisoes = None, {}
-    tot_novas = tot_rev = tot_rem = 0
+    found_periods = set()
+    pred_periods  = set()
     acc_country, acc_urf = {}, {}
 
     for direction in ("imp", "exp"):
-        for ano in anos:
-            df = _download_mdic_year(ano, direction, pais_map, port_map)
+        for year in years_to_check:
+            df = _download_mdic_year(year, direction, pais_map, port_map)
             if df is None:
                 continue
 
-            c_rows = _aggregate_df(df, direction, pais_map, only_after=None)
-            novas, revs, rem, mexidos = _sincroniza_country(
-                conn, c_rows, direction, dry_run=dry_run, forcar=force_reload)
-            tot_novas += novas; tot_rev += revs; tot_rem += rem
-            for p in mexidos:
-                if antes_max and p <= antes_max:
-                    revisoes[p] = revisoes.get(p, 0) + 1
-            adiante = [p for p in mexidos if not antes_max or p > antes_max]
-            if adiante:
-                cand = max(adiante)
-                mes_novo = cand if (mes_novo is None or cand > mes_novo) else mes_novo
-            print(f"  {direction.upper()} {ano}: {novas} novas | {revs} REVISADAS | {rem} removidas")
+            max_period_csv = df["period"].max()
+            print(f"  {direction.upper()} {year}: último período disponível = {max_period_csv}")
 
-            if direction == "imp":
-                pn, pr, _ = _sincroniza_import_prediction(
-                    conn, _aggregate_import_prediction(df), dry_run=dry_run, forcar=force_reload)
-                if pn or pr:
-                    print(f"      linha laranja (import_prediction): {pn} novas | {pr} revisadas")
+            # ── secex_country (gated pelo último período do secex) ──────────────
+            if force_reload or max_period_csv > latest_in_db:
+                threshold = latest_in_db if not force_reload else "1996-01"
+                c_rows = _aggregate_df(df, direction, pais_map, only_after=threshold)
+                upsert_country(conn, c_rows)
+                new_ps = {r[0] for r in c_rows}
+                found_periods.update(new_ps)
+                print(f"  → secex: {len(new_ps)} períodos | {len(c_rows):,} linhas país")
+            else:
+                print(f"  → secex sem novidades (DB já tem até {latest_in_db})")
 
-            _accumulate_sh6(df, direction, acc_country, acc_urf)
+            # ── import_prediction (Coreia/China HRC/CRC) — INDEPENDENTE do secex:
+            #    gated pelo PRÓPRIO último período da tabela, p/ auto-recuperar quando
+            #    o secex já avançou mas a previsão ficou pra trás (e seguir junto daí). ─
+            if direction == "imp" and (force_reload or max_period_csv > pred_latest):
+                p_thr = "1996-01" if force_reload else pred_latest
+                p_rows = _aggregate_import_prediction(df, only_after=p_thr)
+                if p_rows:
+                    upsert_import_prediction(conn, p_rows)
+                    pp = sorted({r[0] for r in p_rows})
+                    pred_periods.update(pp)
+                    print(f"  → import_prediction: {len(p_rows)} linhas | períodos {pp}")
 
-    mudou_country = bool(tot_novas or tot_rev or tot_rem)
-    if mudou_country and not dry_run:
+            # ── secex_sh6_country / secex_sh6_urf (quebra fina; gated pelo próprio máx.) ─
+            if force_reload or max_period_csv > (sh6_latest or "0000-00"):
+                _accumulate_sh6(df, direction, acc_country, acc_urf,
+                                only_after=(None if force_reload else sh6_latest))
+
+    if found_periods:
         derive_aggregates(conn)
 
-    n_sh6, _ = _sincroniza_sh6(conn, acc_country, acc_urf, dry_run=dry_run)
-    if n_sh6:
-        print(f"  secex_sh6_*: janela reescrita ({n_sh6:,} linhas SH6xPais)")
+    if acc_country:
+        keep_by_dir = {"imp": _top_countries(conn, "imp"), "exp": _top_countries(conn, "exp")}
+        upsert_sh6_country(conn, _sh6_country_rows(acc_country, keep_by_dir))
+        upsert_sh6_urf(conn, _sh6_urf_rows(acc_urf))
+        # janela rolante: poda períodos que saíram dos ~6 anos (mantém o .db sob controle)
+        conn.execute("DELETE FROM secex_sh6_country WHERE period < ?", (RECENT_FROM,))
+        conn.execute("DELETE FROM secex_sh6_urf     WHERE period < ?", (RECENT_FROM,))
+        conn.commit()
+        sh6_ps = sorted({k[0] for k in acc_country})
+        print(f"  → secex_sh6: {len(sh6_ps)} períodos | sh6×país(pré-fold)={len(acc_country):,} "
+              f"| sh6×urf={len(acc_urf):,}")
 
-    mudou  = mudou_country or bool(n_sh6)
-    ultimo = get_latest_period(conn, "imp") or antes_max
-
-    if dry_run:
-        if mudou:
-            print(f"\n  [X] DIVERGE do MDIC: {tot_novas} faltando | {tot_rev} desatualizadas "
-                  f"| {tot_rem} sobrando" + (" | SH6 fora de sincronia" if n_sh6 else ""))
-            if revisoes:
-                print("      meses ja publicados que mudaram na fonte: "
-                      + ", ".join(f"{p} ({n})" for p, n in sorted(revisoes.items())))
-        else:
-            print("\n  [OK] dash identica ao MDIC na janela conferida.")
-        return mudou, ultimo
-
-    if mudou:
-        print(f"\n  [OK] {tot_novas} linhas novas | {tot_rev} REVISADAS | {tot_rem} removidas")
-        if mes_novo:
-            print(f"      mes novo: {mes_novo}")
-        if revisoes:
-            print("      revisoes em meses ja publicados: "
-                  + ", ".join(f"{p} ({n})" for p, n in sorted(revisoes.items())))
-        _write_gh_env("true", ultimo, mes_novo, revisoes)
+    all_new = found_periods | pred_periods
+    if all_new:
+        latest_new = sorted(all_new)[-1]
+        print(f"\n  ✅ NOVO DADO: secex={sorted(found_periods)[-1] if found_periods else '—'}"
+              f" | import_prediction={sorted(pred_periods)[-1] if pred_periods else '—'}")
+        _write_gh_env("true", latest_new)
+        return True, latest_new
     else:
-        print("\n  [--] Nada mudou (nem mes novo, nem revisao).")
-        _write_gh_env("false", None, None, {})
-    return mudou, ultimo
+        print("\n  ℹ️  Nenhum dado novo encontrado.")
+        _write_gh_env("false", None)
+        return False, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -873,24 +739,14 @@ Itaú BBA — Equity Research | Steel & Mining
         print(f"  [EMAIL] Erro ao enviar: {e}")
 
 
-def _write_gh_env(new_data: str, period: str | None,
-                  mes_novo: str | None = None, revisoes: dict | None = None):
-    """Passa o resultado p/ os passos seguintes do workflow.
-
-    NEW_DATA governa o commit e o e-mail. Separa MÊS NOVO de REVISÃO porque as duas
-    coisas merecem commit, mas dizer "novo dado: 2026-04" quando o que houve foi uma
-    revisão de abril seria mentira no assunto do e-mail.
-    """
+def _write_gh_env(new_data: str, period: str | None):
     gh_env = os.environ.get("GITHUB_ENV")
     if not gh_env:
         return
-    with open(gh_env, "a", encoding="utf-8") as f:
+    with open(gh_env, "a") as f:
         f.write(f"NEW_DATA={new_data}\n")
         if period:
             f.write(f"LATEST_PERIOD={period}\n")
-        f.write(f"NEW_MONTH={mes_novo or ''}\n")
-        resumo = ", ".join(f"{p} ({n})" for p, n in sorted((revisoes or {}).items()))
-        f.write(f"REVISED={resumo}\n")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -903,13 +759,7 @@ def main():
         pass
     parser = argparse.ArgumentParser(description="Steel & Mining SECEX Auto-Updater")
     parser.add_argument("--update",     action="store_true",
-                        help="Reconfere a janela no MDIC e aplica mês novo + revisões")
-    parser.add_argument("--reconcile",  action="store_true",
-                        help="Só audita a janela contra o MDIC (não grava); sai 1 se divergir")
-    parser.add_argument("--anos", type=int, nargs="+", metavar="ANO",
-                        help="Janela explícita de anos p/ --update/--reconcile "
-                             "(ex.: --anos 2025 2026). Padrão: os últimos "
-                             f"{REVISE_YEARS} anos.")
+                        help="Baixa CSVs MDIC e aplica novos meses")
     parser.add_argument("--backfill",   action="store_true",
                         help="Reprocessa histórico completo com nova classificação NCM")
     parser.add_argument("--backfill-sh6", action="store_true",
@@ -958,15 +808,8 @@ def main():
     elif args.backfill_sh6:
         backfill_sh6(conn, start_year=args.start_year)
 
-    elif args.reconcile:
-        diverge, _ = update_from_mdic(conn, anos=args.anos, dry_run=True)
-        conn.close()
-        # sai 1 p/ o job ficar VERMELHO: sem isso a divergência passa despercebida,
-        # que foi exatamente como o CRC ficou 14 meses subestimado sem ninguém ver.
-        sys.exit(1 if diverge else 0)
-
     elif args.update:
-        new_data, new_period = update_from_mdic(conn, force_reload=args.force, anos=args.anos)
+        new_data, new_period = update_from_mdic(conn, force_reload=args.force)
 
     elif args.derive:
         derive_aggregates(conn)
