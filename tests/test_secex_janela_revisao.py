@@ -212,3 +212,32 @@ class TestFalhaDeDownloadNaoViraAprovacao:
         mudou, _ = U.update_from_mdic(conn, anos=[2026])
         assert mudou is False
         assert "::warning::" in capsys.readouterr().out
+
+
+class TestJanelaDeArmazenagemDasSH6:
+    """As duas janelas são diferentes DE PROPÓSITO — e o cliente não depende de nenhuma.
+
+    Medido em 08/09/2026: secex_sh6_country + secex_sh6_urf pesavam 12,8 MB dos 47,5 MB
+    do arquivo (27%) e ninguém as desenha. Encurtar a janela de armazenagem de 6 para 3
+    anos devolveu 5,6 MB — o .db saiu de 47,5 para 41,9, com o portão do sql.js em 50.
+    """
+
+    def test_armazenagem_e_mais_curta_que_a_janela_do_top15(self):
+        # Se alguém igualar as duas, o arquivo volta a crescer 5,6 MB sem querer.
+        assert U.SH6_FROM > U.RECENT_FROM
+
+    def test_top15_continua_lendo_seis_anos(self):
+        """Janela longa mantém a lista de países ESTÁVEL: país que entra e sai do top-15
+        faz o _sincroniza_sh6 reescrever a janela inteira e engorda o arquivo à toa."""
+        assert int(U.RECENT_FROM[:4]) == U.datetime.utcnow().year - 6
+
+    def test_o_cliente_nao_recebe_as_tabelas_sh6(self):
+        """É isto que torna o encurtamento grátis: elas não vão no banco do cliente."""
+        import importlib.util
+        import os
+        caminho = os.path.join(os.path.dirname(U.__file__), "build_web_db.py")
+        spec = importlib.util.spec_from_file_location("build_web_db", caminho)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert "secex_sh6_country" not in mod.WEB_TABLES
+        assert "secex_sh6_urf" not in mod.WEB_TABLES

@@ -50,8 +50,19 @@ from ports import norm_port
 
 # Conjunto de SH6 de aço (do dicionário) p/ as quebras SH6×País e SH6×URF.
 STEEL_SH6 = _dict.sh6_set("steel")
-# As quebras finas (SH6×País / SH6×URF) usam uma JANELA ROLANTE de ~6 anos p/ caber no
-# limite do navegador (sql.js); períodos mais antigos são podados a cada --update.
+# ── Duas janelas DIFERENTES, e a diferença é de propósito ────────────────────────
+# SH6_FROM = o que fica GUARDADO nas quebras finas (secex_sh6_country/urf). Medido em
+#   08/09/2026: as duas pesavam 12,8 MB dos 47,5 MB do arquivo — 27% — e NINGUÉM as
+#   desenha (o build_web_db não as manda p/ o cliente; no admin elas só aparecem como
+#   exemplo escrito na caixa de SQL). Com 6 anos o .db chegou a 47,5 de 50 MB, que é o
+#   teto do sql.js no navegador do admin. Encurtar p/ 3 anos devolve ~5,5 MB e ainda
+#   deixa 2 comparações anuais completas. Reversível: mude aqui e rode --backfill-sh6.
+# RECENT_FROM = a janela p/ ESCOLHER os top-15 países das quebras. Fica em 6 anos de
+#   propósito: ela lê secex_country (que tem 1997 em diante, não custa nada) e uma
+#   janela longa deixa a lista ESTÁVEL — país entrando e saindo do top-15 faz o
+#   _sincroniza_sh6 reescrever a janela inteira, engordando o arquivo à toa.
+SH6_ANOS    = int(os.environ.get("SECEX_SH6_ANOS", "3"))
+SH6_FROM    = f"{datetime.utcnow().year - SH6_ANOS}-01"
 RECENT_FROM = f"{datetime.utcnow().year - 6}-01"
 # Quantos países "principais" manter por direção nas quebras SH6×País (resto = "Outros").
 TOP_COUNTRIES_N = 15
@@ -393,10 +404,10 @@ def upsert_sh6_urf(conn, rows):
 def _accumulate_sh6(df, direction, acc_country, acc_urf, only_after=None):
     """Acumula df MDIC (com colunas sh6/port) em dois dicts (kg/usd brutos):
        acc_country[(period,dir,sh6,country)] e acc_urf[(period,dir,sh6,port)].
-    Só SH6 de aço e período >= RECENT_FROM (e > only_after, se informado)."""
+    Só SH6 de aço e período >= SH6_FROM (e > only_after, se informado)."""
     for _, row in df.iterrows():
         period = str(row["period"]).strip()
-        if period < RECENT_FROM:
+        if period < SH6_FROM:
             continue
         if only_after and period <= only_after:
             continue
@@ -681,8 +692,8 @@ def _sincroniza_sh6(conn, acc_country, acc_urf, dry_run=False):
         upsert_sh6_country(conn, novas_c)
         upsert_sh6_urf(conn, novas_u)
         # janela rolante: poda o que saiu dos ~6 anos (mantém o .db sob controle)
-        conn.execute("DELETE FROM secex_sh6_country WHERE period < ?", (RECENT_FROM,))
-        conn.execute("DELETE FROM secex_sh6_urf     WHERE period < ?", (RECENT_FROM,))
+        conn.execute("DELETE FROM secex_sh6_country WHERE period < ?", (SH6_FROM,))
+        conn.execute("DELETE FROM secex_sh6_urf     WHERE period < ?", (SH6_FROM,))
         conn.commit()
         # Apagar+reinserir a janela deixa páginas livres no arquivo; sem compactar, o .db
         # cresce a cada rodada e um dia bate no portão de 50 MB do sql.js (hoje em 47,5).
@@ -839,7 +850,7 @@ def backfill_sh6(conn, start_year=2015):
     secex_sh6_country/secex_sh6_urf E a linha laranja import_prediction (rebaseada p/ os
     SH6 ANTIDUMPING), na janela rolante (~6 anos). O DELETE limpa produtos/países antigos
     (ex.: OTHER/Other que o --update incremental não remove)."""
-    sy = max(start_year, datetime.utcnow().year - 6)  # não antes da janela rolante (~6 anos)
+    sy = max(start_year, int(SH6_FROM[:4]))          # não antes da janela rolante (SH6_ANOS)
     print(f"\n[BACKFILL-SH6] Reconstruindo SH6×País/URF + import_prediction a partir de {sy}...")
     conn.execute("DELETE FROM secex_sh6_country")
     conn.execute("DELETE FROM secex_sh6_urf")
