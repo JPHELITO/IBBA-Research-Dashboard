@@ -187,3 +187,28 @@ class TestTravaSumicoEmMassa:
         novas, revs, rem, _ = U._sincroniza_country(conn, vivos, "imp")
         assert rem == 1                                   # 5% <= 10%: apaga
         assert conn.execute("SELECT COUNT(*) FROM secex_country").fetchone()[0] == 19
+
+
+class TestFalhaDeDownloadNaoViraAprovacao:
+    """--reconcile sem conseguir baixar o CSV NÃO pode dizer "está tudo certo".
+
+    Foi o defeito pego no próprio smoke test desta rodada: com os 4 downloads
+    falhando, o modo auditoria imprimia "dash idêntica ao MDIC" e saía 0 — silêncio
+    virando aprovação, exatamente o padrão que este updater existe para matar.
+    """
+
+    def test_reconcile_falha_quando_o_mdic_nao_entrega(self, conn, monkeypatch):
+        monkeypatch.setattr(U, "_download_mdic_year", lambda *a, **k: None)
+        monkeypatch.setattr(U, "fetch_pais_lookup", lambda: {})
+        monkeypatch.setattr(U, "fetch_urf_lookup", lambda: {})
+        diverge, _ = U.update_from_mdic(conn, anos=[2026], dry_run=True)
+        assert diverge is True          # -> main() sai 1 -> job VERMELHO
+
+    def test_update_com_falha_parcial_nao_derruba(self, conn, monkeypatch, capsys):
+        """No modo de gravar, o que baixou já foi gravado e PRECISA ser commitado."""
+        monkeypatch.setattr(U, "_download_mdic_year", lambda *a, **k: None)
+        monkeypatch.setattr(U, "fetch_pais_lookup", lambda: {})
+        monkeypatch.setattr(U, "fetch_urf_lookup", lambda: {})
+        mudou, _ = U.update_from_mdic(conn, anos=[2026])
+        assert mudou is False
+        assert "::warning::" in capsys.readouterr().out

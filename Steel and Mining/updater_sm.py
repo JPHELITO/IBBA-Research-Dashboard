@@ -710,11 +710,13 @@ def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
     mes_novo, revisoes = None, {}
     tot_novas = tot_rev = tot_rem = 0
     acc_country, acc_urf = {}, {}
+    falhou = []            # (ano, direção) que o MDIC não entregou nesta rodada
 
     for direction in ("imp", "exp"):
         for ano in anos:
             df = _download_mdic_year(ano, direction, pais_map, port_map)
             if df is None:
+                falhou.append(f"{direction.upper()} {ano}")
                 continue
 
             c_rows = _aggregate_df(df, direction, pais_map, only_after=None)
@@ -750,6 +752,13 @@ def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
     ultimo = get_latest_period(conn, "imp") or antes_max
 
     if dry_run:
+        # ⚠️ Sem o CSV não dá para certificar nada. Dizer "idêntica ao MDIC" porque o
+        # download caiu seria o mesmo defeito que este updater existe para matar:
+        # silêncio virando aprovação. Aqui a falta de dado é FALHA, não sucesso.
+        if falhou:
+            print(f"\n  [X] NÃO DEU PARA CONFERIR: o MDIC não entregou {', '.join(falhou)}. "
+                  f"Sem esses arquivos não há como afirmar que a dash está certa.")
+            return True, ultimo
         if mudou:
             print(f"\n  [X] DIVERGE do MDIC: {tot_novas} faltando | {tot_rev} desatualizadas "
                   f"| {tot_rem} sobrando" + (" | SH6 fora de sincronia" if n_sh6 else ""))
@@ -759,6 +768,12 @@ def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
         else:
             print("\n  [OK] dash identica ao MDIC na janela conferida.")
         return mudou, ultimo
+
+    if falhou:
+        # Aviso do GitHub (aparece no resumo do run). NÃO derruba o job: o que baixou já
+        # foi gravado e precisa ser commitado — a rodada seguinte reconfere o que faltou.
+        print(f"::warning::MDIC não entregou {', '.join(falhou)} — esse período ficou "
+              f"SEM reconferir nesta rodada; a próxima tenta de novo.")
 
     if mudou:
         print(f"\n  [OK] {tot_novas} linhas novas | {tot_rev} REVISADAS | {tot_rem} removidas")
