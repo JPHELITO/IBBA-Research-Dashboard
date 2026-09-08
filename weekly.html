@@ -574,7 +574,7 @@ async function carregarComps(){
       preco:_moedaComp(r)+W.num(r.livePrice,_casasDe(r.livePrice)),
       target:r.target_price!=null?_moedaComp(r)+W.num(r.target_price,_casasDe(r.target_price)):'',
       upside:r.upsidePct!=null?r.upsidePct*100:null,
-      evEbitda:r.evEbitdaY1, pe:r.peY1, dy:r.divYieldY1,
+      evEbitda:r.evEbitdaY1, evEbitda2:r.evEbitdaY2, dy:r.divYieldY1, dy2:r.divYieldY2,
     });
   });
   const grupos=GRUPO_ORDEM.filter(g=>porGrupo[g]).map(g=>({titulo:(GRUPO_NOME[g]||g).toUpperCase(),
@@ -582,7 +582,7 @@ async function carregarComps(){
   Object.keys(porGrupo).forEach(g=>{ if(GRUPO_ORDEM.indexOf(g)<0)
     grupos.push({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:porGrupo[g]}); });
   const maisNova=datasPreco.length?Math.max.apply(null,datasPreco):null;
-  S.comps={y1:cfg.y1_label||'26E', grupos:grupos, nota:(cfg.comps_footnote||'').trim(),
+  S.comps={y1:cfg.y1_label||'26E', y2:cfg.y2_label||'27E', grupos:grupos, nota:(cfg.comps_footnote||'').trim(),
            dataPreco:maisNova?new Date(maisNova):null,
            defasados:datasPreco.filter(t=>t!==maisNova).length};
 }
@@ -1150,8 +1150,8 @@ function wktestBoot(){
       preco:_moedaComp(r)+W.num(r.livePrice,_casasDe(r.livePrice)),
       target:r.target_price!=null?_moedaComp(r)+W.num(r.target_price,_casasDe(r.target_price)):'',
       upside:r.upsidePct!=null?r.upsidePct*100:null,
-      evEbitda:r.evEbitdaY1,pe:r.peY1,dy:r.divYieldY1}); });
-  S.comps={y1:'26E',
+      evEbitda:r.evEbitdaY1,evEbitda2:r.evEbitdaY2,dy:r.divYieldY1,dy2:r.divYieldY2}); });
+  S.comps={y1:'26E',y2:'27E',
     grupos:GRUPO_ORDEM.filter(g=>pg[g]).map(g=>({titulo:(GRUPO_NOME[g]||g).toUpperCase(),linhas:pg[g]})),
     nota:'Estimativas Itaú BBA. Preços de fechamento.',
     dataPreco:S.sem.fim, defasados:0};
