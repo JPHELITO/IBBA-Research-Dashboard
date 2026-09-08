@@ -241,3 +241,51 @@ class TestJanelaDeArmazenagemDasSH6:
         spec.loader.exec_module(mod)
         assert "secex_sh6_country" not in mod.WEB_TABLES
         assert "secex_sh6_urf" not in mod.WEB_TABLES
+
+
+class TestCarimboDaClassificacao:
+    """O banco tem de SABER sob qual dicionário cada pedaço do histórico foi escrito.
+
+    A janela de revisão resolve a FONTE mudar o número. Não resolve NÓS mudarmos a
+    regra: em 2026-06 o dicionário mandou dois NCM para CRC e o histórico ficou na
+    classificação antiga por 14 meses, sem erro e sem log. E reprocessar só um pedaço
+    fabrica YoY falso (jun/25 publicou +765,7% contra +390,4% reais), porque as duas
+    pontas da conta passam a vir de safras diferentes. O carimbo é o que permite ao
+    robô DIZER que isso aconteceu.
+    """
+
+    def test_primeira_vez_apenas_carimba(self, conn):
+        desalinhado, _ = U._carimbo_da_classificacao(conn, {"2025-01"})
+        assert desalinhado is False
+        assert U._meta_get(conn, "dict_sha") == U._dict_sha()
+        assert U._meta_get(conn, "dict_desde") == "2025-01"
+
+    def test_dicionario_igual_nao_alarma(self, conn):
+        U._carimbo_da_classificacao(conn, {"2025-01"})
+        desalinhado, _ = U._carimbo_da_classificacao(conn, {"2026-01"})
+        assert desalinhado is False
+
+    def test_cobertura_anda_para_tras_ao_reprocessar_ano_antigo(self, conn):
+        U._carimbo_da_classificacao(conn, {"2025-01"})
+        U._carimbo_da_classificacao(conn, {"2022-01"})
+        assert U._meta_get(conn, "dict_desde") == "2022-01"
+
+    def test_dicionario_diferente_alarma_e_diz_o_que_fazer(self, conn):
+        U._meta_set(conn, "dict_sha", "outra-coisa")
+        U._meta_set(conn, "dict_desde", "2015-01")
+        desalinhado, recado = U._carimbo_da_classificacao(conn, {"2025-01"})
+        assert desalinhado is True
+        assert "--anos" in recado and "YoY" in recado
+
+    def test_dry_run_nao_carimba(self, conn):
+        U._carimbo_da_classificacao(conn, {"2025-01"}, dry_run=True)
+        assert U._meta_get(conn, "dict_sha") is None
+
+    def test_cobertura_declara_o_yoy_um_ano_depois(self, conn):
+        """A costura é sempre um ano mais velha que o mais antigo reprocessado."""
+        U._meta_set(conn, "dict_desde", "2022-01")
+        frase = U._cobertura(conn)
+        assert "2022-01" in frase and "2023-01" in frase
+
+    def test_sem_carimbo_a_cobertura_e_desconhecida(self, conn):
+        assert "DESCONHECIDA" in U._cobertura(conn)
