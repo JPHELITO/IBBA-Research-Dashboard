@@ -1,10 +1,16 @@
 name: 🔄 Auto-Update SECEX Steel & Mining
 
-# Roda todos os dias 1–10 de cada mês (SECEX publica ~4º dia útil)
-# Também pode ser disparado manualmente
+# Roda todos os dias 1–10 de cada mês (SECEX publica ~4º dia útil).
+# O --update reconfere a JANELA inteira (ano corrente + anterior), não só o mês novo:
+# o MDIC REVISA meses já publicados e o updater antigo descartava a revisão em silêncio.
+#
+# No dia 15 roda um --reconcile: não grava nada, só compara a dash com o MDIC e fica
+# VERMELHO se divergir. É o alarme que faltava — sem ele, uma divergência (foi assim que
+# o CRC importado ficou 14 meses subestimado) não aparece para ninguém.
 on:
   schedule:
-    - cron: "0 12 1-10 * *"   # 12h UTC todos os dias 1 a 10 de cada mês
+    - cron: "0 12 1-10 * *"   # 12h UTC todos os dias 1 a 10 de cada mês (atualiza)
+    - cron: "30 12 15 * *"    # dia 15: só confere (não grava)
   workflow_dispatch:
     inputs:
       force:
@@ -15,13 +21,43 @@ on:
         description: "Reconstruir quebras SH6×País/URF + linha laranja antidumping (rodar 1x; ~6 anos)"
         required: false
         default: "false"
+      reconcile:
+        description: "SÓ conferir a dash contra o MDIC (não grava nada; vermelho se divergir)"
+        required: false
+        default: "false"
+      anos:
+        description: "Janela de anos p/ --update/--reconcile (ex.: 2023 2024 2025 2026). Vazio = padrão"
+        required: false
+        default: ""
 
 concurrency:
   group: steel-sm-db          # trava compartilhada com o update_iabr (ambos commitam steel_sm.db)
   cancel-in-progress: false
 
 jobs:
+  # ── Auditoria: compara a dash com o MDIC e SAI 1 se divergir. Não grava nada. ──
+  # Roda no dia 15 (fora da janela de atualização) e no botão manual.
+  reconcile:
+    if: github.event.schedule == '30 12 15 * *' || github.event.inputs.reconcile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: "Steel and Mining/requirements.txt"
+      - run: pip install -r "Steel and Mining/requirements.txt"
+      - name: Conferir a dash contra o MDIC (não grava)
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          ANOS=""
+          if [ -n "${{ github.event.inputs.anos }}" ]; then ANOS="--anos ${{ github.event.inputs.anos }}"; fi
+          python "Steel and Mining/updater_sm.py" --reconcile $ANOS
+
   update:
+    if: github.event.schedule != '30 12 15 * *' && github.event.inputs.reconcile != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -51,7 +87,9 @@ jobs:
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             FORCE_FLAG="--force"
           fi
-          python "Steel and Mining/updater_sm.py" --update $FORCE_FLAG
+          ANOS=""
+          if [ -n "${{ github.event.inputs.anos }}" ]; then ANOS="--anos ${{ github.event.inputs.anos }}"; fi
+          python "Steel and Mining/updater_sm.py" --update $FORCE_FLAG $ANOS
         # SEM env SMTP aqui de propósito: o updater_sm.py tem send_email() próprio que
         # dispara quando há SMTP_USER/PASS — isso causava DOIS e-mails de SECEX por mês
         # (um daqui + o do passo "Send email notification" abaixo). Sem as credenciais,
@@ -98,7 +136,12 @@ jobs:
             if [ "${{ github.event.inputs.backfill_sh6 }}" = "true" ]; then
               MSG="data: popula secex_sh6_country/urf (quebras SH6xPais/URF) + dropa secex_port"
             else
-              MSG="data: atualiza steel_sm.db -> ${LATEST_PERIOD}"
+              if [ -n "$NEW_MONTH" ]; then
+                MSG="data: SECEX ${NEW_MONTH}"
+                if [ -n "$REVISED" ]; then MSG="$MSG (+ revisoes: ${REVISED})"; fi
+              else
+                MSG="data: SECEX revisoes do MDIC -> ${REVISED}"
+              fi
             fi
             git commit -m "$MSG"
             git pull --rebase --autostash || true
@@ -120,9 +163,11 @@ jobs:
       - name: Summary
         run: |
           if [ "$NEW_DATA" = "true" ]; then
-            echo "✅ Novo dado inserido: $LATEST_PERIOD — DB commitado e e-mail enviado."
+            echo "✅ Base atualizada até $LATEST_PERIOD — DB commitado."
+            [ -n "$NEW_MONTH" ] && echo "   mês novo: $NEW_MONTH"
+            [ -n "$REVISED" ]   && echo "   revisões do MDIC em meses já publicados: $REVISED"
           else
-            echo "ℹ️  Nenhum dado novo. DB inalterado."
+            echo "ℹ️  Nada mudou (nem mês novo, nem revisão). DB inalterado."
           fi
 
       # ── AVISO POR E-MAIL — POR ÚLTIMO, DE PROPÓSITO ───────────────────────
@@ -143,17 +188,21 @@ jobs:
           password:       ${{ secrets.SMTP_PASS }}
           to:             joao.helito@itaubba.com
           from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 SECEX Steel & Mining — novo dado: ${{ env.LATEST_PERIOD }}"
+          subject:        "🔔 SECEX Steel & Mining — base até ${{ env.LATEST_PERIOD }}"
           body: |
             Olá,
 
-            O SECEX (MDIC) publicou novos dados de comércio exterior de aço.
+            A base SECEX (MDIC) do Steel & Mining foi atualizada.
 
-            📅 Novo período disponível: ${{ env.LATEST_PERIOD }}
-            📊 Dashboard atualizado: https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/
+            📅 Base agora vai até: ${{ env.LATEST_PERIOD }}
+            🆕 Mês novo nesta rodada: ${{ env.NEW_MONTH }}
+            ♻️ Revisões do MDIC em meses JÁ publicados: ${{ env.REVISED }}
 
-            Os dados de importação e exportação por país e porto foram
-            atualizados automaticamente no Steel & Mining Dashboard.
+            (o MDIC reajusta meses anteriores; quando isso acontece o número antigo
+            é regravado, e é isso que a linha acima lista — período e quantos números
+            mudaram. Vazio = nenhuma revisão nesta rodada.)
+
+            📊 https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/
 
             ---
             Itaú BBA — Equity Research | Steel & Mining
