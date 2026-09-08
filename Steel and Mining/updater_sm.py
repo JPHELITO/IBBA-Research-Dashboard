@@ -22,7 +22,7 @@ Dependências:
   pip install pandas openpyxl requests
 """
 
-import sqlite3, sys, os, io, ssl, smtplib, argparse, warnings, time
+import sqlite3, sys, os, io, ssl, smtplib, argparse, warnings, time, hashlib
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -84,6 +84,79 @@ NOW = datetime.utcnow().isoformat()
 # ── MDIC ───────────────────────────────────────────────────────────────────────
 MDIC_BASE = "https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm"
 MDIC_TABS = "https://balanca.economia.gov.br/balanca/bd/tabelas"
+
+# ── Carimbo da CLASSIFICAÇÃO usada para escrever o histórico ─────────────────────
+# Por que isto existe (08/09/2026): a janela de revisão resolve a fonte MUDAR o número,
+# mas não resolve NÓS mudarmos a regra. Em 2026-06 o dicionário passou a mandar
+# 72251900/72261900 p/ CRC e o histórico ficou com a classificação ANTIGA por 14 meses —
+# sem erro, sem log, sem ninguém notar. Pior: reprocessar só uma parte fabricou um YoY
+# falso (jun/25 publicou +765,7% contra +390,4% reais), porque as duas pontas da conta
+# passaram a vir de safras diferentes.
+# Agora o banco guarda a impressão digital do dicionário e a partir de que mês ela vale,
+# então o robô CONSEGUE dizer que o histórico está desalinhado — que era o que faltava.
+DICT_CSV = HERE.parent / "_shared" / "dictionary_codes.csv"
+
+
+def _dict_sha() -> str:
+    try:
+        return hashlib.sha256(DICT_CSV.read_bytes()).hexdigest()[:12]
+    except OSError:
+        return ""
+
+
+def _meta_get(conn, chave, padrao=None):
+    r = conn.execute("SELECT value FROM secex_meta WHERE key=?", (chave,)).fetchone()
+    return r[0] if r and r[0] else padrao
+
+
+def _meta_set(conn, chave, valor):
+    conn.execute("INSERT OR REPLACE INTO secex_meta (key,value) VALUES (?,?)", (chave, valor))
+    conn.commit()
+
+
+def _carimbo_da_classificacao(conn, periodos, dry_run=False):
+    """Confere o dicionário contra o carimbo do banco e devolve (desalinhado, recado).
+
+    `periodos` são os meses reescritos nesta rodada — eles passam a valer sob o
+    dicionário de agora, e é por isso que a cobertura pode ANDAR PARA TRÁS quando se
+    reprocessa um ano antigo.
+    """
+    sha, guardado = _dict_sha(), _meta_get(conn, "dict_sha")
+    desde = _meta_get(conn, "dict_desde")
+    novo_desde = min(periodos) if periodos else None
+
+    if not sha:                                   # sem o CSV não dá p/ afirmar nada
+        return False, ""
+
+    if guardado and guardado != sha:
+        # A regra mudou debaixo do histórico. TODO mês fora desta rodada está na
+        # classificação velha — inclusive a base dos YoY.
+        recado = (f"o dicionário MUDOU (era {guardado}, agora {sha}). Todo o histórico "
+                  f"anterior a {novo_desde or '—'} continua na classificação ANTIGA: "
+                  f"reprocesse com --anos, um ano ALÉM do que quiser publicar (o YoY do "
+                  f"ano mais antigo depende do ano de trás).")
+        if not dry_run:
+            _meta_set(conn, "dict_sha", sha)
+            if novo_desde:
+                _meta_set(conn, "dict_desde", novo_desde)
+        return True, recado
+
+    if not dry_run:
+        _meta_set(conn, "dict_sha", sha)
+        if novo_desde and (not desde or novo_desde < desde):
+            _meta_set(conn, "dict_desde", novo_desde)
+    return False, ""
+
+
+def _cobertura(conn) -> str:
+    """Frase honesta sobre até onde a classificação de hoje realmente vale."""
+    desde = _meta_get(conn, "dict_desde")
+    if not desde:
+        return "cobertura da classificação atual: DESCONHECIDA (nunca carimbada)"
+    ano, mes = int(desde[:4]), desde[5:]
+    return (f"classificação atual vale de {desde} em diante "
+            f"(antes disso é a antiga) · YoY confiável de {ano + 1}-{mes} em diante")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLASSIFICAÇÃO NCM/SH6 — FONTE ÚNICA = dicionário (_shared/dictionary_codes.csv)
@@ -762,7 +835,15 @@ def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
     mudou  = mudou_country or bool(n_sh6)
     ultimo = get_latest_period(conn, "imp") or antes_max
 
+    # A classificação de hoje é a mesma sob a qual o histórico foi escrito?
+    periodos_da_rodada = {f"{a}-01" for a in anos}
+    desalinhado, recado = _carimbo_da_classificacao(conn, periodos_da_rodada, dry_run=dry_run)
+    print(f"  {_cobertura(conn)}")
+
     if dry_run:
+        if desalinhado:
+            print(f"\n  [X] CLASSIFICAÇÃO DESALINHADA: {recado}")
+            return True, ultimo
         # ⚠️ Sem o CSV não dá para certificar nada. Dizer "idêntica ao MDIC" porque o
         # download caiu seria o mesmo defeito que este updater existe para matar:
         # silêncio virando aprovação. Aqui a falta de dado é FALHA, não sucesso.
@@ -779,6 +860,9 @@ def update_from_mdic(conn, force_reload=False, anos=None, dry_run=False):
         else:
             print("\n  [OK] dash identica ao MDIC na janela conferida.")
         return mudou, ultimo
+
+    if desalinhado:
+        print(f"::warning::SECEX — {recado}")
 
     if falhou:
         # Aviso do GitHub (aparece no resumo do run). NÃO derruba o job: o que baixou já
