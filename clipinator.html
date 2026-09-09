@@ -166,6 +166,11 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
 .spin2{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex-shrink:0;}
 .dl{display:inline-block;padding:6px 12px;border-radius:7px;background:var(--orange);color:#fff!important;text-decoration:none;font-weight:600;font-size:11.5px;}
 .dl:hover{opacity:.9;}
+.dl.ghost{background:transparent;color:var(--gray-mid)!important;border:1px solid var(--border);}
+.last-clip{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-mid);}
+.last-clip .lc-when{font-weight:700;color:var(--black);}
+.last-clip .lc-old{color:var(--red);}
 .extras-panel{margin-top:18px;}
 /* Os 4 blocos de Extras lado a lado, em LARGURA CHEIA (2026-09-01).
    Antes eles moravam dentro da coluna de 380px da direita: abertos, viravam 843px de
@@ -348,6 +353,10 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
         </div>
         <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
         <div class="gen-status" id="clip-status"></div>
+        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
+             polling escreve em #clip-status moram só na tela; este bloco relê o último job
+             pronto do banco no boot, então o Word já feito nunca mais "some". -->
+        <div id="clip-last" class="last-clip" hidden></div>
         <div id="clip-fails" class="fails" hidden></div>
       </div>
 
@@ -1151,6 +1160,40 @@ async function blCopiar(){
   setTimeout(function(){ st.innerHTML=antes; st.className=cls; }, 2500);
 }
 
+// ── Último clipping gerado (sobrevive a refresh) ──────────────────────────────
+// O polling do "Gerar" escreve os links dentro de #clip-status, que morre em qualquer
+// refresh ou saída da página: o Word já pronto sumia da tela mesmo existindo no Storage.
+// Aqui relemos o último job PRONTO do banco (admin_get_clipping_jobs já existe — nada de
+// SQL novo) e mostramos data/hora + o link. Cada geração nova substitui esta linha.
+const SIGN_TTL_D = 7;              // run_jobs.py assina as URLs por 7 dias
+function _fmtBRT(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',
+                                   year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(', ',' às ');
+}
+function renderLastJob(job){
+  const host=document.getElementById('clip-last'); if(!host) return;
+  if(!job || !job.docx_path){ host.hidden=true; host.innerHTML=''; return; }
+  const quando=job.finished_at||job.updated_at||job.created_at;
+  const dias=(Date.now()-new Date(quando).getTime())/86400000;
+  const venceu=dias>SIGN_TTL_D;    // link assinado expira; não adianta oferecer um link morto
+  host.hidden=false;
+  host.innerHTML='<span>Último clipping gerado:</span>'
+    +'<span class="lc-when">'+esc(_fmtBRT(quando))+'</span>'
+    +(venceu
+      ? '<span class="lc-old">o link expirou (vale '+SIGN_TTL_D+' dias) — gere de novo</span>'
+      : '<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
+        +(job.eml_path?'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>':'')
+        +(job.preview_path?'<a class="dl ghost" href="'+esc(job.preview_path)+'" target="_blank" rel="noopener">Ver prévia</a>':''));
+}
+async function loadLastJob(){
+  try{
+    const jobs=(await rpc('admin_get_clipping_jobs',{p_limit:20}))||[];   // já vem em created_at desc
+    renderLastJob(jobs.find(j=>j && j.status==='done' && j.docx_path) || null);
+  }catch(e){ console.warn('último clipping', e); }
+}
+
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
@@ -1180,6 +1223,7 @@ async function pollJob(jobId, st, btn){
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
         +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
       btn.disabled=false; renderFailures(job.errors);           // corpos que falharam → colar e regerar
+      renderLastJob(job);                                       // substitui o "último gerado"
       return;
     }
     if(job.status==='error'){
@@ -1215,15 +1259,57 @@ async function loadCandidates(){
 }
 
 // ── Config: mensagem/intro + Recent Publications + Earnings Review (persistente) ──
+//
+// 🔴 O BUG DE 09/09/2026, escrito aqui para nunca mais voltar.
+// `admin_save_clipping_config` grava o objeto INTEIRO por cima (`settings = excluded`),
+// e esta tela mandava o `S.config` que tinha na memória. Só que o `loadConfig` lia
+// QUATRO chaves — e as duas que ele NÃO lia eram justamente as que ninguém digita aqui:
+//   • `blast_highlights` → os 3 destaques carimbados por DIA, que o Weekly Recap lê;
+//   • `weekly`           → o rascunho inteiro da aba Weekly.
+// Bastava abrir o Clipinator e mexer em um campo para as duas serem ZERADAS no banco.
+// Foi por isso que o weekly nunca vinha com os destaques de cada dia (conferido no
+// banco em 09/09: `blast_highlights` estava `{}` e a chave `weekly` não existia mais).
+//
+// A trava tem DOIS lados, e os dois são necessários:
+//   1) `loadConfig` traz TODA chave que vier do banco, inclusive as que esta tela não
+//      conhece — o que não se lê não se pode preservar;
+//   2) `saveConfig` RELÊ a config na hora de gravar e sobrescreve só as chaves que são
+//      desta tela. Assim, se a aba Weekly salvou o rascunho enquanto esta ficou aberta,
+//      é o rascunho NOVO que fica — e não a cópia velha que estava nesta memória.
+const CFG_MEUS=['intro','recent_publications','earnings_review','analysts','blast_highlights'];
+
+// Pura (é o que o teste chama): o que vai ser GRAVADO, dado o que está no banco agora
+// (`atual`) e o que esta tela tem na mão (`meu`).
+function cfgParaGravar(atual, meu){
+  const out=Object.assign({}, atual||{});
+  CFG_MEUS.forEach(k=>{ if(meu && meu[k]!==undefined) out[k]=meu[k]; });
+  // Destaques fundem por DIA: um carimbo feito noutra aba (ou numa geração anterior que
+  // esta memória não viu) não pode ser perdido só porque esta tela salvou depois.
+  out.blast_highlights=blPodar(Object.assign({}, (atual&&atual.blast_highlights)||{},
+                                             (meu&&meu.blast_highlights)||{}));
+  return out;
+}
+
 let _cfgT=null;
-function saveConfig(){ if(CLIPTEST) return; clearTimeout(_cfgT); _cfgT=setTimeout(()=>{ rpc('admin_save_clipping_config',{p_settings:S.config}).catch(()=>{}); }, 800); }
+function saveConfig(){ if(CLIPTEST) return; clearTimeout(_cfgT); _cfgT=setTimeout(salvarConfig, 800); }
+async function salvarConfig(){
+  let atual={};
+  try{ atual=await rpc('admin_get_clipping_config')||{}; }
+  catch(e){ console.warn('config: não consegui reler antes de salvar', e); }
+  const novo=cfgParaGravar(atual, S.config);
+  S.config.blast_highlights=novo.blast_highlights;      // a tela fica com o que foi gravado
+  try{ await rpc('admin_save_clipping_config',{p_settings:novo}); }
+  catch(e){ console.warn('config: não consegui salvar', e); }
+}
 async function loadConfig(){
   if(!CLIPTEST){
     try{ const c=await rpc('admin_get_clipping_config')||{};
-      if(c.intro) S.config.intro=Object.assign({on:false,text:DEFAULT_INTRO},c.intro);
-      if(c.recent_publications) S.config.recent_publications=c.recent_publications;
-      if(c.earnings_review) S.config.earnings_review=Object.assign({on:false,label:'2Q26 Review',items:[]},c.earnings_review);
-      if(Array.isArray(c.analysts) && c.analysts.length) S.config.analysts=c.analysts;
+      Object.keys(c).forEach(k=>{ S.config[k]=c[k]; });   // inclusive `weekly` e o que vier de novo
+      S.config.intro=Object.assign({on:false,text:DEFAULT_INTRO},c.intro||{});
+      if(!Array.isArray(S.config.recent_publications)) S.config.recent_publications=[];
+      S.config.earnings_review=Object.assign({on:false,label:'2Q26 Review',items:[]},c.earnings_review||{});
+      if(!Array.isArray(c.analysts) || !c.analysts.length) S.config.analysts=DEFAULT_ANALYSTS.map(a=>({...a}));
+      if(!S.config.blast_highlights || typeof S.config.blast_highlights!=='object') S.config.blast_highlights={};
     }catch(e){ console.warn('config', e); }
   }
   renderConfig();
@@ -1726,6 +1812,7 @@ window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestT
     await loadCandidates();
     await loadDraft();       // restaura a pré-seleção salva (véspera → manhã seguinte)
     await loadConfig();      // restaura mensagem/intro + Recent Publications + Earnings Review
+    await loadLastJob();     // o Word do último clipping continua ali depois do refresh
   }catch(e){ console.error(e);
     document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📰</div>'
       +'<div style="font-weight:700;margin:8px 0 4px">Clipping indisponível</div>'
