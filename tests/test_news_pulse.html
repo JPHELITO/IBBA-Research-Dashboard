@@ -1,0 +1,140 @@
+<!doctype html><meta charset="utf-8"><title>Market Pulse — termômetro de notícias (janela, portão, fichas)</title>
+<body><pre id="out">rodando…</pre>
+<!-- DOM mínimo que o _renderPulse escreve (mesmos ids da home) -->
+<div id="stage" style="position:absolute;left:-9999px">
+  <div id="pulse-gauge"><svg><path id="gauge-arc"/></svg><div id="gauge-val"></div><div id="gauge-label"></div></div>
+  <span id="stat-pos"></span><span id="stat-neg"></span><span id="stat-neu"></span><span id="stat-tot"></span><span id="stat-tot-lbl"></span>
+  <div id="bar-pos"></div><div id="bar-neu"></div><div id="bar-neg"></div>
+  <div id="pulse-names"></div>
+</div>
+<script>
+/* Testa o termômetro REAL: recorta o bloco de funções do próprio index.html (não copia
+   código — o teste quebra se a lógica mudar lá) e roda com relógio, fetch e sessão de mentira. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini); const j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('não achei o trecho: '+ini); return src.slice(i,j+fim.length); }
+
+window.__RUN__=async function(){
+  // ⚠️ o repo grava CRLF e os marcadores usam \n — normalizar, senão o cut "não acha"
+  const t=(await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const BLOCO=cut(t,'const PULSE_CLOSE_HOUR','// ── fim do bloco que tests/test_news_pulse.html recorta');
+  const BADGE=cut(t,'function _takeBadge(t){',"  return '';\n}");
+  const LOAD=cut(t,'function _loadingBadge(){','\n}');
+  const ESC=cut(t,'const _esc=s=>','}[c]));');
+
+  let urls=[], resposta=[];
+  const ctx={
+    SUPA_URL:'https://X', SUPA_KEY:'k', NUM_LOC:'en-US', _pulseSector:'all',
+    sbAuth:{auth:{getSession:async()=>({data:{session:{access_token:'t'}}})}},
+    fetch:async(u,o)=>{ urls.push(u); return {ok:true, json:async()=>resposta}; },
+    console:{warn:(...a)=>R.push('WARN · '+a.join(' '))},
+  };
+  const mk=new Function('ctx',`with(ctx){ ${ESC}\n${BADGE}\n${LOAD}\n${BLOCO}\n return {
+    _pulseWindowStartMs,_pulseWindowLabel,_pulseFilter,_pulseTally,_pulseGaugeVal,_pulseChipsHtml,_pulseCo,
+    loadPulse,_renderPulse,_renderGauge,_pulseRowHtml,_pulseClosePop,
+    get last(){return _pulseLast}, PULSE_MIN_SCORED }; }`);
+  const M=mk(ctx);
+
+  // ── 1) JANELA: desde o último fechamento da B3 (17:00 SP = 20:00 UTC) ───────────────
+  const W=(iso)=>new Date(M._pulseWindowStartMs(Date.parse(iso))).toISOString();
+  ok('terça 08:00 SP → segunda 17:00',          W('2026-09-08T11:00:00Z')==='2026-09-07T20:00:00.000Z', W('2026-09-08T11:00:00Z'));
+  ok('terça 16:59 SP → ainda segunda 17:00',    W('2026-09-08T19:59:00Z')==='2026-09-07T20:00:00.000Z');
+  ok('terça 17:00 SP → vira terça 17:00',       W('2026-09-08T20:00:00Z')==='2026-09-08T20:00:00.000Z');
+  ok('terça 23:30 SP → terça 17:00',            W('2026-09-09T02:30:00Z')==='2026-09-08T20:00:00.000Z');
+  ok('segunda 08:00 SP → SEXTA 17:00 (fim de semana inteiro)', W('2026-09-07T11:00:00Z')==='2026-09-04T20:00:00.000Z', W('2026-09-07T11:00:00Z'));
+  ok('sábado 10:00 SP → sexta 17:00',           W('2026-09-05T13:00:00Z')==='2026-09-04T20:00:00.000Z');
+  ok('sábado 20:00 SP → sexta 17:00',           W('2026-09-05T23:00:00Z')==='2026-09-04T20:00:00.000Z');
+  ok('domingo 12:00 SP → sexta 17:00',          W('2026-09-06T15:00:00Z')==='2026-09-04T20:00:00.000Z');
+  ok('domingo 21:00 SP → sexta 17:00',          W('2026-09-07T00:00:00Z')==='2026-09-04T20:00:00.000Z');
+  ok('meia-noite SP não vira 24h (h23)',        W('2026-09-08T03:00:00Z')==='2026-09-07T20:00:00.000Z', W('2026-09-08T03:00:00Z'));
+  ok('rótulo diz desde quando',                 /^since \w{3} 17:00$/.test(M._pulseWindowLabel(Date.parse('2026-09-07T20:00:00Z'))), M._pulseWindowLabel(Date.parse('2026-09-07T20:00:00Z')));
+
+  // ── 2) FILTRO: janela + relevância + setor do chip ───────────────────────────────────
+  const F=M._pulseFilter(Date.parse('2026-09-07T20:00:00Z'));
+  ok('filtro: só relevantes',              F.includes('include_in_report=eq.true'));
+  ok('filtro: published_at OU found_at',   F.includes('published_at.gte.2026-09-07T20:00:00.000Z') && F.includes('found_at.gte.2026-09-07T20:00:00.000Z'));
+  ok('filtro: All não restringe setor',    !F.includes('sector='));
+  ctx._pulseSector='sm'; ok('filtro: S&M = steel+mining', M._pulseFilter(0).includes('sector=in.(steel,mining)'));
+  ctx._pulseSector='pp'; ok('filtro: P&P = pp',           M._pulseFilter(0).includes('sector=eq.pp'));
+  ctx._pulseSector='all';
+
+  // ── 3) CONTAGEM por empresa (formato "VALE; CSN"; pendente e no take separados) ──────
+  const rows=[
+    {take_llm:'+', take_covered_companies:'VALE; CSN'},
+    {take_llm:'-', take_covered_companies:'VALE'},
+    {take_llm:'=', take_covered_companies:' vale '},          // espaço e minúscula: normaliza
+    {take_llm:'no take', take_covered_companies:'KLABIN'},
+    {take_llm:null, take_covered_companies:'SUZANO'},         // ainda sem IA
+    {take_llm:'+', take_covered_companies:''},                // sem coberta
+    {take_llm:'review', take_covered_companies:'NOVA S.A.'},  // token que o mapa não conhece
+  ];
+  const T=M._pulseTally(rows);
+  ok('agregado: + − = no-take pendente', T.pos===2&&T.neg===1&&T.neu===1&&T.notake===2&&T.pending===1, JSON.stringify([T.pos,T.neg,T.neu,T.notake,T.pending]));
+  ok('VALE: 3 menções, +1 −1 =1',        T.byCo.VALE&&T.byCo.VALE.n===3&&T.byCo.VALE.pos===1&&T.byCo.VALE.neg===1&&T.byCo.VALE.neu===1, JSON.stringify(T.byCo.VALE));
+  ok('CSN veio do "VALE; CSN"',          T.byCo.CSN&&T.byCo.CSN.n===1&&T.byCo.CSN.pos===1);
+  ok('KLABIN: presença sem tom',         T.byCo.KLABIN&&T.byCo.KLABIN.notake===1&&T.byCo.KLABIN.pos===0);
+  ok('SUZANO: pendente não pontua',      T.byCo.SUZANO&&T.byCo.SUZANO.pending===1&&T.byCo.SUZANO.n===1);
+  ok('token desconhecido não some',      !!T.byCo['NOVA S.A.']);
+
+  // ── 4) PORTÃO de amostra ─────────────────────────────────────────────────────────────
+  ok('19 pontuados → cala (null)',   M._pulseGaugeVal({pos:10,neg:9,neu:0})===null);
+  ok('20 pontuados → fala',          M._pulseGaugeVal({pos:10,neg:10,neu:0})===50);
+  ok('neutro ancora: 30+ 0− 30= → 75', M._pulseGaugeVal({pos:30,neg:0,neu:30})===75);
+  ok('só negativo → 0',              M._pulseGaugeVal({pos:0,neg:25,neu:0})===0);
+
+  // ── 5) FICHAS: ordem, selos, +N, tinta, escape ───────────────────────────────────────
+  const byCo={
+    'KLABIN':{pos:0,neg:0,neu:0,notake:4,pending:0,n:4},      // só presença → fim, apesar de 4 menções
+    'VALE':{pos:2,neg:1,neu:1,notake:1,pending:0,n:5},        // 3 direcionais → topo, "+2"
+    'SUZANO':{pos:0,neg:2,neu:0,notake:0,pending:0,n:2},      // 2 direcionais, negativa
+    'GERDAU':{pos:0,neg:0,neu:2,notake:0,pending:0,n:2},      // só neutro
+    'X<Y':{pos:1,neg:0,neu:0,notake:0,pending:0,n:1},         // token hostil
+    'CSN':{pos:1,neg:1,neu:1,notake:0,pending:0,n:3},         // 1 de cada: prova a ORDEM dos selos
+  };
+  const H=M._pulseChipsHtml(byCo);
+  const ordem=[...H.matchAll(/data-co="([^"]+)"/g)].map(m=>m[1]);
+  ok('ordem: direcionais primeiro, presença por último', ordem.join('>')==='VALE>CSN>SUZANO>X&lt;Y>GERDAU>KLABIN', ordem.join('>'));
+  ok('ticker de tela, não o token',       H.includes('<span class="pn-t">VALE3</span>') && H.includes('>SUZB3<') && H.includes('>KLBN11<'));
+  const vale=H.slice(H.indexOf('data-co="VALE"'), H.indexOf('</button>', H.indexOf('data-co="VALE"')));
+  ok('VALE: 3 selos + "+2"',               (vale.match(/news-take/g)||[]).length===3 && vale.includes('pn-more">+2<'), vale.replace(/<[^>]+>/g,'|'));
+  const csn=H.slice(H.indexOf('data-co="CSN"'), H.indexOf('</button>', H.indexOf('data-co="CSN"')));
+  ok('CSN: + antes de − antes de = (e sem "+N")', csn.indexOf('news-take pos')<csn.indexOf('news-take neg') && csn.indexOf('news-take neg')<csn.indexOf('news-take neu') && !csn.includes('pn-more'), csn.replace(/<[^>]+>/g,'|'));
+  ok('tinta: VALE verde, SUZANO vermelha, GERDAU cinza', H.includes('class="pn pos" data-co="VALE"') && H.includes('class="pn neg" data-co="SUZANO"') && H.includes('class="pn neu" data-co="GERDAU"'));
+  ok('KLABIN: selo de no-take (○)',        H.includes('data-co="KLABIN"') && H.slice(H.indexOf('data-co="KLABIN"')).includes('news-take nt'));
+  ok('token hostil escapado',              H.includes('data-co="X&lt;Y"') && !H.includes('X<Y'));
+  ok('sem coberta → mensagem, não vazio',  M._pulseChipsHtml({}).includes('No covered company'));
+
+  // ── 6) O POLL de verdade: URL enxuta, DOM preenchido, portão na tela ────────────────
+  urls=[]; resposta=[];
+  for(let i=0;i<25;i++) resposta.push({take_llm:i<15?'+':'-', take_covered_companies:i%5===0?'VALE':''});
+  await M.loadPulse();
+  const u=urls[0]||'';
+  ok('poll: UMA requisição',                       urls.length===1, 'n='+urls.length);
+  ok('poll: pede só take_llm + empresas (egress)',  /select=take_llm,take_covered_companies&/.test(u), (u.match(/select=[^&]*/)||[''])[0]);
+  ok('poll: não pede título nem URL',              !u.includes('title') && !u.includes('url,'));
+  ok('poll: janela desde o fechamento',            u.includes('published_at.gte.') && u.includes('include_in_report=eq.true'));
+  ok('tela: 15 + / 10 − / 25 pontuados',           document.getElementById('stat-pos').textContent==='15' && document.getElementById('stat-neg').textContent==='10' && document.getElementById('stat-tot').textContent==='25');
+  ok('tela: ponteiro 60 BALANCED',                 document.getElementById('gauge-val').textContent==='60' && document.getElementById('gauge-label').textContent==='BALANCED');
+  ok('tela: rótulo do total diz desde quando',     /^since \w{3} 17:00$/.test(document.getElementById('stat-tot-lbl').textContent), document.getElementById('stat-tot-lbl').textContent);
+  ok('tela: ficha da VALE com 5 menções',          document.querySelectorAll('#pulse-names .pn').length===1 && document.querySelector('#pulse-names .pn').title.includes('5 headlines'));
+  ok('tela: barra proporcional',                   document.getElementById('bar-pos').style.flexGrow==='15' && document.getElementById('bar-neg').style.flexGrow==='10');
+
+  urls=[]; resposta=[{take_llm:'+',take_covered_companies:''},{take_llm:'-',take_covered_companies:''}];
+  await M.loadPulse();
+  ok('poucas manchetes: ponteiro "—" e aviso',     document.getElementById('gauge-val').textContent==='—' && document.getElementById('gauge-label').textContent==='TOO FEW HEADLINES');
+  ok('poucas manchetes: arco vazio',               document.getElementById('gauge-arc').getAttribute('stroke-dasharray')==='0 188');
+  ok('poucas manchetes: contadores continuam',     document.getElementById('stat-tot').textContent==='2');
+  ok('sem coberta: faixa explica',                 document.getElementById('pulse-names').textContent.includes('No covered company'));
+
+  // ── 7) linha da ficha: link só com http(s) ───────────────────────────────────────────
+  const r1=M._pulseRowHtml({title:'A <b>',url:'https://ex.com/a',take_llm:'+',source_name:'Valor',published_at:'2026-09-08T12:00:00Z'});
+  ok('linha: link http, novo separador, escapada', r1.includes('href="https://ex.com/a"') && r1.includes('target="_blank"') && r1.includes('A &lt;b&gt;'));
+  const r2=M._pulseRowHtml({title:'B',url:'javascript:alert(1)',take_llm:null,source_name:'X',found_at:'2026-09-08T12:00:00Z'});
+  ok('linha: javascript: vira texto, pendente = spinner', !r2.includes('href=') && r2.includes('news-take loading'));
+
+  const f=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=R.join('\n')+'\n\n'+(R.length-f)+'/'+R.length+' PASS'+(f?'  — '+f+' FALHA(S)':'');
+  return R;
+};
+window.__RUN__().catch(e=>{document.getElementById('out').textContent='ERRO: '+e.message;});
+</script>
