@@ -198,13 +198,9 @@ body{height:100vh;overflow:hidden;}
 .page.has-events .pulse-controls{gap:4px;}
 .page.has-events .pulse-chip{font-size:8.5px!important;padding:2px 7px!important;letter-spacing:0;}
 .page.has-events .pulse-body{gap:5px;padding:6px 10px 8px;}
-.page.has-events .pulse-mkt{gap:8px;padding:4px 8px;}
-.page.has-events .pulse-mkt-val{font-size:20px;min-width:50px;}
-.page.has-events .pulse-mkt-lbl{font-size:8px;}
-.page.has-events .pulse-mkt-sub{font-size:7.5px;}
 /* v1 espremido: o gauge grande + contadores lado a lado estouram 255px de largura
    (medido: o painel ia a 336px e os contadores eram cortados). Empilha e encolhe. */
-.page.has-events #pulse-v1.pulse-pane.on{flex-direction:column;align-items:center;
+.page.has-events #pulse-v1{flex-direction:column;align-items:center;
   justify-content:center;gap:4px;}
 .page.has-events #pulse-v1 .gauge{margin:0 auto;width:148px;height:74px;}
 .page.has-events #pulse-v1 .gauge-val{font-size:19px;}
@@ -213,34 +209,6 @@ body{height:100vh;overflow:hidden;}
 .page.has-events .pulse-stats{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:0;}
 .page.has-events .pulse-stat-num{font-size:12.5px;}
 .page.has-events .pulse-stat-lbl{font-size:6.5px;}
-
-/* v2 espremido: a lista volta a UMA coluna (271px não comportam
-   nome + gap + score + confiança lado a lado) e rola por dentro. */
-.page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);}
-
-/* Overnight espremido: 3 colunas dariam 88px cada e cortariam 8 dos 9 nomes.
-   2 colunas × 4 linhas cabem sem rolar; a 9ª (a menos atípica) sai de cena. */
-.page.has-events .ov-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:1px 8px;}
-.page.has-events .ov-row{grid-template-columns:minmax(0,1fr) 46px;gap:4px;padding:1px 3px;}
-.page.has-events .ov-row:nth-child(n+9){display:none;}
-.page.has-events .ov-name,.page.has-events .ov-chg{font-size:10px;}
-.page.has-events .ov-foot{font-size:7px;}
-/* Espremido pelo card Events (~238px de largura e ~50px de lista): volta a UMA coluna e a
-   banda segue fora da linha. O driver fica — é ele que responde "por quê" sem exigir clique.
-   E a faixa do topo perde o número grande: com 12 empresas, cada pixel do cabeçalho é uma
-   linha do ranking que some. O resumo continua ali, em uma linha só. */
-.page.has-events .pulse-list{grid-template-columns:minmax(0,1fr);gap:1px;}
-.page.has-events .pulse-row{grid-template-columns:56px 52px 22px minmax(0,1fr) 12px;
-  gap:4px;padding:1px 3px;}
-.page.has-events .pulse-mkt{padding:1px 6px;gap:6px;}
-.page.has-events .pulse-mkt-val{font-size:12.5px;min-width:42px;}
-.page.has-events .pulse-mkt-lbl{font-size:7.5px;}
-.page.has-events .pulse-mkt-sub{display:none;}   /* o Morning Call vira o title do card */
-.page.has-events .pulse-name{font-size:10px;}
-.page.has-events .pulse-gap{font-size:10px;}
-.page.has-events .pulse-why{font-size:8px;}
-.page.has-events .pscore{font-size:8.5px;}
-.page.has-events .pulse-foot{font-size:6.5px;}
 }
 /* ── FIM has-events (só desktop) ─────────────────────────────────────────── */
 .ev-open{font:600 10.5px var(--font);color:var(--orange);text-decoration:none;white-space:nowrap;flex:none;}
@@ -447,159 +415,11 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-bar-seg.neg{background:var(--red);}
 .pulse-bar-seg.neu{background:var(--gray-mid);}
 
-/* alternância entre os quadros. "News" e "Overnight" são para TODOS (os dois só
-   descrevem o que já aconteceu); "Open" é a previsão em validação e só o admin vê. */
-.pulse-views{display:flex;gap:3px;margin-right:6px;padding-right:8px;
-  border-right:1px solid var(--border);}
-.pulse-view[data-view="v2"]{display:none;}
-.page.pulse-admin .pulse-view[data-view="v2"]{display:inline-block;}
-/* os chips de setor não se aplicam ao Overnight (não é por empresa) */
-.page.pulse-ov .pulse-chip{display:none;}
-.pulse-view{font-size:8.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;
-  border-radius:20px;border:1.5px solid var(--border);background:transparent;
-  color:var(--gray-mid);cursor:pointer;font-family:var(--font);white-space:nowrap;}
-.pulse-view.active{background:var(--orange);border-color:var(--orange);color:#fff;}
-.pulse-pane{display:none;flex:1;min-height:0;}
-.pulse-pane.on{display:flex;}
-#pulse-ov.pulse-pane.on{flex-direction:column;gap:6px;}
-
-/* ── quadro OVERNIGHT: o que se moveu enquanto o Brasil dormia ──────────────
-   Mesma grade 3×3 do v2. Ordenado pelo movimento INCOMUM para cada instrumento
-   (variação ÷ desvio-padrão dele), não pelo tamanho bruto — senão VIX e petróleo
-   ocupam o topo todo dia sem dizer nada. */
-.ov-list{flex:1;min-height:0;overflow:auto;display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;
-  gap:2px 10px;align-content:start;}
-.ov-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:baseline;
-  gap:6px;padding:2px 4px;border-radius:5px;}
-.ov-row:hover{background:var(--gray-light);}
-.ov-name{font-size:10.5px;font-weight:600;color:var(--black);white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;}
-.ov-chg{font-size:10.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
-.ov-chg.pos{color:var(--green);} .ov-chg.neg{color:var(--red);} .ov-chg.flat{color:var(--gray-mid);}
-/* movimento atípico para aquele instrumento (|z| >= 1,5) ganha destaque */
-.ov-row.big .ov-name{font-weight:700;}
-.ov-row.big .ov-chg::after{content:"•";margin-left:3px;font-size:12px;line-height:0;}
-.ov-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:2px;
-  border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#pulse-v1.pulse-pane.on{flex-direction:row;align-items:center;gap:24px;}
-#pulse-v2.pulse-pane.on{flex-direction:column;gap:7px;}
+/* O termômetro é o único quadro do card: ocupa a altura toda do corpo, ponteiro à
+   esquerda e contadores à direita. (Até 2026-09-09 ele era uma das três abas.) */
+#pulse-v1{display:flex;flex:1;min-height:0;align-items:center;gap:24px;}
 .pulse-body{flex:1;min-height:0;overflow:hidden;padding:8px 16px 10px;display:flex;
   flex-direction:column;}
-
-/* v2 (2026-08): saiu o ponteiro de sentimento de notícia, entrou a leitura por EMPRESA.
-   O modelo estima o GAP DE ABERTURA de cada coberta a partir do que Ásia, Europa e
-   commodities negociaram de madrugada. Layout: faixa de mercado em cima + lista embaixo. */
-
-/* Faixa do topo: o número da cobertura + o que ele significa. Compacta de propósito —
-   cada pixel aqui é uma linha a menos do ranking, e o corpo do card tem ~108px no total. */
-.pulse-mkt{display:flex;align-items:center;gap:9px;flex:none;
-  padding:2px 8px;border-radius:7px;background:var(--gray-light);border:1px solid var(--border);}
-.pulse-mkt-val{font-size:17px;font-weight:700;letter-spacing:-.03em;line-height:1.05;
-  min-width:56px;text-align:center;font-variant-numeric:tabular-nums;}
-.pulse-mkt-val.pos{color:var(--green);} .pulse-mkt-val.neg{color:var(--red);}
-.pulse-mkt-val.neu{color:var(--gray-mid);}
-.pulse-mkt-txt{min-width:0;flex:1;}
-.pulse-mkt-lbl{font-size:8.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--gray-dark);line-height:1.25;}
-.pulse-mkt-sub{font-size:8px;color:var(--gray-mid);line-height:1.3;margin-top:1px;}
-
-/* lista de empresas — TRÊS COLUNAS × 3 linhas: o painel é largo (~580px de lista) e BAIXO
-   (a faixa 1 do grid tem 180px), então empilhar 9 nomes não caberia (só 3 apareciam).
-   Em 3×3 as nove cobertas ficam visíveis de uma vez, sem rolagem.
-   ⚠️ `minmax(0,1fr)` e NÃO `1fr`: as linhas têm texto `nowrap`, e o `1fr` puro
-   (=`minmax(auto,1fr)`) deixa o min-content esticar a coluna e desalinhar tudo —
-   mesma armadilha já documentada no calendário. */
-/* RANKING em coluna única (era grade 3x3). A ordem — pelo tamanho do gap esperado — já é
-   informação: o que importa hoje fica no topo. E cada linha carrega o DRIVER ao lado do
-   número, porque atribuição escondida atrás de um clique é atribuição que não existe. */
-/* DUAS colunas quando o painel é largo (~493px sem o card Events): com 12 empresas, uma
-   coluna só deixaria dois terços da lista fora de vista. A banda sai da linha nesse modo
-   — é a informação mais sacrificável das cinco, e continua no tooltip. Com o card Events
-   ligado o painel tem 238px e volta a uma coluna (regra logo abaixo, no bloco has-events). */
-.pulse-list{flex:1;min-height:0;overflow:auto;display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:min-content;
-  gap:1px 12px;align-content:start;}
-.pulse-list .pulse-row{grid-template-columns:64px 56px 24px minmax(0,1fr) 12px;}
-.pulse-list .pulse-band{display:none;}
-/* a explicação aberta atravessa as duas colunas */
-.pulse-list .pulse-attr{grid-column:1/-1;}
-.pulse-row{display:grid;grid-template-columns:62px 52px 74px 28px minmax(0,1fr) 12px;
-  align-items:center;gap:6px;line-height:1.25;
-  padding:1px 4px;border-radius:5px;cursor:pointer;transition:background .12s;}
-.pulse-row:hover{background:var(--gray-light);}
-.pulse-row.off{cursor:default;opacity:.45;}
-.pulse-row.off:hover{background:transparent;}
-.pulse-name{font-size:10.5px;font-weight:600;color:var(--black);white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;min-width:0;}
-.pulse-gap{font-size:11px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;
-  white-space:nowrap;}
-/* ⚠️ O verde da casa (#16a34a) rende só 3,2:1 em texto de 11px sobre a chapa clara — e este
-   é o número PRINCIPAL da linha. Mesma correção já usada no heatmap e nos cartões de
-   commodity: um verde mais fundo para o texto (medido 5,3:1). No escuro o verde da casa já
-   rende 8,1:1, então lá ele fica. */
-.pulse-gap.pos{color:#15803d;} .pulse-gap.neg{color:var(--red);}
-.pulse-gap.neu{color:var(--gray-mid);}
-html.dark .pulse-gap.pos{color:var(--green);}
-/* A banda de 80% em cinza: ela qualifica o número sem competir com ele. Onde o modelo é
-   fraco a banda é larga, e isso é a informação honesta — não um defeito a esconder. */
-.pulse-band{font-size:8.5px;color:var(--gray-mid);text-align:right;white-space:nowrap;
-  font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
-/* Convicção em três pontos. O laranja da marca rende 3,2:1 no claro — abaixo do mínimo de
-   TEXTO, mas estes são símbolos gráficos (o mínimo é 3:1) e a cor é decisão de marca da
-   casa. Subimos para 8px em vez de mexer na cor; a informação também está no tooltip. */
-.pulse-conv{font-size:8px;letter-spacing:.5px;text-align:center;white-space:nowrap;
-  color:var(--border);}
-.pulse-conv.low{color:var(--gray-mid);} .pulse-conv.mid{color:var(--gray-dark);}
-.pulse-conv.high{color:var(--orange);}
-.pulse-why{font-size:8.5px;color:var(--gray-mid);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;min-width:0;}
-.pulse-real{font-size:9px;font-weight:700;text-align:center;}
-.pulse-real.ok{color:#15803d;} .pulse-real.ko{color:var(--red);}
-html.dark .pulse-real.ok{color:var(--green);}
-.pulse-row.off .pscore{font-size:9px;font-weight:600;color:var(--gray-mid);
-  grid-column:2/-1;text-align:left;}
-/* "por quê": abre embaixo da linha clicada, atravessando as duas colunas */
-.pulse-attr{display:none;padding:3px 8px 6px;grid-column:1/-1;
-  background:var(--gray-light);border-radius:5px;}
-.pulse-attr.open{display:block;}
-.pulse-attr-t{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--gray-mid);margin-bottom:3px;}
-.pulse-attr-r{display:grid;grid-template-columns:1fr 40px;gap:6px;align-items:center;
-  font-size:9.5px;line-height:1.5;}
-.pulse-attr-r span:first-child{color:var(--gray-dark);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;}
-.pulse-attr-r span:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
-/* a manchete da madrugada que sustenta o driver — evidência, não previsão */
-.pulse-news{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:6px;align-items:baseline;
-  font-size:9px;line-height:1.4;color:var(--gray-dark);}
-.pulse-news > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pulse-news-h{text-align:right;color:var(--gray-mid);font-variant-numeric:tabular-nums;}
-/* manchete clicável, mas discreta: cor herdada, sublinhado só no hover */
-.pulse-news a{color:inherit;text-decoration:none;}
-.pulse-news a:hover{text-decoration:underline;}
-/* o selo do take que a IA já deu à manchete — mesma linguagem visual da aba News
-   (news.html .news-take), miniaturizado para caber na linha de 9px */
-.pulse-take{display:inline-flex;align-items:center;justify-content:center;width:11px;
-  height:11px;border-radius:3px;font-size:8px;font-weight:800;line-height:1;
-  margin-right:4px;vertical-align:1px;}
-.pulse-take.pos{background:rgba(22,163,74,.15);color:#15803d;}
-.pulse-take.neg{background:rgba(192,57,43,.15);color:#c0392b;}
-.pulse-take.neu{background:rgba(140,140,140,.16);color:#6b7280;}
-.pulse-take.rev{background:rgba(217,119,6,.16);color:#b45309;}
-html.dark .pulse-take.pos{color:#4ade80;background:rgba(34,197,94,.18);}
-html.dark .pulse-take.neg{color:#f87171;background:rgba(239,68,68,.18);}
-html.dark .pulse-take.neu{color:#9ca3af;background:rgba(140,140,140,.2);}
-html.dark .pulse-take.rev{color:#fbbf24;background:rgba(217,119,6,.2);}
-/* Rodapé em duas pontas: à esquerda o PLACAR (o que dissemos x o que o mercado fez),
-   à direita a procedência do dado. O placar fica à esquerda de propósito — é a primeira
-   coisa que o olho encontra ao terminar a lista. */
-.pulse-foot{flex:none;font-size:7.5px;color:var(--gray-mid);line-height:1.3;padding-top:3px;
-  border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;
-  align-items:baseline;}
-.pulse-foot > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
-.pulse-foot > span:first-child{font-weight:700;color:var(--gray-dark);}
-.pulse-foot-r{flex:none;}
 
 /* ── NEWS HUNTER (2 cols × 10 rows) ────────────────────────────────── */
 .sec-new-badge{display:none;background:var(--orange);color:#fff;
@@ -1031,7 +851,7 @@ html.dark .cm-nohist{color:#79818F;}
   .news-feed{grid-template-columns:1fr 1fr;}
   .hero{display:block;}
   .sec{overflow:visible;}     /* nada de cartão cortando o próprio conteúdo no celular */
-  .ev-body,.ov-list,.pulse-list{overflow:visible;}
+  .ev-body{overflow:visible;}
 }
 
 /* ══ CELULAR DE VERDADE (≤900px) ═══════════════════════════════════════════
@@ -1053,8 +873,7 @@ html.dark .cm-nohist{color:#79818F;}
   .sec-head > .sec-tools{flex:1 1 auto;}
   .pulse-controls,.hm-head-right,.area-news .sec-head > .sec-tools{
     width:100%;flex-wrap:wrap;gap:6px 8px;}
-  .pulse-views{margin-right:0;padding-right:8px;}
-  .pulse-view,.pulse-chip{font-size:10.5px;padding:5px 11px;}
+  .pulse-chip{font-size:10.5px;padding:5px 11px;}
   .news-filter-chip{font-size:11.5px;padding:5px 10px;min-width:32px;}
   .news-sec-filter{border-left:1px solid var(--border);padding-left:9px;margin-left:0;}
   .hm-range button,.hm-filter-btn{font-size:11px;padding:5px 9px;}
@@ -1062,22 +881,11 @@ html.dark .cm-nohist{color:#79818F;}
   .sec-link{font-size:11.5px;}
 
   /* Market Pulse — v1 empilhado (o ponteiro não cabe ao lado dos números) */
-  #pulse-v1.pulse-pane.on{flex-direction:column;align-items:center;gap:10px;}
+  #pulse-v1{flex-direction:column;align-items:center;gap:10px;}
   #pulse-v1 > div:not(.gauge){width:100%;}
   .gauge{width:190px;height:95px;}
   .pulse-stat-num{font-size:19px;} .pulse-stat-lbl{font-size:9.5px;}
   .pulse-body{padding:12px 13px 14px;}
-  .ov-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px;}
-  .ov-name,.ov-chg{font-size:12px;}
-  .ov-row{grid-template-columns:minmax(0,1fr) 58px;padding:4px 4px;}
-  .ov-foot,.pulse-foot{font-size:9.5px;white-space:normal;}
-  .pulse-mkt-lbl{font-size:10px;} .pulse-mkt-sub{font-size:9.5px;}
-  /* v2 (expectativa de abertura, admin): as 3 colunas viram 1 — nome + gap + score + confiança */
-  .pulse-list{grid-template-columns:minmax(0,1fr);}
-  .pulse-row{grid-template-columns:1fr 62px 50px 40px;padding:6px;}
-  .pulse-name,.pulse-gap{font-size:13px;}
-  .pscore{font-size:11px;} .pulse-conf{font-size:10.5px;} .pulse-mkt-val{font-size:28px;}
-  .pulse-attr-r{font-size:11px;}
 
   /* Events */
   .ev-t{font-size:13px;} .ev-when{font-size:11px;min-width:46px;} .ev-item{padding:9px 0;}
@@ -1121,9 +929,7 @@ html.dark .cm-nohist{color:#79818F;}
   .sector-card .sector-card-title{font-size:17.5px;}
   .heatmap-grid{gap:5px;padding:6px;}
   .news-item-title{font-size:13px;}
-  .ov-list{grid-template-columns:1fr;}
   .gauge{width:170px;height:85px;}
-  .pulse-row{grid-template-columns:1fr 56px 44px 36px;}
 }
 /* ── NIGHT MODE: botão de tema (header é escuro nas duas versões) ── */
 .theme-btn{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;
@@ -1147,11 +953,6 @@ html.dark .hm-pop-chip.on,html.dark .modal-ranges button.active{background:var(-
 html.dark .news-filter-chip.active{background:#343941;border-color:#343941;color:#fff;}
 html.dark .news-filter-chip.pos.active{background:var(--green);border-color:var(--green);}
 html.dark .news-filter-chip.neg.active{background:var(--red);border-color:var(--red);}
-/* chips de score do Market Pulse: no fundo escuro o tinte de 14% quase some */
-html.dark .pscore.pos{background:rgba(34,197,94,.22);}
-html.dark .pscore.neg{background:rgba(239,68,68,.22);}
-html.dark .pscore.pos.strong{background:var(--green);color:#0b0f0c;}
-html.dark .pscore.neg.strong{background:var(--red);color:#180b0b;}
 /* superfícies/realces hardcoded (não vêm de variável) */
 html.dark .news-item:hover{background:rgba(255,255,255,.05);}
 html.dark .tn-menu{background:#1c2026;}
@@ -1253,8 +1054,6 @@ html.dark .pulse-stat-num.neg{color:#F87171;}
 html.dark .gauge-label.bullish{color:#4ADE80;}
 html.dark .gauge-label.bearish{color:#F87171;}
 html.dark .wip-badge{background:rgba(253,230,138,.16);color:#FCD34D;}
-/* `.ov-row:hover` usava var(--gray-light), que agora é a cor do CANVAS → sumia */
-html.dark .ov-row:hover{background:rgba(255,255,255,.05);}
 
 /* ── NEWS HUNTER ─────────────────────────────────────────────────────────── */
 html.dark .news-item-title{color:#DDE2EA;}
@@ -1300,14 +1099,13 @@ html.dark .hm-range button,html.dark .hm-filter-btn{background:#161B23;border-co
 html.dark .hm-range button:hover,html.dark .hm-filter-btn:hover{color:#E9ECF2;border-color:#3A4351;}
 html.dark .pulse-chip{border-color:#242B37;}
 html.dark .pulse-chip:not(.active):hover{border-color:#3A4351;color:#E9ECF2;}
-html.dark .pulse-view{border-color:#242B37;}
 html.dark .news-filter-chip{border-color:#242B37;}
 
 /* ── Legibilidade do texto miúdo (medido no browser, alvo 4,5:1) ───────────
    Sete pontos ficavam abaixo do mínimo no fundo quase preto — todos com fonte
    de 7,5 a 10px, que é justo onde o olho não perdoa. */
 /* branco sobre laranja dá 3,3:1 em 8,5px; texto quase preto sobre o mesmo laranja dá 6,5:1 */
-html.dark .pulse-chip.active,html.dark .pulse-view.active,
+html.dark .pulse-chip.active,
 html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
@@ -1408,11 +1206,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
     <div class="sec-head">
       <span class="sec-tools"><span class="wip-badge">Work in progress</span></span>
       <div class="pulse-controls" id="pulse-controls">
-        <div class="pulse-views">
-          <button class="pulse-view active" data-view="v1" title="Tom das notícias já publicadas hoje — descritivo, não é previsão">News</button>
-          <button class="pulse-view" data-view="ov" title="O que se moveu lá fora enquanto o Brasil dormia">Overnight</button>
-          <button class="pulse-view" data-view="v2" title="Gap de abertura esperado por empresa, com banda de 80% — em validação, admin-only">At the Open</button>
-        </div>
         <button class="pulse-chip active" data-sector="all">All</button>
         <button class="pulse-chip" data-sector="sm">S&amp;M</button>
         <button class="pulse-chip" data-sector="pp">P&amp;P</button>
@@ -1420,7 +1213,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
     </div>
     <div class="pulse-body">
       <!-- v1: termômetro de notícias (cliente). v2: expectativa de abertura (admin). -->
-      <div class="pulse-pane on" id="pulse-v1">
+      <div id="pulse-v1">
         <div class="gauge" id="pulse-gauge"
              title="Balance of the takes on news already published today. It describes the tone of the newsflow — it is not a forecast of today's move.">
           <svg viewBox="0 15 140 70" preserveAspectRatio="xMidYMid meet">
@@ -1452,21 +1245,6 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
                "News"; o que dizia ao cliente que o ponteiro não é previsão são os rótulos
                (POSITIVE TONE / BALANCED / NEGATIVE TONE), e esses ficam. -->
         </div>
-      </div>
-      <div class="pulse-pane" id="pulse-ov">
-        <div class="ov-list" id="ov-list"></div>
-        <div class="ov-foot" id="ov-foot"></div>
-      </div>
-      <div class="pulse-pane" id="pulse-v2">
-      <div class="pulse-mkt">
-        <div class="pulse-mkt-val neu" id="pulse-mkt-val">—</div>
-        <div class="pulse-mkt-txt">
-          <div class="pulse-mkt-lbl" id="pulse-mkt-lbl">Loading</div>
-          <div class="pulse-mkt-sub" id="pulse-mkt-sub">Expected open across the coverage</div>
-        </div>
-      </div>
-      <div class="pulse-list" id="pulse-list"></div>
-      <div class="pulse-foot" id="pulse-foot"></div>
       </div>
     </div>
   </div>
@@ -1668,11 +1446,6 @@ async function applyDashboardConfig(){
   try{
     const [fl, tm, cg, ht, role] = await Promise.all([ sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_team'), sbAuth.rpc('get_commodity_groups'), sbAuth.rpc('get_heatmap_tickers'), sbAuth.rpc('get_my_role') ]);
     const isAdmin = !!(role && !role.error && role.data === 'admin');   // admin vê features OFF (selo); cliente não
-    // Market Pulse: "Open" (previsão em validação) só p/ admin; News e Overnight p/ todos.
-    if(isAdmin) document.querySelector('.page')?.classList.add('pulse-admin');
-    if(_pulseView === 'v2' && !isAdmin) _pulseView = 'v1';   // cliente nunca cai no quadro em validação
-    _setPulseView(_pulseView);                                // restaura a escolha guardada
-    if(isAdmin) loadPulse();                                  // recarrega p/ trazer o "Open"
     if(fl && !fl.error && Array.isArray(fl.data)) applyFlags(fl.data, isAdmin);
     // Habilita a navegação p/ a aba Market (terminal de ações): admin SEMPRE; cliente só com a flag 'market' on.
     window._marketEnabled = isAdmin || (fl && !fl.error && Array.isArray(fl.data) && fl.data.some(f=>f.key==='market' && f.enabled));
@@ -2004,17 +1777,13 @@ function _updateNewsMeta(){
 setInterval(_updateNewsMeta,15000);
 
 // ─── MARKET PULSE ─────────────────────────────────────────────────────
-// Duas leituras convivem enquanto o v2 passa pela validação de 20 pregões:
-//   v1 "News" = termômetro de notícias do dia  -> é o que o CLIENTE vê
-//   v2 "Open" = expectativa de abertura        -> só admin, pelo seletor no cabeçalho
-// Quando o pulse_check.py aprovar, o v1 sai e o v2 vira o padrão de todo mundo.
+// Um quadro só: o tom das notícias do dia. Os painéis "Overnight" e "At the Open"
+// saíram da tela em 2026-09-09 a pedido do usuário — o robô que os alimentava
+// (pulse_daily / pulse_train no news-hunter) segue rodando e gravando no Supabase,
+// então voltar atrás é reverter este commit.
 let _pulseSector = 'all';
-let _pulseView = 'v1';
-try { _pulseView = localStorage.getItem('ibba_pulse_view') || 'v1'; } catch(e){}
 
 document.getElementById('pulse-controls').addEventListener('click', e => {
-  const v = e.target.closest('.pulse-view');
-  if(v){ _setPulseView(v.dataset.view); return; }
   const btn = e.target.closest('.pulse-chip');
   if(!btn) return;
   document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
@@ -2023,27 +1792,10 @@ document.getElementById('pulse-controls').addEventListener('click', e => {
   loadPulse();
 });
 
-function _setPulseView(v){
-  _pulseView = v;
-  try { localStorage.setItem('ibba_pulse_view', v); } catch(e){}
-  document.querySelectorAll('.pulse-view').forEach(b => b.classList.toggle('active', b.dataset.view === v));
-  document.querySelectorAll('.pulse-pane').forEach(p => p.classList.toggle('on', p.id === 'pulse-' + v));
-  // os chips de setor só fazem sentido nos quadros por empresa
-  document.querySelector('.page')?.classList.toggle('pulse-ov', v === 'ov');
-}
-
-// News e Overnight são para TODOS (os dois só descrevem o que já aconteceu).
-// O v2 é previsão em validação: só carrega se a página estiver marcada como admin,
-// então o cliente nem chega a pedir esses dados.
-async function loadPulse(){
-  await loadPulseV1();
-  await loadOvernight();
-  if(document.querySelector('.page.pulse-admin')) await loadPulseV2();
-}
-
-// ─── v1: termômetro de notícias — o que o CLIENTE vê ─────────────────
-// ⚠️ Mede o retorno de ONTEM, não o de hoje (ver auditoria em Market-Pulse-Research/).
-// Está no ar para não deixar buraco no painel enquanto o v2 é validado ao vivo.
+// ─── TERMÔMETRO DE NOTÍCIAS — o único quadro do Market Pulse ─────────
+// ⚠️ É DESCRITIVO: mede o tom do que já foi publicado, não prevê o dia. A auditoria
+// mediu +0,18 de correlação com o retorno de ONTEM e ~0 com o de hoje; os rótulos
+// (POSITIVE TONE / BALANCED / NEGATIVE TONE) existem para dizer isso ao cliente.
 // Meia-noite de HOJE no horário de Brasília (America/Sao_Paulo), em ms epoch.
 // O Market Pulse mede o sentimento do DIA CORRENTE — reseta sozinho na virada
 // do dia (cada refresh recalcula este corte), sem o dia anterior "contaminar".
@@ -2060,7 +1812,7 @@ function _spDayStartMs(){
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + 3*3600*1000;
   }
 }
-async function loadPulseV1(){
+async function loadPulse(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   const dayStartMs = _spDayStartMs();
@@ -2133,597 +1885,6 @@ function _renderGauge(val){
     label.textContent = 'BALANCED'; label.className = 'gauge-label neutral';
     arc.setAttribute('stroke', '#8C8C8C');
   }
-}
-
-// ─── v2: expectativa de abertura (admin-only enquanto valida) ──────────────────────────────────────────────────
-// O QUE MUDOU (2026-08): o ponteiro antigo contava takes de notícia do dia. A auditoria
-// mostrou que aquilo media o retorno de ONTEM (correlação +0,18) e não sabia nada sobre
-// hoje (+0,013, p=0,71) — quase todo o material é assessment de preço, publicado DEPOIS
-// que o mercado se moveu. Trocado por um modelo que estima o GAP DE ABERTURA de cada
-// coberta a partir do que Ásia, Europa e commodities negociaram de madrugada.
-// Validado em 205 pregões de holdout: IC 0,26 e 58,6% de acerto direcional.
-//
-// ⚠️ Ele antecipa a ABERTURA, não a sessão. Depois do leilão o sinal se esgota
-// (testado: IC 0,04 contra o retorno abertura→fechamento). O rodapé avisa isso.
-//
-// Os takes por notícia NÃO foram tocados — o feed e o badge +/−/= seguem iguais.
-let _pulseRows = [];
-let _pulseAberto = null;      // empresa com o "por quê" aberto
-
-// setor de `quotes` → chip da home. Mineração e siderurgia são S&M; celulose/papel é P&P.
-const _PULSE_SEC = {iron_ore:'sm', steel:'sm', gold:'sm', copper:'sm', mining:'sm',
-                    rare_earths:'sm', pp:'pp'};
-// As três das Américas podem não estar em `quotes` (o join da RPC devolveria setor nulo).
-// Sem este mapa elas cairiam no default 'sm' por acidente; aqui é por decisão — cobre e
-// aço são S&M, do mesmo jeito que as brasileiras do setor.
-const _PULSE_SEC_FIXO = {'SCCO':'sm', 'TX':'sm', 'GMEXICOB.MX':'sm'};
-const _pSec = r => _PULSE_SEC_FIXO[r.company] || _PULSE_SEC[r.sector] || 'sm';
-// A lista roda em 3 colunas (~59px para o nome) — dois nomes de `quotes` não cabem inteiros.
-// Encurtar é melhor que espremer a fonte ou cortar com reticências.
-const _PULSE_NOME = {'AURA33.SA':'Aura', 'CMIN3.SA':'CSN Min.',
-                     'SCCO':'S. Copper', 'TX':'Ternium', 'GMEXICOB.MX':'G. México'};
-const _pNome = r => _PULSE_NOME[r.company] || r.name || r.company;
-
-function _pFaixa(s){
-  return s >= 65 ? 'STRONG BULLISH' : s >= 25 ? 'BULLISH'
-       : s > -25 ? 'NEUTRAL'       : s > -65 ? 'BEARISH' : 'STRONG BEARISH';
-}
-function _pCls(s){ return s >= 25 ? 'pos' : s <= -25 ? 'neg' : 'neu'; }
-
-async function loadPulseV2(){
-  const {data:{session}} = await sbAuth.auth.getSession();
-  if(!session) return;
-  try {
-    const {data, error} = await sbAuth.rpc('get_market_pulse');
-    if(error) throw error;
-    _pulseRows = data || [];
-  } catch(e){
-    console.warn('pulse error:', e);
-    _pulseRows = [];
-  }
-  await Promise.all([loadPulseTrack(), loadPulseNews()]);
-  _renderPulseV2();
-}
-
-function _renderPulseV2(){
-  const lista = document.getElementById('pulse-list');
-  const foot  = document.getElementById('pulse-foot');
-  const val   = document.getElementById('pulse-mkt-val');
-  const lbl   = document.getElementById('pulse-mkt-lbl');
-  const sub   = document.getElementById('pulse-mkt-sub');
-  if(!lista) return;
-
-  if(!_pulseRows.length){
-    val.textContent = '—'; val.className = 'pulse-mkt-val neu';
-    lbl.textContent = 'No reading';
-    sub.textContent = "Today's run hasn't been published yet.";
-    lista.innerHTML = ''; foot.textContent = '';
-    return;
-  }
-
-  const rows = _pulseRows.filter(r => _pulseSector === 'all' || _pSec(r) === _pulseSector);
-  const ok   = rows.filter(r => r.status === 'ok' && r.score != null);
-
-  // O número do topo é o GAP MÉDIO ESPERADO da cobertura, em %, na mesma unidade das
-  // linhas. O score −100..+100 saiu: escala abstrata exige que o cliente confie na régua,
-  // e o gap em % se explica sozinho.
-  if(ok.length){
-    const g = ok.reduce((a,r) => a + Number(r.gap_expected), 0) / ok.length;
-    const m = ok.reduce((a,r) => a + Number(r.score), 0) / ok.length;   // só p/ a faixa
-    const sobe = ok.filter(r => Number(r.gap_expected) > 0).length;
-    // 2 casas na MÉDIA (não nas linhas): a média de 7 previsões tem erro menor que cada
-    // uma, e com 1 casa um dia equilibrado virava "+0.0%", que parece defeito.
-    val.textContent = `${g >= 0 ? '+' : ''}${g.toFixed(2)}%`;
-    val.className = 'pulse-mkt-val ' + _pCls(m);
-    lbl.textContent = `${sobe} up · ${ok.length - sobe} down at the open`;
-    const call = _pMorningCall(ok);
-    sub.textContent = call;
-    // No layout espremido a linha do Morning Call é escondida por CSS — o texto vive no
-    // title da faixa, para não sumir junto.
-    const faixa = document.querySelector('#pulse-v2 .pulse-mkt');
-    if(faixa) faixa.title = call;
-  } else {
-    val.textContent = '—'; val.className = 'pulse-mkt-val neu';
-    lbl.textContent = 'No reading'; sub.textContent = 'No name with a signal in this filter.';
-  }
-
-  // Ranking pelo tamanho do gap esperado: a ORDEM já é informação — o que importa hoje
-  // fica no topo. (Antes ordenava pelo score, que é a mesma coisa reescalada, mas o score
-  // saiu da tela.) Os sem sinal vão para o fim, juntos.
-  const ordem = [...rows].sort((a,b) => {
-    const pa = a.status === 'ok' ? 0 : 1, pb = b.status === 'ok' ? 0 : 1;
-    if(pa !== pb) return pa - pb;
-    return Math.abs(Number(b.gap_expected) || 0) - Math.abs(Number(a.gap_expected) || 0);
-  });
-
-  // Quem não tem sinal vira UMA linha no fim, não uma linha por empresa: nove linhas de
-  // ranking não cabem no card, e o valor do "no reliable signal" está na declaração, não
-  // em repeti-la. O porquê de cada uma fica no tooltip.
-  const semSinal = ordem.filter(r => r.status !== 'ok' || r.score == null);
-  const comSinal = ordem.filter(r => !(r.status !== 'ok' || r.score == null));
-
-  lista.innerHTML = comSinal.map(r => {
-    const nome = _esc(_pNome(r));
-    const gap = Number(r.gap_expected);
-    const a = r.attribution || {};
-    const band = Array.isArray(a.band) ? a.band : null;
-    const conv = a.conviction || null;                       // 'high' | 'mid' | 'low'
-    const hit  = a.conviction_hit != null ? Math.round(a.conviction_hit * 100) : null;
-    const real = r.gap_actual != null ? Number(r.gap_actual) : null;
-
-    // O QUE MUDOU AQUI: o score −100..+100 saiu da tela. A unidade agora é o gap esperado
-    // em %, que é a própria variável que o modelo prevê e que o cliente já lê todo dia no
-    // "implied open" dos futuros. Uma casa decimal: um IC de 0,4 não autoriza duas.
-    const dir = gap > 0 ? 'pos' : gap < 0 ? 'neg' : 'neu';
-    const seta = gap > 0 ? '▲' : gap < 0 ? '▼' : '–';
-    const pontos = {high: '●●●', mid: '●●○', low: '●○○'}[conv] || '';
-    const tipConv = conv
-      ? `${conv} conviction — the signal is ${conv === 'high' ? 'over 1' : conv === 'mid' ? '0.5 to 1' : 'under 0.5'}`
-        + ` standard deviation of this model's own forecasts`
-        + (hit != null ? `. Historically right ${hit}% of the time in this band.` : '')
-      : '';
-    const tip = `model IC ${r.ic_oos != null ? Number(r.ic_oos).toFixed(2) : '—'} out-of-sample`
-              + (band ? ` · 80% band ${band[0].toFixed(1)} to ${band[1].toFixed(1)}%` : '')
-              + ` · click to see what's driving it`;
-    const driver = _pDriver(r);
-
-    return `<div class="pulse-row" data-emp="${_esc(r.company)}" title="${_esc(tip)}">
-        <span class="pulse-name">${nome}</span>
-        <span class="pulse-gap ${dir}">${seta} ${gap >= 0 ? '+' : ''}${gap.toFixed(1)}%</span>
-        <span class="pulse-band">${band ? `${band[0].toFixed(1)} … ${band[1].toFixed(1)}` : '—'}</span>
-        <span class="pulse-conv ${conv || ''}" title="${_esc(tipConv)}">${pontos}</span>
-        <span class="pulse-why">${_esc(driver)}</span>
-        ${real != null ? `<span class="pulse-real ${(gap > 0) === (real > 0) ? 'ok' : 'ko'}"
-             title="opened ${real.toFixed(2)}%">${(gap > 0) === (real > 0) ? '✓' : '✗'}</span>` : ''}
-      </div>
-      <div class="pulse-attr" data-attr="${_esc(r.company)}">
-        <div class="pulse-attr-t">what's driving it</div>
-        ${_pAttr(r)}
-      </div>`;
-  }).join('') + (semSinal.length ? _pSemSinal(semSinal) : '');
-
-  // reabre o "por quê" que estava aberto antes do refresh
-  if(_pulseAberto){
-    const el = lista.querySelector(`[data-attr="${CSS.escape(_pulseAberto)}"]`);
-    if(el) el.classList.add('open'); else _pulseAberto = null;
-  }
-
-  const r0 = _pulseRows[0];
-  const hora = r0.snapshot_at
-    ? new Date(r0.snapshot_at).toLocaleTimeString(NUM_LOC,{hour:'numeric',minute:'2-digit'})
-    : `${r0.cut}:00`;
-  const dia = r0.session_date
-    ? new Date(r0.session_date + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'})
-    : '';
-  foot.innerHTML = `<span>${_pScorecard()}</span>`
-    + `<span class="pulse-foot-r">Expected OPEN, not the session · as of ${_esc(hora)} on ${_esc(dia)}</span>`;
-}
-
-// ─── placar: o que dissemos × o que o mercado fez ────────────────────────────
-// É o gerador de autoridade mais barato que existe — os dados já são gravados, e nenhum
-// produto gratuito faz isso para a B3. Um previsor que publica o próprio histórico de erro
-// é lido como honesto; um que só mostra a previsão de hoje, como vendedor.
-let _pulseTrack = [];
-
-async function loadPulseTrack(){
-  try {
-    const {data, error} = await sbAuth.rpc('get_pulse_track_record', {p_dias: 30});
-    if(error) throw error;
-    _pulseTrack = data || [];
-  } catch(e){
-    // A RPC/coluna pode não existir ainda (SQL não rodado). Sem placar o painel segue
-    // inteiro — é um acréscimo, não um pré-requisito.
-    _pulseTrack = [];
-  }
-}
-
-function _pScorecard(){
-  if(!_pulseTrack.length) return '';
-  // ⚠️ UM CORTE POR DIA. A RPC devolve os dois (07h e 09h), então cada empresa aparece
-  // duas vezes no mesmo pregão — e o placar diria "11 de 14" para dez empresas, o que
-  // parece erro de conta para quem está olhando a lista. Fica o corte das 09h, o mesmo
-  // que o painel exibe (o das 07h é preliminar); onde só houver o das 07h, ele serve.
-  const porDia = {};
-  for(const r of _pulseTrack) (porDia[r.session_date] ||= new Set()).add(r.cut);
-  const cutDoDia = d => porDia[d].has('09') ? '09' : [...porDia[d]].sort().pop();
-  const linhas = _pulseTrack.filter(r => r.cut === cutDoDia(r.session_date));
-  if(!linhas.length) return '';
-
-  const dias = [...new Set(linhas.map(r => r.session_date))].sort();
-  const ultimo = dias[dias.length - 1];
-  const ontem = linhas.filter(r => r.session_date === ultimo);
-  const acertos = ontem.filter(r => r.hit).length;
-  const geral = linhas.filter(r => r.hit).length / linhas.length;
-  const d = new Date(ultimo + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'});
-  return `Last call (${d}): ${acertos}/${ontem.length} directions right`
-       + ` · ${Math.round(100 * geral)}% over the last ${dias.length} sessions`;
-}
-
-// MORNING CALL — a frase que abre o painel: qual nome se move mais hoje e por causa de quê.
-//
-// Gerada por TEMPLATE a partir dos drivers do próprio modelo, não por IA. Duas razões: a
-// cota das IAs de produção é reservada aos takes das notícias (regra permanente da casa), e
-// aqui não há nada para interpretar — o modelo já disse qual instrumento pesou mais. Texto
-// determinístico também nunca contradiz o número que está logo ao lado, que é o defeito
-// mais caro que um resumo automático pode ter.
-function _pMorningCall(ok){
-  if(!ok.length) return '';
-  const forte = ok.reduce((a, b) =>
-    Math.abs(Number(b.gap_expected)) > Math.abs(Number(a.gap_expected)) ? b : a);
-  const gap = Number(forte.gap_expected);
-  const drv = _pDriver(forte);
-  const nome = _pNome(forte);
-  const verbo = gap > 0 ? 'set to open higher' : gap < 0 ? 'set to open lower' : 'flat at the open';
-  return drv ? `${nome} ${verbo} on ${drv} overnight` : `${nome} ${verbo}`;
-}
-
-// "No reliable signal" numa linha só, com o motivo de cada nome no tooltip. Calar sobre o
-// que o modelo não sabe é feature: o cliente julga o produto pelo pior cartão visível, e um
-// palpite ruim ao lado de uma previsão de 76% de acerto desconta a segunda.
-function _pSemSinal(rows){
-  const nomes = rows.map(r => _pNome(r)).join(', ');
-  const motivos = rows.map(r => {
-    const m = (r.attribution && r.attribution.motivo)
-      || (r.status === 'sem_dado' ? 'incomplete market data in this run' : 'no signal');
-    return `${_pNome(r)}: ${m}`;
-  }).join('\n');
-  return `<div class="pulse-row off nosig" title="${_esc(motivos)}">
-      <span class="pulse-name">No signal</span>
-      <span class="pscore">${_esc(nomes)}</span></div>`;
-}
-
-// Nome de gente para os instrumentos. O cliente não tem que saber que "FMG.AX" é a
-// Fortescue nem que "DX-Y.NYB" é o índice do dólar — o painel fala de mercados, não de
-// tickers do Yahoo. Símbolo sem entrada aqui aparece como está (degrada legível).
-const _PULSE_INSTR = {
-  'FMG.AX':'Fortescue', 'BHP.AX':'BHP', 'RIO.AX':'Rio Tinto', 'AAL.L':'Anglo American',
-  '^AXJO':'ASX 200', '^HSI':'Hang Seng', '000001.SS':'Shanghai', '^N225':'Nikkei',
-  '600019.SS':'Baoshan Steel', '5401.T':'Nippon Steel', '2689.HK':'Nine Dragons',
-  'HG=F':'Copper', 'GC=F':'Gold', 'SI=F':'Silver',
-  '^STOXX50E':'Euro Stoxx', '^GDAXI':'DAX', '^FTSE':'FTSE', 'UPM.HE':'UPM', 'STERV.HE':'Stora Enso',
-  'ES=F':'S&P futures', 'NQ=F':'Nasdaq futures', 'CL=F':'Oil',
-  'USDBRL=X':'USD/BRL', 'EURUSD=X':'EUR/USD', 'AUDUSD=X':'AUD/USD', 'DX-Y.NYB':'Dollar index',
-  '^VIX':'VIX', '^VIX9D':'VIX 9d', '^VIX3M':'VIX 3m',
-  'VALE':'Vale ADR', 'SID':'CSN ADR', 'GGB':'Gerdau ADR', 'AUGO':'Aura (Nasdaq)', 'EWZ':'EWZ',
-};
-const _pInstr = s => _PULSE_INSTR[s] || s;
-
-// O MACRO — câmbio, VIX, futuros americanos, EWZ — entra no modelo de TODAS as empresas, e
-// por isso costuma dominar a atribuição em bloco: num dia de dólar, ele é o maior
-// contribuinte de nove nomes ao mesmo tempo. Verdadeiro, e inútil como explicação: dizer
-// "a Vale abre assim por causa do dólar" não conta nada ao analista de mineração.
-const _MACRO_SYMS = new Set(['USDBRL=X','EURUSD=X','DX-Y.NYB','^VIX','ES=F','NQ=F','EWZ']);
-
-// O driver principal, em cinco palavras, na MESMA linha do número. Atribuição escondida
-// atrás de um clique é atribuição que não existe: o cliente precisa ver o porquê junto
-// com o quanto, senão o número é só um palpite bonito.
-//
-// Mostra o maior driver ESPECÍFICO da empresa (minério para a Vale, ouro para a Aura,
-// cobre para a Southern). O macro só aparece quando nenhum específico pesou — e a lista
-// completa, macro incluso e na ordem real de contribuição, está a um clique.
-function _pDriver(r){
-  const d = (r.attribution && r.attribution.drivers) || [];
-  if(!d.length) return '';
-  const alvo = d.find(([s]) => !_MACRO_SYMS.has(s)) || d[0];
-  const [sym, , mov] = alvo;
-  const nome = _pInstr(sym);
-  if(mov == null || !isFinite(Number(mov))) return nome;
-  const m = Number(mov);
-  return `${nome} ${m >= 0 ? '+' : ''}${m.toFixed(1)}%`;
-}
-
-function _pAttr(r){
-  const g = (r.attribution && r.attribution.grupos) || null;
-  if(!g) return '<div class="pulse-attr-r"><span>no breakdown</span><span></span></div>';
-  const linhas = Object.entries(g).slice(0, 5).map(([k, v]) => {
-    const n = Number(v);
-    return `<div class="pulse-attr-r"><span>${_esc(k)}</span>`
-         + `<span class="${n > 0 ? 'pulse-gap pos' : n < 0 ? 'pulse-gap neg' : 'pulse-gap neu'}">`
-         + `${n >= 0 ? '+' : ''}${n.toFixed(2)}</span></div>`;
-  }).join('');
-  return linhas + _pManchetes(r);
-}
-
-// ─── a manchete que explica o driver ─────────────────────────────────────────
-// O que a auditoria concluiu sobre o nosso feed: ele NÃO prevê o dia (correlaciona com o
-// retorno de ontem, não com o de hoje) — mas EXPLICA. Aqui ele faz esse trabalho: a
-// manchete não é a previsão, é a evidência do driver que o modelo já escolheu. Como a
-// seleção parte do driver (o TEMA) e o take da IA ordena a evidência (a DIREÇÃO — manchete
-// concordante primeiro), número e texto puxam para o mesmo lado sempre que o feed permite;
-// num resumo automático solto essa contradição é o defeito mais caro que existe.
-//
-// Só entram manchetes da MADRUGADA (18h de ontem em diante): é a janela em que a informação
-// pública se move enquanto a B3 está fechada, e é o que o cliente ainda não leu.
-// ⚠️ As chaves aqui têm de bater EXATAMENTE com as de `_TEMA_RE` — são o mesmo rótulo, e
-// ele vai para a tela. Um nome trocado só de um lado faz a evidência sumir em silêncio.
-// ⚠️ TODO símbolo que pode ser driver TEM de ter tema aqui — símbolo sem tema abre a
-// linha SEM manchete, em silêncio. Quem pode ser driver (pulse_snapshot.py): os blocos de
-// DRIVERS_POR_EMPRESA + o MACRO (fallback de dia todo-macro, alvo = drv[0]) + os gêmeos.
-// CL=F (driver específico de GGBR4/TX) e AUGO (gêmeo da Aura) eram buracos silenciosos.
-const _TEMA_DE = {
-  'FMG.AX':'iron ore', 'BHP.AX':'iron ore', 'RIO.AX':'iron ore', 'AAL.L':'iron ore',
-  'VALE':'iron ore', '^AXJO':'iron ore',
-  'HG=F':'copper', 'GC=F':'gold', 'SI=F':'gold', 'AUGO':'gold',
-  '600019.SS':'steel', '5401.T':'steel', 'SID':'steel', 'GGB':'steel',
-  '2689.HK':'pulp & paper', 'UPM.HE':'pulp & paper', 'STERV.HE':'pulp & paper',
-  '^HSI':'China', '000001.SS':'China', '^N225':'China',
-  'CL=F':'oil',
-  'USDBRL=X':'FX', 'EURUSD=X':'FX', 'DX-Y.NYB':'FX',
-  '^VIX':'US markets', 'ES=F':'US markets', 'NQ=F':'US markets',
-  'EWZ':'Brazil',
-};
-// A busca é bilíngue porque o feed é: Platts e Fastmarkets escrevem em inglês, Valor e
-// Estadão em português, e a mesma notícia pode chegar pelos dois.
-// ⚠️ O RÓTULO exibido é em inglês — esta é tela de cliente (regra da casa).
-// Os temas macro são APERTADOS de propósito: regex frouxa pinta manchete alheia de
-// "evidência" — melhor não mostrar nada do que mostrar a errada. Fed/Treasury aparecem em
-// FX E em US markets porque as mesmas histórias movem os dois; sobreposição não é defeito.
-// A proteção contra o caso "Gold rises on Fed cut bets" (casa com FX pelo Fed, mas é
-// manchete de OURO) é a guarda _TEMAS_MACRO logo abaixo, não o regex.
-const _TEMA_RE = {
-  'iron ore': /iron ore|min[ée]rio|pellet|fortescue|vale|bhp|rio tinto|dalian/i,
-  'steel':    /\bsteel\b|a[çc]o|hrc|rebar|vergalh|slab|billet|scrap|sucata|siderurg/i,
-  'copper':   /copper|cobre|codelco|escondida/i,
-  'gold':     /\bgold\b|ouro|bullion|silver|prata/i,
-  'pulp & paper': /pulp|celulose|paper|papel|containerboard|kraft|bhkp|nbsk/i,
-  'China':    /china|chinese|beijing|pequim|pmi|stimulus|est[íi]mulo/i,
-  'oil':      /\boil\b|petr[óo]le|crude|brent|\bwti\b|opec|opep|petrobras/i,
-  'FX':       /d[óo]lar|\bdollar\b|greenback|c[âa]mbio|\bdxy\b|\bfed\b|fomc|treasur|\byields?\b|\bjuros\b/i,
-  'US markets': /wall st|s&p ?500|nasdaq|dow jones|\bnyse\b|u\.?s\.? (stocks|futures|equities|shares)|\bfed\b|fomc|treasur|payroll|\bcpi\b/i,
-  'Brazil':   /brazil|brasil|ibovespa|\bb3\b|copom|selic|banco central/i,
-};
-// Manchete de commodity tem dono. "Gold holds near record as traders price in a Fed cut"
-// casa com FX pelo Fed, mas é manchete de OURO — como evidência do dólar ela mente. Tema
-// macro só fica com o que NENHUMA commodity reclama; a manchete mista ("Dollar firms as
-// iron ore slips") vai para o lado da commodity, onde o leitor a procuraria.
-const _TEMAS_MACRO = new Set(['FX', 'US markets', 'Brazil']);
-const _RES_COMMODITY = ['iron ore', 'steel', 'copper', 'gold', 'pulp & paper', 'oil']
-  .map(k => _TEMA_RE[k]);
-// A manchete da PRÓPRIA empresa usa a marcação do hunter (take_covered_companies, formato
-// "VALE; CSN"), que já desarma "vale a pena"/"aura de otimismo" exigindo contexto setorial
-// — o front NÃO adivinha empresa por regex de nome. Exceção: SCCO e Grupo México, que o
-// classificador não cobre; os nomes são inequívocos e regex basta.
-const _COV_DE = {
-  'VALE3.SA':'VALE', 'CMIN3.SA':'CMIN', 'CSNA3.SA':'CSN', 'GGBR4.SA':'GERDAU',
-  'USIM5.SA':'USIMINAS', 'TX':'TERNIUM', 'AURA33.SA':'AURA',
-  'SUZB3.SA':'SUZANO', 'KLBN11.SA':'KLABIN', 'RANI3.SA':'IRANI',
-};
-const _EMPRESA_RE = {
-  'SCCO': /southern copper/i,
-  'GMEXICOB.MX': /grupo m[ée]xico/i,
-};
-
-function _pManchetes(r){
-  if(!_pulseNews.length) return '';
-  const drv = (r.attribution && r.attribution.drivers) || [];
-  // mesmo driver que a linha exibe (o específico), para o texto não falar de um tema e o
-  // número ao lado de outro
-  const alvo = drv.find(([s]) => !_MACRO_SYMS.has(s)) || drv[0];
-  const tema = alvo && _TEMA_DE[alvo[0]];
-  const re = tema && _TEMA_RE[tema];
-  // Dedup: a mesma matéria chega por mais de uma fonte, e repetir a manchete faria a
-  // evidência parecer mais farta do que é. A chave são as 7 primeiras palavras sem
-  // pontuação nem números — prefixo cru não basta, porque as versões de uma mesma matéria
-  // costumam divergir só no fim (um "(atualizada)", uma cidade, um número).
-  const chaveDe = t => t.toLowerCase().replace(/[^a-zà-ú\s]/g, ' ')
-                        .split(/\s+/).filter(Boolean).slice(0, 7).join(' ');
-  const limpa = s => String(s || '').replace(/<[^>]+>/g, ' ');
-  const selo = t =>
-      t === '+'      ? '<span class="pulse-take pos" title="Positive">+</span>'
-    : t === '-'      ? '<span class="pulse-take neg" title="Negative">−</span>'
-    : t === '='      ? '<span class="pulse-take neu" title="Neutral">=</span>'
-    : t === 'review' ? '<span class="pulse-take rev" title="Review">~</span>' : '';
-  // A manchete vira LINK quando a URL é http(s) de verdade; sem URL fica texto — link
-  // morto é pior que link nenhum. O clique não fecha o "por quê": o handler da lista só
-  // reage a .pulse-row, e a âncora vive no .pulse-attr.
-  const linha = a => {
-    const h = new Date(a.published_at || a.found_at)
-      .toLocaleTimeString(NUM_LOC, {hour:'numeric', minute:'2-digit'});
-    const u = /^https?:/i.test(a.url || '') ? _esc(a.url) : '';
-    const tit = u ? `<a href="${u}" target="_blank" rel="noopener">${_esc(a.title)}</a>`
-                  : _esc(a.title);
-    return `<div class="pulse-news"><span>${selo(a.take_llm)}${tit}</span>`
-         + `<span class="pulse-news-h">${_esc(h)}</span></div>`;
-  };
-
-  // ── bloco 1: o tema do driver ──────────────────────────────────────────────
-  let blocoTema = '';
-  const naTela = new Set();
-  if(re){
-    // A direção com que a manchete tem de concordar é a do MOVIMENTO do instrumento — é o
-    // número que a linha exibe ("Gold −1.3%"). A contribuição é o reserva, para atribuição
-    // antiga gravada sem movimento; sem nenhum dos dois não há preferência (vale a recência).
-    const mov = Number(alvo[2]), ctb = Number(alvo[1]);
-    const dir = isFinite(mov) && mov !== 0 ? Math.sign(mov)
-              : isFinite(ctb) && ctb !== 0 ? Math.sign(ctb) : 0;
-    // O take (+/−/=) que a consulta já traz ordena a evidência: manchete que CONCORDA com
-    // o driver primeiro, neutra/sem take depois, contrária por último. A contrária ainda
-    // entra — às vezes é a única história do tema — mas entra com o selo à vista: o selo é
-    // a leitura da IA sob a ótica das cobertas, não um juízo desta tela.
-    const tier = t => !dir ? 0
-               : t === (dir > 0 ? '+' : '-') ? 0
-               : t === (dir > 0 ? '-' : '+') ? 2 : 1;
-    // O título é curto e nem sempre carrega a palavra do tema ("DCE futures rise") — o
-    // resumo completa a busca. Acerto no título vale mais que no resumo: manchete
-    // estampando o tema é evidência mais forte. O strip de tags é obrigatório: snippet
-    // chega com HTML, e sem ele um "china" dentro de um href viraria evidência de China.
-    const vistos = new Set(), achadas = [];
-    for(const a of _pulseNews){
-      const t = (a.title || '').trim();
-      if(!t) continue;
-      const hit = re.test(t) ? 0 : re.test(limpa(a.snippet)) ? 1 : -1;
-      if(hit < 0) continue;
-      // a guarda dos temas macro: o campo que deu o acerto decide o dono da manchete
-      if(_TEMAS_MACRO.has(tema)){
-        const campo = hit === 0 ? t : limpa(a.snippet);
-        if(_RES_COMMODITY.some(cre => cre.test(campo))) continue;
-      }
-      const chave = chaveDe(t);
-      if(vistos.has(chave)) continue;
-      vistos.add(chave); achadas.push({a, hit, chave});
-    }
-    if(achadas.length){
-      // sort é estável: concordância com o driver manda, título-antes-de-resumo desempata,
-      // e dentro do mesmo par a ordem continua a da consulta (recência)
-      achadas.sort((x, y) => (tier(x.a.take_llm) * 2 + x.hit) - (tier(y.a.take_llm) * 2 + y.hit));
-      const top = achadas.slice(0, 2);
-      top.forEach(x => naTela.add(x.chave));
-      blocoTema = `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(tema)}</div>`
-                + top.map(x => linha(x.a)).join('');
-    }
-  }
-
-  // ── bloco 2: a PRÓPRIA empresa ─────────────────────────────────────────────
-  // Evidência mais forte que a do tema, quando existe — e entra como linha EXTRA, sem
-  // substituir a do driver (o número da linha continua sendo o driver). A direção aqui é a
-  // do PRÓPRIO call (gap_expected), não a do driver; o que o tema já pôs na tela não
-  // repete; e o bloco aparece mesmo quando o tema não achou nada (AUGO sem manchete de
-  // ouro, mas com "Aura anuncia X" — mostrar).
-  let blocoEmp = '';
-  const cov = _COV_DE[r.company], covRe = _EMPRESA_RE[r.company];
-  if(cov || covRe){
-    const g = Number(r.gap_expected);
-    const gdir = isFinite(g) && g !== 0 ? Math.sign(g) : 0;
-    const gtier = t => !gdir ? 0
-                 : t === (gdir > 0 ? '+' : '-') ? 0
-                 : t === (gdir > 0 ? '-' : '+') ? 2 : 1;
-    const jaVi = new Set(), proprias = [];
-    for(const a of _pulseNews){
-      const t = (a.title || '').trim();
-      if(!t) continue;
-      const marcada = cov && (a.take_covered_companies || '')
-        .split(';').some(x => x.trim() === cov);
-      if(!marcada && !(covRe && (covRe.test(t) || covRe.test(limpa(a.snippet))))) continue;
-      const chave = chaveDe(t);
-      if(naTela.has(chave) || jaVi.has(chave)) continue;
-      jaVi.add(chave); proprias.push(a);
-    }
-    if(proprias.length){
-      proprias.sort((a, b) => gtier(a.take_llm) - gtier(b.take_llm));
-      blocoEmp = `<div class="pulse-attr-t" style="margin-top:5px">overnight on ${_esc(r.name || r.company)}</div>`
-               + linha(proprias[0]);
-    }
-  }
-  return blocoTema + blocoEmp;
-}
-
-// Manchetes publicadas desde as 18:00 de ontem — a janela em que o mundo se moveu com a
-// B3 fechada. Falha em silêncio: o painel funciona inteiro sem elas.
-let _pulseNews = [];
-
-async function loadPulseNews(){
-  try {
-    const {data:{session}} = await sbAuth.auth.getSession();
-    if(!session) return;
-    const desde = new Date(_spDayStartMs() - 6 * 3600 * 1000).toISOString();  // 18h de ontem
-    // snippet entrou p/ a busca de tema no CORPO (título curto nem sempre carrega a
-    // palavra do tema); url p/ a manchete ser clicável; take_covered_companies p/ o bloco
-    // da própria empresa. ~40 KB por busca, 1x/5min e só com a home aberta.
-    // `sector` saiu — ninguém lia.
-    const url = `${SUPA_URL}/rest/v1/news_articles`
-      + `?select=title,snippet,url,take_covered_companies,published_at,found_at,take_llm`
-      + `&or=(published_at.gte.${desde},and(published_at.is.null,found_at.gte.${desde}))`
-      + `&include_in_report=eq.true&order=published_at.desc&limit=120`;
-    const r = await fetch(url, {headers:{'apikey':SUPA_KEY,
-                                         'Authorization':`Bearer ${session.access_token}`}});
-    _pulseNews = r.ok ? await r.json() : [];
-  } catch(e){ _pulseNews = []; }
-}
-
-// clique na linha abre/fecha a explicação (uma de cada vez)
-document.getElementById('pulse-list').addEventListener('click', e => {
-  const row = e.target.closest('.pulse-row');
-  if(!row || row.classList.contains('off')) return;
-  const emp = row.dataset.emp;
-  const alvo = document.querySelector(`.pulse-attr[data-attr="${CSS.escape(emp)}"]`);
-  if(!alvo) return;
-  const jaAberto = alvo.classList.contains('open');
-  document.querySelectorAll('.pulse-attr.open').forEach(a => a.classList.remove('open'));
-  if(!jaAberto){ alvo.classList.add('open'); _pulseAberto = emp; }
-  else _pulseAberto = null;
-});
-
-// ─── QUADRO OVERNIGHT ─────────────────────────────────────────────────
-// O que se moveu lá fora enquanto o Brasil dormia. É DESCRITIVO — não promete
-// prever nada, então vale para todo mundo, sem depender da validação do "Open".
-// Os mesmos 23 mercados que alimentam o modelo; 16 deles a dashboard não coletava.
-//
-// ⚠️ SINCRONIA: estes dois mapas espelham `GRUPOS` em
-// news-hunter/hunter/pulse_snapshot.py. Instrumento novo lá -> rótulo novo aqui,
-// senão ele aparece no quadro com o símbolo cru do Yahoo.
-// Rótulos CURTOS de propósito: a coluna do nome tem ~78px no painel espremido pelo
-// card Events. "Anglo American" e "BHP (Sydney)" não cabiam e saíam com reticências.
-const _OV_LABEL = {
-  'FMG.AX':'Fortescue', 'BHP.AX':'BHP AU', 'RIO.AX':'Rio Tinto AU',
-  'AAL.L':'Anglo', '^AXJO':'ASX 200',
-  '^HSI':'Hang Seng', '000001.SS':'Shanghai', '^N225':'Nikkei',
-  'HG=F':'Copper', 'GC=F':'Gold',
-  '^STOXX50E':'Euro Stoxx', '^GDAXI':'DAX', '^FTSE':'FTSE',
-  'UPM.HE':'UPM', 'STERV.HE':'Stora Enso',
-  'ES=F':'S&P fut', 'NQ=F':'Nasdaq fut', 'CL=F':'Oil',
-  'USDBRL=X':'USD/BRL', 'EURUSD=X':'EUR/USD', 'AUDUSD=X':'AUD/USD',
-  'DX-Y.NYB':'DXY', '^VIX':'VIX',
-};
-const _OV_GRUPO = {
-  'FMG.AX':'Iron ore & miners','BHP.AX':'Iron ore & miners','RIO.AX':'Iron ore & miners',
-  'AAL.L':'Iron ore & miners','^AXJO':'Iron ore & miners',
-  '^HSI':'China & Asia','000001.SS':'China & Asia','^N225':'China & Asia',
-  'HG=F':'Metals (LME/COMEX)','GC=F':'Metals (LME/COMEX)',
-  '^STOXX50E':'Europe','^GDAXI':'Europe','^FTSE':'Europe','UPM.HE':'Europe','STERV.HE':'Europe',
-  'ES=F':'US futures','NQ=F':'US futures','CL=F':'Oil',
-  'USDBRL=X':'FX & risk','EURUSD=X':'FX & risk','AUDUSD=X':'FX & risk',
-  'DX-Y.NYB':'FX & risk','^VIX':'FX & risk',
-};
-const OV_MAX = 9;      // 3 colunas x 3 linhas — o que cabe no painel sem rolar
-let _ovRows = [];
-
-async function loadOvernight(){
-  const {data:{session}} = await sbAuth.auth.getSession();
-  if(!session) return;
-  try {
-    const {data, error} = await sbAuth.rpc('get_overnight_board');
-    if(error) throw error;
-    _ovRows = data || [];
-  } catch(e){
-    console.warn('overnight error:', e);
-    _ovRows = [];
-  }
-  _renderOvernight();
-}
-
-function _renderOvernight(){
-  const lista = document.getElementById('ov-list');
-  const foot  = document.getElementById('ov-foot');
-  if(!lista) return;
-  if(!_ovRows.length){
-    lista.innerHTML = '';
-    foot.textContent = 'No overnight reading yet.';
-    return;
-  }
-  // A RPC já devolve ordenado por movimento incomum (|z|). Ordenar por variação bruta
-  // poria VIX e petróleo no topo em quase todo pregão — medido: 84% dos dias contra 20%.
-  const rows = _ovRows.slice(0, OV_MAX);
-  lista.innerHTML = rows.map(r => {
-    const c = Number(r.chg_pct), z = r.z == null ? 0 : Number(r.z);
-    const cls = c > 0 ? 'pos' : c < 0 ? 'neg' : 'flat';
-    const atipico = Math.abs(z) >= 1.5;
-    const tip = `${_OV_GRUPO[r.symbol] || ''} · ${Math.abs(z).toFixed(1)}x this asset's typical`
-              + ` daily move${atipico ? ' — unusual day' : ''}`;
-    return `<div class="ov-row${atipico ? ' big' : ''}" title="${_esc(tip)}">
-      <span class="ov-name">${_esc(_OV_LABEL[r.symbol] || r.symbol)}</span>
-      <span class="ov-chg ${cls}">${c >= 0 ? '+' : ''}${c.toFixed(2)}%</span></div>`;
-  }).join('');
-
-  const r0 = _ovRows[0];
-  const hora = r0.captured_at
-    ? new Date(r0.captured_at).toLocaleTimeString(NUM_LOC,{hour:'numeric',minute:'2-digit'})
-    : `${r0.cut}:00`;
-  const dia = r0.session_date
-    ? new Date(r0.session_date + 'T12:00:00').toLocaleDateString(NUM_LOC,{day:'2-digit',month:'2-digit'})
-    : '';
-  const n = _ovRows.filter(r => Math.abs(Number(r.z) || 0) >= 1.5).length;
-  foot.textContent = `24h change as of ${hora} on ${dia} · ranked by how unusual the move is`
-                   + (n ? ` · ${n} atypical` : '');
 }
 
 // ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
@@ -3763,9 +2924,9 @@ loadCommodities().then(loadCommSparks);
 // Fallback p/ setInterval se o topnav não carregar (a home não pode ficar sem atualizar).
 const _every = window.everyVisible || ((fn, ms)=>{ setInterval(fn, ms); });
 _every(loadNews, NEWS_INTERVAL);
-// Pulse v2 é publicado 2x por dia (07:00 e 09:00 BRT), não acompanha o feed de notícias:
-// 60s era a cadência do ponteiro antigo, que contava manchetes. 5 min pega a rodada nova
-// logo que ela sai, sem chamar a RPC 60x por hora em cada aba aberta.
+// O termômetro varre o dia inteiro de notícias a cada leitura (até 2000 linhas), então
+// 5 min é escolha de EGRESS: com ~82 itens pontuados por dia, chega cerca de 1 notícia a
+// cada 10 min — atualizar de minuto em minuto custaria 5x a banda para o mesmo número.
 _every(loadPulse, 5 * 60 * 1000);
 _every(loadQuotes, 60 * 1000);
 _every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
