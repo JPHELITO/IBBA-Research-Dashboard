@@ -100,7 +100,33 @@ function semanaDe(ref) {
   // exemplo, quarta a quarta é quinta-passada → quarta.
   var seg = new Date(fim.getFullYear(), fim.getMonth(),
                      fim.getDate() - (fim.getDay() === 5 ? 4 : 6));
-  return {ini: ini, fim: fim, seg: seg};
+  // `wtd` = a SEXTA que fechou a semana passada, ou seja o último fechamento ANTES da
+  // semana corrente. É a régua da tabela de ações (ver `semanaAcoes`). Numa sexta ela cai
+  // exatamente sobre `ini`; numa quarta, `ini` é a quarta passada e `wtd` é a sexta.
+  var segCal = new Date(fim.getFullYear(), fim.getMonth(),   // a segunda da semana de `fim`
+                        fim.getDate() - ((fim.getDay() + 6) % 7));
+  var wtd = new Date(segCal.getFullYear(), segCal.getMonth(), segCal.getDate() - 3);
+  return {ini: ini, fim: fim, seg: seg, wtd: wtd};
+}
+
+// ── AÇÕES: a régua é WTD, não WoW (pedido do analista em 09/09/2026) ─────────
+// A tabela de PREÇOS continua comparando 7 dias corridos: assessment de celulose sai uma
+// vez por semana, e no meio da semana a janela curta devolveria 0,00% em toda linha de
+// PIX — variação que não existe, com cara de defeito. Ação negocia todo dia, e a régua
+// do mercado é a semana corrente: do fechamento da sexta passada até agora.
+//
+// Na SEXTA as duas réguas coincidem, então o weekly de sempre não muda em nada. A
+// diferença só aparece quando o weekly é montado no meio da semana.
+//
+// Devolve uma janela no mesmo formato de `semanaDe`, para poder ser passada a
+// `linhaDeSerie`, `_contra` e `_tabelaAcoes` sem que nenhuma delas precise saber disso.
+function semanaAcoes(sem) {
+  if (!sem) return sem;
+  return {ini: sem.wtd || sem.ini, fim: sem.fim, seg: sem.seg, wtd: sem.wtd};
+}
+// true quando as duas réguas divergem (= a referência não é sexta-feira).
+function ehMeioDeSemana(sem) {
+  return !!(sem && sem.wtd && +sem.wtd !== +sem.ini);
 }
 // A sexta mais recente (hoje, se hoje for sexta). É o PADRÃO ao abrir a tela — o
 // weekly de verdade fecha na sexta — mas não é mais uma trava: o analista pode
@@ -716,11 +742,14 @@ function buildEmail(m) {
     linhas.push(_tabelaPrecos(m.precos, sem));
   }
 
-  // 5. ações
+  // 5. ações — janela WTD (a de preços segue em 7 dias; ver `semanaAcoes`)
   if ((m.acoes || []).length) {
-    linhas.push(_secao('AÇÕES EM COBERTURA',
-      _contra(sem, m.acoes) + '. Cada papel na moeda em que negocia'));
-    linhas.push(_tabelaAcoes(m.acoes, sem));
+    var semA = semanaAcoes(sem);
+    var legAcoes = _contra(semA, m.acoes) + '. Cada papel na moeda em que negocia';
+    // Só no meio da semana a régua precisa se explicar: na sexta ela é a de sempre.
+    if (ehMeioDeSemana(sem)) legAcoes = 'Semana até aqui. ' + legAcoes;
+    linhas.push(_secao('AÇÕES EM COBERTURA', legAcoes));
+    linhas.push(_tabelaAcoes(m.acoes, semA));
   }
 
   // 6. relatórios
@@ -814,6 +843,7 @@ function buildEml(m, html) {
 root.IBBAWeekly = {
   T: T, semanaDe: semanaDe, sextaMaisRecente: sextaMaisRecente,
   periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
+  semanaAcoes: semanaAcoes, ehMeioDeSemana: ehMeioDeSemana,
   montarDias: montarDias,
   pontoAte: pontoAte, diaDoTs: diaDoTs, linhaDeSerie: linhaDeSerie,
   aplicarAoVivo: aplicarAoVivo, ultimoAoVivo: ultimoAoVivo, hhmm: hhmm,

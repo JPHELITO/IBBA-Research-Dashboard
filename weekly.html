@@ -499,13 +499,17 @@ async function carregarAcoes(){
     rows.forEach(r=>{porTk[r.ticker]=r.daily||[]; vivo[r.ticker]=r;});
   }
   const hoje=refEhHoje()?ymdParse(hojeSP()):null;
+  // ⚠️ A régua das AÇÕES é WTD (do fechamento da sexta passada até agora), não os 7 dias
+  // corridos da tabela de preços — pedido do analista em 09/09/2026. Numa sexta as duas
+  // coincidem. Quem sabe a diferença é a biblioteca; aqui só se pede a janela certa.
+  const semA=W.semanaAcoes(S.sem);
   S.acoes=S.tickers.map(t=>{
     const q=meta[t]||{}, serie=porTk[t];
     // as casas saem do fechamento do dia; sem série, 2 (o caso comum)
     const ult=W.pontoAte(serie||[],S.sem.fim);
     const casas=_casasDe(ult&&ult.v);
     const pref=SEM_MOEDA.has(t)?'':(MOEDA[q.exchange]||'');
-    const l=W.linhaDeSerie(_rotuloDe(t),serie,S.sem,casas,pref);
+    const l=W.linhaDeSerie(_rotuloDe(t),serie,semA,casas,pref);
     l.ticker=t; l.nome=q.name||t; l.setor=q.sector||'';
     // Preço de tela ANTES da ordenação: quem lidera a semana é medido pelo mesmo número
     // que sai no e-mail — senão a ordem da tabela contaria uma história e o Δ, outra.
@@ -655,12 +659,17 @@ function renderAuto(){
     +(pTela?` <span class="live">tela ${esc(pTela)}</span>`:''),pSub);
 
   // ── 2. AÇÕES ──────────────────────────────────────────────────────────────
-  // O último fechamento até a data × o último fechamento até a data − 7. Quando a
-  // referência é HOJE a coluna da direita vira a cotação de tela (o pregão ainda está
-  // aberto) — é a mesma régua da comp table, senão o papel sairia com dois preços.
+  // Régua WTD: o último fechamento até a data × o fechamento da SEXTA que encerrou a
+  // semana passada. Quando a referência é HOJE a coluna da direita vira a cotação de
+  // tela (o pregão ainda está aberto) — é a mesma régua da comp table, senão o papel
+  // sairia com dois preços.
   const aFalta=S.acoes.filter(l=>!l.ini||!l.fim);
   const aTela=_hhmmDe(S.acoes), aDef=_defasados(S.acoes,S.sem.fim);
-  const aSub=[];
+  const aSub=[{t:(W.ehMeioDeSemana(S.sem)
+      ? 'semana até aqui: fechamento de '+esc(W.dbarra(S.sem.wtd))+' (sexta) contra '
+      : 'contra o fechamento de '+esc(W.dbarra(S.sem.ini))+', até ')
+      +esc(W.dbarra(S.sem.fim))
+      +(W.ehMeioDeSemana(S.sem)?' — os preços acima usam a janela de 7 dias':'')}];
   if(aDef.length) aSub.push({t:'último fechamento até '+esc(W.dmes(S.sem.fim))+': '+aDef.join(' · ')});
   if(aFalta.length){ avisos++;
     aSub.push({av:1,t:'sem histórico: '+aFalta.map(l=>esc(l.rotulo)).join(', ')}); }
@@ -1010,9 +1019,14 @@ async function recarregar(){
 function janelaHint(recuou){
   const el=document.getElementById('janela'); if(!el) return;
   const d=(S.dias&&S.dias.length)?S.dias:W.diasUteis(S.sem);
+  // As duas réguas: PREÇOS em 7 dias corridos, AÇÕES em WTD (semana até aqui). Na sexta
+  // elas caem no mesmo dia e a frase é uma só — é o weekly de sempre.
+  const meio=W.ehMeioDeSemana(S.sem);
   el.innerHTML=(recuou?'<b>Fim de semana não tem pregão</b> — puxei para a sexta. ':'')
     +'Comparando <b>'+esc(W.diaSemana(S.sem.fim))+'</b> com o fechamento de <b>'
-    +esc(W.diaSemana(S.sem.ini))+'</b> · notícias de '+esc(W.dmes(d[0].data))
+    +esc(W.diaSemana(S.sem.ini))+'</b>'
+    +(meio?' nos preços e com <b>'+esc(W.diaSemana(S.sem.wtd))+'</b> nas ações (semana até aqui)':'')
+    +' · notícias de '+esc(W.dmes(d[0].data))
     +' a '+esc(W.dmes(d[d.length-1].data))+'.';
 }
 
