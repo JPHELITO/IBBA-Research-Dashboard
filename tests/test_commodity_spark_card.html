@@ -27,6 +27,9 @@ function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new
 const pts=svg=>[...svg.matchAll(/points="([^"]+)"/g)].map(m=>m[1]);
 
 window.__RUN__=async function(){
+  R.length=0;   // roda de novo sem SOMAR no placar anterior: o arquivo se auto-executa lá
+                // embaixo, então chamar `__RUN__()` na mão dobrava tudo — 24 asserts viravam
+                // 48 e 2 falhas viravam 4. Placar dobrado leva a diagnóstico errado.
   const cru = (await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const t = cru.split('\r\n').join('\n');          // index.html está gravado em CRLF
   const FREQ  = cut(t,'const FREQ_LIVE   = new Set(',"  return 'Daily';\n}");
@@ -86,7 +89,15 @@ window.__RUN__=async function(){
   ok('numa SEMANAL o número grande é o WoW, não o do dia',
      pulp.includes(by.PULP_NBSK_EUROPE.spark.w.c.toFixed(2)+'%'),
      'WoW='+by.PULP_NBSK_EUROPE.spark.w.c+' vs dia='+by.PULP_NBSK_EUROPE.change_pct);
-  ok('e o cartão semanal continua marcado como Weekly', pulp.includes('kv-badge wk'));
+  // ⚠️ ATUALIZADO 2026-09-09 — quem estava velho era o teste, não o cartão. O selo "Weekly" saiu
+  // de propósito em `0042b97` (03/09): nos dois grupos de celulose ele era o ÚNICO selo, então a
+  // linha dos selos ficava reservada só por causa dele e comia a altura do gráfico (o risquinho
+  // foi de 24px para 33px sem ele). A cadência passou para a linha da DATA, junto do "há quanto
+  // tempo": "weekly" no dia do assessment, "weekly 3d" depois. O contrato de verdade não mudou —
+  // o cartão semanal tem de DIZER que é semanal —, mudou só onde ele diz isso.
+  ok('o cartão semanal diz a cadência na linha da data (o selo "Weekly" saiu em 03/09)',
+     /<span class="cm-date">weekly( \d+d)?<\/span>/.test(pulp) && !pulp.includes('kv-badge wk'),
+     (pulp.match(/<span class="cm-date">([^<]*)</)||[])[1]);
   ok('Copper/Gold são Live e seguem no número do dia',
      M._kvCard(by.COPPER).includes(by.COPPER.change_pct.toFixed(2)+'%'));
 
@@ -100,9 +111,16 @@ window.__RUN__=async function(){
   ok('formato antigo (array) volta ao desenho único em vez de sumir',
      M._kvCard({code:'X',name:'Formato antigo',unit:'USD/t',price:100,change_pct:1,
                 assessed_at:'2026-08-31',spark:[0,300,600,900,1000]}).includes('<svg class="cm-spark"'));
-  ok('spark ausente não quebra o cartão',
-     M._kvCard({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,
-                assessed_at:'2026-08-31'}).includes('cm-spark'));
+  // ⚠️ ATUALIZADO 2026-09-09 — idem: mudança deliberada, em `d3f525a`. Sem série NENHUMA o cartão
+  // não desenha mais um <svg> vazio; um buraco no lugar do gráfico lê como quebrado, então ele diz
+  // "Live price · building history". Hoje isso só acontece com o NÍQUEL, que não tem histórico
+  // grátis em fonte alguma e vai preenchendo um ponto por pregão desde 03/09/2026.
+  const semCurva = M._kvCard({code:'Y',name:'Sem curva',unit:'USD/t',price:1,change_pct:0,
+                              assessed_at:'2026-08-31'});
+  ok('spark ausente não quebra o cartão: preço e nome saem, e o lugar do gráfico se explica',
+     semCurva.includes('cm-nohist') && semCurva.includes('Live price · building history')
+       && semCurva.includes('Sem curva') && !semCurva.includes('<svg'),
+     (semCurva.match(/<div class="cm-nohist">[^<]*</)||['(não desenhou o aviso)'])[0]);
 
   // ── 7. GEOMETRIA na home: nada pode vazar para fora do cartão
   const est=document.createElement('style');
