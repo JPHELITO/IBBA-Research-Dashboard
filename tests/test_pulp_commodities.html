@@ -11,6 +11,7 @@ const PULP = ['PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN',
               'PULP_RADIATA_RESALE_CN','PULP_NBSK_EUROPE','PULP_BHKP_EUROPE'];
 
 window.__RUN__=async function(){
+  R.length=0;   // roda de novo sem SOMAR no placar anterior (o arquivo se auto-executa no fim)
   // index.html está gravado em CRLF e as âncoras abaixo usam \n → normaliza antes de recortar
   const cru = (await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
   const t = cru.split('\r\n').join('\n');
@@ -49,8 +50,16 @@ window.__RUN__=async function(){
   ok('os 6 códigos aparecem em algum grupo, sem repetir',
      (()=>{const todos=M.COMM_GROUPS.flatMap(x=>x.codes).filter(c=>PULP.includes(c));
            return todos.length===6 && new Set(todos).size===6;})());
-  ok('os 5 grupos de aço/minério continuam lá', M.COMM_GROUPS.length===7,
-     'grupos='+M.COMM_GROUPS.length);
+  // ⚠️ ATUALIZADO 2026-09-09 — era `COMM_GROUPS.length===7` e quebrou quando ouro e cobre saíram
+  // do grupo de aço e viraram grupo próprio com níquel e alumínio (`d3f525a`, 03/09): são 8. Contar
+  // o TOTAL fazia o teste acusar toda vez que se ACRESCENTA um grupo, que é justamente o que ele
+  // não deveria proibir. O que ele existe para travar é que a celulose entrou SEM derrubar nenhum
+  // dos grupos que já existiam — então confere os cinco pelo nome.
+  const ANTIGOS = ['Iron Ore + Pellet','Brand assessments','Freight + HCC','Forward Curve','Steel'];
+  ok('os 5 grupos de aço/minério continuam lá',
+     ANTIGOS.every(titulo => titulo in g),
+     ANTIGOS.filter(titulo => !(titulo in g)).join(', ')
+       || 'os 5 ok, dentro de '+M.COMM_GROUPS.length+' grupos');
   // 6 cartões numa fileira cortam o nome ("Euca Resal…"): a régua é 5, como os grupos antigos
   ok('nenhum grupo passa de 5 cartões',
      M.COMM_GROUPS.every(x=>x.codes.length<=5),
@@ -74,7 +83,13 @@ window.__RUN__=async function(){
      html.includes('+3.11%') && !html.includes('+0.00%'),
      (html.match(/<span class="cm-chg">([^<]*)</)||[])[1]);
   ok('sobe = cartão verde', html.includes('cm-card up'));
-  ok('o badge Weekly entra no cartão', html.includes('kv-badge wk')&&html.includes('Weekly'));
+  // ⚠️ ATUALIZADO 2026-09-09 — o selo "Weekly" saiu em `0042b97` (03/09) porque nestas 6 de
+  // celulose ele era o ÚNICO selo, e a linha reservada só por causa dele comia a altura do
+  // gráfico. A cadência foi para a linha da data ("weekly" hoje, "weekly 3d" depois). O que este
+  // teste trava continua sendo o mesmo: o cartão TEM de dizer que o assessment é semanal.
+  ok('o cartão diz que o assessment é semanal, agora na linha da data',
+     /<span class="cm-date">weekly( \d+d)?<\/span>/.test(html) && !html.includes('kv-badge wk'),
+     (html.match(/<span class="cm-date">([^<]*)</)||[])[1]);
   ok('as 4 linhas de período e o gráfico de 12 meses são desenhados',
      (html.match(/class="cm-row /g)||[]).length===4 && html.includes('<svg class="cm-hero"'),
      'linhas='+((html.match(/class="cm-row /g)||[]).length)
