@@ -1874,10 +1874,11 @@ document.getElementById('pulse-controls').addEventListener('click', e => {
 //   2. O TOM do fluxo — o ponteiro, que agora CALA com pouca amostra: 15 dos 19 dias em
 //      que ele "falava" tinham menos de 20 manchetes (fim de semana e feriado). Abaixo de
 //      PULSE_MIN_SCORED ele mostra "—" e diz que faltam manchetes.
-//   3. DESDE QUANDO — a janela é "desde o último fechamento da B3", não a meia-noite:
+//   3. DESDE QUANDO — a janela é "desde o fechamento da B3 de ONTEM" e só vira à meia-noite:
 //      51% do fluxo do dia chega antes das 08h, e 19% é publicado entre 17h e 24h
 //      (balanço sai depois do fechamento!) — a meia-noite jogava isso fora antes de o
-//      analista acordar. Segunda de manhã vê o fim de semana inteiro.
+//      analista acordar; virar às 17h deixava a noite em branco. Segunda de manhã vê o
+//      fim de semana inteiro. A régua (news-hunter/hunter/news_pulse.py) usa a mesma janela.
 // Egress: o poll pede SÓ take_llm + take_covered_companies (~4 KB por leitura);
 // título/URL só viajam quando alguém abre uma ficha (até 12 linhas).
 const PULSE_CLOSE_HOUR = 17;    // fechamento da B3 em Brasília: âncora da janela
@@ -1894,26 +1895,29 @@ const _PULSE_CO = {
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
 const _pulseCo = c => { const m = _PULSE_CO[c]; return m ? {tk:m[0], quote:m[1], sec:m[2]} : {tk:c, quote:null, sec:null}; };
 
-// Início da janela: PULSE_CLOSE_HOUR de Brasília do ÚLTIMO dia útil (sábado e domingo recuam
-// para sexta). Antes dessa hora a âncora é o fechamento de ontem; depois, o de hoje.
+// Início da janela: PULSE_CLOSE_HOUR de Brasília do último dia útil ANTES de hoje (sábado e
+// domingo recuam para sexta). A janela só vira à MEIA-NOITE, não às 17h — medido em 120 dias:
+// virando às 17h o card ficava em branco ("too few headlines") das 17h30 às 23h30 em 70-100%
+// dos dias úteis, porque jogava o dia inteiro fora na hora em que o analista chega para ler.
+// Virando à meia-noite, a noite mostra o dia + o pós-fechamento (105-123 pontuadas, em branco
+// só em ~10%, feriado) e a manhã continua "desde o fechamento de ontem", igual.
 // `nowMs` existe só para o teste fixar o relógio.
 function _pulseWindowStartMs(nowMs){
   const now = nowMs == null ? Date.now() : nowMs;
-  let y, m, d, h, offMin;
+  let y, m, d, offMin;
   try {
-    const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(now));
+    const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now));
     const g = t => parseInt(parts.find(p => p.type === t).value, 10);
-    y = g('year'); m = g('month'); d = g('day'); h = g('hour') % 24;
+    y = g('year'); m = g('month'); d = g('day');
     const off = new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',timeZoneName:'longOffset'}).formatToParts(new Date(now)).find(p => p.type === 'timeZoneName');
     const mm = off && /GMT([+-])(\d{2}):?(\d{2})?/.exec(off.value);
     offMin = mm ? (parseInt(mm[2],10)*60 + (mm[3]?parseInt(mm[3],10):0)) * (mm[1]==='-'?-1:1) : -180;
   } catch(e){
     const t = new Date(now - 3*3600*1000);   // fallback UTC-3 fixo (Brasil sem horário de verão desde 2019)
-    y = t.getUTCFullYear(); m = t.getUTCMonth()+1; d = t.getUTCDate(); h = t.getUTCHours(); offMin = -180;
+    y = t.getUTCFullYear(); m = t.getUTCMonth()+1; d = t.getUTCDate(); offMin = -180;
   }
-  let day = Date.UTC(y, m-1, d) - offMin*60000;          // 00:00 de SP de hoje, em UTC
-  if(h < PULSE_CLOSE_HOUR) day -= 86400000;              // hoje ainda não fechou → ontem
-  const wd = new Date(day + offMin*60000).getUTCDay();   // dia da semana EM SP (0=dom, 6=sáb)
+  let day = Date.UTC(y, m-1, d) - offMin*60000 - 86400000;   // 00:00 de SP de ONTEM, em UTC
+  const wd = new Date(day + offMin*60000).getUTCDay();        // dia da semana EM SP (0=dom, 6=sáb)
   if(wd === 0) day -= 2*86400000; else if(wd === 6) day -= 86400000;   // fim de semana → sexta
   return day + PULSE_CLOSE_HOUR*3600000;
 }
