@@ -128,11 +128,16 @@ window.__RUN__=async function(){
   ok('Suzano: modelo roda a 570 e a grade está centrada em 550 → NÃO carimba',
      bc('SUZB3')===null, 'premissa '+assum(DEF.SUZB3)[0].value+
      ' × meio da grade '+DEF.SUZB3.sheets[0].tables[0].colLevels[4]);
-  ok('CMIN: a premissa de minério do arquivo é de 2026 e a grade é de 2027 → não confirma nada',
-     bc('CMIN3')===null);
+  // A CMIN publicada hoje já vem com a premissa de minério rotulada 2027 (o arquivo antigo
+  // escrevia "2026" contra uma grade de 2027) e com a grade centrada no que o modelo roda.
+  ok('CMIN: minério 95 e câmbio 5,5083 caem no meio → carimba',
+     !!bc('CMIN3') && bc('CMIN3').i===4 && bc('CMIN3').j===4 && /95/.test(bc('CMIN3').txt),
+     bc('CMIN3')?bc('CMIN3').txt:'sem carimbo');
+  // o guarda de ANO continua de pé: é ele que segurava a premissa de 2026 da CMIN antiga
   ok('premissa de outro ano não é lida como se fosse do eixo',
      M._s2AssumFor('Average Iron Ore 61% Price 2027 (USD/ton)',
-                   DEF.CMIN3.sheets[0].tables[0].colLevels,assum(DEF.CMIN3))===null);
+                   DEF.CMIN3.sheets[0].tables[0].colLevels,
+                   [{label:'Avg. Iron Ore Price 2026',value:95}])===null);
   ok('sem premissa nenhuma no arquivo, ninguém carimba',
      M._s2BaseCell(DEF.KLBN11.sheets[0].tables[0],null)===null &&
      M._s2BaseCell(DEF.KLBN11.sheets[0].tables[0],[])===null);
