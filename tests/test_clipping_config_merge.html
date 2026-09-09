@@ -1,0 +1,105 @@
+<!doctype html><meta charset="utf-8"><title>clipping — a config nao pode apagar o que nao e dela</title>
+<body><pre id="out">rodando…</pre>
+<iframe id="fr" src="/clipinator.html?cliptest=1" style="width:1200px;height:520px;border:1px solid #ccc"></iframe>
+<script>
+/* O BUG DE 09/09/2026, virado teste.
+
+   `admin_save_clipping_config` grava o objeto INTEIRO de configuracao por cima. O
+   Clipinator mandava o `S.config` da memoria — e o `loadConfig` so lia quatro chaves.
+   As duas que ele NAO lia eram justamente as que ninguem digita nesta tela:
+     • `blast_highlights` → os 3 destaques carimbados por DIA, que o Weekly Recap le;
+     • `weekly`           → o rascunho inteiro da aba Weekly.
+   Bastava abrir o Clipinator e mexer num campo para as duas serem zeradas no banco.
+
+   Aqui rodamos a PAGINA DE VERDADE dentro de um iframe (?cliptest=1 pula o login e
+   nao fala com o Supabase) e chamamos as funcoes puras que decidem o que e gravado.
+
+   Rodar: servir a pasta IBBA-Research-Dashboard e abrir
+   /tests/test_clipping_config_merge.html                                            */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+
+function esperar(fr){ return new Promise(res=>{
+  const olha=()=>{ const w=fr.contentWindow;
+    if(w && w.CLIP && w.CLIP.cfgParaGravar && fr.contentDocument.getElementById('cfg-ref-date')) res(w.CLIP);
+    else setTimeout(olha,60); };
+  olha(); }); }
+
+const diaAtras=n=>new Date(Date.now()-n*864e5).toISOString().slice(0,10);
+
+(async function(){
+  const fr=document.getElementById('fr');
+  const C=await esperar(fr), D=fr.contentDocument;
+
+  // ══ 1. o que esta no banco e nao e desta tela CONTINUA la ═══════════════════
+  const ontem=diaAtras(1), hoje=diaAtras(0);
+  const banco={ intro:{on:true,text:'do banco'},
+                weekly:{ref:'2026-09-05',dias:[{data:'2026-09-05',itens:[{texto:'rascunho do analista'}]}]},
+                blast_highlights:{[ontem]:{destaques:['destaque de ontem'],at:ontem+'T11:00:00Z'}},
+                chave_que_ainda_nao_existe:{x:1} };
+  const tela={ intro:{on:false,text:'da tela'}, recent_publications:[{name:'Relatorio'}],
+               blast_highlights:{[hoje]:{destaques:['destaque de hoje'],at:hoje+'T12:00:00Z'}} };
+  const g=C.cfgParaGravar(banco, tela);
+
+  ok('o rascunho do Weekly sobrevive a um salvamento do Clipping',
+     g.weekly && g.weekly.ref==='2026-09-05', JSON.stringify(g.weekly||null));
+  ok('…e uma chave futura, que esta tela nem conhece, tambem',
+     g.chave_que_ainda_nao_existe && g.chave_que_ainda_nao_existe.x===1);
+  ok('o que E desta tela vale o da tela (o analista acabou de digitar)',
+     g.intro.text==='da tela' && g.recent_publications.length===1, g.intro.text);
+
+  // ══ 2. destaques fundem por DIA — nenhum dia se perde ══════════════════════
+  ok('o destaque de ONTEM (que so estava no banco) continua gravado',
+     (g.blast_highlights[ontem]||{}).destaques.join()==='destaque de ontem',
+     Object.keys(g.blast_highlights).join());
+  ok('…e o de HOJE, que acabou de sair, entra junto',
+     (g.blast_highlights[hoje]||{}).destaques.join()==='destaque de hoje');
+  ok('o dia inteiro e a semana toda cabem: nada e trocado por {}',
+     Object.keys(g.blast_highlights).length===2);
+
+  // mesmo dia nos dois lados: manda a tela (foi ela que acabou de gerar)
+  const g2=C.cfgParaGravar({blast_highlights:{[hoje]:{destaques:['versao velha']}}},
+                           {blast_highlights:{[hoje]:{destaques:['versao nova']}}});
+  ok('no mesmo dia manda a geracao mais recente, nao a do banco',
+     g2.blast_highlights[hoje].destaques.join()==='versao nova');
+
+  // ══ 3. poda: 4 meses bastam, mas nao se corta nada de dentro da janela ═════
+  const g3=C.cfgParaGravar({blast_highlights:{[diaAtras(200)]:{destaques:['antigo']},
+                                              [diaAtras(100)]:{destaques:['recente']}}}, {});
+  ok('carimbo com mais de 120 dias e podado', !g3.blast_highlights[diaAtras(200)]);
+  ok('…e o de 100 dias fica (qualquer weekly ainda pode precisar dele)',
+     !!g3.blast_highlights[diaAtras(100)], Object.keys(g3.blast_highlights).join());
+
+  // ══ 4. o carimbo do dia: vale sempre o ULTIMO blast gerado ═════════════════
+  const S=C.S;
+  S.config.blast_highlights={};
+  D.getElementById('cfg-ref-date').value='2026-09-04';       // a data e a do CLIPPING
+  const m1=C.blCarimbar(['primeira geracao'],'gemini',12);
+  ok('a 1a geracao carimba o dia escolhido, nao o de hoje',
+     m1 && m1.data==='2026-09-04' && m1.antes==='', JSON.stringify(m1));
+  ok('…e e ela que o Weekly leria agora',
+     C.blOficialDoDia('2026-09-04').destaques.join()==='primeira geracao');
+
+  const m2=C.blCarimbar(['segunda geracao'],'mistral',12);
+  ok('a 2a geracao SUBSTITUI a 1a, sem perguntar nada',
+     C.blOficialDoDia('2026-09-04').destaques.join()==='segunda geracao');
+  ok('…e a tela sabe dizer que hora tinha a versao trocada',
+     m2 && m2.substituiu===true && /^[0-9]{2}:[0-9]{2}$/.test(m2.antes), m2&&m2.antes);
+
+  ok('blast sem destaque nenhum nao apaga o que ja estava gravado',
+     C.blCarimbar([], 'x', 0)===null &&
+     C.blOficialDoDia('2026-09-04').destaques.join()==='segunda geracao');
+
+  D.getElementById('cfg-ref-date').value='2026-09-03';
+  C.blCarimbar(['outro dia'],'groq',5);
+  ok('cada dia guarda o seu (gerar o de 03 nao mexe no de 04)',
+     C.blOficialDoDia('2026-09-03').destaques.join()==='outro dia' &&
+     C.blOficialDoDia('2026-09-04').destaques.join()==='segunda geracao');
+
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  const NL=String.fromCharCode(10);
+  document.getElementById('out').textContent=
+    R.join(NL)+NL+NL+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+})();
+</script>
+</body>
