@@ -547,6 +547,55 @@ const HTML=W.buildEmail(MODELO);
      html.indexOf('NOTÍCIAS')>0 && html.indexOf('24 A 28 DE AGOSTO')>0);
 })();
 
+// ══ 7b. AS LINHAS DE CADA DIA: rascunho > destaques do blast > nada ═════════
+// O bug de 09/09/2026: o dia voltava EM BRANCO no weekly mesmo com o blast carimbado,
+// porque o rascunho salvo (uma lista vazia, gravada antes de existir destaque) entrava
+// DEPOIS e por cima. Estes casos guardam a precedência.
+(function(){
+  const dia=(a,m,d)=>({data:new Date(a,m-1,d),rotulo:'x',itens:[]});
+  const hl={'2026-09-07':{destaques:['Minério recua a USD 95/t.','Suzano sobe USD 20/t.'],
+                          at:'2026-09-07T11:00:00Z',provedor:'gemini'},
+            '2026-09-08':{destaques:['Vale corta guidance.']},
+            '2026-09-10':{destaques:['   ', null]}};      // carimbo vazio não conta
+
+  // 1) dia vazio + destaques = preenche
+  let d=W.montarDias([dia(2026,9,7)],[],hl)[0];
+  ok('dia sem rascunho vem preenchido com os destaques do blast',
+     d.itens.map(i=>i.texto).join('|')==='Minério recua a USD 95/t.|Suzano sobe USD 20/t.',
+     d.itens.map(i=>i.texto).join('|'));
+  ok('…marcado como "do blast" e com clipping oficial no dia', d.preenchido===true && d.doClipping===true);
+
+  // 2) rascunho VAZIO não pode ganhar do destaque — era exatamente o bug
+  d=W.montarDias([dia(2026,9,7)],[{data:'2026-09-07',itens:[]}],hl)[0];
+  ok('rascunho salvo VAZIO não apaga o destaque do dia', d.itens.length===2 && d.preenchido===true,
+     JSON.stringify(d.itens));
+  d=W.montarDias([dia(2026,9,7)],[{data:'2026-09-07',itens:[{texto:'   ',link:''}]}],hl)[0];
+  ok('…nem um rascunho só com espaços', d.itens.length===2 && d.preenchido===true);
+
+  // 3) o que o analista ESCREVEU manda sempre
+  d=W.montarDias([dia(2026,9,7)],[{data:'2026-09-07',itens:[{texto:'Minha frase.',link:''}]}],hl)[0];
+  ok('o texto do analista nunca é sobrescrito pelo blast',
+     d.itens.length===1 && d.itens[0].texto==='Minha frase.' && d.preenchido===false);
+  ok('…e o dia continua marcado como tendo tido blast', d.doClipping===true);
+
+  // 4) dia sem carimbo nenhum
+  d=W.montarDias([dia(2026,9,9)],[],hl)[0];
+  ok('dia sem blast fica vazio e sinalizado', d.itens.length===0 && d.doClipping===false);
+
+  // 5) carimbo só com texto em branco = mesma coisa que não ter
+  d=W.montarDias([dia(2026,9,10)],[],hl)[0];
+  ok('carimbo com destaques em branco não conta como blast',
+     d.itens.length===0 && d.doClipping===false);
+
+  // 6) a semana inteira de uma vez, misturando as três situações
+  const semana=W.montarDias([dia(2026,9,7),dia(2026,9,8),dia(2026,9,9)],
+                            [{data:'2026-09-08',itens:[{texto:'Escrita à mão.',link:''}]}],hl);
+  ok('na semana inteira cada dia resolve pela sua própria fonte',
+     semana.map(x=>(x.itens[0]||{}).texto||'-').join('|')
+       ==='Minério recua a USD 95/t.|Escrita à mão.|-',
+     semana.map(x=>(x.itens[0]||{}).texto||'-').join('|'));
+})();
+
 // ══ 8. GUARDA: o Weekly NÃO PODE ESCREVER NADA DO CLIPPING ══════════════════
 // Em 31/08/2026 a 1ª versão desta aba apagou publicações do Clipping: ela lia o
 // título em `titulo` (o Clipping grava `name`), a lista aparecia em branco, e o
@@ -658,6 +707,30 @@ async function guardaDeEscrita(){
      clip.indexOf("renderPubList('cfg-earn', c.earnings_review.items, true)")>0);
   ok('o Clipping segue dono do toggle do Earnings Review',
      clip.indexOf('cfg-earn-on')>0 || /earnings_review\.on/.test(clip));
+
+  // ── e o Clipping não pode APAGAR o que não é dele ───────────────────────────
+  // 09/09/2026: `loadConfig` lia 4 chaves e `saveConfig` gravava o objeto inteiro por
+  // cima — `blast_highlights` (os destaques que ESTA página lê) e `weekly` (o rascunho
+  // desta página) eram zerados a cada mexida no Clipping. Estas asserções fecham a porta.
+  ok('o Clipping carrega TODA chave que vier do banco, não só as que ele conhece',
+     /Object\.keys\(c\)\.forEach\(k=>\{ S\.config\[k\]=c\[k\]; \}\)/.test(clip));
+  ok('…inclusive os destaques do blast, que são o que o Weekly consome',
+     /S\.config\.blast_highlights\s*=\s*\{\}/.test(clip) && clip.indexOf('cfgParaGravar')>0);
+  ok('o Clipping relê a config antes de gravar (a aba Weekly pode ter salvo no meio)',
+     /async function salvarConfig\(\)[\s\S]{0,400}admin_get_clipping_config/.test(clip));
+  const _carimbo=clip.slice(clip.indexOf('function blCarimbar('), clip.indexOf('function blRenderPin('));
+  ok('o carimbo do dia é sempre o ÚLTIMO blast gerado — sem confirm() no caminho',
+     _carimbo.length>200 && _carimbo.indexOf('confirm(')<0 && _carimbo.indexOf('antes:antes')>0,
+     String(_carimbo.length));
+
+  // ── esta página: a ordem de montagem dos dias ───────────────────────────────
+  const wk = await (await fetch('/weekly.html?v='+Date.now())).text();
+  ok('o Weekly monta os dias pela função testada (rascunho > blast)',
+     wk.indexOf('W.montarDias(S.dias, salvos, S.hl)')>0);
+  ok('…e não existe mais o passo que jogava o rascunho por cima depois',
+     !/alvo\.itens=sd\.itens/.test(wk));
+  ok('…remontando de novo depois de reler os destaques do Clipping',
+     /recarregarPubs\(\),carregarComps\(\)\]\);[\s\S]{0,400}aplicarDias\(\);/.test(wk));
 }
 
 // ── resultado ────────────────────────────────────────────────────────────────

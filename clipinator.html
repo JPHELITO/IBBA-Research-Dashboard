@@ -1056,13 +1056,14 @@ async function blGerar(){
     const b=(job.config||{}).blast||{};
     if(job.status==='done'){
       _blDest=b.destaques||[]; blRender();
-      const gravou=blCarimbar(_blDest, b.provedor, S.order.length);
+      const marca=blCarimbar(_blDest, b.provedor, S.order.length);
       blRenderSelo();
       st.className='gen-status ok';
       st.innerHTML = _blDest.length
         ? '✓ Pronto — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>.'
-          + (gravou ? ' Marcados como os do dia — o Weekly vai usar estes.'
-                    : ' <b>Os antigos foram mantidos</b> para o Weekly.')
+          + ' Guardados como os de <b>'+esc(marca.data.split('-').reverse().join('/'))+'</b>'
+          + (marca.antes ? ' (no lugar dos das '+esc(marca.antes)+')' : '')
+          + ' — é isto que o Weekly vai usar.'
         : '✓ Pronto, mas a IA não devolveu destaque'+(b.erro?' ('+esc(b.erro)+')':'')+'. A seção fica vazia, como o formato prevê.';
       btn.disabled=false; return;
     }
@@ -1104,25 +1105,23 @@ function blPodar(h){
   return h;
 }
 
-// Devolve true se gravou. Pergunta antes de sobrescrever um dia que já tem destaques.
+// Grava SEMPRE, sem perguntar. Regra do analista (09/09/2026): "o que ficará gravado será
+// sempre o último gerado para cada dia". Até aqui havia um confirm() antes de substituir —
+// e cancelar (ou fechar a caixa por reflexo) deixava o dia com o destaque VELHO, que era
+// justamente o que o Weekly ia usar. Quem manda é a última geração; a tela só informa o
+// que trocou. Devolve {data, antes}: `antes` é a hora da versão substituída, '' se não havia.
 function blCarimbar(destaques, provedor, nNoticias){
-  if(!destaques || !destaques.length) return false;
+  if(!destaques || !destaques.length) return null;
   const data=blDataRef();
   S.config.blast_highlights=S.config.blast_highlights||{};
   const antigo=blOficialDoDia(data);
-  if(antigo){
-    const q=antigo.at ? new Date(antigo.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-    const ok=confirm(
-      'O dia '+data.split('-').reverse().join('/')+' já tem destaques marcados'+(q?' (das '+q+')':'')+':\n\n'
-      + antigo.destaques.map((d,i)=>(i+1)+'. '+d).join('\n')
-      + '\n\nSubstituir pelos que acabaram de sair? É esta versão que o Weekly vai usar.');
-    if(!ok) return false;
-  }
+  const antes=(antigo && antigo.at)
+    ? new Date(antigo.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
   S.config.blast_highlights[data]={destaques:destaques.slice(), provedor:provedor||null,
                                    n_noticias:nNoticias||0, at:new Date().toISOString()};
   blPodar(S.config.blast_highlights);
   saveConfig();
-  return true;
+  return {data:data, antes:antes, substituiu:!!antigo};
 }
 
 // O combinado com a IA, escrito antes de clicar em Gerar: quantos destaques ja estao
@@ -1293,9 +1292,12 @@ function cfgParaGravar(atual, meu){
 let _cfgT=null;
 function saveConfig(){ if(CLIPTEST) return; clearTimeout(_cfgT); _cfgT=setTimeout(salvarConfig, 800); }
 async function salvarConfig(){
-  let atual={};
+  // Base = o que está no banco AGORA. Se a leitura falhar (rede caindo), a base passa a ser
+  // o que esta página carregou — nunca `{}`: gravar sobre o vazio é exatamente o bug que
+  // apagava o `weekly` e os destaques.
+  let atual=null;
   try{ atual=await rpc('admin_get_clipping_config')||{}; }
-  catch(e){ console.warn('config: não consegui reler antes de salvar', e); }
+  catch(e){ console.warn('config: não consegui reler antes de salvar', e); atual=Object.assign({}, S.config); }
   const novo=cfgParaGravar(atual, S.config);
   S.config.blast_highlights=novo.blast_highlights;      // a tela fica com o que foi gravado
   try{ await rpc('admin_save_clipping_config',{p_settings:novo}); }
@@ -1793,6 +1795,7 @@ function wire(){
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
 window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
+              cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl };
 
 ;(async()=>{

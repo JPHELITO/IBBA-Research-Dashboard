@@ -775,26 +775,15 @@ function _takeTxt(t){return t==='positive'?'+':t==='negative'?'−':'=';}
 // mão no weekly seria fazer duas vezes o mesmo trabalho — e com menos informação, porque
 // aqui não há o texto das matérias.
 //
-// ⚠️ DUAS REGRAS QUE NÃO PODEM CAIR:
+// ⚠️ DUAS REGRAS QUE NÃO PODEM CAIR (a precedência mora em W.montarDias, que é testada):
 // 1) NUNCA sobrescrever o que o analista escreveu. O preenchimento só acontece em dia que
 //    está VAZIO; o que ele digitou (e o que já foi salvo em `weekly.dias`) manda sempre.
 // 2) O Weekly SÓ LÊ `blast_highlights`. Quem carimba é o Clipping. É a mesma regra que
 //    nasceu do episódio em que esta aba apagou publicações do Clipping — "o recap faz o
 //    recorte, isso não pode influenciar no clipping".
-function preencherDosDestaques(){
-  let usados = 0, vazios = 0;
-  (S.dias || []).forEach(function (d) {
-    const chave = ymd(d.data);
-    const r = S.hl && S.hl[chave];
-    const temTexto = (d.itens || []).some(function (i) { return (i.texto || '').trim(); });
-    d.doClipping = !!(r && Array.isArray(r.destaques) && r.destaques.length);
-    if (!d.doClipping) { if (!temTexto) vazios++; return; }
-    if (temTexto) { usados++; return; }             // o analista já escreveu: não encosta
-    d.itens = r.destaques.map(function (t) { return { texto: String(t).trim(), link: '' }; });
-    d.preenchido = true;
-    usados++;
-  });
-  return { usados: usados, vazios: vazios };
+function aplicarDias(){
+  const salvos=(S.weekly.ref===ymd(S.sem.fim)&&Array.isArray(S.weekly.dias))?S.weekly.dias:[];
+  try{ W.montarDias(S.dias, salvos, S.hl); }catch(e){ console.warn('destaques', e); }
 }
 
 function renderNoticias(){
@@ -992,10 +981,8 @@ async function recarregar(){
 
   // esqueleto dos 5 dias úteis; o texto salvo daquela semana volta por cima
   S.dias=W.diasUteis(S.sem);
-  try{ preencherDosDestaques(); }catch(e){ console.warn('destaques', e); }
+  aplicarDias();                     // rascunho do analista + destaques do blast, nesta ordem
   janelaHint(recuou);
-  const salvos=(S.weekly.ref===ymd(S.sem.fim)&&S.weekly.dias)?S.weekly.dias:[];
-  salvos.forEach(sd=>{const alvo=S.dias.find(d=>ymd(d.data)===sd.data); if(alvo) alvo.itens=sd.itens||[];});
 
   document.getElementById('auto-meta').textContent='carregando…';
   document.getElementById('nw-box').innerHTML='<div class="muted">carregando…</div>';
@@ -1003,6 +990,9 @@ async function recarregar(){
   const r=await Promise.allSettled([carregarPrecos(),carregarAcoes(),carregarNoticias(),
                                     recarregarPubs(),carregarComps()]);
   r.forEach(x=>{ if(x.status==='rejected') console.warn(x.reason); });
+  // De novo, agora com o que `recarregarPubs` acabou de trazer: se o Clipping carimbou os
+  // destaques com esta aba aberta (ou noutro computador), eles entram sem F5.
+  aplicarDias();
 
   const sw=document.getElementById('sqlwarn');
   sw.hidden=!S.semSQL;
@@ -1102,7 +1092,7 @@ function wktestBoot(){
     name:(META[t]||[])[0]||_rotuloDe(t), sector:(META[t]||[])[1]||'steel',
     exchange:(META[t]||[])[2]||'B3'}));
   S.dias=W.diasUteis(S.sem);
-  try{ preencherDosDestaques(); }catch(e){ console.warn('destaques', e); }
+  aplicarDias();
   janelaHint(false);
   S.dias[0].itens=[{texto:'Cortes de capacidade de celulose softwood na América do Norte e Europa já afetam cerca de 2,5 milhões de ton/ano, em meio à sobreoferta e pressão sobre margens.'},
                    {texto:'Carvão metalúrgico CFR China atingiu USD 270,50/ton, maior nível desde março de 2024.'}];

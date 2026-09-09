@@ -143,6 +143,41 @@ function deIso(s) {
   return isNaN(d) ? null : d;
 }
 
+// ── OS DIAS DO WEEKLY: quem escreve a linha, e em que ordem ──────────────────
+// Três fontes disputam a mesma linha, e a precedência NÃO pode mudar:
+//   1º) o que o ANALISTA escreveu (o rascunho salvo em `weekly.dias`) — manda sempre;
+//   2º) os DESTAQUES que o Clipping carimbou naquele dia (`blast_highlights`), que é o
+//       trabalho já feito de manhã, com número tirado do corpo das matérias;
+//   3º) nada — o dia fica em branco e a tela avisa que não houve blast.
+//
+// ⚠️ O QUE JÁ DEU ERRADO (09/09/2026): a tela preenchia com os destaques ANTES de aplicar
+// o rascunho salvo, e o rascunho entrava por cima — inclusive quando era uma lista VAZIA,
+// gravada num dia em que ainda não havia destaque nenhum. O dia voltava em branco mesmo
+// com o blast carimbado. Aqui a ordem é a de cima e "vazio" nunca ganha de "cheio".
+//
+// Muta e devolve o mesmo array de `dias` (a tela guarda referências para ele), marcando:
+//   `doClipping` — houve blast oficial nesse dia;  `preenchido` — a linha veio do blast.
+function montarDias(dias, salvos, hl) {
+  var porData = {};
+  (salvos || []).forEach(function (sd) { if (sd && sd.data) porData[sd.data] = sd.itens || []; });
+  (dias || []).forEach(function (d) {
+    var chave = ymd(d.data);
+    var r = (hl || {})[chave];
+    var destaques = (r && Array.isArray(r.destaques))
+      ? r.destaques.filter(function (t) { return String(t == null ? '' : t).trim(); }) : [];
+    var itens = (porData[chave] || d.itens || []).slice();
+    var escrito = itens.some(function (i) { return String((i && i.texto) || '').trim(); });
+    d.doClipping = destaques.length > 0;
+    d.preenchido = false;
+    if (!escrito && destaques.length) {
+      itens = destaques.map(function (t) { return {texto: String(t).trim(), link: ''}; });
+      d.preenchido = true;
+    }
+    d.itens = itens;
+  });
+  return dias || [];
+}
+
 // ── RELATÓRIOS DA SEMANA ─────────────────────────────────────────────────────
 // A lista é a MESMA do Clipping (`clipping_config.recent_publications`), onde cada
 // item traz a data em que o relatório saiu. Aqui ela é só FILTRADA pela semana de
@@ -779,6 +814,7 @@ function buildEml(m, html) {
 root.IBBAWeekly = {
   T: T, semanaDe: semanaDe, sextaMaisRecente: sextaMaisRecente,
   periodoLongo: periodoLongo, diasUteis: diasUteis, diaSemana: diaSemana,
+  montarDias: montarDias,
   pontoAte: pontoAte, diaDoTs: diaDoTs, linhaDeSerie: linhaDeSerie,
   aplicarAoVivo: aplicarAoVivo, ultimoAoVivo: ultimoAoVivo, hhmm: hhmm,
   relatoriosDaSemana: relatoriosDaSemana,
