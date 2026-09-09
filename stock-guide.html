@@ -763,6 +763,22 @@ function _s2LiveAxis(label,mv){
   if(k==='copper'&&(L.indexOf('/ton')>=0||L.indexOf('usd/t)')>=0)) v=v*2204.62262;
   return v;
 }
+// BORDA DA GRADE: o corte nao pode cair onde o olho nao ve. O eixo do cambio da CMIN
+// comeca em 5,108333 e escreve "5,11"; com o dolar a 5,1081 a pagina dizia que 5,11
+// estava FORA de 5,11-5,91, apagava a linha laranja e sumia com o "At spot" — e voltava
+// sozinha minutos depois, a 5,1086 (medido em 09/09/2026, a marca piscava a cada
+// atualizacao de preco). Entao: se o spot e a borda saem com o MESMO numero nas casas
+// que o eixo mostra, o spot e lido NA BORDA. Nao e extrapolar — e o cenario publicado
+// ali, e a diferenca (2,7 decimos de milesimo de real) nao move o indicador. Passou
+// disso, continua sem leitura: tabela de analista nao se estica.
+function _s2Fit(levels,v,dec){
+  if(v==null||!levels||!levels.length) return v;
+  const mn=Math.min.apply(null,levels), mx=Math.max.apply(null,levels);
+  const tol=0.5*Math.pow(10,-(dec==null?2:dec));
+  if(v<mn) return (mn-v<=tol)?mn:v;
+  if(v>mx) return (v-mx<=tol)?mx:v;
+  return v;
+}
 // indice do nivel mais proximo, so se o valor cair DENTRO da faixa da grade
 function _s2NearIdx(levels,v){
   if(v==null||!levels||!levels.length) return -1;
@@ -832,7 +848,8 @@ function _s2TableHtml(tab,byId,ctx){
   const rowPct=tab.rowLevels?SG.sens2dAxisIsPct(tab.rowLabel,tab.rowLevels):false;
   const colDec=SG.sens2dAxisDecimals(tab.colLevels,colPct);
   const rowDec=tab.rowLevels?SG.sens2dAxisDecimals(tab.rowLevels,rowPct):0;
-  const colLive=_s2LiveAxis(tab.colLabel,ctx.mv), rowLive=tab.rowLevels?_s2LiveAxis(tab.rowLabel,ctx.mv):null;
+  const colLive=_s2Fit(tab.colLevels,_s2LiveAxis(tab.colLabel,ctx.mv),colDec),
+        rowLive=tab.rowLevels?_s2Fit(tab.rowLevels,_s2LiveAxis(tab.rowLabel,ctx.mv),rowDec):null;
   const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
   const canLive=live&&ctx.mcLive!=null&&ctx.mcModel!=null&&(met!=='ev_ebitda'||!!pair);
   const hasRow=!!(tab.rowLevels&&tab.rowLevels.length);
@@ -920,8 +937,9 @@ function _s2DriverStrip(d,ctx){
       const lab=p[0], lv=p[1]; if(!lab||!lv||!lv.length||seen[lab]) return; seen[lab]=1;
       const pct=SG.sens2dAxisIsPct(lab,lv);
       const mn=Math.min.apply(null,lv), mx=Math.max.apply(null,lv);
-      const live=_s2LiveAxis(lab,ctx.mv);
-      out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:SG.sens2dAxisDecimals(lv,pct),
+      const dec=SG.sens2dAxisDecimals(lv,pct);
+      const live=_s2Fit(lv,_s2LiveAxis(lab,ctx.mv),dec);   // mesma borda da grade (senao o cartao dizia "5,11 fora de 5,11-5,91")
+      out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:dec,
                 src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx});
     }); }); });
   return out;

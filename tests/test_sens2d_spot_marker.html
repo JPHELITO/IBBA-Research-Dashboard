@@ -29,7 +29,7 @@ window.__RUN__=async function(){
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ctx={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US', Math:Math, isFinite:isFinite, String:String};
   const M=new Function('ctx',`with(ctx){ ${BLOCO}
-    return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip,
+    return {_s2DriverKey,_s2SrcName,_s2LiveAxis,_s2Fit,_s2NearIdx,_s2Span,_s2At,_s2TableHtml,_s2DriverStrip,
             _s2RealTermsAxis,_s2RealTermsNote}; }`)(ctx);
 
   const DEF=await (await fetch('/tests/fixtures/sens2d_models.json?v='+Date.now())).json();
@@ -98,6 +98,39 @@ window.__RUN__=async function(){
      'Suzano col '+cjS+' ('+tabsOf(DEF.SUZB3)[0].colLevels[cjS]+') · Klabin col '+cjK+' ('+tabsOf(DEF.KLBN11)[0].colLevels[cjK]+')');
   ok('preço fora da grade não marca nada (extrapolar tabela de analista é proibido)',
      M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,320)===-1 && M._s2NearIdx(tabsOf(DEF.SUZB3)[0].colLevels,900)===-1);
+
+  // ── 3b. a BORDA: o corte não pode cair onde o olho não vê ─────────────────
+  // Caso REAL de 09/09/2026: o eixo de câmbio da CMIN começa em 5,108333 e a tela escreve
+  // "5,11". O dólar passou a tarde em cima da borda — 5,1081 (dois décimos de milésimo
+  // ABAIXO) apagava a linha laranja e o "At spot"; 5,1086 acendia tudo de volta. O cartão
+  // do topo chegava a dizer que 5,11 estava FORA de 5,11–5,91.
+  const RL_FX=tabsOf(DEF.CMIN3)[0].rowLevels, PISO=Math.min.apply(null,RL_FX), TETO=Math.max.apply(null,RL_FX);
+  ok('a grade da CMIN é a que está publicada (piso 5,108333)',
+     Math.abs(PISO-5.108333333333334)<1e-9, String(PISO));
+  ok('spot que a tela escreve igual à borda é lido NA borda',
+     M._s2Fit(RL_FX,5.1081,2)===PISO && M._s2Fit(RL_FX,TETO+0.002,2)===TETO,
+     '5,1081 → '+M._s2Fit(RL_FX,5.1081,2));
+  ok('e aí a linha volta a marcar, na primeira linha da grade',
+     M._s2NearIdx(RL_FX,M._s2Fit(RL_FX,5.1081,2))===0 && M._s2NearIdx(RL_FX,5.1081)===-1);
+  // lido na borda = o número que o analista publicou na 1ª linha, coluna do minério a 95
+  ok('o "At spot" volta a ler, no cenário publicado da borda',
+     Math.abs(M._s2At(tabsOf(DEF.CMIN3)[0],M._s2Fit(RL_FX,5.1081,2),95)-tabsOf(DEF.CMIN3)[0].values[0][4])<1e-6 &&
+     M._s2At(tabsOf(DEF.CMIN3)[0],5.1081,95)===null,
+     'borda = '+tabsOf(DEF.CMIN3)[0].values[0][4]);
+  ok('longe da borda continua SEM leitura (meio centavo já é outro número na tela)',
+     M._s2Fit(RL_FX,5.10,2)===5.10 && M._s2NearIdx(RL_FX,M._s2Fit(RL_FX,5.10,2))===-1 &&
+     M._s2Fit(RL_FX,4.90,2)===4.90 && M._s2Fit(RL_FX,6.20,2)===6.20);
+  ok('quem está dentro não é mexido, e sem leitura ao vivo nada acontece',
+     M._s2Fit(RL_FX,SPOT_FX,2)===SPOT_FX && M._s2Fit(RL_FX,null,2)===null &&
+     M._s2Fit(tabsOf(DEF.SUZB3)[0].colLevels,SPOT_PULP,0)===SPOT_PULP);
+  // eixo em % (Gerdau/Usiminas): a casa decimal é a do EIXO, não a do número cru
+  ok('a tolerância é a casa que o eixo mostra, eixo a eixo',
+     M._s2Fit([90,92.5,95],89.96,1)===90 && M._s2Fit([90,92.5,95],89.9,1)===89.9);
+  // o cartão do topo tem de contar a MESMA história da tabela
+  const stripFX=M._s2DriverStrip(DEF.CMIN3,{def:DEF.CMIN3,mv:Object.assign({},MV,{fx_usdbrl:5.1081})})
+                 .filter(x=>/FX/.test(x.label))[0];
+  ok('o cartão do topo para de dizer que 5,11 está fora de 5,11–5,91',
+     !!stripFX && stripFX.inside===true, stripFX?('inside='+stripFX.inside+' live='+stripFX.live):'sem cartão de câmbio');
 
   // ── 4. a tabela renderizada: cruzamento único + linha "At spot" ────────────
   // um caso por empresa: {spot da COLUNA, spot da LINHA, nome da série que o tooltip tem de dizer}
