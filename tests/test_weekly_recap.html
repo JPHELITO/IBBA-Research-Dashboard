@@ -211,6 +211,70 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
      html.indexOf('Fechamento de 19/08/2026 contra 26/08/2026')>0);
 })();
 
+// ══ 2e. AÇÕES EM WTD, PREÇOS EM 7 DIAS ══════════════════════════════════════
+// Pedido do analista (09/09/2026): *"a parte de performance poderia ser WTD ao invés de
+// WoW"*. Ação negocia todo dia, e a régua do mercado é a semana corrente: do fechamento
+// da sexta passada até agora. A tabela de PREÇOS ficou nos 7 dias corridos de propósito —
+// assessment de celulose sai uma vez por semana, e no meio da semana a janela curta
+// devolveria 0,00% em toda linha de PIX, variação que não existe com cara de defeito.
+// NA SEXTA AS DUAS RÉGUAS COINCIDEM: o weekly de sempre não muda em nada.
+(function(){
+  const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;
+
+  // ── a régua ────────────────────────────────────────────────────────────────
+  const sx=W.semanaDe(new Date(2026,7,28));                  // SEXTA 28/08
+  ok('na sexta o WTD cai exatamente sobre o WoW (nada muda)',
+     W.dbarra(sx.wtd)==='21/08/2026' && +sx.wtd===+sx.ini, W.dbarra(sx.wtd));
+  ok('…e a tela sabe que não precisa explicar régua nenhuma', W.ehMeioDeSemana(sx)===false);
+
+  const q=W.semanaDe(new Date(2026,7,26));                    // QUARTA 26/08
+  ok('na quarta o WTD é a SEXTA que fechou a semana passada (21/08)',
+     W.dbarra(q.wtd)==='21/08/2026', W.dbarra(q.wtd));
+  ok('…enquanto os preços seguem comparando com a quarta anterior (19/08)',
+     W.dbarra(q.ini)==='19/08/2026', W.dbarra(q.ini));
+  ok('…e aí sim as duas réguas divergem', W.ehMeioDeSemana(q)===true);
+
+  const sg=W.semanaDe(new Date(2026,7,24));                   // SEGUNDA 24/08
+  ok('na segunda o WTD é um pregão só: sexta 21/08 contra segunda 24/08',
+     W.dbarra(sg.wtd)==='21/08/2026' && W.dbarra(sg.fim)==='24/08/2026', W.dbarra(sg.wtd));
+
+  const semA=W.semanaAcoes(q);
+  ok('a janela das ações troca só a ponta esquerda',
+     W.dbarra(semA.ini)==='21/08/2026' && +semA.fim===+q.fim, W.dbarra(semA.ini));
+
+  // ── o número que sai na tabela ─────────────────────────────────────────────
+  const diaria=[[meia(2026,8,19),95.10],[meia(2026,8,20),95.30],[meia(2026,8,21),100.00],
+                [meia(2026,8,24),96.10],[meia(2026,8,25),97.00],[meia(2026,8,26),99.00]];
+  const acao=W.linhaDeSerie('VALE3',diaria,semA,2,'R$ ');
+  ok('a ação parte do fechamento da sexta, não da quarta passada',
+     acao.ini.v===100.00 && W.dmes(acao.ini.data)==='21/ago', String(acao.ini.v));
+  ok('…e o Δ é a variação da semana até aqui', W.pct(acao.delta)==='−1,00%', W.pct(acao.delta));
+  const preco=W.linhaDeSerie('IODEX',diaria,q,2,'');
+  ok('o mesmo papel na janela de PREÇOS ainda parte da quarta anterior',
+     preco.ini.v===95.10 && W.pct(preco.delta)==='+4,10%', W.pct(preco.delta));
+
+  // ── e o e-mail ────────────────────────────────────────────────────────────
+  // celulose: só sextas. Na janela de 7 dias ela compara dois assessments DIFERENTES;
+  // é justamente o que se perderia se a tabela de preços também virasse WTD.
+  const semanal=[[meia(2026,8,14),565.20],[meia(2026,8,21),563.64]];
+  const cel=W.linhaDeSerie('BHKP',semanal,q,2,'');
+  const html=W.buildEmail({semana:q,precos:[preco,cel],acoes:[acao],dias:[],relatorios:[]});
+  ok('no meio da semana o e-mail DIZ que as ações são semana até aqui',
+     html.indexOf('Semana até aqui. Fechamento de 21/08/2026 contra 26/08/2026')>0);
+  ok('…e a tabela de preços continua anunciando a janela de 7 dias',
+     html.indexOf('Fechamento de 19/08/2026 contra 26/08/2026')>0);
+  ok('o cabeçalho da tabela de ações traz a data da sexta',
+     html.indexOf('21/AGO')>0 && html.indexOf('19/AGO')>0);
+  ok('a celulose não vira 0,00% (é o motivo de os preços não terem virado WTD)',
+     W.pct(cel.delta)==='−0,28%', W.pct(cel.delta));
+
+  const htmlSx=W.buildEmail({semana:sx,precos:[],acoes:[W.linhaDeSerie('VALE3',diaria,W.semanaAcoes(sx),2,'')],
+                             dias:[],relatorios:[]});
+  ok('na sexta o e-mail não fala em "semana até aqui" — é o de sempre',
+     htmlSx.indexOf('Semana até aqui')<0 &&
+     htmlSx.indexOf('Fechamento de 21/08/2026 contra 28/08/2026')>0);
+})();
+
 // ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
 // Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
 // analista mandou]. A conta da lib tem de bater com a última coluna.
