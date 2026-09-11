@@ -58,6 +58,33 @@ html.dark tr.agg-row td{background:rgba(255,255,255,.04)}
 .sg-tab:hover{color:var(--black)}
 .sg-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
 .sg-tab.locked::after{content:'🔒';font-size:10px;margin-left:5px;opacity:.65}
+/* ── cheat sheet trimestral ── */
+.q-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.q-chip{font:600 11.5px var(--font);padding:5px 10px;border:1px solid var(--border);border-radius:999px;
+  background:#fff;color:var(--g-mid);cursor:pointer;white-space:nowrap}
+.q-chip:hover{color:var(--black)}
+.q-chip.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.q-sep{width:1px;height:18px;background:var(--border);margin:0 4px}
+.q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px}
+.q-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:10px 11px 8px}
+html.dark .q-card,html.dark .q-chip{background:#1c2026}
+html.dark .q-chip.on{background:var(--orange)}
+.q-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+.q-name{font:700 12.5px var(--font);color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-tic{font:600 10px var(--font);color:var(--g-mid);letter-spacing:.04em;flex:none}
+.q-val{font:700 19px var(--font);color:var(--black);line-height:1.15;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.q-yoy{font:600 11px var(--font);margin-left:6px;font-variant-numeric:tabular-nums}
+.q-yoy.up{color:#146c33} .q-yoy.down{color:#a3271b} .q-yoy.flat{color:var(--g-mid)}
+.q-sub{font:500 10px var(--font);color:var(--g-mid);margin-top:1px}
+.q-svg{display:block;width:100%;height:54px;margin-top:6px;overflow:visible}
+.q-axis{font:500 9px var(--font);color:var(--g-mid);display:flex;justify-content:space-between;margin-top:2px}
+.q-note{font:500 11px var(--font);color:var(--g-mid);line-height:1.5;margin-top:12px}
+.q-tbl td.q-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.q-tbl td.q-co{font-weight:600;white-space:nowrap}
+.q-tbl td.pos{color:#146c33} .q-tbl td.neg{color:#a3271b}
+html.dark .q-yoy.up{color:#4ade80} html.dark .q-yoy.down{color:#f87171}
+html.dark .q-tbl td.pos{color:#4ade80} html.dark .q-tbl td.neg{color:#f87171}
 .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:6px;vertical-align:middle;animation:livepulse 2s ease-in-out infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
 .sg-locked{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 20px}
@@ -302,6 +329,7 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
     <div class="sg-tabs">
       <button id="sgtab-comp" class="sg-tab active" onclick="sgShowTab('comp')">Comp Table</button>
       <button id="sgtab-sens" class="sg-tab" onclick="sgShowTab('sens')">Sensitivity</button>
+      <button id="sgtab-quarterly" class="sg-tab" onclick="sgShowTab('quarterly')" hidden>Quarterly</button>
     </div>
 
     <div id="sg-tab-comp">
@@ -316,6 +344,22 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
         <div class="sec-title">Global Peers</div>
         <div class="sec-sub">Global majors with a Market quote · price live, consensus multiples from the model (refresh on upload).</div>
         <div class="card" id="peers-card"><div class="tbl-scroll"><table class="data" id="peers-table"><tbody></tbody></table></div></div>
+      </div>
+    </div>
+
+    <div id="sg-tab-quarterly" hidden>
+      <div class="section">
+        <div class="sec-title">Quarterly cheat sheet</div>
+        <div class="sec-sub">Reported results, quarter by quarter, straight from the filings each
+          company delivers to the Brazilian securities regulator (CVM). Consolidated, in R$ million.</div>
+        <div class="q-bar" id="q-kpis"></div>
+        <div class="q-bar" id="q-range"></div>
+        <div id="q-grid" class="q-grid"><span class="muted">Loading…</span></div>
+        <div class="q-note" id="q-note"></div>
+      </div>
+      <div class="section">
+        <div class="sec-title" id="q-tbl-title">All companies</div>
+        <div class="card"><div class="tbl-scroll"><table class="data q-tbl" id="q-table"><tbody></tbody></table></div></div>
       </div>
     </div>
 
@@ -429,14 +473,24 @@ const MODEL_URL={
 };
 const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
-function _sgTabFromHash(){ return (location.hash==='#sens')?'sens':'comp'; }
+const SG_TABS=['comp','sens','quarterly'];
+// ⚠️ Guardado no carregamento: `sgShowTab` reescreve o hash, e a aba Quarterly só é
+// liberada depois que o gate da flag responde — sem isto o link /#quarterly já teria
+// virado #comp quando a aba finalmente aparece.
+const _SG_HASH0=(location.hash||'').slice(1);
+function _sgTabFromHash(){ const h=(location.hash||'').slice(1); return SG_TABS.includes(h)?h:'comp'; }
 function sgShowTab(t){
-  t=(t==='sens')?'sens':'comp';
-  document.getElementById('sg-tab-comp').hidden=(t!=='comp');
-  document.getElementById('sg-tab-sens').hidden=(t!=='sens');
-  document.getElementById('sgtab-comp').classList.toggle('active',t==='comp');
-  document.getElementById('sgtab-sens').classList.toggle('active',t==='sens');
-  try{ history.replaceState(null,'',t==='sens'?'#sens':'#comp'); }catch(e){}
+  if(!SG_TABS.includes(t)) t='comp';
+  // aba escondida (flag desligada) não pode ser aberta por link — cai na primeira
+  const bt=document.getElementById('sgtab-'+t);
+  if(bt && bt.hidden) t='comp';
+  SG_TABS.forEach(x=>{
+    const pane=document.getElementById('sg-tab-'+x), btn=document.getElementById('sgtab-'+x);
+    if(pane) pane.hidden=(x!==t);
+    if(btn) btn.classList.toggle('active',x===t);
+  });
+  try{ history.replaceState(null,'','#'+t); }catch(e){}
+  if(t==='quarterly') loadQuarterly();
 }
 // dropdown do topnav (Stock Guide ▾ → #comp/#sens) e link externo trocam de aba sem recarregar
 window.addEventListener('hashchange',function(){ sgShowTab(_sgTabFromHash()); });
@@ -1375,8 +1429,183 @@ async function sgInit(data){
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],peersEnabled:data.peersEnabled,computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
   if(data.isAdmin && window.IBBAExport) _sgInitExport();   // botões Export (PDF/Excel) só p/ admin
+  _qGate(data.isAdmin);                                    // aba Quarterly (flag `quarterly`)
   if(_sgTimer)clearInterval(_sgTimer);
   if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
+}
+
+/* ═══════════ CHEAT SHEET TRIMESTRAL ═══════════════════════════════════════════
+   Os números do resultado como a companhia entregou à CVM (ITR/DFP) — robô
+   `_shared/quarterly.py`, tabela `quarterly_kpis`, RPC `get_quarterly_kpis`.
+   ⚠️ O EBITDA aqui é CONTÁBIL (EBIT + depreciação do fluxo de caixa). NÃO é o
+   "EBITDA ajustado" que a companhia publica no release — a Vale, por exemplo,
+   exclui Brumadinho do ajustado. A tela diz isso ao cliente, embaixo dos cartões. */
+const Q_KPIS=[
+  {k:'net_revenue', label:'Revenue',        u:'mn'},
+  {k:'ebitda',      label:'EBITDA',         u:'mn'},
+  {k:'margin',      label:'EBITDA margin',  u:'pp', calc:r=>(r.ebitda!=null&&r.net_revenue)?r.ebitda/r.net_revenue*100:null},
+  {k:'ebit',        label:'EBIT',           u:'mn'},
+  {k:'net_income',  label:'Net income',     u:'mn'},
+  {k:'ocf',         label:'Operating cash flow', u:'mn'},
+  {k:'capex',       label:'Capex',          u:'mn'},
+  {k:'net_debt',    label:'Net debt',       u:'mn'},
+  {k:'nd_ebitda',   label:'Net debt/EBITDA',u:'x'}
+];
+const Q_SECTOR_COLOR={iron_ore:'#B45309',steel:'#0F766E',pulp_paper:'#15803D',gold:'#A16207'};
+let _Q={rows:null,kpi:'net_revenue',n:8,loading:false};
+
+async function loadQuarterly(){
+  if(_Q.rows || _Q.loading) { if(_Q.rows) _qRender(); return; }
+  _Q.loading=true;
+  try{
+    const {data,error}=await sbAuth.rpc('get_quarterly_kpis');
+    if(error) throw error;
+    _Q.rows=data||[];
+  }catch(e){
+    document.getElementById('q-grid').innerHTML=
+      '<span class="muted">Quarterly data is not available yet.</span>';
+    _Q.loading=false; return;
+  }
+  _Q.loading=false;
+  _qRender();
+}
+
+/* LTM = soma dos 4 trimestres que terminam naquele; falta um, não há LTM (somar 3 daria
+   um múltiplo otimista sem avisar ninguém). */
+function _qLTM(serie,i){
+  if(i<3) return null;
+  let s=0;
+  for(let j=i-3;j<=i;j++){ const v=serie[j].ebitda; if(v==null) return null; s+=v; }
+  return s;
+}
+function _qVal(serie,i,kpi){
+  const r=serie[i], def=Q_KPIS.find(x=>x.k===kpi);
+  if(!r) return null;
+  if(def&&def.calc) return def.calc(r);
+  if(kpi==='nd_ebitda'){ const l=_qLTM(serie,i); return (l&&r.net_debt!=null)?r.net_debt/l:null; }
+  return r[kpi]==null?null:r[kpi];
+}
+function _qFmt(v,u){
+  if(v==null||!isFinite(v)) return '—';
+  if(u==='pp') return v.toFixed(1)+'%';
+  if(u==='x')  return v.toFixed(1)+'x';
+  return (v/1000).toLocaleString('en-US',{maximumFractionDigits:0});   // milhares → R$ mi
+}
+/* Variação contra o MESMO trimestre do ano anterior (4 atrás), que é como se lê resultado:
+   comparar com o trimestre imediatamente anterior misturaria sazonalidade. */
+function _qYoY(serie,i,kpi){
+  const u=(Q_KPIS.find(x=>x.k===kpi)||{}).u;
+  const a=_qVal(serie,i,kpi), b=_qVal(serie,i-4,kpi);
+  if(a==null||b==null) return null;
+  if(u==='pp') return {txt:(a-b>=0?'+':'')+(a-b).toFixed(1)+'pp', d:a-b};
+  if(u==='x')  return {txt:(a-b>=0?'+':'')+(a-b).toFixed(1)+'x',  d:a-b};
+  if(b<=0) return null;                 // variação % sobre base negativa ou zero não diz nada
+  const p=(a-b)/Math.abs(b)*100;
+  return {txt:(p>=0?'+':'')+p.toFixed(1)+'%', d:p};
+}
+function _qBars(vals,cor){
+  const n=vals.length; if(!n) return '';
+  const W=100,H=44,gap=W/n, bw=Math.max(1.6,gap*0.62);
+  const finitos=vals.filter(v=>v!=null&&isFinite(v));
+  if(!finitos.length) return '';
+  const max=Math.max(...finitos,0), min=Math.min(...finitos,0), amp=(max-min)||1;
+  const y0=H-(0-min)/amp*H;             // linha do zero (só aparece se houver negativo)
+  let out='';
+  if(min<0) out+=`<line x1="0" y1="${y0.toFixed(1)}" x2="${W}" y2="${y0.toFixed(1)}" stroke="currentColor" stroke-width=".5" opacity=".35"/>`;
+  vals.forEach((v,i)=>{
+    if(v==null||!isFinite(v)) return;
+    const y=H-(v-min)/amp*H, x=i*gap+(gap-bw)/2;
+    const alt=Math.max(0.8,Math.abs(y0-y));
+    const ultimo=(i===n-1), anoAtras=(i===n-5);
+    out+=`<rect x="${x.toFixed(2)}" y="${Math.min(y,y0).toFixed(2)}" width="${bw.toFixed(2)}" height="${alt.toFixed(2)}"`
+       + ` fill="${ultimo?'var(--orange)':cor}" opacity="${ultimo?1:(anoAtras?.62:.34)}" rx=".6"/>`;
+  });
+  return `<svg class="q-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${out}</svg>`;
+}
+
+function _qRender(){
+  const rows=_Q.rows||[], def=Q_KPIS.find(x=>x.k===_Q.kpi)||Q_KPIS[0];
+  // chips
+  document.getElementById('q-kpis').innerHTML=Q_KPIS.map(x=>
+    `<button class="q-chip${x.k===_Q.kpi?' on':''}" onclick="_qSet('kpi','${x.k}')">${esc(x.label)}</button>`).join('');
+  document.getElementById('q-range').innerHTML=
+    [4,8,12,0].map(n=>`<button class="q-chip${n===_Q.n?' on':''}" onclick="_qSet('n',${n})">`
+      +(n?`Last ${n}`:'All')+`</button>`).join('')
+    + '<span class="q-sep"></span><span class="muted" style="font:500 11px var(--font)">'
+    + (def.u==='mn'?'R$ million':def.u==='x'?'× LTM EBITDA':'% of revenue')+'</span>';
+
+  // uma série por empresa, em ordem de trimestre
+  const agrupado=new Map();
+  rows.forEach(r=>{ if(!agrupado.has(r.company)) agrupado.set(r.company,[]); agrupado.get(r.company).push(r); });
+  agrupado.forEach(v=>v.sort((a,b)=>a.quarter<b.quarter?-1:1));
+  // ordem = a do /admin (display_order), não a que a RPC devolveu por acaso
+  const porEmp=new Map([...agrupado.entries()].sort((a,b)=>
+    ((a[1][0].display_order||0)-(b[1][0].display_order||0)) || (a[0]<b[0]?-1:1)));
+
+  const cards=[], tris=new Set();
+  porEmp.forEach((serie,tic)=>{
+    const corte=_Q.n?Math.max(0,serie.length-_Q.n):0;
+    const vis=serie.slice(corte);
+    vis.forEach(r=>tris.add(r.quarter));
+    const vals=vis.map((_,i)=>_qVal(serie,corte+i,_Q.kpi));
+    const iUlt=serie.length-1;
+    const v=_qVal(serie,iUlt,_Q.kpi), yoy=_qYoY(serie,iUlt,_Q.kpi);
+    const cor=Q_SECTOR_COLOR[serie[0].sector]||'#6b7280';
+    const cls=yoy?(yoy.d>0.05?'up':yoy.d<-0.05?'down':'flat'):'flat';
+    cards.push(`<div class="q-card">
+      <div class="q-head"><span class="q-name" title="${esc(serie[0].name||tic)}">${esc(serie[0].name||tic)}</span><span class="q-tic">${esc(tic)}</span></div>
+      <div class="q-val">${_qFmt(v,def.u)}${yoy?`<span class="q-yoy ${cls}">${yoy.txt} YoY</span>`:''}</div>
+      <div class="q-sub">${v==null?'not disclosed in the filing'
+        :esc(serie[iUlt].quarter)+(serie[iUlt].source==='DFP'?' · full-year derived':'')}</div>
+      ${_qBars(vals,cor)}
+      <div class="q-axis"><span>${esc(vis[0]?vis[0].quarter:'')}</span><span>${esc(vis[vis.length-1]?vis[vis.length-1].quarter:'')}</span></div>
+    </div>`);
+  });
+  document.getElementById('q-grid').innerHTML=cards.join('')||'<span class="muted">No data.</span>';
+
+  // nota honesta + frescor
+  const ult=rows.reduce((m,r)=>(r.updated_at&&r.updated_at>m)?r.updated_at:m,'');
+  document.getElementById('q-note').innerHTML=
+    'Consolidated figures as filed with the CVM (quarterly ITR; the fourth quarter is the '
+    +'full year minus the first nine months). <b>EBITDA here is EBIT plus depreciation, '
+    +'amortisation and depletion</b> — it is not the adjusted EBITDA a company reports in its '
+    +'earnings release, and it does not exclude one-off items. Volumes, realised prices and '
+    +'cash costs are not part of the financial statements and are not shown. '
+    +'The last bar is the latest quarter; the shaded one four bars back is the same quarter a year earlier.'
+    +(ult?`<br>Last update: ${esc(String(ult).slice(0,10))}.`:'');
+
+  // tabela: empresas × trimestres do indicador escolhido
+  const cols=[...tris].sort();
+  const thead=`<tr><td class="q-co"></td>${cols.map(c=>`<td class="q-num"><b>${esc(c)}</b></td>`).join('')}<td class="q-num"><b>YoY</b></td></tr>`;
+  const body=[];
+  porEmp.forEach((serie,tic)=>{
+    const byQ=new Map(serie.map((r,i)=>[r.quarter,i]));
+    const tds=cols.map(c=>{
+      const i=byQ.get(c);
+      return `<td class="q-num">${i==null?'—':_qFmt(_qVal(serie,i,_Q.kpi),def.u)}</td>`;
+    });
+    const y=_qYoY(serie,serie.length-1,_Q.kpi);
+    body.push(`<tr><td class="q-co" title="${esc(serie[0].name||tic)}">${esc(tic)}</td>${tds.join('')}`
+      +`<td class="q-num ${y?(y.d>0.05?'pos':y.d<-0.05?'neg':''):''}">${y?esc(y.txt):'—'}</td></tr>`);
+  });
+  document.getElementById('q-table').innerHTML='<tbody>'+thead+body.join('')+'</tbody>';
+  document.getElementById('q-tbl-title').textContent=def.label+' — all companies';
+}
+function _qSet(campo,v){ _Q[campo]=v; _qRender(); }
+
+/* A aba nasce escondida e só aparece com a flag ligada (ou p/ admin) — mesma regra do
+   Market Watch. `dashboard_flags` é lido direto porque esta página não carrega o
+   applyFlags da home. */
+async function _qGate(isAdmin){
+  let on=false;
+  try{
+    const {data}=await sbAuth.from('dashboard_flags').select('key,enabled').eq('key','quarterly');
+    on=!!(data&&data[0]&&data[0].enabled);
+  }catch(e){}
+  if(!(on||isAdmin)) return;
+  const b=document.getElementById('sgtab-quarterly');
+  if(b){ b.hidden=false; if(!on&&isAdmin) b.title='Visible to you only — flag "quarterly" is off'; }
+  sgShowTab(SG_TABS.includes(_SG_HASH0)?_SG_HASH0:_sgTabFromHash());   // deep link #quarterly
 }
 
 /* ── Export admin-only: PDF (print) + Excel das tabelas do Stock Guide ── */

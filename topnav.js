@@ -203,7 +203,8 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item" href="/news.html">News Hunter</a>\
     <div class="gn-group"><span class="gn-item">Stock Guide ▾</span><div class="gn-drop"><div class="gn-cat">Stock Guide</div>\
       <a href="/stock-guide.html#comp">Comp Table</a>\
-      <a href="/stock-guide.html#sens">Sensitivity</a></div></div>\
+      <a href="/stock-guide.html#sens">Sensitivity</a>\
+      <a href="/stock-guide.html#quarterly">Quarterly</a></div></div>\
     <a class="gn-item" href="/market.html">Market</a>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
     <a class="gn-item" id="gnav-data" href="/data.html" title="Data sources, freshness and glossary" style="display:none">Data</a>\
@@ -232,6 +233,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <div class="gnm-cat">Stock Guide</div>\
     <a class="gnm-a sub" href="/stock-guide.html#comp">Comp Table</a>\
     <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
+    <a class="gnm-a sub" href="/stock-guide.html#quarterly">Quarterly</a>\
     <div class="gnm-cat">More</div>\
     <a class="gnm-a" href="/news.html">News Hunter</a>\
     <a class="gnm-a" href="/market.html">Market</a>\
