@@ -25,9 +25,15 @@ companhia publica no release. A Vale, por exemplo, exclui Brumadinho do ajustado
 exclui. Volume vendido, preço realizado e custo caixa também não estão na demonstração
 financeira — vivem no release, e por isso ficam de fora.
 
+HISTÓRICO DISPONÍVEL (medido em 2026-09-11): o ITR começa em **2011** e o DFP em **2010**;
+como cada ITR carrega o ano anterior, a série sai de **2010Q1**. Semeado: 654 trimestres,
+66 por empresa nas 8 mais antigas (Aura e CSN Mineração só existem na CVM desde 2019).
+O dia a dia roda 3 anos — o resto é passado e não muda.
+
 Modos:
   python _shared/quarterly.py                      # últimos 3 anos (ITR + DFP)
   python _shared/quarterly.py --anos 2025 2026
+  python _shared/quarterly.py --anos $(seq 2010 2026)   # backfill (0,6 GB, ~8 min)
   python _shared/quarterly.py --dry-run            # mostra o que gravaria
   python _shared/quarterly.py --tabela VALE3       # imprime a série de uma empresa
 
