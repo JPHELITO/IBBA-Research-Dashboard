@@ -125,11 +125,14 @@ async function renderSources(){
   if(!rows.length){ tbl.innerHTML=''; document.getElementById('src-foot').innerHTML='<div class="empty">The freshness table has not been published yet.</div>'; return; }
   let h='<thead><tr><th>Source</th><th>What it is</th><th>Expected cadence</th><th>Last data</th><th>Status</th></tr></thead><tbody>';
   let cur=null;
+  // A linha de "como o dado entra" (how_pulled: inbox/visão de máquina/raspagem…) saiu daqui:
+  // é detalhe de bastidor. O cliente só precisa saber o que é a fonte e se está em dia.
+  // O texto continua vindo do RPC e segue visível no /admin.
   for(const r of rows){
     if(r.sector!==cur){ cur=r.sector; h+=`<tr><td class="sec-h" colspan="5">${esc(SEC_LABEL[cur]||cur||'')}</td></tr>`; }
     const last = r.cadence==='monthly' ? fPeriod(r.last_period) : (r.last_period||'—');
     h+=`<tr><td class="name"><span class="dot ${esc(r.state)}"></span>${esc(r.label)}${r.auto?'':'<span class="tag" title="Entered by the team from the source">manual</span>'}</td>
-      <td class="desc">${esc(r.client_desc||'')}<div class="muted" style="font-size:11px;margin-top:3px">${esc(r.how_pulled||'')}</div></td>
+      <td class="desc">${esc(r.client_desc||'')}</td>
       <td class="desc" style="max-width:260px">${esc(r.client_cadence||'')}</td>
       <td class="n"><b>${esc(last)}</b>${r.cadence==='monthly'&&r.next_expected?`<div class="muted" style="font-size:11px">next: ${esc(fPeriod(r.next_expected))}</div>`:''}</td>
       <td class="n"><span class="st ${esc(r.state)}">${esc(ST_TXT[r.state]||r.state)}</span><div class="muted" style="font-size:11px">${esc(r.status_text||'')}</div></td></tr>`;
