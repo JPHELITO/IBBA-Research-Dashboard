@@ -431,7 +431,7 @@ function _vao(pt) {
   return '<div style="height:' + pt + 'pt;line-height:' + pt + 'pt;font-size:1pt">&nbsp;</div>';
 }
 
-// ── as 3 caixas do "1 Semana em 1 Minuto" ────────────────────────────────────
+// ── as 3 caixas do "5 dias em 5 minutos" ─────────────────────────────────────
 function _blocoResumo(m) {
   var caixas = [
     ['COMMODITIES', m.resumo && m.resumo.commodities],
@@ -725,7 +725,7 @@ function buildEmail(m) {
     _p('<b style="font-family:' + T.sans + ';font-size:8pt;color:' + T.mute + ';letter-spacing:1.15pt">' +
        _esc(periodoLongo(sem.seg, sem.fim).toUpperCase()) + '</b>') +
     _p('<span style="font-family:' + T.serif + ';font-size:26.5pt;color:' + T.ink +
-       ';letter-spacing:-.45pt">1 Semana em 1 Minuto</span>', 'margin:9pt 0 13.5pt 0;line-height:30pt') +
+       ';letter-spacing:-.45pt">5 dias em 5 minutos</span>', 'margin:9pt 0 13.5pt 0;line-height:30pt') +
     ((m.intro || '').trim()
       ? _p('<span style="font-family:' + T.serif + ';font-size:13pt;color:' + T.body + '">' +
            _rich(m.intro) + '</span>', 'margin:0 0 15pt 0;line-height:20.25pt')

@@ -569,7 +569,7 @@ const HTML=W.buildEmail(MODELO);
   const vazio=W.buildEmail({semana:SEM,resumo:{},precos:[],acoes:[],relatorios:[],dias:[],
                             assinatura:{},dashboard:{}});
   ok('sem dado nenhum, ainda monta o cabeçalho sem quebrar',
-     vazio.indexOf('Weekly Recap')>0 && vazio.indexOf('1 Semana em 1 Minuto')>0);
+     vazio.indexOf('Weekly Recap')>0 && vazio.indexOf('5 dias em 5 minutos')>0);
   ok('…e não desenha seção vazia (nada de "PREÇOS" sem tabela)',
      vazio.indexOf('PREÇOS')<0 && vazio.indexOf('RELATÓRIOS')<0);
   // linha sem histórico não pode virar barra nem número inventado
