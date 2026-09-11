@@ -1531,7 +1531,7 @@ function _qRender(){
   document.getElementById('q-kpis').innerHTML=Q_KPIS.map(x=>
     `<button class="q-chip${x.k===_Q.kpi?' on':''}" onclick="_qSet('kpi','${x.k}')">${esc(x.label)}</button>`).join('');
   document.getElementById('q-range').innerHTML=
-    [4,8,12,0].map(n=>`<button class="q-chip${n===_Q.n?' on':''}" onclick="_qSet('n',${n})">`
+    [4,8,12,20,0].map(n=>`<button class="q-chip${n===_Q.n?' on':''}" onclick="_qSet('n',${n})">`
       +(n?`Last ${n}`:'All')+`</button>`).join('')
     + '<span class="q-sep"></span><span class="muted" style="font:500 11px var(--font)">'
     + (def.u==='mn'?'R$ million':def.u==='x'?'× LTM EBITDA':'% of revenue')+'</span>';
@@ -1544,12 +1544,16 @@ function _qRender(){
   const porEmp=new Map([...agrupado.entries()].sort((a,b)=>
     ((a[1][0].display_order||0)-(b[1][0].display_order||0)) || (a[0]<b[0]?-1:1)));
 
-  const cards=[], tris=new Set();
+  // ⚠️ A janela de trimestres é UMA SÓ para todos os cartões. Aura e CSN Mineração só
+  // existem desde 2019: com cada cartão começando no próprio primeiro trimestre, a mesma
+  // coluna de barras seria de trimestres diferentes em cartões diferentes — e o cheat sheet
+  // existe para varrer as 11 de relance.
+  const todos=[...new Set(rows.map(r=>r.quarter))].sort();
+  const cols=_Q.n?todos.slice(-_Q.n):todos;
+  const cards=[];
   porEmp.forEach((serie,tic)=>{
-    const corte=_Q.n?Math.max(0,serie.length-_Q.n):0;
-    const vis=serie.slice(corte);
-    vis.forEach(r=>tris.add(r.quarter));
-    const vals=vis.map((_,i)=>_qVal(serie,corte+i,_Q.kpi));
+    const ondeEsta=new Map(serie.map((r,i)=>[r.quarter,i]));
+    const vals=cols.map(c=>{ const i=ondeEsta.get(c); return i==null?null:_qVal(serie,i,_Q.kpi); });
     const iUlt=serie.length-1;
     const v=_qVal(serie,iUlt,_Q.kpi), yoy=_qYoY(serie,iUlt,_Q.kpi);
     const cor=Q_SECTOR_COLOR[serie[0].sector]||'#6b7280';
@@ -1565,7 +1569,7 @@ function _qRender(){
         :v==null?'not disclosed in the filing'
         :esc(serie[iUlt].quarter)+(serie[iUlt].source==='DFP'?' · full-year derived':'')}</div>
       ${naoSeAplica?'':_qBars(vals,cor)}
-      <div class="q-axis"><span>${esc(vis[0]?vis[0].quarter:'')}</span><span>${esc(vis[vis.length-1]?vis[vis.length-1].quarter:'')}</span></div>
+      <div class="q-axis"><span>${esc(cols[0]||'')}</span><span>${esc(cols[cols.length-1]||'')}</span></div>
     </div>`);
   });
   document.getElementById('q-grid').innerHTML=cards.join('')||'<span class="muted">No data.</span>';
@@ -1581,8 +1585,7 @@ function _qRender(){
     +'The last bar is the latest quarter; the shaded one four bars back is the same quarter a year earlier.'
     +(ult?`<br>Last update: ${esc(String(ult).slice(0,10))}.`:'');
 
-  // tabela: empresas × trimestres do indicador escolhido
-  const cols=[...tris].sort();
+  // tabela: empresas × trimestres do indicador escolhido, na mesma janela dos cartões
   const thead=`<tr><td class="q-co"></td>${cols.map(c=>`<td class="q-num"><b>${esc(c)}</b></td>`).join('')}<td class="q-num"><b>YoY</b></td></tr>`;
   const body=[];
   porEmp.forEach((serie,tic)=>{
