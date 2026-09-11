@@ -56,6 +56,8 @@ Modos:
   python _shared/market_watch.py --insiders         # movimentações de insiders (CVM)
   python _shared/market_watch.py --float            # capital social + free float (CVM FRE)
   python _shared/market_watch.py --filings [--days N]   # comunicados (B3 Plantão), N dias p/ trás
+  python _shared/market_watch.py --buyback-scan --from 2026-06-01 --to 2026-06-30
+                                                    # recompra de emissora estrangeira (Anexo G)
   python _shared/market_watch.py --all              # tudo acima menos o backfill
   ... --dry-run   mostra o que gravaria, sem gravar        ... --date YYYY-MM-DD  (aluguel de um dia)
 
@@ -943,14 +945,16 @@ def doc_title_excerpt(text: str, company_name: str = "", legal_names: list[str] 
     return title, excerpt
 
 
-def enrich_filing_doc(row: dict) -> dict:
-    """Preenche doc_title/doc_excerpt de um comunicado (só os newsworthy — o resto não vai p/ o feed)."""
+def enrich_filing_doc(row: dict) -> bytes | None:
+    """Preenche doc_title/doc_excerpt de um comunicado (só os newsworthy — o resto não vai p/ o
+    feed) e DEVOLVE os bytes do PDF: o detector de recompra lê o mesmo documento logo em
+    seguida e baixar duas vezes seria absurdo."""
     p = cvm_protocol_from_url(row.get("cvm_url"))
     if not p:
-        return row
+        return None
     pdf = fetch_cvm_pdf(p)
     if not pdf:
-        return row
+        return None
     comp = row.get("company")
     t, x = doc_title_excerpt(pdf_first_page_text(pdf), (COMPANIES.get(comp, {}) or {}).get("name", ""), LEGAL_NAMES.get(comp))
     # press-release de resultados é TABELA: a "1ª linha" seria cabeçalho de coluna — deixa o
@@ -961,7 +965,285 @@ def enrich_filing_doc(row: dict) -> dict:
         row["doc_title"] = t
     if x:
         row["doc_excerpt"] = x
-    return row
+    return pdf
+
+
+# ═══════ RECOMPRA ANUNCIADA EM FATO RELEVANTE (emissora estrangeira) ════════════
+# A fonte 2 (arquivo estruturado da CVM) cobre SÓ o regime doméstico. Emissora estrangeira
+# com BDR — regida pela RCVM 77/80 — nunca entra nele: medido ao vivo em 2026-09-03, zero
+# linhas da Aura em 1.927, nem por CNPJ nem por nome. Para essas empresas o único registro
+# público do programa é o Fato Relevante, que por obrigação carrega o ANEXO G: um formulário
+# NUMERADO (1. finalidade · 2. quantidade autorizada · 5. prazo · 7. instituição intermediária).
+# Ler por RÓTULO é o que já fazemos no boletim da B3 e no IABr.
+#
+# Duas etapas, nesta ordem, e é de propósito:
+#   DETECTOR — "este comunicado fala de recompra?" → e-mail. Não extrai número nenhum, então
+#              não tem como errar um valor.
+#   PARSER   — lê o Anexo G e grava o programa, mas só quando a CONFERÊNCIA DUPLA fecha
+#              (o valor e a data de início aparecem DUAS vezes no documento: no corpo e no
+#              formulário). Sem isso, não grava e manda o e-mail pedindo conferência.
+#
+# ⚠️ A manchete do Plantão é a CATEGORIA do documento ("Fato Relevante - 18/06/26"), nunca o
+#    assunto: medido, ZERO manchetes com "recompra" em 30 mil de maio/junho de 2026. Por isso
+#    o detector lê o PDF, e não a manchete.
+BUYBACK_DOC_TERMS = ("programa de recompra", "programas de recompra", "recompra de acoes",
+                     "recompra de bdr", "buyback", "issuer bid")
+
+_MESES_PT = {"janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho": 6,
+             "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12}
+_ESCALA_PT = {"mil": 1e3, "milhao": 1e6, "milhoes": 1e6, "bilhao": 1e9, "bilhoes": 1e9}
+_RE_DATA_EXT = re.compile(r"(\d{1,2})\s+de\s+([a-z]+)\s+de\s+(\d{4})")
+# ⚠️ ordem das alternativas: a regex casa a PRIMEIRA que serve, não a mais longa — com
+# `mil` na frente, "200 milhões" lia 200 mil (defeito real, achado contra o documento da Aura).
+_RE_VALOR = re.compile(r"(r\$|us\$|usd)\s*([\d][\d.,]*)\s*(bilhoes|bilhao|milhoes|milhao|mil)?")
+_RE_ANEXO_G = re.compile(r"anexo\s+g\b")
+# fecho da carta: "São Paulo, 18 de maio de 2026" no começo de uma linha
+_RE_FECHO = re.compile(r"(?m)^[ \t]*[A-ZÀ-Ú][A-Za-zÀ-ÿ\.\' ]{2,30},\s*\d{1,2}\s+de\s+\w+\s+de\s+\d{4}")
+# marca de quebra de página ("- 2 -") — entra no meio da frase se não sair antes
+_RE_PAGINA = re.compile(r"(?m)^[ \t]*-\s*\d{1,3}\s*-[ \t]*$")
+# item do formulário: número no começo da linha, ponto, espaço e letra. "5.085.695 BDRs" e
+# "Regra 10b-18" não abrem item — e a numeração tem de ser crescente a partir do 1.
+_RE_ITEM = re.compile(r"(?m)^[ \t]*(\d{1,2})\.[ \t]+(?=[A-Za-zÀ-ÿ])")
+# sufixo de nome de corretora (item 7); a linha inteira é o nome, o resto é ressalva
+_RE_CORRETORA = re.compile(r"(S\.?\s?A\.?|S/A|CTVM|CCTVM|DTVM|Corretora|Distribuidora|Securities)", re.I)
+
+
+def is_bdr_issuer(ticker: str | None) -> bool:
+    """Empresa cujo programa de recompra NUNCA aparece no arquivo da CVM."""
+    return (COMPANIES.get(ticker or "", {}) or {}).get("cls") == "BDR"
+
+
+def looks_like_buyback(text: str) -> str | None:
+    """Devolve o termo que casou, ou None. Só o assunto — nenhum número."""
+    low = _deaccent(text or "").lower()
+    for t in BUYBACK_DOC_TERMS:
+        if t in low:
+            return t
+    return None
+
+
+def _datas_por_extenso(s: str) -> list[str]:
+    """'18 de junho de 2026' → ['2026-06-18'], na ordem em que aparecem."""
+    out = []
+    for d, mes, y in _RE_DATA_EXT.findall(_deaccent(s or "").lower()):
+        m = _MESES_PT.get(mes)
+        if not m:
+            continue
+        try:
+            out.append(dt.date(int(y), m, int(d)).isoformat())
+        except ValueError:
+            continue
+    return out
+
+
+def _valores_monetarios(s: str) -> list[tuple[float, str]]:
+    """'US$ 200 milhões' → [(200000000.0, 'USD')]. Escala por extenso porque é como o
+    documento escreve — o número cru ('US$ 200') sem a escala valeria 200 dólares."""
+    out = []
+    for moeda, num, escala in _RE_VALOR.findall(_deaccent(s or "").lower()):
+        v = _num_br(num)
+        if v is None:
+            continue
+        v *= _ESCALA_PT.get(escala, 1)
+        out.append((v, "BRL" if moeda == "r$" else "USD"))
+    return out
+
+
+def itens_anexo_g(text: str) -> dict[int, str]:
+    """Fatia o Anexo G nos itens numerados do formulário. Cada fatia vai do número até o
+    próximo — o rótulo ('2. Quantidade autorizada') fica junto do conteúdo de propósito:
+    separar os dois não é confiável, e procurar DENTRO da fatia é suficiente."""
+    low = _deaccent(text or "").lower()
+    m = _RE_ANEXO_G.search(low)
+    if not m:
+        return {}
+    corpo = text[m.start():]
+    marcas, esperado = [], 1
+    for mm in _RE_ITEM.finditer(corpo):
+        if int(mm.group(1)) != esperado:
+            continue
+        marcas.append(mm.start())
+        esperado += 1
+    return {i + 1: corpo[ini:(marcas[i + 1] if i + 1 < len(marcas) else len(corpo))]
+            for i, ini in enumerate(marcas)}
+
+
+def _corretora(item7: str) -> str | None:
+    """Nome da instituição intermediária: a 1ª linha do item que traz sufixo de corretora,
+    cortada na ressalva ('..., ou outra instituição que venha a ser designada')."""
+    for linha in (item7 or "").splitlines():
+        t = " ".join(linha.split())
+        if len(t) < 8 or not _RE_CORRETORA.search(t):
+            continue
+        if _deaccent(t).lower().startswith(("instituicao", "item", "informacao")):
+            continue
+        # corta a ressalva ("..., ou outra instituição que venha a ser designada"); o ponto
+        # final de "S.A." FICA — faz parte do nome
+        return re.split(r",?\s+ou\s+(?:outra|qualquer)\b", t)[0].rstrip(" ,;")
+    return None
+
+
+def _maiusc(s: str | None) -> str | None:
+    return _deaccent(" ".join(s.split())).upper() if s else None
+
+
+def parse_anexo_g(text: str, doc_date: str | None = None) -> tuple[dict | None, list[str]]:
+    """Fato Relevante → programa de recompra. Devolve (programa, pendências).
+
+    Programa só volta preenchido quando a conferência dupla fecha. As pendências são o que
+    vai no e-mail de revisão: nunca grava número que não bateu duas vezes.
+    """
+    text = _RE_PAGINA.sub("", text or "")     # "- 2 -" no meio da frase não é conteúdo
+    itens = itens_anexo_g(text)
+    if not itens:
+        return None, ["não achei o Anexo G no documento"]
+    pend: list[str] = []
+    prog: dict = {"company_name": None, "operation": "Compra", "status": "Em Andamento"}
+
+    # ── 2. quantidade autorizada ──────────────────────────────────────────────
+    vals = _valores_monetarios(itens.get(2, ""))
+    if not vals:
+        return None, ["item 2 (quantidade autorizada) sem valor em R$/US$ — "
+                      "programa autorizado em AÇÕES precisa de leitura humana"]
+    valor, moeda = vals[0]
+    # o mesmo valor tem de aparecer no CORPO da carta, antes do formulário
+    corpo = text[:_RE_ANEXO_G.search(_deaccent(text).lower()).start()]
+    if (valor, moeda) not in _valores_monetarios(corpo):
+        pend.append(f"o valor do item 2 ({moeda} {valor:,.0f}) não se repete no corpo do documento")
+    if moeda == "BRL":
+        pend.append("programa autorizado em R$ — a tabela só tem coluna em US$")
+    else:
+        prog["authorized_usd"] = valor
+
+    # ── 5. prazo ──────────────────────────────────────────────────────────────
+    datas = _datas_por_extenso(itens.get(5, ""))
+    if len(datas) < 2:
+        pend.append("item 5 (prazo) sem as duas datas por extenso")
+    else:
+        ini, fim = datas[0], datas[1]
+        prog["expires_on"] = fim
+        d0, d1 = dt.date.fromisoformat(ini), dt.date.fromisoformat(fim)
+        if d1 <= d0:
+            pend.append(f"prazo invertido: início {ini}, término {fim}")
+        elif (d1 - d0).days > 560:          # RCVM 77 admite até 18 meses
+            pend.append(f"janela de {(d1 - d0).days} dias, maior que os 18 meses da RCVM 77")
+        # ⚠️ Só a data de INÍCIO é conferida contra o corpo. Medido no Fato Relevante da Aura
+        #    de 18/06/2026: o corpo diz "término ... 18 de junho de 2027" e o formulário diz
+        #    "17 de junho de 2027" — um dia de diferença, e o formulário é o que vale.
+        if ini not in _datas_por_extenso(corpo):
+            pend.append(f"a data de início ({ini}) não se repete no corpo do documento")
+        prog["status"] = "Em Andamento" if d1 >= dt.date.today() else "Encerrado"
+
+    # ── 1. finalidade e efeitos econômicos ────────────────────────────────────
+    it1 = " ".join((itens.get(1) or "").split())
+    m = re.search(r"(para\s+manuten[cç][aã]o\s+em\s+tesouraria[^.]{0,120})", it1, re.I)
+    if m:   # vocabulário FECHADO da CVM — é a chave que a tela traduz para inglês, então
+            # qualquer sobra de frase ("..., conforme for o caso") derruba a tradução
+        prog["purpose"] = _maiusc(re.split(r",\s*conforme\b", m.group(1), flags=re.I)[0])
+    m = re.search(r"efeitos\s+econ[oô]micos\s+esperados\s+s[aã]o\s+(.{10,400}?)\.", it1, re.I)
+    if m:
+        prog["reason"] = _maiusc(re.sub(r"^(a|o|os|as)\s+", "", m.group(1).strip(), flags=re.I))
+
+    # ── 7. instituição intermediária ──────────────────────────────────────────
+    c = _corretora(itens.get(7, ""))
+    if c:
+        prog["brokers"] = [c]
+
+    # ── data da deliberação: o FECHO da carta ("São Paulo, 18 de maio de 2026") ─
+    # Não é a data do protocolo: a Aura anunciou em 18/maio e só protocolou na CVM em
+    # 18/junho, o dia em que o programa começou. O fecho é a data da decisão do Conselho —
+    # e é por (empresa, deliberação) que o programa é identificado, então errar aqui
+    # duplicaria o programa em vez de atualizá-lo.
+    fechos = _RE_FECHO.findall(text)
+    prog["decided_on"] = (_datas_por_extenso(fechos[-1])[0] if fechos else None) or doc_date
+    if not prog.get("decided_on"):
+        pend.append("sem data de deliberação")
+    elif prog.get("expires_on") and prog["decided_on"] > prog["expires_on"]:
+        pend.append("deliberação depois do término do prazo")
+    return (None if pend else prog), pend
+
+
+def _bdr_program_id(company: str, decided_on: str | None) -> int:
+    """ID do programa para emissora estrangeira. A CVM nunca emite ID negativo, então o
+    espaço negativo é nosso e não colide. Mesma empresa + mesma data de deliberação
+    REAPROVEITA o id: reler o mesmo Fato Relevante tem de atualizar, não duplicar."""
+    got = rest_get("mw_buyback_programs", "select=program_id,company,decided_on&program_id=lt.0") or []
+    for r in got:
+        if r.get("company") == company and str(r.get("decided_on") or "") == str(decided_on or ""):
+            return int(r["program_id"])
+    return min([int(r["program_id"]) for r in got] + [0]) - 1
+
+
+def _avisa(row: dict, assunto: str, corpo: str) -> None:
+    """E-mail pelo canal único da casa, uma vez por documento (dedup no update_log)."""
+    try:
+        sys.path.insert(0, HERE)
+        import notify
+        notify.once("market_watch", f"filing:{row.get('id')}", "buyback_bdr", assunto, corpo)
+    except Exception as e:  # noqa: BLE001
+        _log(f"  [recompra/bdr] e-mail não saiu: {e}")
+
+
+def scan_buyback_filing(row: dict, pdf: bytes, dry: bool = False) -> dict | None:
+    """Detector + parser de um comunicado. Devolve o resumo do que achou (ou None)."""
+    texto = pdf_first_page_text(pdf, max_pages=12)
+    termo = looks_like_buyback(texto)
+    if not termo:
+        return None
+    co = row.get("company")
+    nome = (COMPANIES.get(co, {}) or {}).get("name", co)
+    link = row.get("cvm_url") or ""
+    prog, pend = parse_anexo_g(texto, row.get("doc_date"))
+    achado = {"company": co, "filing_id": row.get("id"), "termo": termo,
+              "pendencias": pend, "programa": prog}
+    if prog:
+        prog["company"] = co
+        prog["company_name"] = (LEGAL_NAMES.get(co) or [nome])[0].title()
+        prog["program_id"] = _bdr_program_id(co, prog.get("decided_on"))
+        upsert("mw_buyback_programs", [prog], "program_id", dry)
+        achado["program_id"] = prog["program_id"]
+        _log(f"  [recompra/bdr] {co}: programa {prog['program_id']} gravado "
+             f"(US$ {prog.get('authorized_usd', 0):,.0f}, até {prog.get('expires_on')})")
+        if not dry:
+            _avisa(row, f"[Dashboard] Recompra da {nome} entrou sozinha — confira",
+                   f"O comunicado de {row.get('doc_date') or ''} fala em recompra e o Anexo G foi lido "
+                   f"inteiro, com o valor e a data de início conferidos duas vezes no documento.\n\n"
+                   f"  Autorizado ....... US$ {prog.get('authorized_usd', 0):,.0f}\n"
+                   f"  Deliberado em .... {prog.get('decided_on')}\n"
+                   f"  Vence em ......... {prog.get('expires_on')}\n"
+                   f"  Corretora ........ {'; '.join(prog.get('brokers') or []) or '—'}\n\n"
+                   f"Já está na aba Buybacks do Market. O documento: {link}\n\n"
+                   f"Se algum número estiver errado, me avise — a correção é no robô, "
+                   f"não na mão (número corrigido à mão é número que ninguém audita depois).")
+    else:
+        _log(f"  [recompra/bdr] {co}: fala em recompra ('{termo}') mas não gravei — {'; '.join(pend)}")
+        if not dry:
+            _avisa(row, f"[Dashboard] {nome} anunciou recompra — precisa de conferência",
+                   f"O comunicado de {row.get('doc_date') or ''} fala em recompra, mas eu não consegui "
+                   f"ler o programa com segurança:\n\n  - " + "\n  - ".join(pend) +
+                   f"\n\nNada foi gravado. O documento: {link}\n\n"
+                   f"Empresa estrangeira não entra no arquivo de recompras da CVM, então este "
+                   f"comunicado é o único registro público do programa.")
+    return achado
+
+
+def run_buyback_scan(d0: dt.date, d1: dt.date, dry: bool) -> int:
+    """Varre uma janela passada do Plantão atrás de recompra de emissora estrangeira.
+    O robô do dia a dia faz isso dentro do --filings; isto aqui é para backfill e conferência."""
+    items = fetch_plantao(d0, d1)
+    rows = [r for r in build_filing_rows(items, None, fetch_plantao_detail_url)
+            if is_bdr_issuer(r.get("company")) and r.get("cvm_url")]
+    _log(f"  [recompra/bdr] {len(rows)} comunicados de emissora estrangeira em {d0}..{d1}")
+    n = 0
+    for r in rows:
+        p = cvm_protocol_from_url(r.get("cvm_url"))
+        pdf = fetch_cvm_pdf(p) if p else None
+        if not pdf:
+            continue
+        if scan_buyback_filing(r, pdf, dry):
+            n += 1
+    _log(f"  [recompra/bdr] {n} com assunto de recompra")
+    return n
 
 
 def build_filing_rows(items: list[dict], known_ids: set[int] | None = None, detail_fn=None) -> list[dict]:
@@ -1006,7 +1288,10 @@ def run_filings(days: int, dry: bool) -> int:
     # documento em si (título real + trecho) só para o que vai ao feed de notícias
     for r in rows:
         if r.get("is_newsworthy") and r.get("cvm_url"):
-            enrich_filing_doc(r)
+            pdf = enrich_filing_doc(r)
+            # emissora estrangeira: este comunicado é o ÚNICO registro público de uma recompra
+            if pdf and is_bdr_issuer(r.get("company")):
+                scan_buyback_filing(r, pdf, dry)
     n = upsert("mw_filings", rows, "id", dry)
     _log(f"  plantão: {len(rows)} comunicados novos da cobertura → {n} gravados "
          f"({sum(1 for r in rows if r.get('doc_title'))} com título do documento)")
@@ -1023,6 +1308,8 @@ def main(argv=None) -> int:
     ap.add_argument("--insiders", action="store_true")
     ap.add_argument("--float", dest="float_", action="store_true")
     ap.add_argument("--filings", action="store_true")
+    ap.add_argument("--buyback-scan", dest="bb_scan", action="store_true",
+                    help="varre uma janela do Plantão atrás de recompra de emissora estrangeira")
     ap.add_argument("--all", action="store_true", help="short + buybacks + insiders + float + filings")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--date", help="aluguel: um dia só (YYYY-MM-DD)")
@@ -1033,7 +1320,7 @@ def main(argv=None) -> int:
     dry = a.dry_run
     if a.all:
         a.short = a.buybacks = a.insiders = a.float_ = a.filings = True
-    if not any([a.short, a.backfill_pdf, a.buybacks, a.insiders, a.float_, a.filings]):
+    if not any([a.short, a.backfill_pdf, a.buybacks, a.insiders, a.float_, a.filings, a.bb_scan]):
         ap.print_help(); return 0
     today = dt.date.today()
     _log(f"=== Market Watch {today} {'(dry-run)' if dry else ''} ===")
@@ -1057,6 +1344,10 @@ def main(argv=None) -> int:
         _log("[free float]"); run_float(dry)
     if a.filings:
         _log("[comunicados]"); run_filings(a.days, dry)
+    if a.bb_scan:
+        d0 = dt.date.fromisoformat(a.from_) if a.from_ else today - dt.timedelta(days=a.days)
+        d1 = dt.date.fromisoformat(a.to_) if a.to_ else today
+        _log(f"[recompra/bdr] {d0} → {d1}"); run_buyback_scan(d0, d1, dry)
     _log("=== fim ===")
     return 0
 
