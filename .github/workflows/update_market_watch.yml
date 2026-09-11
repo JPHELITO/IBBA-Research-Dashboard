@@ -4,11 +4,15 @@ name: 📉 Market Watch — aluguel, recompras, insiders, free float, comunicado
 #   • a cada 30 min em dia útil (11h–00h UTC = 08h–21h BRT): comunicados do Plantão da B3
 #     (tempo real) + aluguel dos últimos dias pela API do BDI (a B3 publica o capítulo de
 #     empréstimos na madrugada seguinte; checar é barato e idempotente).
+#     Nesta passada também roda o DETECTOR de recompra de emissora estrangeira: comunicado
+#     da Aura que fale em recompra é lido, o Anexo G é extraído e o analista recebe e-mail
+#     (o arquivo estruturado da CVM nunca terá esse programa).
 #   • 1×/dia (12:10 UTC = 09:10 BRT): CVM — programas de recompra (diário), insiders (VLMO,
 #     a CVM reatualiza toda semana) e free float (FRE).
 #
 # Não commita nada (tudo vai para o Supabase) → sem concurrency com os workflows do .db.
-# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY (os mesmos dos outros robôs deste repo).
+# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY, SMTP_USER, SMTP_PASS (os mesmos dos
+#    outros robôs deste repo).
 # ⚠️ Pré-requisito de uma vez só: rodar admin/supabase_market_watch.sql no Supabase.
 # ⚠️ Cron só roda a partir do branch padrão (main). No staging, disparar à mão
 #    (workflow_dispatch) ou rodar o script localmente.
@@ -41,6 +45,10 @@ jobs:
     env:
       SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      # e-mail: recompra de emissora estrangeira (Aura) só existe em Fato Relevante — quando
+      # um aparece, o analista é avisado. Sem estes dois o aviso morre em silêncio.
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4

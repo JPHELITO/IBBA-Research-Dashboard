@@ -331,3 +331,93 @@ def test_extract_cvm_url():
     html = _fx("mw_plantao_detail.html")
     assert mw.extract_cvm_url(html) == "https://www.rad.cvm.gov.br/ENETWEB/frmExibirArquivoIPEExterno.aspx?ID=1562150&flnk"
     assert mw.extract_cvm_url("<p>nada</p>") is None
+
+
+# ───────────────── recompra de emissora estrangeira (Anexo G) ─────────────────
+# Fixture: Fato Relevante REAL da Aura (Plantão 3398581, protocolo CVM 1541xxx, 18/06/2026),
+# texto extraído do PDF pelo mesmo caminho do robô. É o único documento do gênero que existe
+# na cobertura — a Aura é a única emissora estrangeira — então ele é o gabarito.
+
+@pytest.fixture(scope="module")
+def aura_fr():
+    return _fx("mw_aura_fato_relevante_20260618.txt")
+
+
+def test_bdr_e_quem_nao_entra_no_arquivo_da_cvm():
+    assert mw.is_bdr_issuer("AURA33") is True
+    assert mw.is_bdr_issuer("VALE3") is False and mw.is_bdr_issuer(None) is False
+
+
+def test_detector_le_o_documento_e_nao_a_manchete(aura_fr):
+    # a manchete do Plantão é a CATEGORIA ("Fato Relevante - 18/06/26"), nunca o assunto:
+    # medido, ZERO manchetes com "recompra" em 30 mil de maio/junho de 2026
+    assert mw.looks_like_buyback("AURA 360 (AURA) - Fato Relevante - 18/06/26") is None
+    assert mw.looks_like_buyback(aura_fr) == "programa de recompra"
+    assert mw.looks_like_buyback("Aura divulga seu Relatório de Sustentabilidade 2025") is None
+
+
+def test_anexo_g_e_um_formulario_numerado(aura_fr):
+    itens = mw.itens_anexo_g(aura_fr)
+    assert sorted(itens) == list(range(1, 14))          # 13 itens do Anexo G da RCVM 77
+    assert "US$ 200" in itens[2]                        # 2. quantidade autorizada
+    assert "18 de junho de 2026" in itens[5]            # 5. prazo
+    assert "BTG Pactual" in itens[7]                    # 7. instituição intermediária
+    # número com ponto no meio do texto NÃO abre item: "5.085.695 BDRs" está DENTRO do item 3
+    assert "5.085.695" in itens[3]
+    assert mw.itens_anexo_g("documento sem anexo nenhum") == {}
+
+
+def test_escala_por_extenso_mil_x_milhoes():
+    # ⚠️ defeito real: com `mil` na frente da alternância, "200 milhões" lia 200 MIL — e a
+    # conferência dupla não pegou, porque a mesma regra errada leu o mesmo valor errado nos
+    # dois lugares do documento. Cruzar cópias acha divergência, não regra errada.
+    assert mw._valores_monetarios("No limite de US$ 200 milhões de dólares.") == [(200_000_000.0, "USD")]
+    assert mw._valores_monetarios("até R$ 1,5 bilhão") == [(1_500_000_000.0, "BRL")]
+    assert mw._valores_monetarios("US$ 500 mil") == [(500_000.0, "USD")]
+    assert mw._valores_monetarios("US$ 1.250.000,00") == [(1_250_000.0, "USD")]
+    assert mw._valores_monetarios("dez milhões de ações ordinárias") == []
+
+
+def test_datas_por_extenso():
+    assert mw._datas_por_extenso("com início em 18 de junho de 2026 e término em 17 de junho de\n2027.") \
+        == ["2026-06-18", "2027-06-17"]
+    assert mw._datas_por_extenso("31 de março de 2026") == ["2026-03-31"]
+    assert mw._datas_por_extenso("30 de fevereiro de 2026") == []     # data que não existe
+
+
+def test_parse_reproduz_o_programa_da_aura(aura_fr):
+    """O programa foi digitado À MÃO em 03/09/2026 lendo este mesmo documento. O parser tem
+    de chegar no MESMO registro — é o gabarito mais forte que existe aqui."""
+    prog, pend = mw.parse_anexo_g(aura_fr, "2026-06-18")
+    assert pend == []
+    assert prog["authorized_usd"] == 200_000_000        # e não 200.000
+    assert prog["decided_on"] == "2026-05-18"           # fecho da carta, não o protocolo (18/06)
+    assert prog["expires_on"] == "2027-06-17"           # item 5 manda; o corpo diz 18/06/2027
+    assert prog["purpose"] == "PARA MANUTENCAO EM TESOURARIA, POSTERIOR CANCELAMENTO OU ALIENACAO"
+    assert prog["brokers"] == ["BTG Pactual Corretora de Títulos e Valores Mobiliários S.A."]
+    assert prog["operation"] == "Compra" and prog["status"] == "Em Andamento"
+    assert "CRIACAO DE VALOR PARA OS ACIONISTAS" in prog["reason"]
+    assert "- 2 -" not in prog["reason"]                # quebra de página não é conteúdo
+
+
+def test_parse_falha_fechada(aura_fr):
+    """Nada é gravado quando a conferência não fecha — o e-mail chama o analista."""
+    prog, pend = mw.parse_anexo_g("comunicado qualquer, sem formulário", None)
+    assert prog is None and "Anexo G" in pend[0]
+    # valor do formulário que NÃO se repete no corpo da carta. A conferência é "aparece ao
+    # menos uma vez", não "é o único valor do corpo": o corpo deste documento cita também um
+    # dividendo de US$ 0,78 por ação, e exigir valor único reprovaria o documento verdadeiro.
+    i = aura_fr.lower().index("anexo i")
+    adulterado = aura_fr[:i].replace("US$ 200 milhões", "US$ 500 milhões") + aura_fr[i:]
+    prog, pend = mw.parse_anexo_g(adulterado, None)
+    assert prog is None and any("não se repete no corpo" in p for p in pend)
+    # programa autorizado em AÇÕES (não em dinheiro) não tem coluna: pede leitura humana
+    sem_valor = aura_fr.replace("No limite de US$ 200 milhões de dolares.",
+                                "No limite de 10.000.000 (dez milhões) de BDRs.", 1)
+    prog, pend = mw.parse_anexo_g(sem_valor, None)
+    assert prog is None and "item 2" in pend[0]
+    # prazo invertido
+    invertido = aura_fr.replace("início em 18 de junho de 2026 e término em 17 de junho de \n2027",
+                                "início em 18 de junho de 2026 e término em 17 de junho de \n2025", 1)
+    prog, pend = mw.parse_anexo_g(invertido, None)
+    assert prog is None and any("invertido" in p or "início" in p for p in pend)
