@@ -1,0 +1,62 @@
+name: 📊 Cheat sheet trimestral — resultados das companhias (CVM ITR/DFP)
+
+# Roda 1×/dia em dia útil. O trabalho pesado só acontece quando a CVM republica um arquivo:
+# o robô faz 6 chamadas HEAD e compara o `Last-Modified` dos zips com a hora da nossa última
+# gravação — sem isso seriam 150 MB baixados todo dia à toa. Empresa que entrega o ITR hoje
+# aparece na dashboard hoje (a Vale entregou o 2T26 no mesmo dia do release).
+#
+# Não commita nada (tudo vai para o Supabase).
+# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY (os mesmos dos outros robôs deste repo).
+# ⚠️ Pré-requisito de uma vez só: rodar admin/supabase_quarterly.sql no Supabase.
+
+on:
+  schedule:
+    - cron: "40 13 * * 1-5"     # 13:40 UTC = 10:40 BRT, depois da rodada da CVM do Market Watch
+  workflow_dispatch:
+    inputs:
+      anos:
+        description: "Anos a processar (ex.: 2023 2024 2025 2026). Vazio = os 3 últimos."
+        default: ""
+      forcar:
+        description: "Baixar mesmo sem arquivo novo na CVM"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Só mostrar o que gravaria"
+        type: boolean
+        default: false
+
+concurrency:
+  group: quarterly-kpis
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependências
+        run: pip install requests pytest
+
+      - name: Testes do parser (fixtures reais da CVM)
+        run: python -m pytest tests/test_quarterly.py -q
+
+      - name: Rodar
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.anos }}" ] && ARGS="--anos ${{ inputs.anos }}"
+          [ "${{ inputs.forcar }}" = "true" ] && ARGS="$ARGS --forcar"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          python _shared/quarterly.py $ARGS
+
+      - name: Log update
+        if: ${{ inputs.dry_run != true }}
+        run: python _shared/log_update.py "quarterly_kpis" auto "robô quarterly.py"
