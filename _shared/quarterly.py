@@ -43,6 +43,7 @@ import io
 import os
 import re
 import sys
+import time
 import zipfile
 
 import requests
@@ -158,16 +159,28 @@ def _capex(contas: dict[str, float], rotulo) -> float | None:
 
 # ── leitura dos zips ─────────────────────────────────────────────────────────
 
-def baixar(url: str) -> bytes | None:
-    try:
-        r = requests.get(url, headers=UA, timeout=600)
-        if r.status_code != 200:
-            _log(f"  [cvm] {url.rsplit('/', 1)[-1]}: HTTP {r.status_code}")
-            return None
-        return r.content
-    except Exception as e:  # noqa: BLE001
-        _log(f"  [cvm] {url.rsplit('/', 1)[-1]}: {e}")
-        return None
+def baixar(url: str, tentativas: int = 3) -> bytes | None:
+    """O servidor da CVM derruba conexão sob carga (medido). Três tentativas com espera
+    crescente; timeout separado p/ conectar e p/ ler — 20s p/ o aperto de mão, 10 min p/ os
+    ~20 MB. Ano que não vem é logado e os outros seguem: o upsert não apaga nada, então
+    rodada incompleta atrasa, não estraga."""
+    nome = url.rsplit("/", 1)[-1]
+    for i in range(tentativas):
+        try:
+            r = requests.get(url, headers=UA, timeout=(20, 600))
+            if r.status_code == 404:          # DFP do ano corrente ainda não existe
+                _log(f"  [cvm] {nome}: ainda não publicado")
+                return None
+            if r.status_code != 200:
+                _log(f"  [cvm] {nome}: HTTP {r.status_code}")
+                return None
+            return r.content
+        except Exception as e:  # noqa: BLE001
+            if i == tentativas - 1:
+                _log(f"  [cvm] {nome}: {e}")
+                return None
+            time.sleep(5 * (i + 1))
+    return None
 
 
 def _linhas(z: zipfile.ZipFile, frag: str):
