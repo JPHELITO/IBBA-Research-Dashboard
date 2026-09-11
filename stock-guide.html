@@ -1497,8 +1497,10 @@ function _qYoY(serie,i,kpi){
   const u=(Q_KPIS.find(x=>x.k===kpi)||{}).u;
   const a=_qVal(serie,i,kpi), b=_qVal(serie,i-4,kpi);
   if(a==null||b==null) return null;
-  if(u==='pp') return {txt:(a-b>=0?'+':'')+(a-b).toFixed(1)+'pp', d:a-b};
-  if(u==='x')  return {txt:(a-b>=0?'+':'')+(a-b).toFixed(1)+'x',  d:a-b};
+  // "−0.0x" é ruído de arredondamento: quando arredonda p/ zero, não leva sinal
+  const _dt=(d,suf)=>{ const t=d.toFixed(1); return (parseFloat(t)===0?'0.0':(d>0?'+':'')+t)+suf; };
+  if(u==='pp') return {txt:_dt(a-b,'pp'), d:a-b};
+  if(u==='x')  return {txt:_dt(a-b,'x'),  d:a-b};
   if(b<=0) return null;                 // variação % sobre base negativa ou zero não diz nada
   const p=(a-b)/Math.abs(b)*100;
   return {txt:(p>=0?'+':'')+p.toFixed(1)+'%', d:p};
@@ -1551,13 +1553,18 @@ function _qRender(){
     const iUlt=serie.length-1;
     const v=_qVal(serie,iUlt,_Q.kpi), yoy=_qYoY(serie,iUlt,_Q.kpi);
     const cor=Q_SECTOR_COLOR[serie[0].sector]||'#6b7280';
+    // Série inteira em ZERO = o indicador não se aplica à empresa (a Bradespar é holding e
+    // não tem receita). Um "0" grande com o gráfico vazio parece defeito nosso; e é o único
+    // caso em que zero não é número, é ausência.
+    const naoSeAplica = vals.every(x=>x===0);
     const cls=yoy?(yoy.d>0.05?'up':yoy.d<-0.05?'down':'flat'):'flat';
     cards.push(`<div class="q-card">
       <div class="q-head"><span class="q-name" title="${esc(serie[0].name||tic)}">${esc(serie[0].name||tic)}</span><span class="q-tic">${esc(tic)}</span></div>
-      <div class="q-val">${_qFmt(v,def.u)}${yoy?`<span class="q-yoy ${cls}">${yoy.txt} YoY</span>`:''}</div>
-      <div class="q-sub">${v==null?'not disclosed in the filing'
+      <div class="q-val">${naoSeAplica?'—':_qFmt(v,def.u)}${(yoy&&!naoSeAplica)?`<span class="q-yoy ${cls}">${yoy.txt} YoY</span>`:''}</div>
+      <div class="q-sub">${naoSeAplica?'not applicable'
+        :v==null?'not disclosed in the filing'
         :esc(serie[iUlt].quarter)+(serie[iUlt].source==='DFP'?' · full-year derived':'')}</div>
-      ${_qBars(vals,cor)}
+      ${naoSeAplica?'':_qBars(vals,cor)}
       <div class="q-axis"><span>${esc(vis[0]?vis[0].quarter:'')}</span><span>${esc(vis[vis.length-1]?vis[vis.length-1].quarter:'')}</span></div>
     </div>`);
   });
@@ -1580,11 +1587,10 @@ function _qRender(){
   const body=[];
   porEmp.forEach((serie,tic)=>{
     const byQ=new Map(serie.map((r,i)=>[r.quarter,i]));
-    const tds=cols.map(c=>{
-      const i=byQ.get(c);
-      return `<td class="q-num">${i==null?'—':_qFmt(_qVal(serie,i,_Q.kpi),def.u)}</td>`;
-    });
-    const y=_qYoY(serie,serie.length-1,_Q.kpi);
+    const todos=cols.map(c=>{ const i=byQ.get(c); return i==null?null:_qVal(serie,i,_Q.kpi); });
+    const zerado=todos.every(x=>x===0);
+    const tds=todos.map(x=>`<td class="q-num">${(x==null||zerado)?'—':_qFmt(x,def.u)}</td>`);
+    const y=zerado?null:_qYoY(serie,serie.length-1,_Q.kpi);
     body.push(`<tr><td class="q-co" title="${esc(serie[0].name||tic)}">${esc(tic)}</td>${tds.join('')}`
       +`<td class="q-num ${y?(y.d>0.05?'pos':y.d<-0.05?'neg':''):''}">${y?esc(y.txt):'—'}</td></tr>`);
   });
