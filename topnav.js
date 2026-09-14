@@ -95,6 +95,15 @@
 .gn-group:hover .gn-drop{display:block;}\
 /* ponte invisível: o vão de 6px entre o item e a lista não pode fechar o menu */\
 .gn-drop::before{content:"";position:absolute;left:0;right:0;top:-8px;height:8px;}\
+/* escolheu um destino → a lista fecha na hora. Quando o destino é a MESMA página (#âncora do M&M, aba do\
+   Market) não há recarga, e o hover seguraria a lista aberta por cima do conteúdo; reabre ao sair e voltar */\
+.gn-group.gn-shut .gn-drop{display:none;}\
+/* Market ▾: a cabeça segue LINK (leva à Performance, como sempre levou). Sem as abas internas liberadas\
+   (flag market_watch ou admin) somem a ▾ e a lista — o cliente vê o "Market" simples de antes */\
+.gn-group.gn-solo .gn-drop,.gn-group.gn-solo .gn-caret{display:none!important;}\
+/* 901–1100px (ex.: notebook de 1280 com zoom de 125% = 1024): com a ▾ do Market o Sign out do cliente passava\
+   8px da borda da tela → os itens apertam 2px de cada lado. Acima de 1100px nada muda (medido: sobra 43px) */\
+@media(min-width:901px) and (max-width:1100px){.gn-item{padding-left:10px;padding-right:10px;}.gn-item::after{left:10px;right:10px;}}\
 .gn-drop a{display:block;font-size:11.5px;color:#2C2C2C;text-decoration:none;padding:8px 12px;border-radius:9px;font-weight:500;white-space:nowrap;transition:background .15s,color .15s;}\
 .gn-drop a:hover{background:#F7F5F1;color:#FF5000;}\
 .gn-drop a.on{background:rgba(255,80,0,.09);color:#FF5000;font-weight:600;}\
@@ -205,7 +214,13 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       <a href="/stock-guide.html#comp">Comp Table</a>\
       <a href="/stock-guide.html#sens">Sensitivity</a>\
       <a href="/quarterly.html" class="gn-quarterly" style="display:none">Quarterly</a></div></div>\
-    <a class="gn-item" href="/market.html">Market</a>\
+    <div class="gn-group gn-solo" id="gnav-market"><a class="gn-item" href="/market.html">Market<span class="gn-caret"> ▾</span></a><div class="gn-drop"><div class="gn-cat">Market</div>\
+      <a href="/market.html?tab=performance">Performance</a>\
+      <a href="/market.html?tab=commodities">Commodities</a>\
+      <a href="/market.html?tab=short">Short Interest</a>\
+      <a href="/market.html?tab=buybacks">Buybacks</a>\
+      <a href="/market.html?tab=insiders">Insiders</a>\
+      <a href="/market.html?tab=filings">Filings</a></div></div>\
     <a class="gn-item" href="/agenda.html">Calendar</a>\
     <a class="gn-item" id="gnav-data" href="/data.html" title="Data sources, freshness and glossary" style="display:none">Data</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
@@ -234,9 +249,16 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a sub" href="/stock-guide.html#comp">Comp Table</a>\
     <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
     <a class="gnm-a sub gnm-quarterly" href="/quarterly.html" style="display:none">Quarterly</a>\
+    <div class="gnm-cat gnm-mkt" style="display:none">Market</div>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=performance" style="display:none">Performance</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=commodities" style="display:none">Commodities</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=short" style="display:none">Short Interest</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=buybacks" style="display:none">Buybacks</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=insiders" style="display:none">Insiders</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=filings" style="display:none">Filings</a>\
     <div class="gnm-cat">More</div>\
     <a class="gnm-a" href="/news.html">News Hunter</a>\
-    <a class="gnm-a" href="/market.html">Market</a>\
+    <a class="gnm-a gnm-mkt-solo" href="/market.html">Market</a>\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
     <a class="gnm-a gnm-data" href="/data.html" style="display:none">Data &amp; Glossary</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
@@ -372,10 +394,21 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   function _setQuarterlyLink(on){
     [].slice.call(document.querySelectorAll('.gn-quarterly,.gnm-quarterly')).forEach(function(a){ a.style.display = on ? '' : 'none'; });
   }
+  // Abas internas do Market (Commodities, Short Interest, Buybacks, Insiders, Filings) atrás da flag market_watch:
+  // sem ela o próprio Market devolve a Performance, então o menu não oferece o que não abre — "Market" volta a ser
+  // o link simples de antes, sem ▾. Recado em ibba_mw_on (a home e o Market gravam ao ler as flags); admin vê sempre.
+  function _setMarketTabs(on){
+    var g = document.getElementById('gnav-market'); if(g) g.classList.toggle('gn-solo', !on);
+    [].slice.call(document.querySelectorAll('.gnm-mkt')).forEach(function(a){ a.style.display = on ? '' : 'none'; });
+    var solo = document.querySelector('.gnm-mkt-solo'); if(solo) solo.style.display = on ? 'none' : '';
+    _fitTeam();   // a ▾ muda a largura da barra → re-avalia se os nomes do time cabem
+  }
+  window.__gnavMarketTabs = function(on){ _setMarketTabs(!!on); };   // a home e o Market chamam ao ler as flags
   function revealAdmin(tries){
     tries = tries || 0;
     try{ _setDataLink(localStorage.getItem('ibba_data_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setQuarterlyLink(localStorage.getItem('ibba_quarterly_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
+    try{ _setMarketTabs(localStorage.getItem('ibba_mw_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     // Cache: aplica o estado admin NA HORA (sem esperar o RPC) → os botões Admin/Clipinator não
     // "pipocam" depois dos demais. Roda ainda dentro do inject(), antes do 1º paint.
     try{ if(localStorage.getItem('ibba_is_admin')==='1') _setAdminLinks(true); }catch(e){}
@@ -385,6 +418,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       try{ localStorage.setItem('ibba_is_admin', isAdmin?'1':'0'); }catch(e){}
       _setAdminLinks(isAdmin);   // reconcilia com a verdade do servidor (mostra p/ admin, esconde se o cache errou)
       if(isAdmin){ _setDataLink(true); _setQuarterlyLink(true); }
+      try{ _setMarketTabs(isAdmin || localStorage.getItem('ibba_mw_on')==='1'); }catch(e){}   // cache de admin velho não deixa a ▾ p/ cliente
     }).catch(function(){}); return; }
     // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
     // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).
@@ -404,6 +438,14 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       if(a) window.__gnavMob(0);                                   // escolheu um destino → fecha a folha
     });
     window.addEventListener('hashchange', _markCurrent);   // trocou de seção → a luz acompanha
+    // menu suspenso: escolheu um destino → a lista fecha (.gn-shut no CSS); reabre quando o mouse sai e volta
+    [].slice.call(document.querySelectorAll('.gn-group')).forEach(function(g){
+      g.addEventListener('click', function(e){
+        if(e.ctrlKey || e.metaKey || e.shiftKey) return;     // abriu em nova aba: quem clicou continua no menu
+        if(e.target && e.target.closest && e.target.closest('.gn-drop a')) g.classList.add('gn-shut');
+      });
+      g.addEventListener('mouseleave', function(){ g.classList.remove('gn-shut'); });
+    });
     document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.__gnavMob(0); });
     window.addEventListener('resize', function(){ if(window.innerWidth > 900) window.__gnavMob(0); });
   }
@@ -415,16 +457,20 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     try{ return decodeURIComponent(new URL(url, location.href).pathname).toLowerCase(); }
     catch(e){ try{ return new URL(url, location.href).pathname.toLowerCase(); }catch(_){ return ''; } }
   }
+  // aba interna que o endereço abre (?tab= — só o Market usa); '' quando não tem
+  function _tab(url){ try{ return (new URL(url, location.href).searchParams.get('tab') || '').toLowerCase(); }catch(e){ return ''; } }
   function _markCurrent(){
     var here = _path(location.href);
     if(here === '/' || here === '') here = '/index.html';    // a raiz É a home
     var hash0 = (location.hash || '').toLowerCase();
+    var tab0 = _tab(location.href) || 'performance';         // Market sem ?tab= está na Performance
     // folha do celular: mesma régua do desktop — link de seção acende só com a #âncora igual
     // (senão as 4 linhas do M&M acendiam juntas); o TÍTULO do grupo marca "você está aqui".
     [].slice.call(document.querySelectorAll('.gnm-a')).forEach(function(a){
       if(_path(a.href) !== here) return;
       var h = ''; try{ h = (new URL(a.href, location.href).hash || '').toLowerCase(); }catch(e){}
-      a.classList.toggle('on', !h || h === hash0);
+      var t = _tab(a.href);                                  // abas do Market: acende só a do ?tab= aberto
+      a.classList.toggle('on', t ? t === tab0 : (!h || h === hash0));
       var cat = a.previousElementSibling;                    // sobe até o rótulo do grupo
       while(cat && !cat.classList.contains('gnm-cat')) cat = cat.previousElementSibling;
       if(cat && a.classList.contains('sub')) cat.classList.add('on');
@@ -443,11 +489,14 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
         if(same) hit = true;
         var h = '';
         try{ h = (new URL(a.href, location.href).hash || '').toLowerCase(); }catch(e){}
-        a.classList.toggle('on', same && !!hash && h === hash);
+        var t = _tab(a.href);                                // Market ▾: a régua é o ?tab=, não a #âncora
+        a.classList.toggle('on', same && (t ? t === tab0 : (!!hash && h === hash)));
       });
       var head = g.querySelector('.gn-item'); if(head) head.classList.toggle('on', hit);
     });
   }
+  // o Market troca de aba SEM recarregar (history.replaceState não dispara evento nenhum) → ele chama isto
+  window.__gnavMarkCurrent = _markCurrent;
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
   else inject();
 })();

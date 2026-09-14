@@ -1248,6 +1248,7 @@ function setMTab(tab){
             grid.classList.toggle('tab-comm',tab==='commodities'); } // e escolhe QUEM aparece no lugar
   const f=_mwFrame(); if(f) f.hidden = !MW_TABS.includes(tab);
   _urlSync();
+  if(window.__gnavMarkCurrent) window.__gnavMarkCurrent();   // Market ▾ do menu do topo acende a aba aberta (o replaceState não avisa ninguém)
   if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
   _noteInteract();                                    // o tour vive na Performance
   if(tab==='commodities'){ renderCommTable(); return; }
@@ -2174,6 +2175,17 @@ async function init(){
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
   document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab); };
+  // menu do topo (Market ▾ no desktop, folha do ☰ no celular): já estando no Market, a aba troca AQUI, sem
+  // recarregar a página — cotações, gráficos e o iframe do Market Watch continuam carregados
+  document.addEventListener('click',e=>{
+    const a=e.target.closest&&e.target.closest('.gnav a[href],.gnav-mob a[href]'); if(!a) return;
+    if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey) return;   // Ctrl/⌘-clique segue abrindo nova aba
+    let u; try{ u=new URL(a.href,location.href); }catch(_){ return; }
+    const tab=u.searchParams.get('tab');
+    if(tab==null||u.origin!==location.origin||u.pathname!==location.pathname) return;
+    e.preventDefault(); setMTab(tab);
+    if(window.scrollY>0) window.scrollTo(0,0);
+  });
   window.addEventListener('message',_mwOnMessage);
   // a LARGURA do iframe mudando (janela, zoom) muda a altura do conteúdo → pede a medida de novo.
   // Observar o próprio elemento é mais fiel que o evento resize da janela (pega qualquer causa).
@@ -2216,7 +2228,11 @@ async function boot(){
     try{ const fl=await rpc('get_dashboard_flags'); if(Array.isArray(fl)){
       enabled=fl.some(f=>(f.key==='market'||f.flag==='market'||f.name==='market')&&(f.enabled||f.value||f.is_enabled));
       _mwFlag=fl.some(f=>f.key==='market_watch'&&!!f.enabled);   // linha Company (Market Watch) p/ o cliente
+      // recado p/ o menu do topo (o topnav.js não lê flags): grava só a flag — admin ele reconhece pelo ibba_is_admin
+      try{ localStorage.setItem('ibba_mw_on',_mwFlag?'1':'0'); }catch(e){}
     } }catch(e){}
+    // o Market ▾ do menu só lista as abas internas que ESTA página vai abrir (a mesma régua do _mwEnabled)
+    if(window.__gnavMarketTabs) window.__gnavMarketTabs(_isAdmin||_mwFlag);
     if(!_isAdmin && !enabled){ showDenied(); return; }
     showApp();
     await init();
