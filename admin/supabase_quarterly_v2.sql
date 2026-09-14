@@ -589,6 +589,39 @@ begin
   delete from public.quarterly_annotations where id = p_id;
 end $$;
 
+-- câmbio: a aba Trimestral do /admin grava a PTAX dos trimestres FECHADOS (a mesma que usa na conferência)
+-- até o robô (F2) assumir — sem isso o botão US$ da página fica desligado. Moeda por 1 US$.
+drop function if exists public.admin_upsert_quarterly_fx(jsonb);
+create function public.admin_upsert_quarterly_fx(p_rows jsonb)
+  returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  e jsonb;
+  n int := 0;
+begin
+  if not public.is_admin() then raise exception 'forbidden' using errcode = '42501'; end if;
+  if jsonb_typeof(p_rows) is distinct from 'array' then raise exception 'rows_must_be_array' using errcode = '22023'; end if;
+  for e in select value from jsonb_array_elements(p_rows) loop
+    if coalesce(e->>'ccy', '') !~ '^[A-Z]{3}$' or coalesce(e->>'quarter', '') !~ '^\d{4}Q[1-4]$' then
+      raise exception 'fx_row_invalid: %', e using errcode = '22023';
+    end if;
+    continue when e->>'quarter' >= public._q_current();          -- trimestre em curso não entra
+    if jsonb_typeof(e->'avg_rate') is distinct from 'number' or (e->>'avg_rate')::numeric <= 0 then
+      raise exception 'fx_rate_invalid: %', e using errcode = '22023';
+    end if;
+    insert into public.quarterly_fx (ccy, quarter, avg_rate, eop_rate, source, updated_at)
+    values (e->>'ccy', e->>'quarter', (e->>'avg_rate')::numeric,
+            case when jsonb_typeof(e->'eop_rate') = 'number' and (e->>'eop_rate')::numeric > 0 then (e->>'eop_rate')::numeric end,
+            'PTAX', now())
+    on conflict (ccy, quarter) do update
+      set avg_rate = excluded.avg_rate, eop_rate = coalesce(excluded.eop_rate, public.quarterly_fx.eop_rate),
+          source = excluded.source, updated_at = now();
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke all on function public.admin_upsert_quarterly_fx(jsonb) from public, anon;
+grant execute on function public.admin_upsert_quarterly_fx(jsonb) to authenticated;
+
 -- permissões das escritas: só usuário logado (e a função confere is_admin por dentro)
 do $$
 declare f text;

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Quarterly</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/topnav.js"></script>
+<script src="/export-lib.js"></script>
+<script src="/quarterly-view.js"></script>
+<style>
+/* ⚠️ tokens próprios (inclusive --card): usar o --card de outra página deixava o cartão TRANSPARENTE no escuro */
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#15803d;--red:#b42318;--amber:#b45309;
+  --bg:#EBE8E2;--card:#FDFCFA;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.06);--rule:#EEEAE3;--tint:#F4F1EA;--hl:rgba(255,80,0,.10);
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#8a919b;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#f87171;--amber:#f59e0b;--bg:#0d0e11;--card:#161a20;
+  --shadow:0 1px 3px rgba(0,0,0,.4);--rule:#232830;--tint:#1d2229;--hl:rgba(255,80,0,.16);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);-webkit-font-smoothing:antialiased;}
+[hidden]{display:none!important}
+.splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);z-index:2000;color:var(--gray-mid);text-align:center;padding:20px;}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:12px;}
+.hbtn{margin-top:8px;font:600 12px var(--font);color:var(--orange);text-decoration:none;border:1px solid var(--border);padding:8px 14px;border-radius:8px;}
+#app{display:flex;flex-direction:column;padding:14px 20px 28px;gap:12px;max-width:1440px;width:100%;margin:0 auto;}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.title{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-right:6px;}
+.title small{display:block;font-size:11.5px;font-weight:500;color:var(--gray-mid);margin-top:2px;}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);}
+.seg button{font:600 12px var(--font);border:none;background:none;color:var(--gray-mid);padding:7px 14px;cursor:pointer;white-space:nowrap;}
+.seg button.on{background:var(--black);color:var(--white);}
+.seg button:disabled{opacity:.4;cursor:not-allowed;}
+.seg.sm button{padding:6px 10px;font-size:11.5px;}
+.right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);min-width:0;}
+.card-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule);flex-wrap:wrap;}
+.card-title,.chart-title{font-size:12.5px;font-weight:700;letter-spacing:.01em;}
+.card-sub,.chart-sub{font-size:11px;color:var(--gray-mid);font-weight:500;}
+.sel{font:600 12px var(--font);border:1px solid var(--border);background:var(--card);color:var(--black);border-radius:8px;padding:6px 8px;max-width:100%;}
+.btn{font:600 11.5px var(--font);cursor:pointer;border-radius:8px;padding:6px 11px;border:1px solid var(--orange);background:var(--hl);color:var(--orange);white-space:nowrap;}
+.btn:hover{background:rgba(255,80,0,.2);}
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chips.pad{padding:10px 14px;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gray-dark);border:1px solid var(--border);background:var(--card);border-radius:20px;padding:4px 10px;cursor:pointer;user-select:none;}
+.chip.on{background:var(--black);color:var(--white);border-color:var(--black);}
+.chip .sw{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.tbl-wrap{overflow:auto;-webkit-overflow-scrolling:touch;}
+table.data{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;}
+table.data th{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);text-align:right;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--card);}
+table.data td{padding:7px 9px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap;}
+table.data th:first-child,table.data td:first-child{text-align:left;}
+table.data tr:last-child td{border-bottom:none;}
+table.data tr.clk{cursor:pointer;}
+table.data tr.clk:hover td{background:var(--tint);}
+td.sec-h{background:var(--tint)!important;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid);text-align:left!important;padding:6px 9px;}
+table.wide th:first-child,table.wide td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--rule);max-width:280px;overflow:hidden;text-overflow:ellipsis;}
+table.wide td.lab{font-weight:600;}
+table.wide td.lab .u{font-weight:500;color:var(--gray-mid);font-size:11px;margin-left:4px;}
+td.co b{font-weight:700;}
+td.co .tk{font-size:10.5px;color:var(--gray-mid);margin-left:6px;font-weight:600;}
+.up{color:var(--green);}.down{color:var(--red);}.flat{color:var(--gray-mid);}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gray-dark);}
+.st i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--gray-mid);}
+.st.model i{background:var(--green);}.st.filed i{background:var(--amber);}.st.expected i{background:transparent;border:1.5px solid var(--gray-mid);}
+.tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;border-radius:4px;padding:1px 4px;margin-left:4px;vertical-align:1px;border:1px solid var(--border);color:var(--gray-mid);background:var(--tint);}
+.tag.p{color:var(--amber);border-color:currentColor;background:transparent;}
+.tag.calc{color:var(--gray-mid);}
+.tag.adj{color:var(--orange);border-color:currentColor;background:transparent;}
+svg.spark{width:96px;height:22px;vertical-align:middle;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--rule);}
+.kpi{background:var(--card);padding:10px 14px;min-width:0;}
+.kpi .k{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kpi .v{font-size:19px;font-weight:700;margin-top:3px;white-space:nowrap;}
+.kpi .v .u{font-size:11px;font-weight:600;color:var(--gray-mid);margin-left:3px;}
+.kpi .d{font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.chart-card .cv{position:relative;height:270px;padding:8px 10px 10px;}
+.chart-card.big{grid-column:1/-1;}
+.chart-card.big .cv{height:330px;}
+.notes{padding:10px 14px;font-size:12px;color:var(--gray-dark);display:flex;flex-direction:column;gap:4px;}
+.notes b{font-weight:700;margin-right:6px;}
+.foot{font-size:10.5px;color:var(--gray-mid);line-height:1.55;padding:10px 14px;border-top:1px solid var(--rule);}
+.empty{padding:28px;text-align:center;color:var(--gray-mid);font-size:13px;}
+.bcards{display:none;}
+.bcard{padding:12px 14px;border-bottom:1px solid var(--rule);}
+.bcard .h{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.bcard .g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:8px;font-size:12px;}
+.bcard .g span{color:var(--gray-mid);font-size:10px;text-transform:uppercase;letter-spacing:.05em;display:block;}
+table.heat td.hc{position:relative;}
+@media(max-width:900px){.grid2{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:700px){
+  #app{padding:10px 10px 20px;} .title{font-size:17px;} .right{margin-left:0;}
+  #b-table-wrap{display:none;} .bcards{display:block;}
+  .chart-card .cv{height:230px;} .chart-card.big .cv{height:260px;}
+  table.wide th:first-child,table.wide td:first-child{max-width:150px;}
+}
+</style>
+</head>
+<body>
+<div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading…</div></div>
+<div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
+  <div class="muted" style="max-width:380px">This section is not enabled for your account.</div>
+  <a class="hbtn" href="/index.html">← Back to home</a></div>
+
+<div id="app" hidden>
+  <div class="top">
+    <div class="title">Quarterly<small id="sub">Reported results of our coverage</small></div>
+    <div class="seg" id="views"><button data-v="board" class="on">Season board</button><button data-v="co">Company</button><button data-v="cmp">Compare</button></div>
+    <div class="right">
+      <div class="seg sm" id="ccy" title="US$ converts companies that report in reais: flows and unit prices at the quarter's average PTAX, balances at the quarter-end rate"><button data-c="rep" class="on">Reported</button><button data-c="usd">US$</button></div>
+      <div class="seg sm" id="basis" title="LTM = last twelve months; available for flows only"><button data-b="q" class="on">Quarter</button><button data-b="ltm">LTM</button></div>
+      <div class="seg sm" id="win" title="Chart and table window"><button data-w="8">8Q</button><button data-w="12" class="on">12Q</button><button data-w="20">20Q</button><button data-w="all">All</button></div>
+    </div>
+  </div>
+
+  <section id="v-board">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title" id="b-title">Season board</span><span class="card-sub" id="b-sub"></span>
+        <div class="right"><select class="sel" id="b-q" aria-label="Quarter"></select><button class="btn" id="b-xls">⤓ Excel</button></div>
+      </div>
+      <div class="tbl-wrap" id="b-table-wrap"><table class="data" id="b-table"></table></div>
+      <div class="bcards" id="b-cards"></div>
+      <div class="foot" id="b-foot"></div>
+    </div>
+  </section>
+
+  <section id="v-co" hidden>
+    <div class="card">
+      <div class="card-head">
+        <select class="sel" id="c-pick" aria-label="Company"></select><span class="card-sub" id="c-sub"></span>
+        <div class="right"><button class="btn" id="c-xls">⤓ Excel — all series, full history</button></div>
+      </div>
+      <div class="kpis" id="c-kpis"></div>
+      <div class="notes" id="c-notes" hidden></div>
+    </div>
+    <div class="grid2" id="c-charts"></div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">All series</span><span class="card-sub" id="c-tsub">As reported in the company model · first column pinned</span></div>
+      <div class="tbl-wrap"><table class="data wide" id="c-table"></table></div>
+      <div class="foot" id="c-foot"></div>
+    </div>
+  </section>
+
+  <section id="v-cmp" hidden>
+    <div class="card">
+      <div class="card-head">
+        <select class="sel" id="m-metric" aria-label="Metric"></select>
+        <select class="sel" id="m-family" aria-label="Definition" hidden></select>
+        <div class="seg sm" id="m-mode"><button data-m="lvl" class="on">Level</button><button data-m="idx">Base 100</button><button data-m="yoy">YoY</button></div>
+        <div class="right"><button class="btn" id="m-xls">⤓ Excel — full history</button></div>
+      </div>
+      <div class="chips pad" id="m-cos"></div>
+    </div>
+    <div class="grid2">
+      <div class="card chart-card big"><div class="card-head"><span class="chart-title" id="m-title"></span><span class="chart-sub" id="m-sub"></span></div><div class="cv"><canvas id="m-line"></canvas></div></div>
+      <div class="card chart-card"><div class="card-head"><span class="chart-title">Latest quarter</span><span class="chart-sub" id="m-rank-sub"></span></div><div class="cv"><canvas id="m-rank"></canvas></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Company × quarter</span><span class="card-sub">Shaded within each quarter</span></div><div class="tbl-wrap"><table class="data wide heat" id="m-table"></table></div></div>
+    </div>
+    <div class="foot card" id="m-foot"></div>
+  </section>
+</div>
+
+<script>
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){ const {data,error}=(args===undefined)?await sbAuth.rpc(name):await sbAuth.rpc(name,args); if(error) throw new Error(name+': '+(error.message||error)); return data; }
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script>
+<script src="/quarterly-page.js"></script>
+</body>
+</html>
