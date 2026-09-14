@@ -1,0 +1,326 @@
+<!doctype html><meta charset="utf-8"><title>quarterly-lib — importador (planilhas sintéticas)</title>
+<body><pre id="out">rodando…</pre><script>
+/* Confere o motor do importador de modelos trimestrais (quarterly-lib.js) SEM Excel nenhum: as
+   planilhas são montadas aqui, reproduzindo as armadilhas que o raio-X dos 13 modelos achou —
+
+     · cabeçalho com o rótulo do trimestre ERRADO (CSN/CMIN '2Q25a' onde é o 2Q26);
+     · coluna anual no meio dos trimestres, coluna OCULTA com dado real;
+     · o mesmo rótulo em várias seções e unidades (Dom. Mkt 4× na CSN);
+     · projeção à direita do corte (tem de ficar FORA, nem lida);
+     · texto e erro em célula numérica, zeros antes de a série existir;
+     · conta digitada no histórico (=1029-124 da Copec) → pedido de revisão;
+     · linha de preço PAGO (Spot Price / PIX) → nunca importada;
+     · coluna sem rótulo com número no meio → desalinharia tudo → bloqueia;
+     · Grupo México transposto (um bloco por trimestre, passo irregular);
+     · impressão digital: receita × CVM, US$ × câmbio, câmbio × PTAX, número do release.
+
+   Como rodar: servir o repo (config `dash`, porta 8123), abrir /tests/test_quarterly_lib.html.
+   O lib entra por fetch + new Function com carimbo de tempo: <script src> serviria versão em cache. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const has=(out,code,level)=>out.checks.some(c=>c.code===code&&(!level||c.level===level));
+const codes=out=>out.checks.map(c=>c.level+':'+c.code).join(' ');
+const NOW=new Date('2026-09-14T12:00:00Z');
+
+window.__RUN__=async function(){
+  R.length=0;
+  new Function(await (await fetch('/quarterly-lib.js?v='+Date.now())).text())();
+  const QL=window.QL;
+
+  // ── 1. trimestres ─────────────────────────────────────────────────────────
+  ok('2Q26a → 2026Q2', QL.qFromHeader('2Q26a')==='2026Q2');
+  ok('2T26 (português) → 2026Q2', QL.qFromHeader('2T26')==='2026Q2');
+  ok('3Q26E → 2026Q3', QL.qFromHeader('3Q26E')==='2026Q3');
+  ok('2025 não é trimestre', QL.qFromHeader('2025')===null && QL.qFromHeader('2025a')===null);
+  ok('soma e subtrai trimestre atravessando o ano', QL.qAdd('2025Q4',1)==='2026Q1' && QL.qAdd('2026Q1',-1)==='2025Q4');
+  ok('Gerdau: 2Q12 + 56 = 2Q26 (57 trimestres)', QL.qAdd('2012Q2',56)==='2026Q2');
+  ok('trimestre corrente em São Paulo (14/09 → 3Q26)', QL.qCurrent(NOW)==='2026Q3');
+  ok('01/07 às 02h UTC ainda é 30/06 em SP → 2Q26', QL.qCurrent(new Date('2026-07-01T02:00:00Z'))==='2026Q2');
+  ok('rótulo curto', QL.qShort('2026Q2')==='2Q26');
+
+  // ── 2. células ────────────────────────────────────────────────────────────
+  ok('número passa', QL.cellNum({v:5}).v===5);
+  ok('"-" vira vazio, não zero', QL.cellNum({v:'-'}).v===null && QL.cellNum({v:'-'}).why==='text');
+  ok('erro do Excel (#REF!) vira vazio', QL.cellNum({t:'e',v:23,w:'#REF!'}).v===null);
+  ok('texto "1,110" vira 1110', QL.cellNum({v:'1,110'}).v===1110);
+  ok('(12.5) vira −12,5', QL.cellNum({v:'(12.5)'}).v===-12.5);
+  ok('"12%" vira 0,12', Math.abs(QL.cellNum({v:'12%'}).v-0.12)<1e-12);
+  ok('"n.a." vira vazio', QL.cellNum({v:'n.a.'}).v===null);
+  ok('fórmula só de constantes = K', QL.formulaKind({v:905,f:'1029-124'})==='K');
+  ok('fórmula com referência = F', QL.formulaKind({v:1,f:'BF13*2'})==='F' && QL.formulaKind({v:1,f:"'Price Model'!Z11"})==='F');
+  ok('valor digitado = D', QL.formulaKind({v:1})==='D');
+
+  // ── 3. o modelo "tipo CSN" ────────────────────────────────────────────────
+  // colunas: D=1Q24 E=2Q24(OCULTA) F=3Q24 G=4Q24 H=2024a I=1Q25 J=2Q25 K=3Q25 L=4Q25 M=2025a
+  //          N=1Q26 O='2Q25a'(é o 2Q26!) P=3Q26e Q=4Q26e
+  const HDR=['','','','1Q24a','2Q24a','3Q24a','4Q24a','2024a','1Q25a','2Q25a','3Q25a','4Q25a','2025a','1Q26a','2Q25a','3Q26e','4Q26e'];
+  const Q10=['2024Q1','2024Q2','2024Q3','2024Q4','2025Q1','2025Q2','2025Q3','2025Q4','2026Q1','2026Q2'];
+  // valores por trimestre → linha com as anuais e as projeções nas posições certas
+  function linha(label, unit, vals, anual, proj){
+    const r=['',label,unit];
+    const q=vals.slice();
+    r.push(q[0],q[1],q[2],q[3], anual==null?'':anual, q[4],q[5],q[6],q[7], anual==null?'':anual, q[8],q[9], proj==null?'':proj, proj==null?'':proj);
+    return r;
+  }
+  const REV=[10000,10500,10200,10800,10400,10693.3,10900,11000,10603.8,11306.2];
+  const EBD=[2500,2600,2550,2700,2600,2642.6,2700,2750,2650,{v:905,f:'1029-124'}];
+  const MARG=REV.map((r,i)=>{ const e=typeof EBD[i]==='object'?EBD[i].v:EBD[i]; return e/r; });
+  function csnRows(opts){
+    opts=opts||{};
+    const rows=[];
+    const put=(r,arr)=>{ while(rows.length<r) rows.push([]); rows[r-1]=arr; };
+    put(1,['','Simplified Preview Model']);
+    put(5,HDR);
+    put(8,['','STEEL SEGMENT']);
+    put(10,linha('Dom. Mkt','ktons',[751,760,770,780,790,751,800,810,820,825]));
+    put(11,linha('Exports','ktons',[0,0,240,250,'-',262,300,310,320,357]));
+    put(12,linha('Total','ktons',[751,760,1010,1030,790,1013,1100,1120,1140,1182]));
+    put(14,linha('Dom. Mkt','BRL/ton',[5000,5010,5020,5030,5040,5409.1,5100,5120,5140,5158.1]));
+    put(20,['','MINING SEGMENT']);
+    put(22,linha('Total','m tons',[{t:'e',v:23,w:'#REF!'},11.1,11.2,11.3,11.4,11.833,11.5,11.6,11.7,11.849]));
+    put(23,linha('Spot Price Forecast (CIF China) - real terms','USD/ton',[100,101,102,103,104,105,106,107,108,109]));
+    put(30,['','CONSOLIDATED']);
+    put(31,linha('(=) Net Revenues','BRL m',REV,43000,99999));
+    put(32,linha('(=) Adjusted EBITDA','BRL m',EBD,10000,88888));
+    const mg=opts.margemDeslocada ? MARG.map((m,i)=>i<9?MARG[i+1]:m) : MARG;
+    put(33,linha('EBITDA Margin','%',mg));
+    put(34,linha('Net Debt','BRL m',[30000,30500,31000,31500,32000,35655,36000,37000,38000,42138]));
+    return rows;
+  }
+  const MAN={ id:'TESTCSN', v:1, required:['revenue'],
+    sheets:[{ name:/^Simplified Preview Model$/, layout:'cols', labelCol:'B', unitCol:'C', headerRow:5, firstCol:'D', firstQ:'2024Q1',
+      sections:[['steel',/^STEEL SEGMENT$/],['mining',/^MINING SEGMENT$/],['cons',/^CONSOLIDATED$/]],
+      rows:[
+        {k:'steel.dom', sec:'steel', lab:/^Dom\. Mkt$/, unit:/^ktons$/, u:'kt'},
+        {k:'steel.exp', sec:'steel', lab:/^Exports$/, unit:/^ktons$/, u:'kt'},
+        {k:'steel.total', sec:'steel', lab:/^Total$/, u:'kt', std:'sales_volume', head:true},
+        {k:'mining.total', sec:'mining', lab:/^Total$/, unit:/^m tons$/, u:'Mt'},
+        {k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'BRL_mn', std:'revenue', head:true, req:true},
+        {k:'adj_ebitda', sec:'cons', lab:/^\(=\) Adjusted EBITDA$/, u:'BRL_mn', std:'adj_ebitda', head:true},
+        {k:'net_debt', sec:'cons', lab:/^Net Debt$/, u:'BRL_mn', std:'net_debt', agg:'stock'},
+        {k:'ebitda_t', calc:{op:'per_unit', a:'adj_ebitda', b:'steel.total', scale:1000}, u:'BRL/t'}
+      ],
+      exclude:[{cls:'paid', lab:/Spot Price/}],
+      derived:[{k:'chk.margin', sec:'cons', lab:/^EBITDA Margin$/, calc:{op:'div', a:'adj_ebitda', b:'revenue'}, tol:0.002}]
+    }],
+    finger:[{k:'revenue', vs:'filed', field:'rev', tol:0.001, hard:true}] };
+  const filedRev={ccy:'BRL', vals:{'2025Q3':10900,'2025Q4':11000,'2026Q1':10603.8,'2026Q2':11306.2}};
+  const book=(rows,hidden)=>QL.gridBook({'Simplified Preview Model': QL.gridSheet(rows,{hiddenCols:hidden||[5]})});
+
+  let o=QL.parseWorkbook(book(csnRows()), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  const S=k=>o.series.find(s=>s.series_key===k);
+  ok('CSN sintético: nada bloqueia', !o.checks.some(c=>c.level==='block'), codes(o));
+  ok('receita tem os 10 trimestres, sem anual e sem projeção', Object.keys(S('revenue').vals).join()===Q10.join(), Object.keys(S('revenue').vals).join());
+  ok('a coluna rotulada "2Q25a" virou 2026Q2 (sequência manda)', S('revenue').vals['2026Q2']===11306.2);
+  ok('o 2Q25 verdadeiro NÃO foi sobrescrito', S('revenue').vals['2025Q2']===10693.3);
+  ok('rótulo errado NA COLUNA DO CORTE vira atenção (warn)', has(o,'header_mismatch','warn'));
+  ok('projeção (99999 na coluna 3Q26e) ficou fora', !Object.values(S('revenue').vals).includes(99999));
+  ok('coluna OCULTA foi lida (2Q24) e avisada', S('revenue').vals['2024Q2']===10500 && has(o,'hidden_cols','info'));
+  ok('mesmo rótulo "Dom. Mkt" em kt e em R$/t: pegou o de kt pela unidade', S('steel.dom').vals['2025Q2']===751);
+  ok('"Total" do aço e da mineração separados pela seção', S('steel.total').vals['2026Q2']===1182 && S('mining.total').vals['2026Q2']===11.849);
+  ok('#REF! vira vazio (mineração 1Q24)', S('mining.total').vals['2024Q1']===undefined);
+  ok('zeros antes de a exportação existir viraram vazio', S('steel.exp').vals['2024Q1']===undefined && S('steel.exp').vals['2024Q2']===undefined && S('steel.exp').vals['2024Q3']===240);
+  ok('"-" no meio vira vazio e é contado', S('steel.exp').vals['2025Q1']===undefined && has(o,'text_cells','info'));
+  ok('conta digitada (=1029-124) no EBITDA vira pedido de revisão', (S('adj_ebitda').cell_flags||{})['2026Q2']==='analyst_adj' && o.candidates.length>=1);
+  ok('linha de preço pago (Spot Price) ficou fora e foi contada', o.excluded.paid===1 && !o.series.some(s=>/spot/i.test(s.label_model||'')));
+  ok('derivada calculada aqui: EBITDA por tonelada', Math.abs(S('ebitda_t').vals['2025Q2']-2642.6/1013*1000)<0.01 && S('ebitda_t').is_calc===true);
+  ok('margem do modelo bate com a conta → sem aviso de derivada', !has(o,'derived_mismatch'));
+  ok('impressão digital da receita × CVM confere', has(o,'finger_filed_ok','info'));
+  ok('moeda inferida da unidade', S('revenue').ccy==='BRL' && S('steel.dom').ccy===null);
+  ok('primeiro trimestre com dado = 1Q24', o.first_q==='2024Q1');
+  ok('resumo: warn (por causa do rótulo errado no corte), sem bloqueio', QL.summarize(o).status==='warn');
+
+  // margem do modelo lendo a coluna seguinte (o erro achado na Vale 2Q26)
+  o=QL.parseWorkbook(book(csnRows({margemDeslocada:true})), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('fórmula do modelo lendo a coluna seguinte é denunciada', o.checks.some(c=>c.code==='derived_mismatch'&&/coluna seguinte/.test(c.msg)), codes(o));
+
+  // receita da CVM diferente → trimestre desalinhado → BLOQUEIA
+  o=QL.parseWorkbook(book(csnRows()), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:{ccy:'BRL', vals:Object.assign({},filedRev.vals,{'2026Q2':10603.8})}}});
+  ok('receita × CVM divergente bloqueia (hard)', has(o,'finger_filed','block'));
+
+  // ── 4. o corte ────────────────────────────────────────────────────────────
+  o=QL.parseWorkbook(book(csnRows()), MAN, {cutoff:'2026Q3', now:NOW});
+  ok('corte no trimestre corrente (3Q26) é recusado', has(o,'cutoff_not_past','block') && o.series.length===0);
+  o=QL.parseWorkbook(book(csnRows()), MAN, {cutoff:'2026Q1', now:NOW, filed:{rev:filedRev}});
+  ok('corte em 1Q26: a coluna do 2Q26 nem é lida', !o.series.some(s=>s.vals['2026Q2']!==undefined) && !has(o,'cutoff_missing'));
+  const semO=csnRows().map((r,i)=>i===4? r.slice(0,14).concat(['','','']) : r.slice(0,14).concat(['','','']));
+  o=QL.parseWorkbook(book(semO), MAN, {cutoff:'2026Q2', now:NOW});
+  ok('modelo sem a coluna do corte bloqueia', has(o,'cutoff_missing','block'));
+
+  // ── 5. manifesto errado ou perigoso ───────────────────────────────────────
+  const ruim=JSON.parse(JSON.stringify({})); // só p/ ter um objeto novo
+  const mk=(patch)=>{ const m={id:'X',v:1,sheets:[Object.assign({},MAN.sheets[0],patch)],finger:[]}; return m; };
+  o=QL.parseWorkbook(book(csnRows()), mk({rows:[{k:'total', lab:/^Total$/, u:'kt'}]}), {cutoff:'2026Q2', now:NOW});
+  ok('"Total" sem seção casa 2 linhas → bloqueia (ambígua)', has(o,'row_ambiguous','block'));
+  o=QL.parseWorkbook(book(csnRows()), mk({rows:[{k:'revenue', sec:'cons', lab:/^Receita$/, u:'BRL_mn', req:true}]}), {cutoff:'2026Q2', now:NOW});
+  ok('linha obrigatória não encontrada bloqueia', has(o,'row_not_found','block'));
+  o=QL.parseWorkbook(book(csnRows()), mk({rows:[{k:'mining.ref', sec:'mining', lab:/^Spot Price/, u:'USD/t', allowWord:true}]}), {cutoff:'2026Q2', now:NOW});
+  ok('regra apontando para linha excluída bloqueia', has(o,'rule_hits_excluded','block'));
+  o=QL.parseWorkbook(book(csnRows()), mk({rows:[{k:'pulp.pix_china', sec:'mining', lab:/^Total$/, u:'USD/t'}]}), {cutoff:'2026Q2', now:NOW});
+  ok('chave com "pix" bloqueia antes de ler', has(o,'paid_rule','block') && o.series.length===0);
+  o=QL.parseWorkbook(book(csnRows()), mk({exclude:[], rows:[{k:'mining.ref', sec:'mining', lab:/Forecast/, u:'USD/t'}]}), {cutoff:'2026Q2', now:NOW});
+  ok('linha "Spot Price…" bloqueia mesmo sem exclusão declarada (guarda genérica)', has(o,'paid_row','block') && o.series.length===0);
+  const pago={id:'Y',v:1,sheets:[{name:/FOEX/, layout:'cols', headerRow:5, firstQ:'2024Q1', rows:[]}]};
+  o=QL.parseWorkbook(QL.gridBook({'CMPC x FOEX Prices':QL.gridSheet(csnRows())}), pago, {cutoff:'2026Q2', now:NOW});
+  ok('aba com nome de fornecedor (FOEX) nem é lida', has(o,'paid_sheet','block'));
+
+  // coluna sem rótulo, com número, no meio do histórico
+  const buraco=csnRows().map((r,i)=>{ const x=r.slice(); if(i===4){ x.splice(8,0,''); } else if(x.length>8){ x.splice(8,0, i===30?777:''); } return x; });
+  o=QL.parseWorkbook(book(buraco,[5]), MAN, {cutoff:'2026Q2', now:NOW});
+  ok('coluna sem rótulo com número no meio bloqueia (desalinharia a sequência)', has(o,'unlabeled_data_col','block'), codes(o));
+
+  // ── 6. moedas e câmbio ────────────────────────────────────────────────────
+  const manUSD={id:'TUSD',v:1,sheets:[Object.assign({},MAN.sheets[0],{rows:[
+      {k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'USD_mn', std:'revenue', req:true}]})],
+    finger:[{k:'revenue', vs:'filed', field:'rev', tol:0.001, hard:true}]};
+  const fx={'2025Q3':5.0,'2025Q4':5.1,'2026Q1':5.2,'2026Q2':5.0494};
+  const brl={}; Object.keys(fx).forEach(q=>{ const i=Q10.indexOf(q); brl[q]=+(REV[i]*fx[q]).toFixed(1); });
+  o=QL.parseWorkbook(book(csnRows()), manUSD, {cutoff:'2026Q2', now:NOW, fx:fx, filed:{rev:{ccy:'BRL', vals:brl}}});
+  ok('modelo em US$ × câmbio médio bate com a CVM em R$', has(o,'finger_filed_ok','info') && !has(o,'finger_filed'), codes(o));
+
+  const manFX={id:'TFX',v:1,sheets:[Object.assign({},MAN.sheets[0],{rows:[
+      {k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'BRL_mn', std:'revenue', req:true},
+      {k:'fx.avg', sec:'cons', lab:/^Net Debt$/, u:'BRL/USD', std:'fx_avg', agg:'rate'}]})],
+    finger:[{k:'fx.avg', vs:'fx', tol:0.01, hard:true}]};
+  const fxOk={}; Q10.forEach((q,i)=>fxOk[q]=[30000,30500,31000,31500,32000,35655,36000,37000,38000,42138][i]);
+  o=QL.parseWorkbook(book(csnRows()), manFX, {cutoff:'2026Q2', now:NOW, fx:fxOk});
+  ok('câmbio do modelo × PTAX igual → confere', has(o,'finger_fx_ok','info'));
+  const fxShift={}; Q10.forEach((q,i)=>fxShift[q]=fxOk[Q10[Math.min(9,i+1)]]);
+  o=QL.parseWorkbook(book(csnRows()), manFX, {cutoff:'2026Q2', now:NOW, fx:fxShift});
+  ok('câmbio deslocado de um trimestre → bloqueia', has(o,'finger_fx','block'));
+
+  const manGold={id:'TG',v:1,sheets:[Object.assign({},MAN.sheets[0],{rows:[
+      {k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'USD_mn', std:'revenue', req:true}]})],
+    finger:[{k:'revenue', vs:'gold', tol:0.002}]};
+  o=QL.parseWorkbook(book(csnRows()), manGold, {cutoff:'2026Q2', now:NOW});
+  ok('empresa sem robô: sem o número do release, bloqueia pedindo', has(o,'gold_required','block'));
+  o=QL.parseWorkbook(book(csnRows()), manGold, {cutoff:'2026Q2', now:NOW, gold:{revenue:11306.2}});
+  ok('número do release digitado confere', has(o,'finger_gold_ok','info') && !has(o,'gold_required'));
+  o=QL.parseWorkbook(book(csnRows()), manGold, {cutoff:'2026Q2', now:NOW, gold:{revenue:10603.8}});
+  ok('número do release diferente bloqueia', has(o,'finger_gold','block'));
+
+  // ── 7. Grupo México transposto ────────────────────────────────────────────
+  // 4 blocos (3Q25..2Q26) com passo 9, 10, 11; período só em cima da coluna GMEX; o 2Q26 rotulado '1Q26a'
+  const SEGS=['SCCO','Asarco','AMC','Transportation','Infrastr.','Elimin.','GMEX'];
+  const starts=[2,11,21,32];                     // colunas B, K, U, AF
+  const periods=['3Q25a','4Q25a','1Q26a','1Q26a'];
+  const g=[[],[],[],[],[],[]];
+  starts.forEach((c,i)=>{
+    g[0][c+7-1]=periods[i];
+    SEGS.forEach((s,j)=>{ g[1][c+j]=s; });
+    g[2][c-1]='Net Revenues'; g[5][c-1]='EBITDA ';
+    SEGS.forEach((s,j)=>{ g[2][c+j]=(i+1)*100+j; g[5][c+j]=(i+1)*10+j; });
+  });
+  const gbook=QL.gridBook({'GMEX Preview':QL.gridSheet(g.map(r=>Array.from({length:45},(_,k)=>r[k]===undefined?'':r[k])))});
+  const GMAN={id:'GMEXICOB',v:1,sheets:[{name:/^GMEX Preview$/, layout:'blocks',
+    blocks:{anchorRow:3, anchor:/^Net Revenues?$/i, segRow:2, periodRow:1, periodOffset:7, firstQ:'2025Q3', step:[9,11], width:8,
+      segs:[{key:'scco',name:/^SCCO$/},{key:'asarco',name:/^Asarco$/},{key:'amc',name:/^AMC$/},{key:'transport',name:/^Transportation$/},
+            {key:'infra',name:/^Infrastr/},{key:'elim',name:/^Elimin/},{key:'gmex',name:/^GMEX$/}]},
+    skipSegs:['scco'],
+    rows:[{k:'{seg}.rev', lab:/^Net Revenues?$/i, u:'USD_mn', std:{gmex:'revenue'}, segStd:'segment_revenue', head:{gmex:true}},
+          {k:'{seg}.ebitda', lab:/^EBITDA$/i, u:'USD_mn', std:{gmex:'adj_ebitda'}, segStd:'segment_ebitda', head:{gmex:true}}]}],
+    finger:[]};
+  o=QL.parseWorkbook(gbook, GMAN, {cutoff:'2026Q2', now:NOW});
+  const G=k=>o.series.find(s=>s.series_key===k);
+  ok('GMEX: blocos lidos sem bloqueio', !o.checks.some(c=>c.level==='block'), codes(o));
+  ok('receita consolidada (coluna GMEX) do bloco 4 = 2026Q2', G('gmex.rev') && G('gmex.rev').vals['2026Q2']===406, JSON.stringify(G('gmex.rev')&&G('gmex.rev').vals));
+  ok('Asarco do bloco 1 = 2025Q3', G('asarco.rev').vals['2025Q3']===101);
+  ok('coluna SCCO não é gravada de novo', !G('scco.rev'));
+  ok('receita e EBITDA da coluna GMEX viram as métricas comparáveis', G('gmex.rev').std_key==='revenue' && G('gmex.ebitda').std_key==='adj_ebitda' && G('asarco.ebitda').std_key==='segment_ebitda');
+  ok('rótulo "1Q26a" no bloco do corte vira atenção', has(o,'header_mismatch','warn'));
+  ok('passos 9/10/11 aceitos', !has(o,'block_step'));
+
+  // ── 7b. o que os 14 manifestos reais pediram ──────────────────────────────
+  // "E" na coluna do corte: só o corte com E → atenção; modelo que marca todo realizado com E → registro
+  const hdrE=HDR.slice(); hdrE[14]='2Q26E';
+  let rowsE=csnRows(); rowsE[4]=hdrE;
+  o=QL.parseWorkbook(book(rowsE), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('"2Q26E" só na coluna do corte vira atenção', has(o,'cutoff_label_estimate','warn'), codes(o));
+  const hdrEE=HDR.map(h=>/^[1-4]Q\d\d[aA]$/.test(h)?h.replace(/a$/i,'E'):h); hdrEE[14]='2Q26E';
+  rowsE=csnRows(); rowsE[4]=hdrEE;
+  o=QL.parseWorkbook(book(rowsE), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('modelo que marca todo realizado com "E": só registro', has(o,'cutoff_label_estimate','info') && !has(o,'cutoff_label_estimate','warn'), codes(o));
+
+  o=QL.parseWorkbook(book(csnRows()), mk({exclude:[{cls:'derived', sec:'steel', lab:/^Dom\. Mkt$/, unit:/\/ton$/}]}), {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('exclusão com unidade tira "Dom. Mkt" em R$/t e mantém o de kt', o.excluded.derived===1 && o.series.some(s=>s.series_key==='steel.dom'), JSON.stringify(o.excluded));
+
+  o=QL.parseWorkbook(book(csnRows()), mk({from:'2025Q1'}), {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('"from" na aba corta todas as séries (pro-forma da Suzano)', o.series.every(s=>Object.keys(s.vals).every(q=>QL.qIdx(q)>=QL.qIdx('2025Q1'))) && o.first_q==='2025Q1', o.first_q);
+
+  // 'skip' tira a linha da lista de não declaradas, mas não impede uma regra de usá-la
+  o=QL.parseWorkbook(book(csnRows()), MAN, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  const tinhaMargem=o.unknown.some(u=>u.label==='EBITDA Margin');
+  o=QL.parseWorkbook(book(csnRows()), mk({skip:[{sec:'cons', lab:/^EBITDA Margin$/}]}), {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('"skip" tira a linha da lista de não declaradas', tinhaMargem && !o.unknown.some(u=>u.label==='EBITDA Margin'));
+  o=QL.parseWorkbook(book(csnRows()), mk({skip:[{sec:'cons', lab:/^EBITDA Margin$/}], rows:MAN.sheets[0].rows.concat([{k:'margin_raw', sec:'cons', lab:/^EBITDA Margin$/, u:'%', agg:'rate'}])}), {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('"skip" não bloqueia regra que aponta para a linha', o.series.some(s=>s.series_key==='margin_raw') && !has(o,'rule_hits_excluded'), codes(o));
+
+  const manGF={id:'TGF',v:1,sheets:[Object.assign({},MAN.sheets[0],{rows:[{k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'BRL_mn', std:'revenue', req:true}]})],
+    finger:[{k:'revenue', vs:'filed', field:'rev', tol:0.001, hard:true},{k:'revenue', vs:'gold', tol:0.002, hard:true, unlessFiled:'rev'}]};
+  o=QL.parseWorkbook(book(csnRows()), manGF, {cutoff:'2026Q2', now:NOW, filed:{rev:filedRev}});
+  ok('com a SEC já tendo o trimestre, o número do release não é pedido', !has(o,'gold_required') && has(o,'finger_filed_ok','info'), codes(o));
+  o=QL.parseWorkbook(book(csnRows()), manGF, {cutoff:'2026Q2', now:NOW});
+  ok('sem a SEC, o número do release é pedido', has(o,'gold_required','block'));
+
+  // blocos: total com nome próprio, linha só do consolidado, rótulo noutra coluna, bloco desalinhado
+  const g2=g.map(r=>r.slice()); while(g2.length<11) g2.push([]);
+  starts.forEach((c,i)=>{ g2[8][c+2]='Volume'; g2[8][c+3]=16+i; g2[10][c-1]='(-) Depreciation'; g2[10][c+6]=-(300+i); });
+  const grid=rows=>QL.gridBook({'GMEX Preview':QL.gridSheet(rows.map(r=>Array.from({length:45},(_,k)=>r[k]===undefined?'':r[k])))});
+  const GMAN2={id:'G2',v:1,sheets:[{name:/^GMEX Preview$/, layout:'blocks',
+    blocks:Object.assign({},GMAN.sheets[0].blocks,{segs:GMAN.sheets[0].blocks.segs.map(s=>s.key==='gmex'?Object.assign({},s,{total:true}):s)}),
+    rows:[{k:'rev.{seg}', lab:/^Net Revenues?$/i, u:'USD_mn', keys:{gmex:'revenue'}, std:{gmex:'revenue'}, segStd:'segment_revenue'},
+          {k:'rail.vol', lab:/^Volume$/i, labOff:3, onlySegs:['transport'], keys:{transport:'rail.vol'}, u:'bn_tkm'},
+          {k:'d_a', lab:/^\(-\) Depreciation$/i, onlySegs:['gmex'], keys:{gmex:'d_a'}, sign:'pos', u:'USD_mn'}]}], finger:[]};
+  o=QL.parseWorkbook(grid(g2), GMAN2, {cutoff:'2026Q2', now:NOW});
+  const G2=k=>o.series.find(s=>s.series_key===k);
+  ok('blocos: a coluna do total ganha nome próprio e segmento vazio', !!G2('revenue') && G2('revenue').segment===null && G2('revenue').vals['2026Q2']===406 && !G2('rev.gmex'), codes(o));
+  ok('blocos: volume ferroviário lido pelo rótulo na coluna do AMC', !!G2('rail.vol') && G2('rail.vol').vals['2025Q3']===16 && G2('rail.vol').vals['2026Q2']===19 && o.series.filter(s=>/rail/.test(s.series_key)).length===1);
+  ok('blocos: linha só do consolidado não vira série por segmento', !!G2('d_a') && G2('d_a').vals['2026Q2']===303 && !o.series.some(s=>/^d_a\./.test(s.series_key)));
+  const g3=g2.map(r=>r.slice()); g3[10][starts[2]-1]='(-) Amortization';
+  o=QL.parseWorkbook(grid(g3), GMAN2, {cutoff:'2026Q2', now:NOW});
+  ok('blocos: rótulo diferente num bloco (linha desalinhada) bloqueia', has(o,'block_row_mismatch','block'), codes(o));
+
+  const FILES={'Gerdau_Quarterly_Model_3Q26.xlsx':'GGBR4','Usiminas_Quarterly_Model_3Q26.xlsx':'USIM5','CSN_Quarterly_Model_3Q26.xlsx':'CSNA3',
+    'Ternium Model Itaú BBA 3Q26.xlsx':'TX','Vale_Quarterly_Model_3Q26.xlsx':'VALE3','CMIN_Quartely_Model_3Q26.xlsx':'CMIN3','Aura_Model_3Q26.xlsx':'AUGO',
+    'Preview Template (SCCO + GMEX) - 3Q26.xlsx':'SCCO,GMEXICOB','Suzano_Quarterly_Model_3Q26.xlsx':'SUZB3','Klabin_Quarterly_Model_3Q26.xlsx':'KLBN11',
+    'Irani_Quarterly_Model_3Q26.xlsx':'RANI3','CMPC_Quarterly_Model_3Q26.xlsx':'CMPC','Copec_Quarterly_Model_3Q26.xlsx':'COPEC'};
+  Object.entries(FILES).forEach(([f,ids])=>ok('detecta '+f, QL.detect(f).map(m=>m.id).join()===ids, QL.detect(f).map(m=>m.id).join()));
+  ok('14 manifestos, um por empresa da cobertura', QL.MANIFESTS.length===14 && new Set(QL.MANIFESTS.map(m=>m.id)).size===14, QL.MANIFESTS.map(m=>m.id).join());
+
+  // ── 8. lotes, diferença, manifestos reais ─────────────────────────────────
+  const muitas=Array.from({length:100},(_,i)=>({series_key:'s'+i, unit:'kt', vals:Object.fromEntries(Q10.map((q,j)=>[q, i*1000+j+0.1234]))}));
+  const lotes=QL.toBatches(muitas, 5000);
+  ok('lotes respeitam o teto de bytes', lotes.every(l=>JSON.stringify(l).length<=5000+2) && lotes.reduce((a,l)=>a+l.length,0)===100, lotes.length+' lotes');
+  ok('contagem de valores', QL.countValues(muitas)===1000);
+  const antigas=[{key:'revenue', vals:{'2025Q1':100,'2025Q2':200,'2024Q1':50}},{key:'old.only', vals:{'2025Q1':1}}];
+  const novas=[{series_key:'revenue', vals:{'2025Q1':100,'2025Q2':210,'2024Q1':60,'2026Q2':300}},{series_key:'new.only', vals:{'2025Q1':1}}];
+  const d=QL.diffSeries(novas, antigas, '2026Q2');
+  ok('diff: série nova e removida', d.added.join()==='new.only' && d.removed.join()==='old.only');
+  ok('diff: revisões ordenadas (maior primeiro) e trimestre novo contado', d.revisions[0].q==='2024Q1' && d.n_revisions===2 && d.n_new_quarters===1);
+  ok('diff: revisão >5% em trimestre com mais de 1 ano é destacada', d.old_big_revisions.some(r=>r.q==='2024Q1') && !d.old_big_revisions.some(r=>r.q==='2025Q2'));
+
+  ok('detecta o manifesto da Gerdau pelo nome do arquivo', QL.detect('Gerdau_Quarterly_Model_3Q26.xlsx').map(m=>m.id).join()==='GGBR4');
+  QL.MANIFESTS.forEach(m=>{
+    const keys=m.sheets.flatMap(sh=>(sh.rows||[]).map(r=>r.k));
+    ok(m.id+': chaves únicas', new Set(keys).size===keys.length);
+    ok(m.id+': chaves no formato aceito pelo servidor', keys.every(k=>/^[a-z0-9_.{}]{1,80}$/.test(k)), keys.filter(k=>!/^[a-z0-9_.{}]{1,80}$/.test(k)).join());
+    ok(m.id+': nenhuma chave ou rótulo com cara de dado pago', m.sheets.every(sh=>(sh.rows||[]).every(r=>!QL._internal.PAID_LABEL.test(r.k+' '+(r.en||'')))));
+    ok(m.id+': nenhuma aba de fornecedor declarada', m.sheets.every(sh=>!['CMPC x FOEX Prices','COPEC Prices x Fastmarkets','Price Model','Realização_Preços','HRC Prices - MXN;US;TX','Usiminas Prices x HRC'].some(n=>sh.name.test(n))));
+    ok(m.id+': derivadas apontam para séries existentes', m.sheets.every(sh=>(sh.rows||[]).filter(r=>r.calc).every(r=>keys.includes(r.calc.a)&&keys.includes(r.calc.b))));
+    ok(m.id+': unidade no vocabulário do servidor', m.sheets.every(sh=>(sh.rows||[]).every(r=>/^[A-Za-z0-9_/%.]{1,16}$/.test(r.u||''))));
+    ok(m.id+': toda linha aponta para uma seção declarada', m.sheets.every(sh=>{ const secs=(sh.sections||[]).map(p=>p[0]);
+      return (sh.rows||[]).concat(sh.derived||[], sh.exclude||[], sh.skip||[]).every(r=>!r.sec||secs.includes(r.sec)); }));
+    ok(m.id+': métrica comparável existe no catálogo', m.sheets.every(sh=>(sh.rows||[]).every(r=>{
+      const v=r.std==null?[]:typeof r.std==='object'?Object.values(r.std):[r.std]; return v.concat(r.segStd?[r.segStd]:[]).every(x=>QL.STD[x]); })));
+    // em blocos, 'rev.{seg}' vira uma chave por segmento (rev.scco, rev.asarco…)
+    const finais=m.sheets.flatMap(sh=>(sh.rows||[]).flatMap(r=>[r.k].concat(Object.values(r.keys||{}),
+      sh.blocks&&/\{seg\}/.test(r.k)?sh.blocks.segs.map(sg=>r.k.replace('{seg}',sg.key)):[])));
+    ok(m.id+': obrigatórias e impressões digitais apontam para séries do manifesto', (m.required||[]).concat((m.finger||[]).map(f=>f.k)).every(k=>finais.includes(k)));
+    ok(m.id+': tem receita e EBITDA ajustado marcados como métrica comparável', ['revenue','adj_ebitda'].every(x=>m.sheets.some(sh=>(sh.rows||[]).some(r=>r.std===x||(r.std&&typeof r.std==='object'&&Object.values(r.std).includes(x))))));
+  });
+
+  const pass=R.filter(x=>x.startsWith('PASS')).length, fail=R.length-pass;
+  document.getElementById('out').textContent=(fail?'❌ ':'✅ ')+pass+'/'+R.length+' PASS\n\n'+R.join('\n');
+  return {pass, fail, total:R.length};
+};
+window.__RUN__();
+</script>
