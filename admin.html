@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 <!-- ── Stock Guide: SheetJS (gera/parseia o Excel do mesh) + lib compartilhada ── -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="stock-guide-lib.js"></script>
+<script src="quarterly-lib.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -579,6 +580,7 @@ html.dark .ov-card{background:#20242b}
       <div class="row" style="margin-bottom:14px">
         <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">📊 Dados (upload)</button>
         <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">📈 Sensibilidade</button>
+        <button class="btn sec" id="sgsub-quarterly" onclick="sgShowSub('quarterly')">🗓 Trimestral</button>
       </div>
 
       <div id="sg-companies">
@@ -607,6 +609,54 @@ html.dark .ov-card{background:#20242b}
             <input class="in" id="sg-foot" placeholder="Rodapé dos comps (vazio = automático)">
             <div class="row"><button class="btn" onclick="sgConfigSave()">Salvar config</button></div>
           </div>
+        </div>
+      </div>
+
+      <div id="sg-quarterly" hidden>
+        <style>
+          .sgq-card{border:1px solid var(--border,#E3E3E3);border-radius:10px;padding:10px 12px;margin:10px 0}
+          .sgq-card h3{font-size:14px;margin:0 0 4px}
+          .sgq-ul{margin:4px 0 6px 18px;padding:0;font-size:12px}.sgq-ul li{margin:2px 0}
+          .sgq-bad{color:#C0392B}.sgq-warn{color:#B8860B}.sgq-ok{color:#1E8E4E}
+          .sgq-t{border-collapse:collapse;font-size:11.5px;margin:6px 0}
+          .sgq-t th,.sgq-t td{border:1px solid var(--border,#E3E3E3);padding:2px 6px;text-align:left;white-space:nowrap}
+          .sgq-hl td{background:rgba(184,134,11,.14)}
+          .sgq-card details{margin:4px 0}.sgq-card summary{cursor:pointer;font-size:12px}
+        </style>
+        <div class="card">
+          <h2>🗓 Subir modelos trimestrais <span class="muted" style="font-weight:400;font-size:13px">— histórico realizado da página Quarterly</span></h2>
+          <p class="sub">Arraste um ou mais modelos (<b>…_Quarterly_Model_…xlsx</b>; o de Southern Copper + Grupo México vira as duas empresas). A leitura acontece <b>aqui no navegador</b>: o arquivo não é enviado, só os números <b>até o corte</b> vão para o banco — as colunas de projeção nem são lidas. Cada empresa confere sozinha contra a CVM/SEC e a PTAX; bloqueio não publica.</p>
+          <div class="row">
+            <label class="muted" for="sgq-cutoff">Corte (último trimestre já entregue)</label>
+            <input class="in" id="sgq-cutoff" style="width:100px" placeholder="2026Q2" onchange="sgqCutoffChanged()">
+            <input class="in" id="sgq-files" type="file" accept=".xlsx,.xlsm" multiple onchange="sgqRead(this.files)">
+          </div>
+          <div id="sgq-status" class="status" style="margin-top:8px"></div>
+          <div id="sgq-cards" style="margin-top:6px"></div>
+        </div>
+        <div class="card">
+          <h2>🗂 Versões publicadas</h2>
+          <p class="sub">Cada upload vira uma versão guardada; publicar uma nova substitui a anterior sem apagar. <b>Reativar</b> volta uma versão antiga.</p>
+          <div class="row"><select class="in" id="sgq-hist-co" onchange="sgqLoadHistory()"></select><button class="btn sec" onclick="sgqLoadHistory()">Atualizar</button></div>
+          <div id="sgq-hist" class="status" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <h2>📝 Anotações <span class="muted" style="font-weight:400;font-size:13px">— aparecem no gráfico e no Excel do cliente (texto em inglês)</span></h2>
+          <p class="sub">Quebra de série, parada de fábrica, ajuste do analista. Filtre a lista pela empresa; para criar, escolha a empresa, o trimestre e escreva o texto.</p>
+          <div class="field" style="max-width:760px">
+            <div class="row">
+              <select class="in" id="sgq-an-co" onchange="sgqLoadAnn()"></select>
+              <input class="in" id="sgq-an-from" placeholder="De (2023Q1)" style="width:110px">
+              <input class="in" id="sgq-an-to" placeholder="Até (opcional)" style="width:120px">
+              <select class="in" id="sgq-an-kind"><option value="event">Evento</option><option value="break">Quebra de série</option><option value="stoppage">Parada</option><option value="adjustment">Ajuste</option></select>
+            </div>
+            <input class="in" id="sgq-an-scope" placeholder="Série (opcional, ex.: adj_ebitda) — vazio vale para a empresa inteira">
+            <input class="in" id="sgq-an-text" maxlength="280" placeholder="Texto em inglês (3 a 280 caracteres)">
+            <div class="row"><label><input type="checkbox" id="sgq-an-vis" checked> visível para o cliente</label>
+              <button class="btn" onclick="sgqAnnSave()">Salvar anotação</button><button class="btn sec" onclick="sgqAnnClear()">Limpar</button>
+              <span id="sgq-an-status" class="muted"></span></div>
+          </div>
+          <div id="sgq-an-list" class="status" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -1087,7 +1137,7 @@ const FLAG_META={
   data_page:     {g:'pages',       l:'Data & Glossary',   d:'Página com as fontes, o frescor de cada uma e o glossário de indicadores (nav + página)'},
   stock_guide_sensitivity:{g:'stock_guide', l:'Aba Sensitivity', d:'Análise de sensibilidade (em construção)'},
   stock_guide_peers:      {g:'stock_guide', l:'Global Peers',    d:'Tabela de peers globais no Comp Table'},
-  quarterly:              {g:'stock_guide', l:'Aba Quarterly',   d:'Cheat sheet trimestral — resultado de cada empresa direto do ITR/DFP da CVM'},
+  quarterly:              {g:'stock_guide', l:'Página Quarterly', d:'Histórico trimestral das cobertas — EBITDA ajustado, volumes e preços dos modelos + resultado da CVM/SEC'},
   pred_model:    {g:'steel',       l:'Modelo Preditivo', d:'Linha de previsão de importações (aba Imports)'},
   clipinator:    {g:'admin_tools', l:'Clipping',         d:'Gerador do clipping diário (o acesso é sempre restrito ao admin)'},
 }
@@ -1690,9 +1740,10 @@ let _sgCos=[], _sgDrivers=[], _sgCfg={};
 
 function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); }
 function sgShowSub(s){
-  ['companies','sens'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
+  ['companies','sens','quarterly'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
     const b=document.getElementById('sgsub-'+k); if(b)b.className='btn'+(k===s?'':' sec'); });
   if(s==='sens') loadSGSens();
+  if(s==='quarterly') loadSGQuarterly();
 }
 
 // (Modelo Vivo / Gerador de cenários / editor de coeficientes — REMOVIDOS 2026-07-02:
@@ -1804,6 +1855,279 @@ async function sgModelCommit(){
 // (Model Central + editor de Drivers legado — REMOVIDOS 2026-07-02: não usados pelo cliente.
 //  A RPC get_stock_guide_drivers segue existindo p/ o cliente ler; só o editor admin saiu.
 //  Global Peers vêm do upload do .xlsm — fonte única é o arquivo.)
+
+// ════════════ STOCK GUIDE — Trimestral (modelos → quarterly_import_series) ════════════
+// A planilha é lida AQUI (SheetJS + quarterly-lib.js): o arquivo nunca sai do navegador — a rede do banco
+// barra upload de arquivo e POST grande. Vão para o banco só os números até o corte, em lotes ≤60 KB, por
+// begin → chunk → commit; o servidor recusa de novo trimestre futuro e rótulo com cara de dado pago.
+// Conferência: receita × CVM (get_quarterly_kpis, em milhares → milhões), câmbio × PTAX (BCB, que aceita
+// chamada do navegador) e, para quem não tem robô, o número do release digitado aqui.
+let _sgq={ items:[], filed:null, fx:null, fxErr:null, gold:{}, ack:{} };
+let _sgqAnnId=null, _sgqAnns=[];
+const SGQ_ALIAS={AURA33:'AUGO'};
+const SGQ_ST={active:'✅ ativa', superseded:'substituída', reverted:'revertida', staging:'em envio', aborted:'abortada'};
+const SGQ_KIND={event:'evento', break:'quebra de série', stoppage:'parada', adjustment:'ajuste'};
+function sgqEsc(v){ return v==null?'':String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function sgqNoSql(e){ return /could not find|does not exist|schema cache/i.test((e&&e.message)||String(e||'')); }
+function sgqWhen(t){ return t?new Date(t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):''; }
+// aceita 4289.0 e 4289,0 (sem separador de milhar: "4,289" viraria 4,289 — e a conferência de 0,2% barra)
+function sgqNum(s){ s=String(s==null?'':s).trim().replace(/\s/g,''); if(!s) return null;
+  if(s.indexOf(',')>=0&&s.indexOf('.')>=0) s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(',','.');
+  const n=Number(s); return isFinite(n)?n:null; }
+async function sgqSha(buf){ try{ const h=await crypto.subtle.digest('SHA-256',buf);
+  return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }catch(e){ return null; } }
+
+function loadSGQuarterly(){
+  if(!window.QL||!window.XLSX){ _v('sgq-status').innerHTML='<b style="color:#C0392B">quarterly-lib.js ou SheetJS não carregou.</b>'; return; }
+  const cut=_v('sgq-cutoff'); if(!cut.value) cut.value=QL.qAdd(QL.qCurrent(),-1);
+  const ids=QL.MANIFESTS.map(m=>m.id).sort();
+  ['sgq-hist-co','sgq-an-co'].forEach(id=>{ const s=_v(id);
+    if(s&&!s.options.length) s.innerHTML='<option value="">Todas as empresas</option>'+ids.map(t=>'<option>'+t+'</option>').join(''); });
+  sgqLoadHistory(); sgqLoadAnn();
+}
+
+// CVM crua (milhares) → {TICKER:{rev|ni|ebitda:{ccy, vals:{'2026Q2':milhões}}}}
+async function sgqFiled(){
+  if(_sgq.filed) return _sgq.filed;
+  const by={}; const {data,error}=await sbAuth.rpc('get_quarterly_kpis');
+  if(!error) (data||[]).forEach(r=>{ const co=SGQ_ALIAS[r.company]||r.company, div=(r.scale||'MIL')==='MIL'?1000:1;
+    [['rev','net_revenue'],['ni','net_income'],['ebitda','ebitda']].forEach(([f,c])=>{ if(r[c]==null) return;
+      const d=by[co]=by[co]||{}; const s=d[f]=d[f]||{ccy:r.currency||'BRL',vals:{}};
+      s.vals[r.quarter]=Math.round(Number(r[c])/div*1000)/1000; }); });
+  _sgq.filed=by; return by;
+}
+// PTAX média por trimestre (SGS 1; a API limita 10 anos por consulta)
+async function sgqPtax(){
+  if(_sgq.fx) return _sgq.fx;
+  try{ const c=JSON.parse(sessionStorage.getItem('sgq_ptax2')||'null'); if(c&&c.avg){ _sgq.fx=c.avg; _sgq.fxEop=c.eop||{}; return _sgq.fx; } }catch(e){}
+  const p=n=>String(n).padStart(2,'0'), t=new Date(), hoje=p(t.getDate())+'/'+p(t.getMonth()+1)+'/'+t.getFullYear(), acc={};
+  for(const [a,b] of [['01/01/2012','31/12/2019'],['01/01/2020',hoje]]){
+    const r=await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados?formato=json&dataInicial='+a+'&dataFinal='+b);
+    if(!r.ok) throw new Error('BCB respondeu '+r.status);
+    (await r.json()).forEach(it=>{ const [d,m,y]=String(it.data).split('/'); const q=y+'Q'+(Math.floor((+m-1)/3)+1);
+      (acc[q]=acc[q]||[]).push(parseFloat(it.valor)); });
+  }
+  // a série vem em ordem de data → o último valor do trimestre é o câmbio de fim de período
+  const fx={}, eop={}; Object.keys(acc).forEach(q=>{ const v=acc[q]; fx[q]=Math.round(v.reduce((x,y)=>x+y,0)/v.length*10000)/10000; eop[q]=v[v.length-1]; });
+  _sgq.fx=fx; _sgq.fxEop=eop; try{ sessionStorage.setItem('sgq_ptax2',JSON.stringify({avg:fx,eop:eop})); }catch(e){}
+  return fx;
+}
+// grava a PTAX dos trimestres fechados em quarterly_fx (botão US$ da página) até o robô (F2) assumir.
+// Uma vez por sessão, sem travar a tela; falha só vai para o console.
+async function sgqPushFx(){
+  if(_sgq.fxPushed||!_sgq.fx) return;
+  const ate=QL.qAdd(QL.qCurrent(),-1);
+  const rows=Object.keys(_sgq.fx).filter(q=>QL.isQKey(q)&&QL.qIdx(q)<=QL.qIdx(ate))
+    .map(q=>({ccy:'BRL', quarter:q, avg_rate:_sgq.fx[q], eop_rate:(_sgq.fxEop||{})[q]||null}));
+  if(!rows.length) return;
+  const {error}=await sbAuth.rpc('admin_upsert_quarterly_fx',{p_rows:rows});
+  _sgq.fxPushed=!error;
+  if(error) console.warn('PTAX não gravada em quarterly_fx'+(sgqNoSql(error)?' (rode o admin/supabase_quarterly_v2.sql)':'')+':', error.message);
+}
+// versão publicada hoje (para a diferença). Sem o SQL v2, a leitura falha e publicar fica travado.
+async function sgqPublished(co){
+  const {data,error}=await sbAuth.rpc('get_quarterly_company',{p_ticker:co});
+  if(error) return {missing:true, error:error.message};
+  if(!data||data.enabled===false) return {missing:true, error:'leitura desligada'};
+  if(!data.company) return {noCompany:true, series:[]};
+  return {series:data.series||[], model:data.company.model||null};
+}
+
+async function sgqRead(fileList){
+  const files=Array.from(fileList||[]), stat=_v('sgq-status');
+  _sgq.items=[]; _sgq.ack={}; _v('sgq-cards').innerHTML='';
+  if(!files.length){ stat.textContent=''; return; }
+  if(!window.QL||!window.XLSX){ stat.innerHTML='<b style="color:#C0392B">quarterly-lib.js ou SheetJS não carregou.</b>'; return; }
+  const cutoff=_v('sgq-cutoff').value.trim().toUpperCase();
+  if(!QL.isQKey(cutoff)){ stat.innerHTML='<b style="color:#C0392B">Corte inválido</b> — use o formato 2026Q2.'; return; }
+  stat.textContent='Carregando CVM e PTAX…';
+  _sgq.fxErr=null;
+  await Promise.all([sgqFiled(), sgqPtax().catch(e=>{ _sgq.fxErr=e.message||String(e); _sgq.fx={}; })]);
+  if(!_sgq.fxErr) sgqPushFx();
+  for(const f of files){
+    const mans=QL.detect(f.name);
+    if(!mans.length){ _sgq.items.push({file:f, err:'Nenhum manifesto reconhece este nome de arquivo. Os nomes aceitos seguem o padrão dos modelos (ex.: Gerdau_Quarterly_Model_3Q26.xlsx).'}); continue; }
+    stat.textContent='Lendo '+f.name+'…';
+    try{
+      const buf=await f.arrayBuffer(), sha=await sgqSha(buf);
+      const names=XLSX.read(buf,{type:'array',bookSheets:true}).SheetNames;
+      const need=[...new Set(mans.flatMap(m=>m.sheets.map(sh=>names.find(n=>sh.name.test(n))).filter(Boolean)))];
+      const book=QL.bookFromSheetJS(XLSX.read(buf,{type:'array',sheets:need,cellFormula:true,cellStyles:true}));
+      mans.slice().sort((a,b)=>(a.id==='GMEXICOB')-(b.id==='GMEXICOB'))      // SCCO antes: o GMEX confere contra ela
+        .forEach(m=>_sgq.items.push({file:f, sha, book, man:m}));
+    }catch(e){ _sgq.items.push({file:f, err:'Falha ao ler: '+(e.message||e)}); }
+  }
+  stat.textContent='Buscando as versões publicadas…';
+  await Promise.all(_sgq.items.filter(it=>it.man).map(async it=>{ it.pub=await sgqPublished(it.man.id); }));
+  sgqParseAll();
+}
+function sgqCutoffChanged(){ if(_sgq.items.length){ _sgq.ack={}; sgqParseAll(); } }
+function sgqGold(i,k,v){ const it=_sgq.items[i]; if(!it||!it.man) return;
+  const g=_sgq.gold[it.man.id]=_sgq.gold[it.man.id]||{}; g[k]=sgqNum(v); _sgq.ack[i]=false; sgqParseAll(); }
+
+function sgqParseAll(){
+  const cutoff=_v('sgq-cutoff').value.trim().toUpperCase(), siblings={};
+  _sgq.items.forEach(it=>{
+    if(!it.man) return;
+    it.out=QL.parseWorkbook(it.book, it.man, {cutoff, fx:_sgq.fx||{}, filed:(_sgq.filed||{})[it.man.id]||{}, gold:_sgq.gold[it.man.id]||{}, siblings});
+    if(it.man.id==='SCCO'){ const s=it.out.series.find(x=>x.series_key==='revenue'); if(s) siblings['SCCO.revenue']=s.vals; }
+    it.sum=QL.summarize(it.out);
+    it.diff=(it.pub&&!it.pub.missing&&!it.pub.noCompany)?QL.diffSeries(it.out.series, it.pub.series, cutoff):null;
+  });
+  const n=k=>_sgq.items.filter(it=>it.sum&&it.sum.status===k).length, erro=_sgq.items.filter(it=>it.err).length;
+  _v('sgq-status').innerHTML=`<b>${_sgq.items.length-erro} empresa(s) lida(s)</b> até ${sgqEsc(QL.qShort(cutoff))}: `+
+    `<span class="sgq-ok">${n('ok')} pronta(s)</span> · <span class="sgq-warn">${n('warn')} com atenção</span> · <span class="sgq-bad">${n('block')} bloqueada(s)</span>`+
+    (erro?` · <span class="sgq-bad">${erro} arquivo(s) não lido(s)</span>`:'')+
+    (_sgq.fxErr?`<div class="sgq-warn">PTAX indisponível (${sgqEsc(_sgq.fxErr)}) — a conferência de câmbio fica de fora.</div>`:'');
+  sgqRender();
+}
+
+function sgqDiffHtml(it){
+  const E=sgqEsc, p=it.pub;
+  if(!p) return '';
+  if(p.missing) return `<div class="sgq-bad">Não consegui ler a versão publicada (${E(p.error)}) — rodou o admin/supabase_quarterly_v2.sql?</div>`;
+  if(p.noCompany) return `<div class="sgq-bad">${E(it.man.id)} não está no cadastro do Stock Guide — suba o .xlsm do Stock Guide antes.</div>`;
+  if(!p.series.length) return '<div class="muted">Primeira carga desta empresa.</div>';
+  const d=it.diff, big=d.old_big_revisions;
+  return `<div>Contra a versão publicada (corte ${E(p.model&&p.model.cutoff_q)}): <b>${d.added.length}</b> série(s) nova(s) · <b>${d.removed.length}</b> removida(s) · <b>${d.n_new_quarters}</b> número(s) novo(s) · <b>${d.n_revisions}</b> revisto(s)</div>`+
+    (d.revisions.length?`<details><summary>maiores revisões</summary><table class="sgq-t"><tr><th>série</th><th>tri</th><th>antes</th><th>agora</th><th>Δ</th></tr>`+
+      d.revisions.map(r=>`<tr${big.some(x=>x.key===r.key&&x.q===r.q)?' class="sgq-hl"':''}><td>${E(r.key)}</td><td>${E(QL.qShort(r.q))}</td><td>${E(r.old)}</td><td>${E(r.new)}</td><td>${isFinite(r.rel)?(r.rel*100).toFixed(1)+'%':'—'}</td></tr>`).join('')+'</table></details>':'')+
+    (d.removed.length?`<div class="sgq-warn">Somem na versão nova: ${E(d.removed.slice(0,12).join(', '))}${d.removed.length>12?' …':''}</div>`:'')+
+    (big.length?`<div class="sgq-warn">${big.length} revisão(ões) acima de 5% em trimestre com mais de 1 ano — confira antes de publicar.</div>`:'');
+}
+
+function sgqRender(){
+  const E=sgqEsc;
+  _v('sgq-cards').innerHTML=_sgq.items.map((it,i)=>{
+    if(it.err) return `<div class="sgq-card"><h3>${E(it.file.name)}</h3><div class="sgq-bad">${E(it.err)}</div></div>`;
+    const o=it.out, s=it.sum, c=s.counts, m=it.man, lv=l=>o.checks.filter(k=>k.level===l);
+    const qs=o.series.flatMap(x=>Object.keys(x.vals)).sort((a,b)=>QL.qIdx(a)-QL.qIdx(b));
+    const ul=(arr,cls)=>arr.length?`<ul class="sgq-ul ${cls||''}">`+arr.map(k=>`<li><code>${E(k.code)}</code> ${E(k.msg)}</li>`).join('')+'</ul>':'';
+    const fl=(_sgq.filed||{})[m.id]||{};
+    const golds=(m.finger||[]).filter(f=>f.vs==='gold'&&!(f.unlessFiled&&fl[f.unlessFiled]&&fl[f.unlessFiled].vals&&fl[f.unlessFiled].vals[o.cutoff_q]!=null));
+    const goldHtml=golds.map(f=>{ const sr=o.series.find(x=>x.series_key===f.k), g=(_sgq.gold[m.id]||{})[f.k];
+      return `<div class="row" style="margin:4px 0"><label>${E(sr?sr.label_en:f.k)} do release de ${E(QL.qShort(o.cutoff_q))} (${E(sr&&sr.ccy||'')} mn)</label>`+
+        `<input class="in" style="width:120px" value="${g==null?'':E(g)}" placeholder="ex.: 4289,0" onchange="sgqGold(${i},'${E(f.k)}',this.value)"><span class="muted">sem separador de milhar</span></div>`; }).join('');
+    const bigRev=it.diff?it.diff.old_big_revisions.length:0;
+    const needAck=c.warn>0||bigRev>0;
+    const travado=c.block>0||!it.pub||it.pub.missing||it.pub.noCompany||it.published;
+    const farol=c.block?'<span class="sgq-bad">🔴 bloqueada</span>':c.warn?'<span class="sgq-warn">🟡 atenção</span>':'<span class="sgq-ok">🟢 pronta</span>';
+    return `<div class="sgq-card"><h3>${E(o.company)} ${farol} <span class="muted" style="font-weight:400">· ${E(it.file.name)}</span></h3>`+
+      `<div>${E(QL.qShort(qs[0]))} → ${E(QL.qShort(qs[qs.length-1]))} · <b>${s.n_series}</b> séries · <b>${s.n_values}</b> números · ${QL.toBatches(o.series,60000).length} lote(s)</div>`+
+      goldHtml+ul(lv('block'),'sgq-bad')+ul(lv('warn'),'sgq-warn')+sgqDiffHtml(it)+
+      (o.candidates.length?`<details><summary>${o.candidates.length} conta(s) digitada(s) no histórico — pedem nota</summary><ul class="sgq-ul">`+
+        o.candidates.map((k,j)=>`<li>${E(k.msg)} <button class="chip" onclick="sgqAnnFromCand(${i},${j})">Criar anotação</button></li>`).join('')+'</ul></details>':'')+
+      `<details><summary>detalhes da leitura</summary><div class="muted">fora por regra: ${E(Object.entries(o.excluded).map(([k,v])=>k+' '+v).join(' · ')||'nada')}</div>`+
+        (o.unknown.length?`<div>linhas com número que o manifesto não declara (${o.unknown.length}) — não entram:</div><ul class="sgq-ul">`+
+          o.unknown.slice(0,60).map(u=>`<li>linha ${u.row}: ${E(u.label)} <span class="muted">${E(u.unit)}</span></li>`).join('')+'</ul>':'')+
+        ul(lv('info'),'muted')+'</details>'+
+      `<div class="row" style="margin-top:8px">`+
+        (needAck&&!travado?`<label><input type="checkbox" ${_sgq.ack[i]?'checked':''} onchange="_sgq.ack[${i}]=this.checked;sgqRender()"> li os avisos acima</label>`:'')+
+        `<button class="btn" ${travado||(needAck&&!_sgq.ack[i])?'disabled':''} onclick="sgqPublish(${i})">${it.published?'Publicada':'Publicar '+E(o.company)}</button>`+
+        `<span id="sgq-pub-${i}" class="muted">${it.pubMsg||''}</span></div></div>`;
+  }).join('');
+}
+
+async function sgqPublish(i){
+  const it=_sgq.items[i]; if(!it||!it.out||it.published) return;
+  const o=it.out, s=QL.summarize(o), cutoff=o.cutoff_q;
+  if(s.counts.block){ alert('Há bloqueios — esta empresa não publica.'); return; }
+  if((s.counts.warn||(it.diff&&it.diff.old_big_revisions.length))&&!_sgq.ack[i]){ alert('Marque que leu os avisos.'); return; }
+  if(!confirm('Publicar '+o.company+'?\n\n'+s.n_series+' séries, '+s.n_values+' números, de '+QL.qShort(o.first_q)+' a '+QL.qShort(cutoff)+'.\nA versão publicada hoje fica guardada e pode ser reativada.')) return;
+  const set=h=>{ it.pubMsg=h; const el=_v('sgq-pub-'+i); if(el) el.innerHTML=h; };
+  let id=null;
+  try{
+    const meta={ file_name:it.file.name, file_sha256:it.sha, manifest_id:o.manifest_id, manifest_v:o.manifest_v, lib_v:o.lib_v,
+      first_q:o.first_q, cutoff_q:cutoff, cutoff_basis:'admin',
+      checks:o.checks.filter(k=>k.level!=='info').concat(o.checks.filter(k=>k.level==='info').slice(0,40)),
+      diff:it.diff?{added:it.diff.added.length, removed:it.diff.removed.length, n_new_quarters:it.diff.n_new_quarters,
+        n_revisions:it.diff.n_revisions, top:it.diff.revisions.slice(0,10), old_big:it.diff.old_big_revisions.length}:null };
+    set('abrindo a versão…');
+    const b=await sbAuth.rpc('admin_quarterly_begin',{p_company:o.company, p_meta:meta});
+    if(b.error) throw b.error;
+    id=b.data;
+    const lotes=QL.toBatches(o.series,60000);
+    for(let k=0;k<lotes.length;k++){
+      set('enviando lote '+(k+1)+' de '+lotes.length+'…');
+      const r=await sbAuth.rpc('admin_quarterly_chunk',{p_import:id, p_seq:k+1, p_series:lotes[k]});
+      if(r.error) throw new Error('lote '+(k+1)+': '+r.error.message);
+    }
+    set('conferindo no servidor…');
+    const cm=await sbAuth.rpc('admin_quarterly_commit',{p_import:id, p_n_series:s.n_series, p_n_values:s.n_values});
+    if(cm.error) throw cm.error;
+    it.published=true;
+    set(`<b class="sgq-ok">Publicada.</b> Versão #${sgqEsc(cm.data.id)} · ${sgqEsc(cm.data.n_series)} séries · ${sgqEsc(cm.data.n_values)} números`+
+      (cm.data.superseded?` · substituiu a #${sgqEsc(cm.data.superseded)}`:' · primeira carga'));
+    sgqRender(); sgqLoadHistory();
+  }catch(e){
+    const msg=(e&&e.message)||String(e);
+    if(id!=null){ try{ await sbAuth.rpc('admin_quarterly_abort',{p_import:id}); }catch(_){} }
+    set(`<b class="sgq-bad">Não publicou:</b> ${sgqEsc(msg)}`+(sgqNoSql(msg)?' (rodou o admin/supabase_quarterly_v2.sql?)':'')+(id!=null?' — a versão parcial foi descartada.':''));
+  }
+}
+
+async function sgqLoadHistory(){
+  const host=_v('sgq-hist'); if(!host) return;
+  const E=sgqEsc, co=_v('sgq-hist-co').value||null;
+  host.textContent='Carregando…';
+  const {data,error}=await sbAuth.rpc('admin_quarterly_history',{p_company:co});
+  if(error){ host.textContent='Erro: '+error.message+(sgqNoSql(error)?' — rode o admin/supabase_quarterly_v2.sql':''); return; }
+  const rows=data||[]; if(!rows.length){ host.textContent='Nenhuma versão publicada ainda.'; return; }
+  host.innerHTML='<table class="sgq-t"><tr><th>#</th><th>empresa</th><th>situação</th><th>arquivo</th><th>1º → corte</th><th>séries · números</th><th>avisos</th><th>quando</th><th></th></tr>'+
+    rows.map(r=>`<tr><td>${E(r.id)}</td><td><b>${E(r.company)}</b></td><td>${E(SGQ_ST[r.status]||r.status)}</td><td>${E(r.file_name)}</td>`+
+      `<td>${E(r.first_q)} → ${E(r.cutoff_q)}</td><td>${E(r.n_series)} · ${E(r.n_values)}</td><td>${E(r.n_warn)}</td><td>${E(sgqWhen(r.committed_at||r.created_at))}</td>`+
+      `<td>${/^(superseded|reverted)$/.test(r.status)?`<button class="chip" onclick="sgqRevert(${Number(r.id)},'${E(r.company)}')">Reativar</button>`:''}</td></tr>`).join('')+'</table>';
+}
+async function sgqRevert(id,co){
+  if(!confirm('Reativar a versão #'+id+' de '+co+'?\n\nA versão ativa hoje fica guardada como revertida.')) return;
+  const {error}=await sbAuth.rpc('admin_quarterly_revert',{p_import:id});
+  if(error){ alert('Erro: '+error.message); return; }
+  sgqLoadHistory();
+}
+
+async function sgqLoadAnn(){
+  const host=_v('sgq-an-list'); if(!host) return;
+  const E=sgqEsc, co=_v('sgq-an-co').value||null;
+  host.textContent='Carregando…';
+  const {data,error}=await sbAuth.rpc('admin_get_quarterly_annotations',{p_company:co});
+  if(error){ host.textContent='Erro: '+error.message+(sgqNoSql(error)?' — rode o admin/supabase_quarterly_v2.sql':''); return; }
+  _sgqAnns=data||[];
+  if(!_sgqAnns.length){ host.textContent='Nenhuma anotação.'; return; }
+  host.innerHTML=_sgqAnns.map((a,j)=>`<div class="team-row"><span><b>${E(a.company)}</b> ${E(QL.qShort(a.q_from))}${a.q_to?'–'+E(QL.qShort(a.q_to)):''} · ${E(SGQ_KIND[a.kind]||a.kind)}`+
+    `${a.scope?' · <code>'+E(a.scope)+'</code>':''} — ${E(a.text)} ${a.is_visible?'':'<span class="muted">(oculta)</span>'}</span>`+
+    `<span class="acts"><button class="chip" onclick="sgqAnnEdit(${j})">Editar</button><button class="chip" onclick="sgqAnnDel(${Number(a.id)})">Excluir</button></span></div>`).join('');
+}
+function sgqAnnEdit(j){ const a=_sgqAnns[j]; if(!a) return; _sgqAnnId=a.id;
+  _v('sgq-an-co').value=a.company; _v('sgq-an-from').value=a.q_from; _v('sgq-an-to').value=a.q_to||''; _v('sgq-an-kind').value=a.kind;
+  _v('sgq-an-scope').value=a.scope||''; _v('sgq-an-text').value=a.text||''; _v('sgq-an-vis').checked=!!a.is_visible;
+  _v('sgq-an-status').textContent='editando a anotação #'+a.id; }
+function sgqAnnClear(){ _sgqAnnId=null; ['sgq-an-from','sgq-an-to','sgq-an-scope','sgq-an-text'].forEach(id=>{ _v(id).value=''; });
+  _v('sgq-an-kind').value='event'; _v('sgq-an-vis').checked=true; _v('sgq-an-status').textContent=''; }
+async function sgqAnnSave(){
+  const co=_v('sgq-an-co').value, qf=_v('sgq-an-from').value.trim().toUpperCase(), qt=_v('sgq-an-to').value.trim().toUpperCase(),
+        tx=_v('sgq-an-text').value.trim(), st=_v('sgq-an-status');
+  if(!co){ st.textContent='Escolha a empresa.'; return; }
+  if(!QL.isQKey(qf)||(qt&&!QL.isQKey(qt))){ st.textContent='Trimestre no formato 2026Q2.'; return; }
+  if(qt&&QL.qIdx(qt)<QL.qIdx(qf)){ st.textContent='"Até" vem antes de "De".'; return; }
+  if(tx.length<3||tx.length>280){ st.textContent='Texto entre 3 e 280 caracteres.'; return; }
+  st.textContent='Salvando…';
+  const {error}=await sbAuth.rpc('admin_upsert_quarterly_annotation',{p_id:_sgqAnnId, p_company:co, p_q_from:qf, p_q_to:qt,
+    p_scope_key:_v('sgq-an-scope').value.trim(), p_kind:_v('sgq-an-kind').value, p_text_en:tx, p_is_visible:_v('sgq-an-vis').checked});
+  if(error){ st.textContent='Erro: '+error.message+(sgqNoSql(error)?' — rode o admin/supabase_quarterly_v2.sql':''); return; }
+  sgqAnnClear(); st.textContent='Salvo.'; sgqLoadAnn();
+}
+async function sgqAnnDel(id){
+  if(!confirm('Excluir a anotação #'+id+'?')) return;
+  const {error}=await sbAuth.rpc('admin_delete_quarterly_annotation',{p_id:id});
+  if(error){ alert('Erro: '+error.message); return; }
+  sgqLoadAnn();
+}
+function sgqAnnFromCand(i,j){
+  const it=_sgq.items[i], k=it&&it.out&&it.out.candidates[j]; if(!k) return;
+  sgqAnnClear(); _v('sgq-an-co').value=it.out.company; _v('sgq-an-from').value=k.q; _v('sgq-an-scope').value=k.key; _v('sgq-an-kind').value='adjustment';
+  _v('sgq-an-status').textContent='conta digitada em '+QL.qShort(k.q)+' — escreva a nota em inglês e salve';
+  const t=_v('sgq-an-text'); t.scrollIntoView({behavior:'smooth',block:'center'}); t.focus();
+}
 
 // ════════════ STOCK GUIDE — Sensibilidades + Excel do mesh (P5b) ════════════
 let _sgSens=[];

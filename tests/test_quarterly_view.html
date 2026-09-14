@@ -1,0 +1,128 @@
+<!doctype html><meta charset="utf-8"><title>quarterly-view — contas da página</title>
+<body><pre id="out">rodando…</pre><script>
+/* Confere as contas da página Quarterly (quarterly-view.js) sem Supabase e sem tela:
+     · fonte por métrica (EBITDA ajustado só do modelo; lucro da CVM quando a moeda bate; receita com o
+       filed só DEPOIS do corte do modelo; dívida com o filed onde o modelo não tem o trimestre);
+     · LTM (4 trimestres ou nada), estoque = último, taxa sem LTM; variação sobre base ≤ 0 não sai;
+     · US$: fluxo e preço pela média, estoque pelo fim, razão intacta, trimestre sem câmbio some;
+     · calendário (apelidos VALE/GMEX/AURA33, relatório de produção fora), status da temporada;
+     · números en-US, famílias comparáveis e as matrizes do Excel.
+   Como rodar: servir o repo (config `dash`, porta 8123) e abrir /tests/test_quarterly_view.html. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const near=(a,b)=>a!=null&&b!=null&&Math.abs(a-b)<1e-9;
+
+window.__RUN__=async function(){
+  R.length=0;
+  new Function(await (await fetch('/quarterly-view.js?v='+Date.now())).text())();
+  const QV=window.QV;
+
+  const boot={enabled:true,current_q:'2026Q3',from_q:'2022Q3',
+    companies:[
+      {ticker:'KLBN11',name:'Klabin',sector:'pulp_paper',base_ccy:'BRL',display_order:1,model:{cutoff_q:'2026Q1',first_q:'2013Q1'},filed_last:'2026Q2'},
+      {ticker:'VALE3',name:'Vale',sector:'mining',base_ccy:'USD',display_order:2,model:{cutoff_q:'2026Q2'},filed_last:'2026Q2'},
+      {ticker:'TX',name:'Ternium',sector:'steel',base_ccy:'USD',display_order:3,model:{cutoff_q:'2026Q2'},filed_last:null}],
+    series:[
+      {company:'KLBN11',key:'revenue',std:'revenue',unit:'BRL_mn',ccy:'BRL',agg:'flow',label:'Net revenue',vals:{'2025Q1':5000,'2025Q2':5247.2,'2025Q3':5200,'2025Q4':5300,'2026Q1':5100}},
+      {company:'KLBN11',key:'adj_ebitda',std:'adj_ebitda',unit:'BRL_mn',ccy:'BRL',agg:'flow',label:'Adjusted EBITDA',vals:{'2025Q1':1900,'2025Q2':2040.8,'2025Q3':2000,'2025Q4':2100,'2026Q1':1950}},
+      {company:'KLBN11',key:'net_income',std:'net_income',unit:'BRL_mn',ccy:'BRL',agg:'flow',label:'Net income',vals:{'2025Q2':572,'2026Q1':277.2}},
+      {company:'KLBN11',key:'net_debt',std:'net_debt',unit:'BRL_mn',ccy:'BRL',agg:'stock',label:'Net debt',vals:{'2025Q2':27951,'2026Q1':24032}},
+      {company:'VALE3',key:'revenue',std:'revenue',unit:'USD_mn',ccy:'USD',agg:'flow',vals:{'2025Q2':8804,'2026Q2':10498}},
+      {company:'VALE3',key:'net_income',std:'net_income',unit:'USD_mn',ccy:'USD',agg:'flow',vals:{'2026Q2':1375}},
+      {company:'TX',key:'revenue',std:'revenue',unit:'USD_mn',ccy:'USD',agg:'flow',vals:{'2025Q2':3947,'2026Q2':4340}},
+      {company:'TX',key:'net_income',std:'net_income',unit:'USD_mn',ccy:'USD',agg:'flow',vals:{'2026Q2':343}}],
+    filed:[
+      {company:'KLBN11',q:'2026Q1',ccy:'BRL',rev:5100,ni:386.6,ebitda:1500,nd:24000},
+      {company:'KLBN11',q:'2026Q2',ccy:'BRL',rev:5150.7,ni:390,ebitda:1600,nd:23900},
+      {company:'VALE3',q:'2026Q2',ccy:'BRL',rev:53000,ni:6900,ebitda:20000}],
+    fx:{BRL:{'2025Q2':[5.6648,5.43],'2026Q1':[5.3,5.2],'2026Q2':[5.0494,5.1616]}},
+    notes:[{company:'TX',q_from:'2023Q3',kind:'break',text:'Usiminas consolidated from 3Q23'}]};
+  const cos=QV.fromBoot(boot), K=cos.find(c=>c.ticker==='KLBN11'), V=cos.find(c=>c.ticker==='VALE3'), T=cos.find(c=>c.ticker==='TX');
+  ok('boot: empresas na ordem e notas na empresa certa', cos.map(c=>c.ticker).join()==='KLBN11,VALE3,TX' && T.notes.length===1 && K.notes.length===0);
+
+  // ── fonte por métrica ──
+  const rev=QV.pick(K,'revenue');
+  ok('receita: modelo até o corte (1Q26 = 5.100 do modelo)', rev.vals['2026Q1']===5100 && rev.src['2026Q1']==='model');
+  ok('receita: filed só na borda depois do corte (2Q26, marcado)', rev.vals['2026Q2']===5150.7 && rev.src['2026Q2']==='filed');
+  const eb=QV.pick(K,'adj_ebitda');
+  ok('EBITDA ajustado nunca usa o contábil da CVM', eb.vals['2026Q2']===undefined && eb.vals['2026Q1']===1950);
+  const ni=QV.pick(K,'net_income');
+  ok('lucro = CVM (386,6), não o do modelo (277,2)', ni.vals['2026Q1']===386.6 && ni.src['2026Q1']==='filed');
+  ok('lucro: trimestre sem filed cai no modelo', ni.vals['2025Q2']===572 && ni.src['2025Q2']==='model');
+  const nv=QV.pick(V,'net_income');
+  ok('Vale: CVM em R$ × empresa em US$ → lucro do modelo', nv.vals['2026Q2']===1375 && nv.src['2026Q2']==='model' && nv.ccy==='USD');
+  const rv=QV.pick(V,'revenue');
+  ok('Vale: receita em R$ da CVM não entra na série em US$', rv.vals['2026Q2']===10498 && Object.values(rv.src).every(s=>s==='model'));
+  ok('Ternium sem robô: lucro do modelo', QV.pick(T,'net_income').vals['2026Q2']===343);
+  const nd=QV.pick(K,'net_debt');
+  ok('dívida: modelo no 1Q26, filed no 2Q26 (marcado) e é estoque', nd.vals['2026Q1']===24032 && nd.vals['2026Q2']===23900 && nd.src['2026Q2']==='filed' && nd.agg==='stock');
+  const mg=QV.pick(K,'margin');
+  ok('margem = ajustado ÷ receita', near(mg.vals['2026Q1'],1950/5100) && mg.kind==='pct');
+  ok('margem não existe onde falta o EBITDA (2Q26 só tem receita filed)', mg.vals['2026Q2']===undefined);
+  const lev=QV.pick(K,'leverage');
+  ok('alavancagem = dívida ÷ LTM do ajustado (1Q26)', near(lev.vals['2026Q1'],24032/(2040.8+2000+2100+1950)) && lev.vals['2025Q2']===undefined);
+  ok('série qualquer do modelo pela chave', QV.pick(K,'nao_existe').vals && Object.keys(QV.pick(K,'nao_existe').vals).length===0);
+
+  // ── LTM e variações ──
+  ok('LTM de fluxo exige os 4 trimestres', QV.ltm(eb.vals,'2025Q4','flow')===1900+2040.8+2000+2100 && QV.ltm(eb.vals,'2025Q3','flow')===null);
+  ok('LTM de estoque = o último', QV.ltm(nd.vals,'2026Q1','stock')===24032);
+  ok('taxa não tem LTM', QV.ltm(mg.vals,'2026Q1','rate')===null);
+  const lm=QV.basis(K,'margin','ltm');
+  ok('margem LTM = soma do ajustado ÷ soma da receita', near(lm.vals['2026Q1'],(2040.8+2000+2100+1950)/(5247.2+5200+5300+5100)));
+  const le=QV.basis(K,'adj_ebitda','ltm');
+  ok('base LTM de fluxo soma 4 trimestres e muda o rótulo', le.vals['2025Q4']===1900+2040.8+2000+2100 && /LTM/.test(le.label));
+  ok('YoY', near(QV.change(rev.vals,'2026Q2',4),5150.7/5247.2-1));
+  ok('variação sobre base ≤ 0 não é publicada', QV.pct(10,-5)===null && QV.pct(10,0)===null && QV.pct(null,5)===null);
+  ok('delta (pp da margem)', near(QV.delta({'2026Q1':0.40,'2025Q1':0.38},'2026Q1',4),0.02));
+
+  // ── câmbio ──
+  const usd=QV.toUsd(rev, boot.fx);
+  ok('US$: fluxo pela média e unidade trocada', near(usd.vals['2025Q2'],5247.2/5.6648) && usd.unit==='USD_mn' && usd.ccy==='USD');
+  ok('US$: estoque pelo fim', near(QV.toUsd(nd, boot.fx).vals['2026Q1'],24032/5.2));
+  ok('US$: trimestre sem câmbio some (não inventa)', usd.vals['2025Q1']===undefined);
+  ok('US$: razão fica como está', QV.toUsd(mg, boot.fx)===mg);
+  ok('US$: sem tabela de câmbio devolve null; quem já é US$ passa', QV.toUsd(rev,{})===null && QV.hasFx({},'USD') && !QV.hasFx({},'BRL'));
+  const px={id:'px',vals:{'2026Q2':5000},ccy:'BRL',unit:'BRL/t',agg:'rate',kind:'price'};
+  ok('US$: preço unitário pela média', QV.toUsd(px, boot.fx).unit==='USD/t' && near(QV.toUsd(px, boot.fx).vals['2026Q2'],5000/5.0494));
+
+  // ── calendário e status ──
+  const ev=[{company:'VALE',title:'Vale 3Q26 results',start_date:'2026-10-23'},{company:'VALE',title:'Vale 3Q26 production report',start_date:'2026-10-15'},
+            {company:'GMEX',title:'Grupo México 3Q26 earnings',start_date:'2026-10-28'},{company:'KLBN11.SA',title:'Klabin 3Q26 Earnings',start_date:'2026-08-01'}];
+  const nx=QV.nextResults(ev,'2026-09-14');
+  ok('calendário: apelidos VALE→VALE3 e GMEX→GMEXICOB', nx.VALE3&&nx.VALE3.date==='2026-10-23' && nx.GMEXICOB&&nx.GMEXICOB.date==='2026-10-28');
+  ok('calendário: relatório de produção não conta; data passada fica fora', !nx.KLBN11 && !/production/.test(nx.VALE3.title));
+  ok('ticker com sufixo de bolsa normalizado', QV.normTicker('CMPC.SN')==='CMPC' && QV.normTicker('aura33')==='AUGO');
+  ok('temporada = trimestre mais recente entregue', QV.seasonQ(cos)==='2026Q2');
+  ok('status: modelo no trimestre', QV.status(V,'2026Q2').kind==='model');
+  ok('status: só filed → preliminary', QV.status(K,'2026Q2').kind==='filed');
+  ok('status: sem nada → esperado com data en-US', QV.status(QV.indexCompany({ticker:'X',model:{cutoff_q:'2026Q1'}}),'2026Q2',{date:'2026-10-23'}).text==='Expected Oct 23');
+
+  // ── números en-US ──
+  ok('números en-US', QV.fmt(17870.6,'money')==='17,871' && QV.fmt(382.37,'money')==='382.4' && QV.fmt(6.4055,'price')==='6.41', QV.fmt(17870.6,'money')+' '+QV.fmt(382.37,'money')+' '+QV.fmt(6.4055,'price'));
+  ok('negativo com sinal de menos tipográfico', QV.fmt(-498.97,'money')==='−499.0');
+  ok('pct, pp, x e variação', QV.fmt(0.2453,'pct')==='24.5%' && QV.fmt(-0.012,'pp')==='−1.2 pp' && QV.fmt(3.14,'x')==='3.1x' && QV.fmt(0.051,'chg')==='+5.1%');
+  ok('vazio vira travessão', QV.fmt(null)==='—' && QV.fmt(NaN)==='—');
+  ok('rótulos de unidade', QV.unitLabel('BRL_mn')==='R$ mn' && QV.unitLabel('USD/lb')==='US$/lb' && QV.unitLabel('k_m3')==='k m³');
+
+  // ── comparáveis ──
+  ok('família junta R$ e US$ do mesmo produto', QV.family('pulp_hw_brl')==='pulp_hw' && QV.family('pulp_hw_usd')==='pulp_hw' && QV.family('steel_kt')==='steel_kt' && QV.family('iron_ore_c1_usd_t')==='iron_ore_c1_t');
+  ok('família NÃO junta tonelada com libra (cobre da Vale × Southern Copper)', QV.family('copper_usd_t')!==QV.family('copper_usd_lb'));
+  ok('alavancagem negativa (caixa líquido) e volume sem casa decimal', QV.fmt(-0.2,'x')==='−0.2x' && QV.fmt(989,'volume')==='989' && QV.fmt(385.72,'volume')==='386');
+  const met={series:[{company:'SUZB3',std:'realized_price',def:'pulp_hw_brl',vals:{}},{company:'KLBN11',std:'realized_price',def:'pulp_hw_brl',vals:{}},
+    {company:'CMPC',std:'realized_price',def:'pulp_hw_usd',vals:{}},{company:'VALE3',std:'realized_price',def:'nickel_usd_t',vals:{}}]};
+  const cg=QV.compareGroups(met,'realized_price');
+  ok('comparação só com família presente em 2+ empresas', Object.keys(cg).join()==='pulp_hw' && cg.pulp_hw.length===3);
+
+  // ── Excel ──
+  const ax=QV.aoaCompany(K);
+  ok('Excel da empresa: trimestres do histórico inteiro no cabeçalho', ax[0][0]==='Series' && ax[0].includes('1Q25') && ax[0].includes('2Q26'));
+  ok('Excel da empresa: linhas do filed marcadas', ax.some(r=>r[0]==='Net income — as filed' && r[2]==='As filed (CVM/SEC)'));
+  ok('Excel da empresa: notas no fim', QV.aoaCompany(T).some(r=>r[2]==='Usiminas consolidated from 3Q23'));
+  const ac=QV.aoaCompare([{company:'KLBN11',name:'Klabin',vals:{'2025Q2':1,'2026Q2':2}}],'Net revenue','BRL_mn');
+  ok('Excel da comparação: empresas × trimestres', ac[0][0]==='Net revenue (R$ mn)' && ac[0].length===6 && ac[1][0]==='Klabin' && ac[1][5]===2);
+
+  const pass=R.filter(x=>x.startsWith('PASS')).length, fail=R.length-pass;
+  document.getElementById('out').textContent=(fail?'❌ ':'✅ ')+pass+'/'+R.length+' PASS\n\n'+R.join('\n');
+  return {pass, fail, total:R.length};
+};
+window.__RUN__();
+</script>

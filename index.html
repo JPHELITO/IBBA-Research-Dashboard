@@ -1470,6 +1470,7 @@ function applyFlags(flags, isAdmin){
   // o menu (topnav.js) é global e não consulta flags: deixamos aqui o recado de quem pode abrir a
   // página Data — senão o cliente clica no item e leva um 'Unavailable'.
   try{ localStorage.setItem('ibba_data_on', (on['data_page']===true||isAdmin)?'1':'0'); }catch(e){}
+  try{ localStorage.setItem('ibba_quarterly_on', (on['quarterly']===true||isAdmin)?'1':'0'); }catch(e){}   // item Quarterly do menu
   for(const key in FLAG_SEL){
     document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
       el.classList.remove('admin-off');
