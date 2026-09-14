@@ -431,8 +431,13 @@ const MODEL_URL={
 const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
 const SG_TABS=['comp','sens'];
-// a aba Quarterly virou página própria (quarterly.html, 14/09/2026): o link antigo #quarterly vai para lá
-if((location.hash||'').slice(1)==='quarterly'){ try{ location.replace('/quarterly.html'); }catch(e){} }
+// a aba Quarterly virou página própria (quarterly.html, 14/09/2026): o link antigo #quarterly vai para lá — só
+// para quem pode abrir a página (admin ou flag `quarterly` ligada, o mesmo recado que o menu usa). Enquanto ela
+// for só de admin, o cliente com link velho (ou menu em cache) fica no Comp Table em vez de cair num "Unavailable".
+if((location.hash||'').slice(1)==='quarterly'){
+  let _qPode=false; try{ _qPode=localStorage.getItem('ibba_quarterly_on')==='1'||localStorage.getItem('ibba_is_admin')==='1'; }catch(e){}
+  if(_qPode){ try{ location.replace('/quarterly.html'); }catch(e){} }
+}
 function _sgTabFromHash(){ const h=(location.hash||'').slice(1); return SG_TABS.includes(h)?h:'comp'; }
 function sgShowTab(t){
   if(!SG_TABS.includes(t)) t='comp';
