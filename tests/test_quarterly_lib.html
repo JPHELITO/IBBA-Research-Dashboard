@@ -176,6 +176,8 @@ window.__RUN__=async function(){
   const brl={}; Object.keys(fx).forEach(q=>{ const i=Q10.indexOf(q); brl[q]=+(REV[i]*fx[q]).toFixed(1); });
   o=QL.parseWorkbook(book(csnRows()), manUSD, {cutoff:'2026Q2', now:NOW, fx:fx, filed:{rev:{ccy:'BRL', vals:brl}}});
   ok('modelo em US$ × câmbio médio bate com a CVM em R$', has(o,'finger_filed_ok','info') && !has(o,'finger_filed'), codes(o));
+  o=QL.parseWorkbook(book(csnRows()), manUSD, {cutoff:'2026Q2', now:NOW, filed:{rev:{ccy:'BRL', vals:brl}}});
+  ok('US$ × R$ sem PTAX: nada comparado vira atenção, nunca "bate"', has(o,'finger_no_fx','warn') && !has(o,'finger_filed_ok'), codes(o));
 
   const manFX={id:'TFX',v:1,sheets:[Object.assign({},MAN.sheets[0],{rows:[
       {k:'revenue', sec:'cons', lab:/^\(=\) Net Revenues$/, u:'BRL_mn', std:'revenue', req:true},

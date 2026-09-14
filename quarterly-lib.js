@@ -578,6 +578,9 @@
         });
         if (erros.length) checks[nivel]('finger_filed', '"' + (s.label_en || f.k) + '" do modelo × CVM/SEC diverge: ' + erros.join(' · ') +
           (f.hard ? ' — trimestre desalinhado ou planilha errada.' : ' — definição diferente; a página usa o número oficial.'), { key: f.k });
+        // modelo em US$ e CVM em R$ sem PTAX carregada: nada foi comparado — não pode sair como "bate"
+        else if (!ok.length) checks.warn('finger_no_fx', 'Sem câmbio (PTAX) para converter "' + (s.label_en || f.k) + '" de ' + s.ccy +
+          ' para ' + filed.ccy + ' e conferir com a CVM — confira a receita do ' + qShort(cutoff) + ' com o release antes de publicar.', { key: f.k });
         else checks.info('finger_filed_ok', '"' + (s.label_en || f.k) + '" bate com a CVM/SEC: ' + ok.join(' · ') + '.', { key: f.k });
         if (filed.vals[cutoff] == null) checks.warn('cutoff_not_filed', 'A CVM/SEC ainda não tem ' + qShort(cutoff) +
           ' para conferir; o corte vale pela data do release.');
