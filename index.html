@@ -1471,6 +1471,10 @@ function applyFlags(flags, isAdmin){
   // página Data — senão o cliente clica no item e leva um 'Unavailable'.
   try{ localStorage.setItem('ibba_data_on', (on['data_page']===true||isAdmin)?'1':'0'); }catch(e){}
   try{ localStorage.setItem('ibba_quarterly_on', (on['quarterly']===true||isAdmin)?'1':'0'); }catch(e){}   // item Quarterly do menu
+  // Market ▾ do menu: as abas internas (Commodities, Short Interest…) só abrem com a flag market_watch. Grava só
+  // a flag — admin o menu já reconhece pelo ibba_is_admin, e assim o recado não vaza p/ outro login no navegador
+  try{ localStorage.setItem('ibba_mw_on', on['market_watch']===true?'1':'0'); }catch(e){}
+  if(window.__gnavMarketTabs) window.__gnavMarketTabs(on['market_watch']===true||isAdmin);
   for(const key in FLAG_SEL){
     document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
       el.classList.remove('admin-off');

@@ -1,0 +1,101 @@
+<!doctype html><meta charset="utf-8"><title>topnav — Market ▾ test</title>
+<body><pre id="out">rodando…</pre>
+<script>
+// o menu lê o recado da flag (ibba_mw_on / ibba_is_admin) ao injetar. ?probe= é o próprio teste abrindo
+// esta página num iframe p/ conferir como o menu NASCE com cada recado — sem ?probe= começa do zero.
+const P=new URLSearchParams(location.search).get('probe');
+try{ localStorage.removeItem('ibba_mw_on'); localStorage.removeItem('ibba_is_admin');
+  if(P==='mw1') localStorage.setItem('ibba_mw_on','1');
+  if(P==='mw0') localStorage.setItem('ibba_mw_on','0');
+  if(P==='admin') localStorage.setItem('ibba_is_admin','1'); }catch(e){}
+</script>
+<script src="/topnav.js"></script>
+<script>
+const R=[]; const ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const $=s=>document.querySelector(s), $$=s=>[].slice.call(document.querySelectorAll(s));
+const vis=el=>!!el && getComputedStyle(el).display!=='none';
+const tabOf=a=>new URL(a.href).searchParams.get('tab');
+window.__RUN__=async function(){
+  R.length=0;
+  const back=location.pathname+location.search+location.hash;
+  try{
+    const g=$('#gnav-market'), drop=g&&g.querySelector('.gn-drop'), caret=g&&g.querySelector('.gn-caret');
+    const head=g&&g.querySelector('a.gn-item');
+
+    // 1) estrutura: a cabeça segue LINK p/ o Market; as abas são as MESMAS da barra #mtabs do market.html
+    ok('Market ▾ existe no desktop', !!(g&&drop&&head));
+    ok('cabeça continua link p/ /market.html', !!head && head.getAttribute('href')==='/market.html');
+    const src=(await (await fetch('/market.html?v='+Date.now())).text()).split('\r\n').join('\n');
+    const blk=(src.match(/<div class="mtabs[^"]*" id="mtabs">([\s\S]*?)<\/div>/)||[])[1]||'';
+    const page=[...blk.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);
+    const desk=$$('#gnav-market .gn-drop a').map(tabOf), mob=$$('a.gnm-mkt').map(tabOf);
+    ok('desktop = abas do #mtabs, na mesma ordem', page.length===6 && JSON.stringify(desk)===JSON.stringify(page), desk.join(',')+' vs '+page.join(','));
+    ok('celular = as mesmas', JSON.stringify(mob)===JSON.stringify(page), mob.join(','));
+
+    // 2) sem flag e sem admin: "Market" simples, como antes (sem ▾, a lista não abre nem no hover)
+    //    o hover é imitado por uma folha ANTES da do menu — mesma ordem da regra :hover real
+    const hov=document.createElement('style'); hov.textContent='.gn-group.t-hover .gn-drop{display:block}';
+    document.head.insertBefore(hov, document.head.firstChild);
+    g.classList.add('t-hover');
+    ok('sem flag: sem ▾', g.classList.contains('gn-solo') && !vis(caret));
+    ok('sem flag: a lista não abre no hover', !vis(drop));
+    ok('sem flag (celular): "Market" simples no More, sem o grupo', vis($('.gnm-mkt-solo')) && !$$('.gnm-mkt').some(vis));
+
+    // 3) flag ligada — a home/o Market gravam o recado e avisam o menu
+    try{ localStorage.setItem('ibba_mw_on','1'); }catch(e){}
+    __gnavMarketTabs(true);
+    ok('com flag: ▾ aparece e a lista abre no hover', vis(caret) && vis(drop));
+    ok('com flag (celular): grupo Market com as 6, sem o link simples',
+       vis($('div.gnm-mkt')) && $$('a.gnm-mkt').filter(vis).length===6 && !vis($('.gnm-mkt-solo')));
+
+    // 4) escolheu um destino → a lista fecha; o mouse saiu → reabre no próximo hover; Ctrl-clique não fecha
+    const link=drop.querySelector('a[href*="tab=short"]');
+    link.addEventListener('click',e=>e.preventDefault(),{once:true});   // não navegar de verdade
+    link.click();
+    ok('clicou numa aba: a lista fecha', g.classList.contains('gn-shut') && !vis(drop));
+    g.dispatchEvent(new MouseEvent('mouseleave'));
+    ok('mouse saiu: volta a abrir', !g.classList.contains('gn-shut') && vis(drop));
+    link.addEventListener('click',e=>e.preventDefault(),{once:true});
+    link.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,ctrlKey:true}));
+    ok('Ctrl-clique (nova aba) não fecha', !g.classList.contains('gn-shut'));
+    g.classList.remove('t-hover'); hov.remove();
+
+    // 5) luz laranja: a régua do Market é o ?tab= (a página troca de aba sem recarregar e chama __gnavMarkCurrent)
+    const lit=()=>$$('#gnav-market .gn-drop a.on').map(tabOf), litM=()=>$$('a.gnm-mkt.on').map(tabOf);
+    history.replaceState(null,'','/market.html?t=VALE3.SA&tab=short'); __gnavMarkCurrent();
+    ok('?tab=short acende só Short Interest (desktop)', JSON.stringify(lit())==='["short"]', lit().join(','));
+    ok('?tab=short acende só Short Interest (celular)', JSON.stringify(litM())==='["short"]', litM().join(','));
+    ok('e acende a cabeça Market', head.classList.contains('on'));
+    history.replaceState(null,'','/market.html?t=VALE3.SA'); __gnavMarkCurrent();
+    ok('sem ?tab= acende Performance', JSON.stringify(lit())==='["performance"]' && JSON.stringify(litM())==='["performance"]', lit().join(',')+' / '+litM().join(','));
+    history.replaceState(null,'','/market.html?tab=Filings'); __gnavMarkCurrent();
+    ok('?tab= não diferencia maiúscula', JSON.stringify(lit())==='["filings"]', lit().join(','));
+
+    // 6) sem regressão nos menus de #âncora
+    history.replaceState(null,'','/stock-guide.html#sens'); __gnavMarkCurrent();
+    const sg=$$('.gn-group').find(x=>x!==g && /Stock Guide/.test(x.textContent));
+    const sgOn=sg?[...sg.querySelectorAll('.gn-drop a.on')].map(a=>a.textContent):[];
+    ok('Stock Guide #sens acende só Sensitivity', JSON.stringify(sgOn)==='["Sensitivity"]', sgOn.join(','));
+    ok('fora do Market nada do Market acende', lit().length===0 && !head.classList.contains('on'));
+    history.replaceState(null,'','/Steel%20and%20Mining/steel_sm_dashboard.html'); __gnavMarkCurrent();
+    const mm=$$('.gn-group').find(x=>/Steel/.test(x.textContent));
+    ok('M&M sem #âncora: nenhuma linha acende, o nome do menu sim',
+       !!mm && mm.querySelectorAll('.gn-drop a.on').length===0 && mm.querySelector('.gn-item').classList.contains('on'));
+    history.replaceState(null,'',back);
+
+    // 7) no carregamento o menu já NASCE certo pelo recado (1º paint, sem esperar RPC nenhum)
+    const probe=async q=>{ const f=document.createElement('iframe'); f.style.cssText='width:1300px;height:120px;border:0';
+      const loaded=new Promise(r=>f.onload=r); f.src='/tests/test_topnav_market.html?probe='+q; document.body.appendChild(f);
+      await loaded; const el=f.contentDocument.getElementById('gnav-market'); const solo=!!el && el.classList.contains('gn-solo');
+      f.remove(); return solo; };
+    ok('recado ibba_mw_on=1 → nasce com ▾', await probe('mw1')===false);
+    ok('recado ibba_mw_on=0 → nasce simples', await probe('mw0')===true);
+    ok('admin (ibba_is_admin=1) → nasce com ▾ mesmo sem a flag', await probe('admin')===false);
+  }catch(e){ ok('exceção: '+e.message, false); }
+  finally{
+    try{ history.replaceState(null,'',back); localStorage.removeItem('ibba_mw_on'); localStorage.removeItem('ibba_is_admin'); }catch(e){}
+  }
+  document.getElementById('out').textContent=R.join('\n');
+  return R;
+};
+</script></body>
