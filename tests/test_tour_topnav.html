@@ -1,0 +1,92 @@
+<!doctype html><meta charset="utf-8"><title>topnav — botão Tutorial</title>
+<body style="margin:0;font:12px Inter,Segoe UI,sans-serif"><pre id="out" style="white-space:pre-wrap;padding:8px">rodando… chame window.__RUN__()</pre>
+<script>
+// ?probe= é o próprio teste abrindo esta página num iframe p/ ver como a barra NASCE com cada recado
+const P = new URLSearchParams(location.search).get('probe');
+try {
+  if (P) { localStorage.removeItem('ibba_tour_on'); localStorage.removeItem('ibba_is_admin'); localStorage.setItem('ibba_tour_seen', '1'); }
+  if (P === 'on') localStorage.setItem('ibba_tour_on', '1');
+  if (P === 'admin') localStorage.setItem('ibba_is_admin', '1');
+  if (P === 'run') sessionStorage.setItem('ibba_tour_run', JSON.stringify({ mode: 'seg', queue: ['basics'], si: 0, st: 0, dir: 1, preview: false, shown: 0 }));
+} catch (e) {}
+</script>
+<script src="/topnav.js"></script>
+<script>
+const R = []; const ok = (n, c, d = '') => R.push((c ? 'PASS' : 'FAIL') + ' · ' + n + (d !== '' ? '  [' + d + ']' : ''));
+const $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
+async function until(fn, ms = 9000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await sleep(60); } return !!fn(); }
+const vis = el => !!el && getComputedStyle(el).display !== 'none';
+async function frame(q, w, h) {
+  const f = document.createElement('iframe'); f.style.cssText = 'width:' + w + 'px;height:' + (h || 140) + 'px;border:0;display:block';
+  const loaded = new Promise(r => f.onload = r); f.src = '/tests/test_tour_topnav.html?probe=' + q + '&v=' + Date.now();
+  document.body.appendChild(f); await loaded; await sleep(150); return f;
+}
+window.__RUN__ = async function () {
+  R.length = 0;
+  const keep = {}; ['ibba_tour_on', 'ibba_is_admin', 'ibba_tour_seen'].forEach(k => keep[k] = localStorage.getItem(k));
+  try {
+    const btn = $('#gnav-tutorial');
+    ok('botão Tutorial existe, antes do botão de tema', !!btn && btn.nextElementSibling === $('#gnav-theme'));
+    ok('ids que o tour usa na barra', ['gnav-mm', 'gnav-pp', 'gnav-sg', 'gnav-news', 'gnav-cal', 'gnav-market', 'gnav-team', 'gnav-burger'].every(id => !!document.getElementById(id)));
+    const row = $('.gnm-tut');
+    ok('linha Tutorial no ☰ não é marcada como página atual', !!row && row.hasAttribute('data-nomark') && (window.__gnavMarkCurrent(), !row.classList.contains('on')));
+    __gnavTourOn(true);
+    ok('ligado: botão + linha do ☰ aparecem', vis(btn) && vis(row) && $('.gnav').classList.contains('has-tut'));
+    __gnavTourOn(false);
+    ok('desligado: somem', !vis(btn) && !vis(row) && !$('.gnav').classList.contains('has-tut'));
+
+    // nasce certo pelo recado (1º paint, sem RPC)
+    let f = await frame('off', 1366); ok('sem recado e sem admin: escondido', !vis(f.contentDocument.getElementById('gnav-tutorial'))); f.remove();
+    f = await frame('on', 1366); ok('recado ibba_tour_on=1: visível', vis(f.contentDocument.getElementById('gnav-tutorial'))); f.remove();
+    f = await frame('admin', 1366); ok('admin: visível mesmo sem a flag', vis(f.contentDocument.getElementById('gnav-tutorial'))); f.remove();
+
+    // largura: a barra não pode estourar (o Sign out do cliente já estava a 24px da borda em 1024)
+    for (const q of ['on', 'admin']) for (const w of [1024, 1100, 1280, 1366, 1920]) {
+      f = await frame(q, w);
+      const d = f.contentDocument, W = f.contentWindow, g = d.querySelector('.gnav');
+      W.__gnavTourOn(false); const base = g.scrollWidth;   // régua: a barra SEM o botão
+      W.__gnavTourOn(true);
+      const out = d.querySelector('.gnav-out').getBoundingClientRect(), fits = g.scrollWidth <= g.clientWidth + 1;
+      const info = 'sem botão ' + base + ' · com ' + g.scrollWidth + '/' + g.clientWidth + ' · ' + g.className + ' · team ' + d.getElementById('gnav-team').className;
+      // abaixo de 1366px a barra do ADMIN já estourava antes (4 links internos — documentado): aí só registra
+      if (base <= g.clientWidth + 1) ok(q + ' ' + w + 'px: o botão não estoura a barra (Sign out dentro)', fits && out.right <= w + 0.5, info);
+      else ok(q + ' ' + w + 'px: barra já estourava SEM o botão (pré-existente) — registro', q === 'admin', info);
+      f.remove();
+    }
+    for (const w of [320, 375, 414]) {
+      f = await frame('on', w, 120);
+      const d = f.contentDocument, g = d.querySelector('.gnav'), b = d.getElementById('gnav-tutorial');
+      ok('celular ' + w + 'px: só ícone, sem estouro', vis(b) && getComputedStyle(d.querySelector('.gnav-tut-l')).display === 'none' && g.scrollWidth <= g.clientWidth + 1 && b.getBoundingClientRect().width <= 31,
+        'scroll ' + g.scrollWidth + '/' + g.clientWidth + ' · botão ' + b.getBoundingClientRect().width);
+      f.remove();
+    }
+
+    // carregamento sob demanda: nada baixado até alguém clicar
+    ok('motor NÃO carregado antes do clique', !window.IBBATour && ![...document.scripts].some(s => /tour-lib\.js/.test(s.src)));
+    __gnavTourOn(true);
+    __gnavTour(btn);
+    await until(() => !!$('.ibt-panel'));
+    ok('clique carrega motor + textos e abre o painel', !!window.IBBATour && !!window.IBBA_TOURS && !!$('.ibt-panel'));
+    const p = $('.ibt-panel').getBoundingClientRect(), b = btn.getBoundingClientRect();
+    ok('painel ancorado sob o botão', Math.abs(p.top - (b.bottom + 8)) <= 1, p.top + ' vs ' + (b.bottom + 8));
+    __gnavTour(btn);
+    await until(() => !$('.ibt-panel'));
+    ok('2º clique fecha', !$('.ibt-panel'));
+    __gnavTourOn(false);
+
+    // tour em andamento atravessando páginas: a página nova retoma sozinha
+    f = await frame('run', 1366, 700);
+    await until(() => !!(f.contentDocument.querySelector('.ibt-card .ibt-title') || {}).textContent, 12000);
+    const tt = f.contentDocument.querySelector('.ibt-card .ibt-title');
+    ok('corrida na sessionStorage: a página retoma o tour', !!tt && /Welcome/.test(tt.textContent), tt ? tt.textContent : '—');
+    try { f.contentWindow.IBBATour.stop(); } catch (e) {}
+    f.remove();
+  } catch (e) { ok('exceção: ' + (e && e.stack || e), false); }
+  finally {
+    try { sessionStorage.removeItem('ibba_tour_run'); Object.keys(keep).forEach(k => keep[k] == null ? localStorage.removeItem(k) : localStorage.setItem(k, keep[k])); } catch (e) {}
+  }
+  const fails = R.filter(x => x.startsWith('FAIL')).length;
+  $('#out').textContent = (fails ? fails + ' FALHA(S)\n' : 'TUDO OK — ' + R.length + ' asserts\n') + R.join('\n');
+  return R;
+};
+</script></body>

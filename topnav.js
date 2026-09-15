@@ -132,6 +132,12 @@ html.dark .gn-cat{color:#828892;}\
 .gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
 .gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.06);}\
 .gnav-theme svg{width:15px;height:15px;display:block;}\
+/* TUTORIAL: botão discreto, no idioma do Sign out. Aperta p/ só o ícone antes de sumir o WhatsApp do time (_fitTeam) */\
+.gnav-tut{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;height:28px;font:600 11px Inter,sans-serif;color:rgba(255,255,255,.5);background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:0 11px 0 9px;cursor:pointer;margin-left:14px;white-space:nowrap;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-tut:hover{color:#fff;border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);}\
+.gnav-tut svg{width:14px;height:14px;display:block;flex-shrink:0;}\
+@media(min-width:901px){.gnav.tut-ico .gnav-tut{width:28px;padding:0;justify-content:center;margin-left:8px;}.gnav.tut-ico .gnav-theme{margin-left:8px;}.gnav.tut-ico .gnav-out{margin-left:10px;}}\
+.gnav.tut-ico .gnav-tut-l{display:none;}\
 .gnav-rule{height:2px;background:#FF5000;}\
 /* Cabeçalhos PRÓPRIOS das páginas: a barra de verdade é esta (.gnav), em QUALQUER largura.\
    Home/News/Stock Guide só repetiam marca+time+Sign out → somem sempre. O .top-bar de M&M e P&P\
@@ -190,6 +196,9 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   .gnav{position:sticky;top:0;height:52px;padding:0 12px;gap:8px;z-index:1800;}\
   .gnav-menu,.gnav-team,.gnav-out{display:none!important;}\
   .gnav-theme{margin-left:auto;}\
+  .gnav-tut{margin-left:auto;width:30px;padding:0;justify-content:center;}\
+  .gnav-tut-l{display:none;}\
+  .gnav.has-tut .gnav-theme{margin-left:8px;}\
   .gnav-burger{display:inline-flex;}\
   .gnav-rule{position:sticky;top:52px;z-index:1799;}\
   body.gnav-locked{overflow:hidden;}\
@@ -201,16 +210,16 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   <a class="gnav-brand" href="/index.html" style="text-decoration:none"><span class="gnav-mark"></span><b>M&amp;M | P&amp;P</b></a>\
   <nav class="gnav-menu">\
     <a class="gn-item" href="/index.html">Home</a>\
-    <div class="gn-group"><span class="gn-item">M&amp;M ▾</span><div class="gn-drop"><div class="gn-cat">Steel &amp; Mining</div>\
+    <div class="gn-group" id="gnav-mm"><span class="gn-item">M&amp;M ▾</span><div class="gn-drop"><div class="gn-cat">Steel &amp; Mining</div>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a></div></div>\
-    <div class="gn-group"><span class="gn-item">P&amp;P ▾</span><div class="gn-drop"><div class="gn-cat">Pulp &amp; Paper</div>\
+    <div class="gn-group" id="gnav-pp"><span class="gn-item">P&amp;P ▾</span><div class="gn-drop"><div class="gn-cat">Pulp &amp; Paper</div>\
       <a href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
       <a href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>\
-    <a class="gn-item" href="/news.html">News Hunter</a>\
-    <div class="gn-group"><span class="gn-item">Stock Guide ▾</span><div class="gn-drop"><div class="gn-cat">Stock Guide</div>\
+    <a class="gn-item" id="gnav-news" href="/news.html">News Hunter</a>\
+    <div class="gn-group" id="gnav-sg"><span class="gn-item">Stock Guide ▾</span><div class="gn-drop"><div class="gn-cat">Stock Guide</div>\
       <a href="/stock-guide.html#comp">Comp Table</a>\
       <a href="/stock-guide.html#sens">Sensitivity</a>\
       <a href="/quarterly.html" class="gn-quarterly" style="display:none">Quarterly</a></div></div>\
@@ -221,7 +230,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       <a href="/market.html?tab=buybacks">Buybacks</a>\
       <a href="/market.html?tab=insiders">Insiders</a>\
       <a href="/market.html?tab=filings">Filings</a></div></div>\
-    <a class="gn-item" href="/agenda.html">Calendar</a>\
+    <a class="gn-item" id="gnav-cal" href="/agenda.html">Calendar</a>\
     <a class="gn-item" id="gnav-data" href="/data.html" title="Data sources, freshness and glossary" style="display:none">Data</a>\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
@@ -229,6 +238,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
+  <button class="gnav-tut" id="gnav-tutorial" onclick="__gnavTour(this)" title="Guided tours of the dashboard" aria-label="Tutorial" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.6-2.4 2.1-2.4 3.5"/><path d="M12 17.2h.01"/></svg><span class="gnav-tut-l">Tutorial</span></button>\
   <button class="gnav-theme" id="gnav-theme" onclick="__toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode"><svg id="gnav-theme-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>\
   <button class="gnav-out" onclick="__gnavOut()">Sign out</button>\
   <button class="gnav-burger" id="gnav-burger" onclick="__gnavMob()" aria-label="Menu" aria-expanded="false" aria-controls="gnav-mob">\
@@ -237,15 +247,15 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
 <div class="gnav-mob" id="gnav-mob" onclick="if(event.target===this)__gnavMob(0)">\
   <div class="gnav-sheet">\
     <a class="gnm-a" href="/index.html">Home</a>\
-    <div class="gnm-cat">Metals &amp; Mining</div>\
+    <div class="gnm-cat" data-tour="m-sectors">Metals &amp; Mining</div>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
-    <div class="gnm-cat">Pulp &amp; Paper</div>\
+    <div class="gnm-cat" data-tour="m-sectors">Pulp &amp; Paper</div>\
     <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
     <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>\
-    <div class="gnm-cat">Stock Guide</div>\
+    <div class="gnm-cat" data-tour="m-sg">Stock Guide</div>\
     <a class="gnm-a sub" href="/stock-guide.html#comp">Comp Table</a>\
     <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
     <a class="gnm-a sub gnm-quarterly" href="/quarterly.html" style="display:none">Quarterly</a>\
@@ -260,6 +270,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a" href="/news.html">News Hunter</a>\
     <a class="gnm-a gnm-mkt-solo" href="/market.html">Market</a>\
     <a class="gnm-a" href="/agenda.html">Calendar</a>\
+    <a class="gnm-a gnm-tut" role="button" tabindex="0" data-nomark onclick="__gnavTour();return false" style="display:none">Tutorial</a>\
     <a class="gnm-a gnm-data" href="/data.html" style="display:none">Data &amp; Glossary</a>\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
@@ -346,8 +357,10 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var g = document.querySelector('.gnav'), t = document.getElementById('gnav-team');
     if(!g || !t) return;
     t.className = 'gnav-team';
-    ['compact','tight','bare'].forEach(function(step){
-      if(g.scrollWidth > g.clientWidth + 1) t.classList.add(step);
+    g.classList.remove('tut-ico');
+    // 2º degrau: o botão Tutorial perde o rótulo (fica o ícone) antes de o time perder o WhatsApp
+    ['compact','tut-ico','tight','bare'].forEach(function(step){
+      if(g.scrollWidth > g.clientWidth + 1) (step === 'tut-ico' ? g : t).classList.add(step);
     });
   }
   var _fitT = null;
@@ -409,6 +422,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     try{ _setDataLink(localStorage.getItem('ibba_data_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setQuarterlyLink(localStorage.getItem('ibba_quarterly_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setMarketTabs(localStorage.getItem('ibba_mw_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
+    try{ _setTourBtn(_tourOn()); }catch(e){}
     // Cache: aplica o estado admin NA HORA (sem esperar o RPC) → os botões Admin/Clipinator não
     // "pipocam" depois dos demais. Roda ainda dentro do inject(), antes do 1º paint.
     try{ if(localStorage.getItem('ibba_is_admin')==='1') _setAdminLinks(true); }catch(e){}
@@ -418,11 +432,53 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       try{ localStorage.setItem('ibba_is_admin', isAdmin?'1':'0'); }catch(e){}
       _setAdminLinks(isAdmin);   // reconcilia com a verdade do servidor (mostra p/ admin, esconde se o cache errou)
       if(isAdmin){ _setDataLink(true); _setQuarterlyLink(true); }
+      try{ _setTourBtn(isAdmin || localStorage.getItem('ibba_tour_on')==='1'); }catch(e){}
       try{ _setMarketTabs(isAdmin || localStorage.getItem('ibba_mw_on')==='1'); }catch(e){}   // cache de admin velho não deixa a ▾ p/ cliente
     }).catch(function(){}); return; }
     // o sbAuth da página é criado no script DELA, que roda DEPOIS do topnav → espera aparecer (até ~6s).
     // ERA POR ISSO que o botão Admin só surgia na home (que revela por conta própria, com o próprio sbAuth).
     if(tries < 40) setTimeout(function(){ revealAdmin(tries+1); }, 150);
+  }
+  // ── TUTORIAL (tours guiados) ─────────────────────────────────────────────
+  // Motor (tour-lib.js) e textos (tour-content.js) só descem quando alguém usa: clique em "Tutorial",
+  // convite da 1ª visita ou tour em andamento atravessando páginas. O vercel.json serve .js com
+  // no-store: carregar em toda página seria download à toa. O botão aparece com a flag `tutorial`
+  // (recado ibba_tour_on, gravado pela home ao ler as flags) ou para admin.
+  function _tourOn(){ try{ return localStorage.getItem('ibba_tour_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'; }catch(e){ return false; } }
+  var _tourP = null;
+  function _loadTour(){
+    if(window.IBBATour && window.IBBA_TOURS) return Promise.resolve(window.IBBATour);
+    if(_tourP) return _tourP;
+    _tourP = new Promise(function(res, rej){
+      var left = 2;
+      ['/tour-content.js', '/tour-lib.js'].forEach(function(src){   // async=false: executam NA ORDEM
+        var s = document.createElement('script'); s.src = src; s.async = false;
+        s.onload = function(){ if(--left === 0){ if(window.IBBATour){ res(window.IBBATour); } else { _tourP = null; rej(new Error('tour-lib')); } } };
+        s.onerror = function(){ _tourP = null; rej(new Error('falha ao carregar ' + src)); };
+        document.head.appendChild(s);
+      });
+    });
+    return _tourP;
+  }
+  window.__gnavTour = function(anchor){
+    _loadTour().then(function(T){ T.openPanel(anchor && anchor.nodeType === 1 ? anchor : null); })
+      .catch(function(e){ console.warn('tutorial:', e); });
+  };
+  function _setTourBtn(on){
+    var b = document.getElementById('gnav-tutorial'); if(b) b.style.display = on ? '' : 'none';
+    var g = document.querySelector('.gnav'); if(g) g.classList.toggle('has-tut', !!on);
+    [].slice.call(document.querySelectorAll('.gnm-tut')).forEach(function(a){ a.style.display = on ? '' : 'none'; });
+    _fitTeam();   // o botão muda a largura da barra → re-avalia se os nomes do time cabem
+  }
+  window.__gnavTourOn = function(on){ _setTourBtn(!!on); };   // a home chama ao ler as flags
+  function _tourBoot(){
+    var running = false; try{ running = !!sessionStorage.getItem('ibba_tour_run'); }catch(e){}
+    if(running){ _loadTour().then(function(T){ T.resume(); }).catch(function(e){ console.warn('tutorial:', e); }); return; }
+    var seen = true; try{ seen = !!localStorage.getItem('ibba_tour_seen'); }catch(e){}
+    var here = _path(location.href); if(here === '/' || here === '') here = '/index.html';
+    if(seen || here !== '/index.html') return;
+    // convite da 1ª visita: espera a home assentar (dados chegando) e confere a flag de novo
+    setTimeout(function(){ if(_tourOn()) _loadTour().then(function(T){ T.maybeInvite(); }).catch(function(){}); }, 2500);
   }
   function inject(){
     if(document.querySelector('.gnav')) return;
@@ -431,6 +487,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var wrap=document.createElement('div'); wrap.innerHTML=NAV;
     [].slice.call(wrap.childNodes).forEach(function(n){ document.body.insertBefore(n, orig); });  // barra + régua no topo, em ordem
     renderTeam(_teamCache()); revealAdmin(); loadTeam(); if(window.__syncThemeIcon) window.__syncThemeIcon();
+    try{ _tourBoot(); }catch(e){}
     _markCurrent();
     var mob = document.getElementById('gnav-mob');
     if(mob) mob.addEventListener('click', function(e){
@@ -467,6 +524,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     // folha do celular: mesma régua do desktop — link de seção acende só com a #âncora igual
     // (senão as 4 linhas do M&M acendiam juntas); o TÍTULO do grupo marca "você está aqui".
     [].slice.call(document.querySelectorAll('.gnm-a')).forEach(function(a){
+      if(a.hasAttribute('data-nomark')) return;                // linha que é botão (Tutorial), não destino
       if(_path(a.href) !== here) return;
       var h = ''; try{ h = (new URL(a.href, location.href).hash || '').toLowerCase(); }catch(e){}
       var t = _tab(a.href);                                  // abas do Market: acende só a do ?tab= aberto

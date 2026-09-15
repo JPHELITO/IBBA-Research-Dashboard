@@ -1234,7 +1234,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
 <div class="page">
 
   <!-- TOP ROW — sector cards (Steel + Pulp & Paper), com imagem de fundo -->
-  <div class="area-secrow">
+  <div class="area-secrow" data-tour="home-sectors">
 
     <div class="sector-card live has-bg sc-card" data-flag="sector_steel">
       <div class="sector-bg sector-bg-steel"></div>
@@ -1270,7 +1270,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   <!-- Research Team na barra superior; Stock Guide é o 3º card -->
 
   <!-- MARKET PULSE (full width) -->
-  <div class="sec area-pulse">
+  <div class="sec area-pulse" data-tour="home-pulse">
     <div class="sec-head">
       <span class="sec-tools"><span class="wip-badge">Work in progress</span></span>
       <div class="pulse-controls" id="pulse-controls">
@@ -1320,7 +1320,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
   </div>
 
   <!-- EVENTS (Executive Calendar) — só aparece com a flag exec_calendar (admin sempre) -->
-  <div class="sec area-events" data-flag="exec_calendar" style="display:none">
+  <div class="sec area-events" data-flag="exec_calendar" data-tour="home-events" style="display:none">
     <div class="sec-head">
       <a class="ev-open" href="/agenda.html">Open calendar →</a>
     </div>
@@ -1475,6 +1475,9 @@ function applyFlags(flags, isAdmin){
   // a flag — admin o menu já reconhece pelo ibba_is_admin, e assim o recado não vaza p/ outro login no navegador
   try{ localStorage.setItem('ibba_mw_on', on['market_watch']===true?'1':'0'); }catch(e){}
   if(window.__gnavMarketTabs) window.__gnavMarketTabs(on['market_watch']===true||isAdmin);
+  // Tutorial (botão "Tutorial" da barra + convite da 1ª visita): mesmo recado, só a flag (admin o menu já reconhece)
+  try{ localStorage.setItem('ibba_tour_on', on['tutorial']===true?'1':'0'); }catch(e){}
+  if(window.__gnavTourOn) window.__gnavTourOn(on['tutorial']===true||isAdmin);
   for(const key in FLAG_SEL){
     document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
       el.classList.remove('admin-off');
