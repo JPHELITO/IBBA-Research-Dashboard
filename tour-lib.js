@@ -165,13 +165,18 @@
     }
     return out;
   }
-  function waitTargets(v, ms) {
+  // espera o alvo. waitGone: enquanto esse seletor estiver VISÍVEL (ex.: "Loading data…" do M&M baixando o
+  // banco) nenhum alvo vale. again: repete a ação do passo a cada 1,5 s (até 4×) — a página pode ainda estar
+  // ligando os botões quando o tour chega (retomada logo após trocar de página)
+  function waitTargets(v, ms, again) {
     return new Promise(function (res) {
-      var t0 = env.now();
+      var t0 = env.now(), last = t0, tries = 0;
       (function tick() {
-        var els = findTargets(v.target, v.all);
+        var busy = v.waitGone && findTargets(v.waitGone).length;
+        var els = busy ? [] : findTargets(v.target, v.all);
         if (els.length) return res(els);
         if (env.now() - t0 >= ms) return res([]);
+        if (again && !busy && tries < 4 && env.now() - last >= 1500) { tries++; last = env.now(); try { again(); } catch (e) {} }
         setTimeout(tick, 120);
       })();
     });
@@ -183,6 +188,11 @@
       l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom);
     });
     return { left: l, top: t, right: r, bottom: b, width: r - l, height: b - t };
+  }
+  // clip: alvo mais alto que isso vira só o TOPO (cabeçalho + primeiras linhas). Tabela do Market Watch, feed da
+  // News, Season board: sem o corte, alvo + cartão não cabiam na tela e o cartão caía por cima do destaque
+  function clipRect(r, clip) {
+    return (clip && r.height > clip) ? { left: r.left, top: r.top, right: r.right, width: r.width, bottom: r.top + clip, height: clip } : r;
   }
   // recorte = retângulo do alvo + folga, preso na tela (o anel fica visível mesmo com alvo cortado)
   function holeBox(r, pad, vw, vh) {
@@ -206,10 +216,10 @@
   // Traz o alvo p/ a faixa livre [area.top, area.bottom] da janela. O delta sai em px VISUAIS;
   // dentro de container escalado (Home: transform:scale) vira px de layout pela razão
   // tamanho-na-tela ÷ tamanho-de-layout do próprio container.
-  function bringIntoView(els, area) {
+  function bringIntoView(els, area, clip) {
     if (!els.length) return;
     scrollers(els[0]).forEach(function (sc) {
-      var cr = sc.getBoundingClientRect(), er = unionRect(els);
+      var cr = sc.getBoundingClientRect(), er = clipRect(unionRect(els), clip);
       var ky = sc.offsetHeight ? cr.height / sc.offsetHeight : 1, kx = sc.offsetWidth ? cr.width / sc.offsetWidth : 1;
       var top = cr.top + sc.clientTop * ky, bot = top + sc.clientHeight * ky;
       if (er.top < top || er.bottom > bot) {
@@ -222,7 +232,7 @@
         sc.scrollLeft += dx / (kx || 1);
       }
     });
-    var r = unionRect(els);
+    var r = clipRect(unionRect(els), clip);
     if (r.top < area.top || r.bottom > area.bottom) {
       var d = (r.height > area.bottom - area.top) ? r.top - area.top - 8 : (r.top + r.bottom) / 2 - (area.top + area.bottom) / 2;
       try { window.scrollBy(0, d); } catch (e) {}   // página que não rola (Home no desktop) = nada acontece
@@ -365,10 +375,19 @@
       if (scroll) {
         var top = (m && !inNav(els[0])) ? 64 : 8;   // no celular a barra global é sticky (52px) e cobriria o alvo
         var area = m ? { top: top, bottom: vh - h - 2 * EDGE } : { top: top, bottom: vh - 8 };
+        if (!m) {
+          // computador: alvo inteiro na tela e cartão cabe em algum lado → não rola nada. Se não cabe, mas
+          // alvo + cartão cabem na altura, rola p/ o alvo ficar em cima e o cartão caber embaixo (tabela alta
+          // do Market Watch: sem isso o cartão caía por cima do conteúdo)
+          var r0 = clipRect(unionRect(els), cur.v.clip);
+          var fitsNow = r0.top >= top && r0.bottom <= vh - 8 && (vh - r0.bottom - GAP >= h + EDGE || r0.top - GAP >= h + EDGE ||
+            vw - r0.right - GAP >= w + EDGE || r0.left - GAP >= w + EDGE);
+          if (!fitsNow && r0.height + h + 3 * GAP <= vh - top) area.bottom = vh - h - 2 * GAP;
+        }
         if (area.bottom - area.top < 90) area.bottom = vh - 8;
-        bringIntoView(els, area);
+        bringIntoView(els, area, cur.v.clip);
       }
-      hole = holeBox(unionRect(els), cur.v.pad != null ? cur.v.pad : 6, vw, vh);
+      hole = holeBox(clipRect(unionRect(els), cur.v.clip), cur.v.pad != null ? cur.v.pad : 6, vw, vh);
       setBox(ui.hole, hole, cur.v.radius != null ? cur.v.radius : 10);
     }
     ui.root.classList.toggle('ibt-center', !hole);
@@ -420,15 +439,27 @@
   // cp  = cartão especial na tela (pausa entre segmentos, fim, indisponível): {next, back, secondary}
   var run = null, F = null, active = false, cur = null, cp = null, token = 0;
 
-  // ação antes do passo: ['fn', args…] chama window.fn · [[…],[…]] várias · ou uma função
+  // ação antes do passo (e `cleanup` do segmento):
+  //   ['fn', args…]                          chama window.fn (função GLOBAL da página)
+  //   {click:'sel', unless:'sel', when:'sel'} clica no 1º elemento — imita o cliente; serve p/ botão sem
+  //                                          função global (Filters da News, abas do Quarterly, que vivem num IIFE).
+  //                                          unless: não clica se o seletor existir · when: só clica se existir
+  //   [ação, ação…] várias, na ordem · ou uma função
   function doAction(a) {
     if (!a) return;
     if (typeof a === 'function') return a();
-    if (Array.isArray(a) && Array.isArray(a[0])) { a.forEach(doAction); return; }
     if (Array.isArray(a) && typeof a[0] === 'string') {
       var fn = window[a[0]];
       if (typeof fn === 'function') return fn.apply(window, a.slice(1));
       env.warn('action not found:', a[0]);
+      return;
+    }
+    if (Array.isArray(a)) { a.forEach(doAction); return; }
+    if (typeof a === 'object' && a.click) {
+      if (a.unless && document.querySelector(a.unless)) return;
+      if (a.when && !document.querySelector(a.when)) return;
+      var el = document.querySelector(a.click);
+      if (el) el.click(); else env.warn('click target not found:', a.click);
     }
   }
   function safe(a, what) { try { doAction(a); } catch (e) { env.warn(what, e); } }
@@ -458,11 +489,13 @@
     if (!stepOk(step, F, run.preview)) { run.st += run.dir; return go(afterNav); }
     active = true; saveRun(); bindKeys();
     var v = view(step);
+    if (s.waitGone && !v.waitGone) v.waitGone = s.waitGone;   // a tela de carregamento da PÁGINA vale p/ todo passo
     ensureUI();
     safe(v.call, 'call');
     if (!v.target) { cur = { els: [], v: v }; return render(s, v); }
     ui.root.classList.add('ibt-wait'); ui.root.classList.add('ibt-center');
-    return waitTargets(v, afterNav ? WAIT_NAV_MS : (v.wait || WAIT_MS)).then(function (els) {
+    var again = v.call ? function () { safe(v.call, 'call'); } : null;
+    return waitTargets(v, afterNav ? WAIT_NAV_MS : (v.wait || WAIT_MS), again).then(function (els) {
       if (my !== token || !run) return;   // outro passo assumiu durante a espera (clique rápido)
       if (!els.length) {
         env.warn('target not found, step skipped:', s.id + '/' + (step.id || run.st), v.target);
@@ -781,6 +814,7 @@
     _t: {
       env: env, K: { RUN: K_RUN, RESUME: K_RESUME, DONE: K_DONE, SEEN: K_SEEN, FLAGS: K_FLAGS },
       normPath: normPath, onPage: onPage, visible: visible, findTargets: findTargets, unionRect: unionRect,
+      doAction: doAction, waitTargets: waitTargets, clipRect: clipRect,
       holeBox: holeBox, placeDesktop: placeDesktop, placeMobile: placeMobile, bringIntoView: bringIntoView,
       flagOk: flagOk, eligible: eligible, fullQueue: fullQueue, view: view, rich: rich, recadoFlags: recadoFlags,
       state: function () { return { run: run, active: active, cur: cur, cp: cp, ui: ui, panel: panel, invite: invite }; }

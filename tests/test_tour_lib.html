@@ -74,6 +74,10 @@ window.__RUN__ = async function () {
     ok('all:true junta só os visíveis', t.findTargets('.multi', true).length === 2);
     const u = t.unionRect([$('#a1'), $('#b2')]);
     ok('união dos retângulos', u.left === 40 && u.top === 40 && u.right === 380 && u.bottom === 90, JSON.stringify(u));
+    const c0 = t.clipRect({ left: 0, top: 100, right: 50, bottom: 900, width: 50, height: 800 }, 360);
+    ok('clip: alvo alto vira só o topo (360px)', c0.top === 100 && c0.bottom === 460 && c0.height === 360, JSON.stringify(c0));
+    ok('clip: alvo baixo fica igual; sem clip nada muda', t.clipRect({ left: 0, top: 0, right: 5, bottom: 50, width: 5, height: 50 }, 360).height === 50
+      && t.clipRect({ left: 0, top: 0, right: 5, bottom: 900, width: 5, height: 900 }).height === 900);
     const hb = t.holeBox({ left: 1, top: 5, right: 50, bottom: 795, width: 49, height: 790 }, 6, 1000, 800);
     ok('recorte preso na tela', hb.left === 2 && hb.top === 2 && hb.bottom === 798, JSON.stringify(hb));
 
@@ -102,6 +106,23 @@ window.__RUN__ = async function () {
     const sr = $('#sc').getBoundingClientRect(), dr = $('#deep').getBoundingClientRect();
     ok('alvo trazido p/ dentro da lista escalada', dr.top >= sr.top - 1 && dr.bottom <= sr.bottom + 1, 'lista ' + sr.top + '–' + sr.bottom + ' alvo ' + dr.top + '–' + dr.bottom);
     ok('o #stage (overflow:hidden) não rolou', $('#stage').scrollTop === 0);
+
+    // 5b) ação "clicar" (com condição), lista de ações e espera da tela de carregamento
+    let clicks = 0; const cb = document.createElement('button'); cb.id = 'clk'; cb.onclick = () => clicks++; $('#fx').appendChild(cb);
+    t.doAction({ click: '#clk' });                                  // clica
+    t.doAction({ click: '#clk', unless: '#a1' });                   // #a1 existe → NÃO clica
+    t.doAction({ click: '#clk', when: '#nope' });                   // #nope não existe → NÃO clica
+    t.doAction([['__nao_existe__', 1], { click: '#clk', when: '#a1' }]);   // lista: função ausente só avisa; o clique segue
+    ok('clicar: simples, unless, when e dentro de lista', clicks === 2, clicks);
+    ok('função ausente avisa no console', warns.some(w => /action not found: __nao_existe__/.test(w)), warns.join(' | '));
+    const ld = document.createElement('div'); ld.id = 'ld'; ld.className = 'box'; ld.style.cssText = 'left:0;top:0;width:10px;height:10px'; $('#fx').appendChild(ld);
+    setTimeout(() => { ld.style.display = 'none'; }, 500);
+    const tw = Date.now(); const got = await t.waitTargets({ target: '#a1', waitGone: '#ld' }, 8000);
+    ok('waitGone: o alvo só vale depois que a tela de carregamento some', got.length === 1 && Date.now() - tw >= 450, (Date.now() - tw) + 'ms');
+    let nAgain = 0; const ta = Date.now();
+    setTimeout(() => { const d = document.createElement('div'); d.id = 'late2'; d.className = 'box'; d.style.cssText = 'left:0;top:120px;width:20px;height:20px'; $('#fx').appendChild(d); }, 2600);
+    const got2 = await t.waitTargets({ target: '#late2' }, 9000, () => nAgain++);
+    ok('enquanto espera, repete a ação do passo (a página pode estar ligando os botões)', got2.length === 1 && nAgain >= 1 && nAgain <= 4, nAgain + 'x em ' + (Date.now() - ta) + 'ms');
 
     // 6) corrida: alvo, pulo de ausente, cartão central, flag, alvo que surge depois, teclado
     ok('fila do completo ignora segmento desligado', JSON.stringify(t.fullQueue({ on: { f_off: false }, admin: false })) === '["s1","s3"]');
