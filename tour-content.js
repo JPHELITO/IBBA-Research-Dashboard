@@ -144,7 +144,7 @@ window.IBBA_TOURS = {
           body: 'Add suggested peers, the sector index or its commodity, or any other asset with **+ Other…**.' },
         { id: 'watchlist', call: PERF, target: '.wl-card', clip: 360, title: 'Watchlist',
           body: 'Returns for every asset over the range. {Click} a row to chart it; switch between All, Coverage, Peers and Commodities.' },
-        { id: 'thesis', call: PERF, target: '#thesis', title: 'Thesis strip',
+        { id: 'thesis', call: PERF, target: '#thesis', clip: 360, title: 'Thesis strip',
           body: 'The asset next to its commodity driver, peers and index, as of today.' },
         { id: 'analytics', call: PERF, target: ['#corr-host', '#pf-host'], clip: 360, title: 'Correlation and portfolio',
           body: 'See how the selected assets move together, and test a portfolio: type the weights, or use **Advanced** to change them over time.' }
