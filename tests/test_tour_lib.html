@@ -1,0 +1,271 @@
+<!doctype html><meta charset="utf-8"><title>tour-lib — testes</title>
+<style>
+  body{font:12px Inter,Segoe UI,sans-serif;margin:0}
+  #out{position:relative;z-index:1;margin:0;padding:8px;white-space:pre-wrap}
+  #fx{position:fixed;left:0;top:0;width:100%;height:100%;z-index:0}
+  .box{position:fixed;background:#d9d9d9}
+</style>
+<body>
+<pre id="out">rodando… chame window.__RUN__()</pre>
+<div id="fx">
+  <div id="a1" class="box" style="left:40px;top:40px;width:200px;height:40px"></div>
+  <div id="b2" class="box" style="left:300px;top:60px;width:80px;height:30px"></div>
+  <div id="hid" class="box" style="display:none;left:0;top:0;width:50px;height:50px"></div>
+  <div id="zero" class="box" style="left:0;top:0;width:0;height:0"></div>
+  <div hidden style="display:flex"><div id="inhidden" class="box" style="left:0;top:0;width:50px;height:50px"></div></div>
+  <div style="opacity:0"><div id="inop" class="box" style="left:0;top:0;width:50px;height:50px"></div></div>
+  <div class="multi box" style="left:500px;top:40px;width:30px;height:30px"></div>
+  <div class="multi box" style="left:540px;top:40px;width:30px;height:30px"></div>
+  <div class="multi box" style="display:none"></div>
+  <!-- "Home" em miniatura: container ESCALADO com overflow:hidden e, dentro, uma lista que rola -->
+  <div id="stage" style="position:fixed;left:0;top:200px;width:800px;height:600px;overflow:hidden;transform:scale(.5);transform-origin:0 0">
+    <div id="sc" style="position:absolute;left:20px;top:20px;width:300px;height:200px;overflow:auto">
+      <div style="position:relative;height:900px"><div id="deep" style="position:absolute;top:600px;left:10px;width:100px;height:40px;background:#f90"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+// conteúdo de TESTE (o real mora em /tour-content.js)
+window.IBBA_TOURS = { version: 1, order: ['s1', 's3', 's4'], segments: [
+  { id: 's1', title: 'Seg One', blurb: 'first', page: null, steps: [
+    { id: 'a', target: '#a1', title: 'Step A', body: 'Alpha **bold** {click}', mobile: { body: 'Alpha mobile {click}' } },
+    { id: 'b', target: '#nope', wait: 300, title: 'Step B', body: 'missing' },
+    { id: 'c', title: 'Step C', body: 'centered' },
+    { id: 'd', target: '#a1', requires: 'f_off', title: 'Step D', body: 'flag off' },
+    { id: 'e', target: '#later', title: 'Step E', body: 'appears later' } ] },
+  { id: 's2', title: 'Seg Two', blurb: 'other page', page: '/other.html', url: '/other.html?x=1', steps: [ { id: 'x', title: 'X', body: 'x' } ] },
+  { id: 's3', title: 'Seg Three', blurb: 'third', page: null, steps: [ { id: 'y', target: '#a1', title: 'Step Y', body: 'y' } ] },
+  { id: 's4', title: 'Seg Off', blurb: 'flag', requires: 'f_off', page: null, steps: [ { id: 'z', target: '#b2', title: 'Step Z', body: 'z' } ] }
+] };
+</script>
+<script src="/tour-lib.js"></script>
+<script>
+const R = []; const ok = (n, c, d = '') => R.push((c ? 'PASS' : 'FAIL') + ' · ' + n + (d !== '' ? '  [' + d + ']' : ''));
+const $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
+// o painel embutido estrangula timers quando a aba está escondida (1/s) → esperas folgadas
+async function until(fn, ms = 9000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await sleep(60); } return !!fn(); }
+const title = () => { const e = $('.ibt-card .ibt-title'); return e ? e.textContent : ''; };
+const count = () => { const e = $('.ibt-card .ibt-count'); return e ? e.textContent : ''; };
+function lum(rgb) { const m = rgb.match(/[\d.]+/g).map(Number), f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); }
+function contrast(a, b) { const A = lum(a), B = lum(b); return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); }
+
+window.__RUN__ = async function () {
+  R.length = 0;
+  const T = window.IBBATour, t = T && T._t, K = t && t.K;
+  const navs = [], warns = [];
+  const clear = () => { [K.RUN, K.FLAGS].forEach(k => sessionStorage.removeItem(k)); [K.RESUME, K.DONE, K.SEEN].forEach(k => localStorage.removeItem(k)); };
+  try {
+    ok('IBBATour carregou', !!T && T.version === 1);
+    t.env.mobile = false; t.env.navigate = u => navs.push(u); t.env.warn = (...a) => warns.push(a.join(' '));
+    let admin = false; t.env.flags = () => ({ on: { f_on: true, f_off: false }, admin: admin });
+    clear();
+
+    // 1) caminhos e página do segmento
+    ok('raiz = /index.html', t.normPath('/') === '/index.html');
+    ok('decodifica e ignora query/hash', t.normPath('/Steel%20and%20Mining/steel_sm_dashboard.html?x=1#imports') === '/steel and mining/steel_sm_dashboard.html');
+    ok('page null = qualquer página', t.onPage({ page: null }));
+    ok('page em lista casa', t.onPage({ page: ['/x.html', location.pathname] }) && !t.onPage({ page: '/nope.html' }));
+
+    // 2) visibilidade e alvos
+    ok('visível', t.visible($('#a1')));
+    ok('display:none / tamanho zero / dentro de [hidden] / opacidade 0 = invisível',
+      !t.visible($('#hid')) && !t.visible($('#zero')) && !t.visible($('#inhidden')) && !t.visible($('#inop')));
+    ok('lista: pula o ausente e pega o visível', t.findTargets(['#nope', '#a1']).length === 1);
+    ok('all:true junta só os visíveis', t.findTargets('.multi', true).length === 2);
+    const u = t.unionRect([$('#a1'), $('#b2')]);
+    ok('união dos retângulos', u.left === 40 && u.top === 40 && u.right === 380 && u.bottom === 90, JSON.stringify(u));
+    const c0 = t.clipRect({ left: 0, top: 100, right: 50, bottom: 900, width: 50, height: 800 }, 360);
+    ok('clip: alvo alto vira só o topo (360px)', c0.top === 100 && c0.bottom === 460 && c0.height === 360, JSON.stringify(c0));
+    ok('clip: alvo baixo fica igual; sem clip nada muda', t.clipRect({ left: 0, top: 0, right: 5, bottom: 50, width: 5, height: 50 }, 360).height === 50
+      && t.clipRect({ left: 0, top: 0, right: 5, bottom: 900, width: 5, height: 900 }).height === 900);
+    const hb = t.holeBox({ left: 1, top: 5, right: 50, bottom: 795, width: 49, height: 790 }, 6, 1000, 800);
+    ok('recorte preso na tela', hb.left === 2 && hb.top === 2 && hb.bottom === 798, JSON.stringify(hb));
+
+    // 3) posicionamento
+    const pd = (h, pref) => t.placeDesktop(340, 150, h, 1280, 800, pref);
+    ok('alvo embaixo → cartão em cima', pd({ left: 500, top: 700, right: 600, bottom: 740, width: 100, height: 40 }).side === 'top');
+    ok('preferência "right" respeitada', pd({ left: 40, top: 300, right: 240, bottom: 340, width: 200, height: 40 }, 'right').side === 'right');
+    const big = pd({ left: 10, top: 10, right: 1270, bottom: 790, width: 1260, height: 780 });
+    ok('alvo gigante → cartão por dentro, na tela', big.side === 'inside' && big.left >= 12 && big.left + 340 <= 1268 && big.top >= 12 && big.top + 150 <= 788, JSON.stringify(big));
+    ok('celular: alvo em cima → cartão embaixo', t.placeMobile(200, { left: 12, top: 60, right: 300, bottom: 120, width: 288, height: 60 }, 375, 812).side === 'bottom');
+    ok('celular: alvo embaixo → cartão em cima', t.placeMobile(200, { left: 12, top: 640, right: 300, bottom: 700, width: 288, height: 60 }, 375, 812).side === 'top');
+
+    // 4) flags, variante de celular e texto
+    const F = { on: { a: true, b: false }, admin: false };
+    ok('requires: ligada passa, desligada/ausente não', t.flagOk({ requires: 'a' }, F) && !t.flagOk({ requires: 'b' }, F) && !t.flagOk({ requires: 'zz' }, F));
+    ok('unlessOff: só some com false explícito', t.flagOk({ unlessOff: 'zz' }, F) && !t.flagOk({ unlessOff: 'b' }, F));
+    ok('prévia só dribla flag para admin', t.flagOk({ requires: 'b' }, { on: {}, admin: true }, true) && !t.flagOk({ requires: 'b' }, F, true));
+    t.env.mobile = true;
+    const vm = t.view(IBBA_TOURS.segments[0].steps[0]);
+    t.env.mobile = false;
+    ok('celular: variante + {click}→tap', vm.body === 'Alpha mobile tap', vm.body);
+    ok('rich: escapa HTML e só aceita **negrito**', t.rich('<img src=x onerror=alert(1)> **b**') === '&lt;img src=x onerror=alert(1)&gt; <b>b</b>');
+
+    // 5) rolar dentro de container ESCALADO sem rolar o overflow:hidden (a Home)
+    t.bringIntoView([$('#deep')], { top: 0, bottom: 5000 });
+    const sr = $('#sc').getBoundingClientRect(), dr = $('#deep').getBoundingClientRect();
+    ok('alvo trazido p/ dentro da lista escalada', dr.top >= sr.top - 1 && dr.bottom <= sr.bottom + 1, 'lista ' + sr.top + '–' + sr.bottom + ' alvo ' + dr.top + '–' + dr.bottom);
+    ok('o #stage (overflow:hidden) não rolou', $('#stage').scrollTop === 0);
+
+    // 5b) ação "clicar" (com condição), lista de ações e espera da tela de carregamento
+    let clicks = 0; const cb = document.createElement('button'); cb.id = 'clk'; cb.onclick = () => clicks++; $('#fx').appendChild(cb);
+    t.doAction({ click: '#clk' });                                  // clica
+    t.doAction({ click: '#clk', unless: '#a1' });                   // #a1 existe → NÃO clica
+    t.doAction({ click: '#clk', when: '#nope' });                   // #nope não existe → NÃO clica
+    t.doAction([['__nao_existe__', 1], { click: '#clk', when: '#a1' }]);   // lista: função ausente só avisa; o clique segue
+    ok('clicar: simples, unless, when e dentro de lista', clicks === 2, clicks);
+    ok('função ausente avisa no console', warns.some(w => /action not found: __nao_existe__/.test(w)), warns.join(' | '));
+    const ld = document.createElement('div'); ld.id = 'ld'; ld.className = 'box'; ld.style.cssText = 'left:0;top:0;width:10px;height:10px'; $('#fx').appendChild(ld);
+    setTimeout(() => { ld.style.display = 'none'; }, 500);
+    const tw = Date.now(); const got = await t.waitTargets({ target: '#a1', waitGone: '#ld' }, 8000);
+    ok('waitGone: o alvo só vale depois que a tela de carregamento some', got.length === 1 && Date.now() - tw >= 450, (Date.now() - tw) + 'ms');
+    let nAgain = 0; const ta = Date.now();
+    setTimeout(() => { const d = document.createElement('div'); d.id = 'late2'; d.className = 'box'; d.style.cssText = 'left:0;top:120px;width:20px;height:20px'; $('#fx').appendChild(d); }, 2600);
+    const got2 = await t.waitTargets({ target: '#late2' }, 9000, () => nAgain++);
+    ok('enquanto espera, repete a ação do passo (a página pode estar ligando os botões)', got2.length === 1 && nAgain >= 1 && nAgain <= 4, nAgain + 'x em ' + (Date.now() - ta) + 'ms');
+
+    // 6) corrida: alvo, pulo de ausente, cartão central, flag, alvo que surge depois, teclado
+    ok('fila do completo ignora segmento desligado', JSON.stringify(t.fullQueue({ on: { f_off: false }, admin: false })) === '["s1","s3"]');
+    await T.start('s1');
+    await until(() => title() === 'Step A');
+    ok('start: 1º passo na tela', title() === 'Step A', title());
+    ok('contador ignora o passo de flag desligada (4)', count() === '1 of 4', count());
+    const hole = $('.ibt-hole');
+    ok('recorte = alvo + folga de 6px', hole.style.left === '34px' && hole.style.top === '34px' && hole.style.width === '212px' && hole.style.height === '52px',
+      [hole.style.left, hole.style.top, hole.style.width, hole.style.height].join(' '));
+    ok('Back escondido no 1º passo', getComputedStyle($('.ibt-back')).display === 'none');
+    ok('negrito vira <b>; {click} fica "click" no computador', $('.ibt-body').innerHTML.includes('<b>bold</b>') && $('.ibt-body').textContent.includes('click'));
+    ok('véu fica no <body>, fora de qualquer container', $('.ibt-root').parentNode === document.body);
+    T.next();
+    await until(() => title() === 'Step C');
+    ok('alvo ausente é PULADO (B) → C', title() === 'Step C', title());
+    ok('o pulo avisa no console', warns.some(w => /not found/.test(w) && /s1\/b/.test(w)), warns.join(' | '));
+    ok('passo sem alvo = cartão no meio, véu cheio', $('.ibt-root').classList.contains('ibt-center'));
+    setTimeout(() => { const d = document.createElement('div'); d.id = 'later'; d.className = 'box'; d.style.cssText = 'left:420px;top:320px;width:120px;height:30px'; $('#fx').appendChild(d); }, 400);
+    T.next();
+    await until(() => title() === 'Step E');
+    ok('flag desligada (D) pulada; E esperou o alvo surgir', title() === 'Step E', title());
+    ok('último passo de segmento avulso = Done', $('.ibt-next').textContent === 'Done');
+    ok('corrida gravada na sessionStorage', (JSON.parse(sessionStorage.getItem(K.RUN) || '{}').st) === 4);
+    T.back();
+    await until(() => title() === 'Step C');
+    ok('Back volta pulando o passo de flag', title() === 'Step C', title());
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await until(() => title() === 'Step E');
+    ok('seta → avança', title() === 'Step E', title());
+    T.next();
+    await until(() => !T.isActive());
+    ok('Done encerra e marca o segmento', !T.isActive() && !!(JSON.parse(localStorage.getItem(K.DONE) || '{}').s1));
+    ok('nada sobra na tela nem na sessão', !$('.ibt-root') && !sessionStorage.getItem(K.RUN));
+    await T.start('s3');
+    await until(() => title() === 'Step Y');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => !T.isActive());
+    ok('Esc fecha', !T.isActive() && !$('.ibt-root'));
+
+    // 7) outra página: guarda a corrida e navega; volta do navegador não arrasta
+    await T.start('s2');
+    ok('segmento de outra página navega p/ o url', navs[navs.length - 1] === '/other.html?x=1', navs.join(','));
+    ok('e deixa a corrida gravada p/ a próxima página', JSON.parse(sessionStorage.getItem(K.RUN) || '{}').queue[0] === 's2');
+    sessionStorage.setItem(K.RUN, JSON.stringify({ mode: 'full', queue: ['s2', 's3'], si: 0, st: 0, dir: 1, preview: false, shown: 0 }));
+    const r1 = await T.resume();
+    ok('retomar na página errada: desiste e guarda o "continue"', r1 === false && !sessionStorage.getItem(K.RUN) && (JSON.parse(localStorage.getItem(K.RESUME) || '{}').si === 0));
+    localStorage.removeItem(K.RESUME);
+    sessionStorage.setItem(K.RUN, JSON.stringify({ mode: 'seg', queue: ['s1'], si: 0, st: 2, dir: 1, preview: false, shown: 0 }));
+    const r2 = await T.resume();
+    await until(() => title() === 'Step C');
+    ok('retomar na página certa mostra o passo gravado', r2 === true && title() === 'Step C', title());
+    T.stop();
+
+    // 8) tour completo: pausa entre segmentos, parar, continuar, fim
+    await T.start('full');
+    await until(() => title() === 'Step A');
+    ok('completo começa no 1º segmento', title() === 'Step A' && /Full tour/.test($('.ibt-seg').textContent));
+    T.next(); await until(() => title() === 'Step C');
+    T.next(); await until(() => title() === 'Step E');
+    ok('no completo o último passo diz Next', $('.ibt-next').textContent === 'Next');
+    T.next(); await until(() => /done/.test(title()));
+    ok('pausa entre segmentos', /Seg One — done/.test(title()) && $('.ibt-next').textContent === 'Continue' && $('.ibt-back').textContent === 'Stop here', title());
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    await until(() => title() === 'Step E');
+    ok('← na pausa volta ao último passo', title() === 'Step E', title());
+    T.next(); await until(() => /done/.test(title()));
+    $('.ibt-back').click();   // "Stop here"
+    await until(() => !T.isActive());
+    ok('Stop here guarda o continue no PRÓXIMO segmento', !T.isActive() && JSON.parse(localStorage.getItem(K.RESUME) || '{}').si === 1);
+    await T.openPanel();
+    const cont = $('.ibt-panel [data-a="continue"]');
+    ok('painel oferece Continue com o segmento certo', !!cont && /Seg Three/.test(cont.textContent));
+    cont.click();
+    await until(() => title() === 'Step Y');
+    ok('continue abre o segmento seguinte', title() === 'Step Y' && !$('.ibt-panel'));
+    T.next(); await until(() => /all set/.test(title()));
+    ok('fim do completo', /You're all set/.test(title()) && !localStorage.getItem(K.RESUME));
+    $('.ibt-next').click();
+    await until(() => !T.isActive());
+    ok('Close encerra', !T.isActive() && !$('.ibt-root'));
+
+    // 9) painel: cliente × admin, ✓, prévia, alternância, reset
+    await T.openPanel();
+    let rows = [...document.querySelectorAll('.ibt-panel .ibt-row')].map(b => b.getAttribute('data-seg'));
+    ok('cliente: segmento desligado não aparece', JSON.stringify(rows) === '["s1","s3"]', rows.join(','));
+    ok('✓ nos concluídos', !!$('.ibt-panel [data-seg="s1"] .ibt-row-k svg') && !!$('.ibt-panel [data-seg="s3"] .ibt-row-k svg'));
+    const again = await T.openPanel();
+    ok('2º clique fecha o painel', again === false && !$('.ibt-panel'));
+    admin = true; sessionStorage.removeItem(K.FLAGS);
+    await T.openPanel();
+    rows = [...document.querySelectorAll('.ibt-panel .ibt-row')].map(b => b.getAttribute('data-seg'));
+    ok('admin: vê o desligado com selo OFF', rows.includes('s4') && !!$('.ibt-panel [data-seg="s4"] .ibt-off'), rows.join(','));
+    $('.ibt-panel [data-seg="s4"]').click();
+    await until(() => title() === 'Step Z');
+    ok('admin abre o desligado em prévia', title() === 'Step Z' && /^Preview/.test($('.ibt-seg').textContent), $('.ibt-seg').textContent);
+    T.stop(); admin = false;
+    await T.openPanel();
+    $('.ibt-panel [data-a="reset"]').click();
+    ok('Reset zera ✓, continue e convite', !localStorage.getItem(K.DONE) && !localStorage.getItem(K.RESUME) && !localStorage.getItem(K.SEEN));
+    T.closePanel();
+
+    // 10) convite da 1ª visita (só na Home)
+    const back = location.pathname + location.search;
+    history.replaceState(null, '', '/index.html');
+    ok('convite aparece na Home', T.maybeInvite() === true && !!$('.ibt-invite'));
+    ok('não duplica', T.maybeInvite() === false && document.querySelectorAll('.ibt-invite').length === 1);
+    $('.ibt-invite [data-a="later"]').click();
+    ok('Not now: some e fica gravado', !$('.ibt-invite') && !!localStorage.getItem(K.SEEN));
+    ok('visto: não volta', T.maybeInvite() === false);
+    localStorage.removeItem(K.SEEN);
+    history.replaceState(null, '', back);
+    ok('fora da Home não convida', T.maybeInvite() === false);
+
+    // 11) celular: cartão na largura da tela, preso embaixo, variante de texto
+    t.env.mobile = true;
+    await T.start('s1');
+    await until(() => title() === 'Step A');
+    const card = $('.ibt-card'), vw = document.documentElement.clientWidth || innerWidth;
+    ok('celular: cartão largo com classe ibt-m', card.classList.contains('ibt-m') && Math.abs(card.offsetWidth - (vw - 24)) <= 1, card.offsetWidth + ' vs ' + (vw - 24));
+    ok('celular: alvo em cima → cartão embaixo', card.getAttribute('data-side') === 'bottom');
+    ok('celular: texto da variante', $('.ibt-body').textContent === 'Alpha mobile tap', $('.ibt-body').textContent);
+    T.stop(); t.env.mobile = false;
+
+    // 12) contraste ≥4,5:1 nos dois temas
+    for (const theme of ['claro', 'escuro']) {
+      document.documentElement.classList.toggle('dark', theme === 'escuro');
+      await T.start('s1');
+      await until(() => title() === 'Step A');
+      const c = $('.ibt-card'), bg = getComputedStyle(c).backgroundColor;
+      [['.ibt-title', 'título'], ['.ibt-body', 'texto'], ['.ibt-count', 'contador'], ['.ibt-seg', 'segmento']].forEach(([s, n]) => {
+        const k = contrast(getComputedStyle(c.querySelector(s)).color, bg);
+        ok('contraste ' + n + ' (' + theme + ') ≥ 4,5', k >= 4.5, k.toFixed(2));
+      });
+      const nx = getComputedStyle($('.ibt-next')), k2 = contrast(nx.color, nx.backgroundColor);
+      ok('contraste do botão Next (' + theme + ') ≥ 4,5', k2 >= 4.5, k2.toFixed(2));
+      T.stop();
+    }
+    document.documentElement.classList.remove('dark');
+  } catch (e) { ok('exceção: ' + (e && e.stack || e), false); }
+  finally { try { window.IBBATour && window.IBBATour.stop(); clear(); } catch (e) {} }
+  const fails = R.filter(x => x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent = (fails ? fails + ' FALHA(S)\n' : 'TUDO OK — ' + R.length + ' asserts\n') + R.join('\n');
+  return R;
+};
+</script></body>

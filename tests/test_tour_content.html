@@ -1,0 +1,88 @@
+<!doctype html><meta charset="utf-8"><title>tour-content — auditoria</title>
+<body style="font:12px Inter,Segoe UI,sans-serif"><pre id="out" style="white-space:pre-wrap">rodando… chame window.__RUN__()</pre>
+<script src="/tour-content.js"></script>
+<script>
+// AUDITORIA do conteúdo do Tutorial contra o FONTE das páginas. Tour que aponta p/ um id renomeado
+// não quebra nada na tela — o passo é pulado calado. Este teste é quem acusa.
+const R = []; const ok = (n, c, d = '') => R.push((c ? 'PASS' : 'FAIL') + ' · ' + n + (d !== '' ? '  [' + d + ']' : ''));
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+async function src(path) {   // CRLF → LF (os arquivos do repo estão em CRLF)
+  const r = await fetch(encodeURI(path) + (path.includes('?') ? '&' : '?') + 'v=' + Date.now());
+  if (!r.ok) throw new Error(path + ' → HTTP ' + r.status);
+  return (await r.text()).split('\r\n').join('\n');
+}
+// cada pedaço do seletor tem de existir no fonte: #id · .classe · [atributo="valor"] · [href*|^="x"]
+function tokens(sel) {
+  const out = [];
+  sel.replace(/#([\w-]+)/g, (_, id) => out.push({ k: 'id', v: id, re: new RegExp('id="' + reEsc(id) + '"') }));
+  sel.replace(/\[([\w-]+)[*^$]?="([^"]+)"\]/g, (_, at, v) => out.push(at === 'href'
+    ? { k: 'href', v, re: new RegExp('href="[^"]*' + reEsc(v)) }
+    : { k: at, v, re: new RegExp(reEsc(at) + '="' + reEsc(v) + '"') }));
+  sel.replace(/\[[^\]]*\]/g, '').replace(/\.([\w-]+)/g, (_, c) => out.push({ k: 'class', v: c, re: new RegExp('(class="[^"]*\\b|[\'"\\s.])' + reEsc(c) + '\\b') }));
+  return out;
+}
+// ações (call/cleanup): ['fn',…] · {click, unless, when} · lista delas → [{fn}|{sel}|{bad}]
+function actionsOf(a) {
+  if (!a || typeof a === 'function') return [];
+  if (Array.isArray(a) && typeof a[0] === 'string') return [{ fn: a[0] }];
+  if (Array.isArray(a)) return a.flatMap(actionsOf);
+  if (typeof a === 'object' && a.click) return [a.click, a.unless, a.when].filter(Boolean).map(sel => ({ sel }));
+  return [{ bad: JSON.stringify(a) }];
+}
+window.__RUN__ = async function () {
+  R.length = 0;
+  try {
+    const C = window.IBBA_TOURS;
+    ok('tour-content.js carregou', !!C && Array.isArray(C.segments) && Array.isArray(C.order));
+    const topnav = await src('/topnav.js'), admin = await src('/admin.html'), home = await src('/index.html'), exportlib = await src('/export-lib.js');
+    // flags conhecidas = as do /admin (FLAG_META) — flag digitada errada nunca liga
+    const known = new Set([...admin.matchAll(/^\s*([a-z_]+)\s*:\s*\{g:/gm)].map(m => m[1]));
+    ok('lista de flags do /admin lida', known.size >= 10 && known.has('tutorial'), [...known].join(','));
+    const ids = C.segments.map(s => s.id);
+    ok('ids de segmento únicos', new Set(ids).size === ids.length, ids.join(','));
+    ok('order só aponta p/ segmentos que existem', C.order.every(id => ids.includes(id)), C.order.join(','));
+    const flagsOf = o => [].concat(o.requires || [], o.unlessOff || []);
+    for (const s of C.segments) {
+      const where = s.page ? [].concat(s.page)[0] : null;
+      let page = '';
+      if (where) { try { page = await src(where); ok(s.id + ': página ' + where + ' existe', page.length > 1000); } catch (e) { ok(s.id + ': página existe', false, e.message); } }
+      const hay = topnav + '\n' + exportlib + '\n' + page;   // export-lib injeta os botões PNG/XLS dos gráficos
+      flagsOf(s).forEach(f => ok(s.id + ': flag do segmento conhecida (' + f + ')', known.has(f)));
+      const checkActs = (a, tag) => actionsOf(a).forEach(x => {
+        if (x.bad) return ok(tag + ': ação em formato conhecido', false, x.bad);
+        if (x.fn) return ok(tag + ': função ' + x.fn + ' existe', new RegExp('(function\\s+' + reEsc(x.fn) + '\\s*\\(|window\\.' + reEsc(x.fn) + '\\s*=)').test(hay));
+        let bad = null; try { document.querySelector(x.sel); } catch (e) { bad = e.message; }
+        ok(tag + ': seletor de ação válido ' + x.sel, !bad, bad || '');
+        tokens(x.sel).forEach(tk => ok(tag + ': ' + tk.k + ' "' + tk.v + '" (ação) existe no fonte', tk.re.test(hay)));
+      });
+      checkActs(s.cleanup, s.id + '/cleanup');
+      [].concat(s.waitGone || []).forEach(sel => tokens(sel).forEach(tk => ok(s.id + ': waitGone ' + tk.v + ' existe no fonte', tk.re.test(hay))));
+      const sids = (s.steps || []).map(x => x.id);
+      ok(s.id + ': ids de passo únicos', new Set(sids).size === sids.length);
+      ok(s.id + ': tem passo p/ computador e p/ celular', (s.steps || []).some(x => x.media !== 'mobile') && (s.steps || []).some(x => x.media !== 'desktop'));
+      for (const st of s.steps || []) {
+        const tag = s.id + '/' + st.id;
+        const variants = [st].concat(st.mobile ? [Object.assign({}, st, st.mobile)] : []);
+        for (const v of variants) {
+          [].concat(v.target || []).forEach(sel => {
+            let bad = null; try { document.querySelector(sel); } catch (e) { bad = e.message; }
+            ok(tag + ': seletor válido ' + sel, !bad, bad || '');
+            tokens(sel).forEach(tk => ok(tag + ': ' + tk.k + ' "' + tk.v + '" existe no fonte', tk.re.test(hay)));
+          });
+          checkActs(v.call, tag);
+          [].concat(v.waitGone || []).forEach(sel => tokens(sel).forEach(tk => ok(tag + ': waitGone ' + tk.v + ' existe no fonte', tk.re.test(hay))));
+          ok(tag + ': título curto (≤48)', !!v.title && v.title.length <= 48, (v.title || '').length);
+          ok(tag + ': texto curto (≤260) e sem HTML', !!v.body && v.body.length <= 260 && !/[<>]/.test(v.body), (v.body || '').length);
+          ok(tag + ': só {click}/{Click} como marcador', !/\{(?!click\}|Click\})/.test(v.title + v.body));
+        }
+        ok(tag + ': media válida', !st.media || st.media === 'desktop' || st.media === 'mobile', st.media || '');
+        flagsOf(st).forEach(f => ok(tag + ': flag conhecida (' + f + ')', known.has(f)));
+      }
+    }
+    ok('a home grava o recado ibba_tour_on', /localStorage\.setItem\('ibba_tour_on'/.test(home));
+  } catch (e) { ok('exceção: ' + e.message, false); }
+  const fails = R.filter(x => x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent = (fails ? fails + ' FALHA(S)\n' : 'TUDO OK — ' + R.length + ' asserts\n') + R.join('\n');
+  return R;
+};
+</script></body>
