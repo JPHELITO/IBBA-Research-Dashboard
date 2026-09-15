@@ -1,28 +1,37 @@
-name: 📊 Cheat sheet trimestral — resultados das companhias (CVM ITR/DFP)
+name: 📊 Quarterly — resultados das companhias (CVM ITR/DFP + SEC)
 
-# Roda 1×/dia em dia útil. O trabalho pesado só acontece quando a CVM republica um arquivo:
-# o robô faz 6 chamadas HEAD e compara o `Last-Modified` dos zips com a hora da nossa última
-# gravação — sem isso seriam 150 MB baixados todo dia à toa. Empresa que entrega o ITR hoje
-# aparece na dashboard hoje (a Vale entregou o 2T26 no mesmo dia do release).
+# Roda 2×/dia em dia útil. O trabalho pesado só acontece quando há documento novo:
+#   CVM  6 chamadas HEAD comparam o `Last-Modified` dos zips com a nossa última gravação da CVM —
+#        sem isso seriam 150 MB baixados todo dia à toa;
+#   SEC  a lista de arquivamentos da Southern Copper diz se saiu 10-Q/10-K novo antes de baixar os 3 MB.
+# A rodada da noite pega o que sai depois do pregão (a SCCO arquiva por volta das 16h de Nova York; a Vale
+# entregou o 2T26 à CVM no mesmo dia do release). A PTAX dos trimestres fechados vai junto, para o botão US$.
+# Empresa com modelo publicado que entrega trimestre novo vira e-mail para o analista subir o modelo.
 #
 # Não commita nada (tudo vai para o Supabase).
-# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY (os mesmos dos outros robôs deste repo).
-# ⚠️ Pré-requisito de uma vez só: rodar admin/supabase_quarterly.sql no Supabase.
+# ⚠️ Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY, SMTP_USER, SMTP_PASS (os mesmos dos outros robôs) e,
+#    opcional, SEC_USER_AGENT ("Nome contato@dominio") — sem ele vai um User-Agent genérico da dashboard.
+# ⚠️ Pré-requisito de uma vez só: admin/supabase_quarterly.sql e admin/supabase_quarterly_v2.sql.
 
 on:
   schedule:
     - cron: "40 13 * * 1-5"     # 13:40 UTC = 10:40 BRT, depois da rodada da CVM do Market Watch
+    - cron: "40 23 * * 1-5"     # 23:40 UTC = 20:40 BRT, o que saiu depois do pregão
   workflow_dispatch:
     inputs:
       anos:
-        description: "Anos a processar (ex.: 2023 2024 2025 2026). Vazio = os 3 últimos."
+        description: "Anos da CVM a processar (ex.: 2023 2024 2025 2026). Vazio = os 3 últimos."
         default: ""
       forcar:
-        description: "Baixar mesmo sem arquivo novo na CVM"
+        description: "Baixar mesmo sem documento novo na CVM/SEC"
         type: boolean
         default: false
       dry_run:
         description: "Só mostrar o que gravaria"
+        type: boolean
+        default: false
+      sem_email:
+        description: "Não mandar o e-mail de trimestre novo (carga de histórico)"
         type: boolean
         default: false
 
@@ -37,6 +46,9 @@ jobs:
     env:
       SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SMTP_USER:            ${{ secrets.SMTP_USER }}
+      SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+      SEC_USER_AGENT:       ${{ secrets.SEC_USER_AGENT }}
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
@@ -46,17 +58,29 @@ jobs:
       - name: Instalar dependências
         run: pip install requests pytest
 
-      - name: Testes do parser (fixtures reais da CVM)
-        run: python -m pytest tests/test_quarterly.py -q
+      - name: Testes dos robôs (fixtures reais da CVM e da SEC)
+        id: testes
+        run: python -m pytest tests/test_quarterly.py tests/test_quarterly_sec.py -q
 
-      - name: Rodar
+      - name: CVM — ITR/DFP, ações e PTAX
         run: |
           ARGS=""
           [ -n "${{ inputs.anos }}" ] && ARGS="--anos ${{ inputs.anos }}"
           [ "${{ inputs.forcar }}" = "true" ] && ARGS="$ARGS --forcar"
           [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          [ "${{ inputs.sem_email }}" = "true" ] && ARGS="$ARGS --sem-email"
           python _shared/quarterly.py $ARGS
 
+      - name: SEC — Southern Copper
+        # fontes independentes: a SEC roda mesmo se a CVM falhar (mas nunca com teste vermelho)
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' }}
+        run: |
+          ARGS=""
+          [ "${{ inputs.forcar }}" = "true" ] && ARGS="--forcar"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          [ "${{ inputs.sem_email }}" = "true" ] && ARGS="$ARGS --sem-email"
+          python _shared/quarterly_sec.py $ARGS
+
       - name: Log update
-        if: ${{ inputs.dry_run != true }}
-        run: python _shared/log_update.py "quarterly_kpis" auto "robô quarterly.py"
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' && inputs.dry_run != true }}
+        run: python _shared/log_update.py "quarterly_kpis" auto "robôs quarterly.py + quarterly_sec.py"
