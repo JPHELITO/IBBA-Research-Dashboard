@@ -1860,8 +1860,9 @@ async function sgModelCommit(){
 // A planilha é lida AQUI (SheetJS + quarterly-lib.js): o arquivo nunca sai do navegador — a rede do banco
 // barra upload de arquivo e POST grande. Vão para o banco só os números até o corte, em lotes ≤60 KB, por
 // begin → chunk → commit; o servidor recusa de novo trimestre futuro e rótulo com cara de dado pago.
-// Conferência: receita × CVM (get_quarterly_kpis, em milhares → milhões), câmbio × PTAX (BCB, que aceita
-// chamada do navegador) e, para quem não tem robô, o número do release digitado aqui.
+// Conferência: receita × CVM (get_quarterly_kpis, em milhares → milhões) ou × SEC (Southern Copper, pelo
+// "as filed" da versão publicada), câmbio × PTAX (BCB, que aceita chamada do navegador) e, para quem não
+// tem robô, o número do release digitado aqui.
 let _sgq={ items:[], filed:null, fx:null, fxErr:null, gold:{}, ack:{} };
 let _sgqAnnId=null, _sgqAnns=[];
 const SGQ_ALIAS={AURA33:'AUGO'};
@@ -1895,6 +1896,17 @@ async function sgqFiled(){
       const d=by[co]=by[co]||{}; const s=d[f]=d[f]||{ccy:r.currency||'BRL',vals:{}};
       s.vals[r.quarter]=Math.round(Number(r[c])/div*1000)/1000; }); });
   _sgq.filed=by; return by;
+}
+// Quem não está na CVM (a Southern Copper, pela SEC) confere contra o "as filed" que já veio com a versão
+// publicada (get_quarterly_company): get_quarterly_kpis só junta as empresas do Market Watch. Chega em
+// milhões com 1 casa — sobra para os 0,1% da receita.
+function sgqFiledOf(it){
+  const cvm=(_sgq.filed||{})[it.man.id];
+  if(cvm&&Object.keys(cvm).length) return cvm;
+  const by={};
+  ((it.pub&&it.pub.filed)||[]).forEach(r=>{ [['rev','rev'],['ni','ni'],['ebitda','ebitda']].forEach(([f,c])=>{ if(r[c]==null) return;
+    const s=by[f]=by[f]||{ccy:r.ccy||'USD',vals:{}}; s.vals[r.q]=Number(r[c]); }); });
+  return by;
 }
 // PTAX média por trimestre (SGS 1; a API limita 10 anos por consulta)
 async function sgqPtax(){
@@ -1930,7 +1942,7 @@ async function sgqPublished(co){
   if(error) return {missing:true, error:error.message};
   if(!data||data.enabled===false) return {missing:true, error:'leitura desligada'};
   if(!data.company) return {noCompany:true, series:[]};
-  return {series:data.series||[], model:data.company.model||null};
+  return {series:data.series||[], model:data.company.model||null, filed:data.filed||[]};
 }
 
 async function sgqRead(fileList){
@@ -1969,7 +1981,7 @@ function sgqParseAll(){
   const cutoff=_v('sgq-cutoff').value.trim().toUpperCase(), siblings={};
   _sgq.items.forEach(it=>{
     if(!it.man) return;
-    it.out=QL.parseWorkbook(it.book, it.man, {cutoff, fx:_sgq.fx||{}, filed:(_sgq.filed||{})[it.man.id]||{}, gold:_sgq.gold[it.man.id]||{}, siblings});
+    it.out=QL.parseWorkbook(it.book, it.man, {cutoff, fx:_sgq.fx||{}, filed:sgqFiledOf(it), gold:_sgq.gold[it.man.id]||{}, siblings});
     if(it.man.id==='SCCO'){ const s=it.out.series.find(x=>x.series_key==='revenue'); if(s) siblings['SCCO.revenue']=s.vals; }
     it.sum=QL.summarize(it.out);
     it.diff=(it.pub&&!it.pub.missing&&!it.pub.noCompany)?QL.diffSeries(it.out.series, it.pub.series, cutoff):null;
