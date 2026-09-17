@@ -1,0 +1,56 @@
+name: 🩺 Supabase Health — sentinela do corte de cota
+
+# Vigia a única falha que derruba tudo de uma vez: a Fair Use Policy do plano
+# grátis (HTTP 402 em todo o /rest/v1, /auth/v1 e /storage/v1). Num corte caem
+# juntos a dash dos clientes, os robôs do Actions e o clipping.
+#
+# Roda 06:30 BRT de propósito: 20 min ANTES do generate_clipping (06:50 BRT, no
+# repo do news-hunter). Assim, se o banco estiver cortado, o aviso chega ANTES de
+# o clipping falhar — já explicando o porquê.
+#
+# Mora AQUI e não no news-hunter porque é aqui que estão o _shared/notify.py e os
+# secrets de SMTP.
+#
+# SILENCIOSO quando está tudo bem: e-mail só quando há problema. O alerta tem dois
+# caminhos independentes até o usuário — o e-mail (SMTP, sem Supabase no caminho)
+# e o job vermelho no Actions (notificação do próprio GitHub).
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "checar (avisa se houver problema) | dry-run (só imprime) | test-email (prova o canal)"
+        default: "checar"
+  schedule:
+    - cron: "30 9 * * *"   # 09:30 UTC = 06:30 BRT, todo dia
+
+concurrency:
+  group: supabase-health
+  cancel-in-progress: true
+
+jobs:
+  checar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # sem "pip install": a sentinela é stdlib pura (urllib + smtplib) de
+      # propósito — um vigia não pode ter mais motivos para falhar do que o
+      # sistema que ele vigia.
+      - name: Checar o Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SMTP_USER:    ${{ secrets.SMTP_USER }}
+          SMTP_PASS:    ${{ secrets.SMTP_PASS }}
+          PYTHONUTF8: "1"
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          case "${MODE:-checar}" in
+            dry-run)    python _shared/supabase_health.py --dry-run ;;
+            test-email) python _shared/supabase_health.py --test-email ;;
+            *)          python _shared/supabase_health.py ;;
+          esac
