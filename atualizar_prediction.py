@@ -49,6 +49,9 @@ e publica o resultado na dashboard, em UM comando.
    --coreia CAMINHO     usa outro arquivo da Coreia
    --china  CAMINHO     usa outro CSV da China   (pode repetir: --china a.csv --china b.csv)
    --refazer 2026-07    apaga esse mês das abas e regrava (use quando a fonte revisar)
+   --refazer 2026       ... o ano inteiro. Aceita também lista (2026-01,2026-02) e
+                        intervalo (2026-01..2026-03). Só apaga mês que a fonte tem
+                        para repor — mês sem reposição fica como está.
 
 ════════════════════════════════════════════════════════════════════════════════
  SEGURANÇA
@@ -57,6 +60,10 @@ e publica o resultado na dashboard, em UM comando.
  • Escreve pelo PRÓPRIO Excel (COM), então gráficos, formatação e vínculos
    externos da planilha ficam intactos — nada de biblioteca reescrevendo o arquivo.
  • Se o Excel-mestre estiver aberto, ele avisa e para (não corrompe).
+ • Confere o que JÁ ESTÁ na planilha contra a fonte (MDIC e os arquivos que você
+   baixou). Mês que passa de 1,3× a fonte tem cara de colagem DUPLA — aí ele não
+   grava nem publica, e diz qual --refazer resolve. (Foi o que aconteceu em
+   21/09/2026: jan-abr/2026 da China e jan-mar da Coreia contados duas vezes.)
 """
 import argparse
 import collections
@@ -91,7 +98,12 @@ MESES_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 XL_UP = -4162          # constante xlUp do Excel
+XL_CALC_MANUAL = -4135  # xlCalculationManual
+XL_CALC_AUTO = -4105    # xlCalculationAutomatic
 ABAS = ("SECEX", "KOREA", "CHINA")
+
+# Mês em que a aba passa disto × a fonte = cara de colagem DUPLA (bloqueia).
+LIMIAR_DUPLICADO = 1.3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -171,9 +183,87 @@ def avisar_codigos_sumidos(nome, vol_hist, mes_novo, sh6_do_mes, corte_t=50.0,
     print("       aparece p/ algum país, ele estava na consulta e o zero é real.)")
 
 
-def _relata_ja_tinha(vistos, ja_na_aba, refazer=None):
+def _nunca(_mes):
+    return False
+
+
+def interpreta_refazer(spec):
+    """
+    Traduz o --refazer numa função que diz se um mês ('2026-07') deve ser regravado.
+
+    Aceita '2026-07' · '2026' (o ano inteiro) · '2026-01,2026-02' · '2026-01..2026-03'.
+    Nasceu do caso de 21/09/2026: a planilha chegou com três meses DUPLICADOS e a fonte
+    tinha revisado outros dois — regravar mês a mês, em 8 rodadas, não fazia sentido.
+    """
+    if not spec:
+        return _nunca
+    testes = []
+    for parte in str(spec).replace(" ", "").split(","):
+        if not parte:
+            continue
+        if ".." in parte:
+            a, b = parte.split("..", 1)
+            if not (re.fullmatch(r"\d{4}-\d{2}", a) and re.fullmatch(r"\d{4}-\d{2}", b)):
+                raise SystemExit(f"--refazer: intervalo inválido '{parte}' (use 2026-01..2026-03)")
+            testes.append(lambda m, a=a, b=b: a <= m <= b)
+        elif re.fullmatch(r"\d{4}", parte):
+            testes.append(lambda m, ano=parte: m.startswith(ano + "-"))
+        elif re.fullmatch(r"\d{4}-\d{2}", parte):
+            testes.append(lambda m, mes=parte: m == mes)
+        else:
+            raise SystemExit(f"--refazer: não entendi '{parte}' "
+                             "(use 2026-07, 2026, 2026-01,2026-02 ou 2026-01..2026-03)")
+    return lambda m: any(t(m) for t in testes)
+
+
+def resumo_meses(meses):
+    """'2026-01 → 2026-08 (8 meses)' ou a lista, quando são poucos."""
+    meses = sorted(meses)
+    if len(meses) <= 3:
+        return ", ".join(meses)
+    return f"{meses[0]} → {meses[-1]} ({len(meses)} meses)"
+
+
+def conferir_contra_fonte(nome, vol_aba, vol_fonte, meses):
+    """
+    O que JÁ ESTÁ na aba bate com a fonte? Mês a mês, volume do Brasil (toneladas).
+
+    Por que existe: em 21/09/2026 a planilha chegou com jan-abr/2026 da CHINA e jan-mar
+    da KOREA contados DUAS vezes — alguém colou o download novo (jan-ago) por cima de só
+    PARTE do bloco antigo de 2026, e o resto ficou junto. Nada quebra: o SUMIFS soma as
+    duas cópias, o gráfico sobe e a linha preta da dash dobra. O script, que só
+    perguntava "o mês já existe?", responderia "nada novo" e publicaria assim mesmo.
+
+    Devolve (duplicados, diferentes) como listas de (mes, aba_t, fonte_t):
+      • duplicados — a aba passa de LIMIAR_DUPLICADO × a fonte: cara de colagem dupla.
+        Esses BLOQUEIAM a gravação e a publicação.
+      • diferentes — só não batem (revisão da fonte, ou fonte parcial). Só avisa.
+    """
+    dup, dif = [], []
+    for m in sorted(meses):
+        ta = sum(vol_aba.get(m, {}).values())
+        tf = sum(vol_fonte.get(m, {}).values())
+        if abs(ta - tf) <= max(1.0, tf * 0.001):
+            continue
+        (dup if tf > 0 and ta >= LIMIAR_DUPLICADO * tf else dif).append((m, ta, tf))
+    if dup or dif:
+        print(f"    ⚠ {nome}: o que já está na aba NÃO bate com a fonte em "
+              f"{len(dup) + len(dif)} mês(es):")
+        for m, ta, tf in dup:
+            print(f"        {m}: aba {ta:>10,.0f} t × fonte {tf:>10,.0f} t  "
+                  f"({ta / tf:.2f}×)  ← DUPLICADO? (colado duas vezes)")
+        for m, ta, tf in dif:
+            var = f"{(ta / tf - 1) * 100:+.1f}%" if tf else "fonte sem Brasil"
+            porque = ("aba MAIOR: fonte revisou p/ baixo, ou sobrou colagem velha" if ta > tf
+                      else "aba MENOR: fonte revisou p/ cima, ou trouxe código a mais")
+            print(f"        {m}: aba {ta:>10,.0f} t × fonte {tf:>10,.0f} t  "
+                  f"({var})  ← {porque}")
+    return dup, dif
+
+
+def _relata_ja_tinha(vistos, ja_na_aba, refaz=_nunca):
     """Uma linha curta dizendo quantos meses do arquivo a aba já tinha (sem listar 67)."""
-    rep = sorted(m for m in vistos if m in ja_na_aba and m != refazer)
+    rep = sorted(m for m in vistos if m in ja_na_aba and not refaz(m))
     if not rep:
         return
     if len(rep) <= 3:
@@ -184,7 +274,7 @@ def _relata_ja_tinha(vistos, ja_na_aba, refazer=None):
 
 def melhor_por_mes(por_arquivo):
     """
-    Recebe {arquivo: {mes: [linhas]}} e devolve ({mes: [linhas]}, [avisos]).
+    Recebe {arquivo: {mes: [linhas]}} e devolve ({mes: [linhas]}, [avisos], {mes: arquivo}).
 
     REGRA: para cada mês, vale UM arquivo só — o que trouxe MAIS linhas (empate:
     o mais recente). Nunca soma dois arquivos no mesmo mês.
@@ -192,18 +282,19 @@ def melhor_por_mes(por_arquivo):
     que você fez com filtro mais estreito). Somar contaria duas vezes; escolher o
     mais completo acerta. Os descartados aparecem como aviso, nunca em silêncio.
     """
-    escolhido, avisos = {}, []
+    escolhido, avisos, origem = {}, [], {}
     meses = {m for d in por_arquivo.values() for m in d}
     for mes in sorted(meses):
         cands = [(len(d[mes]), f) for f, d in por_arquivo.items() if mes in d]
         cands.sort(key=lambda t: (t[0], t[1].stat().st_mtime), reverse=True)
         n, ganhador = cands[0]
         escolhido[mes] = por_arquivo[ganhador][mes]
+        origem[mes] = ganhador
         if len(cands) > 1:
             outros = ", ".join(f"{f.name} ({k} linhas)" for k, f in cands[1:])
             avisos.append(f"{mes}: usei {ganhador.name} ({n} linhas); "
                           f"ignorei os parciais → {outros}")
-    return escolhido, avisos
+    return escolhido, avisos, origem
 
 
 def esta_aberto(xlsx: Path) -> bool:
@@ -213,6 +304,15 @@ def esta_aberto(xlsx: Path) -> bool:
 
 def ym(ano, mes):
     return f"{int(ano):04d}-{int(mes):02d}"
+
+
+def _repetidas_por_mes(chaves):
+    """Counter{(mes, ...): n} → {mes: quantas linhas sobram além da 1ª de cada chave}."""
+    rep = collections.Counter()
+    for k, n in chaves.items():
+        if n > 1:
+            rep[k[0]] += n - 1
+    return dict(rep)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -227,25 +327,34 @@ def ler_estado(xlsx: Path) -> dict:
     wb = openpyxl.load_workbook(xlsx, data_only=True, read_only=True)
     est = {}
 
-    # ── SECEX: A=Ano, B='07. Julho', C=NCM, E=SH6, F=desc SH6, D=desc NCM
+    # ── SECEX: A=Ano, B='07. Julho', C=NCM, E=SH6, F=desc SH6, D=desc NCM, G=país, I=kg
+    # (a chave Ano×Mês×NCM×País é ÚNICA na agregação do MDIC — repetida = colagem dupla)
     ws = wb["SECEX"]
     meses, sh6, desc_ncm, desc_sh6, ultima = set(), set(), {}, {}, 1
+    vol = collections.defaultdict(lambda: collections.defaultdict(float))
+    chaves = collections.Counter()
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if r[0] is None:
             continue
         ultima = i
-        meses.add(ym(r[0], str(r[1])[:2]))
+        m = ym(r[0], str(r[1])[:2])
+        meses.add(m)
         s = str(r[4]).zfill(6)
         sh6.add(s)
         desc_ncm[str(r[2]).zfill(8)] = r[3]
         desc_sh6[s] = r[5]
-    est["SECEX"] = dict(meses=meses, ultima=ultima, sh6=sh6,
-                        desc_ncm=desc_ncm, desc_sh6=desc_sh6)
+        vol[m][s] += num(r[8]) / 1000.0                # kg -> toneladas (todos os países)
+        chaves[(m, str(r[2]).strip(), str(r[6]).strip())] += 1
+    est["SECEX"] = dict(meses=meses, ultima=ultima, sh6=sh6, vol=vol,
+                        desc_ncm=desc_ncm, desc_sh6=desc_sh6,
+                        repetidas=_repetidas_por_mes(chaves))
 
     # ── KOREA: A='2026.07', B=HS6, D=país destino, E=volume (ton)
+    # (o arquivo da KITA traz UMA linha por período×HS×país — repetida = colagem dupla)
     ws = wb["KOREA"]
     meses, hs, ultima = set(), set(), 1
     vol = collections.defaultdict(lambda: collections.defaultdict(float))
+    chaves = collections.Counter()
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if r[0] is None:
             continue
@@ -256,9 +365,11 @@ def ler_estado(xlsx: Path) -> dict:
         if "." in p:
             m = p.replace(".", "-")
             meses.add(m)
+            chaves[(m, codigo, str(r[3]).strip())] += 1
             if str(r[3]).strip() == "Brazil":          # só o que alimenta o modelo
                 vol[m][codigo] += num(r[4])            # já em toneladas
-    est["KOREA"] = dict(meses=meses, ultima=ultima, hs=hs, vol=vol)
+    est["KOREA"] = dict(meses=meses, ultima=ultima, hs=hs, vol=vol,
+                        repetidas=_repetidas_por_mes(chaves))
 
     # ── CHINA: A=202607, B=código 8 dígitos, F=quantidade (kg)
     ws = wb["CHINA"]
@@ -379,7 +490,14 @@ def secex_linhas(ano, meses_alvo, sh6_set, desc_ncm, desc_sh6):
 def _korea_um_arquivo(caminho: Path, hs_conhecidos: set):
     """Um 'by H.S Code and Country*.xlsx' → ({mes: [linhas A..I]}, HS ignorados)."""
     import openpyxl
-    wb = openpyxl.load_workbook(caminho, data_only=True, read_only=True)
+    # SEM read_only, de propósito. O xlsx da KITA às vezes vem com a <dimension> do
+    # XML errada ("A1"), e no modo read_only o openpyxl confia nela e devolve UMA
+    # linha só — o arquivo era descartado como "sem cabeçalho 'Period'", calado, e a
+    # Coreia não andava. Medido em 21/09/2026: o download de jan-ago/2026 (511 KB)
+    # dava 1 linha em read_only e 5.692 lendo inteiro; o de 23/07 tinha a dimensão
+    # certa e passava nos dois. O arquivo é pequeno — ler inteiro não custa nada.
+    # (O process_customs_inbox.py, que lê o mesmo arquivo na nuvem, já fazia assim.)
+    wb = openpyxl.load_workbook(caminho, data_only=True)
     ws = wb[wb.sheetnames[0]]
     linhas_brutas = list(ws.iter_rows(values_only=True))
     wb.close()
@@ -408,39 +526,74 @@ def _korea_um_arquivo(caminho: Path, hs_conhecidos: set):
     return dict(por_mes), fora
 
 
-def korea_linhas(caminhos, hs_conhecidos: set, ja_na_aba=frozenset(), refazer=None):
+def _escolhe(por_arquivo, ja_na_aba, refaz):
     """
-    Lê os arquivos da alfândega coreana e devolve {mes: [linhas A..I]}.
+    Comum a Coreia e China. Devolve (novos, todos, meses_do_mais_novo, consulta):
+      novos  — {mes: linhas} que vão para a aba (mês que ela não tem, ou --refazer);
+      todos  — o melhor pull de CADA mês visto, inclusive os que a aba já tem
+               (é contra isso que se confere o que já está colado);
+      meses_do_mais_novo — os meses do arquivo (válido) baixado por último. A
+               conferência aba×fonte olha SÓ esses: os downloads velhos que sobram no
+               Downloads costumam ser parciais (menos códigos) e acusariam divergência
+               falsa em todo mês antigo;
+      consulta — {mes: SH6 que aparecem em QUALQUER mês do arquivo de onde veio aquele
+               mês}. Se o código aparece em algum mês do arquivo, ele ESTAVA na consulta
+               — e a ausência dele num mês é zero de verdade, não buraco. (Num pull de
+               vários meses, como o da China de 21/09/2026, isso separa as duas coisas;
+               sem isso o aviso de "código sumido" disparava 36 vezes em 8 meses.)
+    """
+    if not por_arquivo:
+        return {}, {}, set(), {}
+    todos, avisos, origem = melhor_por_mes(por_arquivo)
+    novos = {m: v for m, v in todos.items() if m not in ja_na_aba or refaz(m)}
+    for av in avisos:
+        if av[:7] in novos:                    # os avisos dos meses que vão entrar
+            print(f"    ⚠ {av}")
+    mais_novo = max(por_arquivo, key=lambda p: p.stat().st_mtime)
+    cods = {f: {str(lin[1])[:6] for linhas in d.values() for lin in linhas}
+            for f, d in por_arquivo.items()}
+    consulta = {m: cods[origem[m]] for m in novos}
+    return novos, todos, set(por_arquivo[mais_novo]), consulta
+
+
+def korea_linhas(caminhos, hs_conhecidos: set, ja_na_aba=frozenset(), refaz=_nunca):
+    """
+    Lê os arquivos da alfândega coreana → (novos, todos, meses_do_mais_novo, consulta),
+    ver _escolhe.
     Só os HS que a aba KOREA já usa — o escopo é o da planilha, não o meu.
-    Mês que a aba já tem é descartado aqui (a não ser o --refazer); mês repetido
-    em mais de um arquivo: vale o mais completo.
+    Mês repetido em mais de um arquivo: vale o mais completo, nunca a soma.
     """
     por_arquivo, fora_total, descartados, vistos = {}, set(), 0, set()
     for p in caminhos:
         try:
             d, fora = _korea_um_arquivo(Path(p), hs_conhecidos)
-        except Exception:
+        except Exception as e:
+            print(f"    ({Path(p).name}: não consegui ler — {type(e).__name__}: {str(e)[:80]})")
             d, fora = {}, set()
         fora_total |= fora
         if not d:
             descartados += 1
             continue
         vistos |= set(d)
-        d = {m: v for m, v in d.items() if m not in ja_na_aba or m == refazer}
-        if d:
-            por_arquivo[Path(p)] = d
+        por_arquivo[Path(p)] = d
     if descartados:
         print(f"    ({descartados} arquivo(s) sem o cabeçalho 'Period' — ignorados)")
     if fora_total:
         print(f"    (ignorei {len(fora_total)} códigos que a aba KOREA não usa: "
               f"{', '.join(sorted(fora_total)[:6])}{'…' if len(fora_total) > 6 else ''})")
-    _relata_ja_tinha(vistos, ja_na_aba, refazer)
-    if not por_arquivo:
-        return {}
-    escolhido, avisos = melhor_por_mes(por_arquivo)
-    for av in avisos:
-        print(f"    ⚠ {av}")
-    return escolhido
+    _relata_ja_tinha(vistos, ja_na_aba, refaz)
+    return _escolhe(por_arquivo, ja_na_aba, refaz)
+
+
+def vol_korea(por_mes):
+    """{mes: [linhas A..I]} → {mes: {sh6: toneladas p/ o Brasil}} (a mesma régua da aba)."""
+    v = defaultdict(lambda: defaultdict(float))
+    for m, linhas in por_mes.items():
+        v[m]                                   # mês sem Brasil existe, com zero
+        for lin in linhas:
+            if str(lin[3]).strip() == "Brazil":
+                v[m][str(lin[1])[:6]] += num(lin[4])
+    return v
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -503,12 +656,12 @@ def _china_um_arquivo(p: Path, sh6_set):
     return dict(por_mes)
 
 
-def china_linhas(caminhos, sh6_set, ja_na_aba=frozenset(), refazer=None):
+def china_linhas(caminhos, sh6_set, ja_na_aba=frozenset(), refaz=_nunca):
     """
     Lê os downloadData*.csv do GACC (só parceiro 'Brazil', só os SH6 da planilha)
-    e agrega o detalhe por regime aduaneiro / província, que a aba CHINA não tem.
-    Mês que a aba já tem é descartado aqui (a não ser o --refazer); quando o mesmo
-    mês aparece em mais de um arquivo, vale o mais completo.
+    → (novos, todos, meses_do_mais_novo, consulta), ver _escolhe. As linhas ficam BRUTAS
+    (uma por regime aduaneiro / província), sem essas duas colunas — como na aba.
+    Mesmo mês em mais de um arquivo: vale o mais completo, nunca a soma.
     """
     por_arquivo, descartados, vistos = {}, 0, set()
     for p in caminhos:
@@ -520,18 +673,39 @@ def china_linhas(caminhos, sh6_set, ja_na_aba=frozenset(), refazer=None):
             descartados += 1
             continue
         vistos |= set(d)
-        d = {m: v for m, v in d.items() if m not in ja_na_aba or m == refazer}
-        if d:
-            por_arquivo[Path(p)] = d
+        por_arquivo[Path(p)] = d
     if descartados:
         print(f"    ({descartados} arquivo(s) não eram CSV de aço do GACC — ignorados)")
-    _relata_ja_tinha(vistos, ja_na_aba, refazer)
-    if not por_arquivo:
-        return {}
-    escolhido, avisos = melhor_por_mes(por_arquivo)
-    for av in avisos:
-        print(f"    ⚠ {av}")
-    return escolhido
+    _relata_ja_tinha(vistos, ja_na_aba, refaz)
+    return _escolhe(por_arquivo, ja_na_aba, refaz)
+
+
+def vol_china(por_mes):
+    """{mes: [linhas A..J]} → {mes: {sh6: toneladas}} (a aba CHINA já é só Brasil)."""
+    v = defaultdict(lambda: defaultdict(float))
+    for m, linhas in por_mes.items():
+        v[m]
+        for lin in linhas:
+            v[m][str(lin[1])[:6]] += num(lin[5]) / 1000.0
+    return v
+
+
+def _hist_com_novos(vol_aba, vol_novos):
+    """Histórico p/ o aviso de código sumido: a aba, com os meses que vão ser gravados
+    trocados pelos da fonte (senão um mês duplicado na aba entraria na média)."""
+    h = {m: dict(v) for m, v in vol_aba.items()}
+    for m, v in vol_novos.items():
+        h[m] = dict(v)
+    return h
+
+
+def vol_secex(linhas):
+    """Linhas A..I da SECEX → {mes: {sh6: toneladas}} (todos os países, como na aba)."""
+    v = defaultdict(lambda: defaultdict(float))
+    for lin in linhas:
+        m = ym(lin[0], str(lin[1])[:2])
+        v[m][str(lin[4]).zfill(6)] += num(lin[8]) / 1000.0
+    return v
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -567,6 +741,15 @@ class Planilha:
                 self._separador_americano()
                 # UpdateLinks=0: não tenta resolver os vínculos externos mortos da planilha
                 self.wb = self.xl.Workbooks.Open(str(caminho), UpdateLinks=0, ReadOnly=False)
+                # Cálculo MANUAL enquanto edita: as abas CRC/HRC têm ~2 mil SUMIFS em
+                # colunas inteiras, e cada bloco apagado recalcularia todos eles. O
+                # fechar() devolve o automático ANTES de salvar (o modo vai gravado no
+                # arquivo) e manda o recálculo geral uma vez só.
+                try:
+                    self.xl.ScreenUpdating = False
+                    self.xl.Calculation = XL_CALC_MANUAL
+                except Exception:
+                    pass
                 return
             except Exception as e:            # pywintypes.com_error e afins
                 ultimo = e
@@ -659,8 +842,10 @@ class Planilha:
         self.xl.CutCopyMode = False
         return n
 
-    def linhas_do_mes(self, aba, mes):
-        """Índices das linhas de um mês (p/ o --refazer)."""
+    def linhas_dos_meses(self, aba, meses):
+        """Índices das linhas dos meses pedidos, onde quer que estejam (p/ o --refazer).
+        Não supõe ordem: na KOREA e na SECEX há meses espalhados pela aba inteira."""
+        meses = set(meses)
         ws = self.wb.Worksheets(aba)
         ult = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
         if ult < 2:
@@ -680,7 +865,7 @@ class Planilha:
             else:
                 s = str(int(va)) if isinstance(va, float) else str(va).strip()
                 chave = f"{s[:4]}-{s[4:6]}" if len(s) == 6 else None
-            if chave == mes:
+            if chave in meses:
                 achados.append(i)
         return achados
 
@@ -700,6 +885,42 @@ class Planilha:
         for i in linhas:
             amostra[i] = (ws.Cells(i, 5).Value, ws.Cells(i, 15).Value)
         return amostra
+
+    def amostra_secex(self, quantos=400):
+        """
+        (Ano, Mês, data calculada na coluna L) de uma amostra da aba SECEX.
+
+        A coluna L é =NUMBERVALUE("01/"&LEFT(B,2)&"/"&A): monta o TEXTO "01/08/2026" e
+        deixa o Excel ler como data — e a ordem dia/mês vem da configuração regional do
+        Windows. Numa máquina com data americana, 01/08 vira 8 de janeiro e o modelo
+        inteiro (SUMIFS por data) se desloca sem dar erro. Por isso a conferência.
+        """
+        ws = self.wb.Worksheets("SECEX")
+        ult = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
+        if ult < 2:
+            return {}
+        passo = max(1, (ult - 1) // quantos)
+        linhas = list(range(2, ult + 1, passo))
+        if linhas[-1] != ult:
+            linhas.append(ult)                 # a última linha (a mais nova) sempre entra
+        return {i: (ws.Cells(i, 1).Value, ws.Cells(i, 2).Value, ws.Cells(i, 12).Value)
+                for i in linhas}
+
+    @staticmethod
+    def _confere_datas_secex(amostra):
+        """Linhas em que a data calculada (col L) não é o dia 1º do Ano/Mês da linha."""
+        ruins = []
+        for i, (ano, mes, data) in amostra.items():
+            if ano is None or mes is None:
+                continue
+            try:
+                ok = (int(data.year) == int(ano) and int(data.month) == int(str(mes)[:2])
+                      and int(data.day) == 1)
+            except (AttributeError, TypeError, ValueError):
+                ok = False                     # #VALOR! chega como número, não data
+            if not ok:
+                ruins.append((i, f"{ano}/{mes}", data))
+        return ruins
 
     @staticmethod
     def _confere_amostra(amostra):
@@ -721,17 +942,30 @@ class Planilha:
     def fechar(self, salvar=True):
         try:
             if salvar:
+                # o modo de cálculo vai gravado no arquivo: volta ao automático ANTES
+                try:
+                    self.xl.Calculation = XL_CALC_AUTO
+                except Exception:
+                    pass
                 if not getattr(self, "_sem_rebuild", False):
                     self.xl.CalculateFullRebuild()
                 else:
                     self.xl.Calculate()
                 ruins = self._confere_amostra(self.amostra_koreia())
+                ruins_datas = self._confere_datas_secex(self.amostra_secex())
                 if ruins:
                     salvar = False
                     print(f"\n⚠ ABORTEI SEM SALVAR: {len(ruins)} linhas da aba KOREA saíram do "
                           "recálculo com o volume errado (problema do separador decimal).")
                     for i, e, o in ruins[:5]:
                         print(f"    linha {i}: digitado {e!r} → calculado {o!r}")
+                    print("  Seu arquivo NÃO foi alterado.")
+                elif ruins_datas:
+                    salvar = False
+                    print(f"\n⚠ ABORTEI SEM SALVAR: {len(ruins_datas)} linhas da aba SECEX saíram "
+                          "do recálculo com a DATA errada (ordem dia/mês do Windows).")
+                    for i, am, d in ruins_datas[:5]:
+                        print(f"    linha {i}: {am} → calculado {d!r}")
                     print("  Seu arquivo NÃO foi alterado.")
                 else:
                     self.wb.Save()
@@ -799,8 +1033,10 @@ def main():
     ap.add_argument("--excel", help="caminho do Excel-mestre")
     ap.add_argument("--coreia", help="caminho do arquivo da Coreia")
     ap.add_argument("--china", action="append", help="caminho de CSV do GACC (pode repetir)")
-    ap.add_argument("--refazer", help="apaga e regrava esse mês (ex.: 2026-07)")
+    ap.add_argument("--refazer", help="apaga e regrava a partir da fonte: 2026-07, 2026 (o ano), "
+                                      "2026-01,2026-02 ou 2026-01..2026-03")
     a = ap.parse_args()
+    refaz = interpreta_refazer(a.refazer)
 
     # ── achar o Excel-mestre ──────────────────────────────────────────────────
     excel = Path(a.excel) if a.excel else mais_novo("SECEX - Prediction Analysis*.xlsx")
@@ -824,7 +1060,25 @@ def main():
 
     # ── juntar o que há de novo em cada fonte ────────────────────────────────
     titulo("PROCURANDO MESES NOVOS")
-    novos = {}
+    novos, meses_novos, fonte_vol = {}, {}, {}
+    bloqueio, diferentes = [], []          # (aba, mês, texto)
+
+    # Linha REPETIDA (mesma chave) não tem explicação legítima nessas duas abas: a
+    # SECEX agrega por Ano×Mês×NCM×País e o arquivo da KITA traz uma linha por
+    # período×HS×país. (A CHINA fica de fora: a aba guarda linhas brutas do GACC, em
+    # que o mesmo código se repete por regime/província — lá quem pega é a fonte.)
+    for aba in ("SECEX", "KOREA"):
+        rep = {m: n for m, n in est[aba].get("repetidas", {}).items() if not refaz(m)}
+        if rep:
+            print(f"⚠ {aba}: linhas REPETIDAS (mesma chave) em {len(rep)} mês(es): "
+                  + ", ".join(f"{m} (+{n})" for m, n in sorted(rep.items())[:8])
+                  + (" …" if len(rep) > 8 else ""))
+            bloqueio += [(aba, m, f"+{n} linhas repetidas") for m, n in sorted(rep.items())]
+
+    def _registra(aba, dup, dif):
+        bloqueio.extend((aba, m, f"aba {ta:,.0f} t × fonte {tf:,.0f} t ({ta / tf:.2f}×)")
+                        for m, ta, tf in dup)
+        diferentes.extend((aba, m, f"aba {ta:,.0f} t × fonte {tf:,.0f} t") for m, ta, tf in dif)
 
     # SECEX (automático)
     print("SECEX  — buscando no MDIC (balanca.economia.gov.br)…")
@@ -836,16 +1090,25 @@ def main():
             disp += secex_meses_disponiveis(ano)
         except Exception as e:
             print(f"    (ano {ano}: {type(e).__name__} — {str(e)[:80]})")
-    alvo = sorted(m for m in disp if m not in ja or m == a.refazer)
+    alvo = sorted(m for m in disp if m not in ja or refaz(m))
+    # O ano corrente INTEIRO também é conferido contra o MDIC: é onde ele ainda revisa
+    # (ano fechado ele não mexe mais — medido no pipeline da dash em 2026-09-08).
+    conf = sorted(m for m in disp if m in ja and m[:4] == str(ano_atual) and not refaz(m))
+    pedir = sorted(set(alvo) | set(conf))
+    linhas_mdic = []
+    for ano in sorted({m[:4] for m in pedir}):
+        linhas_mdic += secex_linhas(int(ano), [m for m in pedir if m[:4] == ano],
+                                    est["SECEX"]["sh6"], est["SECEX"]["desc_ncm"],
+                                    est["SECEX"]["desc_sh6"])
+    if conf:
+        _registra("SECEX", *conferir_contra_fonte("SECEX", est["SECEX"]["vol"],
+                                                  vol_secex(linhas_mdic), conf))
     if alvo:
-        print(f"    meses a inserir: {', '.join(alvo)}")
-        linhas = []
-        for ano in sorted({m[:4] for m in alvo}):
-            linhas += secex_linhas(int(ano), [m for m in alvo if m[:4] == ano],
-                                   est["SECEX"]["sh6"], est["SECEX"]["desc_ncm"],
-                                   est["SECEX"]["desc_sh6"])
+        linhas = [lin for lin in linhas_mdic if ym(lin[0], lin[1][:2]) in set(alvo)]
         novos["SECEX"] = linhas
-        print(f"    {len(linhas)} linhas prontas.")
+        meses_novos["SECEX"] = set(alvo)
+        fonte_vol["SECEX"] = vol_secex(linhas)
+        print(f"    meses a inserir: {resumo_meses(alvo)} → {len(linhas)} linhas prontas.")
     else:
         print(f"    nada novo (MDIC também está em {max(disp) if disp else '?'}).")
 
@@ -857,19 +1120,26 @@ def main():
         print("    nenhum 'by H.S Code and Country*.xlsx' no Downloads — pulando a Coreia.")
     else:
         print(f"    {len(kfs)} arquivo(s), mais novo: {kfs[0].name}")
-        pm = korea_linhas(kfs, est["KOREA"]["hs"], est["KOREA"]["meses"], a.refazer)
+        pm, todos_k, recentes, consulta = korea_linhas(kfs, est["KOREA"]["hs"],
+                                                       est["KOREA"]["meses"], refaz)
+        conf = sorted(m for m in recentes if m in est["KOREA"]["meses"] and not refaz(m))
+        if conf:
+            _registra("KOREA", *conferir_contra_fonte("KOREA", est["KOREA"]["vol"],
+                                                      vol_korea(todos_k), conf))
         if pm:
             alvo = sorted(pm)
-            novos["KOREA"] = [l for m in alvo for l in pm[m]]
-            print(f"    meses a inserir: {', '.join(alvo)} → {len(novos['KOREA'])} linhas.")
+            novos["KOREA"] = [lin for m in alvo for lin in pm[m]]
+            meses_novos["KOREA"] = set(alvo)
+            fonte_vol["KOREA"] = vol_korea(pm)
+            print(f"    meses a inserir: {resumo_meses(alvo)} → {len(novos['KOREA'])} linhas.")
+            hist = _hist_com_novos(est["KOREA"]["vol"], fonte_vol["KOREA"])
             for m in alvo:
                 # O arquivo coreano traz TODOS os países. Então, se o código aparece
                 # para qualquer país, ele ESTAVA na consulta — e não ter linha p/ o
                 # Brasil é zero de verdade, não buraco. Por isso a conferência usa o
                 # conjunto de códigos do arquivo inteiro, e não só o das linhas do
                 # Brasil: sem isso o aviso dispara todo mês à toa.
-                avisar_codigos_sumidos("KOREA", est["KOREA"]["vol"], m,
-                                       {str(l[1])[:6] for l in pm[m]})
+                avisar_codigos_sumidos("KOREA", hist, m, consulta[m])
         else:
             print("    nada novo nesses arquivos.")
 
@@ -881,27 +1151,56 @@ def main():
         print("    nenhum 'downloadData*.csv' no Downloads — pulando a China.")
     else:
         print(f"    {len(cfs)} arquivo(s), mais novo: {cfs[0].name}")
-        pm = china_linhas(cfs, est["SECEX"]["sh6"], est["CHINA"]["meses"], a.refazer)
+        pm, todos_c, recentes, consulta = china_linhas(cfs, est["SECEX"]["sh6"],
+                                                       est["CHINA"]["meses"], refaz)
+        conf = sorted(m for m in recentes if m in est["CHINA"]["meses"] and not refaz(m))
+        if conf:
+            _registra("CHINA", *conferir_contra_fonte("CHINA", est["CHINA"]["vol"],
+                                                      vol_china(todos_c), conf))
         if pm:
             alvo = sorted(pm)
-            novos["CHINA"] = [l for m in alvo for l in pm[m]]
-            print(f"    meses a inserir: {', '.join(alvo)} → {len(novos['CHINA'])} linhas.")
+            novos["CHINA"] = [lin for m in alvo for lin in pm[m]]
+            meses_novos["CHINA"] = set(alvo)
+            fonte_vol["CHINA"] = vol_china(pm)
+            print(f"    meses a inserir: {resumo_meses(alvo)} → {len(novos['CHINA'])} linhas.")
+            hist = _hist_com_novos(est["CHINA"]["vol"], fonte_vol["CHINA"])
             for m in alvo:
-                avisar_codigos_sumidos("CHINA", est["CHINA"]["vol"], m,
-                                       {str(l[1])[:6] for l in pm[m]})
+                # consulta[m] = códigos do ARQUIVO inteiro (todos os meses), ver _escolhe
+                avisar_codigos_sumidos("CHINA", hist, m, consulta[m])
         else:
             print("    nada novo nesses arquivos.")
 
     # ── resumo / saída antecipada ────────────────────────────────────────────
     titulo("RESUMO")
+    if bloqueio:
+        meses_b = sorted({m for _, m, _ in bloqueio})
+        print("⚠ A PLANILHA TEM MÊS COM CARA DE COLAGEM DUPLA — o SUMIFS soma as duas cópias:")
+        for aba, m, txt in bloqueio:
+            print(f"    {aba:6s} {m}: {txt}")
+        msg = ("\nNão vou gravar nem publicar assim: a linha preta da dashboard sairia inflada.\n"
+               "  Para regravar esses meses a partir da fonte, rode de novo com:\n"
+               f"      --refazer {','.join(meses_b)}\n"
+               "  (ou o ano inteiro, ex.: --refazer " + meses_b[0][:4] + ")")
+        if not a.conferir:
+            raise SystemExit(msg)
+        print(msg)
+    if diferentes:
+        meses_d = sorted({m for _, m, _ in diferentes})
+        print(f"ℹ {len(diferentes)} mês(es) já na aba diferem da fonte (revisão? veja acima). "
+              f"Para trazer a versão de hoje: --refazer {','.join(meses_d)}")
     if not novos:
-        print("Nada a inserir — as três abas já estão em dia com as fontes que você tem.")
+        if bloqueio or diferentes:
+            print("Nenhum mês NOVO nas fontes — mas veja os avisos acima.")
+        else:
+            print("Nada a inserir — as três abas já estão em dia com as fontes que você tem.")
         if not a.conferir and not a.so_excel:
             print("\nMesmo assim vou conferir se a dashboard está em dia com o Excel.")
             publicar(excel, a.sem_push)
         return
-    for aba, l in novos.items():
-        print(f"  {aba:6s} +{len(l)} linhas")
+    for aba, lins in novos.items():
+        regrava = sorted(m for m in meses_novos[aba] if m in est[aba]["meses"])
+        print(f"  {aba:6s} +{len(lins)} linhas ({resumo_meses(meses_novos[aba])})"
+              + (f" — regravando {resumo_meses(regrava)}" if regrava else ""))
     if a.conferir:
         print("\n[--conferir] Nada foi escrito.")
         return
@@ -920,12 +1219,17 @@ def main():
     titulo("ESCREVENDO NO EXCEL (pelo próprio Excel — gráficos e vínculos intactos)")
     pl = Planilha(excel)
     try:
-        if a.refazer:
-            for aba in novos:
-                idx = pl.linhas_do_mes(aba, a.refazer)
-                if idx:
-                    print(f"  {aba}: apagando {len(idx)} linhas de {a.refazer}…")
-                    pl.apagar_mes(aba, idx)
+        # --refazer: tira TODAS as linhas dos meses que vão ser regravados, onde quer
+        # que estejam — inclusive cópias duplicadas. Só mês que a fonte tem p/ repor.
+        for aba in ABAS:
+            repor = sorted(m for m in meses_novos.get(aba, ()) if m in est[aba]["meses"])
+            if not repor:
+                continue
+            idx = pl.linhas_dos_meses(aba, repor)
+            if idx:
+                nb = pl.apagar_mes(aba, idx)
+                print(f"  {aba}: apaguei {len(idx)} linhas de {resumo_meses(repor)} "
+                      f"({nb} bloco(s)) p/ regravar da fonte.")
         for aba in ABAS:
             if aba in novos:
                 n = pl.anexar(aba, novos[aba])
@@ -948,6 +1252,20 @@ def main():
         antes = sorted(est[aba]["meses"])
         seta = "  ←── novo" if m[-1] != antes[-1] else ""
         print(f"  {aba:6s} {len(m):3d} meses   {m[0]} → {m[-1]}{seta}")
+    # prova de que o que foi gravado é a fonte, sem cópia sobrando: relê do disco
+    ok = True
+    for aba in novos:
+        dup, dif = conferir_contra_fonte(f"{aba} (depois de gravar)", dep[aba]["vol"],
+                                         fonte_vol[aba], meses_novos[aba])
+        rep = {m: n for m, n in dep[aba].get("repetidas", {}).items() if m in meses_novos[aba]}
+        if dup or dif or rep:
+            ok = False
+            if rep:
+                print(f"    ⚠ {aba}: linhas repetidas depois de gravar: {rep}")
+    if not ok:
+        raise SystemExit("\n⚠ Depois de gravar, a planilha NÃO bateu com a fonte — não publiquei.\n"
+                         f"  O arquivo de antes está em:\n  {bkp}")
+    print("  ✓ os meses gravados batem com a fonte, sem linha repetida.")
 
     if a.so_excel:
         print("\n[--so-excel] Excel pronto. Rode com --so-dash quando quiser publicar.")
