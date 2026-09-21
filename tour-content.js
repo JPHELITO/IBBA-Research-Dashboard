@@ -193,8 +193,8 @@ window.IBBA_TOURS = {
       page: '/quarterly.html', url: '/quarterly.html', requires: 'quarterly',
       cleanup: { click: '#views button[data-v="board"]' },   // as trocas de visão vivem num IIFE: só dá p/ clicar
       steps: [
-        { id: 'views', call: { click: '#views button[data-v="board"]' }, target: '#views', title: 'Three views',
-          body: '**Season board** for the latest quarter across our coverage, **Company** for one name in depth, **Compare** to line them up.' },
+        { id: 'views', call: { click: '#views button[data-v="board"]' }, target: '#views', title: 'Four views',
+          body: '**Season board** for the latest quarter across our coverage, **Company** for one name in depth, **Compare** to line them up and **Build a chart** to make your own.' },
         { id: 'board', call: { click: '#views button[data-v="board"]' }, target: ['#b-q', '#b-table-wrap', '#b-cards'], clip: 360, title: 'Season board',
           body: 'Revenue, adjusted EBITDA and margin, net income and leverage for each company, with the status of each release.' },
         { id: 'controls', target: ['#ccy', '#basis', '#win'], title: 'Currency, basis and window',
@@ -202,7 +202,9 @@ window.IBBA_TOURS = {
         { id: 'company', call: { click: '#views button[data-v="co"]' }, target: ['#c-pick', '#c-kpis'], title: 'Company view',
           body: 'Pick a company for its KPIs, charts and full table. **⤓ Excel** exports every series with the full history.' },
         { id: 'compare', call: { click: '#views button[data-v="cmp"]' }, target: ['#m-metric', '#m-mode', '#m-cos'], title: 'Compare',
-          body: 'Choose a metric and the companies, then see it as levels, base 100 or year over year, with a ranking of the latest quarter.' }
+          body: 'Pick a metric (headline figures, volumes, prices, cash costs or unit economics) and the companies. See levels, YoY, QoQ or base 100, as lines or bars, with a ranking of the latest quarter.' },
+        { id: 'build', call: { click: '#views button[data-v="build"]' }, target: ['#bd-preset', '#bd-add', '#bd-rows'], clip: 360, title: 'Build a chart',
+          body: 'Combine up to 8 series from any company, add a free benchmark index, choose the axis and the chart type, or start from a preset. **Copy link** reopens the exact chart.' }
       ]
     },
     {

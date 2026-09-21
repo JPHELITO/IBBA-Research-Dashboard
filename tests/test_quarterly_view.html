@@ -120,6 +120,53 @@ window.__RUN__=async function(){
   const ac=QV.aoaCompare([{company:'KLBN11',name:'Klabin',vals:{'2025Q2':1,'2026Q2':2}}],'Net revenue','BRL_mn');
   ok('Excel da comparação: empresas × trimestres', ac[0][0]==='Net revenue (R$ mn)' && ac[0].length===6 && ac[1][0]==='Klabin' && ac[1][5]===2);
 
+  // ── Compare v2: chaves ao banco, transformações, unidades, parentes ──
+  ok('toda métrica do Compare pede no máximo 3 chaves ao banco (4 deixava a tela em branco)', QV.COMPARE.every(m=>QV.metricKeys(m).length<=3) && QV.metricKeys(QV.COMPARE.find(m=>m.id==='leverage')).join()==='net_debt,adj_ebitda' && QV.metricKeys(QV.COMPARE.find(m=>m.id==='ebitda_per_unit')).length===0);
+  const tv={'2025Q1':100,'2025Q2':110,'2025Q3':121,'2026Q1':150,'2026Q2':99};
+  ok('YoY: só onde há o mesmo trimestre do ano anterior', near(QV.transform(tv,'yoy')['2026Q1'],0.5) && near(QV.transform(tv,'yoy')['2026Q2'],99/110-1) && QV.transform(tv,'yoy')['2025Q2']===undefined);
+  ok('QoQ: trimestre anterior faltando não inventa', near(QV.transform(tv,'qoq')['2025Q2'],0.1) && QV.transform(tv,'qoq')['2026Q1']===undefined);
+  const ix=QV.transform(tv,'idx',['2025Q2','2025Q3']);
+  ok('Base 100 no 1º trimestre da JANELA', ix['2025Q2']===100 && near(ix['2025Q3'],110) && ix['2025Q1']===undefined);
+  ok('Level devolve a série como está', QV.transform(tv,'lvl')===tv);
+  const lb={vals:{'2026Q2':6.4055},unit:'USD/lb'};
+  ok('libra → tonelada é conversão exata; sem fator conhecido devolve null', near(QV.convert(lb,'USD/t').vals['2026Q2'],6.4055*2204.62262) && QV.convert(lb,'USD/t').unit==='USD/t' && QV.convert(lb,'BRL/t')===null && QV.convert(lb,'USD/lb')===lb);
+  const met2={series:[{company:'VALE3',std:'realized_price',def:'iron_ore_fines_usd',vals:{}},{company:'CMIN3',std:'realized_price',def:'iron_ore_brl',vals:{}},
+    {company:'SCCO',std:'realized_price',def:'copper_usd_lb',vals:{}},{company:'VALE3',std:'realized_price',def:'copper_usd_t',vals:{}},{company:'AUGO',std:'realized_price',def:'gold_geo_usd_oz',vals:{}}]};
+  const rg=QV.relatedGroups(met2,'realized_price');
+  ok('parentes: minério junta fines (Vale) com CFR/FOB (CMIN); cobre junta t e lb com conversão; ouro sozinho fica fora', Object.keys(rg).sort().join()==='copper_price,iron_ore_price' && rg.iron_ore_price.length===2 && QV.RELATED.copper_price.to==='USD/t');
+  ok('a família estrita continua separando o que os parentes juntam', Object.keys(QV.compareGroups(met2,'realized_price')).length===0);
+
+  // ── unit economics ──
+  const U=QV.indexCompany({ticker:'KLBN11',name:'Klabin',series:[{key:'pulp.ebitda',unit:'BRL_mn',ccy:'BRL',vals:{'2026Q1':500,'2026Q2':600}},{key:'pulp.vol',unit:'kt',vals:{'2026Q1':400,'2026Q2':0}}]});
+  const ue=QV.unitEcon(U,'ebitda_per_unit');
+  ok('EBITDA/t calculado: R$ 500 mn ÷ 400 kt = 1.250 R$/t, marcado calc; volume zero não divide', !!ue && near(ue.vals['2026Q1'],1250) && ue.unit==='BRL/t' && ue.calc===true && ue.vals['2026Q2']===undefined && /Pulp segment/.test(ue.note));
+  const U2=QV.indexCompany({ticker:'SCCO',name:'Southern Copper',series:[{key:'px.copper',unit:'USD/lb',ccy:'USD',vals:{'2026Q2':6.0}},{key:'cash_cost_net',unit:'USD/lb',ccy:'USD',vals:{'2026Q2':1.5}}]});
+  const cm=QV.unitEcon(U2,'cash_margin');
+  ok('margem caixa: (6,0 − 1,5) US$/lb, entregue em US$/t para comparar com a Vale', !!cm && near(cm.vals['2026Q2'],4.5*2204.62262) && cm.unit==='USD/t' && cm.calc===true);
+  const U3=QV.indexCompany({ticker:'TX',name:'Ternium',series:[{key:'steel.ebitda_t',unit:'USD/t',ccy:'USD',vals:{'2026Q2':180},calc:true}]});
+  ok('série do próprio modelo é usada como está (Ternium EBITDA/t); empresa sem as peças devolve null', QV.unitEcon(U3,'ebitda_per_unit').vals['2026Q2']===180 && QV.unitEcon(U3,'cash_margin')===null && QV.unitEcon(QV.indexCompany({ticker:'GMEXICOB',series:[]}),'ebitda_per_unit')===null);
+  ok('famílias de unit economics só com 2+ empresas presentes', Object.keys(QV.unitEconFamilies('ebitda_per_unit',['CSNA3','USIM5','AUGO'])).join()==='steel' && QV.unitEconFamilies('cash_margin',['AUGO']).gold===undefined);
+
+  // ── índices livres ──
+  const day=(y,m,d)=>Math.floor(Date.UTC(y,m-1,d)/1000);
+  const daily=[]; for(let d=0;d<90;d++){ const dt=new Date(Date.UTC(2026,0,1)+d*86400000); if(dt.getUTCDay()%6) daily.push([Math.floor(dt.getTime()/1000),100]); }
+  daily.push([day(2026,4,1),200],[day(2026,4,2),200],[day(2026,7,1),300]);
+  const bq=QV.benchQuarterly(daily,'2026Q3');
+  ok('índice: média do trimestre fechado; pedaço de trimestre e trimestre corrente ficam fora', bq['2026Q1']===100 && bq['2026Q2']===undefined && bq['2026Q3']===undefined);
+  const bs=QV.benchSeries('COPPER',{'2026Q2':6.16},'USD/lb','USD/t');
+  ok('índice na unidade do preço da empresa (lb → t), marcado como benchmark', !!bs && near(bs.vals['2026Q2'],6.16*2204.62262) && bs.unit==='USD/t' && bs.bench===true);
+  const bsr=QV.benchSeries('IRON_ORE_62',{'2026Q2':106.22},'USD/t','BRL/t',boot.fx);
+  ok('índice em US$ ao lado de preço em R$: PTAX média, marcado como convertido (referência, não realização); sem conversão possível, null', !!bsr && near(bsr.vals['2026Q2'],106.22*5.0494) && /BRL at avg FX/.test(bsr.label) && bsr.fxConverted===true && !bs.fxConverted && QV.benchSeries('GOLD',{'2026Q2':1},'USD/oz','BRL/t',boot.fx)===null);
+  ok('todo preço realizado com índice aponta para um índice que existe', Object.values(QV.BENCH_FOR).every(c=>!!QV.BENCH[c]));
+
+  // ── endereço do Build ──
+  const lay=[{co:'VALE3',key:'px.fines',tf:'lvl',ax:'L',ty:'line'},{co:null,key:'@IRON_ORE_62',tf:'lvl',ax:'L',ty:'line'},{co:'SCCO',key:'ue.cash_margin',tf:'yoy',ax:'R',ty:'bar'}];
+  const enc=QV.encodeLayers(lay);
+  ok('endereço do Build: ida e volta', enc==='VALE3:px.fines:lvl:L:line~:@IRON_ORE_62:lvl:L:line~SCCO:ue.cash_margin:yoy:R:bar' && JSON.stringify(QV.decodeLayers(enc))===JSON.stringify(lay));
+  ok('endereço estragado não derruba: camada sem série sai, valor desconhecido vira padrão', QV.decodeLayers('VALE3::yoy~X:k:zzz:Q:pie').length===1 && QV.decodeLayers('X:k:zzz:Q:pie')[0].tf==='lvl' && QV.decodeLayers('X:k:zzz:Q:pie')[0].ty==='line');
+  const as=QV.aoaSeries([{label:'A',unit:'USD/t',vals:{'2026Q1':1,'2026Q2':2},calc:true},{label:'B',unit:'USD/t',vals:{'2025Q4':5},bench:true}],'T');
+  ok('Excel de séries: histórico inteiro e a fonte de cada linha', as[0].length===6 && as[1][2]==='Itaú BBA calculation' && /Free benchmark/.test(as[2][2]) && as[2][3]===5 && as[1][5]===2);
+
   const pass=R.filter(x=>x.startsWith('PASS')).length, fail=R.length-pass;
   document.getElementById('out').textContent=(fail?'❌ ':'✅ ')+pass+'/'+R.length+' PASS\n\n'+R.join('\n');
   return {pass, fail, total:R.length};
