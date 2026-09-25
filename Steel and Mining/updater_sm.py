@@ -78,7 +78,7 @@ MDIC_ESPERA_S   = 5
 MAX_SUMICO_FRAC = 0.10
 
 # ── E-mail ─────────────────────────────────────────────────────────────────────
-EMAIL_RECIPIENTS = ["joao.helito@itaubba.com"]   # 2026-08-03: só o e-mail do Itaú (sem gmail)
+EMAIL_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]   # 2026-09-25: mesma lista do _shared/registry.py
 NOW = datetime.utcnow().isoformat()
 
 # ── MDIC ───────────────────────────────────────────────────────────────────────
