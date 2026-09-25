@@ -29,7 +29,8 @@ from __future__ import annotations
 
 # Destinatários padrão de todos os e-mails (mesma lista em todo o projeto hoje).
 # 2026-08-03 (pedido do usuário): SÓ o e-mail do Itaú — tirado o jphelito@gmail.com.
-DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]
+# 2026-09-25 (pedido do usuário): + Marcelo Palhares, Daniel Sasson e Rafael Giacometti.
+DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]
 
 # Onde vive cada banco versionado (caminho relativo à raiz do repo do frontend).
 DB_PATHS = {
