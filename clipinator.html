@@ -801,7 +801,7 @@ const BL_AUS    = [['BHP','BHP.AX'],['FMG','FMG.AX']];
 // de minério usa. Linha nova de tonelada entra com '/ton'.
 const BL_GRUPOS = [
   {rot:'Iron ore', linhas:[
-    {rot:'62%',  code:'IRON_ORE_SGX', un:'/ton',   nota:'futuro SGX'},
+    {rot:'62%',  code:'IRON_ORE_SGX', un:'/ton',   nota:'futuro SGX', comData:true},
     {rot:'61%',  code:'IRON_ORE',     un:'/dmt', notaPlatts:true},
   ]},
   {rot:'Metals & energy', linhas:[
@@ -973,6 +973,9 @@ function blBuild(){
       if(!r||r.price==null){ L.push('· '+l.rot); return; }
       let nota=l.nota||'';
       if(l.notaPlatts) nota='Platts'+(r.assessed_at?', '+blDia(r.assessed_at):'');
+      // o futuro SGX leva a data do mesmo jeito que o Platts (pedido do analista, 29/09): o robô
+      // carimba assessed_at a cada tick ao vivo, então a data diz de quando é o número
+      if(l.comData && r.assessed_at) nota+=', '+blDia(r.assessed_at);
       // no grupo semanal cuja data NÃO é única, a data desce para a linha
       if(g.semanal && !dataDoGrupo && r.assessed_at) nota=blDia(r.assessed_at);
       L.push(blSeta(r.change_pct)+' '+l.rot+(nota?' _'+nota+'_ ·':'')
