@@ -1264,6 +1264,10 @@ function setMTab(tab){
    série do assessment pago continua fora do navegador. A coluna "12M" é a posição do último
    ponto na forma normalizada (0 = mínima do ano, 100 = máxima); com o preço de hoje e a
    posição não se reconstrói a série (duas incógnitas, uma equação) — mesma régua do risquinho. */
+// 62% (TE) e 62% SGX não estão no carrossel da home, mas na tabela moram com o minério (pedido
+// do analista, 29/09). Só aqui — o carrossel não muda. O grupo é achado pelo code âncora, não
+// pelo título, para sobreviver a um renomear no admin; entram logo depois da âncora.
+const CT_EXTRA=[{anchor:'IRON_ORE', codes:['IRON_ORE_62','IRON_ORE_SGX']}];
 let _ctRows=null, _ctGroups=null, _ctSort={col:'grupo',dir:1}, _ctFilter='all';
 const CT_COLS=[
   {k:'name', l:'Commodity', cls:'l'}, {k:'asof', l:'Last update', cls:'l'}, {k:'price', l:'Price'},
@@ -1281,6 +1285,8 @@ async function _ctLoad(){
     .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   const grupoDe={};
   gs.forEach(g=>(g.codes||[]).forEach((c,i)=>{ if(!grupoDe[c]) grupoDe[c]={t:g.title,o:g.sort_order||0,i}; }));
+  CT_EXTRA.forEach(x=>{ const a=grupoDe[x.anchor]; if(!a) return;
+    x.codes.forEach((c,j)=>{ if(!grupoDe[c]) grupoDe[c]={t:a.t,o:a.o,i:a.i+(j+1)/10}; }); });
   _ctGroups=gs;
   _ctRows=(rows||[]).map(c=>{
     const sp=(c.spark && !Array.isArray(c.spark)) ? c.spark : null;
