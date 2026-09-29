@@ -419,7 +419,7 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .ct-chip:hover{border-color:var(--orange);color:var(--text)}
 .ct-chip.on{background:var(--orange);border-color:var(--orange);color:#0d0e11}
 .ct-wrap{overflow-x:auto}
-table.ct{border-collapse:collapse;width:100%;font-size:11.5px;min-width:800px}
+table.ct{border-collapse:collapse;width:100%;font-size:11.5px;min-width:880px}
 table.ct th{font:700 9px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
   text-align:right;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;
   cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
@@ -1266,7 +1266,7 @@ function setMTab(tab){
    posição não se reconstrói a série (duas incógnitas, uma equação) — mesma régua do risquinho. */
 let _ctRows=null, _ctGroups=null, _ctSort={col:'grupo',dir:1}, _ctFilter='all';
 const CT_COLS=[
-  {k:'name', l:'Commodity', cls:'l'}, {k:'price', l:'Price'},
+  {k:'name', l:'Commodity', cls:'l'}, {k:'asof', l:'Last update', cls:'l'}, {k:'price', l:'Price'},
   {k:'d', l:'D'}, {k:'w', l:'WoW'}, {k:'m', l:'MoM'}, {k:'ytd', l:'YTD'}, {k:'y', l:'YoY'},
   {k:'pos', l:'12M range', cls:'l'}, {k:'shape', l:'12 months', cls:'l', nosort:true},
 ];
@@ -1299,6 +1299,14 @@ async function _ctLoad(){
 }
 function _ctPct(v){ if(v==null) return '<span class="na">—</span>';
   const c=v>0?'up':v<0?'down':'flat'; return `<span class="${c}">${v>0?'+':''}${v.toFixed(Math.abs(v)>=100?0:2)}%</span>`; }
+// data do último assessment (YYYY-MM-DD, igual ao cartão da home); o ano só aparece quando não é o corrente
+function _ctDate(iso){
+  const d=iso?new Date(String(iso).slice(0,10)+'T00:00:00'):null;
+  if(!d||isNaN(d)) return '<span class="na">—</span>';
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const t=String(d.getDate()).padStart(2,'0')+' '+M[d.getMonth()];
+  return d.getFullYear()===new Date().getFullYear() ? t : t+" '"+String(d.getFullYear()).slice(2);
+}
 function _ctPrice(v){ return v==null?'—':v.toLocaleString('en-US',{minimumFractionDigits:Math.abs(v)>=1000?0:2,maximumFractionDigits:Math.abs(v)>=1000?0:2}); }
 function _ctRange(pos){
   if(pos==null) return '<span class="na">—</span>';
@@ -1340,6 +1348,7 @@ async function renderCommTable(){
   for(const r of rows){
     if(col==='grupo' && r.grupo!==g){ g=r.grupo; h+=`<tr class="gr"><td colspan="${CT_COLS.length}">${esc(g)}</td></tr>`; }
     h+=`<tr><td class="l nm">${esc(r.name)}${r.semanal?' <span class="ct-tag" style="opacity:.65">wk</span>':''}</td>`
+     + `<td class="l">${_ctDate(r.asof)}</td>`
      + `<td class="v">${_ctPrice(r.price)}<em>${esc(r.unit)}</em></td>`
      + `<td>${_ctPct(r.d)}</td><td>${_ctPct(r.w)}</td><td>${_ctPct(r.m)}</td><td>${_ctPct(r.ytd)}</td><td>${_ctPct(r.y)}</td>`
      + `<td class="l">${_ctRange(r.pos)}</td><td class="l">${_ctSpark(r.shape)}</td></tr>`;
