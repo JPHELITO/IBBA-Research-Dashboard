@@ -94,3 +94,31 @@ def test_linha_que_sumiu_sai_mas_csv_cortado_nao_apaga(conn):
     # metade sumiu → parece download cortado: não apaga nada
     assert U.sync_country(conn, _agg(rows[1:15]), {2026})[2] == 0
     assert conn.execute("SELECT COUNT(*) FROM secex_pulp_country").fetchone()[0] == 29
+
+
+# ── Porto: mesma janela de revisão (30/09/2026 — jun/jul-2026 tinham ficado no 1º número) ──
+@pytest.fixture
+def conn_port(conn):
+    conn.execute("CREATE TABLE secex_pulp_port (period TEXT, year INT, month INT, port TEXT, "
+                 "volume_ktons REAL, revenue_usd_mn REAL)")
+    return conn
+
+
+def _agg_port(rows):
+    return {(p, int(p[:4]), int(p[5:7]), port): [kt, usd] for p, port, kt, usd in rows}
+
+
+def test_porto_revisao_grava_so_o_que_mudou(conn_port):
+    base = [("2026-07", "Santos", 1000.0, 500.0), ("2026-07", "Vitoria", 965.0, 480.0)]
+    assert U.sync_port(conn_port, _agg_port(base), {2026})[:3] == (2, 0, 0)
+    assert U.sync_port(conn_port, _agg_port(base), {2026})[:3] == (0, 0, 0)
+    rev = [("2026-07", "Santos", 980.2, 490.0), ("2026-07", "Vitoria", 965.0, 480.0)]
+    assert U.sync_port(conn_port, _agg_port(rev), {2026})[:3] == (0, 1, 0)
+    rows = conn_port.execute("SELECT port,volume_ktons FROM secex_pulp_port ORDER BY port").fetchall()
+    assert rows == [("Santos", 980.2), ("Vitoria", 965.0)]      # sem linha duplicada
+
+
+def test_porto_fora_da_janela_intocado(conn_port):
+    conn_port.execute("INSERT INTO secex_pulp_port VALUES ('2010-05',2010,5,'Santos',300,150)")
+    U.sync_port(conn_port, _agg_port([("2026-05", "Santos", 900.0, 450.0)]), {2025, 2026})
+    assert conn_port.execute("SELECT COUNT(*) FROM secex_pulp_port").fetchone()[0] == 2

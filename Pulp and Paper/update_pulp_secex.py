@@ -8,11 +8,12 @@ dicionário, os portos normalizados (_shared/ports.py = iguais aos do dashboard 
 do país em INGLÊS do próprio MDIC (PAIS.csv → NO_PAIS_ING). Fonte fresca (~1 mês de atraso).
 O MESMO download alimenta as duas tabelas.
 
-  secex_pulp_port     (period, port)            — só grava meses NOVOS (histórico 1997→ veio do Excel)
-  secex_pulp_country  (period, country, product) — reconfere o ano corrente + o anterior INTEIROS
-                                                   e grava só onde o número MUDOU (o MDIC revisa o
-                                                   ano corrente; reescrever igual faria o robô
-                                                   commitar todo dia à toa)
+  secex_pulp_port     (period, port)
+  secex_pulp_country  (period, country, product)
+  As DUAS reconferem o ano corrente + o anterior INTEIROS e gravam só onde o número MUDOU: o
+  MDIC revisa o ano corrente, e reescrever igual faria o robô commitar todo dia à toa.
+  (Até 30/09/2026 o porto gravava só mês novo — jun/jul-2026 ficaram com o 1º número
+  divulgado, julho 19,8 kt acima do revisado. O histórico anterior à janela veio do Excel.)
 
 Produtos (decisão do analista, 2026-09-30) — PRODUCT_SH6 abaixo:
   hardwood   = BKP de fibra curta   470329, 470429
@@ -24,7 +25,7 @@ Produtos (decisão do analista, 2026-09-30) — PRODUCT_SH6 abaixo:
 
 Modos:
   python update_pulp_secex.py --check                     # há mês novo no MDIC?
-  python update_pulp_secex.py --update [--force]           # meses novos (porto) + janela de revisão (país)
+  python update_pulp_secex.py --update                     # meses novos + janela de revisão (porto e país)
   python update_pulp_secex.py --backfill [--start-year Y]  # recarrega AS DUAS de Y até hoje
   python update_pulp_secex.py --backfill-country [--start-year Y]   # só a tabela por país (1997→)
   python update_pulp_secex.py --reconcile [--months N]     # live x DB + país x porto (sai 1 se divergir)
@@ -173,6 +174,34 @@ def _write_periods(conn, agg, periods):
     return len(rows)
 
 
+def sync_port(conn, agg, years, allow_mass_delete=False):
+    """Mesma janela de revisão do país, para secex_pulp_port (tabela sem PK → apaga e reinsere
+    só a linha que mudou). Devolve (novas, revisadas, removidas, periodos_tocados)."""
+    if not years:
+        return 0, 0, 0, set()
+    live = {(p, port): (y, m, round(v[0], 3), round(v[1], 3))
+            for (p, y, m, port), v in agg.items() if y in years}
+    ph = ",".join("?" * len(years))
+    db = {(r[0], r[1]): (r[2], r[3]) for r in conn.execute(
+        f"SELECT period,port,volume_ktons,revenue_usd_mn FROM secex_pulp_port WHERE year IN ({ph})",
+        tuple(years))}
+    new = [k for k in live if k not in db]
+    rev = [k for k in live if k in db and db[k] != live[k][2:]]
+    gone = [k for k in db if k not in live]
+    if gone and not allow_mass_delete and len(gone) > MAX_SUMICO_FRAC * max(len(db), 1):
+        print(f"::warning::porto: {len(gone)} de {len(db)} linhas sumiriam da fonte — parece CSV "
+              f"cortado. Nada é apagado nesta rodada.")
+        gone = []
+    conn.executemany("DELETE FROM secex_pulp_port WHERE period=? AND port=?", rev + gone)
+    conn.executemany("INSERT INTO secex_pulp_port (period,year,month,port,volume_ktons,revenue_usd_mn) "
+                     "VALUES (?,?,?,?,?,?)", [(p, *live[(p, port)][:2], port, *live[(p, port)][2:])
+                                               for (p, port) in new + rev])
+    touched = {k[0] for k in new + rev + gone}
+    _ensure_calendar(conn, touched)
+    conn.commit()
+    return len(new), len(rev), len(gone), touched
+
+
 def _country_rows(agg, years):
     return {(p, c, prod): (y, m, round(v[0], 3), round(v[1], 3))
             for (p, y, m, c, prod), v in agg.items() if y in years}
@@ -306,16 +335,14 @@ def main():
         years = [now.year - k for k in range(REVISE_YEARS - 1, -1, -1)]
         agg_p, agg_c, ok_years = fetch(years, port_map, pais_map)
         new_periods = sorted({k[0] for k in agg_p if k[1] in ok_years and
-                              (args.force or latest is None or k[0] > latest)})
-        if new_periods:
-            n = _write_periods(conn, agg_p, new_periods)
-            print(f"[UPDATE porto] {n} linhas | períodos novos: {new_periods}")
-        else:
-            print("[UPDATE porto] nenhum mês novo.")
+                              (latest is None or k[0] > latest)})
+        p_new, p_rev, p_gone, p_touched = sync_port(conn, agg_p, ok_years)
+        print(f"[UPDATE porto] anos {sorted(ok_years)} | novas {p_new} · revisadas {p_rev} · "
+              f"removidas {p_gone} | meses novos: {new_periods or 'nenhum'}")
         n_new, n_rev, n_gone, touched = sync_country(conn, agg_c, ok_years)
         print(f"[UPDATE país] anos {sorted(ok_years)} | novas {n_new} · revisadas {n_rev} · "
               f"removidas {n_gone}")
-        changed = bool(new_periods) or bool(touched)
+        changed = bool(p_touched) or bool(touched)
         if changed:
             conn.execute("VACUUM")   # INSERT OR REPLACE/DELETE deixam páginas soltas no arquivo
         latest_now = _latest(conn)
