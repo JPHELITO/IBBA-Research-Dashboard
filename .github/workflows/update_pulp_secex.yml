@@ -1,4 +1,4 @@
-name: 🔄 Auto-Update Celulose por Porto (SECEX ao vivo) — MDIC
+name: 🔄 Auto-Update Celulose por Porto e País (SECEX ao vivo) — MDIC
 
 # SECEX publica ~4º dia útil → checa dias 1–12. Também manual.
 on:
@@ -30,7 +30,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r "Pulp and Paper/requirements.txt"
 
-      - name: Update celulose por porto (MDIC ao vivo)
+      # --update: meses novos por porto + janela de revisão (ano corrente + anterior) por país
+      - name: Update celulose por porto e país (MDIC ao vivo)
         run: |
           if [ "${{ github.event.inputs.backfill }}" = "true" ]; then
             python "Pulp and Paper/update_pulp_secex.py" --backfill
@@ -50,7 +51,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "::warning::sem mudança no .db — nada a commitar."
           else
-            git commit -m "data: celulose por porto (secex_pulp_port) -> ${PULP_LATEST}"
+            git commit -m "data: celulose por porto e país (secex_pulp_port/country) -> ${PULP_LATEST}"
             git pull --rebase --autostash || true
             git push
             echo "✅ secex_pulp_port commitado -> ${PULP_LATEST}"
@@ -81,9 +82,9 @@ jobs:
           password:       ${{ secrets.SMTP_PASS }}
           to:             joao.helito@itaubba.com,marcelo.palhares@itaubba.com,daniel.sasson@itaubba.com,rafael.giacometti@itaubba.com
           from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 Celulose por porto (SECEX) — novo dado: ${{ env.PULP_LATEST }}"
+          subject:        "🔔 Celulose por porto e país (SECEX) — atualizado: ${{ env.PULP_LATEST }}"
           body: |
-            A exportação de celulose por porto (SECEX/MDIC ao vivo) foi atualizada
+            A exportação de celulose por porto e por país (SECEX/MDIC ao vivo) foi atualizada
             automaticamente no dashboard de Pulp & Paper.
 
             📅 Novo período: ${{ env.PULP_LATEST }}

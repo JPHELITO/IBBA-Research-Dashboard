@@ -242,12 +242,16 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 /* ── ORIGIN/PORT CHART CONTROLS ──────────────────────────────────────────── */
 .origin-card{max-width:100%;}
 .origin-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+/* os botões PNG/XLS (sempre visíveis desde 2026-08-17) moram no canto superior direito do card e
+   cobriam o seletor (Ports/Countries/Suppliers ▾) → a linha de controles abre espaço p/ eles */
+.origin-card .origin-controls{padding-right:92px;}
 .product-pills{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
 .pill-btn{padding:4px 11px;font-size:10.5px;font-weight:600;letter-spacing:.03em;
   border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
   background:var(--white);color:var(--gray-mid);transition:all .15s;white-space:nowrap;}
 .pill-btn:hover{border-color:var(--orange);color:var(--orange);}
 .pill-btn.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+.product-pills.dest-metric{flex:0 1 auto;}
 .country-selector{position:relative;}
 .cs-toggle{padding:4px 12px;font-size:10.5px;font-weight:600;
   border-radius:20px;cursor:pointer;border:1.5px solid var(--border);
@@ -534,6 +538,26 @@ html.dark .cr-input{color-scheme:dark}
         </div>
       </div>
     </div>
+    <div id="pl-dest-block">
+      <div class="sec-block-header">Pulp Exports by Destination <span id="pl-dest-tag">Volume</span></div>
+      <div class="charts-row c1">
+        <div class="chart-card origin-card">
+          <div class="origin-controls">
+            <div class="product-pills" id="pl-dest-prod"></div>
+            <div class="product-pills dest-metric" id="pl-dest-metric"></div>
+            <div class="country-selector">
+              <button class="cs-toggle" id="pl-dest-toggle" onclick="toggleDestPanel()">Countries &#9660;</button>
+              <div class="cs-panel" id="pl-dest-panel">
+                <div class="cs-panel-header">Countries <span class="cs-reset" onclick="resetDest()">Reset</span></div>
+                <div class="cs-list" id="pl-dest-list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-sub" id="pl-dest-sub">kton · SECEX</div>
+          <div class="chart-wrap h300"><canvas id="pl-dest"></canvas></div>
+        </div>
+      </div>
+    </div>
     <div class="charts-row c1">
       <div class="chart-card">
         <div class="chart-title">Seasonality — Export Volume (kton/month)</div>
@@ -742,9 +766,17 @@ let currentWin  = 'ytd';
 let customRange = {from:null, to:null};
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
-let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[];
+let PAPER=[], PULP=[], SECEX=[], COMP=[], EMPAPEL=[], GACC=[], DEST=[];
 let CAL={};                       // period -> working_days
 let portState={metric:'volume_ktons', ports:null};
+/* Exportação por PAÍS de destino (secex_pulp_country). Produtos = decisão do analista
+   (sincronizar com update_pulp_secex.PRODUCT_SH6). 'other' (BCTMP + 4706xx) não tem botão,
+   mas entra no Total — senão o total por país não fecharia com o total por porto. */
+const DEST_PRODUCTS=[{k:'total',l:'Total'},{k:'hardwood',l:'Hardwood'},{k:'softwood',l:'Softwood'},
+  {k:'ukp',l:'UKP'},{k:'dissolving',l:'Dissolving & Mechanical'}];
+const DEST_METRICS=[{k:'volume',l:'Volume (kton)'},{k:'revenue',l:'Revenue (US$ mn)'},
+  {k:'share',l:'Share (%)'},{k:'price',l:'Avg price (US$/t)'}];
+let destState={product:'total', metric:'volume', countries:null};   // null = top 5 + Others da janela
 // Fornecedores de cavaco (sincronizar com montar_gacc.NAMED_COUNTRIES + extractor_pp).
 const GACC_COUNTRIES=['Vietnam','Australia','Thailand','Chile','Brazil','Indonesia','South Africa','Uruguay','New Zealand','Russia'];
 const GACC_DEFAULT=['Vietnam','Australia'];   // padrão do gráfico dinâmico
@@ -1006,6 +1038,8 @@ async function loadDB(){
     PAPER=toObj(db.exec(`SELECT * FROM iba_paper ORDER BY period`)[0]);
     PULP =toObj(db.exec(`SELECT * FROM iba_pulp ORDER BY period`)[0]);
     SECEX=toObj(db.exec(`SELECT period,year,month,port,volume_ktons,revenue_usd_mn FROM secex_pulp_port ORDER BY period`)[0]);
+    try{DEST=toObj(db.exec(`SELECT period,country,product,volume_ktons,revenue_usd_mn FROM secex_pulp_country ORDER BY period`)[0]);}catch(e){DEST=[];}
+    document.getElementById('pl-dest-block').style.display=DEST.length?'':'none';
     COMP =toObj(db.exec(`SELECT * FROM company_q ORDER BY year,q`)[0]);
     try{EMPAPEL=toObj(db.exec(`SELECT * FROM empapel ORDER BY period`)[0]);}catch(e){}
     try{GACC=toObj(db.exec(`SELECT * FROM gacc_woodchips ORDER BY period`)[0]);
@@ -1070,6 +1104,7 @@ function fullChartAOA(id){
 /* Tabelas do `pulp_paper.db` (o arquivo inteiro vai p/ o navegador — nenhuma fica de fora). */
 const RAW_TABLES=[
   {name:'secex_pulp_port', label:'SECEX — pulp exports by port',        note:'Monthly Brazilian pulp exports by port of clearance: volume (kton) and revenue (US$ mn). Source: SECEX/MDIC.'},
+  {name:'secex_pulp_country', label:'SECEX — pulp exports by destination', note:'Monthly Brazilian pulp exports by destination country and product (hardwood, softwood, UKP, dissolving & mechanical, other): volume (kton) and FOB revenue (US$ mn). Source: SECEX/MDIC.'},
   {name:'gacc_woodchips',  label:'China customs (GACC) — woodchips',    note:'Monthly Chinese woodchip imports by fibre and country of origin: volume (BDMT) and revenue (US$ mn).'},
   {name:'iba_pulp',        label:'Ibá — pulp',                          note:'Production, domestic sales, exports, imports and apparent consumption by fibre, plus export revenue by region.'},
   {name:'iba_paper',       label:'Ibá — paper',                         note:'Same structure by paper grade (packaging, P&W, newsprint, cardboard, other).'},
@@ -1255,6 +1290,131 @@ function togglePortPanel(){
   if(!isOpen){buildPortPanel();panel.classList.add('open');toggle.classList.add('open');document.body.classList.add('cs-open');}
 }
 function resetPorts(){portState.ports=null;buildPortPanel();renderPortChart();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PULP EXPORTS BY DESTINATION (secex_pulp_country) — irmão do gráfico de portos
+// ═══════════════════════════════════════════════════════════════════════════
+/* {periodKey: {country: {v: kton, r: US$ mn}}} na janela/granularidade atuais, já filtrado
+   pelo produto. Total = todos os produtos (inclui 'other'), igual ao total por porto. */
+function aggDest(){
+  const prod=destState.product, acc={};
+  applyWin(DEST).forEach(r=>{
+    if(prod!=='total'&&r.product!==prod)return;
+    const pk=periodKey(r.period);if(!pk)return;
+    const c=(acc[pk]=acc[pk]||{});
+    const o=(c[r.country]=c[r.country]||{v:0,r:0});
+    o.v+=r.volume_ktons||0; o.r+=r.revenue_usd_mn||0;
+  });
+  return acc;
+}
+function rankDest(byPC){
+  const tot={};
+  Object.values(byPC).forEach(p=>Object.entries(p).forEach(([c,o])=>{tot[c]=(tot[c]||0)+o.v;}));
+  return Object.entries(tot).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+}
+function destSelected(ranked){ return destState.countries||[...ranked.slice(0,5),'Others']; }
+function renderDestChart(){
+  const byPC=aggDest(), periods=Object.keys(byPC).sort();
+  if(!periods.length){destroyChart('pl-dest');return;}
+  const ranked=rankDest(byPC), sel=destSelected(ranked), named=sel.filter(c=>c!=='Others');
+  const m=destState.metric, labels=periods.map(periodLabelDisplay);
+  const sum=(p,pick)=>Object.entries(byPC[p]||{}).filter(([c])=>pick(c))
+    .reduce((s,[,o])=>({v:s.v+o.v,r:s.r+o.r}),{v:0,r:0});
+  const tot=periods.map(p=>sum(p,()=>true));
+  const series=[...named.map(c=>({label:c,get:p=>byPC[p]?.[c]||{v:0,r:0}}))];
+  if(sel.includes('Others'))
+    series.push({label:'Others',others:true,get:p=>sum(p,c=>!named.includes(c))});
+  const val=(o,i)=>m==='volume'?o.v:m==='revenue'?o.r
+    :m==='share'?(tot[i].v?o.v/tot[i].v*100:null)
+    :(o.v>0?o.r*1000/o.v:null);
+  // 2ª cor da paleta é quase-preta → usa C_BK, que vira clara no tema escuro
+  const col=(s,i)=>s.others?OUTROS_COLOR:(i%GACC_PALETTE.length===1?C_BK:GACC_PALETTE[i%GACC_PALETTE.length]);
+  const round=v=>v==null?null:+v.toFixed(m==='share'?1:m==='price'?0:1);
+  let datasets;
+  if(m==='price'){
+    datasets=series.map((s,i)=>({type:'line',label:s.label,borderColor:col(s,i),backgroundColor:col(s,i),
+      borderWidth:s.others?1.5:2,borderDash:s.others?[4,3]:undefined,pointRadius:0,tension:.25,spanGaps:true,
+      data:periods.map((p,k)=>round(val(s.get(p),k)))}));
+    datasets.push({type:'line',label:'All destinations',borderColor:C_BK,backgroundColor:C_BK,borderWidth:2,
+      borderDash:[6,4],pointRadius:0,tension:.25,data:periods.map((p,k)=>round(val(tot[k],k)))});
+  } else {
+    datasets=series.map((s,i)=>({type:'bar',label:s.label,stack:'s',borderWidth:0,backgroundColor:col(s,i),
+      data:periods.map((p,k)=>round(val(s.get(p),k)))})).filter(d=>d.data.some(v=>v));
+  }
+  const mob=IS_MOBILE();
+  const maxTicks=mob?(currentGran==='annual'?10:currentGran==='quarterly'?8:6)
+                    :(currentGran==='annual'?30:currentGran==='quarterly'?24:12);
+  const unit={volume:'kton',revenue:'US$ mn',share:'% of exports',price:'US$/t'}[m];
+  const yTick=m==='share'?(v=>v==null?'':v+'%'):fmtY;
+  const fmtV=v=>v==null?'—':m==='share'?v.toFixed(1)+'%':Math.round(v).toLocaleString('en-US');
+  const stacked=m!=='price';
+  mkChart('pl-dest','bar',labels,datasets,{
+    ...LEG,
+    tooltip:{callbacks:{
+      label:c=>`${c.dataset.label}: ${fmtV(c.parsed.y)}`,
+      footer:items=>{
+        if(!stacked||m==='share'||!items.length)return '';
+        const t=tot[items[0].dataIndex];
+        return `All destinations: ${fmtV(m==='volume'?t.v:t.r)}`;
+      }}},
+    scales:{
+      x:{stacked,ticks:{color:'#999',font:{size:mob?8:9},maxRotation:45,autoSkip:true,maxTicksLimit:maxTicks},grid:{display:false}},
+      y:{stacked,max:m==='share'?100:undefined,ticks:{callback:yTick,color:'#999',font:{size:mob?8:9}}}
+    }
+  });
+  document.getElementById('pl-dest-tag').textContent=DEST_METRICS.find(d=>d.k===m).l.replace(/ \(.*\)/,'');
+  const gLbl=currentGran==='annual'?'annual':currentGran==='quarterly'?'quarterly':'monthly';
+  const pLbl=DEST_PRODUCTS.find(d=>d.k===destState.product).l;
+  document.getElementById('pl-dest-sub').textContent=`${gLbl} · ${unit} · ${pLbl} · SECEX`;
+}
+function _pills(id,defs,cur,onPick){
+  const c=document.getElementById(id);if(!c)return;
+  c.innerHTML='';
+  defs.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='pill-btn'+(cur===d.k?' active':'');
+    b.textContent=d.l;
+    b.onclick=()=>onPick(d.k);
+    c.appendChild(b);
+  });
+}
+function renderDestPills(){
+  _pills('pl-dest-prod',DEST_PRODUCTS,destState.product,k=>{
+    destState.product=k;renderDestPills();renderDestChart();
+    if(document.getElementById('pl-dest-panel').classList.contains('open'))buildDestPanel();
+  });
+  _pills('pl-dest-metric',DEST_METRICS,destState.metric,k=>{destState.metric=k;renderDestPills();renderDestChart();});
+}
+function buildDestPanel(){
+  const list=document.getElementById('pl-dest-list');if(!list)return;
+  const ranked=rankDest(aggDest());
+  const sel=destSelected(ranked);
+  list.innerHTML='';
+  const item=(name,label,checked,cls)=>{
+    const id='pl-d-'+name.replace(/[^A-Za-z0-9]/g,'_');
+    const el=document.createElement('div');el.className='cs-item'+(cls?' '+cls:'');
+    el.innerHTML=`<input type="checkbox" id="${id}" ${checked?'checked':''}><label for="${id}"></label>`;
+    el.querySelector('label').textContent=label;
+    el.querySelector('input').onchange=e=>{
+      const cur=[...destSelected(rankDest(aggDest()))];
+      destState.countries=e.target.checked?[...cur.filter(c=>c!==name),name]:cur.filter(c=>c!==name);
+      if(!destState.countries.length)destState.countries=null;   // nada marcado = volta ao padrão
+      renderDestChart();
+    };
+    list.appendChild(el);
+  };
+  ranked.slice(0,25).forEach(c=>item(c,c,sel.includes(c)));
+  item('Others','Others',sel.includes('Others'),'outros');
+}
+function toggleDestPanel(){
+  const panel=document.getElementById('pl-dest-panel'),toggle=document.getElementById('pl-dest-toggle');
+  const isOpen=panel.classList.contains('open');
+  document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.cs-toggle').forEach(el=>el.classList.remove('open'));
+  document.body.classList.remove('cs-open');
+  if(!isOpen){buildDestPanel();panel.classList.add('open');toggle.classList.add('open');document.body.classList.add('cs-open');}
+}
+function resetDest(){destState.countries=null;buildDestPanel();renderDestChart();}
 document.addEventListener('click',e=>{
   if(!e.target.closest('.country-selector')&&!e.target.closest('.cs-panel')){
     document.querySelectorAll('.cs-panel').forEach(el=>el.classList.remove('open'));
@@ -1329,6 +1489,7 @@ function renderPulpSecex(){
 
   renderPortPills();
   renderPortChart();
+  if(DEST.length){renderDestPills();renderDestChart();}
   _renderSeasonality('pl-seas',totals.filter(r=>r.volume_ktons!=null),'volume_ktons');
 }
 
