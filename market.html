@@ -976,7 +976,7 @@ async function loadCommodities(){
 }
 
 /* ── commodity / news helpers ── */
-const FREQ_LIVE=new Set(['COPPER','GOLD']), FREQ_WEEKLY=new Set(['IOBFC04',
+const FREQ_LIVE=new Set(['COPPER','GOLD']), FREQ_WEEKLY=new Set(['IOBFC04','HRC_BRAZIL','REBAR_BRAZIL',
   'PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN',
   'PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']);   // celulose PIX = semanal, igual ao Pellet Premium
 function _freqOf(c){ if(!c) return 'Daily'; if(c.freq)return c.freq; if(FREQ_LIVE.has(c.code))return 'Live'; if(FREQ_WEEKLY.has(c.code))return 'Weekly'; return 'Daily'; }

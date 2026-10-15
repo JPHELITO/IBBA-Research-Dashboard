@@ -2751,7 +2751,8 @@ function _attachHover(host, lines, dom){
 // analista indicar. Se a grade Platts passar a expor frequência (c.freq), ela vence o mapa.
 const FREQ_LIVE   = new Set(['COPPER','GOLD']);
 // Semanais: o Pellet Premium do Platts + as 6 de celulose da Fastmarkets (PIX, frequency=Weekly)
-const FREQ_WEEKLY = new Set(['IOBFC04',
+// + HRC e Rebar Brasil do Platts (doméstico, R$/t, assessment semanal — entraram em 15/10/2026)
+const FREQ_WEEKLY = new Set(['IOBFC04','HRC_BRAZIL','REBAR_BRAZIL',
   'PULP_NBSK_CHINA','PULP_BHKP_CHINA','PULP_EUCA_RESALE_CN','PULP_RADIATA_RESALE_CN',
   'PULP_NBSK_EUROPE','PULP_BHKP_EUROPE']);
 function _freqOf(c){
@@ -2939,7 +2940,8 @@ let COMM_GROUPS = [   // padrão; o admin pode sobrescrever via Supabase (applyD
   {title:'Brand assessments',  codes:['IOPBQ00','IOBBA00','IONHA00','IOMAA00','IOJBA00']},
   {title:'Freight + HCC',      codes:['IOFBC00','IOFAC00','MET_COAL','HCCAU00','BRENT']},
   {title:'Forward Curve',      codes:['TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01']},
-  {title:'Steel',              codes:['HRC_CHINA','REBAR_TURKEY']},
+  // HRC e Rebar Brasil (R$/t, doméstico) ao lado da referência internacional do mesmo produto
+  {title:'Steel',              codes:['HRC_CHINA','HRC_BRAZIL','REBAR_TURKEY','REBAR_BRAZIL']},
   // ouro/cobre saíram do grupo de aço e viraram grupo próprio com níquel e alumínio (2026-09-03).
   // ⚠️ O NÍQUEL só tem preço ao vivo (Sina): não existe histórico grátis dele em lugar nenhum —
   // Yahoo dá 404 em NICKEL/NID=F/SHNI=F/LN=F/^LME e o Trading Economics não serve o símbolo
