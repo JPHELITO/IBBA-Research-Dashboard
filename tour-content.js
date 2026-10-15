@@ -93,7 +93,7 @@ window.IBBA_TOURS = {
         { id: 'news-filters', unlessOff: 'news_feed', target: ['#news-filter', '#news-sector-filter'], title: 'Filter the feed',
           body: 'Show a single take or sector: S&M, P&P or NR (macro). **View history** opens the full archive.' },
         { id: 'heat-tools', unlessOff: 'heatmap', target: ['#hm-range', '#hm-filter-btn'], title: 'Heatmap controls',
-          body: 'Choose the period (day, week, month, YTD, year) and pick up to 15 stocks or indices under **Selected**.' },
+          body: 'Choose the period (day, week, month, YTD, year) and pick up to 20 stocks or indices under **Selected**.' },
         { id: 'heat-grid', unlessOff: 'heatmap', target: '#heatmap-grid', clip: 360, title: 'Open a company',
           body: 'Each tile is a stock and its move over the period. {Click} one for its price chart and comparisons.' }
       ]

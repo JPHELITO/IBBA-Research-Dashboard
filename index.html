@@ -558,7 +558,9 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 /* ── HEATMAP ──────────────────────────────────────────────────────── */
 /* Cartões têm ALTURA MÍNIMA legível; se a tela for baixa, o painel ROLA por dentro
    (em tela cheia nada muda: as linhas esticam e preenchem como antes, sem rolagem) */
-.heatmap-grid{flex:1;min-height:0;overflow:hidden auto;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(46px,1fr);gap:5px;}
+/* 4 colunas × 5 linhas = os 20 do "Our coverage" (2026-10-15; eram 3×5 = 15). minmax(0,1fr) e
+   não 1fr: o nome é nowrap e, com 1fr puro, o mais longo esticaria a própria coluna. */
+.heatmap-grid{flex:1;min-height:0;overflow:hidden auto;padding:6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(46px,1fr);gap:5px;}
 /* ── Cartão do heatmap: a COR fica no DADO, não no bloco (2026-08-25) ────────
    Era um retângulo chapado de verde/vermelho por cotação — 15 blocos saturados
    competindo entre si e engolindo o número. Agora o cartão é uma superfície neutra
@@ -1363,7 +1365,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
       <div class="hm-head-right">
         <div class="hm-filter">
           <button class="hm-filter-btn" id="hm-filter-btn" aria-haspopup="true" aria-expanded="false">
-            Selected <span class="hm-count" id="hm-count">15/15</span> ▾
+            Selected <span class="hm-count" id="hm-count">20/20</span> ▾
           </button>
           <div class="hm-pop" id="hm-pop" hidden></div>
         </div>
@@ -2148,15 +2150,18 @@ const _RANGE_DAYS  = {W:7, M:31, Y:366};        // janela em dias por período (
 // ── Universo de comparação (filtro + presets + recomendadas) ──────────
 // Grupos do "painel de cotações" (presets do heatmap) — listas explícitas do usuário.
 // As recomendadas no modal derivam do SETOR (grupo) da empresa aberta + índice aderente.
-const HM_MAX = 15;                              // teto de cartões (evita poluir a visão)
-const G_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
+const HM_MAX = 20;                              // teto de cartões = a grade 4×5 (evita poluir a visão)
+// "Our coverage" = 20 empresas, sem índice (2026-10-15: saiu o IBOV, que foi p/ o grupo Index;
+// entraram Aclara, Viridis, Capstone, Ero, Hudbay e Lundin).
+const G_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN',
+                    'CS.TO','ERO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
 const G_STEEL    = ['CSNA3.SA','GGBR4.SA','GGB','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];   // GGB = ADR da Gerdau em NY (mesma empresa da GGBR4; fora do G_COVERAGE p/ não contar 2×)
 const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
-const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
+const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
-const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ'];
+const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ','IBOV'];
 let COVERAGE     = G_COVERAGE;                  // default do heatmap (admin pode sobrescrever)
 
 const HM_PRESETS = {
@@ -2181,19 +2186,27 @@ const KNOWN = new Set([].concat(G_COVERAGE,G_STEEL,G_IRON,G_GOLD,G_COPPER,G_RARE
 const TICKER_SECTOR = {};
 [['steel',G_STEEL],['iron_ore',G_IRON],['gold',G_GOLD],['copper',G_COPPER],['rare_earths',G_RARE],['pp',G_PP],['index',G_INDEX]]
   .forEach(([sec,arr])=>arr.forEach(t=>{ if(!(t in TICKER_SECTOR)) TICKER_SECTOR[t]=sec; }));
-// cobertura cujo ticker não está num grupo setorial: só o IBOV (índice).
-// VALE (ADR NYSE) e AUGO (Nasdaq) agora entram na cobertura pelos próprios listings US — já
-// pertencem a G_IRON/G_GOLD, então herdam o setor pelo loop acima. RANI3 está no G_PP mesmo.
-Object.assign(TICKER_SECTOR, {'IBOV':'index'});
+// Toda a cobertura está em algum grupo e herda o setor pelo loop acima: VALE (ADR NYSE) e AUGO
+// (Nasdaq) entram pelos listings US, que já pertencem a G_IRON/G_GOLD; o IBOV mora no G_INDEX.
 // (o antigo SECTOR_TICKERS saiu em 2026-07-20: o painel de filtro virou duas colunas e a coluna
 //  da esquerda lê direto o HM_PRESETS — a união dos grupos é a mesma, nada ficou inalcançável.)
 
-// Conjunto exibido no heatmap (persistido por usuário). Default = cobertura + IBOV.
+// Conjunto exibido no heatmap (persistido por usuário). Default = a cobertura (G_COVERAGE).
 let _hmFromDefault = false;   // true se _hmDisplayed veio do default (sem localStorage do usuário)
+// Seleção salva antes de 2026-10-15: quem guardou EXATAMENTE a cobertura antiga (15, com IBOV)
+// estava seguindo o preset → passa a ver a nova. Quem montou lista própria só tem a Hudbay
+// trocada para a linha de Toronto (sem isso o HBM sumiria calado da seleção dele).
+const HM_RENAMED = {'HBM':'HBM.TO'};
+const HM_OLD_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
   try{ const s=JSON.parse(localStorage.getItem('hm_displayed'));
-       if(Array.isArray(s)){ const f=s.filter(t=>KNOWN.has(t)).slice(0,HM_MAX); if(f.length) return f; } }catch(e){}
+       if(Array.isArray(s)){
+         const r=[...new Set(s.map(t=>HM_RENAMED[t]||t))];
+         const antiga=r.length===HM_OLD_COVERAGE.length && HM_OLD_COVERAGE.every(t=>r.includes(t));
+         if(antiga) localStorage.removeItem('hm_displayed');
+         else { const f=r.filter(t=>KNOWN.has(t)).slice(0,HM_MAX); if(f.length) return f; }
+       } }catch(e){}
   _hmFromDefault = true;
   return COVERAGE.slice();
 }

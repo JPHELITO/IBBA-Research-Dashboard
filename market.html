@@ -681,14 +681,17 @@ async function rpc(name,args){const{data,error}=await sbAuth.rpc(name,args||{});
 async function restGet(path){const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_session?_session.access_token:SUPA_KEY}`}});if(!r.ok)throw new Error('REST '+path+' '+r.status);return r.json()}
 
 /* ── Universo / taxonomia (idêntico ao index.html — fonte de verdade no front) ── */
-const G_COVERAGE=['AURA33.SA','SUZB3.SA','VALE3.SA','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
+// A mesma cobertura de 20 do "Our coverage" da home (2026-10-15; o IBOV foi p/ o G_INDEX). Aqui
+// Vale e Aura entram pelas linhas da B3 (a home usa as de NY).
+const G_COVERAGE=['AURA33.SA','SUZB3.SA','VALE3.SA','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN',
+                  'CS.TO','ERO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
 const G_STEEL=['CSNA3.SA','GGBR4.SA','GGB','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];   // GGB = ADR da Gerdau em NY (mesma empresa da GGBR4; fora do G_COVERAGE p/ não contar 2×)
 const G_IRON=['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD=['AUGO','ARIS','BVN','AEM','B','HOC.L'];
-const G_COPPER=['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM'];
+const G_COPPER=['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
 const G_RARE=['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP=['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
-const G_INDEX=['GDX','SPX','MATB11.SA','NASDAQ'];
+const G_INDEX=['GDX','SPX','MATB11.SA','NASDAQ','IBOV'];
 let COVERAGE=G_COVERAGE.slice();
 const SECTOR_GROUPS={steel:G_STEEL,iron_ore:G_IRON,gold:G_GOLD,copper:G_COPPER,rare_earths:G_RARE,pp:G_PP};
 const SECTOR_INDEX={steel:['MATB11.SA','SPX'],iron_ore:['MATB11.SA','SPX'],gold:['GDX','SPX'],copper:['SPX','MATB11.SA'],rare_earths:['SPX','NASDAQ'],pp:['MATB11.SA','SPX']};
