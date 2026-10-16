@@ -927,6 +927,86 @@ function blHeadlines(){
   return out;
 }
 
+// ── Minério: o destaque de PREÇO ganha o futuro SGX de hoje (pedido do analista, 16/10/2026) ──
+// "sempre que houver a notícia falando dos preços de minério de ferro e eu colocar ele em uma
+// das notícias do destaque, que colocasse um ; e falasse 'hoje o futuro SGX subiu/caiu ~USD
+// xx/ton'". A IA só escreve a frase do destaque; o NÚMERO sai do banco — a mesma linha "62%
+// futuro SGX" das cotações logo abaixo, então as duas nunca se contradizem.
+//
+// QUEM DECIDE É O ASSUNTO DA FRASE, não quem a escolheu: vale para o destaque marcado com ★ e
+// também para o que a IA escolheu sozinha. Calibrado nos 96 destaques que o blast gravou de
+// 01/09 a 16/10/2026: marca exatamente os 14 de preço e deixa de fora as duas armadilhas que
+// apareceram de verdade — o FRETE marítimo de minério (03/09, "USD 40,10/ton") e as IMPORTAÇÕES
+// chinesas em toneladas (09/09). O teste (tests/test_blast_sgx.html) reproduz esses padrões com
+// frases INVENTADAS: o texto real resume matéria paga, e este repositório é público.
+//
+// O texto é comparado sem acento e em minúsculas ("Minério"/"minerio", "Preços"/"precos").
+function blSemAcento(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+// O que nomeia o minério: "minério de ferro", "minério 62%", IODEX (índice do Platts) e o
+// nome em inglês, caso a IA o deixe escapar.
+const BL_MINERIO_RE = /\bminerios?\s+(?:de\s+ferro|\d{2}\s*%)|\biodex\b|\biron\s+ore\b/;
+// Sinal de que a frase fala de PREÇO, e não de volume. Número com "/ton" ou "/dmt" conta: o
+// prompt obriga a IA a escrever tonelada como USD XX/ton, e preço de minério é exatamente isso.
+const BL_PRECO_RE = /\bprecos?\b|\bprices?\b|\bcotac(?:ao|oes)\b|\biodex\b|\bbenchmark\b|\bspot\b|\bseaborne\b|\bfuturos?\b|\bfutures?\b|\bcontratos?\b|(?:\busd|\bus\$|\$)\s*\d[\d.,]*\s*\/\s*(?:dmt|wmt|tonelada|ton|t)\b/;
+// "O minério de ferro caiu 2%": o minério como SUJEITO de um verbo de movimento é preço, mesmo
+// sem a palavra "preço" e sem dólar na frase.
+const BL_MINERIO_MEXEU_RE = /\bo\s+minerio\s+(?:de\s+ferro|\d{2}\s*%)\s+(?:\S+\s+){0,2}?(?:sob|sub|ca[iu]|recu|avanc|ced|valoriz|desvaloriz|dispar|despenc|atin[gj]|renov|fech|ganh|perd|oscil|oper|rond)\w*/;
+// Quando o minério é o COMPLEMENTO de um volume ("frete marítimo DE minério", "importações
+// chinesas DE minério", "produção DE minério"), a frase é sobre o volume — o "USD 40,10/ton"
+// do frete casaria o sinal de preço acima, e é aqui que ele sai.
+const BL_VOLUME_ANTES_RE = /\b(?:fretes?|producao|producoes|importac\w*|exportac\w*|embarques?|estoques?|vendas?|demanda|oferta|consumo|reservas?|minas?|projetos?|navios?|cargas?|carregamentos?)\b[^.;]{0,30}\b(?:de|do|da|por|pelo|pela)\s*$/;
+// ...a não ser que a própria frase diga que é o preço DO minério.
+const BL_PRECO_DO_MINERIO_RE = /\b(?:precos?|cotac(?:ao|oes))\s+d[oe]s?\s+minerios?\b/;
+
+function blEhMinerioPreco(texto){
+  const t=blSemAcento(texto), m=BL_MINERIO_RE.exec(t);
+  if(!m) return false;
+  if(/\biodex\b/.test(t) || BL_PRECO_DO_MINERIO_RE.test(t)) return true;   // índice/preço explícito
+  if(BL_VOLUME_ANTES_RE.test(t.slice(0, m.index))) return false;           // frete, importação, produção…
+  return BL_PRECO_RE.test(t) || BL_MINERIO_MEXEU_RE.test(t);
+}
+
+// O movimento de HOJE do futuro, em dólar por tonelada. O robô grava a variação em %, contra o
+// fechamento da sessão anterior que a própria Sina manda (campo 7, ver
+// prices.update_sina_commodities); o fechamento se reconstrói como preço ÷ (1 + %/100). Com o %
+// gravado em 3 casas o erro fica no milésimo de dólar — irrelevante para um "~" de 1 casa.
+//
+// Falha FECHADA: sem preço, sem variação ou com o número velho (robô parado desde ontem), a
+// frase não sai — nunca a palavra "hoje" ao lado de um movimento que não é de hoje.
+const BL_SGX_MAX_IDADE_H = 12;
+const BL_SGX_UM = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
+function blSgxFrase(r, agora){
+  if(!r || r.price==null || r.change_pct==null || !r.updated_at) return null;
+  const p=+r.price, pct=+r.change_pct;
+  if(!isFinite(p) || !isFinite(pct) || p<=0 || pct<=-100) return null;
+  const idadeH=((agora||Date.now())-new Date(r.updated_at).getTime())/36e5;
+  if(!(idadeH<=BL_SGX_MAX_IDADE_H)) return null;
+  const delta=p-p/(1+pct/100), um=Math.round(Math.abs(delta)*10)/10;
+  // "~USD 0/ton" seria esquisito: abaixo de 5 centavos o futuro está, na prática, parado
+  if(um===0) return 'hoje o futuro SGX está estável';
+  return 'hoje o futuro SGX '+(delta>0?'subiu':'caiu')+' ~USD '+BL_SGX_UM.format(um)+'/ton';
+}
+
+// Aplica a frase no PRIMEIRO destaque de preço do minério (dois destaques com o mesmo número
+// seria repetição). Devolve uma lista NOVA: os destaques guardados para o Weekly continuam como
+// a IA escreveu — "hoje" num resumo semanal mentiria sobre o dia.
+// `sgx` diz o que aconteceu, para a tela avisar quando o destaque existe mas a frase não entrou.
+function blComSgx(destaques, P, agora){
+  const r=((P&&P.byCode)||{})['IRON_ORE_SGX'];
+  const frase=blSgxFrase(r, agora);
+  let alvo=-1;
+  destaques.forEach(function(x,i){ if(alvo<0 && blEhMinerioPreco(x)) alvo=i; });
+  const lista=destaques.map(function(x,i){
+    return (i===alvo && frase) ? String(x).trim().replace(/[;.]+$/,'')+'; '+frase : x;
+  });
+  const sgx = alvo<0 ? null
+    : (frase ? {ok:true, frase:frase}
+             : {ok:false, motivo: !r||r.price==null ? 'o futuro SGX não está no banco'
+                                : r.change_pct==null ? 'o futuro SGX veio sem a variação do dia'
+                                : 'o preço do futuro SGX não é de hoje'});
+  return {lista:lista, sgx:sgx};
+}
+
 function blBuild(){
   const P=_blPrices||{byCode:{},byTicker:{}}, velhos=[];
   const agora=Date.now();
@@ -944,7 +1024,7 @@ function blBuild(){
   L.push('Abs!','Daniel Sasson – Itaú BBA','');
 
   L.push(blH1('NEWS HIGHLIGHTS'),'');
-  const d=(_blDest||[]).filter(function(x){return x&&x.trim();});
+  const cs=blComSgx((_blDest||[]).filter(function(x){return x&&x.trim();}), P), d=cs.lista;
   d.forEach(function(x,i){ L.push('- '+x.trim().replace(/[;.]+$/,'')+(i===d.length-1?'.':';'),''); });
 
   L.push(blH1('HOW MARKETS ARE TRADING'),'');
@@ -1012,7 +1092,7 @@ function blBuild(){
   });
   // NR não existe no formato do blast. Em vez de sumir com a notícia calado, a tela avisa
   // quantas ficaram de fora — quem decide o que fazer é o analista.
-  return {texto:L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n', velhos:velhos, nr:H.NR.length};
+  return {texto:L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n', velhos:velhos, nr:H.NR.length, sgx:cs.sgx};
 }
 
 function blRender(){
@@ -1026,6 +1106,8 @@ function blRender(){
     av.push('Preço com mais de '+BL_MAX_IDADE_MIN+' min: <b>'+esc(uniq.join(', '))+'</b> — o robô pode estar parado.');
   }
   if(r.nr) av.push('<b>'+r.nr+'</b> manchete(s) marcadas como NR ficaram de fora: o blast só tem S&M e P&P.');
+  // O destaque de preço do minério existe, mas a frase do SGX não entrou: avisar, nunca sumir calado.
+  if(r.sgx && !r.sgx.ok) av.push('Destaque de minério saiu <b>sem o futuro SGX</b>: '+esc(r.sgx.motivo)+'.');
   if(av.length){ wa.innerHTML=av.join('<br>'); wa.hidden=false; } else { wa.hidden=true; }
 }
 
@@ -1802,6 +1884,7 @@ function wire(){
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
 window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
               cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
+              blEhMinerioPreco, blSgxFrase, blComSgx, blBuild,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl };
 
 ;(async()=>{
