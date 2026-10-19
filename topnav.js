@@ -54,6 +54,9 @@
 .ibba-slide-on>.ibba-slide{display:block;}\
 /* troca de seção com a página deslizando de lado: sem barra de rolagem horizontal piscando */\
 html.ibba-swap body{overflow-x:clip;}\
+/* casa do NÚMERO QUE ROLA (IBBANumber.roll): a janela de um dígito */\
+.ibba-odo{display:inline-block;overflow:hidden;vertical-align:top;}\
+.ibba-odo>span{display:inline-block;}\
 /* FAIXA DO SETOR (M&M e P&P): a mesma foto em duotone do cartão da home. Na transição entre páginas\
    o cartão cresce até virar esta faixa (nomes ibba-sector / ibba-sector-title). Só computador. */\
 .ibba-band{position:relative;height:64px;overflow:hidden;background:#0C0F14;color:#fff;}\
@@ -715,6 +718,30 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ place(false); });
       place(false);
       return { place: place };
+    }
+  };
+
+  // ── NÚMERO QUE ROLA (onda 3) ──────────────────────────────────────────────
+  // IBBANumber.roll(el, 'antes', 'depois', subiu): preço ao vivo que muda — só as CASAS que mudaram
+  // entram rolando (de baixo quando sobe, de cima quando cai), 320 ms em cascata de 30 ms, como um
+  // placar. Textos de tamanho diferente (99,95 → 100,10) só trocam, sem rolar.
+  window.IBBANumber = {
+    roll: function(el, oldS, newS, up){
+      oldS = String(oldS == null ? '' : oldS); newS = String(newS == null ? '' : newS);
+      if(!el || _reduced() || oldS === newS || oldS.length !== newS.length) return false;
+      var h = '', n = 0;
+      for(var i = 0; i < newS.length; i++){
+        var c = newS.charAt(i);
+        if(c !== oldS.charAt(i) && /\d/.test(c)){ h += '<span class="ibba-odo"><span>' + c + '</span></span>'; n++; }
+        else h += esc(c);
+      }
+      if(!n) return false;
+      el.innerHTML = h;
+      [].slice.call(el.querySelectorAll('.ibba-odo>span')).forEach(function(d, k){
+        window.IBBAMotion.animate(d, [{ transform: 'translateY(' + (up ? '100%' : '-100%') + ')', opacity: 0 }, { transform: 'none', opacity: 1 }],
+                                  { duration: 320, delay: k * 30, easing: MOTION.e.expo, fill: 'backwards' });
+      });
+      return true;
     }
   };
 
