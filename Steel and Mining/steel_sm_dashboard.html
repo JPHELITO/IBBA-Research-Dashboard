@@ -2434,7 +2434,12 @@ const SUB_ORDER=['prices','domestic','imports','exports'];
 let _subTok=0;
 function setSub(s,o){
   const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
-  if(!anim) return _setSubNow(s);
+  if(!anim){   // instantâneo — e desfaz uma troca animada que ainda estava saindo: num clique duplo rápido
+               // (Imports e logo de volta Prices) a troca velha terminava DEPOIS e deixava a seção errada
+    ++_subTok; document.querySelectorAll('.section').forEach(d=>{ if(d.getAnimations) d.getAnimations().forEach(a=>a.cancel()); });
+    document.documentElement.classList.remove('ibba-swap');
+    return _setSubNow(s);
+  }
   const dir=SUB_ORDER.indexOf(s)>SUB_ORDER.indexOf(currentSub)?1:-1, tok=++_subTok;
   document.querySelectorAll('.section').forEach(d=>d.getAnimations().forEach(a=>a.cancel()));
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));

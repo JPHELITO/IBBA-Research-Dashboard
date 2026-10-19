@@ -58,6 +58,13 @@ html.dark tr.agg-row td{background:rgba(255,255,255,.04)}
 .sg-tab:hover{color:var(--black)}
 .sg-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
 .sg-tab.locked::after{content:'🔒';font-size:10px;margin-left:5px;opacity:.65}
+/* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ─────────────────────────────────
+   O traço laranja das abas (Comp Table · Sensitivity e as abinhas de empresa da Sensitivity)
+   CORRE até a aba escolhida em vez de piscar (IBBASlide, no topnav.js). O bloco é invisível e
+   desenha o MESMO traço de 2px no ::after; o traço próprio da aba ativa some enquanto ele existe. */
+.sg-tabs>.ibba-slide::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--orange)}
+.sg-tabs.ibba-slide-on .sg-tab{position:relative;z-index:1}
+.sg-tabs.ibba-slide-on .sg-tab.active{border-bottom-color:transparent}
 /* ── cheat sheet trimestral ── */
 .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:6px;vertical-align:middle;animation:livepulse 2s ease-in-out infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -301,8 +308,8 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
 
   <div class="wrap">
     <div class="sg-tabs">
-      <button id="sgtab-comp" class="sg-tab active" onclick="sgShowTab('comp')">Comp Table</button>
-      <button id="sgtab-sens" class="sg-tab" onclick="sgShowTab('sens')">Sensitivity</button>
+      <button id="sgtab-comp" class="sg-tab active" onclick="sgShowTab('comp',{anim:1})">Comp Table</button>
+      <button id="sgtab-sens" class="sg-tab" onclick="sgShowTab('sens',{anim:1})">Sensitivity</button>
     </div>
 
     <div id="sg-tab-comp">
@@ -439,20 +446,49 @@ if((location.hash||'').slice(1)==='quarterly'){
   if(_qPode){ try{ location.replace('/quarterly.html'); }catch(e){} }
 }
 function _sgTabFromHash(){ const h=(location.hash||'').slice(1); return SG_TABS.includes(h)?h:'comp'; }
-function sgShowTab(t){
+/* TROCA DE ABA COM DIREÇÃO (onda 3, 2026-10-19 — igual ao M&M): no clique de Comp Table / Sensitivity
+   (ou no menu "Stock Guide ▾" estando já aqui) o traço laranja corre NA HORA até a aba; o conteúdo atual
+   sai para o lado oposto (0,2 s) e o novo entra pelo lado do clique (0,6 s, curva expo). A carga e o
+   link direto (#sens) seguem instantâneos; com "reduzir movimento", instantâneo também.
+   Um 2º clique no meio da troca (clique duplo, ou o tutorial repetindo o clique) manda: a troca que
+   ainda estava saindo é desfeita, nunca termina por cima da escolha nova. */
+let _sgTab='comp', _sgTabTok=0;
+function sgShowTab(t,o){
   if(!SG_TABS.includes(t)) t='comp';
   // aba escondida (flag desligada) não pode ser aberta por link — cai na primeira
   const bt=document.getElementById('sgtab-'+t);
   if(bt && bt.hidden) t='comp';
+  const anim=!!(o&&o.anim)&&t!==_sgTab&&window.IBBAMotion&&!IBBAMotion.reduced(), tok=++_sgTabTok;
+  SG_TABS.forEach(x=>{ const p=document.getElementById('sg-tab-'+x); if(p&&p.getAnimations) p.getAnimations().forEach(a=>a.cancel()); });
+  if(!anim){ document.documentElement.classList.remove('ibba-swap'); return _sgShowTabNow(t); }
+  const dir=SG_TABS.indexOf(t)>SG_TABS.indexOf(_sgTab)?1:-1;
+  SG_TABS.forEach(x=>{ const b=document.getElementById('sgtab-'+x); if(b) b.classList.toggle('active',x===t); });   // o traço corre já
+  document.documentElement.classList.add('ibba-swap');
+  const old=document.getElementById('sg-tab-'+_sgTab);
+  const out=old?IBBAMotion.animate(old,[{opacity:1,transform:'none'},{opacity:0,transform:`translateX(${-32*dir}px)`}],
+    {duration:200,easing:IBBAMotion.e.sai,fill:'forwards'}):null;
+  Promise.resolve(out&&out.finished).catch(()=>{}).then(()=>{
+    if(tok!==_sgTabTok) return;
+    if(out) out.cancel();
+    _sgShowTabNow(t);
+    const pane=document.getElementById('sg-tab-'+t);
+    const inn=pane?IBBAMotion.animate(pane,[{opacity:0,transform:`translateX(${40*dir}px)`},{opacity:1,transform:'none'}],
+      {duration:600,fill:'backwards'}):null;
+    Promise.resolve(inn&&inn.finished).catch(()=>{}).then(()=>{ if(tok===_sgTabTok) document.documentElement.classList.remove('ibba-swap'); });
+  });
+}
+function _sgShowTabNow(t){
+  _sgTab=t;
   SG_TABS.forEach(x=>{
     const pane=document.getElementById('sg-tab-'+x), btn=document.getElementById('sgtab-'+x);
     if(pane) pane.hidden=(x!==t);
     if(btn) btn.classList.toggle('active',x===t);
   });
   try{ history.replaceState(null,'','#'+t); }catch(e){}
+  if(window.__gnavMarkCurrent) window.__gnavMarkCurrent();   // "Stock Guide ▾" acende a aba aberta (o replaceState não avisa ninguém)
 }
 // dropdown do topnav (Stock Guide ▾ → #comp/#sens) e link externo trocam de aba sem recarregar
-window.addEventListener('hashchange',function(){ sgShowTab(_sgTabFromHash()); });
+window.addEventListener('hashchange',function(){ sgShowTab(_sgTabFromHash(),{anim:1}); });
 // ⚠️ A CONTA DOS MÚLTIPLOS MORA EM `stock-guide-lib.js` (SG.mapComp / SG.deriveMultiples /
 // SG.deriveComps) desde 31/08/2026. Ela saiu daqui porque o Weekly Recap monta a MESMA
 // comp table, só que com o FECHAMENTO DA SEXTA no lugar do preço ao vivo — o que se
@@ -485,6 +521,19 @@ function aggUsd(list){  // agregado em US$ (razão de somas) — só empresas co
 // está acima de um piso absoluto E muito acima (>4×) da mediana da coluna. Mediana é robusta ao outlier.
 function _median(arr){ const f=arr.filter(v=>v!=null&&isFinite(v)&&v>0).sort((a,b)=>a-b); return f.length?f[Math.floor((f.length-1)/2)]:null; }
 function _isNM(v,med,floor){ return v!=null&&isFinite(v)&&med!=null&&v>floor&&v>4*med; }
+// PREÇO QUE ROLA (onda 3, 2026-10-19): na atualização de cada minuto, a célula de preço que mudou gira
+// só as casas que mudaram (IBBANumber.roll, topnav.js) — de baixo quando sobe, de cima quando cai.
+// A 1ª carga não rola (não há "antes"); o resto da linha (upside, múltiplos) só troca, como sempre.
+// ⚠️ Atributos data-sgk/data-sgv, NUNCA data-v/data-t: o SheetJS do export do admin lê esses dois
+// como valor e tipo da célula, e o Excel mudaria.
+function _sgPxAttr(key,v){ return `data-sgk="${esc(key)}" data-sgv="${v==null||!isFinite(v)?'':v}"`; }
+function _sgPxSnap(tbl){ const m={}; if(tbl) tbl.querySelectorAll('td[data-sgk]').forEach(td=>{ const k=td.dataset.sgk;
+  m[k]=(k in m)?null:{t:td.textContent,v:parseFloat(td.dataset.sgv)}; }); return m; }   // chave repetida = não rola
+function _sgPxRoll(tbl,antes){
+  if(!tbl||!window.IBBANumber) return;
+  tbl.querySelectorAll('td[data-sgk]').forEach(td=>{ const o=antes[td.dataset.sgk], v=parseFloat(td.dataset.sgv);
+    if(o&&o.t!==td.textContent&&isFinite(v)&&isFinite(o.v)) IBBANumber.roll(td,o.t,td.textContent,v>=o.v); });
+}
 // ── render: comps (grouped by sector + aggregate row, Summary-style) ──
 function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
   const y1=config.y1_label||'26E', y2=config.y2_label||'27E';
@@ -520,7 +569,7 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
         <td style="text-align:center">${modelCell(r)}</td>
         <td>${rec}</td>
         <td class="num">${fmt(r.target_price,2)}</td>
-        <td class="num">${fmt(r.livePrice,2)}</td>
+        <td class="num" ${_sgPxAttr(r.ticker,r.livePrice)}>${fmt(r.livePrice,2)}</td>
         <td class="num ${signCls(r.upsidePct)}">${r.upsidePct==null?'—':fmtPct(r.upsidePct*100,1)}</td>
         <td class="num">${fmt(r.marketCapUsd,0)}</td>
         ${pairNM(r.evEbitdaY1,r.evEbitdaY2,medEv1,medEv2)}
@@ -537,7 +586,9 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
       ${pairNM(a.pceY1,a.pceY2,medPce1,medPce2)}${pair(a.divYieldY1,a.divYieldY2,v=>fmtPct(v,1))}
       ${pair(a.ocfYieldY1,a.ocfYieldY2,v=>fmtPct(v,1))}<td></td><td></td></tr>`;
   });
-  document.getElementById('comps-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No companies.</td></tr>')+'</tbody>';
+  const tbl=document.getElementById('comps-table'), antes=_sgPxSnap(tbl);
+  tbl.innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No companies.</td></tr>')+'</tbody>';
+  _sgPxRoll(tbl,antes);
   const foot=document.getElementById('comps-foot');
   let f=config.comps_footnote||('Market Cap, Upside, EV, EV/EBITDA, P/CE, Net Debt/EBITDA, Div yield and OCF yield are recomputed LIVE from price and FX (Market tab) — not stored. EPS = Net Income / Shares. Mkt cap in US$; multiples in each model’s base currency. Years: '+y1+' / '+y2+'.');
   if(restricted.length) f+=' · Restricted coverage: '+restricted.map(esc).join(', ')+'.';
@@ -573,14 +624,16 @@ function sgRenderPeers(peers,priceByKey){
       body+=`<tr>
         <td class="l">${esc(p.company)}</td>
         <td class="muted">${esc(p.country||'')}</td>
-        <td class="num">${fmt(px,2)}</td>
+        <td class="num" ${_sgPxAttr(p.yahoo_symbol||p.company,px)}>${fmt(px,2)}</td>
         ${pairNM(n(p.ev_ebitda_y1),n(p.ev_ebitda_y2),medEv1,medEv2)}
         ${pair(n(p.net_debt_ebitda_y1),n(p.net_debt_ebitda_y2),v=>fmtX(v,1))}
         ${pairNM(mult(p,'y1'),mult(p,'y2'),medM1,medM2)}
         ${pair(n(p.div_yield_y1),n(p.div_yield_y2),v=>v==null?'—':fmtPct(v*100,1))}</tr>`;
     });
   });
-  document.getElementById('peers-table').innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No peers — upload the model in /admin.</td></tr>')+'</tbody>';
+  const tbl=document.getElementById('peers-table'), antes=_sgPxSnap(tbl);
+  tbl.innerHTML=head+'<tbody>'+(body||'<tr><td class="muted">No peers — upload the model in /admin.</td></tr>')+'</tbody>';
+  _sgPxRoll(tbl,antes);
 }
 
 
@@ -1024,17 +1077,33 @@ function sgRenderSens2dTabs(list,others,host){
   const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs';
   _S2_TABS.forEach(function(tab,i){ const b=document.createElement('button');
     b.className='sg-tab'+(i===0?' active':''); b.id='s2tab-'+i; b.textContent=tab.label;
-    b.onclick=function(){_s2ShowTab(i);}; bar.appendChild(b); });
+    b.onclick=function(){_s2ShowTab(i,{anim:1});}; bar.appendChild(b); });
   host.appendChild(bar);
+  try{ if(window.IBBASlide) IBBASlide.watch(bar,'.sg-tab'); }catch(e){ console.warn('IBBASlide:',e); }   // o traço corre entre as empresas
   const pane=document.createElement('div'); pane.id='s2-pane'; host.appendChild(pane);
   _s2ShowTab(0);
 }
-function _s2ShowTab(i){
+function _s2ShowTab(i,o){
+  const was=_s2Cur();
   _S2_TABS.forEach(function(tab,j){ const b=document.getElementById('s2tab-'+j); if(b)b.classList.toggle('active',j===i); });
   const pane=document.getElementById('s2-pane'); if(!pane)return;
   const tab=_S2_TABS[i]; if(!tab)return;
   if(tab.others){ pane.innerHTML=''; _sgRenderPanels(tab.others,pane); return; }
   _s2RenderPane(tab.t,pane);
+  if(o&&o.anim&&i!==was) _s2In(pane,i>was?1:-1);
+}
+// abinha de empresa (onda 3): os blocos da empresa escolhida entram pelo lado do clique (0,6 s), em
+// cascata de 30 ms (teto 8). Só no clique — o auto-refresh de 1 min (_s2Tick) redesenha sem animar.
+let _s2InTok=0;
+function _s2In(pane,dir){
+  if(!window.IBBAMotion||IBBAMotion.reduced()) return;
+  const all=[...pane.querySelectorAll('.s2-top,.s2-sheet,.s2-card,.s2-warn,.s2-note')];
+  const els=all.filter(el=>!all.some(p=>p!==el&&p.contains(el)));   // bloco dentro de bloco anima uma vez só
+  const tok=++_s2InTok; let last=null;
+  document.documentElement.classList.add('ibba-swap');
+  els.forEach((el,k)=>{ last=IBBAMotion.animate(el,[{opacity:0,transform:`translateX(${dir*28}px)`},{opacity:1,transform:'none'}],
+    {duration:600,delay:Math.min(k,8)*30,fill:'backwards'}); });
+  Promise.resolve(last&&last.finished).catch(()=>{}).then(()=>{ if(tok===_s2InTok) document.documentElement.classList.remove('ibba-swap'); });
 }
 function _s2Cur(){ for(let j=0;j<_S2_TABS.length;j++){ const b=document.getElementById('s2tab-'+j);
   if(b&&b.classList.contains('active')) return j; } return 0; }
@@ -1373,6 +1442,9 @@ function _sgLockPeers(){
 
 async function sgInit(data){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+  // SELEÇÃO QUE DESLIZA (onda 3): o traço de Comp Table · Sensitivity corre até a aba (IBBASlide, topnav.js)
+  try{ const bar=document.querySelector('#app .wrap > .sg-tabs');
+    if(window.IBBASlide&&bar&&!bar.__ibbaSlide) bar.__ibbaSlide=IBBASlide.watch(bar,'.sg-tab'); }catch(e){ console.warn('IBBASlide:',e); }
   if(data.isAdmin)document.getElementById('admin-badge').hidden=false;
   _ALL_TABLES=data.tables||[];
   data.tables.forEach(t=>{window['__T_'+t.id]=t});
