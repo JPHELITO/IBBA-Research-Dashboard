@@ -697,8 +697,19 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
         if(animate && from && cur !== a) window.IBBAMotion.animate(ind, [from, to], { duration: 420, easing: MOTION.e.expo, fill: 'none' });
         cur = a;
       }
+      // classe dos ITENS (não da caixa: a própria caixa ganha .ibba-slide-on e entraria em laço)
       var mo = new MutationObserver(function(){ place(true); });
-      [].slice.call(box.querySelectorAll(itemSel)).forEach(function(b){ mo.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+      function hook(){
+        mo.disconnect();
+        [].slice.call(box.querySelectorAll(itemSel)).forEach(function(b){ mo.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+      }
+      // grupo que a página RECRIA (innerHTML — ex.: os produtos do P&P a cada seção): o bloco volta para a
+      // caixa e passa a vigiar os itens novos; sem animação, porque não houve troca de opção
+      try{ new MutationObserver(function(){
+        if(ind.parentNode !== box) box.insertBefore(ind, box.firstChild);
+        hook(); cur = null; place(false);
+      }).observe(box, { childList: true }); }catch(e){}
+      hook();
       try{ new ResizeObserver(function(){ place(false); }).observe(box); }catch(e){}
       window.addEventListener('resize', function(){ place(false); });
       if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ place(false); });
