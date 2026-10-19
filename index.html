@@ -2430,39 +2430,9 @@ function _sparkline(closes){
   </svg>`;
 }
 
-// HEATMAP QUE SE REARRUMA (onda 3, 2026-10-19): trocar o período, filtrar empresas ou chegar preço reordena os
-// cartões pela variação — agora eles DESLIZAM do lugar antigo para o novo (0,6 s) em vez de pular, e o olho
-// acompanha quem subiu e quem caiu. Cartão que entrou pelo filtro aparece (0,42 s). Na atualização de preço do
-// MESMO período, a variação que mudou gira só as casas que mudaram (IBBANumber); trocando de período, não —
-// seriam 20 números girando juntos com os cartões andando. O 1º desenho não anima: a página já entra inteira.
-let _hmLastRange = null;
-function _hmSnap(grid){
-  const m = {};
-  grid.querySelectorAll('.hm-card[data-ticker]').forEach(c=>{ const ch=c.querySelector('.hm-change');
-    m[c.dataset.ticker] = {r:c.getBoundingClientRect(), pct:ch?ch.textContent:null}; });
-  return {range:_hmLastRange, cards:m};
-}
-function _hmFlip(grid, antes){
-  const mesmo = antes.range === _range; _hmLastRange = _range;
-  if(!window.IBBAMotion || IBBAMotion.reduced() || !Object.keys(antes.cards).length) return;
-  // getBoundingClientRect mede na TELA; o translate vive dentro do #stage, que no PC é escalado
-  const st = document.getElementById('stage');
-  const k = (st && st.offsetWidth) ? (st.getBoundingClientRect().width / st.offsetWidth) || 1 : 1;
-  grid.querySelectorAll('.hm-card[data-ticker]').forEach(c=>{
-    const a = antes.cards[c.dataset.ticker];
-    if(!a){ IBBAMotion.animate(c,[{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'none'}],{duration:420,fill:'backwards'}); return; }
-    const b = c.getBoundingClientRect(), dx = (a.r.left-b.left)/k, dy = (a.r.top-b.top)/k;
-    // fill:'none' — o padrão do IBBAMotion ('both') deixaria a animação PRESA ao cartão, segurando
-    // transform:none para sempre, e o hover (.hm-card:hover sobe 1px) pararia de funcionar
-    if(Math.abs(dx) >= 1 || Math.abs(dy) >= 1)
-      IBBAMotion.animate(c,[{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:600,fill:'none'});
-    if(mesmo && window.IBBANumber){
-      const ch = c.querySelector('.hm-change'), pct = ch && ch.textContent;
-      if(ch && a.pct && pct !== a.pct){ const v = parseFloat(pct), w = parseFloat(a.pct);
-        if(isFinite(v) && isFinite(w)) IBBANumber.roll(ch, a.pct, pct, v >= w); }
-    }
-  });
-}
+// ⚠️ Os cartões do heatmap trocam de lugar SEM animação, de propósito. Na onda 3 (19/10) eles chegaram a
+// deslizar do lugar antigo para o novo (FLIP) e a variação rolava casa a casa; o usuário achou feio e pediu
+// para voltar como era. Não reintroduzir. (O bloco que desliza nos botões D/WoW/MoM… ficou: é a seleção.)
 function _renderHeatmap(){
   const grid = document.getElementById('heatmap-grid');
   _updateFilterCount();
@@ -2473,7 +2443,6 @@ function _renderHeatmap(){
                        .map(q => ({ q, ..._seriesFor(q, _range) }))
                        .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
   if(!cards.length){ grid.innerHTML = '<div class="kv-loading">No companies selected — click “Selected ▾”.</div>'; return; }
-  const antes = _hmSnap(grid);
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
@@ -2487,7 +2456,6 @@ function _renderHeatmap(){
       <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
     </a>`;
   }).join('');
-  _hmFlip(grid, antes);
 }
 
 // Botões de período do heatmap
