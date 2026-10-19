@@ -402,6 +402,17 @@ body.theme-light .pf-when input[type=date]{color-scheme:light}
 .mtabs button:disabled{opacity:.45;cursor:default}
 .mtabs.mt-off{display:none}
 .mtabs{overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}
+/* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ─────────────────────────────────
+   O traço laranja das abas internas e o bloco dos seletores (período, modo do gráfico, lista)
+   CORREM até a opção escolhida em vez de piscar (IBBASlide, no topnav.js). Aqui só a cara do
+   bloco — a mesma de antes — e o apagar do fundo próprio do item ativo enquanto ele existe. */
+.mtabs>.ibba-slide::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--orange)}
+.mtabs.ibba-slide-on button{position:relative;z-index:1}
+.mtabs.ibba-slide-on button.on{border-bottom-color:transparent}
+.seg>.ibba-slide{background:var(--panel-3);border-radius:5px}
+.seg.rng>.ibba-slide,.seg.mode>.ibba-slide{background:var(--orange)}
+.seg.ibba-slide-on button{position:relative;z-index:1}
+.seg.ibba-slide-on button.active{background:transparent}
 @media(max-width:700px){.mtabs button{padding:8px 9px 9px;font-size:11px}}
 /* nas abas do Market Watch a grade da Performance sai INTEIRA — cabeçalho do ativo incluso (pedido do
    analista): quem identifica a empresa ali são os chips do próprio Market Watch */
@@ -1241,10 +1252,27 @@ function _mwPost(msg){ const f=_mwFrame(); if(!f||!f.contentWindow) return; try{
 // URL: ?t=<âncora>&tab=<aba> — deep link p/ qualquer aba (a home manda ?t= p/ o Performance)
 function _urlSync(){ try{ const q=new URLSearchParams(); if(_anchor) q.set('t',_anchor); if(_mtab!=='performance') q.set('tab',_mtab);
   const qs=q.toString(); history.replaceState(null,'',qs?'?'+qs:location.pathname); }catch(e){} }
-function setMTab(tab){
+/* TROCA DE ABA COM DIREÇÃO (onda 3, 2026-10-19): no clique (ou no menu "Market ▾") o traço laranja
+   corre NA HORA e o conteúdo novo entra pelo lado da aba escolhida (0,6 s, curva expo) — na
+   Performance os cartões chegam em cascata de 30 ms. Só no clique ({anim:1}); o link direto
+   (?tab=) e quem pede "reduzir movimento" seguem instantâneos. */
+const MTAB_ORDER=['performance',...INNER_TABS];
+let _ctEnter=false;   // a próxima tabela de Commodities entra com as linhas em cascata
+function _mtabIn(tab,dir){
+  if(!window.IBBAMotion||IBBAMotion.reduced()) return;
+  const els=tab==='performance'?[...document.querySelectorAll('.mkt-grid > .card')].filter(c=>c.offsetParent!==null)
+          :[document.getElementById(tab==='commodities'?'ct-host':'mw-host')];
+  document.documentElement.classList.add('ibba-swap');
+  let last=null;
+  els.forEach((el,i)=>{ if(el) last=IBBAMotion.animate(el,[{opacity:0,transform:`translateX(${dir*28}px)`},{opacity:1,transform:'none'}],
+    {duration:600,delay:Math.min(i,8)*30,fill:'backwards'}); });
+  Promise.resolve(last&&last.finished).catch(()=>{}).then(()=>document.documentElement.classList.remove('ibba-swap'));
+}
+function setMTab(tab,o){
   if(!INNER_TABS.includes(tab)) tab='performance';
   if(tab!=='performance' && !_mwEnabled()) tab='performance';
   const was=_mtab; _mtab=tab;
+  const anim=!!(o&&o.anim)&&tab!==was, dir=MTAB_ORDER.indexOf(tab)>MTAB_ORDER.indexOf(was)?1:-1;
   document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const grid=document.querySelector('.mkt-grid');
   if(grid){ grid.classList.toggle('mw-on',tab!=='performance');      // esconde a grade da Performance
@@ -1252,12 +1280,13 @@ function setMTab(tab){
   const f=_mwFrame(); if(f) f.hidden = !MW_TABS.includes(tab);
   _urlSync();
   if(window.__gnavMarkCurrent) window.__gnavMarkCurrent();   // Market ▾ do menu do topo acende a aba aberta (o replaceState não avisa ninguém)
-  if(tab==='performance'){ if(was!=='performance') renderAll(); return; }   // os cards estavam display:none → redesenha com a largura real
+  if(tab==='performance'){ if(was!=='performance'){ renderAll(); if(anim) _mtabIn(tab,dir); } return; }   // os cards estavam display:none → redesenha com a largura real
   _noteInteract();                                    // o tour vive na Performance
-  if(tab==='commodities'){ renderCommTable(); return; }
+  if(tab==='commodities'){ _ctEnter=anim; renderCommTable(); if(anim) _mtabIn(tab,dir); return; }
   // vindo da Performance a aba abre em ALL (pedido do analista); entre abas do MW, mantém a empresa escolhida lá dentro
   _mwEnsureFrame(was==='performance'?'all':null, tab);
   renderMWTabs();
+  if(anim) _mtabIn(tab,dir);
 }
 
 /* ══ ABA COMMODITIES — as do carrossel numa tabela só ═══════════════════════════════════════
@@ -1363,6 +1392,12 @@ async function renderCommTable(){
      + `<td class="l">${_ctRange(r.pos)}</td><td class="l">${_ctSpark(r.shape)}</td></tr>`;
   }
   tbl.innerHTML=h+'</tbody>';
+  // abrindo a aba pelo clique: as linhas chegam em cascata (22 ms cada, no máximo 30) — ordenar e
+  // filtrar depois redesenham sem cascata, senão a tabela "dançaria" a cada clique
+  if(_ctEnter){ _ctEnter=false;
+    if(window.IBBAMotion&&!IBBAMotion.reduced()) [...tbl.querySelectorAll('tbody tr')].forEach((tr,i)=>
+      IBBAMotion.animate(tr,[{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],
+        {duration:520,delay:120+Math.min(i,30)*22,fill:'backwards'})); }
   tbl.querySelectorAll('th[data-k]').forEach(th=>{ const k=th.dataset.k; if(!k) return;
     th.onclick=()=>{ if(_ctSort.col===k) _ctSort.dir*=-1; else _ctSort={col:k,dir:k==='name'?1:-1}; renderCommTable(); }; });
   const semForma=_ctRows.filter(r=>r.pos==null).length;
@@ -1418,13 +1453,24 @@ function renderHeaderFacts(){
   facts.push(`<span class="ah-fact${active.length?' hot':''}" data-t="buybacks"><span class="k">Buyback</span><b>${active.length?'active':'none'}</b></span>`);
   if(n) facts.push(`<span class="ah-fact" data-t="insiders"><span class="k">Insiders 12m</span><b style="color:${net>0?'var(--up)':net<0?'var(--down)':'var(--text)'}">${net>0?'+':''}${_mwCompact(net)}</b><span class="k">net</span></span>`);
   host.innerHTML=facts.join('');
-  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>setMTab(el.dataset.t));
+  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>setMTab(el.dataset.t,{anim:1}));
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
+// PREÇO QUE ROLA (onda 3, 2026-10-19): quando a cotação do MESMO ativo muda na atualização de cada
+// minuto, só as casas que mudaram entram rolando (IBBANumber.roll, topnav.js) — de baixo quando sobe,
+// de cima quando cai. Trocar de ativo não rola (é outro número, não uma mudança).
+let _ahLast={t:null,px:null,v:null};
+function _ahRoll(q){
+  const el=document.querySelector('#ah .ah-px .px'); if(!el) return;
+  const txt=el.textContent, v=q.price;
+  if(window.IBBANumber&&_ahLast.t===q.ticker&&_ahLast.px!=null&&_ahLast.px!==txt&&v!=null&&_ahLast.v!=null)
+    IBBANumber.roll(el,_ahLast.px,txt,v>=_ahLast.v);
+  _ahLast={t:q.ticker,px:txt,v};
+}
 function renderHeader(){
   const q=_qa(), box=document.getElementById('ah'); if(!box)return;
-  if(!q){ box.innerHTML='<div class="ah-empty">No asset selected — pick one from the watchlist or search above.</div>'; return; }
+  if(!q){ _ahLast={t:null,px:null,v:null}; box.innerHTML='<div class="ah-empty">No asset selected — pick one from the watchlist or search above.</div>'; return; }
   const intr=(q.intraday&&q.intraday.pts)||[];
   const rets=['1W','1M','YTD','1Y'];
   box.innerHTML=`
@@ -1449,6 +1495,7 @@ function renderHeader(){
     <div class="ah-story">${_dayStory(q)}</div>
     <div class="ah-facts" id="ah-facts"></div>`;
   renderHeaderFacts();
+  _ahRoll(q);
 }
 function _dayStory(q){
   const sec=TICKER_SECTOR[q.ticker];
@@ -2192,7 +2239,7 @@ async function init(){
   document.getElementById('other-modal').onclick=e=>{ if(e.target.id==='other-modal') closeOther(); };
   document.getElementById('other-q').oninput=e=>renderPicker(e.target.value);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeOther(); });
-  document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab); };
+  document.getElementById('mtabs').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled) setMTab(b.dataset.tab,{anim:1}); };
   // menu do topo (Market ▾ no desktop, folha do ☰ no celular): já estando no Market, a aba troca AQUI, sem
   // recarregar a página — cotações, gráficos e o iframe do Market Watch continuam carregados
   document.addEventListener('click',e=>{
@@ -2201,7 +2248,7 @@ async function init(){
     let u; try{ u=new URL(a.href,location.href); }catch(_){ return; }
     const tab=u.searchParams.get('tab');
     if(tab==null||u.origin!==location.origin||u.pathname!==location.pathname) return;
-    e.preventDefault(); setMTab(tab);
+    e.preventDefault(); setMTab(tab,{anim:1});
     if(window.scrollY>0) window.scrollTo(0,0);
   });
   window.addEventListener('message',_mwOnMessage);
@@ -2212,6 +2259,12 @@ async function init(){
     window.addEventListener('resize',window._mwRemede); }   // os dois: nem todo ambiente entrega os 2 sinais
   { const t=_qparam('tab'); if(t&&t!=='performance') setMTab(t); }   // deep link p/ uma aba do Market Watch
   document.getElementById('wl-mode').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; _wlMode=b.dataset.m; document.querySelectorAll('#wl-mode button').forEach(x=>x.classList.toggle('active',x===b)); renderWatchlist(); };
+  // SELEÇÃO QUE DESLIZA (onda 3): traço das abas internas + bloco do período, do modo do gráfico e da
+  // lista — o IBBASlide (topnav.js) observa a classe do item ativo, então nenhum handler mudou
+  try{ if(window.IBBASlide){
+    IBBASlide.watch(document.getElementById('mtabs'),'button',{active:'on'});
+    ['chart-range','chart-mode','wl-mode'].forEach(id=>IBBASlide.watch(document.getElementById(id),'button'));
+  } }catch(e){ console.warn('IBBASlide:',e); }
   document.getElementById('wl-manage').onclick=()=>openPicker('custom');
   _initSearch();
   loadMacro().then(renderHeader);
