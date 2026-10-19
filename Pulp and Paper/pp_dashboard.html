@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>Pulp &amp; Paper Research Dashboard</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<!-- esqueleto nas molduras dos gráficos desde o 1º desenho; o loadDB() tira a classe ao terminar -->
+<script>document.documentElement.classList.add('ibba-loading')</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -222,6 +224,13 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #loading p{font-size:12px;color:var(--gray-mid);font-weight:500;letter-spacing:.03em;}
+/* Computador (2026-10-19): sem a tela branca por cima de tudo — molduras dos gráficos com esqueleto
+   (html.ibba-loading, CSS no topnav.js) e linha laranja no topo se a espera passar de 150 ms. O
+   #loading segue no DOM (o tutorial espera ele sumir), invisível; erro → volta a cobrir (.failed). */
+@media (min-width:769px){
+  #loading{position:fixed;inset:0 auto auto 0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+  #loading.failed{inset:0;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal;}
+}
 
 /* ── CUSTOM DATE RANGE ───────────────────────────────────────────────────── */
 .custom-range{display:flex;align-items:center;gap:5px;margin-left:6px;padding:3px 8px;
@@ -390,6 +399,11 @@ html.dark .cr-input{color-scheme:dark}
 <body>
 
 <div id="loading"><div class="spinner"></div><p>Loading Pulp &amp; Paper data…</p></div>
+
+<!-- Faixa do setor (2026-10-19): a foto do cartão da home "abre" o topo da página na troca de
+     página (CSS e transição no topnav.js). Só computador. -->
+<div class="ibba-band"><div class="ibba-band-photo" style="background-image:url('/assets/sector-pp.jpg')"></div>
+  <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1">Pulp &amp; Paper</div></div></div>
 
 <!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
 <div class="sticky-header">
@@ -1030,8 +1044,18 @@ function _asOfBadge(parts){
 }
 
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
+/* Fim da espera sem a tela branca (2026-10-19): tira o esqueleto e completa a linha laranja do topo
+   (topnav.js → IBBAProgress). O banco é pequeno (~420 KB): quem demora é o motor sql.js, então a
+   linha é a "indeterminada" — e só aparece se passar de 150 ms. */
+function _loadingDone(failed){
+  document.documentElement.classList.remove('ibba-loading');
+  try{ if(window.IBBAProgress) IBBAProgress.done(); }catch(e){}
+  const a=document.getElementById('snav-asof');
+  if(failed&&a) a.textContent='';
+}
 async function loadDB(){
   const el=document.getElementById('loading');
+  try{ if(window.IBBAProgress) IBBAProgress.start(); }catch(e){}
   try{
     const db=await openDB();
 
@@ -1060,6 +1084,7 @@ async function loadDB(){
     db.close();
 
     el.style.display='none';
+    _loadingDone(false);   // sai o esqueleto, a linha laranja (se apareceu) completa e some
 
     renderProdButtons();
     const urlSec=new URLSearchParams(window.location.search).get('s');
@@ -1071,6 +1096,7 @@ async function loadDB(){
       render();
     }
   }catch(e){
+    el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
     el.innerHTML=`<div style="text-align:center;padding:40px">
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load pulp_paper.db</div>
       <div style="font-size:12px;color:#888;">${e.message}</div></div>`;

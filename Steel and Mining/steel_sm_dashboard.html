@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>Steel Research Dashboard</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<!-- esqueleto nas molduras dos gráficos desde o 1º desenho; o loadDB() tira a classe ao terminar -->
+<script>document.documentElement.classList.add('ibba-loading')</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -442,6 +444,15 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #loading p{font-size:12px;color:var(--gray-mid);font-weight:500;letter-spacing:.03em;}
+/* Computador (2026-10-19): a tela branca que cobria tudo saiu. Enquanto o banco desce, a página já
+   aparece com as molduras dos gráficos e um esqueleto dentro delas (html.ibba-loading, CSS no
+   topnav.js); o progresso REAL vai na linha laranja do topo e no "Loading data… N%" da barra das
+   seções. O #loading continua existindo (o tutorial espera ele sumir) — só fica invisível. Se der
+   erro, ele volta a cobrir a tela com a mensagem (.failed). No celular segue como antes. */
+@media (min-width:769px){
+  #loading{position:fixed;inset:0 auto auto 0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+  #loading.failed{inset:0;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal;}
+}
 
 /* ── CUSTOM DATE RANGE (filter bar) ──────────────────────────────────────── */
 .custom-range{
@@ -535,6 +546,11 @@ html.dark .cr-input{color-scheme:dark}
 <body>
 
 <div id="loading"><div class="spinner"></div><p>Loading data…</p></div>
+
+<!-- Faixa do setor (2026-10-19): a foto do cartão da home "abre" o topo da página na troca de
+     página (CSS e transição no topnav.js). Só computador. -->
+<div class="ibba-band"><div class="ibba-band-photo" style="background-image:url('/assets/sector-steel.jpg')"></div>
+  <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1">Metals &amp; Mining</div></div></div>
 
 <!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
 <div class="sticky-header">
@@ -950,6 +966,7 @@ html.dark .cr-input{color-scheme:dark}
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 // Verifica sessão e mantém o cookie atualizado para o Edge Middleware
 ;(async()=>{
+  _presetSection()   // seção da #âncora já na espera (o esqueleto é o da seção certa)
   const{data:{session}}=await sbAuth.auth.getSession()
   if(!session){window.location.replace('/login.html');return}
   _setAuthCookie(session)
@@ -1292,6 +1309,32 @@ const LEG={get plugins(){return{legend:{display:true,position:'top',
 const YINT={scales:{y:{ticks:{callback:fmtY}}}};
 const STACKED={scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:fmtY}}}};
 
+/* Progresso do download sem a tela branca (2026-10-19): a linha laranja do topo (topnav.js →
+   IBBAProgress) e o texto no lugar do "Data through…" da barra das seções, que o _asOfBadge
+   sobrescreve quando o banco abre. */
+function _loadingProgress(msg,pct){
+  try{ if(window.IBBAProgress) IBBAProgress.set(pct/100*.95); }catch(e){}
+  const a=document.getElementById('snav-asof');
+  if(a&&document.documentElement.classList.contains('ibba-loading')) a.textContent=`${msg} ${pct}%`;
+}
+function _loadingDone(failed){
+  document.documentElement.classList.remove('ibba-loading');
+  try{ if(window.IBBAProgress) IBBAProgress.done(); }catch(e){}
+  const a=document.getElementById('snav-asof');
+  if(failed&&a) a.textContent='';
+}
+/* Abre já na seção pedida pela #âncora (vinda do menu ou da home), para o esqueleto da espera ser o
+   da seção certa — só as classes; o desenho de verdade continua no setSub() depois do banco. */
+function _presetSection(){
+  try{
+    if(window.innerWidth<=768) return;
+    const s=(location.hash||'').replace('#','');
+    if(!['exports','imports','domestic'].includes(s)) return;
+    document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+    document.querySelectorAll('.section').forEach(d=>d.classList.toggle('active',d.id==='sec-'+s));
+  }catch(e){}
+}
+
 /* Lê o corpo da resposta em streaming mostrando o progresso. O .db tem dezenas de MB —
    sem isso a tela de "Loading data…" fica parada e parece travada. Se o servidor não
    mandar content-length (ou não houver stream), cai no arrayBuffer normal. */
@@ -1304,7 +1347,7 @@ async function readWithProgress(resp, msg){
     const {done,value}=await reader.read(); if(done) break;
     chunks.push(value); got+=value.length;
     const pct=Math.floor(got/total*100);
-    if(pct!==last){ last=pct; label.textContent=`${msg} ${pct}%`; }
+    if(pct!==last){ last=pct; label.textContent=`${msg} ${pct}%`; _loadingProgress(msg,pct); }
   }
   const out=new Uint8Array(got); let off=0;
   for(const c of chunks){ out.set(c,off); off+=c.length; }
@@ -1409,6 +1452,7 @@ async function loadDB(){
     db.close();
 
     el.style.display='none';
+    _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
     // Seção inicial: ?s= (legado) OU hash (#prices vindo da home) OU 'prices'.
     const _valid=['exports','imports','domestic','prices'];
     const urlSec=new URLSearchParams(window.location.search).get('s');
@@ -1420,6 +1464,7 @@ async function loadDB(){
       setSub(initSub);   // ativa a seção certa + renderiza (corrige gráficos em branco no load)
     }
   }catch(e){
+    el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
     el.innerHTML=`<div style="text-align:center;padding:40px">
       <div style="font-size:14px;color:#c00;margin-bottom:8px;">⚠ Failed to load steel_sm.db</div>
       <div style="font-size:12px;color:#888;">${e.message}</div></div>`;
