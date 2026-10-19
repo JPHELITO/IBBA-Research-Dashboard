@@ -525,6 +525,22 @@ table.ct .na{color:var(--mute);opacity:.6}
   .thesis{gap:12px}
   .th-tiles{gap:7px}
 }
+
+/* ══ D2 · ONDA 4 (2026-10-19) — LARANJA CHEIO SÓ NA AÇÃO PRINCIPAL ═══════════════════════════════════
+   O laranja fica no traço das abas (#mtabs) e nos destaques. O que está SELECIONADO — período e modo do
+   gráfico, a lista (All/Coverage/Peers), os chips da tabela de Commodities e as empresas do "Other" — vira
+   GRAFITE #343C49 no tema escuro (o grafite azulado da paleta do Market) e PRETO no claro: todos os
+   seletores com a mesma cara. No escuro o All/Coverage/Peers já era neutro, só que quase invisível
+   (#222B36 sobre #1C232D). Reverter = apagar este bloco.
+   ⚠️ O fundo do botão ativo só vale SEM o bloco que desliza (:not(.ibba-slide-on)) — com ele, quem pinta é o
+   bloco, e um fundo próprio no destino apareceria antes de o bloco chegar. */
+.seg button.active,.seg.rng button.active,.seg.mode button.active{color:#fff}
+.seg:not(.ibba-slide-on) button.active{background:#343C49}
+.seg>.ibba-slide,.seg.rng>.ibba-slide,.seg.mode>.ibba-slide{background:#343C49}
+.ct-chip.on,.mdl-tile.on{background:#343C49;border-color:#343C49;color:#fff}
+body.theme-light .seg:not(.ibba-slide-on) button.active{background:#111}
+body.theme-light .seg>.ibba-slide,body.theme-light .seg.rng>.ibba-slide,body.theme-light .seg.mode>.ibba-slide{background:#111}
+body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;border-color:#111;color:#fff}
 </style>
 </head>
 <body class="market-dark">
