@@ -555,6 +555,18 @@ html.dark .filter-label{color:rgba(255,255,255,.42)}
 html.dark .fbtn{color:rgba(255,255,255,.6)}
 html.dark .fbtn:hover:not(.active){border-color:rgba(255,255,255,.28)}
 html.dark .cr-input{color-scheme:dark}
+
+/* ══ D2 · ONDA 4 (2026-10-19) — LARANJA CHEIO SÓ NA AÇÃO PRINCIPAL ═══════════════════════════════════
+   A aba da SEÇÃO continua laranja (Prices · Domestic · Imports · Exports). O filtro e a pílula escolhidos
+   viram PRETO — no escuro, GRAFITE #343941, o mesmo dos chips do feed da home —, e as abas internas do
+   escuro também saem do laranja. O laranja volta a marcar só o que importa, e o texto branco sai dos 3,3:1
+   sobre o laranja (letra de 10px) para 19:1 no preto e 11:1 no grafite. Reverter = apagar este bloco.
+   (Os .ibba-slide-on de onda 3 seguem deixando o ativo transparente enquanto o bloco desliza: são mais
+   específicos que estas regras.) */
+.fbtn.active,.pill-btn.active{background:var(--black);border-color:var(--black);color:#fff;}
+.filter-btns>.ibba-slide,.pred-btns>.ibba-slide{background:var(--black);}
+html.dark .fbtn.active,html.dark .pill-btn.active,html.dark .itab.active{background:#343941;border-color:#343941;color:#fff;}
+html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .inner-tab-bar>.ibba-slide{background:#343941;}
 </style>
 </head>
 <body>

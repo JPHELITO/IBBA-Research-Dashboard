@@ -1207,6 +1207,18 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
    redesenhado). Só o véu das fotos foi aprofundado, senão três retratos claros
    flutuavam sozinhos sobre o canvas quase preto. Reverter = apagar esta regra. */
 /* véu do card é o mesmo nos dois temas (o card é escuro em ambos) — regra única acima */
+
+/* ══ D2 · ONDA 4 (2026-10-19) — LARANJA CHEIO SÓ NA AÇÃO PRINCIPAL ═══════════════════════════════════
+   No claro os seletores da home já eram PRETOS. No escuro eles viravam laranja (setor do Market Pulse,
+   período do heatmap, chips do filtro do heatmap, período do gráfico da empresa) — agora viram GRAFITE
+   #343941, o mesmo que os chips do feed já usavam, com texto branco (11:1). O chip "recomendado" do gráfico
+   da empresa, quando escolhido, também sai do laranja. Os destaques (aviso "↑ new", foto dos setores) não
+   mudam. Reverter = apagar este bloco. */
+html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:#343941;}
+html.dark .pulse-chip.active,html.dark .hm-range button.active,
+html.dark .hm-pop-chip.on,html.dark .modal-ranges button.active{background:#343941;border-color:#343941;color:#fff;}
+.mc-reco-chip.on{background:var(--black);border-color:var(--black);color:#fff;}
+html.dark .mc-reco-chip.on{background:#343941;border-color:#343941;color:#fff;}
 </style>
 </head>
 <body>

@@ -408,6 +408,15 @@ html.dark .filter-label{color:rgba(255,255,255,.42)}
 html.dark .fbtn{color:rgba(255,255,255,.6)}
 html.dark .fbtn:hover:not(.active){border-color:rgba(255,255,255,.28)}
 html.dark .cr-input{color-scheme:dark}
+
+/* ══ D2 · ONDA 4 (2026-10-19) — LARANJA CHEIO SÓ NA AÇÃO PRINCIPAL (igual ao M&M) ════════════════════
+   A aba da SEÇÃO continua laranja (Pulp · Paper & Packaging). Filtro e pílula escolhidos viram PRETO — no
+   escuro, GRAFITE #343941 —, e as abas internas do escuro também saem do laranja. Branco sobre o laranja
+   dava 3,3:1 na letra de 10px; no preto dá 19:1 e no grafite 11:1. Reverter = apagar este bloco. */
+.fbtn.active,.pill-btn.active{background:var(--black);border-color:var(--black);color:#fff;}
+.filter-btns>.ibba-slide,.pred-btns>.ibba-slide{background:var(--black);}
+html.dark .fbtn.active,html.dark .pill-btn.active,html.dark .itab.active{background:#343941;border-color:#343941;color:#fff;}
+html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .inner-tab-bar>.ibba-slide{background:#343941;}
 </style>
 </head>
 <body>
