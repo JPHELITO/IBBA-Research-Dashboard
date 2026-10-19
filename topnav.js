@@ -49,6 +49,11 @@
    página nova demorar mais de 150 ms (página rápida não pisca nada); no M&M/P&P mostra o download real. */\
 .ibba-prog{position:fixed;left:0;right:0;top:0;height:2px;background:#FF5000;transform-origin:left center;\
   transform:scaleX(0);opacity:0;pointer-events:none;z-index:2400;}\
+/* bloco da SELEÇÃO QUE DESLIZA (IBBASlide): só posição; cor e canto vêm do CSS de cada página */\
+.ibba-slide{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:0;display:none;}\
+.ibba-slide-on>.ibba-slide{display:block;}\
+/* troca de seção com a página deslizando de lado: sem barra de rolagem horizontal piscando */\
+html.ibba-swap body{overflow-x:clip;}\
 /* FAIXA DO SETOR (M&M e P&P): a mesma foto em duotone do cartão da home. Na transição entre páginas\
    o cartão cresce até virar esta faixa (nomes ibba-sector / ibba-sector-title). Só computador. */\
 .ibba-band{position:relative;height:64px;overflow:hidden;background:#0C0F14;color:#fff;}\
@@ -664,6 +669,43 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
                { duration: 420, easing: MOTION.e.decidida, fill: 'forwards' });
   }
   window.IBBAProgress = { start: _progStart, set: _progSet, done: _progDone };
+
+  // ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ──────────────────────────────
+  // IBBASlide.watch(caixa, 'seletor dos itens', {active:'active'}): UM bloco (.ibba-slide) atrás dos
+  // itens, no lugar e no tamanho do item ativo. Quando a classe ativa muda de item — seja qual for o
+  // código da página que a mudou —, o bloco corre do antigo ao novo (420 ms, expo) em vez de piscar.
+  // A cara do bloco (cor, canto) e o "apagar o fundo próprio do item ativo" ficam no CSS da página,
+  // pela classe .ibba-slide-on que a caixa ganha. Item escondido/sem tamanho → o bloco some.
+  window.IBBASlide = {
+    watch: function(box, itemSel, o){
+      if(!box) return null;
+      o = o || {};
+      var on = o.active || 'active';
+      var ind = document.createElement('span');
+      ind.className = 'ibba-slide'; ind.setAttribute('aria-hidden', 'true');
+      box.insertBefore(ind, box.firstChild);
+      if(getComputedStyle(box).position === 'static') box.style.position = 'relative';
+      var cur = null;
+      function box4(el){ return { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px' }; }
+      function place(animate){
+        var a = box.querySelector(itemSel + '.' + on);
+        if(!a || !a.offsetWidth){ box.classList.remove('ibba-slide-on'); cur = null; return; }
+        var to = box4(a);
+        var from = (cur && box.classList.contains('ibba-slide-on')) ? { left: ind.style.left, top: ind.style.top, width: ind.style.width, height: ind.style.height } : null;
+        ind.style.left = to.left; ind.style.top = to.top; ind.style.width = to.width; ind.style.height = to.height;
+        box.classList.add('ibba-slide-on');
+        if(animate && from && cur !== a) window.IBBAMotion.animate(ind, [from, to], { duration: 420, easing: MOTION.e.expo, fill: 'none' });
+        cur = a;
+      }
+      var mo = new MutationObserver(function(){ place(true); });
+      [].slice.call(box.querySelectorAll(itemSel)).forEach(function(b){ mo.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+      try{ new ResizeObserver(function(){ place(false); }).observe(box); }catch(e){}
+      window.addEventListener('resize', function(){ place(false); });
+      if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ place(false); });
+      place(false);
+      return { place: place };
+    }
+  };
 
   // ── BOTÃO QUE AFUNDA ──────────────────────────────────────────────────────
   // Todo botão, aba e pílula encolhe 3% enquanto está apertado (cartão grande, 1,5%) em 140 ms e volta

@@ -220,6 +220,20 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
   white-space:nowrap;letter-spacing:.02em;}
 .itab.active{background:var(--black);color:#fff;border-color:var(--black);}
 .itab:hover:not(.active){color:var(--gray-dark);background:rgba(0,0,0,.04);}
+
+/* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ───────────────────────────────
+   O bloco da opção escolhida CORRE entre as opções em vez de piscar (IBBASlide, no topnav.js) —
+   nas seções, nos filtros e nas abas internas. Aqui só a cara do bloco (a mesma de antes) e o
+   apagar do fundo próprio do item ativo enquanto o bloco existe. */
+.secondary-nav>.ibba-slide{background:var(--orange);}
+.secondary-nav.ibba-slide-on .snav-btn.active::before{display:none;}
+.filter-btns>.ibba-slide,.pred-btns>.ibba-slide{background:var(--orange);border-radius:20px;}
+.filter-btns.ibba-slide-on>.fbtn,.pred-btns.ibba-slide-on>.fbtn{position:relative;z-index:1;}
+.filter-btns.ibba-slide-on>.fbtn.active,.pred-btns.ibba-slide-on>.fbtn.active{background:transparent;border-color:transparent;}
+.inner-tab-bar>.ibba-slide{background:var(--black);border-radius:5px 5px 0 0;}
+html.dark .inner-tab-bar>.ibba-slide{background:var(--orange);}
+.inner-tab-bar.ibba-slide-on>.itab{position:relative;z-index:1;}
+.inner-tab-bar.ibba-slide-on>.itab.active{background:transparent;border-color:transparent;}
 .inner-tab-content{display:none;}
 .inner-tab-content.active{display:block;}
 
@@ -587,10 +601,10 @@ html.dark .cr-input{color-scheme:dark}
 
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
-  <button class="snav-btn active" data-sub="prices"   onclick="setSub('prices')">Prices</button>
-  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic')">Domestic Market</button>
-  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports')">Imports</button>
-  <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports')">Exports</button>
+  <button class="snav-btn active" data-sub="prices"   onclick="setSub('prices',{anim:1})">Prices</button>
+  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic',{anim:1})">Domestic Market</button>
+  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports',{anim:1})">Imports</button>
+  <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports',{anim:1})">Exports</button>
   <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
@@ -739,8 +753,8 @@ html.dark .cr-input{color-scheme:dark}
 <div id="sec-imports" class="section">
   <!-- Inner tab bar -->
   <div class="inner-tab-bar">
-    <button class="itab active" data-itab="secex"      onclick="setImportTab('secex')">📊 SECEX Analysis</button>
-    <button class="itab"        data-itab="prediction" onclick="setImportTab('prediction')">📈 Predictive Model</button>
+    <button class="itab active" data-itab="secex"      onclick="setImportTab('secex',{anim:1})">📊 SECEX Analysis</button>
+    <button class="itab"        data-itab="prediction" onclick="setImportTab('prediction',{anim:1})">📈 Predictive Model</button>
   </div>
 
   <!-- ── SECEX TAB ── -->
@@ -963,6 +977,26 @@ html.dark .cr-input{color-scheme:dark}
 </div>
 
 <script>
+// ─── SELEÇÃO QUE DESLIZA + #ÂNCORA (onda 3, 2026-10-19) ─────────────────────
+// O bloco da opção escolhida corre entre as opções (seções, filtros, abas internas) — IBBASlide no
+// topnav.js observa a classe .active, então nenhuma função de filtro precisou mudar.
+let _dbReady=false;
+try{
+  if(window.IBBASlide){
+    IBBASlide.watch(document.getElementById('steel-subnav'),'.snav-btn');
+    document.querySelectorAll('.filter-btns,.pred-btns').forEach(g=>IBBASlide.watch(g,'.fbtn'));
+    document.querySelectorAll('.inner-tab-bar').forEach(g=>IBBASlide.watch(g,'.itab'));
+  }
+}catch(e){ console.warn('IBBASlide:',e); }
+// "M&M ▾ → Imports" estando JÁ no M&M só troca a #âncora (não recarrega): antes nada acontecia; agora
+// a seção troca, com a mesma direção do clique na aba. No celular abre a seção pela lista.
+window.addEventListener('hashchange',()=>{
+  const s=(location.hash||'').slice(1);
+  if(!_dbReady||!SUB_ORDER.includes(s)||s===currentSub) return;
+  if(window.innerWidth<=768){ mobSelect(s); return; }
+  setSub(s,{anim:1});
+});
+
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 // Verifica sessão e mantém o cookie atualizado para o Edge Middleware
 ;(async()=>{
@@ -1453,6 +1487,7 @@ async function loadDB(){
 
     el.style.display='none';
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
+    _dbReady=true;         // a partir daqui a #âncora pode trocar de seção (hashchange)
     // Seção inicial: ?s= (legado) OU hash (#prices vindo da home) OU 'prices'.
     const _valid=['exports','imports','domestic','prices'];
     const urlSec=new URLSearchParams(window.location.search).get('s');
@@ -2390,7 +2425,34 @@ function updateGlobalFilters(){
   document.querySelector('.filter-bar').style.display=onPred?'none':'';
 }
 
-function setSub(s){
+/* TROCA DE SEÇÃO COM DIREÇÃO (onda 3, 2026-10-19): no clique de uma aba (Prices · Domestic Market ·
+   Imports · Exports) o bloco laranja corre NA HORA até a aba; a seção atual sai para o lado oposto
+   (0,2 s) e a nova entra pelo lado do clique (0,6 s, curva expo) — o olho entende a direção. Só
+   computador e só com {anim:1} (o clique); chamadas do código (carga, celular, tutorial) seguem
+   instantâneas. Com "reduzir movimento" ligado, também instantâneo. */
+const SUB_ORDER=['prices','domestic','imports','exports'];
+let _subTok=0;
+function setSub(s,o){
+  const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
+  if(!anim) return _setSubNow(s);
+  const dir=SUB_ORDER.indexOf(s)>SUB_ORDER.indexOf(currentSub)?1:-1, tok=++_subTok;
+  document.querySelectorAll('.section').forEach(d=>d.getAnimations().forEach(a=>a.cancel()));
+  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+  document.documentElement.classList.add('ibba-swap');
+  const old=document.querySelector('.section.active');
+  const out=old?IBBAMotion.animate(old,[{opacity:1,transform:'none'},{opacity:0,transform:`translateX(${-32*dir}px)`}],
+    {duration:200,easing:IBBAMotion.e.sai,fill:'forwards'}):null;
+  Promise.resolve(out&&out.finished).catch(()=>{}).then(()=>{
+    if(tok!==_subTok) return;
+    if(out) out.cancel();
+    _setSubNow(s);
+    const sec=document.querySelector('.section.active');
+    const inn=sec?IBBAMotion.animate(sec,[{opacity:0,transform:`translateX(${40*dir}px)`},{opacity:1,transform:'none'}],
+      {duration:600,fill:'backwards'}):null;
+    Promise.resolve(inn&&inn.finished).catch(()=>{}).then(()=>{ if(tok===_subTok) document.documentElement.classList.remove('ibba-swap'); });
+  });
+}
+function _setSubNow(s){
   currentSub=s;
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
@@ -2411,8 +2473,17 @@ function setSub(s){
     semiBtn.style.display='';
   }
   render();
+  // o endereço acompanha a seção (#imports…) sem recarregar: link copiado abre na mesma seção, e o
+  // menu "M&M ▾" volta a funcionar estando já aqui (ele só troca a #âncora — ver o hashchange no boot)
+  try{
+    if(!document.body.classList.contains('mob-picker-active')&&(location.hash||'').slice(1)!==s){
+      history.replaceState(null,'','#'+s);
+      if(window.__gnavMarkCurrent) window.__gnavMarkCurrent();
+    }
+  }catch(e){}
 }
-function setImportTab(t){
+function setImportTab(t,o){
+  const anim=!!(o&&o.anim)&&t!==importTab&&window.IBBAMotion&&!IBBAMotion.reduced();
   importTab=t;
   document.querySelectorAll('[data-itab]').forEach(b=>b.classList.toggle('active',b.dataset.itab===t));
   document.getElementById('im-tab-secex').classList.toggle('active',t==='secex');
@@ -2422,6 +2493,13 @@ function setImportTab(t){
   // Global filter-bar visibility
   updateGlobalFilters();
   renderImports();
+  // aba interna: o conteúdo novo entra pelo lado da aba (SECEX à esquerda, Predictive à direita)
+  if(anim){
+    const c=document.getElementById(t==='secex'?'im-tab-secex':'im-tab-prediction');
+    document.documentElement.classList.add('ibba-swap');
+    const a=IBBAMotion.animate(c,[{opacity:0,transform:`translateX(${(t==='prediction'?1:-1)*28}px)`},{opacity:1,transform:'none'}],{duration:500,fill:'backwards'});
+    Promise.resolve(a&&a.finished).catch(()=>{}).then(()=>document.documentElement.classList.remove('ibba-swap'));
+  }
 }
 
 function setProd(p){
