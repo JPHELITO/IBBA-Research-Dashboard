@@ -632,6 +632,26 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;transition:all .12s;}
 .hm-range button:hover{color:var(--black);border-color:var(--gray-mid);}
 .hm-range button.active{background:var(--black);color:var(--white);border-color:var(--black);}
+/* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ─────────────────────────────────
+   Setor do Market Pulse, take e setor do feed, período do heatmap e do gráfico da empresa: o fundo do item
+   ativo CORRE até o escolhido em vez de piscar (IBBASlide, no topnav.js). As cores são as de sempre — no
+   take o bloco muda de cor junto (verde no +, vermelho no −). Enquanto o bloco existe, o item ativo perde o
+   fundo próprio, e os botões inativos de período perdem a chapa (senão o bloco sumiria embaixo deles no
+   caminho). Seletores por ID de propósito: as regras do tema escuro deste arquivo são fortes. */
+#pulse-controls>.ibba-slide{background:var(--black);border-radius:20px;}
+#news-filter>.ibba-slide,#news-sector-filter>.ibba-slide{background:var(--black);border-radius:14px;
+  transition:background-color .24s cubic-bezier(.2,0,0,1);}
+#news-filter:has(.news-filter-chip.pos.active)>.ibba-slide{background:#16a34a;}
+#news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:#c0392b;}
+#hm-range>.ibba-slide{background:var(--black);border-radius:5px;}
+#co-ranges>.ibba-slide{background:var(--black);border-radius:6px;}
+html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:var(--orange);}
+html.dark #news-filter>.ibba-slide,html.dark #news-sector-filter>.ibba-slide{background:#343941;}
+html.dark #news-filter:has(.news-filter-chip.pos.active)>.ibba-slide{background:var(--green);}
+html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:var(--red);}
+:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#co-ranges).ibba-slide-on>button{position:relative;z-index:1;}
+:is(#hm-range,#co-ranges).ibba-slide-on>button{background:transparent;}
+:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#co-ranges).ibba-slide-on>button.active{background:transparent;border-color:transparent;}
 /* filtro de empresas (▾) + presets do heatmap */
 .hm-filter{position:relative;}
 .hm-filter-btn{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 7px;
@@ -1676,6 +1696,20 @@ function _age(iso){
   return `${Math.floor(s/86400)}d`;
 }
 
+// FEED DA HOME (onda 3, 2026-10-19): trocar o filtro de take/setor faz as manchetes chegarem em cascata
+// (sobem 8px em 0,52 s, 22 ms de intervalo, teto 20); a manchete que acabou de chegar no refresh de 1 min
+// entra sozinha (desce 6px, 0,6 s) e o resto fica parado. Roda DEPOIS do _encaixar, que repinta o feed até
+// caber na altura — se rodasse antes, a repintura apagaria a animação.
+let _newsFx = false;     // o próximo desenho do feed veio de um clique de filtro
+function _newsIn(fx, chegaram){
+  if(!window.IBBAMotion||IBBAMotion.reduced()) return;
+  const feed=document.getElementById('news-feed'); if(!feed) return;
+  const itens=[...feed.querySelectorAll('.news-item')];
+  if(fx){ itens.slice(0,20).forEach((el,k)=>IBBAMotion.animate(el,
+    [{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:520,delay:k*22,fill:'backwards'})); return; }
+  if(chegaram&&chegaram.size) itens.forEach(el=>{ if(chegaram.has(el.getAttribute('href'))) IBBAMotion.animate(el,
+    [{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:600,fill:'backwards'}); });
+}
 async function loadNews(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return;
@@ -1706,6 +1740,7 @@ async function loadNews(){
     const runRows=runRes.ok?await runRes.json():[];
     if(runRows[0]?.ran_at)_newsLastHunterRun=Date.parse(runRows[0].ran_at);
     const newUrls=articles.filter(a=>!_seenUrls.has(a.url));
+    const chegaram=(!_firstLoad && newUrls.length) ? new Set(newUrls.map(a=>a.url)) : null;   // só o refresh anima a entrada
     if(!_firstLoad && newUrls.length){
       const badge=document.getElementById('news-new-badge');
       if(badge){
@@ -1718,6 +1753,8 @@ async function loadNews(){
     _firstLoad=false;
     _renderNews(articles);
     _updateNewsMeta();
+    const fx=_newsFx; _newsFx=false;
+    _newsIn(fx, chegaram);
   }catch(e){
     document.getElementById('news-feed').innerHTML='<div class="news-empty">Failed to load news.</div>';
     console.warn('News error:',e);
@@ -1831,6 +1868,7 @@ document.getElementById('news-filter').addEventListener('click', e => {
   btn.classList.add('active');
   _newsTakeFilter = btn.dataset.take;
   _firstLoad = true;   // não dispara badge "new" ao trocar filtro
+  _newsFx = true;      // e a lista nova chega em cascata (onda 3)
   loadNews();
 });
 // Filtro por SETOR (S&M = steel+mining · P&P = pp) — mesma info do Market Pulse, agora na lista
@@ -1841,6 +1879,7 @@ document.getElementById('news-sector-filter').addEventListener('click', e => {
   btn.classList.add('active');
   _newsSectorFilter = btn.dataset.sec;
   _firstLoad = true;
+  _newsFx = true;
   loadNews();
 });
 
@@ -1871,6 +1910,11 @@ document.getElementById('pulse-controls').addEventListener('click', e => {
   _pulseSector = btn.dataset.sector;
   loadPulse();
 });
+// SELEÇÃO QUE DESLIZA (onda 3): o fundo do item ativo corre até a escolha (IBBASlide, topnav.js). Ele vigia a
+// CLASSE dos botões, então nenhum tratador mudou por causa disso — o do período do heatmap é recortado pelo
+// tests/test_intraday_split.html e continua idêntico.
+try{ if(window.IBBASlide) ['pulse-controls','news-filter','news-sector-filter','hm-range'].forEach(id=>{
+  const b=document.getElementById(id); if(b) IBBASlide.watch(b,'button'); }); }catch(e){ console.warn('IBBASlide:',e); }
 
 // ─── TERMÔMETRO DE NOTÍCIAS — o único quadro do Market Pulse ─────────
 // ⚠️ É DESCRITIVO: mede o tom do que já foi publicado, não prevê o dia. A auditoria
@@ -2019,13 +2063,32 @@ async function loadPulse(){
     console.warn('pulse error:', e);
   }
 }
+// NÚMEROS QUE ROLAM (onda 3, 2026-10-19): no refresh de 1 min, o placar do Market Pulse e o valor do ponteiro
+// giram só as casas que mudaram (IBBANumber, topnav.js); tamanho diferente (9 → 10) ou o "—" do início só
+// trocam. E o arco do ponteiro CRESCE/ENCOLHE até o valor novo (0,6 s) em vez de saltar — menos no 1º desenho,
+// que sai do arco cheio do "LOADING". Moram aqui dentro porque o tests/test_news_pulse.html recorta este bloco.
+const _NUM_RE = /^-?\d+$/;
+function _pulseNum(id, v){
+  const el = document.getElementById(id); if(!el) return;
+  const s = String(v), o = el.textContent;
+  if(o === s) return;
+  if(!(window.IBBANumber && _NUM_RE.test(o) && _NUM_RE.test(s) && IBBANumber.roll(el, o, s, +s >= +o))) el.textContent = s;
+}
+let _gaugeDrawn = false;
+function _gaugeArc(arc, dash){
+  const old = arc.getAttribute('stroke-dasharray');
+  arc.setAttribute('stroke-dasharray', dash);
+  if(_gaugeDrawn && old && old !== dash && window.IBBAMotion && !IBBAMotion.reduced())
+    IBBAMotion.animate(arc, [{strokeDasharray:old},{strokeDasharray:dash}], {duration:600, fill:'none'});   // sem 'both': não segura o arco
+  _gaugeDrawn = true;
+}
 function _renderPulse(t){
   const scored = t.pos + t.neg + t.neu, label = _pulseWindowLabel(t.startMs);
   _renderGauge(_pulseGaugeVal(t));
-  document.getElementById('stat-pos').textContent = t.pos;
-  document.getElementById('stat-neg').textContent = t.neg;
-  document.getElementById('stat-neu').textContent = t.neu;
-  document.getElementById('stat-tot').textContent = scored;
+  _pulseNum('stat-pos', t.pos);
+  _pulseNum('stat-neg', t.neg);
+  _pulseNum('stat-neu', t.neu);
+  _pulseNum('stat-tot', scored);
   document.getElementById('stat-tot-lbl').textContent = label;
   document.getElementById('stat-tot').title = `${scored} scored headline${scored === 1 ? '' : 's'} ${label}`
     + (t.notake ? ` · ${t.notake} no-take (in the feed, not scored)` : '')
@@ -2050,13 +2113,13 @@ function _renderGauge(val){
   const total = 188;  // comprimento do semicírculo r=60 no viewBox
   if(val == null){    // amostra pequena: o ponteiro cala em vez de chutar
     document.getElementById('gauge-val').textContent = '—';
-    arc.setAttribute('stroke-dasharray', `0 ${total}`);
+    _gaugeArc(arc, `0 ${total}`);
     label.textContent = 'TOO FEW HEADLINES'; label.className = 'gauge-label neutral';
     return;
   }
   val = Math.max(0, Math.min(100, val));
-  document.getElementById('gauge-val').textContent = val;
-  arc.setAttribute('stroke-dasharray', `${total * val / 100} ${total}`);
+  _pulseNum('gauge-val', val);
+  _gaugeArc(arc, `${total * val / 100} ${total}`);
   if(val >= 65){
     label.textContent = 'POSITIVE TONE'; label.className = 'gauge-label bullish';
     arc.setAttribute('stroke', '#16a34a');
@@ -2367,6 +2430,39 @@ function _sparkline(closes){
   </svg>`;
 }
 
+// HEATMAP QUE SE REARRUMA (onda 3, 2026-10-19): trocar o período, filtrar empresas ou chegar preço reordena os
+// cartões pela variação — agora eles DESLIZAM do lugar antigo para o novo (0,6 s) em vez de pular, e o olho
+// acompanha quem subiu e quem caiu. Cartão que entrou pelo filtro aparece (0,42 s). Na atualização de preço do
+// MESMO período, a variação que mudou gira só as casas que mudaram (IBBANumber); trocando de período, não —
+// seriam 20 números girando juntos com os cartões andando. O 1º desenho não anima: a página já entra inteira.
+let _hmLastRange = null;
+function _hmSnap(grid){
+  const m = {};
+  grid.querySelectorAll('.hm-card[data-ticker]').forEach(c=>{ const ch=c.querySelector('.hm-change');
+    m[c.dataset.ticker] = {r:c.getBoundingClientRect(), pct:ch?ch.textContent:null}; });
+  return {range:_hmLastRange, cards:m};
+}
+function _hmFlip(grid, antes){
+  const mesmo = antes.range === _range; _hmLastRange = _range;
+  if(!window.IBBAMotion || IBBAMotion.reduced() || !Object.keys(antes.cards).length) return;
+  // getBoundingClientRect mede na TELA; o translate vive dentro do #stage, que no PC é escalado
+  const st = document.getElementById('stage');
+  const k = (st && st.offsetWidth) ? (st.getBoundingClientRect().width / st.offsetWidth) || 1 : 1;
+  grid.querySelectorAll('.hm-card[data-ticker]').forEach(c=>{
+    const a = antes.cards[c.dataset.ticker];
+    if(!a){ IBBAMotion.animate(c,[{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'none'}],{duration:420,fill:'backwards'}); return; }
+    const b = c.getBoundingClientRect(), dx = (a.r.left-b.left)/k, dy = (a.r.top-b.top)/k;
+    // fill:'none' — o padrão do IBBAMotion ('both') deixaria a animação PRESA ao cartão, segurando
+    // transform:none para sempre, e o hover (.hm-card:hover sobe 1px) pararia de funcionar
+    if(Math.abs(dx) >= 1 || Math.abs(dy) >= 1)
+      IBBAMotion.animate(c,[{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:600,fill:'none'});
+    if(mesmo && window.IBBANumber){
+      const ch = c.querySelector('.hm-change'), pct = ch && ch.textContent;
+      if(ch && a.pct && pct !== a.pct){ const v = parseFloat(pct), w = parseFloat(a.pct);
+        if(isFinite(v) && isFinite(w)) IBBANumber.roll(ch, a.pct, pct, v >= w); }
+    }
+  });
+}
 function _renderHeatmap(){
   const grid = document.getElementById('heatmap-grid');
   _updateFilterCount();
@@ -2377,6 +2473,7 @@ function _renderHeatmap(){
                        .map(q => ({ q, ..._seriesFor(q, _range) }))
                        .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
   if(!cards.length){ grid.innerHTML = '<div class="kv-loading">No companies selected — click “Selected ▾”.</div>'; return; }
+  const antes = _hmSnap(grid);
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
@@ -2390,6 +2487,7 @@ function _renderHeatmap(){
       <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
     </a>`;
   }).join('');
+  _hmFlip(grid, antes);
 }
 
 // Botões de período do heatmap
@@ -2563,6 +2661,7 @@ function _ensureModal(){
     <div class="modal-compare"><span class="mc-label">Compare:</span><div class="mc-chips" id="co-compare"></div></div>
   </div>`;
   document.body.appendChild(el);
+  try{ if(window.IBBASlide) IBBASlide.watch(el.querySelector('#co-ranges'),'button'); }catch(e){}   // período que desliza (onda 3)
   el.addEventListener('click', ev=>{ if(ev.target===el) closeCompanyModal(); });
   el.querySelector('#co-close').addEventListener('click', closeCompanyModal);
   el.querySelector('#co-ranges').addEventListener('click', ev=>{
