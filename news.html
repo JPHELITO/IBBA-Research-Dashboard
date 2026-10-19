@@ -223,6 +223,13 @@ html.dark{ --pos:#4ade80; --neg:#f87171; --neu:#9ca3af; }
 .fhint b{color:var(--gray-dark);font-weight:700;}
 .seg{display:flex;flex-wrap:wrap;gap:5px;}
 .seg .chip{padding:5px 11px;}
+/* SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19): em Period, Sector e Take o fundo do chip ativo CORRE até o
+   chip escolhido em vez de piscar (IBBASlide, no topnav.js) — preto no claro, laranja no escuro, como o
+   chip ativo de sempre. Enquanto o bloco existe, o fundo próprio do chip ativo some. */
+.seg>.ibba-slide{background:var(--black);border-radius:20px;}
+html.dark .seg>.ibba-slide{background:var(--orange);}
+.seg.ibba-slide-on .chip{position:relative;z-index:1;}
+.seg.ibba-slide-on .chip.active{background:transparent;border-color:transparent;}
 .daterow{display:flex;align-items:center;gap:6px;margin-top:9px;}
 .date-in{flex:1;min-width:0;font-family:var(--font);font-size:11px;padding:5px 7px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--gray-dark);outline:none;}
 .date-in:focus{border-color:var(--orange);}
@@ -519,6 +526,11 @@ let _lastUpdate = 0;
 let _tlDays = [], _tlN = 0;    // cache da timeline p/ hit-testing do mouse
 const PAGE_SIZE = 50;
 const LOAD_MORE_STEP = 250;
+// FEED QUE CHEGA EM CASCATA (onda 3): os tratadores de clique dos filtros chamam _fx() antes do
+// renderAll() e o _renderFeed consome o recado. Abrir a página, a busca automática e digitar na busca
+// (filtra ao vivo, letra a letra) NÃO passam por aqui — só a escolha de um filtro.
+let _feedFx = false;
+function _fx(){ _feedFx = true; }
 
 // ─── Fetch ─────────────────────────────────────────────────────────────
 // Timestamp efetivo: publicação real, found_at como fallback (igual à home).
@@ -699,12 +711,17 @@ function _renderStats(){
     {k:'=',      num:cnt('='),      lbl:'Neutral',  cls:'neu'},
     {k:'no take',num:cnt('no take'),lbl:'No take',  cls:''},
   ];
+  const antes={}; row.querySelectorAll('.stat-num[data-k]').forEach(el=>{ antes[el.dataset.k]={t:el.textContent,n:+el.dataset.n}; });
   row.innerHTML=tiles.map(t=>{
     const cl=t.k!==null, sel=cl&&_takeFilter===t.k;
     return `<div class="stat ${cl?'click':''} ${sel?'sel':''}" ${cl?`data-take="${_esc(t.k)}"`:''}>
-      <div class="stat-num ${t.cls}">${t.num.toLocaleString('en-US')}</div>
+      <div class="stat-num ${t.cls}" data-k="${_esc(t.k===null?'all':t.k)}" data-n="${t.num}">${t.num.toLocaleString('en-US')}</div>
       <div class="stat-lbl">${t.lbl}</div></div>`;
   }).join('');
+  // NÚMEROS QUE ROLAM (onda 3): a contagem que mudou (filtro novo, notícia nova) gira só as casas que
+  // mudaram (IBBANumber.roll, topnav.js) — de baixo quando sobe; tamanhos diferentes (980 → 1,203) só trocam
+  if(window.IBBANumber) row.querySelectorAll('.stat-num[data-k]').forEach(el=>{ const o=antes[el.dataset.k];
+    if(o&&o.t!==el.textContent) IBBANumber.roll(el,o.t,el.textContent,+el.dataset.n>=o.n); });
 }
 
 function _renderFacets(){
@@ -735,14 +752,38 @@ function _renderMetaExtras(){
   if(upd) upd.textContent = _lastUpdate ? ('↻ '+_age(new Date(_lastUpdate).toISOString())) : '↻ Refresh';
 }
 
+// FEED QUE CHEGA EM CASCATA (onda 3, 2026-10-19): ao escolher um filtro, as primeiras linhas VISÍVEIS
+// chegam uma atrás da outra (sobem 10px e aparecem em 0,52 s, 22 ms de intervalo, teto 16) — o olho vê
+// que a lista mudou. O que está fora da tela entra direto.
+function _feedIn(feed){
+  if(!window.IBBAMotion||IBBAMotion.reduced()) return;
+  const vh=window.innerHeight; let k=0;
+  for(const el of feed.children){
+    if(k>=16) break;
+    const r=el.getBoundingClientRect();
+    if(r.top>vh) break;
+    if(r.bottom<0) continue;
+    IBBAMotion.animate(el,[{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],
+      {duration:520,delay:k*22,fill:'backwards'});
+    k++;
+  }
+}
+// NOTÍCIA QUE ACABOU DE CHEGAR (onda 3): a que veio na busca automática (a cada 90 s, marcada pelo _poll)
+// desce 6px e aparece em 0,6 s no lugar dela; o resto da lista fica parado — nada de cascata a cada poll.
+function _feedNewIn(feed){
+  if(!window.IBBAMotion||IBBAMotion.reduced()) return;
+  feed.querySelectorAll('.item.is-new').forEach(el=>IBBAMotion.animate(el,
+    [{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:600,fill:'backwards'}));
+}
 function _renderFeed(){
+  const fx=_feedFx; _feedFx=false;                // um filtro mudou → a lista chega em cascata
   const feed=document.getElementById('feed');
   const meta=document.getElementById('results-meta');
   const loadMore=document.getElementById('load-more');
   let list=_list(null);
   if(!_sortDesc) list=list.slice().reverse();
   meta.innerHTML=`<strong>${list.length.toLocaleString('en-US')}</strong> article${list.length!==1?'s':''}`;
-  if(!list.length){ feed.innerHTML='<div class="empty">No articles match these filters.</div>'; loadMore.style.display='none'; return; }
+  if(!list.length){ feed.innerHTML='<div class="empty">No articles match these filters.</div>'; loadMore.style.display='none'; if(fx) _feedIn(feed); return; }
   const dayCount={};
   for(const a of list){ const dl=_dayLabel(a.published_at||a.found_at); dayCount[dl]=(dayCount[dl]||0)+1; }
   const slice=list.slice(0,_displayLimit);
@@ -756,7 +797,7 @@ function _renderFeed(){
     }
     const url=/^https?:/i.test(a.url||'')?a.url:'#';
     const snip=a.snippet?`<div class="item-snippet">${_esc(a.snippet.replace(/<[^>]+>/g,' ').slice(0,200))}</div>`:'';
-    html+=`<a class="item ${_takeCls(a.take_llm)}" href="${_esc(url)}" target="_blank" rel="noopener">
+    html+=`<a class="item ${_takeCls(a.take_llm)}${a._novo===1?' is-new':''}" href="${_esc(url)}" target="_blank" rel="noopener">
       <div class="item-titlerow">${_takeBadge(a.take_llm)}<div class="item-title">${_esc(a.title)}</div></div>
       <div class="item-meta">
         <span class="item-source">${_esc(_label(a))}</span>${a.source_name==='CVM'?'<span class="item-primary" title="Primary source — official filing (CVM / B3)">PRIMARY</span>':''}
@@ -768,6 +809,8 @@ function _renderFeed(){
     </a>`;
   }
   feed.innerHTML=html;
+  slice.forEach(a=>{ if(a._novo===1) a._novo=2; });   // a entrada da notícia nova acontece uma vez só
+  if(fx) _feedIn(feed); else _feedNewIn(feed);
   if(list.length>_displayLimit){
     const rest=list.length-_displayLimit;
     loadMore.textContent=`Load more (${rest.toLocaleString('en-US')} more)`;
@@ -868,14 +911,18 @@ function _setRange(from,to){    // usado pela timeline (clique/arraste) e inputs
 }
 
 // ─── Event listeners ────────────────────────────────────────────────────
+// SELEÇÃO QUE DESLIZA (onda 3): o fundo do chip ativo corre até a escolha (IBBASlide, topnav.js) — ele
+// vigia a CLASSE dos chips, então nenhum tratador abaixo mudou por causa disso
+try{ if(window.IBBASlide) ['period-seg','sector-seg','take-seg'].forEach(id=>IBBASlide.watch(document.getElementById(id),'.chip')); }
+catch(e){ console.warn('IBBASlide:',e); }
 document.getElementById('period-seg').addEventListener('click',e=>{
   const btn=e.target.closest('.chip'); if(!btn) return;
-  _applyPreset(btn.dataset.days); renderAll();
+  _applyPreset(btn.dataset.days); _fx(); renderAll();
 });
 function _onDateInput(){
   const f=document.getElementById('date-from').value||null;
   const t=document.getElementById('date-to').value||null;
-  _setRange(f,t); renderAll();
+  _setRange(f,t); _fx(); renderAll();
 }
 document.getElementById('date-from').addEventListener('change',_onDateInput);
 document.getElementById('date-to').addEventListener('change',_onDateInput);
@@ -884,16 +931,19 @@ document.getElementById('rail-toggle').addEventListener('click',function(){
   const on=!document.body.classList.contains('rail-open');
   document.body.classList.toggle('rail-open',on);
   this.setAttribute('aria-expanded',on?'true':'false');
+  // o painel nasce do botão, como os menus da barra (onda 3): desce 6px e aparece em 0,24 s
+  if(on&&window.IBBAMotion) IBBAMotion.animate(document.getElementById('rail'),
+    [{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:240});
 });
 document.getElementById('sector-seg').addEventListener('click',e=>{
   const btn=e.target.closest('.chip'); if(!btn) return;
   _sectorFilter=btn.dataset.sec; _setSegActive('sector-seg','sec',_sectorFilter);
-  _displayLimit=PAGE_SIZE; renderAll();
+  _displayLimit=PAGE_SIZE; _fx(); renderAll();
 });
 document.getElementById('take-seg').addEventListener('click',e=>{
   const btn=e.target.closest('.chip'); if(!btn) return;
   _takeFilter=btn.dataset.take; _setSegActive('take-seg','take',_takeFilter);
-  _displayLimit=PAGE_SIZE; renderAll();
+  _displayLimit=PAGE_SIZE; _fx(); renderAll();
 });
 // Stat tiles → filtram por take (clique alterna liga/desliga)
 document.getElementById('stat-row').addEventListener('click',e=>{
@@ -901,16 +951,16 @@ document.getElementById('stat-row').addEventListener('click',e=>{
   const k=t.dataset.take;
   _takeFilter=(_takeFilter===k)?'all':k;
   _setSegActive('take-seg','take',_takeFilter);
-  _displayLimit=PAGE_SIZE; renderAll();
+  _displayLimit=PAGE_SIZE; _fx(); renderAll();
 });
 // Fontes (multi-seleção) + reset
 document.getElementById('src-facet').addEventListener('click',e=>{
   const row=e.target.closest('.facet-row'); if(!row) return;
   const s=row.dataset.src;
   if(_srcFilter.has(s)) _srcFilter.delete(s); else _srcFilter.add(s);
-  _displayLimit=PAGE_SIZE; renderAll();
+  _displayLimit=PAGE_SIZE; _fx(); renderAll();
 });
-document.getElementById('src-clear').addEventListener('click',()=>{ _srcFilter.clear(); _displayLimit=PAGE_SIZE; renderAll(); });
+document.getElementById('src-clear').addEventListener('click',()=>{ _srcFilter.clear(); _displayLimit=PAGE_SIZE; _fx(); renderAll(); });
 let _searchTimer=null;
 const _searchInput=document.getElementById('search-input');
 function _setDraft(v){ _searchText=(v||'').trim(); _searchDraftLC=_searchText.toLowerCase(); }
@@ -922,25 +972,25 @@ _searchInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){                       // fixa o termo como chip (soma ao filtro, em E)
     e.preventDefault(); clearTimeout(_searchTimer);
     _addSearchTerm(e.target.value);
-    e.target.value=''; _setDraft(''); _displayLimit=PAGE_SIZE; renderAll();
+    e.target.value=''; _setDraft(''); _displayLimit=PAGE_SIZE; _fx(); renderAll();
   }else if(e.key==='Backspace' && !e.target.value && _searchTerms.length){
-    _removeSearchTerm(_searchTerms.length-1); _displayLimit=PAGE_SIZE; renderAll();
+    _removeSearchTerm(_searchTerms.length-1); _displayLimit=PAGE_SIZE; _fx(); renderAll();
   }
 });
 document.getElementById('search-chips').addEventListener('click',e=>{
   const x=e.target.closest('.x'); if(!x) return;
-  _removeSearchTerm(parseInt(x.dataset.i,10)); _displayLimit=PAGE_SIZE; renderAll();
+  _removeSearchTerm(parseInt(x.dataset.i,10)); _displayLimit=PAGE_SIZE; _fx(); renderAll();
 });
-document.getElementById('search-clear').addEventListener('click',()=>{ _clearSearch(); _displayLimit=PAGE_SIZE; renderAll(); });
-document.getElementById('sort-link').addEventListener('click',()=>{ _sortDesc=!_sortDesc; _renderMetaExtras(); _renderFeed(); });
+document.getElementById('search-clear').addEventListener('click',()=>{ _clearSearch(); _displayLimit=PAGE_SIZE; _fx(); renderAll(); });
+document.getElementById('sort-link').addEventListener('click',()=>{ _sortDesc=!_sortDesc; _renderMetaExtras(); _fx(); _renderFeed(); });
 document.getElementById('refresh-link').addEventListener('click',_poll);
 document.getElementById('clear-all').addEventListener('click',()=>{
   _sectorFilter='all'; _takeFilter='all'; _srcFilter.clear(); _clearSearch();
   _setSegActive('sector-seg','sec','all'); _setSegActive('take-seg','take','all');
-  _applyPreset('all'); renderAll();
+  _applyPreset('all'); _fx(); renderAll();
 });
 document.getElementById('range-chip').addEventListener('click',e=>{
-  if(e.target.closest('#range-x')){ _applyPreset('all'); renderAll(); }
+  if(e.target.closest('#range-x')){ _applyPreset('all'); _fx(); renderAll(); }
 });
 document.getElementById('load-more').addEventListener('click',()=>{ _displayLimit+=LOAD_MORE_STEP; _renderFeed(); });
 
@@ -956,7 +1006,7 @@ document.getElementById('load-more').addEventListener('click',()=>{ _displayLimi
     const a=Math.min(drag.a,drag.b), b=Math.max(drag.a,drag.b);
     const dA=_tlDays[a]&&_tlDays[a].date, dB=_tlDays[b]&&_tlDays[b].date;
     drag=null;
-    if(dA&&dB){ _setRange(dA,dB); renderAll(); }
+    if(dA&&dB){ _setRange(dA,dB); _fx(); renderAll(); }
   });
   svg.addEventListener('pointerleave',()=>{ tip.style.opacity=0; });
 })();
@@ -1045,7 +1095,7 @@ async function _poll(){                        // incremental por found_at → s
     }
     _noteFound(recent);
     const fresh=recent.filter(a=>a.url && !_seenUrls.has(a.url));
-    fresh.forEach(a=>_seenUrls.add(a.url));
+    fresh.forEach(a=>{ _seenUrls.add(a.url); a._novo=1; });   // _novo: o feed faz a notícia entrar devagar (onda 3)
     _lastUpdate=Date.now();
     if(fresh.length){ _allArticles=_dedupInto(_allArticles.concat(fresh)); renderAll(); }
     else _renderMetaExtras();                  // só atualiza o "updated Xm ago"
