@@ -181,6 +181,20 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 .itab.active{background:var(--black);color:#fff;border-color:var(--black);}
 .itab:hover:not(.active):not(.soon){color:var(--gray-dark);background:rgba(0,0,0,.04);}
 .itab.soon{opacity:.4;cursor:default;}
+
+/* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19 — igual ao M&M) ────────────────
+   O bloco da opção escolhida CORRE entre as opções em vez de piscar (IBBASlide, no topnav.js):
+   seções, filtros e abas internas. Aqui só a cara do bloco (a mesma de antes) e o apagar do fundo
+   próprio do item ativo enquanto o bloco existe. */
+.secondary-nav>.ibba-slide{background:var(--orange);}
+.secondary-nav.ibba-slide-on .snav-btn.active::before{display:none;}
+.filter-btns>.ibba-slide{background:var(--orange);border-radius:20px;}
+.filter-btns.ibba-slide-on>.fbtn{position:relative;z-index:1;}
+.filter-btns.ibba-slide-on>.fbtn.active{background:transparent;border-color:transparent;}
+.inner-tab-bar>.ibba-slide{background:var(--black);border-radius:5px 5px 0 0;}
+html.dark .inner-tab-bar>.ibba-slide{background:var(--orange);}
+.inner-tab-bar.ibba-slide-on>.itab{position:relative;z-index:1;}
+.inner-tab-bar.ibba-slide-on>.itab.active{background:transparent;border-color:transparent;}
 .inner-tab-content{display:none;}
 .inner-tab-content.active{display:block;}
 
@@ -430,8 +444,8 @@ html.dark .cr-input{color-scheme:dark}
 
 <!-- SECONDARY NAV -->
 <div class="secondary-nav" id="pp-subnav">
-  <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp')">Pulp</button>
-  <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper')">Paper &amp; Packaging</button>
+  <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp',{anim:1})">Pulp</button>
+  <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper',{anim:1})">Paper &amp; Packaging</button>
   <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
@@ -495,8 +509,8 @@ html.dark .cr-input{color-scheme:dark}
 <!-- ══════════════════════════════════════════════════════════════ PULP ═══ -->
 <div id="sec-pulp" class="section active">
   <div class="inner-tab-bar">
-    <button class="itab active" data-ptab="secex" onclick="setPulpTab('secex')">🚢 Exports — SECEX</button>
-    <button class="itab"        data-ptab="gacc"  onclick="setPulpTab('gacc')">🌲 Woodchips — GACC</button>
+    <button class="itab active" data-ptab="secex" onclick="setPulpTab('secex',{anim:1})">🚢 Exports — SECEX</button>
+    <button class="itab"        data-ptab="gacc"  onclick="setPulpTab('gacc',{anim:1})">🌲 Woodchips — GACC</button>
   </div>
 
   <!-- ── SECEX TAB ── -->
@@ -629,8 +643,8 @@ html.dark .cr-input{color-scheme:dark}
 <!-- ══════════════════════════════════════════════════════════ PAPER ═════ -->
 <div id="sec-paper" class="section">
   <div class="inner-tab-bar">
-    <button class="itab active" data-patab="iba"        onclick="setPaperTab('iba')">🏭 Fundamentals — IBÁ</button>
-    <button class="itab"        data-patab="corrugated" onclick="setPaperTab('corrugated')">📦 Corrugated — Empapel</button>
+    <button class="itab active" data-patab="iba"        onclick="setPaperTab('iba',{anim:1})">🏭 Fundamentals — IBÁ</button>
+    <button class="itab"        data-patab="corrugated" onclick="setPaperTab('corrugated',{anim:1})">📦 Corrugated — Empapel</button>
   </div>
   <div id="pa-tab-iba" class="inner-tab-content active">
     <div class="kpi-row" id="pa-kpis"></div>
@@ -755,8 +769,39 @@ html.dark .cr-input{color-scheme:dark}
 </div>
 
 <script>
+// ─── SELEÇÃO QUE DESLIZA + #ÂNCORA (onda 3, 2026-10-19 — igual ao M&M) ──────
+// O bloco da opção escolhida corre entre as opções (seções, filtros, abas internas) — IBBASlide no
+// topnav.js observa a classe .active; o grupo de produtos, que esta página recria a cada seção, o
+// IBBASlide também acompanha. Nenhuma função de filtro precisou mudar.
+let _dbReady=false;
+try{
+  if(window.IBBASlide){
+    IBBASlide.watch(document.getElementById('pp-subnav'),'.snav-btn');
+    document.querySelectorAll('.filter-btns').forEach(g=>IBBASlide.watch(g,'.fbtn'));
+    document.querySelectorAll('.inner-tab-bar').forEach(g=>IBBASlide.watch(g,'.itab'));
+  }
+}catch(e){ console.warn('IBBASlide:',e); }
+// A página IGNORAVA a #âncora: "P&P ▾ → Paper & Packaging" (ou o cartão da home) abria sempre em Pulp.
+// Agora a seção da âncora vale na abertura (_presetSection + loadDB) e na troca estando já aqui.
+function _hashSub(){ const s=(location.hash||'').slice(1); return ['pulp','paper'].includes(s)?s:''; }
+function _presetSection(){
+  try{
+    const s=_hashSub();
+    if(window.innerWidth<=768||!s||s==='pulp') return;
+    document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+    document.querySelectorAll('.section').forEach(d=>d.classList.toggle('active',d.id==='sec-'+s));
+  }catch(e){}
+}
+window.addEventListener('hashchange',()=>{
+  const s=_hashSub();
+  if(!_dbReady||!s||s===currentSub) return;
+  if(window.innerWidth<=768){ mobSelect(s); return; }
+  setSub(s,{anim:1});
+});
+
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 ;(async()=>{
+  _presetSection()   // seção da #âncora já na espera (o esqueleto é o da seção certa)
   const{data:{session}}=await sbAuth.auth.getSession()
   if(!session){window.location.replace('/login.html');return}
   _setAuthCookie(session)
@@ -1085,6 +1130,7 @@ async function loadDB(){
 
     el.style.display='none';
     _loadingDone(false);   // sai o esqueleto, a linha laranja (se apareceu) completa e some
+    _dbReady=true;         // a partir daqui a #âncora pode trocar de seção (hashchange)
 
     renderProdButtons();
     const urlSec=new URLSearchParams(window.location.search).get('s');
@@ -1093,7 +1139,7 @@ async function loadDB(){
     } else if(window.innerWidth<=768){
       showMobPicker();
     } else {
-      render();
+      setSub(_hashSub()||'pulp');   // a #âncora agora vale (antes: render() sempre em Pulp)
     }
   }catch(e){
     el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
@@ -1963,7 +2009,33 @@ function updateGranVisibility(){
     if(monthlyBtn)monthlyBtn.style.display='';
   }
 }
-function setSub(s){
+/* TROCA DE SEÇÃO COM DIREÇÃO (onda 3, 2026-10-19 — igual ao M&M): no clique de Pulp / Paper &
+   Packaging o bloco laranja corre NA HORA até a aba; a seção atual sai para o lado oposto (0,2 s) e
+   a nova entra pelo lado do clique (0,6 s, curva expo). Só computador e só com {anim:1} (o clique);
+   carga, celular e tutorial seguem instantâneos. Com "reduzir movimento", instantâneo também. */
+const SUB_ORDER=['pulp','paper'];
+let _subTok=0;
+function setSub(s,o){
+  const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
+  if(!anim) return _setSubNow(s);
+  const dir=SUB_ORDER.indexOf(s)>SUB_ORDER.indexOf(currentSub)?1:-1, tok=++_subTok;
+  document.querySelectorAll('.section').forEach(d=>d.getAnimations().forEach(a=>a.cancel()));
+  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+  document.documentElement.classList.add('ibba-swap');
+  const old=document.querySelector('.section.active');
+  const out=old?IBBAMotion.animate(old,[{opacity:1,transform:'none'},{opacity:0,transform:`translateX(${-32*dir}px)`}],
+    {duration:200,easing:IBBAMotion.e.sai,fill:'forwards'}):null;
+  Promise.resolve(out&&out.finished).catch(()=>{}).then(()=>{
+    if(tok!==_subTok) return;
+    if(out) out.cancel();
+    _setSubNow(s);
+    const sec=document.querySelector('.section.active');
+    const inn=sec?IBBAMotion.animate(sec,[{opacity:0,transform:`translateX(${40*dir}px)`},{opacity:1,transform:'none'}],
+      {duration:600,fill:'backwards'}):null;
+    Promise.resolve(inn&&inn.finished).catch(()=>{}).then(()=>{ if(tok===_subTok) document.documentElement.classList.remove('ibba-swap'); });
+  });
+}
+function _setSubNow(s){
   currentSub=s;
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
@@ -1971,22 +2043,41 @@ function setSub(s){
   updateGranVisibility();
   renderProdButtons();
   render();
+  // o endereço acompanha a seção (#paper…) sem recarregar: link copiado abre na mesma seção, e o menu
+  // "P&P ▾" troca de seção estando já aqui (ele só troca a #âncora — ver o hashchange no boot)
+  try{
+    if(SUB_ORDER.includes(s)&&(location.hash||'').slice(1)!==s){
+      history.replaceState(null,'','#'+s);
+      if(window.__gnavMarkCurrent) window.__gnavMarkCurrent();
+    }
+  }catch(e){}
 }
-function setPulpTab(t){
+// aba interna: o conteúdo novo entra pelo lado da aba (a 1ª à esquerda, a 2ª à direita), 0,5 s
+function _tabIn(el,dir){
+  if(!el||!window.IBBAMotion||IBBAMotion.reduced()) return;
+  document.documentElement.classList.add('ibba-swap');
+  const a=IBBAMotion.animate(el,[{opacity:0,transform:`translateX(${dir*28}px)`},{opacity:1,transform:'none'}],{duration:500,fill:'backwards'});
+  Promise.resolve(a&&a.finished).catch(()=>{}).then(()=>document.documentElement.classList.remove('ibba-swap'));
+}
+function setPulpTab(t,o){
+  const anim=!!(o&&o.anim)&&t!==pulpTab;
   pulpTab=t;
   document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===t));
   document.getElementById('pl-tab-secex').classList.toggle('active',t==='secex');
   document.getElementById('pl-tab-gacc').classList.toggle('active',t==='gacc');
   renderProdButtons();
   renderPulp();
+  if(anim) _tabIn(document.getElementById('pl-tab-'+t),t==='gacc'?1:-1);
 }
-function setPaperTab(t){
+function setPaperTab(t,o){
+  const anim=!!(o&&o.anim)&&t!==paperTab;
   paperTab=t;
   document.querySelectorAll('[data-patab]').forEach(b=>b.classList.toggle('active',b.dataset.patab===t));
   document.getElementById('pa-tab-iba').classList.toggle('active',t==='iba');
   document.getElementById('pa-tab-corrugated').classList.toggle('active',t==='corrugated');
   renderProdButtons();
   renderPaper();
+  if(anim) _tabIn(document.getElementById('pa-tab-'+t),t==='corrugated'?1:-1);
 }
 function setProd(p){
   currentProd=p;
