@@ -9,6 +9,100 @@
 ;(function () {
   if (window.__TOPNAV_LOADED__) return; window.__TOPNAV_LOADED__ = true;
 
+  /* ── RÉGUA DE MOVIMENTO (2026-10-19) ─────────────────────────────────────────
+     Uma régua só para o site inteiro: cinco tempos com nome e quatro curvas. Toda animação
+     nova pega daqui (CSS: var(--ibba-*); JS: window.IBBAMotion) — nenhuma página escolhe
+     tempo por conta própria. Inspirada no raio-X da dashboard de Financials
+     (claude.ai/artifact/GyTcx1231v4BBzj9kvxDCK). Quem pede "reduzir movimento" no sistema
+     não vê NENHUMA destas animações (tudo aqui é condicionado a isso).
+     ⚠️ Neste produto "moderno" = MENOS: a marca de estado é um traço, não uma luz. Nada de
+     brilho, halo ou sombra colorida — só movimento curto e com freio. */
+  var MOTION = {
+    t: { toque: 140, ui: 240, dado: 600, entrada: 900, palco: 1150 },
+    e: { decidida: 'cubic-bezier(.2,0,0,1)', expo: 'cubic-bezier(.16,1,.3,1)',
+         suave: 'cubic-bezier(.65,0,.35,1)', sai: 'cubic-bezier(.4,0,1,1)' }
+  };
+  function _reduced(){ try{ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } }
+  window.IBBAMotion = {
+    t: MOTION.t, e: MOTION.e, reduced: _reduced,
+    // el.animate com a régua: padrão = tempo "dado" + curva expo; zera tudo com reduzir movimento
+    animate: function(el, kf, o){
+      if(!el || typeof el.animate !== 'function') return null;
+      var opts = { duration: MOTION.t.dado, easing: MOTION.e.expo, fill: 'both' };
+      if(o) for(var k in o) opts[k] = o[k];
+      if(_reduced()){ opts.duration = 0; opts.delay = 0; }
+      try{ return el.animate(kf, opts); }catch(e){ return null; }
+    }
+  };
+
+  /* CSS que precisa existir ANTES do 1º desenho da página (por isso entra já aqui, no <head>,
+     e não no inject do DOMContentLoaded): a régua, o anel de foco, a transição entre páginas,
+     a linha de progresso, a faixa do setor e o esqueleto de carregamento. Fica ANTES dos
+     <style> das páginas → qualquer regra própria da página continua mandando. */
+  var EARLY_CSS = '\
+:root{--ibba-t-toque:140ms;--ibba-t-ui:240ms;--ibba-t-dado:600ms;--ibba-t-entrada:900ms;--ibba-t-palco:1150ms;\
+  --ibba-decidida:cubic-bezier(.2,0,0,1);--ibba-expo:cubic-bezier(.16,1,.3,1);--ibba-suave:cubic-bezier(.65,0,.35,1);--ibba-sai:cubic-bezier(.4,0,1,1);}\
+/* FOCO: só acende para quem navega pelo TECLADO (:focus-visible) — clique de mouse não mostra nada.\
+   :where() = especificidade zero → regra de foco que a página já tenha continua valendo. */\
+:where(a,button,input,select,textarea,summary,[tabindex],[role="button"],[role="tab"]):focus-visible{outline:2px solid #FF5000;outline-offset:2px;}\
+/* LINHA DE PROGRESSO: 2px laranja no topo da tela, sem brilho. Na troca de página só aparece se a\
+   página nova demorar mais de 150 ms (página rápida não pisca nada); no M&M/P&P mostra o download real. */\
+.ibba-prog{position:fixed;left:0;right:0;top:0;height:2px;background:#FF5000;transform-origin:left center;\
+  transform:scaleX(0);opacity:0;pointer-events:none;z-index:2400;}\
+/* FAIXA DO SETOR (M&M e P&P): a mesma foto em duotone do cartão da home. Na transição entre páginas\
+   o cartão cresce até virar esta faixa (nomes ibba-sector / ibba-sector-title). Só computador. */\
+.ibba-band{position:relative;height:64px;overflow:hidden;background:#0C0F14;color:#fff;}\
+.ibba-band-photo{position:absolute;inset:0;background-size:cover;background-position:center 34%;isolation:isolate;}\
+.ibba-band-photo::before{content:"";position:absolute;inset:0;background:#FF5000;mix-blend-mode:color;\
+  -webkit-mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);}\
+.ibba-band::after{content:"";position:absolute;inset:0;pointer-events:none;\
+  background:linear-gradient(100deg,rgba(8,10,14,.66) 0%,rgba(8,10,14,.28) 46%,rgba(8,10,14,.06) 78%);}\
+.ibba-band-in{position:relative;z-index:1;height:100%;display:flex;align-items:center;padding:0 28px;}\
+.ibba-band-title{margin:0;font:600 18px/1.15 Inter,"Segoe UI",Helvetica,Arial,sans-serif;letter-spacing:-.01em;color:#fff;\
+  text-shadow:0 1px 10px rgba(0,0,0,.4);}\
+.ibba-band-title::after{content:"";display:block;width:28px;height:2px;border-radius:1px;background:#FF5000;margin-top:7px;}\
+@media(max-width:900px){.ibba-band{display:none;}}\
+/* ESQUELETO enquanto a página baixa o banco (M&M/P&P põem a classe ibba-loading no <html>): a moldura\
+   do gráfico já está na tela; dentro dela, um bloco na cor do fundo. Some quando a classe sai. */\
+html.ibba-loading .chart-wrap::after{content:"";position:absolute;inset:6px 2px;border-radius:8px;pointer-events:none;\
+  background-color:rgba(17,17,17,.045);background-repeat:no-repeat;background-size:300% 100%;}\
+html.dark.ibba-loading .chart-wrap::after{background-color:rgba(255,255,255,.05);}\
+@media (prefers-reduced-motion: no-preference){\
+  :where(a,button,input,select,textarea,summary,[tabindex],[role="button"],[role="tab"]):focus-visible{animation:ibba-anel .24s cubic-bezier(.2,0,0,1);}\
+  html.ibba-loading .chart-wrap::after{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);\
+    animation:ibba-brilho 2.2s cubic-bezier(.4,0,.2,1) infinite;}\
+  html.dark.ibba-loading .chart-wrap::after{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);}\
+  /* TROCA DE PÁGINA (View Transitions entre documentos — Chrome/Edge 126+, Safari 18.2+; nos demais\
+     a página abre como sempre). A barra preta fica PARADA; a página nova entra por cima da antiga\
+     subindo 8px; a linha laranja do menu desliza do item velho ao novo; o cartão de setor da home\
+     cresce até virar a faixa do M&M/P&P. A antiga não esmaece (a nova cobre) → nunca pisca fundo. */\
+  @view-transition{navigation:auto;}\
+  .gnav{view-transition-name:ibba-gnav;}\
+  .gnav-rule{view-transition-name:ibba-gnav-rule;}\
+  .gn-ind{view-transition-name:ibba-gnav-ind;}\
+  .ibba-band{view-transition-name:ibba-sector;}\
+  .ibba-band-title{view-transition-name:ibba-sector-title;}\
+  ::view-transition-old(root),::view-transition-new(root){mix-blend-mode:normal;}\
+  ::view-transition-old(root){animation:none;}\
+  ::view-transition-new(root){animation:.36s cubic-bezier(.16,1,.3,1) both ibba-vt-in;}\
+  ::view-transition-group(ibba-gnav-ind){animation-duration:.42s;animation-timing-function:cubic-bezier(.16,1,.3,1);}\
+  ::view-transition-group(ibba-sector),::view-transition-group(ibba-sector-title){animation-duration:.6s;animation-timing-function:cubic-bezier(.65,0,.35,1);}\
+  ::view-transition-group(ibba-sector){overflow:hidden;}\
+  ::view-transition-old(ibba-sector),::view-transition-new(ibba-sector){height:100%;object-fit:cover;}\
+  /* faixa SEM par do outro lado (M&M → News, News → M&M): nada de voo — some rápido ou entra junto\
+     com a página; senão a foto velha ficaria 0,6 s esmaecendo por cima da página nova */\
+  ::view-transition-old(ibba-sector):only-child,::view-transition-old(ibba-sector-title):only-child{animation:.16s cubic-bezier(.4,0,1,1) both ibba-vt-out;}\
+  ::view-transition-new(ibba-sector):only-child,::view-transition-new(ibba-sector-title):only-child{animation:.36s cubic-bezier(.16,1,.3,1) both ibba-vt-in;}\
+}\
+@keyframes ibba-vt-out{to{opacity:0;}}\
+@keyframes ibba-anel{from{outline-offset:6px;outline-color:rgba(255,80,0,0);}}\
+@keyframes ibba-brilho{0%{background-position:150% 0;}60%,100%{background-position:-50% 0;}}\
+@keyframes ibba-vt-in{from{opacity:0;transform:translateY(8px);}}';
+  (function(){ try{
+    var st = document.createElement('style'); st.id = 'ibba-motion'; st.textContent = EARLY_CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }catch(e){} })();
+
   /* ── everyVisible(fn, ms) — RELÓGIO QUE DORME COM A ABA ────────────────────
      Entra no lugar de setInterval nas buscas de REDE. Enquanto a aba está
      escondida (outra aba na frente, janela minimizada) o ciclo PARA: ninguém
@@ -76,7 +170,13 @@
 .gnav-brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}\
 .gnav-brand b{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap;}\
 .gnav-mark{width:26px;height:26px;border-radius:7px;background:#FF5000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}\
-.gnav-menu{display:flex;align-items:center;gap:2px;margin-left:16px;}\
+.gnav-menu{display:flex;align-items:center;gap:2px;margin-left:16px;position:relative;}\
+/* LINHA LARANJA QUE DESLIZA (2026-10-19): UM traço só, embaixo do item da página atual, no mesmo\
+   lugar e tamanho do traço de antes. No clique ele corre NA HORA até o item escolhido e, na troca\
+   de página, continua o movimento até o lugar certo da página nova. Sem brilho, sem halo. */\
+.gn-ind{position:absolute;left:0;top:0;width:0;height:2px;border-radius:1px;background:#FF5000;pointer-events:none;display:none;}\
+.gnav.has-ind .gn-ind{display:block;}\
+.gnav.has-ind .gn-item.on::after,.gnav.has-ind .gn-item.on:hover::after{opacity:0;}\
 /* ── ITEM DA NAV: a página atual se marca com UMA barrinha laranja embaixo do nome — nada de\
    tinte de fundo, halo ou brilho. No hover a mesma barrinha aparece apagada (35%), como\
    ensaio do clique. Só a cor do texto e a opacidade mudam. ── */\
@@ -98,6 +198,15 @@
 /* escolheu um destino → a lista fecha na hora. Quando o destino é a MESMA página (#âncora do M&M, aba do\
    Market) não há recarga, e o hover seguraria a lista aberta por cima do conteúdo; reabre ao sair e voltar */\
 .gn-group.gn-shut .gn-drop{display:none;}\
+/* o menu NASCE do item (desce 6px e cresce de 98,5%) e os destinos chegam em cascata, um a cada 22 ms.\
+   Só opacidade e transform: a ponte invisível de cima continua clicável durante a animação. */\
+.gn-drop{transform-origin:top left;}\
+@media (prefers-reduced-motion: no-preference){\
+  .gn-group:hover .gn-drop{animation:ibba-painel .32s cubic-bezier(.16,1,.3,1) both;}\
+  .gn-group:hover .gn-drop>*{animation:ibba-item .3s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(50ms + var(--i,0) * 22ms);}\
+}\
+@keyframes ibba-painel{from{opacity:0;transform:translateY(-6px) scale(.985);}}\
+@keyframes ibba-item{from{opacity:0;transform:translateY(4px);}}\
 /* Market ▾: a cabeça segue LINK (leva à Performance, como sempre levou). Sem as abas internas liberadas\
    (flag market_watch ou admin) somem a ▾ e a lista — o cliente vê o "Market" simples de antes */\
 .gn-group.gn-solo .gn-drop,.gn-group.gn-solo .gn-caret{display:none!important;}\
@@ -236,6 +345,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gn-item gn-admin" id="gnav-weekly" href="/weekly.html" style="display:none">Weekly</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
+    <span class="gn-ind" aria-hidden="true"></span>\
   </nav>\
   <div class="gnav-team" id="gnav-team"></div>\
   <button class="gnav-tut" id="gnav-tutorial" onclick="__gnavTour(this)" title="Guided tours of the dashboard" aria-label="Tutorial" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.6-2.4 2.1-2.4 3.5"/><path d="M12 17.2h.01"/></svg><span class="gnav-tut-l">Tutorial</span></button>\
@@ -332,9 +442,11 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     }).join('');
   }
 
+  var _teamNow = TEAM_FALLBACK;   // o último time desenhado (o afterParse repassa às assinaturas da página)
   function renderTeam(list){
     var el = document.getElementById('gnav-team'); if(!el) return;
     var team = (list && list.length) ? list : TEAM_FALLBACK;
+    _teamNow = team;
     renderMobTeam(team);
     el.innerHTML = team.map(function(p){
       var ini = esc(p.ini || _ini(p.name)), ph = _photo(p.photo);
@@ -362,6 +474,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     ['compact','tut-ico','tight','bare'].forEach(function(step){
       if(g.scrollWidth > g.clientWidth + 1) (step === 'tut-ico' ? g : t).classList.add(step);
     });
+    _placeInd(null, false);   // a barra mudou de largura → o traço laranja volta para baixo do item certo
   }
   var _fitT = null;
   window.addEventListener('resize', function(){ clearTimeout(_fitT); _fitT = setTimeout(_fitTeam, 120); });
@@ -480,6 +593,179 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     // convite da 1ª visita: espera a home assentar (dados chegando) e confere a flag de novo
     setTimeout(function(){ if(_tourOn()) _loadTour().then(function(T){ T.maybeInvite(); }).catch(function(){}); }, 2500);
   }
+  // ── LINHA LARANJA QUE DESLIZA ─────────────────────────────────────────────
+  // O traço do item atual é UM elemento só (.gn-ind), posicionado embaixo do item aceso — no mesmo
+  // lugar e largura do ::after de antes (margem lida do próprio ::after: 12px, ou 10px entre 901–1100px).
+  // No celular a fileira de itens some → sem traço (lá a marca é a borda laranja da folha do ☰).
+  function _indBox(item){
+    var menu = document.querySelector('.gnav-menu');
+    if(!menu || !item) return null;
+    var mr = menu.getBoundingClientRect(), ir = item.getBoundingClientRect();
+    if(!ir.width || !mr.width) return null;
+    var pad = 12; try{ pad = parseFloat(getComputedStyle(item, '::after').left) || 12; }catch(e){}
+    return { left: Math.round(ir.left - mr.left + pad), top: Math.round(ir.bottom - mr.top - 2),
+             width: Math.max(0, Math.round(ir.width - 2 * pad)) };
+  }
+  function _placeInd(item, animate){
+    var g = document.querySelector('.gnav'), ind = document.querySelector('.gn-ind');
+    if(!g || !ind) return;
+    var b = _indBox(item || document.querySelector('.gnav-menu .gn-item.on'));
+    if(!b){ g.classList.remove('has-ind'); return; }
+    var had = g.classList.contains('has-ind');
+    var from = { left: ind.style.left, top: ind.style.top, width: ind.style.width };
+    ind.style.left = b.left + 'px'; ind.style.top = b.top + 'px'; ind.style.width = b.width + 'px';
+    g.classList.add('has-ind');
+    if(animate && had && from.left && (from.left !== ind.style.left || from.width !== ind.style.width))
+      window.IBBAMotion.animate(ind, [from, { left: ind.style.left, top: ind.style.top, width: ind.style.width }],
+                                { duration: 420, easing: MOTION.e.expo, fill: 'none' });
+  }
+
+  // ── LINHA DE PROGRESSO ────────────────────────────────────────────────────
+  // Troca de página: só aparece se a nova não chegou em 150 ms; corre a 82% em 1,1 s e depois
+  // rasteja até 90% em 8 s — nunca diz "pronto" sem estar. Desiste sozinha em 12 s. M&M e P&P
+  // chamam IBBAProgress.set(fração) com o download REAL do banco e .done() quando desenham.
+  var _prog = { el: null, timer: 0, giveUp: 0, shown: false };
+  function _progEl(){
+    if(_prog.el && _prog.el.isConnected) return _prog.el;
+    var d = document.createElement('div'); d.className = 'ibba-prog'; d.setAttribute('aria-hidden', 'true');
+    (document.body || document.documentElement).appendChild(d); _prog.el = d; return d;
+  }
+  function _progScale(el){ var m = /matrix\(([^,]+)/.exec(getComputedStyle(el).transform || ''); return m ? Math.max(0, Math.min(1, parseFloat(m[1]) || 0)) : 0; }
+  function _progStop(){ if(_prog.el && _prog.el.getAnimations) _prog.el.getAnimations().forEach(function(a){ a.cancel(); }); }
+  function _progReset(){ clearTimeout(_prog.timer); clearTimeout(_prog.giveUp); _prog.shown = false; _progStop(); }
+  function _progStart(){
+    if(_reduced()) return;
+    _progReset();
+    _prog.timer = setTimeout(function(){
+      var el = _progEl(); _prog.shown = true;
+      var a = el.animate([{ transform: 'scaleX(0)', opacity: 1 }, { transform: 'scaleX(.35)', opacity: 1, offset: .2 }, { transform: 'scaleX(.82)', opacity: 1 }],
+                         { duration: 1100, easing: 'cubic-bezier(.1,.6,.3,1)', fill: 'forwards' });
+      a.finished.then(function(){
+        if(_prog.shown) el.animate([{ transform: 'scaleX(.82)', opacity: 1 }, { transform: 'scaleX(.9)', opacity: 1 }],
+                                   { duration: 8000, easing: MOTION.e.decidida, fill: 'forwards' });
+      }, function(){});
+    }, 150);
+    _prog.giveUp = setTimeout(_progDone, 12000);
+  }
+  function _progSet(f){
+    if(_reduced()) return;
+    clearTimeout(_prog.timer); clearTimeout(_prog.giveUp);
+    var el = _progEl(), cur = _prog.shown ? _progScale(el) : 0, to = Math.max(cur, Math.min(1, +f || 0));
+    _progStop(); _prog.shown = true;
+    el.animate([{ transform: 'scaleX(' + cur + ')', opacity: 1 }, { transform: 'scaleX(' + to + ')', opacity: 1 }],
+               { duration: 240, easing: MOTION.e.decidida, fill: 'forwards' });
+  }
+  function _progDone(){
+    clearTimeout(_prog.timer); clearTimeout(_prog.giveUp);
+    if(!_prog.shown || !_prog.el) return;
+    var el = _prog.el, cur = _progScale(el);
+    _progStop(); _prog.shown = false;
+    el.animate([{ transform: 'scaleX(' + cur + ')', opacity: 1 }, { transform: 'scaleX(1)', opacity: 1, offset: .6 }, { transform: 'scaleX(1)', opacity: 0 }],
+               { duration: 420, easing: MOTION.e.decidida, fill: 'forwards' });
+  }
+  window.IBBAProgress = { start: _progStart, set: _progSet, done: _progDone };
+
+  // ── BOTÃO QUE AFUNDA ──────────────────────────────────────────────────────
+  // Todo botão, aba e pílula encolhe 3% enquanto está apertado (cartão grande, 1,5%) em 140 ms e volta
+  // ao soltar. Feito com Web Animations na propriedade `scale` (e não com :active de CSS) porque as
+  // páginas declaram `transition` próprias que engoliriam a do toque — assim não briga com CSS nenhum.
+  // `data-sem-toque` no elemento (ou num pai) desliga.
+  var PRESS = 'button,[role="button"],[role="tab"],summary,input[type="button"],input[type="submit"],.gn-item,.gn-drop a,.gnm-a,.sc-main,.sector-tab,.fbtn,.snav-btn,.itab';
+  var _press = null;
+  function _pressEnd(){
+    var p = _press; _press = null;
+    if(!p) return;
+    var cur = 1; try{ cur = parseFloat(getComputedStyle(p.el).scale) || 1; }catch(e){}
+    try{ p.a.cancel(); }catch(e){}
+    if(cur < 1) try{ p.el.animate([{ scale: String(cur) }, { scale: '1' }], { duration: MOTION.t.toque, easing: MOTION.e.decidida }); }catch(e){}
+  }
+  function _pressStart(e){
+    if(e.button !== 0 || _reduced()) return;
+    var el = e.target && e.target.closest ? e.target.closest(PRESS) : null;
+    if(!el || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.closest('[data-sem-toque]')) return;
+    if(el.classList.contains('sc-main')){ var card = el.closest('.sector-card'); if(card) el = card; }   // cartão de setor: afunda inteiro
+    var r = el.getBoundingClientRect(), s = (r.width > 260 || r.height > 90) ? .985 : .97;
+    _pressEnd();
+    try{ _press = { el: el, a: el.animate([{ scale: '1' }, { scale: String(s) }], { duration: MOTION.t.toque, easing: MOTION.e.decidida, fill: 'forwards' }) }; }
+    catch(err){ _press = null; }
+  }
+
+  // ── TROCA DE PÁGINA ───────────────────────────────────────────────────────
+  // Clique num link que leva a OUTRA página: o item de destino acende e o traço corre na hora; se a
+  // página nova demorar, surge a linha de progresso. Não faz nada quando só a #âncora muda, quando abre
+  // em outra aba, quando é arquivo para baixar ou quando a página tratou o clique sozinha (o Market troca
+  // de aba sem recarregar) — por isso decide DEPOIS que todos os ouvintes do clique rodaram.
+  function _home(p){ return (p === '/' || p === '') ? '/index.html' : p; }
+  function _itemForUrl(href){
+    var target = _home(_path(href)), hit = null;
+    [].slice.call(document.querySelectorAll('.gnav-menu a.gn-item')).forEach(function(a){ if(!hit && _home(_path(a.href)) === target) hit = a; });
+    if(hit) return hit;
+    [].slice.call(document.querySelectorAll('.gnav-menu .gn-group')).forEach(function(g){
+      if(hit) return;
+      var any = [].slice.call(g.querySelectorAll('.gn-drop a')).some(function(a){ return _home(_path(a.href)) === target; });
+      if(any) hit = g.querySelector('.gn-item');
+    });
+    return hit;
+  }
+  var _lastNav = '';
+  function _onNavClick(e){
+    if(e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if(!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+    var u; try{ u = new URL(a.href, location.href); }catch(err){ return; }
+    if(u.origin !== location.origin || !/^https?:$/.test(u.protocol)) return;
+    if(/\.(png|jpe?g|svg|webp|gif|ico|pdf|xlsx?|csv|ics|txt|json|zip|db|gz)$/i.test(u.pathname)) return;
+    if(_home(_path(u.href)) === _home(_path(location.href)) && u.search === location.search) return;   // só a #âncora
+    setTimeout(function(){
+      if(e.defaultPrevented) return;                         // a página tratou o clique (não vai haver viagem)
+      _lastNav = u.href;
+      var item = _itemForUrl(u.href);
+      if(item){
+        [].slice.call(document.querySelectorAll('.gnav-menu .gn-item.on')).forEach(function(x){ if(x !== item) x.classList.remove('on'); });
+        item.classList.add('on');
+        _placeInd(item, true);
+      }
+      _progStart();
+    }, 0);
+  }
+  // CARTÃO DE SETOR → FAIXA: na saída da home para o M&M/P&P o cartão ganha os nomes da faixa
+  // (ibba-sector / ibba-sector-title) e o navegador faz o voo; na volta, a home dá os nomes ao cartão
+  // antes do 1º desenho. Os nomes só existem durante a viagem — senão o cartão viajaria sozinho em
+  // qualquer troca de página.
+  function _sectorOf(url){
+    var p = _path(url || '');
+    if(p.indexOf('/steel and mining/steel_sm_dashboard.html') !== -1 || /\/steel\.html$/.test(p)) return 'steel';
+    if(p.indexOf('/pulp and paper/pp_dashboard.html') !== -1 || /\/pp\.html$/.test(p)) return 'pp';
+    return '';
+  }
+  function _nameSector(sec, on){
+    var card = sec ? document.querySelector('.sc-card[data-flag="sector_' + sec + '"]') : null;
+    if(!card) return false;
+    var t = card.querySelector('.sector-card-title');
+    card.style.viewTransitionName = on ? 'ibba-sector' : '';
+    if(t) t.style.viewTransitionName = on ? 'ibba-sector-title' : '';
+    return !!on && card.getClientRects().length > 0;
+  }
+  function _clearSector(){ _nameSector('steel', false); _nameSector('pp', false); }
+  window.addEventListener('pageswap', function(e){
+    if(!e.viewTransition) return;
+    var to = _lastNav; try{ if(e.activation && e.activation.entry && e.activation.entry.url) to = e.activation.entry.url; }catch(err){}
+    _nameSector(_sectorOf(to), true);
+  });
+  window.addEventListener('pagereveal', function(e){
+    if(!e.viewTransition) return;
+    var from = '';
+    try{ from = (window.navigation && navigation.activation && navigation.activation.from && navigation.activation.from.url) || document.referrer || ''; }catch(err){}
+    if(_nameSector(_sectorOf(from), true)) e.viewTransition.finished.then(_clearSector, _clearSector);
+  });
+  // voltou pelo "Voltar" com a página guardada na memória (bfcache): desfaz o que o clique de saída mexeu
+  window.addEventListener('pageshow', function(e){
+    if(!e.persisted) return;
+    _progReset(); _clearSector();
+    [].slice.call(document.querySelectorAll('.gnav-menu > a.gn-item')).forEach(function(a){ a.classList.remove('on'); });
+    _markCurrent(); _placeInd(null, false);
+  });
+
   function inject(){
     if(document.querySelector('.gnav')) return;
     var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
@@ -487,14 +773,23 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var wrap=document.createElement('div'); wrap.innerHTML=NAV;
     [].slice.call(wrap.childNodes).forEach(function(n){ document.body.insertBefore(n, orig); });  // barra + régua no topo, em ordem
     renderTeam(_teamCache()); revealAdmin(); loadTeam(); if(window.__syncThemeIcon) window.__syncThemeIcon();
-    try{ _tourBoot(); }catch(e){}
     _markCurrent();
+    // cascata do menu suspenso: cada linha sabe a sua vez (--i)
+    [].slice.call(document.querySelectorAll('.gn-drop')).forEach(function(d){
+      [].slice.call(d.children).forEach(function(c, i){ c.style.setProperty('--i', i); });
+    });
+    _placeInd(null, false);
+    document.addEventListener('click', _onNavClick);
+    document.addEventListener('pointerdown', _pressStart, true);
+    ['pointerup', 'pointercancel', 'dragstart'].forEach(function(t){ document.addEventListener(t, _pressEnd, true); });
+    window.addEventListener('blur', _pressEnd);
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ _fitTeam(); });   // Inter chegou → larguras finais
     var mob = document.getElementById('gnav-mob');
     if(mob) mob.addEventListener('click', function(e){
       var a = e.target && e.target.closest ? e.target.closest('a') : null;
       if(a) window.__gnavMob(0);                                   // escolheu um destino → fecha a folha
     });
-    window.addEventListener('hashchange', _markCurrent);   // trocou de seção → a luz acompanha
+    window.addEventListener('hashchange', function(){ _markCurrent(); _placeInd(null, false); });   // trocou de seção → a luz acompanha
     // menu suspenso: escolheu um destino → a lista fecha (.gn-shut no CSS); reabre quando o mouse sai e volta
     [].slice.call(document.querySelectorAll('.gn-group')).forEach(function(g){
       g.addEventListener('click', function(e){
@@ -554,7 +849,30 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     });
   }
   // o Market troca de aba SEM recarregar (history.replaceState não dispara evento nenhum) → ele chama isto
-  window.__gnavMarkCurrent = _markCurrent;
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject);
-  else inject();
+  window.__gnavMarkCurrent = function(){ _markCurrent(); _placeInd(null, false); };
+
+  // ── QUANDO ENTRAR ─────────────────────────────────────────────────────────
+  // A barra entra assim que o <body> NASCE, antes do 1º desenho da página (o topnav roda no <head>).
+  // É isso que deixa a transição entre páginas encontrar a barra pronta na página nova — se ela só
+  // entrasse no DOMContentLoaded, a página nova apareceria sem barra e ela "piscaria" por cima.
+  // O que depende do HTML da página inteiro (assinaturas do time no cabeçalho de celular, convite do
+  // tutorial) espera o DOMContentLoaded, como antes.
+  function _whenBody(fn){
+    if(document.body){ fn(); return; }
+    try{
+      var mo = new MutationObserver(function(){ if(document.body){ mo.disconnect(); fn(); } });
+      mo.observe(document.documentElement, { childList: true });
+    }catch(e){}
+  }
+  var _parsed = false;
+  function afterParse(){
+    if(_parsed) return; _parsed = true;
+    inject();                                   // garantia: se o observador não pegou o <body>, entra agora
+    _fillBrandSub(_teamNow);                    // .brand-team / .top-sub só existem com o HTML inteiro
+    try{ _tourBoot(); }catch(e){}
+    _fitTeam();
+  }
+  _whenBody(inject);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', afterParse);
+  else afterParse();
 })();
