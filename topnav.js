@@ -177,7 +177,7 @@ html.dark.ibba-loading .chart-wrap::after{background-color:rgba(255,255,255,.05)
   font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;position:relative;z-index:500;}\
 .gnav-brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}\
 .gnav-brand b{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap;}\
-.gnav-mark{width:26px;height:26px;border-radius:7px;background:#FF5000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}\
+.gnav-mark{width:26px;height:26px;border-radius:6px;background:#FF5000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}\
 .gnav-menu{display:flex;align-items:center;gap:2px;margin-left:16px;position:relative;}\
 /* LINHA LARANJA QUE DESLIZA (2026-10-19): UM traço só, embaixo do item da página atual, no mesmo\
    lugar e tamanho do traço de antes. No clique ele corre NA HORA até o item escolhido e, na troca\
@@ -221,7 +221,7 @@ html.dark.ibba-loading .chart-wrap::after{background-color:rgba(255,255,255,.05)
 /* 901–1100px (ex.: notebook de 1280 com zoom de 125% = 1024): com a ▾ do Market o Sign out do cliente passava\
    8px da borda da tela → os itens apertam 2px de cada lado. Acima de 1100px nada muda (medido: sobra 43px) */\
 @media(min-width:901px) and (max-width:1100px){.gn-item{padding-left:10px;padding-right:10px;}.gn-item::after{left:10px;right:10px;}}\
-.gn-drop a{display:block;font-size:11.5px;color:#2C2C2C;text-decoration:none;padding:8px 12px;border-radius:9px;font-weight:500;white-space:nowrap;transition:background .15s,color .15s;}\
+.gn-drop a{display:block;font-size:11.5px;color:#2C2C2C;text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:500;white-space:nowrap;transition:background .15s,color .15s;}\
 .gn-drop a:hover{background:#F7F5F1;color:#FF5000;}\
 .gn-drop a.on{background:rgba(255,80,0,.09);color:#FF5000;font-weight:600;}\
 .gn-cat{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#8C8C8C;padding:5px 12px 3px;}\
@@ -240,17 +240,17 @@ html.dark .gn-cat{color:#828892;}\
 .gnav-team.compact .gnt-name{display:none;}\
 .gnav-team.tight .gnt-b.wa{display:none;}\
 .gnav-team.bare .gnt-b{display:none;}\
-.gnt-b{width:19px;height:19px;border-radius:7px;border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;transition:color .15s,border-color .15s,background .15s;}\
+.gnt-b{width:19px;height:19px;border-radius:8px;border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;transition:color .15s,border-color .15s,background .15s;}\
 .gnt-b:hover{color:#fff;border-color:rgba(255,255,255,.45);background:rgba(255,255,255,.06);}\
 .gnt-b svg{width:11px;height:11px;}\
 .gnt-b.wa:hover{color:#25D366;border-color:#25D366;}\
-.gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:6px 13px;cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-out{font:600 11px Inter,sans-serif;color:rgba(255,255,255,.45);background:none;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:6px 13px;cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
 .gnav-out:hover{color:#fff;border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);}\
-.gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-theme{flex-shrink:0;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid rgba(255,255,255,.14);border-radius:8px;color:rgba(255,255,255,.6);cursor:pointer;margin-left:14px;transition:color .15s,border-color .15s,background .15s;}\
 .gnav-theme:hover{color:#fff;border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.06);}\
 .gnav-theme svg{width:15px;height:15px;display:block;}\
 /* TUTORIAL: botão discreto, no idioma do Sign out. Aperta p/ só o ícone antes de sumir o WhatsApp do time (_fitTeam) */\
-.gnav-tut{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;height:28px;font:600 11px Inter,sans-serif;color:rgba(255,255,255,.5);background:none;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:0 11px 0 9px;cursor:pointer;margin-left:14px;white-space:nowrap;transition:color .15s,border-color .15s,background .15s;}\
+.gnav-tut{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;height:28px;font:600 11px Inter,sans-serif;color:rgba(255,255,255,.5);background:none;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:0 11px 0 9px;cursor:pointer;margin-left:14px;white-space:nowrap;transition:color .15s,border-color .15s,background .15s;}\
 .gnav-tut:hover{color:#fff;border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);}\
 .gnav-tut svg{width:14px;height:14px;display:block;flex-shrink:0;}\
 @media(min-width:901px){.gnav.tut-ico .gnav-tut{width:28px;padding:0;justify-content:center;margin-left:8px;}.gnav.tut-ico .gnav-theme{margin-left:8px;}.gnav.tut-ico .gnav-out{margin-left:10px;}}\
@@ -270,7 +270,7 @@ html.dark .gn-cat{color:#828892;}\
    Agora: barra fixa no topo (marca + tema + ☰) e uma folha que desce com o menu\
    inteiro, o time (nome + e-mail + WhatsApp) e o Sign out. */\
 .gnav-burger{display:none;width:36px;height:32px;align-items:center;justify-content:center;\
-  background:none;border:1px solid rgba(255,255,255,.22);border-radius:7px;color:#fff;cursor:pointer;\
+  background:none;border:1px solid rgba(255,255,255,.22);border-radius:8px;color:#fff;cursor:pointer;\
   margin-left:10px;flex-shrink:0;padding:0;}\
 .gnav-burger svg{width:18px;height:18px;display:block;}\
 .gnav-mob{display:none;position:fixed;left:0;right:0;top:52px;bottom:0;z-index:1900;\
@@ -299,7 +299,7 @@ html.dark .gn-cat{color:#828892;}\
   justify-content:center;color:#8C8C8C;text-decoration:none;flex-shrink:0;}\
 .gnm-b svg{width:16px;height:16px;}\
 .gnm-b.wa{color:#25D366;border-color:rgba(37,211,102,.45);}\
-.gnm-out{display:block;width:calc(100% - 36px);margin:18px 18px 0;padding:13px;border-radius:9px;\
+.gnm-out{display:block;width:calc(100% - 36px);margin:18px 18px 0;padding:13px;border-radius:8px;\
   border:1px solid #E3E3E3;background:#F4F3F0;color:#2C2C2C;font:700 14px Inter,sans-serif;cursor:pointer;}\
 html.dark .gnav-sheet{background:#1c2026;}\
 html.dark .gnm-a{color:#e8eaed;border-bottom-color:#2b3038;}\

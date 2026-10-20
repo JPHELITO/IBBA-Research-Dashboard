@@ -296,7 +296,7 @@
       'padding:3px 7px;border:1px solid rgba(128,128,128,.45);background:rgba(127,127,127,.16);color:inherit;line-height:1.2}' +
       '.ibba-dl button{backdrop-filter:blur(2px)}' +
       '.ibba-dl button:hover,.ibba-tb button:hover{border-color:#FF5000;color:#FF5000}' +
-      '.ibba-btn{font:600 11px Arial,Helvetica,sans-serif;cursor:pointer;border-radius:7px;padding:6px 12px;' +
+      '.ibba-btn{font:600 11px Arial,Helvetica,sans-serif;cursor:pointer;border-radius:8px;padding:6px 12px;' +
       'border:1px solid #FF5000;background:rgba(255,80,0,.12);color:#FF5000}.ibba-btn:hover{background:rgba(255,80,0,.22)}' +
       '@media print{.ibba-dl,.ibba-tb,.ibba-btn{display:none!important}}';
     document.head.appendChild(st);
@@ -398,14 +398,14 @@
     const st = document.createElement('style'); st.id = 'ibba-raw-css';
     st.textContent =
       '.ibba-ov{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,Arial,Helvetica,sans-serif}' +
-      '.ibba-mod{background:#fff;color:#111;border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.3);width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden}' +
+      '.ibba-mod{background:#fff;color:#111;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden}' +
       '.ibba-mod h3{margin:0;font-size:14px;font-weight:700;letter-spacing:.02em}' +
       '.ibba-mh{padding:16px 18px 12px;border-bottom:1px solid #E5E7EB;position:relative}' +
       '.ibba-mh .ibba-msub{font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5}' +
       '.ibba-x{position:absolute;top:11px;right:12px;border:none;background:transparent;font-size:19px;line-height:1;cursor:pointer;color:#9CA3AF;padding:2px 6px}' +
       '.ibba-x:hover{color:#FF5000}' +
       '.ibba-mb{overflow:auto;padding:6px 8px 6px 8px;flex:1}' +
-      '.ibba-row{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer}' +
+      '.ibba-row{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer}' +
       '.ibba-row:hover{background:rgba(255,80,0,.06)}' +
       '.ibba-row input{margin:2px 0 0;accent-color:#FF5000;cursor:pointer;flex:none}' +
       '.ibba-rt{font-size:12px;font-weight:600}' +
@@ -414,12 +414,12 @@
       '.ibba-mf{border-top:1px solid #E5E7EB;padding:12px 18px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}' +
       '.ibba-mf .ibba-sel{font-size:10.5px;color:#6B7280;margin-right:auto}' +
       '.ibba-mf .ibba-lnk{border:none;background:transparent;color:#FF5000;font:600 10.5px Inter,Arial,sans-serif;cursor:pointer;padding:0 2px}' +
-      '.ibba-fmt{display:inline-flex;border:1px solid #D1D5DB;border-radius:7px;overflow:hidden}' +
+      '.ibba-fmt{display:inline-flex;border:1px solid #D1D5DB;border-radius:8px;overflow:hidden}' +
       '.ibba-fmt button{border:none;background:transparent;font:600 10.5px Inter,Arial,sans-serif;padding:6px 12px;cursor:pointer;color:#6B7280}' +
       '.ibba-fmt button.on{background:#FF5000;color:#fff}' +
       '.ibba-fmt button.off{opacity:.4;text-decoration:line-through}' +   // Excel indisponível: linhas demais
       '.ibba-fmt button.off.on{background:#B45309;color:#fff;text-decoration:line-through}' +
-      '.ibba-go{border:1px solid #FF5000;background:#FF5000;color:#fff;font:700 11px Inter,Arial,sans-serif;border-radius:7px;padding:7px 16px;cursor:pointer}' +
+      '.ibba-go{border:1px solid #FF5000;background:#FF5000;color:#fff;font:700 11px Inter,Arial,sans-serif;border-radius:8px;padding:7px 16px;cursor:pointer}' +
       '.ibba-go:disabled{opacity:.55;cursor:default}' +
       '.ibba-st{width:100%;font-size:10.5px;color:#6B7280;min-height:14px;line-height:1.45}' +
       '.ibba-st.warn{color:#B45309}.ibba-st.err{color:#C0392B}' +
