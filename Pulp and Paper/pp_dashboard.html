@@ -419,6 +419,22 @@ html.dark .cr-input{color-scheme:dark}
 .filter-btns>.ibba-slide,.pred-btns>.ibba-slide{background:var(--black);}
 html.dark .fbtn.active,html.dark .pill-btn.active,html.dark .itab.active{background:#343941;border-color:#343941;color:#fff;}
 html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .inner-tab-bar>.ibba-slide{background:#343941;}
+/* ══ ETIQUETAS DE SEÇÃO · ONDA 4 (2026-10-20) — o rótulo que ABRE um bloco ═══════════════════════════════
+   Um desenho só para Exports by Country, Korea — HRC, INDA… (e o mesmo no Stock Guide): traço laranja de
+   16×2px + maiúsculas com espaço entre letras, na tinta do corpo. Antes: cinza #737373 sobre o fundo da
+   página = 3,9:1 na letra de 9,5px (abaixo dos 4,5:1); agora 11:1. O selo ao lado (Total, Volume, Flat only)
+   saiu do laranja cheio com texto branco (3,3:1) — laranja cheio é da ação principal (D2) — e virou o
+   secundário da casa: chapa do painel + fio. Selo vazio some. Título de CARTÃO (.chart-title) não leva
+   etiqueta: ela marca seção, não cartão. Reverter = apagar este bloco. */
+.sec-block-header{font-size:10.5px;color:var(--gray-dark);letter-spacing:.12em;}
+.sec-block-header::before{content:"";flex:none;width:16px;height:2px;border-radius:1px;background:var(--orange);}
+.sec-block-header span{background:var(--white);color:var(--gray-dark);border:1px solid var(--border);
+  font-size:9px;font-weight:600;padding:1px 7px;letter-spacing:.06em;flex:none;white-space:nowrap;}
+.sec-block-header span:empty{display:none;}
+.mob-picker-eyebrow{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;
+  color:var(--gray-dark);letter-spacing:.12em;}
+.mob-picker-eyebrow::before{content:"";flex:none;width:16px;height:2px;border-radius:1px;background:var(--orange);}
+@media (max-width:768px){.sec-block-header{font-size:11.5px;}}
 </style>
 </head>
 <body>
