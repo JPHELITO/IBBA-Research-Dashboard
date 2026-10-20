@@ -1255,6 +1255,13 @@ html.dark .sec-link,html.dark .ev-open{color:#FF7A45;}
 html.dark .wip-badge{background:transparent;color:#8E949D;border-color:rgba(255,255,255,.14);}
 .area-events .sec-head{justify-content:flex-end;}
 .area-comm .kv-list{gap:0;}
+/* E7 · ETIQUETAS DA NOTÍCIA (setor + empresas cobertas): destaque leve pedido pelo usuário — fundo suave no setor; o ticker em laranja suave (a cor da casa marcando a NOSSA cobertura).
+   A letra NÃO cresce (8px, como a etiqueta de setor sempre teve; ver o aviso do E1). Altura = 8px + 3px de
+   respiro = 11px, abaixo da linha de baixo (~11,5px): a linha não cresce e o feed não perde manchete. */
+.news-sec.sm,.news-sec.pp,.news-sec.nr{background:rgba(17,17,17,.06);padding:1.5px 5px;border-radius:4px;line-height:1;letter-spacing:.05em;color:#5F5A52;}
+.news-co{flex:none;font-size:8px;font-weight:700;letter-spacing:.03em;white-space:nowrap;padding:1.5px 5px;border-radius:4px;line-height:1;background:rgba(255,80,0,.10);color:#C2410C;}
+html.dark .news-sec.sm,html.dark .news-sec.pp,html.dark .news-sec.nr{background:rgba(255,255,255,.07);color:#A9B0BB;}
+html.dark .news-co{background:rgba(255,90,20,.16);color:#FF8A4D;}
 .cm-card{background:transparent;border:none;border-radius:0;border-left:1px solid var(--border);padding:7px 9px 2px;}
 .cm-card:first-child{border-left:none;}
 .cm-card:hover{transform:none;background:rgba(0,0,0,.025);border-color:var(--border);}
@@ -1766,7 +1773,9 @@ function _newsIn(fx, chegaram){
 async function loadNews(){
   const {data:{session}}=await sbAuth.auth.getSession();
   if(!session)return;
-  const q='url,domain,source_name,title,snippet,published_at,found_at,take,take_llm,take_sector,take_reason,sector';
+  // E7: `take_covered_companies` (as cobertas citadas, o mesmo campo das fichas do Market Pulse) entrou;
+  // `snippet`, `take` e `take_sector` saíram — a Home baixava e não usava (o resumo era o mais pesado).
+  const q='url,domain,source_name,title,published_at,found_at,take_llm,take_reason,sector,take_covered_companies';
   // Janela de recência por DATA DE PUBLICAÇÃO (não por found_at): impede que
   // notícia antiga (re-descoberta por algum scraper) apareça como recente.
   const ageCutoff=new Date(Date.now()-NEWS_MAX_AGE_HOURS*3600*1000).toISOString();
@@ -1825,6 +1834,17 @@ function _takeBadge(t){
 // IA ainda não classificou (notícia passou da folga de pendência): spinner — NUNCA "?" nem take do robô.
 function _loadingBadge(){
   return '<span class="news-take loading" title="Awaiting AI classification"></span>';
+}
+// E7 · TICKERS DAS COBERTAS NA NOTÍCIA (2026-10-20): quando o classificador marcou empresa coberta na matéria
+// (`take_covered_companies`, o MESMO campo das fichas do Market Pulse), o ticker entra ao lado da etiqueta de
+// setor — diz de relance por que a notícia importa. Um selo por empresa, até 2; o resto vira "+N".
+// `_pulseCo`/`_esc` são declarados mais abaixo no arquivo, mas só rodam depois da 1ª busca de notícias.
+function _coTag(a){
+  const cos=[...new Set(String(a.take_covered_companies||'').split(';').map(c=>c.trim().toUpperCase()).filter(Boolean))];
+  if(!cos.length) return '';
+  const tks=cos.map(c=>_pulseCo(c).tk), mais=tks.length-2;
+  return tks.slice(0,2).map(tk=>`<span class="news-co" title="Covered company in this story">${_esc(tk)}</span>`).join('')
+       + (mais>0 ? `<span class="news-co" title="${_esc(tks.slice(2).join(', '))}">+${mais}</span>` : '');
 }
 // tag de setor EXIBIDO: recebe o setor já resolvido ('sm'|'pp'|'nr'). Nunca vazio.
 function _sectorTag(sec){
@@ -1895,7 +1915,7 @@ function _pintarNews(articles){
         <span class="news-item-source">${lbl}</span>${a.source_name==='CVM'?'<span class="news-item-primary" title="Primary source — official filing (CVM / B3)">PRIMARY</span>':''}
         <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
-        ${_sectorTag(_resolveSec(a))}
+        ${_sectorTag(_resolveSec(a))}${_coTag(a)}
       </div>
     </a>`;
   }).join('');
