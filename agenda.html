@@ -294,10 +294,12 @@ function visibleRange(){
   return [wk[0][0].ymd, last[last.length-1].ymd];
 }
 async function loadStatic(){
-  S.cats=await rpc('get_exec_calendar_categories')||[];
+  // V4 (2026-10-20): categorias e janelas descem juntas (antes: uma depois da outra)
+  const [cats,windows]=await Promise.all([rpc('get_exec_calendar_categories'), rpc('get_exec_calendar_data_windows')]);
+  S.cats=cats||[];
   S.catById={}; S.cats.forEach(c=>S.catById[c.id]=c);
   if(S.activeCats===null) S.activeCats=new Set(S.cats.map(c=>c.id));
-  S.windows=await rpc('get_exec_calendar_data_windows')||[];
+  S.windows=windows||[];
 }
 async function loadEvents(){
   const [f,t]=visibleRange();
@@ -618,7 +620,7 @@ async function calStart(){
   if(window.innerWidth<=700){ S.view='list';
     document.getElementById('seg-month').classList.remove('on');
     document.getElementById('seg-list').classList.add('on'); }
-  await loadStatic(); renderChips(); await loadEvents(); render();
+  await Promise.all([loadStatic(), loadEvents()]); renderChips(); render();   // V4: juntas (não dependem uma da outra)
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false; }
 ;(async()=>{
   wire();
@@ -650,10 +652,12 @@ async function calStart(){
 
     // Portão: admin (get_my_role OU is_admin) pré-visualiza mesmo com a flag DESLIGADA; cliente não vê.
     let flagOn=false, isAdmin=false;
-    try{ isAdmin = (await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role', e); }
-    if(!isAdmin){ try{ isAdmin = (await rpc('is_admin'))===true; }catch(e){ console.warn('is_admin', e); } }
-    try{ const flags=await rpc('get_dashboard_flags'); const row=(flags||[]).find(x=>x.key==='exec_calendar'); if(row) flagOn=!!row.enabled; }
-    catch(e){ console.warn('get_dashboard_flags', e); }
+    // V4 (2026-10-20): as três perguntas do portão saem JUNTAS (antes: em fila); a regra é a mesma
+    const [rRole,rAdm,rFlags]=await Promise.allSettled([rpc('get_my_role'), rpc('is_admin'), rpc('get_dashboard_flags')]);
+    if(rRole.status==='fulfilled') isAdmin = rRole.value==='admin'; else console.warn('get_my_role', rRole.reason);
+    if(!isAdmin){ if(rAdm.status==='fulfilled') isAdmin = rAdm.value===true; else console.warn('is_admin', rAdm.reason); }
+    if(rFlags.status==='fulfilled'){ const row=(rFlags.value||[]).find(x=>x.key==='exec_calendar'); if(row) flagOn=!!row.enabled; }
+    else console.warn('get_dashboard_flags', rFlags.reason);
     if(!flagOn&&!isAdmin){
       console.warn('[calendar] acesso negado — isAdmin:', isAdmin, '· flagOn:', flagOn);
       document.getElementById('gate').hidden=true;

@@ -375,7 +375,9 @@ async function restGet(path){const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,{
 // SÓ a parte AO VIVO (preço + câmbio + commodities) — re-chamada no auto-refresh.
 async function sgFetchLive(comps,extraSyms){
   const priceByKey={}, marketValues={}, fxRates={}; let pricesUpdatedAt=null;
-  try{
+  // V4 (2026-10-20): cotações, commodities e indicadores não dependem um do outro → descem JUNTOS
+  // (antes: um depois do outro). Cada bloco mantém o tratamento de erro de sempre.
+  const pQuotes=(async()=>{ try{
     // só VISÍVEIS entram (oculto→yahoo_symbol NULL→não vaza); tolera 'VALE3' ou 'VALE3.SA' (B3 → tenta +'.SA')
     const cand=new Set();
     comps.forEach(c=>{ const s=c.yahoo_symbol||(c.is_visible?c.ticker:null); if(!s)return; cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); });
@@ -384,17 +386,19 @@ async function sgFetchLive(comps,extraSyms){
     if(syms.length){ const q=await restGet('quotes?select=ticker,price,updated_at&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
       q.forEach(r=>{ const p=n(r.price); priceByKey[r.ticker]=p; priceByKey[_short(r.ticker)]=p;   // chaveia bruto + sem-sufixo
         if(r.updated_at){ const t=Date.parse(r.updated_at); if(!isNaN(t)&&(pricesUpdatedAt==null||t>pricesUpdatedAt))pricesUpdatedAt=t; } }); }
-  }catch(e){console.warn('quotes',e)}
-  try{ const cm=await restGet('commodities?select=code,price'); const mp={}; cm.forEach(r=>mp[r.code]=n(r.price));
-    const mac=await restGet('macro_indicators?select=code,value').catch(()=>[]);
+  }catch(e){console.warn('quotes',e)} })();
+  const pDrivers=(async()=>{ try{
+    const [cm,mac]=await Promise.all([restGet('commodities?select=code,price'), restGet('macro_indicators?select=code,value').catch(()=>[])]);
+    const mp={}; cm.forEach(r=>mp[r.code]=n(r.price));
     mac.forEach(r=>{ mp['MACRO_'+r.code]=n(r.value);
       const m=/^USD_([A-Z]{3})$/.exec(r.code); if(m){ const v=n(r.value); if(v!=null&&v>0)fxRates[m[1]]=v; } });   // USD_BRL → fxRates.BRL = unidades por USD (ao vivo)
     SG.MARKET_DRIVER_CATALOG.forEach(d=>{ const key=d.src.table==='macro'?('MACRO_'+d.src.code):d.src.code;
       if(mp[key]!=null) marketValues[d.key]=mp[key]; });
-  }catch(e){console.warn('drivers/fx live',e)}
+  }catch(e){console.warn('drivers/fx live',e)} })();
+  await Promise.all([pQuotes,pDrivers]);
   return {priceByKey,marketValues,fxRates,pricesUpdatedAt};
 }
-async function sgLoadData(){
+async function sgLoadData(knownAdmin){   // knownAdmin: o papel que a abertura já perguntou (V4); sem ele, pergunta
   const [comps,cfgArr,drivers,tables,peers]=await Promise.all([
     rpc('get_stock_guide_comps'), rpc('get_stock_guide_config'),
     rpc('get_stock_guide_drivers'), rpc('get_stock_guide_sensitivity_tables'),
@@ -404,8 +408,8 @@ async function sgLoadData(){
   // Normaliza p/ US$/AUGO (moeda do modelo) ANTES do fetch e dos múltiplos, p/ EV/EBITDA, yields e
   // upside baterem. 'AURA33' segue aceito p/ a linha legada do banco (antes do renomeio). Idempotente.
   (comps||[]).forEach(c=>{ if(c&&(c.ticker==='AUGO'||c.ticker==='AURA33')){ c.yahoo_symbol='AUGO'; c.trade_ccy='USD'; c.base_ccy='USD'; c.fx_to_base=1; c.fx_to_usd=1; } });
-  const role=await rpc('get_my_role').catch(()=>null);
-  const isAdmin=!!(role&&role==='admin');
+  const isAdmin = (knownAdmin!=null) ? !!knownAdmin
+    : !!(await rpc('get_my_role').then(r=>r==='admin', ()=>false));
   const peerSyms=(peers||[]).map(p=>p.yahoo_symbol).filter(Boolean);
   const live=await sgFetchLive(comps,peerSyms);
   return Object.assign({comps,peers:peers||[],config:(cfgArr&&cfgArr[0])||{y1_label:'26E',y2_label:'27E',comps_footnote:''},drivers,tables,isAdmin},live);
@@ -1470,8 +1474,10 @@ async function sgInit(data){
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],peersEnabled:data.peersEnabled,computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
   if(data.isAdmin && window.IBBAExport) _sgInitExport();   // botões Export (PDF/Excel) só p/ admin
-  if(_sgTimer)clearInterval(_sgTimer);
-  if(!window.__SG_TEST__) _sgTimer=setInterval(sgTickLive,60000);   // auto-refresh ao vivo (preço/câmbio)
+  // V5 (2026-10-20): o relógio de 1 min DORME com a aba escondida (everyVisible, como nas outras páginas);
+  // antes era setInterval puro e consultava o banco a cada minuto mesmo sem ninguém olhando. Um relógio só:
+  // o sgTickLive lê o _SG atual, então reabrir o sgInit não precisa de outro.
+  if(!window.__SG_TEST__&&!_sgTimer){ _sgTimer=true; (window.everyVisible||((fn,ms)=>setInterval(fn,ms)))(sgTickLive,60000); }
 }
 
 /* ── Export admin-only: PDF (print) + Excel das tabelas do Stock Guide ── */
@@ -1532,14 +1538,19 @@ async function sgTickLive(){
     sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token)_setAuthCookie(s);else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
     // gate por flag stock_guide (admin SEMPRE vê; flag AUSENTE = fechado p/ cliente — rollout seguro)
     let flagOn=false, isAdmin=false, sensOn=false, peersOn=true;
-    try{ const role=await rpc('get_my_role'); isAdmin=(role==='admin');
-      const flags=await rpc('get_dashboard_flags');
-      const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
-      const fs=(flags||[]).find(x=>x.key==='stock_guide_sensitivity'); sensOn=!!(fs&&fs.enabled);   // sub-flag granular
-      const fp=(flags||[]).find(x=>x.key==='stock_guide_peers'); peersOn=(fp?!!fp.enabled:true);     // default ON se ausente
+    // V4 (2026-10-20): papel e áreas ligadas são perguntados JUNTOS (antes: um depois do outro). A regra é a
+    // de sempre: sem o papel, as áreas não contam (como quando a 1ª pergunta falhava e a 2ª nem saía).
+    let roleOk=false;
+    try{ const [rRole,rFlags]=await Promise.allSettled([rpc('get_my_role'), rpc('get_dashboard_flags')]);
+      if(rRole.status==='fulfilled'){ roleOk=true; isAdmin=(rRole.value==='admin');
+        if(rFlags.status==='fulfilled'){ const flags=rFlags.value;
+          const f=(flags||[]).find(x=>x.key==='stock_guide'); if(f)flagOn=!!f.enabled;
+          const fs=(flags||[]).find(x=>x.key==='stock_guide_sensitivity'); sensOn=!!(fs&&fs.enabled);   // sub-flag granular
+          const fp=(flags||[]).find(x=>x.key==='stock_guide_peers'); peersOn=(fp?!!fp.enabled:true);     // default ON se ausente
+        } }
     }catch(e){}
     if(!flagOn&&!isAdmin){document.getElementById('gate').hidden=true;document.getElementById('denied').hidden=false;return}
-    const data=await sgLoadData();
+    const data=await sgLoadData(roleOk?isAdmin:undefined);   // o papel já está na mão → não pergunta de novo
     data.sensEnabled  = isAdmin || sensOn;    // admin sempre vê; cliente só com a sub-flag ligada
     data.peersEnabled = isAdmin || peersOn;
     await sgInit(data);

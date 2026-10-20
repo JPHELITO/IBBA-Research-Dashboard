@@ -503,7 +503,15 @@ function _age(iso){
   if(s<86400)return `${Math.floor(s/3600)}h`;
   return `${Math.floor(s/86400)}d`;
 }
+// o rótulo do dia (TODAY / YESTERDAY / 20 OCTOBER 2026) é guardado por data; a memória é jogada fora
+// quando o dia de HOJE muda, porque "today" e "yesterday" dependem dele
+const _dayLblMemo=new Map(); let _dayLblDia='';
 function _dayLabel(iso){
+  const hoje=_todayStr(); if(hoje!==_dayLblDia){ _dayLblMemo.clear(); _dayLblDia=hoje; }
+  const k=String(iso); if(_dayLblMemo.has(k)) return _dayLblMemo.get(k);
+  const v=_dayLabelCalc(iso); _dayLblMemo.set(k,v); return v;
+}
+function _dayLabelCalc(iso){
   const d=new Date(iso);
   const today=new Date(); today.setHours(0,0,0,0);
   const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
@@ -543,11 +551,22 @@ function _fx(){ _feedFx = true; }
 
 // ─── Fetch ─────────────────────────────────────────────────────────────
 // Timestamp efetivo: publicação real, found_at como fallback (igual à home).
-function _effTs(a){ return Date.parse(a.published_at||a.found_at||'')||0; }
+// V3 (2026-10-20): as duas contas ficam GUARDADAS na própria notícia e só são refeitas se a data de
+// origem mudar (a chave é o texto da data). Antes, cada ordenação e cada filtro refaziam Date.parse e
+// new Date para as ~5 mil notícias — um clique de filtro chegava a 1,1 s neste PC.
+function _effTs(a){
+  const s=a.published_at||a.found_at||'';
+  if(a._etsK!==s){ a._etsK=s; a._ets=Date.parse(s)||0; a._edK=null; }
+  return a._ets;
+}
 function _effDate(a){                       // 'YYYY-MM-DD' local do timestamp efetivo
   const t=_effTs(a); if(!t) return '';
-  const d=new Date(t);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(a._edK!==a._etsK){
+    const d=new Date(t);
+    a._ed=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    a._edK=a._etsK;
+  }
+  return a._ed;
 }
 
 // Busca por limit/offset em QUERY PARAMS (à prova de CORS), páginas em PARALELO.
