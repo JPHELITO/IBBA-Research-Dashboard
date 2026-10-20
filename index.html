@@ -1223,36 +1223,16 @@ html.dark .hm-pop-chip.on,html.dark .modal-ranges button.active{background:#3439
 .mc-reco-chip.on{background:var(--black);border-color:var(--black);color:#fff;}
 html.dark .mc-reco-chip.on{background:#343941;border-color:#343941;color:#fff;}
 /* ══ HOME · REFINO (2026-10-20) — proposta "Home e velocidade", itens E1 a E6 ═══════════════════════
-   E1 · LEITURA. A home é desenhada em 1920px e encolhe (0,80 em 1536px; 0,71 em 1366px): a manchete
-   saía com 9,2px na tela, contra 13,5px na aba News. Sobe o tamanho de quem é LIDO — só no computador
-   (o celular não encolhe e tem tamanhos próprios). O feed se reajusta sozinho (_encaixar).
+   E1 · LEITURA (letra maior) — DESFEITO no mesmo dia, a pedido do usuário: a Home voltou inteira aos
+   tamanhos de letra de antes (ver o aviso logo abaixo). Os tamanhos ficam nas regras originais lá em cima.
    E2 · COR. O laranja volta a ser sinal: fonte, idade e etiqueta de setor em cinza quente; atalhos num
    laranja mais escuro no claro (#FF5000 em letra pequena dá 3,3:1; #C2410C dá 5:1).
    E3 · CARTÕES DE SETOR na linguagem da faixa do M&M/P&P: título no escuro, foto numa vitrine à direita,
    sem os véus. E4 · COMMODITIES sem caixa dentro de caixa. E6 · Market Pulse com selo "Beta" discreto
-   e rótulos legíveis; atalho do quadro de eventos à direita, como nos outros. Reverter = apagar o bloco. */
-@media (min-width:1025px){
-  .news-item{padding:11px 18px;}
-  .news-item-title{font-size:14px;line-height:1.36;}
-  .news-item-meta{font-size:11px;}
-  .news-take{min-width:18px;height:18px;font-size:12px;}
-  .news-sec{font-size:9.5px;}
-  .news-filter-chip{font-size:11px;}
-  .sec-link,.ev-open{font-size:12px;}
-  .ev-t{font-size:13px;} .ev-when{font-size:11px;} .ev-sub{font-size:10px;}
-  .hm-ticker{font-size:12px;} .hm-change{font-size:11px;} .hm-name{font-size:9px;} .hm-price{font-size:10.5px;}
-  .hm-range button{font-size:10px;}
-  .cm-name{font-size:10.5px;} .cm-val{font-size:20px;} .cm-unit{font-size:8.5px;} .cm-chg{font-size:11.5px;}
-  .cm-date{font-size:9px;} .cm-row{font-size:9.5px;}
-  .pulse-stat-lbl{font-size:9.5px!important;}
-  #stat-tot-lbl{white-space:nowrap;font-size:8.5px!important;}
-  .gauge-label{font-size:10px!important;}
-  .pn{font-size:10.5px!important;}
-  .pn-more{font-size:9.5px!important;}
-  /* com o quadro de eventos o Market Pulse fica estreito (286px): os rótulos da contagem cabem até 7,5px
-     (eram 6,5px; a 8px já passam 1px da largura) */
-  .page.has-events .pulse-stat-lbl,.page.has-events #stat-tot-lbl{font-size:7.5px!important;}
-}
+   (no tamanho do selo antigo); atalho do quadro de eventos à direita, como nos outros. Reverter = apagar o bloco. */
+/* (E1 DESFEITO, 20/10) aqui ficava o @media (min-width:1025px) que subia o tamanho das letras da Home
+   (manchete 14px, heatmap, commodities, eventos, Market Pulse). O usuário achou "muito rude" e pediu a
+   Home inteira de volta nos tamanhos de antes. NÃO subir tamanho de letra da Home sem pedido dele. */
 .news-item-meta{color:#7A746B;}
 .news-item-meta .sep{color:#CFC8BD;}
 .news-item-source{color:#4A4740;}
@@ -1271,7 +1251,7 @@ html.dark .sec-link,html.dark .ev-open{color:#FF7A45;}
 .sector-card.has-bg .sector-bg::before{
   -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 30%,rgba(0,0,0,.35) 100%);mask-image:linear-gradient(90deg,#000 0%,#000 30%,rgba(0,0,0,.35) 100%);}
 .sector-card.has-bg .sector-card-title{text-shadow:none;}
-.wip-badge{background:transparent;color:var(--gray-mid);border:1px solid var(--border);padding:2px 6px;font-size:8.5px;letter-spacing:.07em;}
+.wip-badge{background:transparent;color:var(--gray-mid);border:1px solid var(--border);padding:2px 6px;letter-spacing:.07em;}
 html.dark .wip-badge{background:transparent;color:#8E949D;border-color:rgba(255,255,255,.14);}
 .area-events .sec-head{justify-content:flex-end;}
 .area-comm .kv-list{gap:0;}
