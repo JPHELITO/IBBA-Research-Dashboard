@@ -1267,6 +1267,116 @@ html.dark .news-co{background:rgba(255,90,20,.16);color:#FF8A4D;}
 .cm-card:hover{transform:none;background:rgba(0,0,0,.025);border-color:var(--border);}
 html.dark .cm-card{background:transparent;border-color:#1F2532;}
 html.dark .cm-card:hover{background:rgba(255,255,255,.03);border-color:#1F2532;}
+/* ══ HOME · FEED + MARKET PULSE + ÚLTIMOS RELATÓRIOS (2026-10-20, escolha do usuário: "C3 + R3") ══════════════
+   Feed de UMA linha por notícia (todas da mesma altura; título longo termina em "…" e aparece inteiro ao parar o
+   mouse); o Market Pulse virou a coluna da esquerda (tom, empresas e temas; clique filtra o feed); no lugar do
+   Market Pulse, os últimos relatórios no desenho dos Eventos. Nenhuma letra cresce (regra do usuário depois do E1). */
+.area-reports{grid-area:pulse;}
+.rep-head{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 2px;}
+.rep-sub{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-mid);}
+.rep-all{border:0;background:none;padding:0;font:600 10.5px var(--font);color:#C2410C;cursor:pointer;white-space:nowrap;}
+.rep-body{flex:1;min-height:0;overflow:hidden;padding:2px 14px 8px;display:flex;flex-direction:column;}
+.rep-item{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:8px;padding:4.5px 0;
+  border-bottom:1px solid var(--rule);text-decoration:none;color:inherit;}
+.rep-item:last-child{border-bottom:0;}
+.rep-item:hover .rep-t{color:var(--orange);}
+.rep-w{font-size:9.5px;font-weight:700;color:var(--gray-mid);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.rep-t{font-size:11px;font-weight:500;color:#2B2B2B;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rep-s{font-size:8px;font-weight:600;letter-spacing:.04em;color:#9A948B;white-space:nowrap;}
+.rep-none{font-size:11px;color:var(--gray-mid);padding:8px 0;}
+.rep-pop{width:340px;}
+.rep-pop .pn-pop-l{padding:6px 12px 10px;}
+.rep-pop .rep-item{padding:4px 0;}
+html.dark .rep-t{color:#DDE2EA;}
+html.dark .rep-s{color:#7D8693;}
+html.dark .rep-all{color:#FF7A45;}
+/* o corpo do card de notícias: a coluna do Market Pulse + o feed */
+.news-body{flex:1;min-height:0;display:flex;flex-direction:column;}
+.news-main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;}
+.news-pulse{flex:none;display:flex;align-items:center;gap:10px;padding:4px 16px 5px;border-bottom:1px solid var(--rule);min-width:0;}
+.np-when{flex:none;font-size:9.5px;font-weight:500;color:var(--gray-mid);white-space:nowrap;}
+.page .news-pulse .pulse-names{flex:1;min-width:0;max-height:19px;overflow:hidden;align-content:flex-start;justify-content:flex-start;gap:3px 4px;}
+.page .news-pulse .pn{height:18px;font-size:9.5px;padding:0 6px 0 7px;gap:3px;}
+.page .news-pulse .pn .news-take{min-width:12px;height:12px;font-size:8.5px;}
+.np-tone{flex:none;display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;font-variant-numeric:tabular-nums;cursor:default;}
+.np-bar{display:flex;width:84px;height:5px;border-radius:3px;overflow:hidden;background:var(--border);}
+.np-bar i{display:block;min-width:0;}
+.np-bar .pos{background:#16a34a;} .np-bar .neu{background:#B9B3AA;} .np-bar .neg{background:#c0392b;}
+.np-c.pos{color:#15803d;} .np-c.neg{color:#c0392b;} .np-c.neu{color:var(--gray-mid);}
+.np-tone.few .np-bar{opacity:.35;}
+.np-lists,.np-legend{display:none;}
+.np-filterbar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 16px;
+  border-bottom:1px solid var(--rule);background:#FBF7F1;font-size:9.5px;color:#5F5A52;}
+.np-filterbar[hidden]{display:none;}
+.np-filterbar b{color:#C2410C;font-weight:700;}
+.np-clear{border:0;background:none;font:600 9.5px var(--font);color:#C2410C;cursor:pointer;padding:2px 4px;}
+html.dark .np-bar .neu{background:#4A5260;}
+html.dark .np-c.pos{color:#4ADE80;} html.dark .np-c.neg{color:#F87171;}
+html.dark .np-filterbar{background:#1A1F27;color:#A9B0BB;}
+html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
+@media (min-width:1025px){
+  /* uma linha por notícia: título numa linha só, ticker logo depois, fonte/idade/setor encostados à direita */
+  .area-news .news-feed{grid-template-columns:minmax(0,1fr);grid-auto-flow:row;}
+  .area-news .news-item{display:flex;align-items:center;gap:14px;padding:6px 16px;border-right:none;}
+  .area-news .news-item.is-new{padding-left:13px;}
+  .area-news .news-item-titlerow{flex:1;min-width:0;margin:0;align-items:center;}
+  .area-news .news-item-title{display:block;flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .area-news .news-take{margin-top:0;}
+  .area-news .news-item-meta{flex:none;}
+  .area-news .news-item-titlerow .news-co{margin-left:2px;}
+  /* a coluna do Market Pulse */
+  .area-news .news-body{flex-direction:row;}
+  .area-news .news-pulse{flex:0 0 212px;flex-direction:column;align-items:stretch;gap:6px;padding:10px 12px 12px;
+    border-bottom:none;border-right:1px solid var(--rule);overflow:auto;}
+  .page .area-news .pulse-names{display:none;}
+  .area-news .np-tone{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px;justify-items:start;}
+  .area-news .np-tone .np-bar{grid-column:1/-1;width:100%;}
+  .np-lists{display:flex;flex-direction:column;gap:1px;margin-top:4px;}
+  .np-sec{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid);margin:8px 0 3px 4px;}
+  .np-sec:first-child{margin-top:2px;}
+  .np-row{display:grid;grid-template-columns:72px minmax(0,1fr) 16px 34px;align-items:center;gap:6px;border:0;background:none;
+    padding:3px 4px;border-radius:5px;cursor:pointer;font:inherit;text-align:left;color:inherit;width:100%;}
+  .np-row:hover{background:#F5F2EC;}
+  .np-row.on{background:rgba(255,80,0,.09);}
+  .np-row.on .np-k{color:#C2410C;}
+  .np-k{font-size:9.5px;font-weight:700;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .np-row.th .np-k{font-weight:600;}
+  .np-bar2{display:block;height:5px;}
+  .np-fill{display:flex;height:100%;border-radius:2px;overflow:hidden;}
+  .np-fill i{display:block;min-width:0;}
+  .np-fill .pos{background:#16a34a;} .np-fill .neu{background:#B9B3AA;} .np-fill .neg{background:#c0392b;} .np-fill .nt{background:#E4DED4;}
+  .np-n{font-size:8.5px;color:var(--gray-mid);font-variant-numeric:tabular-nums;text-align:right;}
+  .np-px{font-size:8.5px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;color:var(--gray-mid);}
+  .np-px.up{color:#15803d;} .np-px.dn{color:#b42318;}
+  .np-quiet{font-size:8.5px;line-height:1.45;color:var(--gray-mid);padding:5px 4px 0;}
+  .np-quiet b{font-weight:600;color:#5F5A52;}
+  /* a legenda no pé da coluna: as cores e o clique */
+  .np-legend{display:block;margin-top:auto;padding:10px 4px 0;font-size:8px;line-height:1.7;color:var(--gray-mid);}
+  .np-legend i{display:inline-block;width:8px;height:5px;border-radius:1px;margin:0 3px 0 0;vertical-align:1px;}
+  .np-legend i:not(:first-of-type){margin-left:6px;}
+  .np-legend .pos{background:#16a34a;} .np-legend .neu{background:#B9B3AA;} .np-legend .neg{background:#c0392b;} .np-legend .nt{background:#E4DED4;}
+  html.dark .np-row:hover{background:rgba(255,255,255,.05);}
+  html.dark .np-row.on{background:rgba(255,90,20,.14);}
+  html.dark .np-row.on .np-k{color:#FF8A4D;}
+  html.dark .np-k{color:#DDE2EA;}
+  html.dark .np-fill .neu,html.dark .np-legend .neu{background:#4A5260;}
+  html.dark .np-fill .nt,html.dark .np-legend .nt{background:#2C323C;}
+  html.dark .np-px.up{color:#4ADE80;} html.dark .np-px.dn{color:#F87171;}
+  html.dark .np-quiet b{color:#A9B0BB;}
+}
+/* celular: a faixa quebra em várias linhas (as fichas não cortam); sem a coluna e sem o filtro */
+@media (max-width:1024px){
+  .news-pulse{flex-wrap:wrap;padding:8px 13px;row-gap:6px;}
+  .page .news-pulse .pulse-names{flex:1 1 100%;max-height:none;order:3;}
+  .np-filterbar{display:none;}
+  .np-when,.np-tone{font-size:11px;}
+  .rep-head{padding:12px 16px 4px;}
+  .rep-sub{font-size:11px;} .rep-all{font-size:12px;}
+  .rep-body{overflow:visible;padding:0 16px 9px;}
+  .rep-item{padding:7px 0;}
+  .rep-t{font-size:13px;line-height:1.3;}
+  .rep-w{font-size:11px;} .rep-s{font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -1351,54 +1461,12 @@ html.dark .cm-card:hover{background:rgba(255,255,255,.03);border-color:#1F2532;}
   </div>
   <!-- Research Team na barra superior; Stock Guide é o 3º card -->
 
-  <!-- MARKET PULSE (full width) -->
-  <div class="sec area-pulse" data-tour="home-pulse">
-    <div class="sec-head">
-      <span class="sec-tools"><span class="wip-badge">Beta</span></span>
-      <div class="pulse-controls" id="pulse-controls">
-        <button class="pulse-chip active" data-sector="all">All</button>
-        <button class="pulse-chip" data-sector="sm">S&amp;M</button>
-        <button class="pulse-chip" data-sector="pp">P&amp;P</button>
-      </div>
-    </div>
-    <div class="pulse-body">
-      <!-- termômetro de notícias: ponteiro + contadores + a faixa de quem esteve nas manchetes -->
-      <div id="pulse-v1">
-        <div class="gauge" id="pulse-gauge"
-             title="Balance of the AI takes on headlines published since the last B3 close. It describes the tone of the newsflow — it is not a forecast of today's move. With fewer than 20 scored headlines the needle stays blank.">
-          <svg viewBox="0 15 140 70" preserveAspectRatio="xMidYMid meet">
-            <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#E3E3E3" stroke-width="10" fill="none" stroke-linecap="round"/>
-            <path d="M 10 80 A 60 60 0 0 1 130 80" stroke="#FF5000" stroke-width="10" fill="none"
-                  stroke-linecap="round" stroke-dasharray="188 188" id="gauge-arc"/>
-          </svg>
-          <div class="gauge-val" id="gauge-val">—</div>
-          <div class="gauge-label neutral" id="gauge-label">LOADING</div>
-        </div>
-        <div class="pulse-right">
-          <div class="pulse-stats">
-            <div class="pulse-stat"><div class="pulse-stat-num pos" id="stat-pos">—</div>
-              <div class="pulse-stat-lbl">Positive</div></div>
-            <div class="pulse-stat"><div class="pulse-stat-num neg" id="stat-neg">—</div>
-              <div class="pulse-stat-lbl">Negative</div></div>
-            <div class="pulse-stat"><div class="pulse-stat-num neu" id="stat-neu">—</div>
-              <div class="pulse-stat-lbl">Neutral</div></div>
-            <div class="pulse-stat"><div class="pulse-stat-num" id="stat-tot">—</div>
-              <div class="pulse-stat-lbl" id="stat-tot-lbl">Since close</div></div>
-          </div>
-          <div class="pulse-bar">
-            <div class="pulse-bar-seg pos" id="bar-pos" style="flex:0;"></div>
-            <div class="pulse-bar-seg neu" id="bar-neu" style="flex:0;"></div>
-            <div class="pulse-bar-seg neg" id="bar-neg" style="flex:0;"></div>
-          </div>
-          <!-- quem esteve nas manchetes (uma ficha por coberta; clique = as manchetes) -->
-          <div class="pulse-names" id="pulse-names"></div>
-          <!-- A linha "Descriptive — not a forecast." ficava aqui e foi REMOVIDA a pedido do
-               usuário (2026-08-26). A informação continua no title do gauge e no do botão
-               "News"; o que dizia ao cliente que o ponteiro não é previsão são os rótulos
-               (POSITIVE TONE / BALANCED / NEGATIVE TONE), e esses ficam. -->
-        </div>
-      </div>
-    </div>
+  <!-- ÚLTIMOS RELATÓRIOS (2026-10-20, no lugar do Market Pulse) — a lista "Recent Publications" que o analista
+       mantém na aba Clipping, pela RPC get_recent_reports (admin/supabase_recent_reports.sql: só nome, setor, data e
+       link). Seis linhas no desenho dos Eventos ao lado; "All N →" abre a lista inteira. -->
+  <div class="sec area-reports" data-tour="home-reports">
+    <div class="sec-head rep-head"><span class="rep-sub">Latest reports</span><button type="button" class="rep-all" id="rep-all" hidden>All 10 →</button></div>
+    <div class="rep-body" id="rep-body"><div class="rep-none">Loading…</div></div>
   </div>
 
   <!-- EVENTS (Executive Calendar) — só aparece com a flag exec_calendar (admin sempre) -->
@@ -1434,8 +1502,23 @@ html.dark .cm-card:hover{background:rgba(255,255,255,.03);border-color:#1F2532;}
         <a class="sec-link" href="news.html">View history <span>→</span></a>
       </div>
     </div>
-    <div class="news-feed" id="news-feed">
-      <div class="news-empty">Loading news…</div>
+    <div class="news-body">
+      <!-- MARKET PULSE (2026-10-20): coluna à esquerda do feed. Desde o fechamento da B3: o tom das manchetes, as
+           empresas cobertas citadas e os temas, cada linha com uma barra pintada pelo take da IA; clicar numa linha
+           deixa no feed só aquelas manchetes. No celular a coluna sai e ficam as fichas das empresas (como antes). -->
+      <div class="news-pulse" id="news-pulse" data-tour="home-pulse">
+        <span class="np-when" id="np-when">since close</span>
+        <div class="np-tone" id="np-tone"></div>
+        <div class="pulse-names" id="pulse-names"></div>
+        <div class="np-lists" id="np-lists"></div>
+        <div class="np-legend">Bars: headlines since the close, by AI take<br><i class="pos"></i>positive<i class="neu"></i>neutral<i class="neg"></i>negative<i class="nt"></i>no take<br>Click a row to show only those headlines.</div>
+      </div>
+      <div class="news-main">
+        <div class="np-filterbar" id="np-filterbar" hidden></div>
+        <div class="news-feed" id="news-feed">
+          <div class="news-empty">Loading news…</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1532,7 +1615,7 @@ function _ini(name){ return (name||'').trim().split(/\s+/).map(w=>w[0]||'').slic
 const FLAG_SEL = {
   sector_steel:  '[data-flag="sector_steel"]',
   sector_pp:     '[data-flag="sector_pp"]',
-  market_pulse:  '.area-pulse',
+  market_pulse:  '#news-pulse',
   commodities:   '.area-comm',
   news_feed:     '.area-news',
   research_team: '.team-head',
@@ -1634,7 +1717,10 @@ const PASSOS_ENCAIXE = 6;                      // teto de repinturas por encaixe
 let _newsRows = 10;                            // 1o paint; _encaixar corrige
 let _ultimasNoticias = null;                   // resposta crua (repintar nao custa rede)
 let _encaixando = false;                       // trava: _pintarNews nao reentra no encaixe
-function _newsLimit(){ return _newsRows * 2; }
+// 2026-10-20: no computador o feed é UMA coluna (o Market Pulse virou a coluna da esquerda); o celular tem layout
+// próprio e segue pedindo 2 × 10 manchetes.
+function _newsCols(){ return window.innerWidth > 1024 ? 1 : 2; }
+function _newsLimit(){ return _newsRows * _newsCols(); }
 
 // Altura que as LINHAS dividem. clientHeight INCLUI o padding do feed, e padding nao e linha.
 function _alturaUtil(feed){
@@ -1682,7 +1768,10 @@ function _encaixar(){
         _newsRows--;
       } else if(sobra >= media && _newsRows < NEWS_ROWS_MAX
                 && itens.length >= _newsLimit()){      // cabe mais uma E ha noticia para ela
-        _newsRows++;
+        // Salta direto para quantas cabem pela média: com uma coluna (2026-10-20) são ~20 linhas, e de 10 em 10
+        // passos de uma o teto de PASSOS_ENCAIXE deixava o 1º desenho com linhas vazias no pé. Linha de altura
+        // igual (título numa linha só) faz a estimativa acertar; se passar, o passo seguinte tira uma.
+        _newsRows = Math.min(NEWS_ROWS_MAX, _newsRows + Math.max(1, Math.floor(sobra / media)));
       } else break;                                    // encaixado
       _pintarNews(_ultimasNoticias);
     }
@@ -1785,7 +1874,8 @@ async function loadNews(){
   // suficiente para dedup + diversidade de fontes sem cortar itens recentes.
   let newsUrl=`${SUPA_URL}/rest/v1/news_articles?select=${q}`
     +`&include_in_report=eq.true`
-    +`&or=(published_at.gte.${ageCutoff},published_at.is.null)`
+    // Com uma linha da coluna do Market Pulse escolhida, o feed mostra só as manchetes dela desde o fechamento.
+    +(_railFilter ? _railFilterQS() : `&or=(published_at.gte.${ageCutoff},published_at.is.null)`)
     +`&order=found_at.desc&limit=60`;
   // Filtro pela IA (take_llm); cobertura da janela é ~total, robô só cobre o recém-chegado.
   if(_newsTakeFilter!=='all') newsUrl+=`&take_llm=eq.${encodeURIComponent(_newsTakeFilter)}`;
@@ -1861,6 +1951,14 @@ function _renderNews(articles){
   _ultimasNoticias = articles;      // guarda o cru: repintar depois nao custa rede
   _pintarNews(articles);
   if(!_encaixando) _encaixar();     // so agora ha item na tela para medir
+  _titulosCortados();
+}
+// Título numa linha só (2026-10-20): o que não cabe termina em "…" e o título inteiro aparece ao parar o mouse.
+// Só nos cortados — nos outros a dica repetiria o que já está na tela.
+function _titulosCortados(){
+  document.querySelectorAll('#news-feed .news-item-title').forEach(el => {
+    if(el.scrollWidth > el.clientWidth + 1) el.title = el.textContent; else el.removeAttribute('title');
+  });
 }
 
 // Pintura pura: usa o _newsRows atual e NAO mexe nele. Quem decide o numero e _encaixar.
@@ -1868,7 +1966,7 @@ function _pintarNews(articles){
   const feed=document.getElementById('news-feed');
   if(!feed || !articles) return;
   if(!articles.length){
-    const msg=_newsTakeFilter==='all'?'No news available.':'No news with this take.';
+    const msg=_railFilter?'No headline for this selection yet.':_newsTakeFilter==='all'?'No news available.':'No news with this take.';
     feed.innerHTML=`<div class="news-empty">${msg}</div>`;return;
   }
   // Ordena por ENTRADA na dashboard (found_at desc = recém-coletada primeiro) e remove
@@ -1910,12 +2008,12 @@ function _pintarNews(articles){
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
     return`<a class="news-item ${isNew?'is-new':''}${fimDeColuna?' col-end':''}${colunaDireita?' col-right':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
-      <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div></div>
+      <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div>${_newsCols()===1 ? _coTag(a) : ''}</div>
       <div class="news-item-meta">
         <span class="news-item-source">${lbl}</span>${a.source_name==='CVM'?'<span class="news-item-primary" title="Primary source — official filing (CVM / B3)">PRIMARY</span>':''}
         <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
-        ${_sectorTag(_resolveSec(a))}${_coTag(a)}
+        ${_sectorTag(_resolveSec(a))}${_newsCols()===1 ? '' : _coTag(a)}
       </div>
     </a>`;
   }).join('');
@@ -1929,6 +2027,7 @@ function _pintarNews(articles){
     t = setTimeout(() => {
       if(!_ultimasNoticias) return;
       _encaixar();
+      _titulosCortados();
     }, 200);
   });
 })();
@@ -1951,6 +2050,8 @@ document.getElementById('news-sector-filter').addEventListener('click', e => {
   document.querySelectorAll('#news-sector-filter .news-filter-chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   _newsSectorFilter = btn.dataset.sec;
+  const _ps = (btn.dataset.sec === 'sm' || btn.dataset.sec === 'pp') ? btn.dataset.sec : 'all';
+  if(_ps !== _pulseSector){ _pulseSector = _ps; loadPulse(); }   // a coluna acompanha o setor do feed
   _firstLoad = true;
   _newsFx = true;
   loadNews();
@@ -1969,45 +2070,29 @@ function _updateNewsMeta(){
 setInterval(_updateNewsMeta,15000);
 
 // ─── MARKET PULSE ─────────────────────────────────────────────────────
-// Um quadro só: o tom das notícias do dia. Os painéis "Overnight" e "At the Open"
-// saíram da tela em 2026-09-09 a pedido do usuário — o robô que os alimentava
-// (pulse_daily / pulse_train no news-hunter) segue rodando e gravando no Supabase,
-// então voltar atrás é reverter este commit.
+// Desde 2026-10-20 é a coluna à esquerda do feed (escolha do usuário: "C3"). Os painéis "Overnight" e "At the
+// Open" saíram em 2026-09-09; o robô que os alimentava (pulse_daily / pulse_train no news-hunter) segue gravando.
+// O setor da coluna é o do filtro do feed (S&M / P&P; NR e All = todos).
 let _pulseSector = 'all';
 
-document.getElementById('pulse-controls').addEventListener('click', e => {
-  const btn = e.target.closest('.pulse-chip');
-  if(!btn) return;
-  document.querySelectorAll('.pulse-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  _pulseSector = btn.dataset.sector;
-  loadPulse();
-});
 // SELEÇÃO QUE DESLIZA (onda 3): o fundo do item ativo corre até a escolha (IBBASlide, topnav.js). Ele vigia a
 // CLASSE dos botões, então nenhum tratador mudou por causa disso — o do período do heatmap é recortado pelo
 // tests/test_intraday_split.html e continua idêntico.
-try{ if(window.IBBASlide) ['pulse-controls','news-filter','news-sector-filter','hm-range'].forEach(id=>{
+try{ if(window.IBBASlide) ['news-filter','news-sector-filter','hm-range'].forEach(id=>{
   const b=document.getElementById(id); if(b) IBBASlide.watch(b,'button'); }); }catch(e){ console.warn('IBBASlide:',e); }
 
-// ─── TERMÔMETRO DE NOTÍCIAS — o único quadro do Market Pulse ─────────
-// ⚠️ É DESCRITIVO: mede o tom do que já foi publicado, não prevê o dia. A auditoria
-// mediu +0,18 de correlação com o retorno de ONTEM e ~0 com o de hoje; os rótulos
-// (POSITIVE TONE / BALANCED / NEGATIVE TONE) existem para dizer isso ao cliente.
-//
-// O que o card responde (desenho de 2026-09-09, depois de medir 120 dias do feed):
-//   1. QUEM esteve nas manchetes — uma ficha por empresa coberta, com os selos de take.
-//      Só 7,7% do feed cita uma coberta, mas é ali que há informação (o dobro da
-//      dispersão do agregado), e é a pergunta que o analista faz às 8h. Clique = manchetes.
-//   2. O TOM do fluxo — o ponteiro, que agora CALA com pouca amostra: 15 dos 19 dias em
-//      que ele "falava" tinham menos de 20 manchetes (fim de semana e feriado). Abaixo de
-//      PULSE_MIN_SCORED ele mostra "—" e diz que faltam manchetes.
-//   3. DESDE QUANDO — a janela é "desde o fechamento da B3 de ONTEM" e só vira à meia-noite:
-//      51% do fluxo do dia chega antes das 08h, e 19% é publicado entre 17h e 24h
-//      (balanço sai depois do fechamento!) — a meia-noite jogava isso fora antes de o
-//      analista acordar; virar às 17h deixava a noite em branco. Segunda de manhã vê o
-//      fim de semana inteiro. A régua (news-hunter/hunter/news_pulse.py) usa a mesma janela.
-// Egress: o poll pede SÓ take_llm + take_covered_companies (~4 KB por leitura);
-// título/URL só viajam quando alguém abre uma ficha (até 12 linhas).
+// ─── MARKET PULSE — o noticiário desde o fechamento, por empresa e por tema ─────────
+// ⚠️ É DESCRITIVO: mede o tom do que já foi publicado, não prevê o dia (a auditoria mediu +0,18 de correlação
+// com o retorno de ONTEM e ~0 com o de hoje). Desenho de 2026-10-20 (escolha do usuário, "C3"):
+//   1. O TOM do fluxo — uma barra e as três contagens. O ponteiro SAIU: marcava BALANCED em ~9 de cada 10 dias
+//      úteis (120 dias medidos) e escondia o que varia; abaixo de PULSE_MIN_SCORED a barra fica apagada.
+//   2. QUEM esteve nas manchetes — uma linha por empresa coberta (barra do tamanho do nº de manchetes, pintada
+//      pelo take; a ação no dia ao lado) e, embaixo, as cobertas SEM manchete. Só 7,7% do feed cita uma coberta,
+//      mas é ali que há informação (o dobro da dispersão do agregado).
+//   3. DO QUE se falou — os temas que o robô grava em cada manchete (take_topics), em linguagem de cliente.
+//   4. DESDE QUANDO — "desde o fechamento da B3 de ONTEM", virando só à meia-noite (ver _pulseWindowStartMs).
+// Clique numa linha = o feed mostra só aquelas manchetes (consulta só no clique, como a ficha da empresa).
+// Egress: o poll pede take_llm + empresas + temas (~1,2 KB comprimidos por leitura); título/URL só no clique.
 const PULSE_CLOSE_HOUR = 17;    // fechamento da B3 em Brasília: âncora da janela
 const PULSE_MIN_SCORED = 20;    // com menos itens pontuados o ponteiro não fala (±11 pts de ruído)
 
@@ -2020,6 +2105,21 @@ const _PULSE_CO = {
   'CMPC':['CMPC','CMPC.SN','pp'],     'COPEC':['COPEC','COPEC.SN','pp'],
 };
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
+// TEMAS = os tópicos que o robô grava em cada manchete (take_topics, hunter/news_take_classifier.py), agrupados
+// como o cliente fala. Ordem FIXA por relevância para a cobertura (a coluna não pula de lugar a cada 5 min);
+// tema sem manchete não aparece. Tópico novo no robô que não esteja aqui simplesmente não conta.
+const _THEMES = [
+  {k:'iron',   label:'Iron ore',      topics:['iron_ore','pellets','sinter']},
+  {k:'steel',  label:'Steel',         topics:['hrc','crc','rebar','wire_rod','structural','billet','slab','plate','flat_steel','pig_iron','scrap','dri','steel_industry','furnace']},
+  {k:'coal',   label:'Met coal',      topics:['met_coal']},
+  {k:'pulp',   label:'Pulp',          topics:['pulp']},
+  {k:'paper',  label:'Paper & board', topics:['paper','tissue','containerboard','occ','newsprint'], tip:'Paper, packaging, tissue and OCC'},
+  {k:'copper', label:'Copper',        topics:['copper']},
+  {k:'gold',   label:'Gold & silver', topics:['gold','silver']},
+  {k:'metals', label:'Other metals',  topics:['nickel','aluminum','zinc'], tip:'Nickel, aluminum and zinc'},
+  {k:'macro',  label:'China & macro', topics:['macro']},
+  {k:'policy', label:'Trade policy',  topics:['tariffs']},
+];
 const _pulseCo = c => { const m = _PULSE_CO[c]; return m ? {tk:m[0], quote:m[1], sec:m[2]} : {tk:c, quote:null, sec:null}; };
 
 // Início da janela: PULSE_CLOSE_HOUR de Brasília do último dia útil ANTES de hoje (sábado e
@@ -2085,10 +2185,20 @@ function _pulseTally(rows){
       e.n++; bump(e, a.take_llm);
     }
   }
+  // por TEMA: uma manchete conta 1x por tema, mesmo que traga dois tópicos dele (ex.: hrc + rebar)
+  t.byTh = {};
+  for(const a of rows){
+    const tops = String(a.take_topics || '').split(';').map(s => s.trim()).filter(Boolean);
+    if(!tops.length) continue;
+    for(const th of _THEMES) if(th.topics.some(x => tops.includes(x))){
+      const e = t.byTh[th.k] || (t.byTh[th.k] = {pos:0, neg:0, neu:0, notake:0, pending:0, n:0});
+      e.n++; bump(e, a.take_llm);
+    }
+  }
   return t;
 }
-// Ponteiro com NEUTRO ANCORANDO: + e − puxam; "=" (mercado calmo) dilui pro meio;
-// "no take" não baliza. null = amostra pequena demais para falar.
+// O PORTÃO de amostra (era o valor do ponteiro, que saiu em 2026-10-20): + e − puxam, "=" dilui pro meio,
+// "no take" não baliza. null = amostra pequena demais — a barra do tom fica apagada.
 function _pulseGaugeVal(t){
   const scored = t.pos + t.neg + t.neu;
   return scored >= PULSE_MIN_SCORED ? Math.round(50 + (t.pos - t.neg) / scored * 50) : null;
@@ -2123,8 +2233,8 @@ async function loadPulse(){
   const {data:{session}} = await sbAuth.auth.getSession();
   if(!session) return;
   const startMs = _pulseWindowStartMs();
-  // Poll ENXUTO: duas colunas curtas. Título/URL só quando alguém abre uma ficha.
-  const url = `${SUPA_URL}/rest/v1/news_articles?select=take_llm,take_covered_companies`
+  // Poll ENXUTO: três colunas curtas. Título/URL só quando alguém abre uma ficha ou filtra o feed.
+  const url = `${SUPA_URL}/rest/v1/news_articles?select=take_llm,take_covered_companies,take_topics`
             + _pulseFilter(startMs) + `&limit=2000`;
   try {
     const r = await fetch(url, {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
@@ -2136,73 +2246,98 @@ async function loadPulse(){
     console.warn('pulse error:', e);
   }
 }
-// NÚMEROS QUE ROLAM (onda 3, 2026-10-19): no refresh de 1 min, o placar do Market Pulse e o valor do ponteiro
-// giram só as casas que mudaram (IBBANumber, topnav.js); tamanho diferente (9 → 10) ou o "—" do início só
-// trocam. E o arco do ponteiro CRESCE/ENCOLHE até o valor novo (0,6 s) em vez de saltar — menos no 1º desenho,
-// que sai do arco cheio do "LOADING". Moram aqui dentro porque o tests/test_news_pulse.html recorta este bloco.
-const _NUM_RE = /^-?\d+$/;
-function _pulseNum(id, v){
-  const el = document.getElementById(id); if(!el) return;
-  const s = String(v), o = el.textContent;
-  if(o === s) return;
-  if(!(window.IBBANumber && _NUM_RE.test(o) && _NUM_RE.test(s) && IBBANumber.roll(el, o, s, +s >= +o))) el.textContent = s;
-}
-let _gaugeDrawn = false;
-function _gaugeArc(arc, dash){
-  const old = arc.getAttribute('stroke-dasharray');
-  arc.setAttribute('stroke-dasharray', dash);
-  if(_gaugeDrawn && old && old !== dash && window.IBBAMotion && !IBBAMotion.reduced())
-    IBBAMotion.animate(arc, [{strokeDasharray:old},{strokeDasharray:dash}], {duration:600, fill:'none'});   // sem 'both': não segura o arco
-  _gaugeDrawn = true;
-}
 function _renderPulse(t){
-  const scored = t.pos + t.neg + t.neu, label = _pulseWindowLabel(t.startMs);
-  _renderGauge(_pulseGaugeVal(t));
-  _pulseNum('stat-pos', t.pos);
-  _pulseNum('stat-neg', t.neg);
-  _pulseNum('stat-neu', t.neu);
-  _pulseNum('stat-tot', scored);
-  document.getElementById('stat-tot-lbl').textContent = label;
-  document.getElementById('stat-tot').title = `${scored} scored headline${scored === 1 ? '' : 's'} ${label}`
-    + (t.notake ? ` · ${t.notake} no-take (in the feed, not scored)` : '')
-    + (t.pending ? ` · ${t.pending} awaiting AI` : '');
-  document.getElementById('bar-pos').style.flex = t.pos;
-  document.getElementById('bar-neu').style.flex = t.neu;
-  document.getElementById('bar-neg').style.flex = t.neg;
-  const names = document.getElementById('pulse-names');
+  const w = document.getElementById('np-when'); if(w) w.textContent = 'In the news ' + _pulseWindowLabel(t.startMs);
+  _renderTone(t);
+  const names = document.getElementById('pulse-names');   // as fichas: no celular (a coluna é só do computador)
   names.innerHTML = _pulseChipsHtml(t.byCo);
   if(_pnPop){   // ficha aberta durante o refresh: continua marcada se ainda existe, senão fecha
     const b = names.querySelector(`.pn[data-co="${CSS.escape(_pnPop.dataset.co)}"]`);
     if(b) b.classList.add('open'); else _pulseClosePop();
   }
+  _renderRail(t);
+}
+// O TOM: a barra (verde/cinza/vermelho) e as três contagens. Com menos de PULSE_MIN_SCORED pontuadas a barra
+// fica apagada — o mesmo portão que fazia o ponteiro calar.
+function _renderTone(t){
+  const el = document.getElementById('np-tone'); if(!el) return;
+  const few = _pulseGaugeVal(t) == null;
+  el.classList.toggle('few', few);
+  el.title = `Tone of the newsflow ${_pulseWindowLabel(t.startMs)}: the AI's take on each headline — `
+    + `${t.pos} positive, ${t.neg} negative, ${t.neu} neutral` + (t.notake ? `, ${t.notake} with no take` : '')
+    + (t.pending ? `, ${t.pending} awaiting AI` : '') + '. It describes the news; it is not a forecast.'
+    + (few ? ` Fewer than ${PULSE_MIN_SCORED} scored headlines so far.` : '');
+  el.innerHTML = `<span class="np-bar"><i class="pos" style="flex:${t.pos}"></i><i class="neu" style="flex:${t.neu}"></i>`
+    + `<i class="neg" style="flex:${t.neg}"></i></span><span class="np-c pos">${t.pos} positive</span>`
+    + `<span class="np-c neg">${t.neg} negative</span><span class="np-c neu">${t.neu} neutral</span>`;
 }
 
-// ⚠️ Os rótulos DESCREVEM as notícias já publicadas — não preveem o dia.
-// BULLISH/BEARISH sugeriam direção futura, e a auditoria mediu o contrário: este ponteiro
-// correlaciona +0,18 com o retorno de ONTEM e ~0 com o de hoje. O texto diz o que o número
-// é de fato — o tom do que foi publicado. Ver Market-Pulse-Research/RESEARCH_LOG.md, E2.
-function _renderGauge(val){
-  const arc = document.getElementById('gauge-arc'), label = document.getElementById('gauge-label');
-  const total = 188;  // comprimento do semicírculo r=60 no viewBox
-  if(val == null){    // amostra pequena: o ponteiro cala em vez de chutar
-    document.getElementById('gauge-val').textContent = '—';
-    _gaugeArc(arc, `0 ${total}`);
-    label.textContent = 'TOO FEW HEADLINES'; label.className = 'gauge-label neutral';
-    return;
-  }
-  val = Math.max(0, Math.min(100, val));
-  _pulseNum('gauge-val', val);
-  _gaugeArc(arc, `${total * val / 100} ${total}`);
-  if(val >= 65){
-    label.textContent = 'POSITIVE TONE'; label.className = 'gauge-label bullish';
-    arc.setAttribute('stroke', '#16a34a');
-  } else if(val < 35){
-    label.textContent = 'NEGATIVE TONE'; label.className = 'gauge-label bearish';
-    arc.setAttribute('stroke', '#c0392b');
-  } else {
-    label.textContent = 'BALANCED'; label.className = 'gauge-label neutral';
-    arc.setAttribute('stroke', '#8C8C8C');
-  }
+// ── A COLUNA: empresas e temas desde o fechamento ───────────────────────────────────────────────────
+// Cada linha = uma barra do tamanho do nº de manchetes (relativo à maior da seção), pintada pelo take da IA:
+// verde +, cinza =, vermelho −, claro = sem take (citada, sem leitura de mercado). Clique = filtra o feed.
+let _railFilter = null;     // {kind:'co'|'th', key, label} — a linha escolhida (null = feed normal)
+function _railBar(e, max){
+  const w = Math.max(6, Math.round(e.n / max * 100));
+  return `<span class="np-bar2"><span class="np-fill" style="width:${w}%"><i class="pos" style="flex:${e.pos}"></i>`
+    + `<i class="neu" style="flex:${e.neu}"></i><i class="neg" style="flex:${e.neg}"></i><i class="nt" style="flex:${e.notake + e.pending}"></i></span></span>`;
+}
+function _railTip(nome, e){
+  return `${nome} — ${e.n} headline${e.n === 1 ? '' : 's'}: ${e.pos} positive, ${e.neg} negative, ${e.neu} neutral, `
+    + `${e.notake} no take` + (e.pending ? `, ${e.pending} awaiting AI` : '') + '. Click to show only these in the feed.';
+}
+// a ação no dia: das cotações que a Home já carrega para o heatmap (nenhuma consulta nova)
+function _railPx(meta){
+  const qs = typeof _quotes !== 'undefined' ? _quotes : [];
+  const q = meta.quote && qs.find(x => x.ticker === meta.quote);
+  if(!q || q.change_pct == null) return '<span class="np-px"></span>';
+  const v = +q.change_pct, c = v > 0.005 ? 'up' : v < -0.005 ? 'dn' : '';
+  return `<span class="np-px ${c}" title="${_esc(meta.tk)} today">${v > 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+}
+function _renderRail(t){
+  const box = document.getElementById('np-lists'); if(!box || !t) return;
+  const doSetor = c => _pulseSector === 'all' || (_PULSE_CO[c] && _PULSE_CO[c][2] === _pulseSector);
+  const on = (k, key) => _railFilter && _railFilter.kind === k && _railFilter.key === key ? ' on' : '';
+  const cos = Object.keys(t.byCo).sort((a, b) => t.byCo[b].n - t.byCo[a].n || a.localeCompare(b));
+  const maxC = Math.max(1, ...cos.map(c => t.byCo[c].n));
+  let h = '<div class="np-sec">Companies in the news</div>';
+  h += cos.length ? cos.map(c => { const e = t.byCo[c], m = _pulseCo(c);
+    return `<button type="button" class="np-row co${on('co', c)}" data-kind="co" data-key="${_esc(c)}" data-label="${_esc(m.tk)}" title="${_esc(_railTip(m.tk, e))}">`
+      + `<span class="np-k">${_esc(m.tk)}</span>${_railBar(e, maxC)}<span class="np-n">${e.n}</span>${_railPx(m)}</button>`; }).join('')
+    : '<div class="np-quiet">No covered company in the headlines yet.</div>';
+  const quietos = Object.keys(_PULSE_CO).filter(c => !t.byCo[c] && doSetor(c)).map(c => _PULSE_CO[c][0]);
+  if(quietos.length) h += `<div class="np-quiet"><b>No headlines:</b> ${quietos.map(_esc).join(' · ')}</div>`;
+  const ths = _THEMES.filter(th => t.byTh && t.byTh[th.k]);
+  const maxT = Math.max(1, ...ths.map(th => t.byTh[th.k].n));
+  h += '<div class="np-sec">Themes</div>';
+  h += ths.length ? ths.map(th => { const e = t.byTh[th.k];
+    return `<button type="button" class="np-row th${on('th', th.k)}" data-kind="th" data-key="${th.k}" data-label="${_esc(th.label)}" title="${_esc(_railTip(th.tip || th.label, e))}">`
+      + `<span class="np-k">${_esc(th.label)}</span>${_railBar(e, maxT)}<span class="np-n">${e.n}</span><span class="np-px"></span></button>`; }).join('')
+    : '<div class="np-quiet">No themes yet.</div>';
+  box.innerHTML = h;
+}
+// Filtro do feed: as manchetes da empresa ou do tema DESDE O FECHAMENTO. A janela e o tema vão num and=() —
+// o or= da janela e o or= dos tópicos não podem ser dois parâmetros soltos com o mesmo nome.
+function _railFilterQS(){
+  const startMs = _pulseLast ? _pulseLast.startMs : _pulseWindowStartMs();
+  const cut = new Date(startMs).toISOString();
+  const win = `or(published_at.gte.${cut},and(published_at.is.null,found_at.gte.${cut}))`;
+  if(_railFilter.kind === 'co') return `&and=(${win})&take_covered_companies=ilike.${encodeURIComponent('*' + _railFilter.key + '*')}`;
+  const th = _THEMES.find(x => x.k === _railFilter.key);
+  return `&and=(${win},or(${th.topics.map(x => `take_topics.ilike.*${x}*`).join(',')}))`;
+}
+function _renderFilterBar(){
+  const bar = document.getElementById('np-filterbar'); if(!bar) return;
+  if(!_railFilter){ bar.hidden = true; bar.innerHTML = ''; return; }
+  const e = _pulseLast && (_railFilter.kind === 'co' ? _pulseLast.byCo : (_pulseLast.byTh || {}))[_railFilter.key];
+  bar.innerHTML = `<span>Showing <b>${_esc(_railFilter.label)}</b>${e ? ` · ${e.n} headline${e.n === 1 ? '' : 's'}` : ''} `
+    + `${_esc(_pulseWindowLabel(_pulseLast ? _pulseLast.startMs : _pulseWindowStartMs()))}</span>`
+    + `<button type="button" class="np-clear" id="np-clear">Clear ×</button>`;
+  bar.hidden = false;
+}
+function _railSet(f){
+  _railFilter = f; _firstLoad = true; _newsFx = true;   // trocar de seleção não acende o aviso "↑ N new"
+  _renderFilterBar(); if(_pulseLast) _renderRail(_pulseLast);
+  loadNews();
 }
 
 // ─── a ficha aberta: as manchetes daquela empresa desde o fechamento ──────────
@@ -2274,6 +2409,13 @@ document.addEventListener('click', e => {
   if(_pnPop && !e.target.closest('.pn-pop') && !e.target.closest('.pn')) _pulseClosePop();
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') _pulseClosePop(); });
+// a coluna do Market Pulse: clique numa linha filtra o feed; na mesma linha (ou em "Clear") volta ao normal
+document.addEventListener('click', e => {
+  if(e.target.closest('#np-clear')){ _railSet(null); return; }
+  const b = e.target.closest('.np-row'); if(!b) return;
+  const mesma = _railFilter && _railFilter.kind === b.dataset.kind && _railFilter.key === b.dataset.key;
+  _railSet(mesma ? null : {kind:b.dataset.kind, key:b.dataset.key, label:b.dataset.label});
+});
 
 // ─── HEATMAP — Quotes (sparkline + período D/WoW/MoM/YoY + modal) ──────
 let _quotes = [];                              // cache (com intraday); daily mesclado à parte
@@ -2389,6 +2531,7 @@ async function loadQuotes(){
     const prev = Object.fromEntries(_quotes.map(q=>[q.ticker,q]));
     _quotes = rows.map(q => ({...prev[q.ticker], ...q, daily:_dailyMap[q.ticker], intraday:_intraMap[q.ticker]}));
     _renderHeatmap();
+    if(_pulseLast) _renderRail(_pulseLast);   // a ação no dia, na coluna do Market Pulse
     _updateMeta('quotes-meta', stamp);
   } catch(e){ console.warn('quotes error:', e); }
 }
@@ -3313,11 +3456,60 @@ function renderEvents(items, today){
   body.innerHTML=h;
 }
 
+// ─── ÚLTIMOS RELATÓRIOS — a lista que o analista mantém na aba Clipping (Recent Publications) ─────────
+// RPC get_recent_reports (SECURITY DEFINER, admin/supabase_recent_reports.sql): só nome, setor, data e link —
+// nada do resto da configuração do Clipping. 1 consulta ao abrir a Home e 1 por hora (a lista muda ~1x/dia).
+// Seis linhas no desenho dos Eventos (data à esquerda, escrita só quando muda; setor em texto, sem caixinha);
+// "All N →" abre a lista inteira no mesmo cartão das fichas das empresas.
+const REP_VISIBLE = 6;
+let _repRows = [], _repPop = null;
+function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:00').toLocaleDateString(NUM_LOC,{month:'short',day:'numeric'}) : ''; }catch(e){ return ''; } }
+function _repRow(x, prev){
+  const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
+  const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
+  const d = _repDate(x.date), mostra = !prev || String(prev.date || '').slice(0,10) !== String(x.date || '').slice(0,10);
+  const inner = `<span class="rep-w">${mostra ? _esc(d) : ''}</span><span class="rep-t">${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec);
+  return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`
+            : `<div class="rep-item" title="${tip}">${inner}</div>`;
+}
+function _repList(rows){ return rows.map((x, i) => _repRow(x, rows[i - 1])).join(''); }
+async function loadReports(){
+  const body = document.getElementById('rep-body'), all = document.getElementById('rep-all');
+  if(!body) return;
+  try{
+    const r = await sbAuth.rpc('get_recent_reports', {p_limit: 10});
+    if(r.error) throw r.error;
+    _repRows = (r.data || []).filter(x => x && x.name).slice(0, 10);
+    body.innerHTML = _repRows.length ? _repList(_repRows.slice(0, REP_VISIBLE)) : '<div class="rep-none">No reports yet.</div>';
+    if(all){ all.hidden = _repRows.length <= REP_VISIBLE; all.textContent = `All ${_repRows.length} →`; }
+  }catch(e){
+    body.innerHTML = '<div class="rep-none">Reports unavailable.</div>'; if(all) all.hidden = true;
+    console.warn('reports:', e);
+  }
+}
+function _repClose(){ if(_repPop){ _repPop.remove(); _repPop = null; } }
+document.addEventListener('click', e => {
+  const b = e.target.closest('#rep-all');
+  if(b){
+    if(_repPop){ _repClose(); return; }
+    const pop = document.createElement('div'); pop.className = 'pn-pop rep-pop';
+    pop.innerHTML = `<div class="pn-pop-h"><span class="pn-pop-t">Latest reports</span><span class="pn-pop-s">${_repRows.length} most recent</span>`
+      + `<button type="button" class="pn-pop-x" title="Close">×</button></div><div class="pn-pop-l">${_repList(_repRows)}</div>`;
+    document.body.appendChild(pop); _repPop = pop; _pulsePlacePop(pop, b);
+    pop.querySelector('.pn-pop-x').addEventListener('click', _repClose);
+    return;
+  }
+  if(_repPop && !e.target.closest('.rep-pop')) _repClose();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') _repClose(); });
+
 // ─── INIT ─────────────────────────────────────────────────────────────
 renderTeam();
 applyDashboardConfig();   // aplica flags (liga/desliga) + analistas do Supabase (ao vivo); fail-safe
 loadNews();
 loadPulse();
+loadReports();
 loadQuotes();
 loadQuotesDaily();
 _initCommCarousel();
@@ -3329,9 +3521,10 @@ loadCommodities().then(loadCommSparks);
 // Fallback p/ setInterval se o topnav não carregar (a home não pode ficar sem atualizar).
 const _every = window.everyVisible || ((fn, ms)=>{ setInterval(fn, ms); });
 _every(loadNews, NEWS_INTERVAL);
-// O termômetro relê a janela inteira a cada leitura (só 2 colunas curtas, ~4 KB), e chega
+// O Market Pulse relê a janela inteira a cada leitura (3 colunas curtas, ~1,2 KB comprimidos), e chega
 // cerca de 1 manchete a cada 10 min — 5 min pega tudo sem gastar banda à toa.
 _every(loadPulse, 5 * 60 * 1000);
+_every(loadReports, 60 * 60 * 1000);   // os relatórios mudam ~1x/dia
 _every(loadQuotes, 60 * 1000);
 _every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 _every(loadCommodities, 5 * 60 * 1000);

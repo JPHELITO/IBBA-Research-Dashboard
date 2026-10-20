@@ -1,0 +1,66 @@
+-- =============================================================================
+-- ÚLTIMOS RELATÓRIOS NA HOME — a função que entrega a lista do Clipping à Home
+-- Rodar UMA vez no SQL Editor do Supabase (projeto mmhkqkpjrvyxovpihnio). Idempotente.
+--
+-- POR QUE ISTO EXISTE, em português
+-- Desde 2026-10-20 o painel ao lado dos Eventos (onde ficava o Market Pulse) mostra os
+-- relatórios mais recentes da casa. A lista é a "Recent Publications" que o analista já
+-- mantém na aba Clipping: nome, setor (SM / PP / NR), link e data, guardados em
+-- `clipping_config.settings.recent_publications`.
+--
+-- Essa tabela é FECHADA (RLS ligado, sem policy): guarda também a mensagem de abertura
+-- do clipping, o rascunho do weekly e os destaques do blast — nada disso é para o
+-- cliente. Por isso a Home não lê a tabela: chama esta função, que devolve SÓ as
+-- quatro coisas que o painel mostra, de no máximo 20 relatórios.
+--
+-- Regras:
+--   · mais de uma conta admin: junta as listas e não repete o mesmo link;
+--   · ordem: data mais recente primeiro; relatório SEM data vai para o fim, na ordem
+--     em que está na lista (o Clipping põe o novo em cima);
+--   · link que não começa com http(s) volta vazio (a Home mostra o nome sem link);
+--   · data inválida (ex.: 2026-02-30) vira "sem data" em vez de derrubar a lista.
+-- Sem esta função a Home funciona normal e o painel diz "Reports unavailable".
+-- =============================================================================
+
+create or replace function public._try_date(p text) returns date
+  language plpgsql immutable set search_path = public, pg_temp as $$
+  begin
+    if p is null or p !~ '^\d{4}-\d{2}-\d{2}$' then return null; end if;
+    return p::date;
+  exception when others then return null;
+  end; $$;
+revoke all on function public._try_date(text) from public, anon, authenticated;
+
+create or replace function public.get_recent_reports(p_limit int default 10)
+  returns table(name text, sector text, link text, date date)
+  language sql stable security definer set search_path = public, pg_temp as $$
+  with itens as (
+    select nullif(btrim(e.p->>'name'), '')                          as name,
+           upper(coalesce(nullif(btrim(e.p->>'sector'), ''), 'SM')) as sector,
+           nullif(btrim(e.p->>'link'), '')                          as link,
+           public._try_date(e.p->>'date')                           as date,
+           c.updated_at, e.ord
+      from public.clipping_config c
+      cross join lateral jsonb_array_elements(
+        case when jsonb_typeof(c.settings->'recent_publications') = 'array'
+             then c.settings->'recent_publications' else '[]'::jsonb end) with ordinality as e(p, ord)
+  ), unicos as (
+    select distinct on (coalesce(i.link, lower(i.name))) i.*
+      from itens i
+     where i.name is not null
+     order by coalesce(i.link, lower(i.name)), i.date desc nulls last, i.updated_at desc, i.ord
+  )
+  select u.name,
+         case when u.sector in ('SM', 'PP', 'NR') then u.sector else 'SM' end,
+         case when u.link ~* '^https?://' then u.link end,
+         u.date
+    from unicos u
+   order by u.date desc nulls last, u.updated_at desc, u.ord
+   limit greatest(1, least(coalesce(p_limit, 10), 20));
+$$;
+revoke all on function public.get_recent_reports(int) from public, anon;
+grant execute on function public.get_recent_reports(int) to authenticated;
+
+comment on function public.get_recent_reports(int) is
+  'Home da dashboard (2026-10-20): os últimos relatórios da lista Recent Publications da aba Clipping — '
+  'só nome, setor, link e data. Lê clipping_config (fechada) por SECURITY DEFINER; nada mais da configuração sai.';
