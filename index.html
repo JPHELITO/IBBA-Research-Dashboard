@@ -73,7 +73,8 @@ async function logout(){await sbAuth.auth.signOut();try{localStorage.removeItem(
   /* a sombra larga era invisível sobre branco (0,05 de alfa) e só sujava a borda;
      quem define a caixa agora é o fio de borda */
   --shadow:0 1px 2px rgba(0,0,0,.06);
-  --shadow-hover:0 4px 12px rgba(0,0,0,0.08),0 16px 40px rgba(0,0,0,0.10);
+  --shadow-hover:0 2px 8px rgba(0,0,0,.07),0 12px 28px rgba(0,0,0,.09);
+  --shadow-pop:0 12px 32px rgba(0,0,0,.18);
 }
 html,body{
   font-family:var(--font);background:var(--gray-light);color:var(--gray-dark);
@@ -115,7 +116,7 @@ body{height:100vh;overflow:hidden;}
 .tn-item:hover{color:#fff;background:rgba(255,255,255,.08);}
 .tn-group{position:relative;}
 .tn-menu{position:absolute;top:100%;left:0;min-width:210px;background:#fff;border:1px solid var(--border);
-  border-radius:9px;box-shadow:0 12px 34px rgba(0,0,0,.20);padding:6px;display:none;z-index:200;}
+  border-radius:8px;box-shadow:var(--shadow-pop);padding:6px;display:none;z-index:200;}
 .tn-group:hover .tn-menu{display:block;}
 .tn-menu a{display:block;font-size:11.5px;color:var(--gray-dark);text-decoration:none;
   padding:8px 12px;border-radius:6px;font-weight:500;white-space:nowrap;}
@@ -129,11 +130,11 @@ body{height:100vh;overflow:hidden;}
   color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 /* NOME = balãozinho que aparece SÓ no hover (não ocupa largura na barra) */
 .th-name{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);
-  background:#000;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:3px 8px;border-radius:5px;
-  opacity:0;pointer-events:none;transition:opacity .12s;z-index:600;box-shadow:0 4px 14px rgba(0,0,0,.28);}
+  background:#000;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:3px 8px;border-radius:8px;
+  opacity:0;pointer-events:none;transition:opacity .12s;z-index:600;box-shadow:var(--shadow-hover);}
 .th-person:hover .th-name{opacity:1;}
 .th-acts{display:flex;gap:2px;}
-.th-btn{width:18px;height:18px;border-radius:5px;border:1px solid rgba(255,255,255,.18);
+.th-btn{width:18px;height:18px;border-radius:6px;border:1px solid rgba(255,255,255,.18);
   display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;}
 .th-btn:hover{color:#fff;border-color:rgba(255,255,255,.45);}
 .th-btn svg{width:11px;height:11px;}
@@ -257,7 +258,7 @@ body{height:100vh;overflow:hidden;}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--black);
   letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
 .wip-badge{flex:none;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
-  background:#FDE68A;color:#854D0E;padding:2px 6px;border-radius:4px;line-height:1.15;white-space:nowrap;}
+  background:#FDE68A;color:#854D0E;padding:2px 6px;border-radius:6px;line-height:1.15;white-space:nowrap;}
 .sec-meta{font-size:9.5px;color:var(--gray-mid);display:flex;align-items:center;gap:7px;}
 .sec-meta::before{
   content:'';display:inline-block;width:6px;height:6px;background:#22c55e;
@@ -305,7 +306,7 @@ body{height:100vh;overflow:hidden;}
 .sector-card.soon.has-bg .sector-card-eyebrow{color:rgba(255,255,255,.78);}
 .sector-card.has-bg.live:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);}
 .sector-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:8px;}
-.sector-tab{font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;
+.sector-tab{font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;
   background:var(--gray-light);border:1px solid var(--border);color:var(--gray-mid);}
 .sc-main{flex:1;display:flex;align-items:flex-start;text-decoration:none;color:inherit;position:relative;z-index:1;}
 .sector-card .sector-card-title{font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.15;}
@@ -387,7 +388,7 @@ img.team-avatar{object-fit:cover;background:none;}
 
 /* ── MARKET PULSE ─────────────────────────────────────────────────────── */
 .pulse-controls{display:flex;gap:5px;}
-.pulse-chip{font-size:9px;font-weight:600;padding:4px 11px;border-radius:20px;
+.pulse-chip{font-size:9px;font-weight:600;padding:4px 11px;border-radius:999px;
   border:1.5px solid var(--border);background:transparent;color:var(--gray-mid);
   cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap;}
 .pulse-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
@@ -439,7 +440,7 @@ img.team-avatar{object-fit:cover;background:none;}
 .pulse-names{display:flex;flex-wrap:wrap;gap:3px 4px;align-content:flex-start;
   max-height:41px;overflow:hidden;}
 .pn{display:inline-flex;align-items:center;gap:3px;height:19px;padding:0 6px 0 7px;
-  border-radius:10px;border:1px solid var(--border);background:transparent;cursor:pointer;
+  border-radius:999px;border:1px solid var(--border);background:transparent;cursor:pointer;
   font-family:var(--font);font-size:9.5px;font-weight:700;color:var(--black);letter-spacing:.01em;
   white-space:nowrap;transition:border-color .12s,background .12s;}
 .pn:hover{border-color:#aaa;background:var(--gray-light);}
@@ -453,8 +454,8 @@ img.team-avatar{object-fit:cover;background:none;}
 /* a ficha ABERTA: as manchetes daquela empresa desde o fechamento. Fixa na viewport porque
    o card tem overflow:hidden — nada de dentro dele poderia sair da caixa. */
 .pn-pop{position:fixed;z-index:60;width:360px;max-width:calc(100vw - 16px);
-  background:var(--white);border:1px solid var(--border);border-radius:10px;
-  box-shadow:0 10px 30px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);padding:9px 11px 8px;
+  background:var(--white);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow-pop);padding:9px 11px 8px;
   font-family:var(--font);}
 .pn-pop-h{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
 .pn-pop-t{font-size:12px;font-weight:800;color:var(--black);}
@@ -482,7 +483,7 @@ a.pn-row-t:hover{color:var(--orange);}
 /* ── NEWS HUNTER (2 cols × 10 rows) ────────────────────────────────── */
 .sec-new-badge{display:none;background:var(--orange);color:#fff;
   font-size:10px;font-weight:700;letter-spacing:.02em;
-  padding:3px 10px;border-radius:20px;cursor:pointer;
+  padding:3px 10px;border-radius:999px;cursor:pointer;
   animation:pulse-badge 1s ease-in-out 2;}
 .sec-new-badge.visible{display:inline-block;}
 @keyframes pulse-badge{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
@@ -540,7 +541,7 @@ a.pn-row-t:hover{color:var(--orange);}
 @keyframes nt-spin{to{transform:rotate(360deg);}}
 .news-filter{display:flex;gap:4px;}
 .news-filter-chip{font-size:10px;font-weight:700;min-width:26px;padding:3px 8px;
-  border-radius:14px;border:1.5px solid var(--border);background:transparent;
+  border-radius:999px;border:1.5px solid var(--border);background:transparent;
   color:var(--gray-mid);cursor:pointer;font-family:var(--font);
   transition:all .15s;line-height:1;}
 .news-filter-chip.active{background:var(--black);color:#fff;border-color:var(--black);}
@@ -629,7 +630,7 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-head-right{display:flex;align-items:center;gap:8px;}
 .hm-range{display:flex;gap:3px;}
 .hm-range button{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 6px;
-  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;transition:all .12s;}
+  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;transition:all .12s;}
 .hm-range button:hover{color:var(--black);border-color:var(--gray-mid);}
 .hm-range button.active{background:var(--black);color:var(--white);border-color:var(--black);}
 /* ── SELEÇÃO QUE DESLIZA (onda 3, 2026-10-19) ─────────────────────────────────
@@ -638,12 +639,12 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
    take o bloco muda de cor junto (verde no +, vermelho no −). Enquanto o bloco existe, o item ativo perde o
    fundo próprio, e os botões inativos de período perdem a chapa (senão o bloco sumiria embaixo deles no
    caminho). Seletores por ID de propósito: as regras do tema escuro deste arquivo são fortes. */
-#pulse-controls>.ibba-slide{background:var(--black);border-radius:20px;}
-#news-filter>.ibba-slide,#news-sector-filter>.ibba-slide{background:var(--black);border-radius:14px;
+#pulse-controls>.ibba-slide{background:var(--black);border-radius:999px;}
+#news-filter>.ibba-slide,#news-sector-filter>.ibba-slide{background:var(--black);border-radius:999px;
   transition:background-color .24s cubic-bezier(.2,0,0,1);}
 #news-filter:has(.news-filter-chip.pos.active)>.ibba-slide{background:#16a34a;}
 #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:#c0392b;}
-#hm-range>.ibba-slide{background:var(--black);border-radius:5px;}
+#hm-range>.ibba-slide{background:var(--black);border-radius:6px;}
 #co-ranges>.ibba-slide{background:var(--black);border-radius:6px;}
 html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:var(--orange);}
 html.dark #news-filter>.ibba-slide,html.dark #news-sector-filter>.ibba-slide{background:#343941;}
@@ -655,14 +656,14 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 /* filtro de empresas (▾) + presets do heatmap */
 .hm-filter{position:relative;}
 .hm-filter-btn{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 7px;
-  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:5px;cursor:pointer;
+  border:1px solid var(--border);background:var(--white);color:var(--gray-mid);border-radius:6px;cursor:pointer;
   display:inline-flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;}
 .hm-filter-btn:hover{color:var(--black);border-color:var(--gray-mid);}
 .hm-filter-btn .hm-count{font-weight:600;}
 /* Popover do heatmap = DUAS COLUNAS: grupos à esquerda (rail), empresas do grupo aberto à direita.
    Antes era uma lista única (presets em cima + TODOS os setores empilhados) → rolagem longa. */
 .hm-pop{position:fixed;z-index:4000;width:min(440px,92vw);
-  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-hover);
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-pop);
   max-height:min(72vh,470px);display:flex;flex-direction:column;overflow:hidden;text-align:left;}
 .hm-pop[hidden]{display:none;}
 .hm-pop-body{display:flex;flex:1;min-height:0;}
@@ -670,7 +671,7 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 .hm-pop-rail{flex:0 0 132px;border-right:1px solid var(--border);overflow:auto;padding:6px 5px;}
 .hm-rail-item{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;
   font:inherit;font-size:10.5px;font-weight:600;color:var(--gray-mid);background:none;border:0;
-  border-left:2px solid transparent;border-radius:5px;padding:5px 7px;cursor:pointer;text-align:left;transition:all .12s;}
+  border-left:2px solid transparent;border-radius:8px;padding:5px 7px;cursor:pointer;text-align:left;transition:all .12s;}
 .hm-rail-item:hover,.hm-rail-item.open{background:var(--gray-light);color:var(--black);}
 .hm-rail-item.exact{border-left-color:var(--orange);color:var(--orange);}
 .hm-rail-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -682,7 +683,7 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 .hm-panel-title{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hm-panel-all{font:inherit;font-size:9px;font-weight:700;padding:3px 8px;border:1px solid var(--border);
-  background:var(--white);color:var(--gray-dark);border-radius:11px;cursor:pointer;white-space:nowrap;
+  background:var(--white);color:var(--gray-dark);border-radius:999px;cursor:pointer;white-space:nowrap;
   flex-shrink:0;transition:all .12s;}
 .hm-panel-all:hover:not(:disabled){border-color:var(--orange);color:var(--orange);}
 .hm-panel-all:disabled{opacity:.4;cursor:default;}
@@ -691,7 +692,7 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
   border-top:1px solid var(--border);padding:7px 11px;font-size:10px;color:var(--gray-mid);}
 .hm-pop-foot b{color:var(--gray-dark);}
 .hm-pop-clear{font:inherit;font-size:9.5px;font-weight:700;color:var(--gray-mid);background:none;
-  border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;transition:all .12s;}
+  border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;transition:all .12s;}
 .hm-pop-clear:hover:not(:disabled){color:var(--red);border-color:var(--red);}
 .hm-pop-clear:disabled{opacity:.4;cursor:default;}
 .hm-pop-hint{font-size:10px;color:var(--gray-mid);margin:0 2px 7px;}
@@ -707,7 +708,7 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
   display:flex;align-items:center;justify-content:center;padding:24px;}
 .modal-backdrop[hidden]{display:none;}
 .modal{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow-hover);width:min(760px,96vw);max-height:90vh;overflow:auto;padding:18px 20px;}
+  box-shadow:var(--shadow-pop);width:min(760px,96vw);max-height:90vh;overflow:auto;padding:18px 20px;}
 .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
 .modal-title{font-size:17px;font-weight:700;color:var(--black);}
 .modal-sub{font-size:12px;color:var(--gray-mid);margin-top:2px;}
@@ -725,7 +726,7 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 .modal-chart{position:relative;width:100%;height:300px;margin-top:4px;}
 .mc-axis{font-size:9px;fill:var(--gray-mid);}
 .mc-tip{position:absolute;pointer-events:none;background:var(--black);color:#fff;font-size:10.5px;line-height:1.5;
-  padding:5px 8px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:3;box-shadow:var(--shadow);}
+  padding:5px 8px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:3;box-shadow:var(--shadow-hover);}
 .mc-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle;}
 .modal-compare{margin-top:14px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
 .mc-label{font-size:11px;color:var(--gray-mid);font-weight:600;padding-top:4px;}
@@ -877,7 +878,7 @@ html.dark .cm-nohist{color:#79818F;}
 @keyframes commswap{from{opacity:.35;}to{opacity:1;}}
 @media (prefers-reduced-motion:reduce){.area-comm .kv-list.trocou{animation:none;}
   .comm-tab .fill{animation:none!important;}}
-.comm-tab{position:relative;overflow:hidden;border:none;cursor:pointer;border-radius:5px;
+.comm-tab{position:relative;overflow:hidden;border:none;cursor:pointer;border-radius:6px;
   background:rgba(0,0,0,.045);color:var(--gray-mid);
   font:600 9px var(--font);letter-spacing:.04em;text-transform:uppercase;
   padding:3px 6px;white-space:nowrap;transition:color .12s,background .12s;}
@@ -943,7 +944,7 @@ html.dark .cm-nohist{color:#79818F;}
   .area-secrow{grid-template-columns:minmax(0,1fr);gap:10px;}
   .sector-card{min-height:112px;padding:14px 15px 13px;}
   .sector-card .sector-card-title{font-size:19px;}
-  .sector-tab{font-size:11px;padding:4px 10px;border-radius:12px;}
+  .sector-tab{font-size:11px;padding:4px 10px;border-radius:999px;}
   .sector-tabs{gap:6px;padding-top:10px;}
 
   /* cabeçalho do cartão: título em cima, controles embaixo (e os controles quebram entre si) */
@@ -966,7 +967,7 @@ html.dark .cm-nohist{color:#79818F;}
   .pulse-stat-num{font-size:19px;} .pulse-stat-lbl{font-size:9.5px;}
   .pulse-body{padding:12px 13px 14px;}
   .pulse-names{max-height:none;gap:5px 6px;}
-  .pn{height:24px;font-size:11.5px;padding:0 9px 0 10px;gap:4px;border-radius:12px;}
+  .pn{height:24px;font-size:11.5px;padding:0 9px 0 10px;gap:4px;border-radius:999px;}
   .pn .news-take{min-width:15px;height:15px;font-size:10px;}
   .pn-more{font-size:10px;}
 
@@ -1025,8 +1026,9 @@ html.dark{
   --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;
   --gray-light:#15171b;--white:#1c2026;--border:#2b3038;
   --green:#22c55e;--red:#ef4444;
-  --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.5);
-  --shadow-hover:0 4px 12px rgba(0,0,0,.5),0 16px 40px rgba(0,0,0,.65);
+  --shadow:0 1px 2px rgba(0,0,0,.55);
+  --shadow-hover:0 2px 8px rgba(0,0,0,.5),0 12px 28px rgba(0,0,0,.6);
+  --shadow-pop:0 12px 32px rgba(0,0,0,.6);
 }
 /* --black virou TEXTO claro → devolver os poucos lugares onde era FUNDO/realce escuro */
 html.dark .header{background:#0d0e11;}
@@ -1065,7 +1067,8 @@ html.dark{
   --gray-mid:#79818F;       /* apoio / legenda */
   /* no quase-preto sombra grande vira borrão: o relevo passa a ser o fio da borda */
   --shadow:0 1px 2px rgba(0,0,0,.55);
-  --shadow-hover:0 8px 26px rgba(0,0,0,.6);
+  --shadow-hover:0 2px 8px rgba(0,0,0,.5),0 12px 28px rgba(0,0,0,.6);
+  --shadow-pop:0 12px 32px rgba(0,0,0,.6);
 }
 
 /* ── Painéis: cabeçalho um fio mais claro que o corpo (dá "chapa" sem caixa) ── */
@@ -1140,7 +1143,7 @@ html.dark .pn{border-color:#2A313D;color:#E9ECF2;}
 html.dark .pn:hover{border-color:#3A4351;background:rgba(255,255,255,.05);}
 html.dark .pn.pos{border-color:rgba(34,197,94,.42);background:rgba(34,197,94,.09);}
 html.dark .pn.neg{border-color:rgba(239,68,68,.42);background:rgba(239,68,68,.09);}
-html.dark .pn-pop{background:#161B23;border-color:#242B37;box-shadow:0 10px 30px rgba(0,0,0,.55);}
+html.dark .pn-pop{background:#161B23;border-color:#242B37;box-shadow:var(--shadow-pop);}
 html.dark .pn-pop-t,html.dark .pn-row-t{color:#E9ECF2;}
 html.dark .pn-pop-x:hover{color:#E9ECF2;}
 html.dark .pn-pop-f{border-color:#242B37;}
@@ -3284,7 +3287,7 @@ _every(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 *
   const h=window.location.hostname;
   if(h==='localhost'||h==='127.0.0.1'||h.includes('git-staging')||h.includes('-staging.')){
     const b=document.createElement('div');
-    b.style.cssText='position:fixed;bottom:16px;right:16px;background:#D97706;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:20px;z-index:9999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+    b.style.cssText='position:fixed;bottom:16px;right:16px;background:#D97706;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:999px;z-index:9999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.25)';
     b.textContent='⚠ STAGING · NEWS-SYNC';
     document.body.appendChild(b);
   }
