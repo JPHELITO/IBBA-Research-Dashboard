@@ -21,6 +21,20 @@ segunda visita em diante não trafega quase nada.
 O `steel_sm.db` completo continua existindo e sendo commitado como está — ele é
 a fonte da verdade do `updater_sm.py` e do admin. Este script só deriva a cópia.
 
+SECEX_COUNTRY NA ORDEM DA PÁGINA (2026-10-20)
+--------------------------------------------
+No banco completo a chave de `secex_country` é (period, direction, category,
+country). A página faz 30 consultas `WHERE direction=? AND category=? ORDER BY
+period,country` — com a data na frente da chave, NENHUMA delas usa o índice: cada
+uma lê as 274 mil linhas e reordena numa árvore temporária. Medido no navegador:
+2,8 a 2,9 s de 3,9 a 5,6 s de abertura (13 a 16 s num computador 4x mais lento).
+Aqui, só na cópia web, a tabela é refeita como WITHOUT ROWID com a chave
+(direction, category, period, country): as mesmas linhas, as mesmas colunas, na
+mesma ordem de colunas; cada consulta vira uma leitura em sequência já ordenada,
+e o arquivo comprimido cai de ~10,2 para ~6,4 MB (some a tabela-sombra do rowid).
+O resultado de cada consulta é idêntico (ORDER BY period,country é ordem total
+dentro de direção+categoria, porque a chave é única). O banco completo não muda.
+
 USO
 ---
     python "Steel and Mining/build_web_db.py"
@@ -57,6 +71,32 @@ WEB_TABLES = [
 ]
 
 
+# chave da cópia web de secex_country: direção e categoria NA FRENTE (é o WHERE da página)
+COUNTRY_KEY = ("direction", "category", "period", "country")
+
+
+def rebuild_secex_country(db) -> int:
+    """Refaz secex_country como WITHOUT ROWID com a chave COUNTRY_KEY. Copia as colunas
+    que existirem (na mesma ordem e com o mesmo tipo), confere a contagem e devolve as linhas."""
+    cols = db.execute('PRAGMA table_info("secex_country")').fetchall()   # cid, name, type, notnull, dflt, pk
+    names = [c[1] for c in cols]
+    missing = [k for k in COUNTRY_KEY if k not in names]
+    if missing:
+        raise SystemExit(f"ERRO: secex_country sem as colunas da chave: {missing}")
+    before = db.execute("SELECT COUNT(*) FROM secex_country").fetchone()[0]
+    defs = ", ".join(f'"{c[1]}" {c[2]}'.strip() for c in cols)
+    key = ", ".join(f'"{k}"' for k in COUNTRY_KEY)
+    lst = ", ".join(f'"{n}"' for n in names)
+    db.execute(f'CREATE TABLE secex_country_web ({defs}, PRIMARY KEY ({key})) WITHOUT ROWID')
+    db.execute(f'INSERT INTO secex_country_web ({lst}) SELECT {lst} FROM secex_country')
+    after = db.execute("SELECT COUNT(*) FROM secex_country_web").fetchone()[0]
+    if after != before:
+        raise SystemExit(f"ERRO: secex_country refeita com {after} linhas, eram {before}")
+    db.execute("DROP TABLE secex_country")
+    db.execute("ALTER TABLE secex_country_web RENAME TO secex_country")
+    return after
+
+
 def build() -> int:
     if not SRC.exists():
         print(f"ERRO: não achei {SRC}")
@@ -79,6 +119,7 @@ def build() -> int:
     dropped = sorted(existing - set(WEB_TABLES))
     for t in dropped:
         db.execute(f'DROP TABLE IF EXISTS "{t}"')
+    n_country = rebuild_secex_country(db)   # na ordem das consultas da página (ver docstring)
     db.commit()
     db.execute("VACUUM")          # devolve o espaço das tabelas removidas
     db.close()
@@ -92,6 +133,7 @@ def build() -> int:
     print(f"  só web     : {mb(len(raw)):6.1f} MB  ({len(WEB_TABLES)} tabelas)")
     print(f"  comprimido : {mb(OUT.stat().st_size):6.1f} MB  -> {OUT.name}")
     print(f"  removidas  : {', '.join(dropped) or '(nenhuma)'}")
+    print(f"  secex_country refeita na ordem da página: {n_country} linhas, chave {COUNTRY_KEY}")
     return 0
 
 
