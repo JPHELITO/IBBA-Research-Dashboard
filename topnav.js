@@ -57,17 +57,23 @@ html.ibba-swap body{overflow-x:clip;}\
 /* casa do NÚMERO QUE ROLA (IBBANumber.roll): a janela de um dígito */\
 .ibba-odo{display:inline-block;overflow:hidden;vertical-align:top;}\
 .ibba-odo>span{display:inline-block;}\
-/* FAIXA DO SETOR (M&M e P&P): a mesma foto em duotone do cartão da home. Na transição entre páginas\
-   o cartão cresce até virar esta faixa (nomes ibba-sector / ibba-sector-title). Só computador. */\
+/* FAIXA DO SETOR (M&M e P&P). Na transição entre páginas o cartão da home cresce até virar esta faixa\
+   (nomes ibba-sector / ibba-sector-title). Só computador.\
+   A FOTO NÃO COBRE A FAIXA (2026-10-20): esticada em 1440-1920 x 64px ela ampliava 2,8 a 3,1 vezes (a do\
+   aço tem 612px) e virava uma fatia sem forma. Agora ela mora numa VITRINE na ponta direita, na largura\
+   dela mesma (1:1 até tela de 125%; degraus abaixo para as mais densas), nasce do escuro e vai do laranja\
+   à cor original, como no cartão. O enquadramento de cada foto vem da página (background-position).\
+   O título fica no escuro puro: sem véu e sem sombra. */\
 .ibba-band{position:relative;height:64px;overflow:hidden;background:#0C0F14;color:#fff;}\
-.ibba-band-photo{position:absolute;inset:0;background-size:cover;background-position:center 34%;isolation:isolate;}\
+.ibba-band-photo{position:absolute;top:0;bottom:0;right:0;width:min(44%,560px);isolation:isolate;\
+  background-size:100% auto;background-repeat:no-repeat;background-position:right 40%;\
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 46%);mask-image:linear-gradient(90deg,transparent 0%,#000 46%);}\
 .ibba-band-photo::before{content:"";position:absolute;inset:0;background:#FF5000;mix-blend-mode:color;\
-  -webkit-mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);mask-image:linear-gradient(102deg,#000 0%,#000 38%,rgba(0,0,0,.42) 100%);}\
-.ibba-band::after{content:"";position:absolute;inset:0;pointer-events:none;\
-  background:linear-gradient(100deg,rgba(8,10,14,.66) 0%,rgba(8,10,14,.28) 46%,rgba(8,10,14,.06) 78%);}\
+  -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 30%,rgba(0,0,0,.35) 100%);mask-image:linear-gradient(90deg,#000 0%,#000 30%,rgba(0,0,0,.35) 100%);}\
+@media (min-resolution:1.4dppx){.ibba-band-photo{width:min(40%,460px);}}\
+@media (min-resolution:1.9dppx){.ibba-band-photo{width:min(36%,380px);}}\
 .ibba-band-in{position:relative;z-index:1;height:100%;display:flex;align-items:center;padding:0 28px;}\
-.ibba-band-title{margin:0;font:600 18px/1.15 Inter,"Segoe UI",Helvetica,Arial,sans-serif;letter-spacing:-.01em;color:#fff;\
-  text-shadow:0 1px 10px rgba(0,0,0,.4);}\
+.ibba-band-title{margin:0;font:600 18px/1.15 Inter,"Segoe UI",Helvetica,Arial,sans-serif;letter-spacing:-.01em;color:#fff;}\
 .ibba-band-title::after{content:"";display:block;width:28px;height:2px;border-radius:1px;background:#FF5000;margin-top:7px;}\
 @media(max-width:900px){.ibba-band{display:none;}}\
 /* ESQUELETO enquanto a página baixa o banco (M&M/P&P põem a classe ibba-loading no <html>): a moldura\
@@ -96,7 +102,9 @@ html.dark.ibba-loading .chart-wrap::after{background-color:rgba(255,255,255,.05)
   ::view-transition-group(ibba-gnav-ind){animation-duration:.42s;animation-timing-function:cubic-bezier(.16,1,.3,1);}\
   ::view-transition-group(ibba-sector),::view-transition-group(ibba-sector-title){animation-duration:.6s;animation-timing-function:cubic-bezier(.65,0,.35,1);}\
   ::view-transition-group(ibba-sector){overflow:hidden;}\
-  ::view-transition-old(ibba-sector),::view-transition-new(ibba-sector){height:100%;object-fit:cover;}\
+  /* no voo cartão ↔ faixa nada é esticado: os dois retratos ficam no tamanho em que foram tirados, presos à\
+     DIREITA da caixa que cresce — a foto do cartão corre até a ponta direita, onde a vitrine da faixa aparece */\
+  ::view-transition-old(ibba-sector),::view-transition-new(ibba-sector){height:100%;object-fit:none;object-position:right center;}\
   /* faixa SEM par do outro lado (M&M → News, News → M&M): nada de voo — some rápido ou entra junto\
      com a página; senão a foto velha ficaria 0,6 s esmaecendo por cima da página nova */\
   ::view-transition-old(ibba-sector):only-child,::view-transition-old(ibba-sector-title):only-child{animation:.16s cubic-bezier(.4,0,1,1) both ibba-vt-out;}\
