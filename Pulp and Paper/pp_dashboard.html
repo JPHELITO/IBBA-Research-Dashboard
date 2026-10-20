@@ -1070,6 +1070,9 @@ function baseOpts(ov={}){
 // NAVEGADOR — num Windows em português vira 1.234,5 (padrão BR). A dashboard é em inglês e o
 // cliente lê no padrão americano, então fixamos en-US: milhar com vírgula, decimal com ponto.
 if(window.Chart)Chart.defaults.locale='en-US';
+// V2 (2026-10-20): o gráfico cresce em 0,28 s. O padrão da biblioteca é 1 s, e era isso que fazia o
+// clique parecer lento: o conteúdo aparecia em 0,3 s, mas a tela só assentava em 1,3 s.
+if(window.Chart)Chart.defaults.animation.duration=280;
 function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
   Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)';
   C_BK=d?'#e6e6e6':'#1A1A1A'; C_BK_RGB=d?'230,230,230':'26,26,26'; }   // série "preta" -> branca no dark (distinta do cinza C_GR)
@@ -1083,10 +1086,21 @@ window.addEventListener('resize',()=>{
   clearTimeout(_resizeT);
   _resizeT=setTimeout(()=>{if(typeof render==='function')render();},250);
 });
+/* V2 (2026-10-20): gráfico que JÁ existe no mesmo canvas é ATUALIZADO, não refeito, e SEM animação.
+   Trocar janela, granularidade ou produto destruía e recriava todos os gráficos da seção. Medido no
+   filtro "All" do Imports, num computador 4x mais lento: refazer = 908 ms + 943 ms de animação;
+   atualizar animando = 1349 ms + 209 ms (animar a troca custa MAIS que refazer); atualizar sem
+   animação = 475 ms + 49 ms. A animação curta fica só para o gráfico que nasce. */
 function mkChart(id,type,labels,datasets,opts={}){
-  destroyChart(id);
   const ctx=document.getElementById(id)?.getContext('2d');
-  if(!ctx)return;
+  if(!ctx){destroyChart(id);return;}
+  const ex=charts[id];
+  if(ex&&ex.config.type===type&&ex.canvas===ctx.canvas){
+    ex.data.labels=labels; ex.data.datasets=datasets; ex.options=baseOpts(opts);
+    ex.update('none');
+    return;
+  }
+  destroyChart(id);
   charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:baseOpts(opts)});
 }
 const LEG={get plugins(){return{legend:{display:true,position:'top',
@@ -1098,12 +1112,13 @@ const PCT_TICK={scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}};
 /* Abre uma instância sql.js do banco. Usado no boot (loadDB) e, sob demanda, pelo
    painel "Download data" (o arquivo tem ~420 KB e fica no cache → reabrir é barato). */
 async function openDB(){
-  const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
   /* SEM cache-buster (era `?v=AAAAMMDD`) — ver a nota no steel_sm_dashboard.html:
-     o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou. */
-  const resp=await fetch('pulp_paper.db');
-  if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-  return new SQL.Database(new Uint8Array(await resp.arrayBuffer()));
+     o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou.
+     V1 (2026-10-20): o motor (wasm) e o banco descem AO MESMO TEMPO, como no M&M. */
+  const [SQL,buf]=await Promise.all([
+    initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}),
+    fetch('pulp_paper.db').then(resp=>{ if(!resp.ok) throw new Error(`HTTP ${resp.status}`); return resp.arrayBuffer(); })]);
+  return new SQL.Database(new Uint8Array(buf));
 }
 
 // "Data through: SECEX Jun 2026 · Ibá Jun 2026 …" — escreve na secondary-nav. parts=[[label,'YYYY-MM'],…]

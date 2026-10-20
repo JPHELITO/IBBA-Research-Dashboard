@@ -1077,6 +1077,29 @@ let INDA=[];
 let PRED={};
 let PRED_EXP={};
 let SCTY={exp:{},imp:{}};   // secex_country: todas as categorias por direção
+/* secex_country (por país) SÓ DEPOIS do 1º desenho (V1, 2026-10-20). São 274 mil linhas que só Imports
+   e Exports usam, e a página abre em Prices. O banco fica aberto até elas descerem: em pedaços, nos
+   intervalos livres do navegador (sem travar a tela), ou de uma vez se alguém precisar antes —
+   _ensureSCTY() no mergeOriginRows, que é o único lugar que lê o SCTY. */
+const SCTY_CATS=['flat','hrc','crc','coated','heavy_plate','flat_others',
+                 'long','rebar','bar','wire_rod','shapes','long_others',
+                 'semi','ingot_billet','placa'];
+let _sctyDB=null, _sctyJobs=[];
+function _sctyRun(job){
+  const [dir,cat]=job;
+  SCTY[dir][cat]=toObj(_sctyDB.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='${dir}' AND category='${cat}' ORDER BY period,country`)[0]);
+}
+function _sctyFinish(){ try{ if(_sctyDB) _sctyDB.close(); }catch(e){} _sctyDB=null; _sctyJobs=[]; }
+function _ensureSCTY(){ if(!_sctyDB) return; while(_sctyJobs.length) _sctyRun(_sctyJobs.shift()); _sctyFinish(); }
+function _sctyIdle(){
+  if(!_sctyDB) return;
+  const ric=window.requestIdleCallback||(fn=>setTimeout(()=>fn({timeRemaining:()=>8}),30));
+  ric(function step(dl){
+    if(!_sctyDB) return;
+    do{ _sctyRun(_sctyJobs.shift()); }while(_sctyJobs.length&&dl.timeRemaining()>6);
+    if(_sctyJobs.length) ric(step,{timeout:2000}); else _sctyFinish();
+  },{timeout:2000});
+}
 
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const WIN_MO={all:null,ytd:null,'5y':60,'3y':36,'1y':12,'6m':6,'3m':3};
@@ -1347,6 +1370,9 @@ function baseOpts(ov={}){
 // NAVEGADOR — num Windows em português vira 1.234,5 (padrão BR). A dashboard é em inglês e o
 // cliente lê no padrão americano, então fixamos en-US: milhar com vírgula, decimal com ponto.
 if(window.Chart)Chart.defaults.locale='en-US';
+// V2 (2026-10-20): o gráfico cresce em 0,28 s. O padrão da biblioteca é 1 s, e era isso que fazia o
+// clique parecer lento: o conteúdo aparecia em 0,3 s, mas a tela só assentava em 1,3 s.
+if(window.Chart)Chart.defaults.animation.duration=280;
 function _applyChartTheme(){ if(!window.Chart)return; var d=document.documentElement.classList.contains('dark');
   Chart.defaults.color=d?'#aab1bb':'#666'; Chart.defaults.borderColor=d?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.1)';
   C_BK=d?'#e6e6e6':'#1A1A1A'; C_BK_RGB=d?'230,230,230':'26,26,26'; }   // série "preta" -> branca no dark (distinta do cinza C_GR)
@@ -1361,10 +1387,21 @@ window.addEventListener('resize',()=>{
   clearTimeout(_resizeT);
   _resizeT=setTimeout(()=>{if(typeof render==='function')render();},250);
 });
+/* V2 (2026-10-20): gráfico que JÁ existe no mesmo canvas é ATUALIZADO, não refeito, e SEM animação.
+   Trocar janela, granularidade ou produto destruía e recriava todos os gráficos da seção. Medido no
+   filtro "All" do Imports, num computador 4x mais lento: refazer = 908 ms + 943 ms de animação;
+   atualizar animando = 1349 ms + 209 ms (animar a troca custa MAIS que refazer); atualizar sem
+   animação = 475 ms + 49 ms. A animação curta fica só para o gráfico que nasce. */
 function mkChart(id,type,labels,datasets,opts={}){
-  destroyChart(id);
   const ctx=document.getElementById(id)?.getContext('2d');
-  if(!ctx)return;
+  if(!ctx){destroyChart(id);return;}
+  const ex=charts[id];
+  if(ex&&ex.config.type===type&&ex.canvas===ctx.canvas){
+    ex.data.labels=labels; ex.data.datasets=datasets; ex.options=baseOpts(opts);
+    ex.update('none');
+    return;
+  }
+  destroyChart(id);
   charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:baseOpts(opts)});
 }
 // LEG via getter para responder ao viewport
@@ -1445,8 +1482,12 @@ async function fetchDB(){
    painel "Download data" — que reabre em vez de segurar os ~25 MB abertos a sessão
    inteira (o .gz já está no cache do navegador, então reabrir é barato). */
 async function openDB(){
-  const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
-  return new SQL.Database(await fetchDB());
+  // V1 (2026-10-20): o motor (wasm) e o banco descem AO MESMO TEMPO; antes, o download do banco só
+  // começava depois que o motor ficava pronto (cerca de 0,4 s a menos na 1ª visita)
+  const [SQL,buf]=await Promise.all([
+    initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}),
+    fetchDB()]);
+  return new SQL.Database(buf);
 }
 
 // "Data through: SECEX Jun 2026 · IABr Jul 2026 …" — escreve na secondary-nav. parts=[[label,'YYYY-MM'],…]
@@ -1504,16 +1545,9 @@ async function loadDB(){
       PRED_EXP[r.product][r.country].push(r);
     }
 
-    // ── secex_country — todas as subcategorias ────────────────────────────────
-    const ALL_CATS=['flat','hrc','crc','coated','heavy_plate','flat_others',
-                    'long','rebar','bar','wire_rod','shapes','long_others',
-                    'semi','ingot_billet','placa'];
-    for(const cat of ALL_CATS){
-      SCTY.exp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='exp' AND category='${cat}' ORDER BY period,country`)[0]);
-      SCTY.imp[cat]=toObj(db.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='imp' AND category='${cat}' ORDER BY period,country`)[0]);
-    }
-
-    db.close();
+    // ── secex_country — fica para depois do 1º desenho (ver _sctyIdle); o banco fecha quando ela descer
+    _sctyDB=db; _sctyJobs=[];
+    for(const cat of SCTY_CATS) for(const dir of ['exp','imp']) _sctyJobs.push([dir,cat]);
 
     el.style.display='none';
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
@@ -1528,6 +1562,7 @@ async function loadDB(){
     } else {
       setSub(initSub);   // ativa a seção certa + renderiza (corrige gráficos em branco no load)
     }
+    _sctyIdle();         // os dados por país descem depois, sem travar a tela
   }catch(e){
     el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
     el.innerHTML=`<div style="text-align:center;padding:40px">
@@ -1584,7 +1619,8 @@ function _rawDBClose(){ try{_rawDB&&_rawDB.close();}catch(e){} _rawDB=null; _raw
 
 /* sql.js → matriz [cabeçalho, ...linhas] (formato que o Excel/CSV comem direto) */
 function _tableAOA(db,name){
-  const res=db.exec(`SELECT * FROM "${name}"`);
+  // na cópia web a secex_country é guardada por direção+categoria (V1); a base bruta sai em ordem de data
+  const res=db.exec(`SELECT * FROM "${name}"`+(name==='secex_country'?' ORDER BY period,direction,category,country':''));
   if(!res||!res[0]) return [['(empty)']];
   return [res[0].columns].concat(res[0].values);
 }
@@ -1691,6 +1727,7 @@ function getPillDefs(){
 
 // Mescla múltiplas categorias por (period, country)
 function mergeOriginRows(cats,dir){
+  _ensureSCTY();   // se os dados por país ainda não desceram, desce agora (de uma vez)
   const merged={};
   cats.forEach(cat=>{
     (SCTY[dir]?.[cat]||[]).forEach(r=>{
