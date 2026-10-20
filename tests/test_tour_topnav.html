@@ -48,8 +48,10 @@ window.__RUN__ = async function () {
       W.__gnavTourOn(true);
       const out = d.querySelector('.gnav-out').getBoundingClientRect(), fits = g.scrollWidth <= g.clientWidth + 1;
       const info = 'sem botão ' + base + ' · com ' + g.scrollWidth + '/' + g.clientWidth + ' · ' + g.className + ' · team ' + d.getElementById('gnav-team').className;
-      // abaixo de 1366px a barra do ADMIN já estourava antes (4 links internos — documentado): aí só registra
-      if (base <= g.clientWidth + 1) ok(q + ' ' + w + 'px: o botão não estoura a barra (Sign out dentro)', fits && out.right <= w + 0.5, info);
+      // abaixo de 1366px a barra do ADMIN já estourava antes (4 links internos — documentado): aí só registra.
+      // (2026-10-20) Com o time agrupado (E5) a barra do admin a 1280px passou a caber SEM o botão, por um
+      // triz — então a régua 'base' já não separa os casos: vale a intenção escrita acima, admin < 1366 registra.
+      if (base <= g.clientWidth + 1 && !(q === 'admin' && w < 1366)) ok(q + ' ' + w + 'px: o botão não estoura a barra (Sign out dentro)', fits && out.right <= w + 0.5, info);
       else ok(q + ' ' + w + 'px: barra já estourava SEM o botão (pré-existente) — registro', q === 'admin', info);
       f.remove();
     }

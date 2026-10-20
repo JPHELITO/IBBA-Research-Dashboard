@@ -242,6 +242,33 @@ html.dark .gn-cat{color:#828892;}\
 .gn-admin{color:#ff7a45!important;margin-left:6px;}\
 .gn-admin:hover,.gn-admin.on{color:#ff9166!important;}\
 .gnav-team{display:flex;align-items:center;gap:13px;margin-left:auto;}\
+.gnav-team{position:relative;}\
+/* TIME EM GRUPO (2026-10-20, E5): as fotos viram UM botão, sobrepostas; o clique abre o cartão de\
+   contato (nome, e-mail, WhatsApp). Antes eram 3 fotos + 3 nomes + 6 ícones disputando com o menu. */\
+.gnt-stack{display:flex;align-items:center;background:none;border:0;padding:3px 4px;border-radius:999px;cursor:pointer;}\
+.gnt-stack .gnt-av{box-shadow:0 0 0 2px #111;}\
+.gnt-stack .gnt-av + .gnt-av{margin-left:-7px;}\
+.gnt-stack:hover .gnt-av,.gnt-stack[aria-expanded="true"] .gnt-av{box-shadow:0 0 0 2px #111,0 0 0 3px rgba(255,255,255,.3);}\
+.gnt-pop{position:absolute;top:calc(100% + 8px);right:0;width:310px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #E8E6E1;\
+  border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:6px;z-index:650;display:none;text-align:left;}\
+.gnt-pop.open{display:block;}\
+.gnt-pop::before{content:"";position:absolute;left:0;right:0;top:-10px;height:10px;}\
+.gnt-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:8px;}\
+.gnt-row + .gnt-row{border-top:1px solid #F0EDE8;}\
+.gnt-row .gnt-av{width:32px;height:32px;font-size:11px;}\
+.gnt-who{min-width:0;}\
+.gnt-who b{display:block;font-size:12.5px;line-height:1.3;color:#111;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+.gnt-who span{display:block;font-size:11px;line-height:1.3;color:#6E6A63;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all;}\
+.gnt-acts{display:flex;gap:6px;}\
+.gnt-pop .gnt-b{display:flex!important;width:28px;height:28px;border-radius:8px;border:1px solid #E3DED6;color:#555;}\
+.gnt-pop .gnt-b:hover{color:#FF5000;border-color:#FF5000;background:transparent;}\
+.gnt-pop .gnt-b.wa:hover{color:#1DA851;border-color:#1DA851;}\
+.gnt-pop .gnt-b svg{width:13px;height:13px;}\
+html.dark .gnt-pop{background:#1c2026;border-color:#2E343E;box-shadow:0 12px 32px rgba(0,0,0,.6);}\
+html.dark .gnt-row + .gnt-row{border-top-color:#2a3039;}\
+html.dark .gnt-who b{color:#e8eaed;}\
+html.dark .gnt-who span{color:#8E949D;}\
+html.dark .gnt-pop .gnt-b{border-color:#2E343E;color:#aab1bb;}\
 .gnt{display:flex;align-items:center;gap:5px;}\
 .gnt-av{width:23px;height:23px;border-radius:50%;object-fit:cover;background:#FF5000;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}\
 .gnt-name{font-size:10px;color:rgba(255,255,255,.78);font-weight:500;white-space:nowrap;}\
@@ -464,18 +491,37 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var team = (list && list.length) ? list : TEAM_FALLBACK;
     _teamNow = team;
     renderMobTeam(team);
-    el.innerHTML = team.map(function(p){
+    // E5 (2026-10-20): um botão com as fotos sobrepostas + o cartão de contato que ele abre
+    var av = function(p, alt){
       var ini = esc(p.ini || _ini(p.name)), ph = _photo(p.photo);
-      return '<div class="gnt" title="'+esc(p.name)+'">'
-        + (ph ? '<img class="gnt-av" src="'+esc(ph)+'" alt="'+esc(p.name)+'" onerror="this.outerHTML=\'<div class=&quot;gnt-av&quot;>'+ini+'</div>\'">'
-              : '<div class="gnt-av">'+ini+'</div>')
-        + '<span class="gnt-name">'+esc(p.name)+'</span>'
-        + (p.email ? '<a class="gnt-b" href="mailto:'+esc(p.email)+'" title="'+esc(p.email)+'">'+SVG_EMAIL+'</a>' : '')
-        + (p.wa ? '<a class="gnt-b wa" href="https://wa.me/'+esc(p.wa)+'" target="_blank" rel="noopener" title="WhatsApp '+esc(p.name)+'">'+SVG_WA+'</a>' : '')
-        + '</div>';
-    }).join('');
+      return ph ? '<img class="gnt-av" src="'+esc(ph)+'" alt="'+(alt ? esc(p.name) : '')+'" onerror="this.outerHTML=\'<span class=&quot;gnt-av&quot;>'+ini+'</span>\'">'
+                : '<span class="gnt-av">'+ini+'</span>';
+    };
+    el.innerHTML = '<button type="button" class="gnt-stack" id="gnt-stack" aria-haspopup="dialog" aria-expanded="false" aria-controls="gnt-pop" title="Research team · contacts">'
+      + team.map(function(p){ return av(p, false); }).join('') + '</button>'
+      + '<div class="gnt-pop" id="gnt-pop" role="dialog" aria-label="Research team">'
+      + team.map(function(p){
+          return '<div class="gnt-row">' + av(p, true)
+            + '<div class="gnt-who"><b>'+esc(p.name)+'</b>' + (p.email ? '<span>'+esc(p.email)+'</span>' : '') + '</div>'
+            + '<div class="gnt-acts">'
+            + (p.email ? '<a class="gnt-b" href="mailto:'+esc(p.email)+'" title="E-mail '+esc(p.name)+'" aria-label="E-mail '+esc(p.name)+'">'+SVG_EMAIL+'</a>' : '')
+            + (p.wa ? '<a class="gnt-b wa" href="https://wa.me/'+esc(p.wa)+'" target="_blank" rel="noopener" title="WhatsApp '+esc(p.name)+'" aria-label="WhatsApp '+esc(p.name)+'">'+SVG_WA+'</a>' : '')
+            + '</div></div>';
+        }).join('') + '</div>';
     _fillBrandSub(team); _fitTeam();
   }
+  // abre/fecha o cartão do time: clique no grupo alterna; clique fora ou Esc fecha
+  function _teamPop(on){
+    var b = document.getElementById('gnt-stack'), p = document.getElementById('gnt-pop'); if(!b || !p) return;
+    if(on == null) on = !p.classList.contains('open');
+    p.classList.toggle('open', !!on); b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target; if(!t || !t.closest) return;
+    if(t.closest('#gnt-stack')){ _teamPop(); return; }
+    if(!t.closest('#gnt-pop')) _teamPop(false);
+  });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') _teamPop(false); });
 
   // A barra tem largura fixa e o time cresce: com 4 analistas os nomes já estouram fora de 1920 e
   // empurram o Sign out p/ FORA da tela (a página não rola na horizontal → botão inalcançável).
