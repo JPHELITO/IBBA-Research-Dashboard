@@ -47,7 +47,7 @@ window.IBBA_TOURS = {
         { id: 'calendar', media: 'desktop', requires: 'exec_calendar', target: '#gnav-cal', title: 'Calendar',
           body: 'Earnings dates, data releases and industry events, by month, week or list.' },
         { id: 'team', media: 'desktop', target: '#gnav-team', title: 'Talk to the analysts',
-          body: 'Reach the research team by e-mail or WhatsApp straight from the top bar.' },
+          body: 'Click the team photos to reach an analyst by e-mail or WhatsApp.' },
         { id: 'theme', media: 'desktop', target: '#gnav-theme', title: 'Light or dark',
           body: 'Switch the whole dashboard between light and dark mode. Your choice is remembered.' },
         { id: 'tutorial', media: 'desktop', target: '#gnav-tutorial', title: 'Replay anytime',
