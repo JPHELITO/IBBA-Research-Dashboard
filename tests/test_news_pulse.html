@@ -1,11 +1,11 @@
-<!doctype html><meta charset="utf-8"><title>Market Pulse — termômetro de notícias (janela, portão, fichas)</title>
+<!doctype html><meta charset="utf-8"><title>Market Pulse — coluna do feed (janela, portão, empresas, temas, filtro)</title>
 <body><pre id="out">rodando…</pre>
-<!-- DOM mínimo que o _renderPulse escreve (mesmos ids da home) -->
+<!-- DOM mínimo que o _renderPulse escreve (mesmos ids da home; desde 2026-10-20 a coluna à esquerda do feed) -->
 <div id="stage" style="position:absolute;left:-9999px">
-  <div id="pulse-gauge"><svg><path id="gauge-arc"/></svg><div id="gauge-val"></div><div id="gauge-label"></div></div>
-  <span id="stat-pos"></span><span id="stat-neg"></span><span id="stat-neu"></span><span id="stat-tot"></span><span id="stat-tot-lbl"></span>
-  <div id="bar-pos"></div><div id="bar-neu"></div><div id="bar-neg"></div>
+  <span id="np-when"></span><div id="np-tone"></div>
   <div id="pulse-names"></div>
+  <div id="np-lists"></div>
+  <div id="np-filterbar" hidden></div>
 </div>
 <script>
 /* Testa o termômetro REAL: recorta o bloco de funções do próprio index.html (não copia
@@ -22,17 +22,20 @@ window.__RUN__=async function(){
   const LOAD=cut(t,'function _loadingBadge(){','\n}');
   const ESC=cut(t,'const _esc=s=>','}[c]));');
 
-  let urls=[], resposta=[];
+  let urls=[], resposta=[], feedRecarregado=0;
   const ctx={
     SUPA_URL:'https://X', SUPA_KEY:'k', NUM_LOC:'en-US', _pulseSector:'all',
     sbAuth:{auth:{getSession:async()=>({data:{session:{access_token:'t'}}})}},
     fetch:async(u,o)=>{ urls.push(u); return {ok:true, json:async()=>resposta}; },
     console:{warn:(...a)=>R.push('WARN · '+a.join(' '))},
+    // o que a coluna lê/escreve fora do bloco: cotações do heatmap e o recarregar do feed
+    _quotes:[{ticker:'VALE3.SA', change_pct:1.94},{ticker:'CSNA3.SA', change_pct:-0.97}],
+    _firstLoad:false, _newsFx:false, loadNews:()=>{ feedRecarregado++; },
   };
   const mk=new Function('ctx',`with(ctx){ ${ESC}\n${BADGE}\n${LOAD}\n${BLOCO}\n return {
     _pulseWindowStartMs,_pulseWindowLabel,_pulseFilter,_pulseTally,_pulseGaugeVal,_pulseChipsHtml,_pulseCo,
-    loadPulse,_renderPulse,_renderGauge,_pulseRowHtml,_pulseClosePop,
-    get last(){return _pulseLast}, PULSE_MIN_SCORED }; }`);
+    loadPulse,_renderPulse,_renderTone,_renderRail,_railFilterQS,_renderFilterBar,_railSet,_THEMES,_pulseRowHtml,_pulseClosePop,
+    get last(){return _pulseLast}, get filtro(){return _railFilter}, PULSE_MIN_SCORED }; }`);
   const M=mk(ctx);
 
   // ── 1) JANELA: desde o último fechamento da B3 (17:00 SP = 20:00 UTC) ───────────────
@@ -106,27 +109,61 @@ window.__RUN__=async function(){
   ok('token hostil escapado',              H.includes('data-co="X&lt;Y"') && !H.includes('X<Y'));
   ok('sem coberta → mensagem, não vazio',  M._pulseChipsHtml({}).includes('No covered company'));
 
+  // ── 5b) TEMAS: os tópicos do robô (take_topics) agrupados; 1 manchete conta 1x por tema ─
+  const TT=M._pulseTally([
+    {take_llm:'-', take_covered_companies:'', take_topics:'iron_ore; prices'},
+    {take_llm:'+', take_covered_companies:'', take_topics:'hrc; rebar; steel_industry'},   // 3 tópicos de aço = 1 manchete
+    {take_llm:'=', take_covered_companies:'', take_topics:'pellets'},
+    {take_llm:'no take', take_covered_companies:'', take_topics:'aluminum'},
+    {take_llm:'-', take_covered_companies:'', take_topics:'prices; demand'},                // só tópico de aspecto: nenhum tema
+    {take_llm:'+', take_covered_companies:'', take_topics:null},
+  ]);
+  ok('tema: minério junta iron_ore + pellets',   TT.byTh.iron&&TT.byTh.iron.n===2&&TT.byTh.iron.neg===1&&TT.byTh.iron.neu===1, JSON.stringify(TT.byTh.iron));
+  ok('tema: aço conta a manchete 1x',            TT.byTh.steel&&TT.byTh.steel.n===1&&TT.byTh.steel.pos===1, JSON.stringify(TT.byTh.steel));
+  ok('tema: alumínio vai em Other metals',       TT.byTh.metals&&TT.byTh.metals.notake===1);
+  ok('tema: só "prices/demand" não vira tema',   Object.keys(TT.byTh).sort().join(',')==='iron,metals,steel', Object.keys(TT.byTh).join(','));
+  ok('tema: ordem fixa começa por minério e aço', M._THEMES[0].k==='iron' && M._THEMES[1].k==='steel');
+
   // ── 6) O POLL de verdade: URL enxuta, DOM preenchido, portão na tela ────────────────
   urls=[]; resposta=[];
-  for(let i=0;i<25;i++) resposta.push({take_llm:i<15?'+':'-', take_covered_companies:i%5===0?'VALE':''});
+  for(let i=0;i<25;i++) resposta.push({take_llm:i<15?'+':'-', take_covered_companies:i%5===0?'VALE':'', take_topics:i<4?'iron_ore':''});
   await M.loadPulse();
   const u=urls[0]||'';
   ok('poll: UMA requisição',                       urls.length===1, 'n='+urls.length);
-  ok('poll: pede só take_llm + empresas (egress)',  /select=take_llm,take_covered_companies&/.test(u), (u.match(/select=[^&]*/)||[''])[0]);
+  ok('poll: pede só take_llm + empresas + temas (egress)', /select=take_llm,take_covered_companies,take_topics&/.test(u), (u.match(/select=[^&]*/)||[''])[0]);
   ok('poll: não pede título nem URL',              !u.includes('title') && !u.includes('url,'));
   ok('poll: janela desde o fechamento',            u.includes('published_at.gte.') && u.includes('include_in_report=eq.true'));
-  ok('tela: 15 + / 10 − / 25 pontuados',           document.getElementById('stat-pos').textContent==='15' && document.getElementById('stat-neg').textContent==='10' && document.getElementById('stat-tot').textContent==='25');
-  ok('tela: ponteiro 60 BALANCED',                 document.getElementById('gauge-val').textContent==='60' && document.getElementById('gauge-label').textContent==='BALANCED');
-  ok('tela: rótulo do total diz desde quando',     /^since \w{3} 17:00$/.test(document.getElementById('stat-tot-lbl').textContent), document.getElementById('stat-tot-lbl').textContent);
-  ok('tela: ficha da VALE com 5 menções',          document.querySelectorAll('#pulse-names .pn').length===1 && document.querySelector('#pulse-names .pn').title.includes('5 headlines'));
-  ok('tela: barra proporcional',                   document.getElementById('bar-pos').style.flexGrow==='15' && document.getElementById('bar-neg').style.flexGrow==='10');
+  const tom=document.getElementById('np-tone');
+  ok('tela: 15 positive / 10 negative',            tom.textContent.includes('15 positive') && tom.textContent.includes('10 negative'), tom.textContent);
+  ok('tela: barra proporcional',                   tom.querySelector('.np-bar .pos').style.flexGrow==='15' && tom.querySelector('.np-bar .neg').style.flexGrow==='10');
+  ok('tela: 25 pontuadas → barra acesa',           !tom.classList.contains('few'));
+  ok('tela: diz desde quando',                     /^In the news since \w{3} 17:00$/.test(document.getElementById('np-when').textContent), document.getElementById('np-when').textContent);
+  ok('tela: ficha da VALE com 5 menções (celular)', document.querySelectorAll('#pulse-names .pn').length===1 && document.querySelector('#pulse-names .pn').title.includes('5 headlines'));
+  const col=document.getElementById('np-lists');
+  const linhas=[...col.querySelectorAll('.np-row')].map(b=>b.dataset.label+':'+b.querySelector('.np-n').textContent);
+  ok('coluna: VALE3 com 5 e o tema minério com 4', linhas.join('|')==='VALE3:5|Iron ore:4', linhas.join('|'));
+  ok('coluna: a ação no dia ao lado da empresa',   col.querySelector('.np-row.co .np-px').textContent==='+1.9%' && col.querySelector('.np-row.co .np-px').classList.contains('up'));
+  ok('coluna: barra da maior = largura toda',      col.querySelector('.np-row.co .np-fill').style.width==='100%');
+  ok('coluna: cobertas sem manchete listadas',     /No headlines:.*CSNA3/.test(col.textContent) && !/No headlines:[^]*VALE3/.test(col.textContent));
+
+  // ── 6b) O CLIQUE: filtro do feed (empresa e tema), faixa e "Clear" ─────────────────
+  feedRecarregado=0;
+  M._railSet({kind:'th', key:'iron', label:'Iron ore'});
+  const qsT=M._railFilterQS(), barra=document.getElementById('np-filterbar');
+  ok('filtro tema: janela e tópicos num and=()',   /^&and=\(or\(published_at\.gte\.[^,]+,and\(published_at\.is\.null,found_at\.gte\.[^)]+\)\),or\(take_topics\.ilike\.\*iron_ore\*,take_topics\.ilike\.\*pellets\*,take_topics\.ilike\.\*sinter\*\)\)$/.test(qsT), qsT);
+  ok('filtro tema: faixa diz o quê e quantas',     !barra.hidden && barra.textContent.includes('Showing Iron ore · 4 headlines since'), barra.textContent);
+  ok('filtro tema: linha marcada e feed recarregado', col.querySelector('.np-row.th.on') && col.querySelector('.np-row.th.on').dataset.key==='iron' && feedRecarregado===1);
+  M._railSet({kind:'co', key:'VALE', label:'VALE3'});
+  ok('filtro empresa: ilike na coluna das cobertas', M._railFilterQS().endsWith('&take_covered_companies=ilike.'+encodeURIComponent('*VALE*')), M._railFilterQS());
+  M._railSet(null);
+  ok('Clear: faixa some e nada marcado',           barra.hidden && !col.querySelector('.np-row.on') && M.filtro===null && feedRecarregado===3);
 
   urls=[]; resposta=[{take_llm:'+',take_covered_companies:''},{take_llm:'-',take_covered_companies:''}];
   await M.loadPulse();
-  ok('poucas manchetes: ponteiro "—" e aviso',     document.getElementById('gauge-val').textContent==='—' && document.getElementById('gauge-label').textContent==='TOO FEW HEADLINES');
-  ok('poucas manchetes: arco vazio',               document.getElementById('gauge-arc').getAttribute('stroke-dasharray')==='0 188');
-  ok('poucas manchetes: contadores continuam',     document.getElementById('stat-tot').textContent==='2');
-  ok('sem coberta: faixa explica',                 document.getElementById('pulse-names').textContent.includes('No covered company'));
+  ok('poucas manchetes: barra apagada',            document.getElementById('np-tone').classList.contains('few'));
+  ok('poucas manchetes: contadores continuam',     document.getElementById('np-tone').textContent.includes('1 positive') && document.getElementById('np-tone').textContent.includes('1 negative'));
+  ok('poucas manchetes: dica explica o portão',    document.getElementById('np-tone').title.includes('Fewer than 20'));
+  ok('sem coberta: ficha e coluna explicam',       document.getElementById('pulse-names').textContent.includes('No covered company') && col.textContent.includes('No covered company'));
 
   // ── 7) linha da ficha: link só com http(s) ───────────────────────────────────────────
   const r1=M._pulseRowHtml({title:'A <b>',url:'https://ex.com/a',take_llm:'+',source_name:'Valor',published_at:'2026-09-08T12:00:00Z'});
