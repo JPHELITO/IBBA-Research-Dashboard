@@ -25,7 +25,6 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 </script>
 <!-- ── Chart.js + sql.js ──────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -836,7 +835,9 @@ window.addEventListener('hashchange',()=>{
     if(s?.access_token)_setAuthCookie(s)
     else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}
   })
-  Chart.register(ChartDataLabels)
+  // (2026-10-20) o complemento de rótulos (chartjs-plugin-datalabels) saiu: nenhum gráfico o ligava
+  // (baseOpts manda datalabels:{display:false}) e ele pesava ~8% em cada atualização de gráfico.
+  // O display:false fica no baseOpts de propósito: se alguém voltar com o complemento, nada aparece sozinho.
   loadDB()
   initDownloads()   // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
