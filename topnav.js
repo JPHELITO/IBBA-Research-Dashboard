@@ -45,6 +45,23 @@
 /* FOCO: só acende para quem navega pelo TECLADO (:focus-visible) — clique de mouse não mostra nada.\
    :where() = especificidade zero → regra de foco que a página já tenha continua valendo. */\
 :where(a,button,input,select,textarea,summary,[tabindex],[role="button"],[role="tab"]):focus-visible{outline:2px solid #FF5000;outline-offset:2px;}\
+/* BARRA DE ROLAGEM DISCRETA (2026-10-21, pedido do usuário: "hoje é enorme e feio... deixe mais clean"): sem setas,\
+   trilho transparente, alça fina (4px visíveis numa área de 10px, para continuar fácil de pegar) que escurece ao\
+   passar o mouse. Vale para a página e para toda caixa que rola (Events, coluna do feed, listas, janelas).\
+   Chrome/Edge/Safari pelo ::-webkit-scrollbar; Firefox pelo scrollbar-width, SÓ onde o ::-webkit não existe (no\
+   Chrome 121+ scrollbar-width/scrollbar-color DESLIGAM o ::-webkit e a barra volta a ter setas). Fica antes do CSS\
+   das páginas: quem esconde a barra de propósito (abas que rolam de lado) continua mandando. */\
+::-webkit-scrollbar{width:10px;height:10px;}\
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent;}\
+::-webkit-scrollbar-button{display:none;width:0;height:0;}\
+::-webkit-scrollbar-thumb{background-color:rgba(17,17,17,.18);border:3px solid transparent;border-radius:10px;background-clip:padding-box;}\
+::-webkit-scrollbar-thumb:hover{background-color:rgba(17,17,17,.36);}\
+::-webkit-scrollbar-thumb:active{background-color:rgba(17,17,17,.46);}\
+html.dark ::-webkit-scrollbar-thumb{background-color:rgba(255,255,255,.16);}\
+html.dark ::-webkit-scrollbar-thumb:hover{background-color:rgba(255,255,255,.30);}\
+html.dark ::-webkit-scrollbar-thumb:active{background-color:rgba(255,255,255,.40);}\
+@supports not selector(::-webkit-scrollbar){*{scrollbar-width:thin;scrollbar-color:rgba(17,17,17,.22) transparent;}\
+  html.dark *{scrollbar-color:rgba(255,255,255,.18) transparent;}}\
 /* LINHA DE PROGRESSO: 2px laranja no topo da tela, sem brilho. Na troca de página só aparece se a\
    página nova demorar mais de 150 ms (página rápida não pisca nada); no M&M/P&P mostra o download real. */\
 .ibba-prog{position:fixed;left:0;right:0;top:0;height:2px;background:#FF5000;transform-origin:left center;\
