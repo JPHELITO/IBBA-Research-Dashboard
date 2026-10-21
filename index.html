@@ -1364,6 +1364,35 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
   html.dark .np-px.up{color:#4ADE80;} html.dark .np-px.dn{color:#F87171;}
   html.dark .np-quiet b{color:#A9B0BB;}
 }
+/* RESUMO DA ÚLTIMA HORA (2026-10-21) — topo da coluna do Market Pulse, só no computador. Letra no tamanho da
+   coluna (rótulos 9,5px; texto 10,5px como na maquete aprovada): nenhuma letra da Home cresce. */
+.np-digest{display:flex;flex-direction:column;gap:5px;padding:0 4px 10px;margin-bottom:4px;border-bottom:1px solid var(--rule);}
+.np-digest[hidden]{display:none;}
+.ndg-head{display:flex;align-items:center;gap:6px;min-width:0;}
+.ndg-when{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.ndg-when b{color:var(--black);font-weight:700;font-variant-numeric:tabular-nums;}
+.ndg-admin{font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);}
+.ndg-admin[hidden]{display:none;}
+.ndg-nav{margin-left:auto;display:flex;gap:2px;flex:none;}
+.ndg-btn{border:0;background:none;padding:0 4px;font:600 12px/1 var(--font);color:var(--gray-mid);cursor:pointer;border-radius:3px;}
+.ndg-btn:hover:not(:disabled){color:#C2410C;background:#F5F2EC;}
+.ndg-btn:disabled{opacity:.3;cursor:default;}
+.ndg-text{font-size:10.5px;line-height:1.42;color:#2B2B2B;}
+.ndg-text.is-list{display:flex;flex-direction:column;gap:4px;font-size:9.5px;line-height:1.35;}
+.ndg-li{display:flex;align-items:flex-start;gap:5px;min-width:0;}
+.ndg-li > span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ndg-li .news-take{flex:none;min-width:12px;height:12px;font-size:8.5px;margin-top:0;}
+.ndg-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.ndg-src{border:0;background:none;padding:0;font:600 9.5px var(--font);color:#C2410C;cursor:pointer;white-space:nowrap;}
+.ndg-src[hidden]{display:none;}
+.ndg-src.on{text-decoration:underline;text-underline-offset:2px;}
+.ndg-ai{font-size:8px;letter-spacing:.03em;color:var(--gray-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html.dark .ndg-when b{color:#DDE2EA;}
+html.dark .ndg-text{color:#DDE2EA;}
+html.dark .ndg-btn:hover:not(:disabled){color:#FF8A4D;background:rgba(255,255,255,.05);}
+html.dark .ndg-src{color:#FF8A4D;}
+@media (max-width:1024px){ .np-digest{display:none!important;} }
 /* celular: a faixa quebra em várias linhas (as fichas não cortam); sem a coluna e sem o filtro */
 @media (max-width:1024px){
   .news-pulse{flex-wrap:wrap;padding:8px 13px;row-gap:6px;}
@@ -1507,6 +1536,16 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
            empresas cobertas citadas e os temas, cada linha com uma barra pintada pelo take da IA; clicar numa linha
            deixa no feed só aquelas manchetes. No celular a coluna sai e ficam as fichas das empresas (como antes). -->
       <div class="news-pulse" id="news-pulse" data-tour="home-pulse">
+        <!-- RESUMO DA ÚLTIMA HORA (2026-10-21): duas frases por hora fechada (7h–20h) e uma da madrugada, escritas por
+             IA só com os títulos (robô news-hunter, hunter/digest.py → tabela news_digest → RPC get_news_digest).
+             Admin sempre; cliente só com a flag home_digest. "N headlines" deixa no feed as manchetes do resumo. -->
+        <div class="np-digest" id="np-digest" hidden>
+          <div class="ndg-head"><span class="ndg-when" id="ndg-when"></span>
+            <span class="ndg-nav"><button type="button" class="ndg-btn" id="ndg-prev" title="Earlier brief" aria-label="Earlier brief">‹</button><button type="button" class="ndg-btn" id="ndg-next" title="Later brief" aria-label="Later brief">›</button></span></div>
+          <div class="ndg-text" id="ndg-text"></div>
+          <div class="ndg-foot"><button type="button" class="ndg-src" id="ndg-src" hidden></button><span class="ndg-ai" id="ndg-ai" title="Written automatically from this hour's headlines. It may contain errors: check the headlines.">Auto-summary</span></div>
+          <div class="ndg-admin" id="ndg-admin" hidden>Admin only · clients don't see it yet</div>
+        </div>
         <span class="np-when" id="np-when">since close</span>
         <div class="np-tone" id="np-tone"></div>
         <div class="pulse-names" id="pulse-names"></div>
@@ -1663,6 +1702,8 @@ function applyFlags(flags, isAdmin){
   const _pg=document.querySelector('.page'); if(_pg) _pg.classList.toggle('has-events', _calOn);
   try{ localStorage.setItem('ibba_events_on', _calOn?'1':'0'); }catch(e){}   // lembra p/ o próximo load (anti-flash)
   if(_calOn && typeof loadEvents==='function') loadEvents();
+  // Resumo da última hora (coluna do feed): fail-closed como o calendário — só com a flag ON; admin vê sempre
+  if(typeof _digestGate==='function') _digestGate(on['home_digest']===true, isAdmin);
   // What's new: só com a flag ON (admin vê OFF com o selo). Conteúdo vem do /admin → Novidades.
 }
 // ── What's new (faixa acima da grade) ──────────────────────────────────────
@@ -2318,6 +2359,11 @@ function _renderRail(t){
 // Filtro do feed: as manchetes da empresa ou do tema DESDE O FECHAMENTO. A janela e o tema vão num and=() —
 // o or= da janela e o or= dos tópicos não podem ser dois parâmetros soltos com o mesmo nome.
 function _railFilterQS(){
+  // resumo da última hora: as manchetes de onde ele saiu, pelo link (no máximo 5)
+  if(_railFilter.kind === 'dg'){
+    const us = (_railFilter.urls || []).filter(u => /^https?:\/\//i.test(u || '')).slice(0, 5);
+    return `&url=in.(${us.map(u => encodeURIComponent('"' + u.replace(/["\\]/g, '\\$&') + '"')).join(',')})`;
+  }
   const startMs = _pulseLast ? _pulseLast.startMs : _pulseWindowStartMs();
   const cut = new Date(startMs).toISOString();
   const win = `or(published_at.gte.${cut},and(published_at.is.null,found_at.gte.${cut}))`;
@@ -2328,6 +2374,12 @@ function _railFilterQS(){
 function _renderFilterBar(){
   const bar = document.getElementById('np-filterbar'); if(!bar) return;
   if(!_railFilter){ bar.hidden = true; bar.innerHTML = ''; return; }
+  if(_railFilter.kind === 'dg'){
+    const n = (_railFilter.urls || []).length;
+    bar.innerHTML = `<span>Showing the <b>${n} headline${n === 1 ? '' : 's'}</b> behind the ${_esc(_railFilter.label)} brief</span>`
+      + `<button type="button" class="np-clear" id="np-clear">Clear ×</button>`;
+    bar.hidden = false; return;
+  }
   const e = _pulseLast && (_railFilter.kind === 'co' ? _pulseLast.byCo : (_pulseLast.byTh || {}))[_railFilter.key];
   bar.innerHTML = `<span>Showing <b>${_esc(_railFilter.label)}</b>${e ? ` · ${e.n} headline${e.n === 1 ? '' : 's'}` : ''} `
     + `${_esc(_pulseWindowLabel(_pulseLast ? _pulseLast.startMs : _pulseWindowStartMs()))}</span>`
@@ -2401,6 +2453,104 @@ async function _pulseOpenCo(co, btn){
   }
 }
 // ── fim do bloco que tests/test_news_pulse.html recorta ──────────────────────
+// ── RESUMO DA ÚLTIMA HORA (2026-10-21) ──────────────────────────────────────────────────────────
+// O robô grava uma janela por hora fechada (7h–20h) e a madrugada (20h → 7h, às 7h10) em news_digest; a Home lê
+// pela RPC get_news_digest (admin sempre; cliente só com a flag home_digest — a própria RPC confere). A janela que
+// termina às E fica pronta às E+10 (o robô roda a cada 5 min): buscamos às E+16 e, se ainda não veio, às E+33
+// (a IA tem até E+25; depois o robô publica só a lista). ~2 KB por busca, no máximo 2 buscas por janela.
+const _DG_ENDS = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];   // horas de Brasília em que uma janela termina
+let _dgRows = [], _dgI = 0, _dgOn = false, _dgAdminOnly = false, _dgNextAt = 0;
+function _dgVisible(){ return _dgRows.filter(r => r.status !== 'quiet' && (r.summary || (r.items || []).length)); }
+function _dgEnds(fromMs, toMs){
+  const out = [], d0 = new Date(fromMs - 3 * 3600e3); d0.setUTCHours(0, 0, 0, 0);   // meia-noite de Brasília
+  for(let day = 0; day < 4; day++) for(const h of _DG_ENDS){
+    const t = d0.getTime() + day * 864e5 + (h + 3) * 3600e3;
+    if(t >= fromMs && t <= toMs) out.push(t);
+  }
+  return out;
+}
+function _dgSchedule(){
+  const now = Date.now();
+  const past = _dgEnds(now - 864e5, now - 16 * 60e3);
+  const E = past.length ? past[past.length - 1] : 0;
+  const temos = _dgRows.length ? Date.parse(_dgRows[0].slot_end) : 0;
+  if(E && temos < E && now < E + 33 * 60e3){ _dgNextAt = E + 33 * 60e3; return; }
+  const next = _dgEnds(now - 16 * 60e3 + 1, now + 3 * 864e5)[0];
+  _dgNextAt = (next || now + 3600e3) + 16 * 60e3;
+}
+function _dgHM(iso){
+  try { return new Date(iso).toLocaleTimeString(NUM_LOC, {timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit', hourCycle:'h23'}); }
+  catch(e){ return ''; }
+}
+function _dgLabel(r, latest){
+  const faixa = `<b>${_dgHM(r.slot_start)}–${_dgHM(r.slot_end)}</b>`;
+  if(r.kind === 'overnight') return `Overnight · ${faixa}`;
+  if(latest && Date.now() - Date.parse(r.slot_end) < 80 * 60e3) return `Last hour · ${faixa}`;
+  const dia = d => new Date(d).toLocaleDateString(NUM_LOC, {timeZone:'America/Sao_Paulo'});
+  const wd = dia(r.slot_start) === dia(Date.now()) ? 'Earlier'
+           : new Date(r.slot_start).toLocaleDateString(NUM_LOC, {timeZone:'America/Sao_Paulo', weekday:'short'});
+  return `${wd} · ${faixa}`;
+}
+function _renderDigest(){
+  const box = document.getElementById('np-digest'); if(!box) return;
+  const vis = _dgVisible();
+  if(!_dgOn || !vis.length){ box.hidden = true; return; }
+  _dgI = Math.max(0, Math.min(_dgI, vis.length - 1));
+  const r = vis[_dgI], items = Array.isArray(r.items) ? r.items : [];
+  document.getElementById('ndg-when').innerHTML = _dgLabel(r, _dgI === 0);
+  document.getElementById('ndg-admin').hidden = !_dgAdminOnly;
+  const txt = document.getElementById('ndg-text');
+  const resumo = r.status === 'ok' && r.summary;
+  txt.classList.toggle('is-list', !resumo);
+  txt.innerHTML = resumo ? _esc(r.summary)
+    : items.slice(0, 4).map(it => `<span class="ndg-li">${_takeBadge(it.take) || ''}<span>${_esc(it.title || '')}</span></span>`).join('');
+  document.getElementById('ndg-ai').textContent = resumo ? 'Auto-summary' : 'Top headlines';
+  const src = document.getElementById('ndg-src'), n = items.length;
+  src.hidden = !n || !resumo;            // a lista já mostra as manchetes; o atalho fica para o resumo
+  src.textContent = `${n} headline${n === 1 ? '' : 's'} →`;
+  src.classList.toggle('on', !!(_railFilter && _railFilter.kind === 'dg' && _railFilter.key === r.slot_start));
+  document.getElementById('ndg-prev').disabled = _dgI >= vis.length - 1;
+  document.getElementById('ndg-next').disabled = _dgI <= 0;
+  box.hidden = false;
+}
+async function loadDigest(force){
+  if(!_dgOn || (!force && Date.now() < _dgNextAt)) return;
+  _dgNextAt = Date.now() + 5 * 60e3;          // trava contra duas buscas ao mesmo tempo
+  try {
+    const {data:{session}} = await sbAuth.auth.getSession();
+    if(!session) return;
+    const {data, error} = await sbAuth.rpc('get_news_digest', {p_limit: _dgRows.length ? 2 : 6});
+    if(error) throw error;
+    const topo = (_dgVisible()[0] || {}).slot_start;
+    const m = new Map(_dgRows.map(r => [r.slot_start, r]));
+    (Array.isArray(data) ? data : []).forEach(r => m.set(r.slot_start, r));
+    _dgRows = [...m.values()].sort((a, b) => Date.parse(b.slot_start) - Date.parse(a.slot_start)).slice(0, 12);
+    if(_dgI > 0 && topo && (_dgVisible()[0] || {}).slot_start !== topo) _dgI++;   // chegou uma nova: o leitor fica onde estava
+    _dgSchedule();
+    _renderDigest();
+  } catch(e){
+    console.warn('digest error:', e);
+    _dgNextAt = Date.now() + 15 * 60e3;
+  }
+}
+// chamado pelo applyFlags: admin vê sempre (com o selo "Admin only" enquanto a flag estiver desligada)
+function _digestGate(flagOn, isAdmin){
+  const on = !!(flagOn || isAdmin);
+  _dgAdminOnly = !flagOn && !!isAdmin;
+  if(on && !_dgOn){ _dgOn = true; loadDigest(true); }
+  else { _dgOn = on; _renderDigest(); }
+}
+document.getElementById('ndg-prev').addEventListener('click', () => { _dgI++; _renderDigest(); });
+document.getElementById('ndg-next').addEventListener('click', () => { _dgI--; _renderDigest(); });
+document.getElementById('ndg-src').addEventListener('click', () => {
+  const r = _dgVisible()[_dgI]; if(!r) return;
+  const mesma = _railFilter && _railFilter.kind === 'dg' && _railFilter.key === r.slot_start;
+  _railSet(mesma ? null : {kind:'dg', key:r.slot_start, label:`${_dgHM(r.slot_start)}–${_dgHM(r.slot_end)}`,
+                           urls:(r.items || []).map(it => it.url).filter(Boolean)});
+  _renderDigest();
+});
+// "Clear ×" e as linhas da coluna trocam o filtro do feed: o atalho do resumo acompanha
+document.addEventListener('click', e => { if(e.target.closest('#np-clear') || e.target.closest('.np-row')) setTimeout(_renderDigest, 0); });
 document.getElementById('pulse-names').addEventListener('click', e => {
   const b = e.target.closest('.pn'); if(!b) return;
   if(b.classList.contains('open')) _pulseClosePop(); else _pulseOpenCo(b.dataset.co, b);
@@ -3530,6 +3680,7 @@ _every(loadNews, NEWS_INTERVAL);
 // cerca de 1 manchete a cada 10 min — 5 min pega tudo sem gastar banda à toa.
 _every(loadPulse, 5 * 60 * 1000);
 _every(loadReports, 60 * 60 * 1000);   // os relatórios mudam ~1x/dia
+_every(() => loadDigest(false), 60 * 1000);   // só confere o relógio: busca na rede ~2x por janela (ver _dgSchedule)
 _every(loadQuotes, 60 * 1000);
 _every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 _every(loadCommodities, 5 * 60 * 1000);
