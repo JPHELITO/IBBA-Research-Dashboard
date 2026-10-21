@@ -206,7 +206,7 @@
   // Detecção DINÂMICA (acha a coluna 2026E/2027E e os rótulos por varredura) → imune a
   // inserção de linhas/colunas. Múltiplos NÃO são lidos — são recalculados ao vivo na página.
   const SG_COVERAGE = [
-    { tab:'VALE',            ticker:'VALE3',    yahoo:'VALE3.SA',    name:'Vale',            sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
+    { tab:'VALE',            ticker:'VALE',     yahoo:'VALE',        name:'Vale',            sector:'iron_ore',   group:'mining',     trade_ccy:'USD' },  // VALE US (NYSE, US$) — NÃO a VALE3: o TP do analista é o US$/ADR do DCF; a aba traz VALE3 (R$) à esquerda e VALE (US$) à direita
     { tab:'CSN MINERACAO',   ticker:'CMIN3',    yahoo:'CMIN3.SA',    name:'CSN Mineração',   sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
     { tab:'GRUPO MEXICO',    ticker:'GMEXICOB', yahoo:'GMEXICOB.MX', name:'Grupo México',    sector:'copper',     group:'mining',     trade_ccy:'MXN' },
     { tab:'SOUTHERN COPPER', ticker:'SCCO',     yahoo:'SCCO',        name:'Southern Copper', sector:'copper',     group:'mining',     trade_ccy:'USD' },
@@ -221,6 +221,11 @@
     { tab:'CMPC',            ticker:'CMPC',     yahoo:'CMPC.SN',     name:'CMPC',            sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
     { tab:'COPEC',           ticker:'COPEC',    yahoo:'COPEC.SN',    name:'Copec',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
   ];
+
+  // Ticker que mudou de linha (antigo → novo). O ticker é a CHAVE da empresa no banco: sem renomear antes,
+  // gravar a planilha criaria uma 2ª Vale. O /admin renomeia sozinho (admin_rename_stock_guide_company,
+  // que leva junto sensibilidades e mesh) antes de gravar. AURA33→AUGO já foi feito em SQL.
+  const SG_TICKER_RENAMES = { VALE3: 'VALE' };
 
   // limpa célula → número OU null: trata '#REF!'/'#N/A'/'n.a.'/'-'/vazio e número-como-texto en-US ("7,000"→7000)
   function _sgCellNum(v) {
@@ -295,9 +300,32 @@
     const mcF = _sgFindCell(aoa, /^market\s+capitaliz/i, function (row) { return _isNum(row[y1]); });
     const mcBase = mcF ? _sgCellNum(aoa[mcF.r][y1]) : null;
 
+    // A aba traz DOIS blocos lado a lado (ex.: Vale = VALE3 em R$ | VALE em US$). Preço e TP
+    // saem do bloco cujo "Stock Ticker" é o do Stock Guide; sem bloco casado (GMEX, "CMPC CI"…),
+    // o 1º, como sempre. No bloco da direita o valor fica 2 colunas depois do rótulo.
+    const blk = (function () {
+      for (let r = 0; r < aoa.length; r++) {
+        const row = aoa[r] || [];
+        for (let c = 0; c < row.length; c++) {
+          if (typeof row[c] !== 'string' || !/^stock\s+ticker/i.test(row[c].trim())) continue;
+          for (let k = 1; k <= 2; k++) {
+            const v = row[c + k];
+            if (typeof v === 'string' && v.trim().toUpperCase() === meta.ticker) return { r: r, c: c, vc: c + k };
+          }
+        }
+      }
+      return null;
+    })();
+    const blkNum = function (re) {
+      for (let r = blk.r; r < Math.min(aoa.length, blk.r + 8); r++) {
+        const row = aoa[r] || [];
+        if (typeof row[blk.c] === 'string' && re.test(row[blk.c].trim())) return _sgCellNum(row[blk.vc]);
+      }
+      return null;
+    };
     const shares = hNum(/^shares\s+outstanding/i);
-    const priceLocal = hNum(/^share\s+price/i);            // 1ª = moeda de negociação (col C)
-    const target = hNum(/^target\s+price/i);
+    const priceLocal = blk ? blkNum(/^share\s+price/i) : hNum(/^share\s+price/i);   // 1ª = moeda de negociação
+    const target = blk ? blkNum(/^target\s+price/i) : hNum(/^target\s+price/i);
     const rec = (function () { const t = hTxt(/^analyst\s+recommend/i); return /^(OP|MP|UP)$/i.test(t || '') ? t.toUpperCase() : null; })();
 
     const ebitda = est(/^ebitda\s*\(/i);
@@ -580,6 +608,7 @@
     SENS2D_METRICS: SENS2D_METRICS,
     toNumOrNull: toNumOrNull,
     SG_COVERAGE: SG_COVERAGE,
+    SG_TICKER_RENAMES: SG_TICKER_RENAMES,
     parseStockGuideWorkbook: parseStockGuideWorkbook,
     parseStockGuidePeers: parseStockGuidePeers,
     parseSGFXRates: parseSGFXRates,

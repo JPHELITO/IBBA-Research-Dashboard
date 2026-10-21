@@ -431,9 +431,10 @@ function updatePxFresh(updatedAt,fxRates){
 const GROUP_OF={iron_ore:'mining',copper:'mining',gold:'mining',mining:'mining',steel:'steel',pulp_paper:'pulp_paper',pp:'pulp_paper'};
 const GROUP_ORDER=['mining','steel','pulp_paper'];
 const GROUP_LABEL={mining:'Mining',steel:'Steel',pulp_paper:'Pulp & Paper'};
-// Link do modelo no portal Itaú BBA (por ticker; VALE3→slug 'VALE')
+// Link do modelo no portal Itaú BBA (por ticker; slug da Vale = 'VALE')
 const MODEL_URL={
-  VALE3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/VALE',
+  VALE:'https://www.itau.com.br/itaubba-pt/portal/equity/company/VALE',
+  VALE3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/VALE',   // chave legada (linha antiga do banco)
   CMIN3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CMIN3',
   GMEXICOB:'https://www.itau.com.br/itaubba-pt/portal/equity/company/GMEXICOB',
   SCCO:'https://www.itau.com.br/itaubba-pt/portal/equity/company/SCCO',

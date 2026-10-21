@@ -1843,6 +1843,15 @@ function sgModelCancel(){ _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v
 async function sgModelCommit(){
   if(!_sgParsed||!_sgParsed.rows.length){alert('Nada para gravar.');return}
   const stat=_v('sg-xlsm-status'); const npe=(_sgParsed.peers||[]).length;
+  // ticker que mudou (VALE3 → VALE): renomeia ANTES de gravar, senão a empresa sairia duplicada.
+  // "não existe" = já renomeado; "já existe" com o antigo ainda lá = duplicata → para e avisa.
+  const novos=new Set(_sgParsed.rows.map(x=>x.ticker));
+  for(const [de,para] of Object.entries((window.SG&&SG.SG_TICKER_RENAMES)||{})){
+    if(!novos.has(para)) continue;
+    const rn=await sbAuth.rpc('admin_rename_stock_guide_company',{p_from:de,p_to:para});
+    if(rn.error && !/company_not_found/.test(rn.error.message)){
+      stat.innerHTML='<b style="color:#C0392B">Nada gravado:</b> não consegui renomear '+esc(de)+' → '+esc(para)+' ('+esc(rn.error.message)+'). Renomeie na lista de empresas acima e grave de novo.'; return; }
+  }
   stat.textContent='Gravando '+_sgParsed.rows.length+' empresas…';
   const r=await sbAuth.rpc('admin_bulk_upsert_stock_guide_companies',{p_rows:_sgParsed.rows});
   if(r.error){ stat.innerHTML='<b style="color:#C0392B">Erro (empresas):</b> '+esc(r.error.message)+' (rodou o supabase_stock_guide_v2_upload.sql?)'; return; }
@@ -2203,7 +2212,7 @@ function genCopy(){ const t=_v('gen-out'); if(!t.value){ alert('Gere a lista pri
 // ── IMPORTA a aba "Sensitivity (cenarios)" gerada no Excel (build_scenario.py) ──
 // Le a aba, monta UM grid sensitivity por empresa (eixos = drivers; outputs = EV/EBITDA·FCF yield·Div yield·
 // Preco-alvo, ao vivo) + o mesh, reutilizando os RPCs existentes. Sem SQL novo, sem mudar o cliente.
-const _SGI_PANEL={VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AUGO:'Gold',AURA33:'Gold'};
+const _SGI_PANEL={VALE:'Iron Ore',VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AUGO:'Gold',AURA33:'Gold'};
 function _sgiNum(v){ if(v==null||v==='')return null; if(typeof v==='number')return isFinite(v)?v:null;
   const n=Number(String(v).replace(/[^0-9eE+\-.,]/g,'').replace(',','.')); return isFinite(n)?n:null; }
 function _sgiNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
@@ -2445,7 +2454,7 @@ function sgParseSens2d(sheets, opts){
 
 // ── importador das TABELAS PUBLICADAS: le o _Sensitivity.xlsx do analista como ele e ──
 let _sgS2=null;   // {buf, name, parsed}
-const _S2_FILE_TICKER=[['mineraç','CMIN3'],['mineracao','CMIN3'],['vale','VALE3'],['suzano','SUZB3'],
+const _S2_FILE_TICKER=[['mineraç','CMIN3'],['mineracao','CMIN3'],['vale','VALE'],['suzano','SUZB3'],
   ['gerdau','GGBR4'],['usiminas','USIM5'],['ternium','TX'],['aura','AUGO'],['klabin','KLBN11'],['csn','CSNA3']];
 function _s2TickerFromFile(nm){ const s=String(nm||'').toLowerCase();
   for(let i=0;i<_S2_FILE_TICKER.length;i++) if(s.indexOf(_S2_FILE_TICKER[i][0])>=0) return _S2_FILE_TICKER[i][1];
