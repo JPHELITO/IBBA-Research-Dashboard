@@ -1393,11 +1393,33 @@ window.addEventListener('resize',()=>{
    filtro "All" do Imports, num computador 4x mais lento: refazer = 908 ms + 943 ms de animação;
    atualizar animando = 1349 ms + 209 ms (animar a troca custa MAIS que refazer); atualizar sem
    animação = 475 ms + 49 ms. A animação curta fica só para o gráfico que nasce. */
+/* TROCA DE FILTRO QUE ESMAECE (2026-10-21, pedido do usuário: os gráficos "perderam as animações"): o gráfico
+   continua atualizado SEM animação (V2), e uma FOTO do gráfico antigo, por cima, some em 0,28 s (o mesmo tempo do
+   gráfico que nasce, curva suave da régua) — a troca fica
+   suave sem custar nada ao clique. Medido na troca para "All" (tela parada): hoje 0,18 s → esmaecer 0,39 s; as
+   animações do próprio Chart.js davam 0,50–0,67 s e, num PC 4x mais lento, 1,7–2,8 s (esmaecer: 1,0–1,1 s).
+   A foto é só um <canvas> irmão, sem clique; quem pede menos movimento no sistema não vê nada. */
+function _chartFade(cv){
+  try{
+    if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const p=cv && cv.parentElement;
+    if(!p || !cv.width || !cv.height || !cv.clientWidth || typeof cv.animate!=='function') return;
+    const s=document.createElement('canvas'); s.width=cv.width; s.height=cv.height; s.className='chart-fade';
+    s.getContext('2d').drawImage(cv,0,0);
+    if(getComputedStyle(p).position==='static') p.style.position='relative';
+    s.style.cssText=`position:absolute;left:${cv.offsetLeft}px;top:${cv.offsetTop}px;width:${cv.clientWidth}px;`
+      +`height:${cv.clientHeight}px;pointer-events:none;z-index:1;`;
+    p.appendChild(s);
+    const a=s.animate([{opacity:1},{opacity:0}],{duration:280,easing:'cubic-bezier(.65,0,.35,1)',fill:'forwards'});
+    a.onfinish=a.oncancel=()=>s.remove();
+  }catch(e){}
+}
 function mkChart(id,type,labels,datasets,opts={}){
   const ctx=document.getElementById(id)?.getContext('2d');
   if(!ctx){destroyChart(id);return;}
   const ex=charts[id];
   if(ex&&ex.config.type===type&&ex.canvas===ctx.canvas){
+    _chartFade(ex.canvas);
     ex.data.labels=labels; ex.data.datasets=datasets; ex.options=baseOpts(opts);
     ex.update('none');
     return;
