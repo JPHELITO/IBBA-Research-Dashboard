@@ -64,3 +64,61 @@ grant execute on function public.get_recent_reports(int) to authenticated;
 comment on function public.get_recent_reports(int) is
   'Home da dashboard (2026-10-20): os últimos relatórios da lista Recent Publications da aba Clipping — '
   'só nome, setor, link e data. Lê clipping_config (fechada) por SECURITY DEFINER; nada mais da configuração sai.';
+
+-- =============================================================================
+-- 2ª VERSÃO (2026-10-21) — get_recent_reports_v2: entram também os relatórios do bloco
+-- EARNINGS REVIEW da aba Clipping (o bloco que liga e desliga), SÓ enquanto ele estiver
+-- LIGADO — a mesma regra do Weekly Recap. Pedido do usuário: "quero que dentro dos últimos
+-- 10 relatórios apareça os relatórios extraordinários (que são da opção de ligar e desligar)".
+--
+-- Função NOVA de propósito: a Home de produção segue chamando a get_recent_reports (acima)
+-- até o usuário aprovar a versão nova; o staging já chama esta. Depois que a produção passar
+-- a usar a v2, a de cima pode sair (drop function public.get_recent_reports(int)).
+--
+-- Mesmas regras da de cima (só nome/setor/link/data, junta admins sem repetir link, data
+-- inválida = sem data); na mesma data, a lista principal vem antes do Earnings Review.
+-- Rodar este arquivo inteiro de novo é seguro (tudo é create or replace).
+-- =============================================================================
+create or replace function public.get_recent_reports_v2(p_limit int default 10)
+  returns table(name text, sector text, link text, date date)
+  language sql stable security definer set search_path = public, pg_temp as $$
+  with fontes as (
+    select c.updated_at, 0 as bloco, e.p, e.ord
+      from public.clipping_config c
+      cross join lateral jsonb_array_elements(
+        case when jsonb_typeof(c.settings->'recent_publications') = 'array'
+             then c.settings->'recent_publications' else '[]'::jsonb end) with ordinality as e(p, ord)
+    union all
+    select c.updated_at, 1 as bloco, e.p, e.ord
+      from public.clipping_config c
+      cross join lateral jsonb_array_elements(
+        case when c.settings->'earnings_review'->'on' = 'true'::jsonb
+              and jsonb_typeof(c.settings->'earnings_review'->'items') = 'array'
+             then c.settings->'earnings_review'->'items' else '[]'::jsonb end) with ordinality as e(p, ord)
+  ), itens as (
+    select nullif(btrim(f.p->>'name'), '')                          as name,
+           upper(coalesce(nullif(btrim(f.p->>'sector'), ''), 'SM')) as sector,
+           nullif(btrim(f.p->>'link'), '')                          as link,
+           public._try_date(f.p->>'date')                           as date,
+           f.updated_at, f.bloco, f.ord
+      from fontes f
+  ), unicos as (
+    select distinct on (coalesce(i.link, lower(i.name))) i.*
+      from itens i
+     where i.name is not null
+     order by coalesce(i.link, lower(i.name)), i.date desc nulls last, i.updated_at desc, i.bloco, i.ord
+  )
+  select u.name,
+         case when u.sector in ('SM', 'PP', 'NR') then u.sector else 'SM' end,
+         case when u.link ~* '^https?://' then u.link end,
+         u.date
+    from unicos u
+   order by u.date desc nulls last, u.updated_at desc, u.bloco, u.ord
+   limit greatest(1, least(coalesce(p_limit, 10), 20));
+$$;
+revoke all on function public.get_recent_reports_v2(int) from public, anon;
+grant execute on function public.get_recent_reports_v2(int) to authenticated;
+
+comment on function public.get_recent_reports_v2(int) is
+  'Home da dashboard (2026-10-21): os últimos relatórios = Recent Publications + o bloco Earnings Review da aba Clipping '
+  '(só enquanto ligado) — só nome, setor, link e data. SECURITY DEFINER; nada mais da configuração sai.';

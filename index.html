@@ -3457,28 +3457,33 @@ function renderEvents(items, today){
 }
 
 // ─── ÚLTIMOS RELATÓRIOS — a lista que o analista mantém na aba Clipping (Recent Publications) ─────────
-// RPC get_recent_reports (SECURITY DEFINER, admin/supabase_recent_reports.sql): só nome, setor, data e link —
-// nada do resto da configuração do Clipping. 1 consulta ao abrir a Home e 1 por hora (a lista muda ~1x/dia).
-// Seis linhas no desenho dos Eventos (data à esquerda, escrita só quando muda; setor em texto, sem caixinha);
-// "All N →" abre a lista inteira no mesmo cartão das fichas das empresas.
+// RPC get_recent_reports_v2 (SECURITY DEFINER, admin/supabase_recent_reports.sql): só nome, setor, data e link —
+// nada do resto da configuração do Clipping. Desde 2026-10-21 entram também os relatórios do bloco Earnings Review
+// (o que liga e desliga na aba Clipping), SÓ enquanto ele estiver ligado — pedido do usuário. 1 consulta ao abrir a
+// Home e 1 por hora (a lista muda ~1x/dia). Seis linhas no desenho dos Eventos (data à esquerda em TODAS as linhas,
+// também quando repete — pedido do usuário; setor em texto, sem caixinha); "All N →" abre a lista inteira no mesmo
+// cartão das fichas das empresas.
 const REP_VISIBLE = 6;
 let _repRows = [], _repPop = null;
 function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:00').toLocaleDateString(NUM_LOC,{month:'short',day:'numeric'}) : ''; }catch(e){ return ''; } }
-function _repRow(x, prev){
+function _repRow(x){
   const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
   const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
-  const d = _repDate(x.date), mostra = !prev || String(prev.date || '').slice(0,10) !== String(x.date || '').slice(0,10);
-  const inner = `<span class="rep-w">${mostra ? _esc(d) : ''}</span><span class="rep-t">${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const d = _repDate(x.date);
+  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
   const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec);
   return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`
             : `<div class="rep-item" title="${tip}">${inner}</div>`;
 }
-function _repList(rows){ return rows.map((x, i) => _repRow(x, rows[i - 1])).join(''); }
+function _repList(rows){ return rows.map(x => _repRow(x)).join(''); }
 async function loadReports(){
   const body = document.getElementById('rep-body'), all = document.getElementById('rep-all');
   if(!body) return;
   try{
-    const r = await sbAuth.rpc('get_recent_reports', {p_limit: 10});
+    let r = await sbAuth.rpc('get_recent_reports_v2', {p_limit: 10});
+    // a v2 vem num SQL que o usuário roda: enquanto ela não existir no banco, cai na v1 (só Recent Publications)
+    if(r.error && (r.error.code === 'PGRST202' || /get_recent_reports_v2/.test(r.error.message || '')))
+      r = await sbAuth.rpc('get_recent_reports', {p_limit: 10});
     if(r.error) throw r.error;
     _repRows = (r.data || []).filter(x => x && x.name).slice(0, 10);
     body.innerHTML = _repRows.length ? _repList(_repRows.slice(0, REP_VISIBLE)) : '<div class="rep-none">No reports yet.</div>';
