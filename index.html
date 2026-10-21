@@ -1304,7 +1304,7 @@ html.dark .rep-all{color:#FF7A45;}
 .np-bar .pos{background:#16a34a;} .np-bar .neu{background:#B9B3AA;} .np-bar .neg{background:#c0392b;}
 .np-c.pos{color:#15803d;} .np-c.neg{color:#c0392b;} .np-c.neu{color:var(--gray-mid);}
 .np-tone.few .np-bar{opacity:.35;}
-.np-lists,.np-legend{display:none;}
+.np-lists{display:none;}
 .np-filterbar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 16px;
   border-bottom:1px solid var(--rule);background:#FBF7F1;font-size:9.5px;color:#5F5A52;}
 .np-filterbar[hidden]{display:none;}
@@ -1350,17 +1350,12 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
   .np-px.up{color:#15803d;} .np-px.dn{color:#b42318;}
   .np-quiet{font-size:8.5px;line-height:1.45;color:var(--gray-mid);padding:5px 4px 0;}
   .np-quiet b{font-weight:600;color:#5F5A52;}
-  /* a legenda no pé da coluna: as cores e o clique */
-  .np-legend{display:block;margin-top:auto;padding:10px 4px 0;font-size:8px;line-height:1.7;color:var(--gray-mid);}
-  .np-legend i{display:inline-block;width:8px;height:5px;border-radius:1px;margin:0 3px 0 0;vertical-align:1px;}
-  .np-legend i:not(:first-of-type){margin-left:6px;}
-  .np-legend .pos{background:#16a34a;} .np-legend .neu{background:#B9B3AA;} .np-legend .neg{background:#c0392b;} .np-legend .nt{background:#E4DED4;}
   html.dark .np-row:hover{background:rgba(255,255,255,.05);}
   html.dark .np-row.on{background:rgba(255,90,20,.14);}
   html.dark .np-row.on .np-k{color:#FF8A4D;}
   html.dark .np-k{color:#DDE2EA;}
-  html.dark .np-fill .neu,html.dark .np-legend .neu{background:#4A5260;}
-  html.dark .np-fill .nt,html.dark .np-legend .nt{background:#2C323C;}
+  html.dark .np-fill .neu{background:#4A5260;}
+  html.dark .np-fill .nt{background:#2C323C;}
   html.dark .np-px.up{color:#4ADE80;} html.dark .np-px.dn{color:#F87171;}
   html.dark .np-quiet b{color:#A9B0BB;}
 }
@@ -1550,7 +1545,6 @@ html.dark .ndg-src{color:#FF8A4D;}
         <div class="np-tone" id="np-tone"></div>
         <div class="pulse-names" id="pulse-names"></div>
         <div class="np-lists" id="np-lists"></div>
-        <div class="np-legend">Bars: headlines since the close, by AI take<br><i class="pos"></i>positive<i class="neu"></i>neutral<i class="neg"></i>negative<i class="nt"></i>no take<br>Click a row to show only those headlines.</div>
       </div>
       <div class="news-main">
         <div class="np-filterbar" id="np-filterbar" hidden></div>
