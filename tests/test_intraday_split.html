@@ -33,7 +33,11 @@ window.__RUN__=async function(){
 
   pedidos=[]; await M.loadQuotes();
   ok('D · 1ª volta busca leve + intraday', pedidos.length===2, 'n='+pedidos.length);
-  ok('D · a consulta leve NÃO pede intraday', !pedidos[0].includes('intraday'), pedidos[0].split('select=')[1]);
+  // desde 26/10/2026 a leve tira DUAS chaves do JSON do intraday (selo de pregão do cartão), nunca a série
+  const sel=decodeURIComponent(pedidos[0].split('select=')[1]).split(',');
+  ok('D · a consulta leve NÃO pede a série intraday (só as 2 chaves do pregão)',
+     !sel.includes('intraday') && sel.filter(c=>c.includes('intraday')).length===2
+       && sel.filter(c=>c.includes('intraday')).every(c=>/^\w+:intraday->(traded_at|session)$/.test(c)), sel.join(','));
   ok('D · o risquinho chega em _quotes', (ctx._quotes[0].intraday||{}).pts?.length===5);
 
   pedidos=[]; await M.loadQuotes();
