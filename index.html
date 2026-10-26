@@ -1845,6 +1845,7 @@ let _newsSectorFilter = 'all'; // 'all' | 'sm' | 'pp' | 'nr' (resolvido por font
 
 const _LABEL_ALIAS = {
   'CVM':'CVM filing',   // comunicado oficial da empresa (Market Watch → hunter/cvm_filings.py)
+  'ASX':'ASX filing',   // anúncio sensível a preço da Viridis e pares de terras raras (hunter/asx_announcements.py)
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
   'Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish',
   'Shanghai Metals Market':'SMM','World Steel Association':'World Steel',
@@ -1867,7 +1868,11 @@ function _label(a){
 const _SM_SOURCES=new Set(['S&P Platts','Platts','Notícias de Mineração','IBRAM','ANM',
   'Brasil Mineral',
   'Mining.com','Australian Mining','SMM','GMK Center','Siderurgia Brasil','SteelRadar',
-  'Instituto Aço Brasil']);
+  'Instituto Aço Brasil',
+  // terras raras (Aclara/Viridis, 26/10/2026) — o Financial Times entra só pelo feed de terras raras
+  'ASX filing','Aclara Resources','Fastmarkets Insights','Northern Miner','Financial Times','Poços Já']);
+// Comunicado OFICIAL da empresa (CVM/B3, ASX, site da própria coberta) → selo PRIMARY ao lado da fonte.
+const _PRIMARY_SOURCES=new Set(['CVM','ASX','Aclara Resources']);
 const _PP_SOURCES=new Set(['Fastmarkets','PaperAge','Portal Celulose','ABTCP',
   'China Pulp & Paper','Papnews','Ibá']);
 // NUNCA fica em branco: fonte de setor único → carimbo · fonte mista → keyword (a.sector) ·
@@ -2054,7 +2059,7 @@ function _pintarNews(articles){
     return`<a class="news-item ${isNew?'is-new':''}${fimDeColuna?' col-end':''}${colunaDireita?' col-right':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
       <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div>${_newsCols()===1 ? _coTag(a) : ''}</div>
       <div class="news-item-meta">
-        <span class="news-item-source">${lbl}</span>${a.source_name==='CVM'?'<span class="news-item-primary" title="Primary source — official filing (CVM / B3)">PRIMARY</span>':''}
+        <span class="news-item-source">${lbl}</span>${_PRIMARY_SOURCES.has(a.source_name)?'<span class="news-item-primary" title="Primary source — official company filing">PRIMARY</span>':''}
         <span class="sep">·</span>
         <span class="news-item-age">${_age(date)}</span>
         ${_sectorTag(_resolveSec(a))}${_newsCols()===1 ? '' : _coTag(a)}
