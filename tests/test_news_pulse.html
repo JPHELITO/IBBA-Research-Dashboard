@@ -134,7 +134,11 @@ window.__RUN__=async function(){
   ok('poll: não pede título nem URL',              !u.includes('title') && !u.includes('url,'));
   ok('poll: janela desde o fechamento',            u.includes('published_at.gte.') && u.includes('include_in_report=eq.true'));
   const tom=document.getElementById('np-tone');
-  ok('tela: 15 positive / 10 negative',            tom.textContent.includes('15 positive') && tom.textContent.includes('10 negative'), tom.textContent);
+  // 26/10/2026: os números DENTRO da barra, sem os nomes; pedaço zerado (neutral aqui) não aparece
+  const pedacos=t=>[...t.querySelectorAll('.np-bar i')].map(i=>i.className+':'+i.textContent).join('|');
+  ok('tela: 15 e 10 dentro da barra (verde, vermelho)', pedacos(tom)==='pos:15|neg:10', pedacos(tom));
+  ok('tela: sem "positive/negative/neutral" escrito', !/positive|negative|neutral/i.test(tom.textContent), tom.textContent);
+  ok('tela: os nomes por extenso ficam na dica',     /15 positive, 0 neutral, 10 negative/.test(tom.title), tom.title);
   ok('tela: barra proporcional',                   tom.querySelector('.np-bar .pos').style.flexGrow==='15' && tom.querySelector('.np-bar .neg').style.flexGrow==='10');
   ok('tela: 25 pontuadas → barra acesa',           !tom.classList.contains('few'));
   ok('tela: diz desde quando',                     /^In the news since \w{3} 17:00$/.test(document.getElementById('np-when').textContent), document.getElementById('np-when').textContent);
@@ -161,8 +165,12 @@ window.__RUN__=async function(){
   urls=[]; resposta=[{take_llm:'+',take_covered_companies:''},{take_llm:'-',take_covered_companies:''}];
   await M.loadPulse();
   ok('poucas manchetes: barra apagada',            document.getElementById('np-tone').classList.contains('few'));
-  ok('poucas manchetes: contadores continuam',     document.getElementById('np-tone').textContent.includes('1 positive') && document.getElementById('np-tone').textContent.includes('1 negative'));
+  ok('poucas manchetes: números continuam na barra', pedacos(document.getElementById('np-tone'))==='pos:1|neg:1', pedacos(document.getElementById('np-tone')));
   ok('poucas manchetes: dica explica o portão',    document.getElementById('np-tone').title.includes('Fewer than 20'));
+  // a ORDEM é a da barra (verde · cinza · vermelho), a mesma das barrinhas de empresa/tema — o "invertido" de 26/10
+  M._renderTone({pos:29, neu:40, neg:24, notake:0, pending:0, startMs:Date.now()-3600e3});
+  ok('ordem: verde 29 · cinza 40 · vermelho 24',     pedacos(document.getElementById('np-tone'))==='pos:29|neu:40|neg:24', pedacos(document.getElementById('np-tone')));
+  ok('ordem: largura proporcional ao número',        [...document.querySelectorAll('#np-tone .np-bar i')].map(i=>i.style.flexGrow).join()==='29,40,24');
   ok('sem coberta: ficha e coluna explicam',       document.getElementById('pulse-names').textContent.includes('No covered company') && col.textContent.includes('No covered company'));
 
   // ── 7) linha da ficha: link só com http(s) ───────────────────────────────────────────
