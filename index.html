@@ -626,6 +626,19 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
 .hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
+/* Selo de pregão (2026-10-26): DATA do preço + bolsa aberta/fechada, na linha do preço (não
+   rouba altura do risquinho). Corpo menor que o do nome, nunca maior; o preço manda — se
+   faltar largura quem encolhe é o selo. Bolinha só com a bolsa aberta: cheia = negócio de
+   hoje no dado; vazada = aberta, mas o preço ainda é o do último pregão. */
+.hm-foot{display:flex;align-items:baseline;justify-content:space-between;gap:4px;min-width:0;}
+.hm-foot .hm-price{flex:none;}
+.hm-asof{font-size:7px;font-weight:600;letter-spacing:.01em;white-space:nowrap;opacity:.72;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.hm-asof i{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:3px;
+  vertical-align:.5px;}
+.hm-asof.live,.hm-asof.wait{opacity:.92;}
+.hm-asof.live i{background:#16a34a;box-shadow:0 0 0 1px rgba(255,255,255,.8);}
+.hm-asof.wait i{box-shadow:inset 0 0 0 1.2px currentColor;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
 .hm-range{display:flex;gap:3px;}
@@ -985,7 +998,8 @@ html.dark .cm-nohist{color:#79818F;}
   /* Heatmap — 2 colunas com cartão alto o bastante p/ ler ticker, preço e variação */
   .heatmap-grid{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(66px,auto);gap:6px;padding:8px;}
   .hm-ticker{font-size:12px;} .hm-change{font-size:11.5px;}
-  .hm-name{font-size:9.5px;} .hm-price{font-size:11px;}
+  .hm-name{font-size:9.5px;} .hm-price{font-size:11px;} .hm-asof{font-size:9px;}
+  .hm-asof i{width:6px;height:6px;}
   .hm-card{padding:7px 9px;}
 
   /* Commodities */
@@ -1200,6 +1214,7 @@ html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
 html.dark .hm-name{opacity:.95;}
 html.dark .hm-ccy{opacity:.95;}
+html.dark .hm-asof.live i{background:#4ADE80;box-shadow:0 0 0 1px rgba(0,0,0,.45);}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 /* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
@@ -2657,7 +2672,11 @@ async function loadQuotes(){
   try {
     // payload leve: sem o `daily` (pesado, muda 1x/dia → loadQuotesDaily) e sem o `intraday`
     // (a série de 5 em 5 min do pregão → _loadIntraday, só quando muda). 5,8 KB → 2,0 KB.
-    const cols = 'ticker,name,sector,exchange,price,change_pct,change_abs,updated_at';
+    // `intraday->chave` NÃO baixa a série: o PostgREST tira só as duas chaves do pregão que o
+    // robô grava junto (último negócio + janela de hoje → selo do cartão, `_pregao`). +0,3 KB
+    // comprimido por busca; sem a chave (robô antigo) volta null e o cartão fica sem selo.
+    const cols = 'ticker,name,sector,exchange,price,change_pct,change_abs,updated_at,'
+               + 'traded_at:intraday->traded_at,session:intraday->session';
     const r = await fetch(`${SUPA_URL}/rest/v1/quotes?select=${cols}`,
       {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
     if(!r.ok) throw new Error('quotes fetch');
@@ -2743,6 +2762,48 @@ function _ccy(q){ return q.sector === 'index' ? '' : (EXCH_CCY[q.exchange] || ''
 // Rótulo curto do cartão: tira só o sufixo de bolsa (VALE, AUGO já saem limpos).
 const _short = t => t.replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,'');
 
+// ── Selo de pregão do cartão (2026-10-26) ──────────────────────────────
+// Pedido do analista: "uma referência de data para as cotações... existem empresas que tradam
+// antes de outras. Até mostrar se está fechada ou aberta". O selo diz a DATA do preço exibido (no
+// calendário da BOLSA: o pregão de Sydney que abre às 20h de Brasília já é o do dia seguinte) e se
+// a bolsa está aberta AGORA. Os dois vêm do robô (prices.py, dentro do `intraday`, lidos pela
+// consulta leve): `traded_at` = último negócio; `session` = [abre, fecha] do pregão de hoje segundo
+// o Yahoo, que já traz horário de verão e FERIADO (medido em 26/10/2026: Viena, em feriado,
+// devolvia a janela de sexta). Aberto/fechado sai do relógio do navegador → vira na hora certa
+// mesmo entre duas gravações do robô (sem calendário de feriado escrito à mão).
+// ⚠️ "Aberta" não quer dizer "preço de hoje": o Yahoo atrasa — em 26/10/2026 o B3 abriu às 10h e
+// às 10h40 ainda não havia negócio do dia no feed. "Oct 23 · Open" é verdade nas duas metades, e é
+// justamente o caso que o analista precisa ver (a variação do cartão ainda é a de sexta).
+const EXCH_TZ = {B3:'America/Sao_Paulo', NYSE:'America/New_York', NASDAQ:'America/New_York', US:'America/New_York',
+                 TSX:'America/Toronto', BCS:'America/Santiago', BMV:'America/Mexico_City',
+                 LSE:'Europe/London', HEL:'Europe/Helsinki', ASX:'Australia/Sydney'};
+const EXCH_NAME = {US:'US market', NASDAQ:'Nasdaq', BCS:'Santiago', BMV:'Mexico', HEL:'Helsinki'};
+const PREGAO_STALE_MS = 30*60*1000;   // robô calado há mais que isso → a janela pode ser de outro dia
+function _pregao(q, nowMs){
+  const t = q ? Number(q.traded_at) : NaN;
+  if(!q || q.traded_at == null || !isFinite(t) || t <= 0) return null;   // robô antigo / sem dado: sem selo
+  nowMs = nowMs == null ? Date.now() : nowMs;
+  const now = nowMs/1000, tz = EXCH_TZ[q.exchange] || 'America/Sao_Paulo';
+  const date = new Date(t*1000).toLocaleDateString(NUM_LOC, {timeZone:tz, month:'short', day:'numeric'});
+  const s = (Array.isArray(q.session) && q.session.length===2 && +q.session[1] > +q.session[0]) ? q.session.map(Number) : null;
+  const fresh = !!q.updated_at && (nowMs - Date.parse(q.updated_at)) < PREGAO_STALE_MS;
+  const ex = EXCH_NAME[q.exchange] || q.exchange || 'Market';
+  // horário em Brasília (como o resto da home); com o dia da semana quando cai noutro dia
+  const hm = ep => new Date(ep*1000).toLocaleString(NUM_LOC, {timeZone:'America/Sao_Paulo',
+                     hour:'2-digit', minute:'2-digit', hourCycle:'h23', ...(Math.abs(ep-now) > 18*3600 ? {weekday:'short'} : {})})
+                   .replace(',', '') + ' Brasília';
+  if(!s || !fresh)
+    return {state:'', text:date, tip:`Price as of ${date} · market status unavailable (quotes not refreshed)`};
+  if(now >= s[0] && now < s[1]){
+    const live = t >= s[0];
+    return {state: live ? 'live' : 'wait', text:`${date} · Open`,
+            tip: live ? `${ex} open until ${hm(s[1])} · last trade ${hm(t)}`
+                      : `${ex} open since ${hm(s[0])}, but no trade from today in our data yet (exchange data arrives with a delay) · price from ${date}`};
+  }
+  return {state:'closed', text:`${date} · Closed`,
+          tip:`${ex} closed${now < s[0] ? ` · opens ${hm(s[0])}` : ''} · closing price of ${date}`};
+}
+
 // Série diária "com a ponta AO VIVO": fechamentos históricos + o PREÇO ATUAL como último ponto (agora).
 // WoW/MoM/YTD/YoY passam a comparar o preço de AGORA com o fechamento de N atrás — não o último fechamento
 // gravado (que fica 1-2 dias atrás e varia por ticker → "uns no 28, outros no 29"). Descarta o bar parcial de
@@ -2804,15 +2865,20 @@ function _renderHeatmap(){
   if(!cards.length){ grid.innerHTML = '<div class="kv-loading">No companies selected — click “Selected ▾”.</div>'; return; }
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
+    const pg = _pregao(q);
+    const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.state==='live'||pg.state==='wait'?'<i></i>':''}${pg.text}</span>` : '';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
-        title="${q.name} (${q.exchange}) — view history">
+        title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}&#10;Click to view history">
       <div class="hm-card-top">
         <div class="hm-ticker">${_short(q.ticker)}</div>
         <div class="hm-change">${pctStr}</div>
       </div>
       <div class="hm-name">${q.name}</div>
       ${_sparkline(closes)}
-      <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
+      <div class="hm-foot">
+        <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
+        ${asof}
+      </div>
     </a>`;
   }).join('');
 }

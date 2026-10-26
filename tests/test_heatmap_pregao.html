@@ -1,0 +1,112 @@
+<!doctype html><meta charset="utf-8"><title>selo de pregão do heatmap (data do preço + aberto/fechado)</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta o `_pregao` e o `_renderHeatmap` REAIS de index.html (não copia código) e roda os casos
+   com o relógio injetado. Horários em Brasília; epochs calculados em Python (UTC-3).
+   Janelas e horários dos casos B3/ASX/NYSE são os que o Yahoo devolveu em 26/10/2026. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const T={ sex1705:1792785955, seg0800:1793012400, seg1000:1793019600, seg1041:1793022060, seg1055:1793022900,
+  seg1100:1793023200, seg1700:1793044800, seg1705:1793045100, seg1730:1793046600,
+  sex30_1000:1793365200, sex30_1700:1793390400, sex30_1705:1793390700, seg02nov1100:1793628000,
+  sab1200:1792854000, dom1200:1792940400, sex1000:1792760400, sex1700:1792785600,
+  seg0210:1792991400, seg1049:1793022540, seg2000:1793055600, ter0212:1793077920, seg2200:1793062800,
+  seg2155:1793062500, ter0300:1793080800, ter0210:1793077800, seg1030:1793021400, seg1059:1793023140 };
+const fresh=nowS=>new Date((nowS-120)*1000).toISOString();          // robô gravou há 2 min
+const Q=(ex,traded,session,nowS,extra)=>Object.assign({ticker:'X',name:'X',exchange:ex,traded_at:traded,session,updated_at:fresh(nowS)},extra||{});
+
+window.__RUN__=async function(){
+  const t=(await (await fetch('/index.html')).text()).split('\r\n').join('\n');
+  const SRC=cut(t,'const EXCH_TZ = {','closing price of ${date}`};\n}');
+  const M=new Function('NUM_LOC',`${SRC}\n return {_pregao, EXCH_TZ};`)('en-US');
+  const P=(q,nowS)=>M._pregao(q,nowS*1000);
+
+  // ── B3 numa segunda comum ─────────────────────────────────────────────
+  const b3=[T.seg1000,T.seg1700];
+  let r=P(Q('B3',T.sex1705,b3,T.seg0800),T.seg0800);
+  ok('B3 08h · antes de abrir = fechado com o preço de sexta', r.state==='closed' && r.text==='Oct 23 · Closed', r.text);
+  ok('B3 08h · dica diz a hora que abre', /opens 10:00 Brasília/.test(r.tip) && /closing price of Oct 23/.test(r.tip), r.tip);
+  r=P(Q('B3',T.sex1705,b3,T.seg1041),T.seg1041);
+  ok('B3 10h41 · aberto, Yahoo ainda sem negócio do dia → "Oct 23 · Open" vazado', r.state==='wait' && r.text==='Oct 23 · Open', r.state+' '+r.text);
+  ok('B3 10h41 · dica explica o atraso', /open since 10:00 Brasília/.test(r.tip) && /no trade from today/.test(r.tip) && /price from Oct 23/.test(r.tip), r.tip);
+  r=P(Q('B3',T.seg1055,b3,T.seg1100),T.seg1100);
+  ok('B3 11h · negócio de hoje → ao vivo', r.state==='live' && r.text==='Oct 26 · Open', r.state+' '+r.text);
+  ok('B3 11h · dica com fechamento e último negócio', r.tip==='B3 open until 17:00 Brasília · last trade 10:55 Brasília', r.tip);
+  r=P(Q('B3',T.seg1705,b3,T.seg1730),T.seg1730);
+  ok('B3 17h30 · depois do fechamento = fechado com a data de HOJE', r.state==='closed' && r.text==='Oct 26 · Closed', r.text);
+  ok('B3 17h30 · sem "opens" (a janela de hoje já passou)', !/opens/.test(r.tip), r.tip);
+  r=P(Q('B3',T.seg1705,b3,T.seg1700),T.seg1700);
+  ok('B3 17h00 em ponto · o fim da janela já é fechado', r.state==='closed', r.state);
+  r=P(Q('B3',T.sex1705,b3,T.seg1000),T.seg1000);
+  ok('B3 10h00 em ponto · o começo da janela já é aberto', r.state==='wait', r.state);
+
+  // ── Feriado e fim de semana: o Yahoo devolve a janela do ÚLTIMO pregão (medido em Viena, 26/10) ──
+  r=P(Q('B3',T.sex30_1705,[T.sex30_1000,T.sex30_1700],T.seg02nov1100),T.seg02nov1100);
+  ok('Finados (02/11) · janela de sexta → fechado o dia todo', r.state==='closed' && r.text==='Oct 30 · Closed', r.text);
+  r=P(Q('B3',T.sex1705,[T.sex1000,T.sex1700],T.sab1200),T.sab1200);
+  ok('sábado · fechado com o preço de sexta', r.state==='closed' && r.text==='Oct 23 · Closed', r.text);
+  r=P(Q('B3',T.sex1705,b3,T.dom1200),T.dom1200);
+  ok('domingo com a janela de segunda · fechado e "opens Mon 10:00"', r.state==='closed' && /opens Mon 10:00 Brasília/.test(r.tip), r.tip);
+
+  // ── Sydney: o pregão que abre às 20h de Brasília já é o do DIA SEGUINTE ──
+  const asx=[T.seg2000,T.ter0212];
+  r=P(Q('ASX',T.seg0210,asx,T.seg1049),T.seg1049);
+  ok('ASX 10h49 BRT · fechado com o pregão de segunda e "opens 20:00"', r.text==='Oct 26 · Closed' && /opens 20:00 Brasília/.test(r.tip), r.text+' | '+r.tip);
+  r=P(Q('ASX',T.seg2155,asx,T.seg2200),T.seg2200);
+  ok('ASX 22h BRT de segunda · ao vivo com a data de Sydney (27/10)', r.state==='live' && r.text==='Oct 27 · Open', r.text);
+  r=P(Q('ASX',T.ter0210,asx,T.ter0300),T.ter0300);
+  ok('ASX 03h BRT de terça · fechado, pregão de 27/10', r.state==='closed' && r.text==='Oct 27 · Closed', r.text);
+
+  // ── nomes ──
+  r=P(Q('US',T.seg1059,[T.seg1030,T.seg1700],T.seg1100),T.seg1100);
+  ok('índice americano ("US") · nome legível', r.tip.indexOf('US market open until 17:00 Brasília')===0, r.tip);
+  r=P(Q('AMS',T.seg1059,[T.seg1030,T.seg1700],T.seg1100),T.seg1100);
+  ok('bolsa fora da tabela · não quebra (fuso de Brasília)', r && r.text==='Oct 26 · Open', r&&r.text);
+
+  // ── sem dado suficiente: só a data, ou nada ──
+  r=P(Q('B3',T.seg1055,b3,T.seg1100,{updated_at:new Date((T.seg1100-2*3600)*1000).toISOString()}),T.seg1100);
+  ok('robô calado há 2h · só a data, sem afirmar aberto/fechado', r.state==='' && r.text==='Oct 26' && /status unavailable/.test(r.tip), r.text);
+  r=P(Q('B3',T.seg1055,b3,T.seg1100,{updated_at:null}),T.seg1100);
+  ok('sem updated_at · só a data', r.state==='' && r.text==='Oct 26', r.text);
+  r=P(Q('B3',T.seg1055,null,T.seg1100),T.seg1100);
+  ok('sem janela · só a data', r.state==='' && r.text==='Oct 26', r.text);
+  r=P(Q('B3',T.seg1055,[T.seg1700,T.seg1000],T.seg1100),T.seg1100);
+  ok('janela invertida · só a data', r.state==='' && r.text==='Oct 26', r.text);
+  ok('sem traded_at (robô antigo) · sem selo', P(Q('B3',null,b3,T.seg1100),T.seg1100)===null);
+  ok('traded_at ausente · sem selo', P({exchange:'B3',session:b3,updated_at:fresh(T.seg1100)},T.seg1100)===null);
+  ok('traded_at zero/lixo · sem selo', P(Q('B3',0,b3,T.seg1100),T.seg1100)===null && P(Q('B3','x',b3,T.seg1100),T.seg1100)===null);
+  ok('sem cotação · sem selo', P(null,T.seg1100)===null);
+
+  // ── o cartão: selo na linha do preço + a dica no title ──
+  {
+    const REN=cut(t,'function _renderHeatmap(){','}).join(\'\');\n}');
+    const grid=document.createElement('div'); grid.id='heatmap-grid'; document.body.appendChild(grid);
+    const now=Date.now()/1000, h=3600;
+    const quotes=[
+      {ticker:'VALE3.SA',name:'Vale',exchange:'B3',price:61.49,change_pct:.8,traded_at:now-62*h,session:[now-h,now+6*h],updated_at:new Date().toISOString()},
+      {ticker:'VALE',name:'Vale (NYSE)',exchange:'NYSE',price:12.45,change_pct:1.5,traded_at:now-300,session:[now-h,now+5*h],updated_at:new Date().toISOString()},
+      {ticker:'VMM.AX',name:'Viridis Mining',exchange:'ASX',price:3.57,change_pct:-1.5,traded_at:now-8*h,session:[now+9*h,now+15*h],updated_at:new Date().toISOString()},
+      {ticker:'GGBR4.SA',name:'Gerdau',exchange:'B3',price:17.88,change_pct:.4,updated_at:new Date().toISOString()},   // robô antigo
+    ];
+    const ctx={document, _updateFilterCount(){}, _quotes:quotes, _hmDisplayed:quotes.map(q=>q.ticker), _range:'D',
+      _seriesFor:q=>({closes:[], pct:q.change_pct}), _sparkline:()=>'<div class="hm-spark"></div>', _heatClass:()=>'flat',
+      _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'BRL', _short:x=>x.replace(/\.(SA|AX)$/,''), _pregao:M._pregao};
+    new Function('ctx',`with(ctx){ ${REN}\n _renderHeatmap(); }`)(ctx);
+    const card=tk=>grid.querySelector(`.hm-card[data-ticker="${tk}"]`);
+    const asof=tk=>card(tk).querySelector('.hm-foot .hm-asof');
+    ok('cartão · selo dentro da linha do preço', !!asof('VALE3.SA') && !!card('VALE3.SA').querySelector('.hm-foot .hm-price'));
+    ok('cartão B3 aberto sem negócio · bolinha vazada + texto', asof('VALE3.SA').classList.contains('wait') && !!asof('VALE3.SA').querySelector('i') && /· Open$/.test(asof('VALE3.SA').textContent), asof('VALE3.SA').textContent);
+    ok('cartão NYSE ao vivo · bolinha cheia', asof('VALE').classList.contains('live') && !!asof('VALE').querySelector('i'));
+    ok('cartão ASX fechado · sem bolinha', asof('VMM.AX').classList.contains('closed') && !asof('VMM.AX').querySelector('i') && /· Closed$/.test(asof('VMM.AX').textContent), asof('VMM.AX').textContent);
+    ok('cartão sem dado de pregão · sem selo, preço intacto', !asof('GGBR4.SA') && card('GGBR4.SA').querySelector('.hm-price').textContent.startsWith('17.88'));
+    const tip=card('VMM.AX').getAttribute('title');
+    ok('title · nome, dica do pregão e o clique, em linhas', tip.split('\n').length===3 && /^Viridis Mining \(ASX\)$/.test(tip.split('\n')[0]) && /ASX closed/.test(tip) && /Click to view history$/.test(tip), JSON.stringify(tip));
+    ok('title sem dado de pregão · 2 linhas', card('GGBR4.SA').getAttribute('title').split('\n').length===2);
+    grid.remove();
+  }
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+window.__RUN__();
+</script></body>
