@@ -1026,10 +1026,16 @@ async function loadNews(){
   try{ _news=await restGet(url); }catch(e){ _news=[]; console.warn('news',e); }
   _renderNews(coarse); _renderMiniPulse(coarse);
 }
+// token do classificador (hunter/news_take_classifier.py) -> ticker em `quotes` (o mesmo mapa _PULSE_CO da Home).
+// Antes só comparava nome x ticker encurtado, que batia apenas em CMPC/COPEC (VALE != VALE3, GERDAU != GGBR4...).
+const COV_QUOTE={VALE:'VALE3.SA',CSN:'CSNA3.SA',CMIN:'CMIN3.SA',GERDAU:'GGBR4.SA',USIMINAS:'USIM5.SA',TERNIUM:'TX',
+  AURA:'AURA33.SA','SOUTHERN COPPER':'SCCO','GRUPO MEXICO':'GMEXICOB.MX',SUZANO:'SUZB3.SA',KLABIN:'KLBN11.SA',
+  IRANI:'RANI3.SA',CMPC:'CMPC.SN',COPEC:'COPEC.SN',ACLARA:'ARA.TO',VIRIDIS:'VMM.AX'};
 function _tickerInCovered(a){
   const cc=a.take_covered_companies; if(!cc||!_anchor) return false;
   const want=_short(_anchor).toUpperCase();
-  return String(cc).split(/[;,]/).some(x=>{ const v=_short(x.trim()).toUpperCase(); return v===want; });
+  return String(cc).split(/[;,]/).some(x=>{ const tok=x.trim().toUpperCase(), q=COV_QUOTE[tok];
+    return (q && (q===_anchor || _short(q).toUpperCase()===want)) || _short(tok)===want; });
 }
 function _renderNews(coarse){
   const feed=document.getElementById('news-feed'); if(!feed) return;
