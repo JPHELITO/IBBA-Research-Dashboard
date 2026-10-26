@@ -74,12 +74,16 @@ window.__RUN__=async function(){
     restGet:async(p)=>{ pedidos.push(p);
       return p.includes('ticker,intraday') ? ['VALE3'].map(x=>intra(x,7)) : ['VALE3'].map(x=>quote(x,upd)); },
     _quotes:[], _dailyMap:{}, _intraMap:{}, _intraStamp:'', _updatedAt:'',
+    _mktSess:{}, _sessByExchange:()=>({}),   // faixa de bolsas (26/10): a leve traz a janela do pregão
     KNOWN:new Set(['VALE3']), console, Object, Set,
   };
   const M=new Function('ctx',`with(ctx){ ${SRC}\n return {loadQuotes}; }`)(ctx);
   pedidos=[]; await M.loadQuotes();
   ok('Market · 1ª volta busca leve + intraday', pedidos.length===2, 'n='+pedidos.length);
-  ok('Market · leve sem intraday', !pedidos[0].includes('intraday'));
+  // desde 26/10/2026 a leve tira UMA chave do JSON do intraday (janela do pregão → faixa de bolsas), nunca a série
+  const msel=decodeURIComponent(pedidos[0].split('select=')[1]).split(',');
+  ok('Market · leve sem a série intraday (só a janela do pregão)',
+     !msel.includes('intraday') && msel.filter(c=>c.includes('intraday')).join()==='session:intraday->session', msel.join(','));
   ok('Market · sparkline do cabeçalho tem dado', (ctx._quotes[0].intraday||{}).pts?.length===7);
   pedidos=[]; await M.loadQuotes();
   ok('Market · nada mudou → só a leve', pedidos.length===1, 'n='+pedidos.length);
