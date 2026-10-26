@@ -628,17 +628,14 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
 /* Selo de pregão (2026-10-26): DATA do preço + bolsa aberta/fechada, na linha do preço (não
    rouba altura do risquinho). Corpo menor que o do nome, nunca maior; o preço manda — se
-   faltar largura quem encolhe é o selo. Bolinha só com a bolsa aberta: cheia = negócio de
-   hoje no dado; vazada = aberta, mas o preço ainda é o do último pregão. */
+   faltar largura quem encolhe é o selo. SÓ TEXTO: a bolinha (verde = negócio de hoje, vazada =
+   aberta sem negócio no dado) saiu no mesmo dia, a pedido do usuário — a data já diz se o preço
+   é de hoje. "Open" fica um pouco mais forte que "Closed". */
 .hm-foot{display:flex;align-items:baseline;justify-content:space-between;gap:4px;min-width:0;}
 .hm-foot .hm-price{flex:none;}
 .hm-asof{font-size:7px;font-weight:600;letter-spacing:.01em;white-space:nowrap;opacity:.72;
   min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.hm-asof i{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:3px;
-  vertical-align:.5px;}
 .hm-asof.live,.hm-asof.wait{opacity:.92;}
-.hm-asof.live i{background:#16a34a;box-shadow:0 0 0 1px rgba(255,255,255,.8);}
-.hm-asof.wait i{box-shadow:inset 0 0 0 1.2px currentColor;}
 /* período (D/WoW/MoM/YoY) no cabeçalho do heatmap */
 .hm-head-right{display:flex;align-items:center;gap:8px;}
 .hm-range{display:flex;gap:3px;}
@@ -999,7 +996,6 @@ html.dark .cm-nohist{color:#79818F;}
   .heatmap-grid{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(66px,auto);gap:6px;padding:8px;}
   .hm-ticker{font-size:12px;} .hm-change{font-size:11.5px;}
   .hm-name{font-size:9.5px;} .hm-price{font-size:11px;} .hm-asof{font-size:9px;}
-  .hm-asof i{width:6px;height:6px;}
   .hm-card{padding:7px 9px;}
 
   /* Commodities */
@@ -1214,7 +1210,6 @@ html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
 html.dark .hm-name{opacity:.95;}
 html.dark .hm-ccy{opacity:.95;}
-html.dark .hm-asof.live i{background:#4ADE80;box-shadow:0 0 0 1px rgba(0,0,0,.45);}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
 /* Os 3 cards de cima ficaram de fora da repaginação (o conteúdo deles ainda vai ser
@@ -2866,7 +2861,7 @@ function _renderHeatmap(){
   grid.innerHTML = cards.map(({q, closes, pct}) => {
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
     const pg = _pregao(q);
-    const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.state==='live'||pg.state==='wait'?'<i></i>':''}${pg.text}</span>` : '';
+    const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.text}</span>` : '';
     return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
         title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}&#10;Click to view history">
       <div class="hm-card-top">

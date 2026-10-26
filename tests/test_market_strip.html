@@ -1,0 +1,67 @@
+<!doctype html><meta charset="utf-8"><title>faixa de bolsas da aba Market (aberto/fechado + relógio local)</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta MARKETS/_mktState/_sessByExchange REAIS de market.html (não copia código) e roda com o relógio
+   injetado. Horários em Brasília (epochs calculados em Python, UTC-3); janelas = as que o Yahoo devolveu
+   em 26/10/2026. O caso que motivou: às 10h40 a NYSE aparecia "closed" (fuso fixo sem horário de verão). */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const T={ seg1040:1793022000, seg0945:1793018700, seg1049:1793022540, seg1000:1793019600,
+  nyse:[1793021400,1793044800], bcs:[1793017800,1793044800], asx:[1793055600,1793077920],
+  b3:[1793019600,1793044800], fin2nov1100:1793628000, b3sexta30:[1793365200,1793390400], sab1200:1792854000 };
+const fresh=nowS=>new Date((nowS-120)*1000).toISOString();     // robô gravou há 2 min
+
+window.__RUN__=async function(){
+  const t=(await (await fetch('/market.html')).text()).split('\r\n').join('\n');
+  const SRC=cut(t,'const MARKETS=[','holidays not considered)`};\n}');
+  const X=new Function(`${SRC}\n return {MARKETS,_mktState,_sessByExchange};`)();
+  const M=n=>X.MARKETS.find(m=>m.n===n);
+  const S=(ex,s,nowS)=>({[ex]:{s, upd:fresh(nowS)}});
+  const st=(n,nowS,sess)=>X._mktState(M(n), nowS*1000, sess);
+
+  let r=st('NYSE',T.seg1040,S('NYSE',T.nyse,T.seg1040));
+  ok('NYSE 10h40 de Brasília (26/10, EDT) · ABERTA — antes aparecia "closed"', r.open===true && !r.approx, JSON.stringify(r));
+  ok('NYSE · relógio de Nova York com horário de verão (09:40:00)', r.time==='09:40:00', r.time);
+  ok('NYSE · dica com o fechamento em Brasília', r.tip==='New York — open until 17:00 Brasília', r.tip);
+  r=st('Santiago',T.seg0945,S('BCS',T.bcs,T.seg0945));
+  ok('Santiago 09h45 (horário de verão chileno) · aberta, relógio 09:45:00', r.open===true && r.time==='09:45:00', r.time);
+  r=st('ASX',T.seg1049,S('ASX',T.asx,T.seg1049));
+  ok('ASX 10h49 de Brasília · fechada, "opens 20:00 Brasília"', r.open===false && /opens 20:00 Brasília/.test(r.tip), r.tip);
+  ok('ASX · relógio de Sydney já no dia seguinte (00:49:00)', r.time==='00:49:00', r.time);
+  r=st('LSE',T.seg1000,S('LSE',[T.seg1000-5*3600,T.seg1000+3.5*3600],T.seg1000));
+  ok('LSE · Londres já no horário de inverno (13:00:00 às 10h de Brasília)', r.time==='13:00:00' && r.open===true, r.time);
+  r=st('B3',T.fin2nov1100,S('B3',T.b3sexta30,T.fin2nov1100));
+  ok('Finados (02/11) · o Yahoo devolve a janela de sexta → B3 FECHADA', r.open===false && !r.approx, r.tip);
+  r=st('B3',T.seg1000,S('B3',T.b3,T.seg1000));
+  ok('B3 10h00 em ponto · aberta (início da janela conta)', r.open===true, r.tip);
+  r=st('B3',T.b3[1],S('B3',T.b3,T.b3[1]));
+  ok('B3 17h00 em ponto · fechada (fim da janela não conta)', r.open===false, r.tip);
+
+  // ── sem dado fresco: grade aproximada, no fuso CERTO, e o title avisa ──
+  r=st('NYSE',T.seg1040,{NYSE:{s:T.nyse, upd:new Date((T.seg1040-2*3600)*1000).toISOString()}});
+  ok('robô calado há 2h · grade aproximada (09:40 em NY = aberta) e title avisa', r.approx===true && r.open===true && /usual trading hours/.test(r.tip), r.tip);
+  r=st('NYSE',T.seg1040,{});
+  ok('bolsa sem papel no dado · grade aproximada', r.approx===true && r.open===true);
+  r=st('B3',T.sab1200,{});
+  ok('sábado sem dado · fechada pela grade aproximada', r.approx===true && r.open===false);
+  r=st('TSX',T.seg1040,S('TSX',[T.seg1000,T.seg1000-60],T.seg1040));
+  ok('janela invertida · ignora e cai na grade aproximada', r.approx===true);
+
+  // ── a janela de cada bolsa sai do papel gravado mais recentemente ──
+  const m=X._sessByExchange([
+    {ticker:'A',exchange:'B3',session:[1,2],updated_at:'2026-10-26T13:00:00Z'},
+    {ticker:'B',exchange:'B3',session:[3,4],updated_at:'2026-10-26T13:05:00Z'},
+    {ticker:'C',exchange:'B3',session:null,updated_at:'2026-10-26T13:10:00Z'},
+    {ticker:'D',exchange:'NYSE',session:[5,6],updated_at:null},
+    {ticker:'E',exchange:'ASX',session:[7,8],updated_at:'2026-10-26T13:00:00Z'}]);
+  ok('_sessByExchange · fica a janela mais recente da bolsa', m.B3 && m.B3.s[0]===3, JSON.stringify(m.B3));
+  ok('_sessByExchange · ignora linha sem janela ou sem data', !m.NYSE && !!m.ASX, Object.keys(m).join(','));
+  ok('_sessByExchange · aguenta lista vazia/nula', JSON.stringify(X._sessByExchange(null))==='{}');
+  ok('as 7 bolsas da faixa têm fuso IANA e código de bolsa', X.MARKETS.length===7 && X.MARKETS.every(x=>x.tz && x.ex));
+
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+window.__RUN__();
+</script></body>

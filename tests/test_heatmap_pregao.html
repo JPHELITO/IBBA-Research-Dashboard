@@ -93,12 +93,15 @@ window.__RUN__=async function(){
       _seriesFor:q=>({closes:[], pct:q.change_pct}), _sparkline:()=>'<div class="hm-spark"></div>', _heatClass:()=>'flat',
       _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'BRL', _short:x=>x.replace(/\.(SA|AX)$/,''), _pregao:M._pregao};
     new Function('ctx',`with(ctx){ ${REN}\n _renderHeatmap(); }`)(ctx);
+    const _pregaoTxt=q=>M._pregao(q).text;
     const card=tk=>grid.querySelector(`.hm-card[data-ticker="${tk}"]`);
     const asof=tk=>card(tk).querySelector('.hm-foot .hm-asof');
     ok('cartão · selo dentro da linha do preço', !!asof('VALE3.SA') && !!card('VALE3.SA').querySelector('.hm-foot .hm-price'));
-    ok('cartão B3 aberto sem negócio · bolinha vazada + texto', asof('VALE3.SA').classList.contains('wait') && !!asof('VALE3.SA').querySelector('i') && /· Open$/.test(asof('VALE3.SA').textContent), asof('VALE3.SA').textContent);
-    ok('cartão NYSE ao vivo · bolinha cheia', asof('VALE').classList.contains('live') && !!asof('VALE').querySelector('i'));
-    ok('cartão ASX fechado · sem bolinha', asof('VMM.AX').classList.contains('closed') && !asof('VMM.AX').querySelector('i') && /· Closed$/.test(asof('VMM.AX').textContent), asof('VMM.AX').textContent);
+    // SÓ TEXTO desde 26/10 (o usuário pediu para tirar a bolinha): a data diz se o preço é de hoje
+    ok('cartão B3 aberto sem negócio · só o texto, com a data do último pregão', asof('VALE3.SA').classList.contains('wait') && asof('VALE3.SA').textContent===_pregaoTxt(quotes[0]) && /· Open$/.test(asof('VALE3.SA').textContent), asof('VALE3.SA').textContent);
+    ok('cartão NYSE ao vivo · só o texto', asof('VALE').classList.contains('live') && /· Open$/.test(asof('VALE').textContent), asof('VALE').textContent);
+    ok('cartão ASX fechado · só o texto', asof('VMM.AX').classList.contains('closed') && /· Closed$/.test(asof('VMM.AX').textContent), asof('VMM.AX').textContent);
+    ok('nenhum selo tem bolinha (nem verde, nem vazada)', grid.querySelectorAll('.hm-asof i, .hm-asof *').length===0, grid.querySelectorAll('.hm-asof *').length+' filhos');
     ok('cartão sem dado de pregão · sem selo, preço intacto', !asof('GGBR4.SA') && card('GGBR4.SA').querySelector('.hm-price').textContent.startsWith('17.88'));
     const tip=card('VMM.AX').getAttribute('title');
     ok('title · nome, dica do pregão e o clique, em linhas', tip.split('\n').length===3 && /^Viridis Mining \(ASX\)$/.test(tip.split('\n')[0]) && /ASX closed/.test(tip) && /Click to view history$/.test(tip), JSON.stringify(tip));

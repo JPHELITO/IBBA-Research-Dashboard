@@ -965,8 +965,11 @@ async function loadQuotes(){
   // payload leve, sem o `intraday` (a série de 5 em 5 min do pregão): ele só muda quando o
   // robô grava, ~a cada 5 min, e vinha de volta inteiro 60x por hora. Aqui NÃO tem trava por
   // range: o sparkline do cabeçalho do papel usa o intraday em QUALQUER período.
-  const cols='ticker,name,sector,exchange,price,change_pct,change_abs,updated_at';
+  // `session:intraday->session` NÃO baixa a série: o PostgREST tira só a janela do pregão de hoje
+  // que o robô grava junto → faixa de bolsas do cabeçalho (`_mktState`). Sem a chave → null.
+  const cols='ticker,name,sector,exchange,price,change_pct,change_abs,updated_at,session:intraday->session';
   const rows=await restGet(`quotes?select=${cols}`);
+  _mktSess=_sessByExchange(rows);
   const stamp=rows.reduce((m,q)=>(q.updated_at>m?q.updated_at:m),'');
   // `updated_at` avançou = o robô gravou preço novo, e o intraday vem na MESMA linha
   // (prices.py). try/catch próprio: falha no risquinho não segura a atualização do preço.
@@ -2100,18 +2103,55 @@ function renderCarNext(){
   document.getElementById('car-auto').onclick=e=>{ e.stopPropagation(); setCarAuto(!_carAuto); };
   if(_carAuto){ const bar=host.querySelector('.car-prog>i'); if(bar) bar.addEventListener('animationend', _carAdvance, {once:true}); }
 }
-/* ── mercados que analisamos: nome + aberto/fechado + HORÁRIO LOCAL (base da abertura). offset ignora DST (aprox). ── */
+/* ── mercados que analisamos: nome + aberto/fechado + HORÁRIO LOCAL ──
+   2026-10-26: o fuso era FIXO e a grade escrita à mão → com NY/Toronto em EDT e Santiago no horário de
+   verão as três erravam 1 h (às 10h40 de 26/10 a NYSE aparecia "closed"), e feriado nunca era visto.
+   Agora aberto/fechado = a janela do pregão que o Yahoo devolve para os papéis da bolsa (`session`, que o
+   robô grava dentro do `intraday`; já traz horário de verão e FERIADO — a mesma do selo do heatmap da
+   home), e o relógio sai do fuso IANA da bolsa (Intl). Sem janela fresca (robô calado há 30+ min, ou
+   nenhum papel da bolsa), cai na grade aproximada (s/e em hora LOCAL, seg–sex, no fuso certo) e o title
+   avisa. `ex` = o valor de `quotes.exchange` dos papéis daquela bolsa. */
 const MARKETS=[
-  {n:'B3',city:'São Paulo',o:-3,s:10,e:17},{n:'NYSE',city:'New York',o:-5,s:9.5,e:16},
-  {n:'Nasdaq',city:'New York',o:-5,s:9.5,e:16},{n:'TSX',city:'Toronto',o:-5,s:9.5,e:16},
-  {n:'Santiago',city:'Santiago',o:-4,s:9.5,e:16},{n:'LSE',city:'London',o:0,s:8,e:16.5},
-  {n:'ASX',city:'Sydney',o:11,s:10,e:16},
+  {n:'B3',ex:'B3',city:'São Paulo',tz:'America/Sao_Paulo',s:10,e:17},
+  {n:'NYSE',ex:'NYSE',city:'New York',tz:'America/New_York',s:9.5,e:16},
+  {n:'Nasdaq',ex:'NASDAQ',city:'New York',tz:'America/New_York',s:9.5,e:16},
+  {n:'TSX',ex:'TSX',city:'Toronto',tz:'America/Toronto',s:9.5,e:16},
+  {n:'Santiago',ex:'BCS',city:'Santiago',tz:'America/Santiago',s:9.5,e:16},
+  {n:'LSE',ex:'LSE',city:'London',tz:'Europe/London',s:8,e:16.5},
+  {n:'ASX',ex:'ASX',city:'Sydney',tz:'Australia/Sydney',s:10,e:16},
 ];
-function _localTime(o){ const d=new Date(); let s=d.getUTCHours()*3600+d.getUTCMinutes()*60+d.getUTCSeconds()+o*3600; s=((s%86400)+86400)%86400; const p=n=>(n<10?'0':'')+n; return p(Math.floor(s/3600))+':'+p(Math.floor(s%3600/60))+':'+p(Math.floor(s%60)); }
-function _mktOpen(M){ const d=new Date(); const utc=d.getUTCHours()+d.getUTCMinutes()/60; let loc=utc+M.o,ds=0; if(loc<0){loc+=24;ds=-1;} if(loc>=24){loc-=24;ds=1;} const dow=(d.getUTCDay()+ds+7)%7; return dow>=1&&dow<=5&&loc>=M.s&&loc<M.e; }
+const MKT_STALE_MS=30*60*1000;   // igual ao selo do heatmap (PREGAO_STALE_MS da home)
+let _mktSess={};                  // bolsa -> {s:[abre, fecha], upd} — preenchido em loadQuotes
+function _sessByExchange(rows){   // a janela do papel gravado mais recentemente de cada bolsa
+  const m={};
+  (rows||[]).forEach(q=>{ if(!Array.isArray(q.session)||!q.updated_at) return; const o=m[q.exchange];
+    if(!o||q.updated_at>o.upd) m[q.exchange]={s:q.session, upd:q.updated_at}; });
+  return m;
+}
+const _mktFmt={};
+function _mktParts(tz, ms){       // hora, minuto, segundo e dia da semana NO FUSO da bolsa
+  const f=_mktFmt[tz]||(_mktFmt[tz]=new Intl.DateTimeFormat('en-US',{timeZone:tz,weekday:'short',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}));
+  const o={}; f.formatToParts(new Date(ms)).forEach(p=>{ o[p.type]=p.value; }); return o;
+}
+function _mktState(M, nowMs, sess){
+  const p=_mktParts(M.tz, nowMs), time=`${p.hour}:${p.minute}:${p.second}`, x=(sess||{})[M.ex];
+  const ok=!!x && (nowMs-Date.parse(x.upd)) < MKT_STALE_MS && x.s.length===2 && +x.s[1] > +x.s[0];
+  if(ok){
+    const now=nowMs/1000, s0=+x.s[0], s1=+x.s[1], open=now>=s0 && now<s1;
+    const hm=ep=>new Date(ep*1000).toLocaleString('en-US',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',
+      hourCycle:'h23',...(Math.abs(ep-now)>18*3600?{weekday:'short'}:{})}).replace(',','')+' Brasília';
+    return {open, approx:false, time, tip: open ? `${M.city} — open until ${hm(s1)}`
+                                                : `${M.city} — closed${now<s0?` · opens ${hm(s0)}`:''}`};
+  }
+  const h=(+p.hour)+(+p.minute)/60, wk=p.weekday!=='Sat' && p.weekday!=='Sun';
+  return {open: wk && h>=M.s && h<M.e, approx:true, time,
+          tip:`${M.city} — usual trading hours (live session data unavailable; holidays not considered)`};
+}
 function renderMarkets(){
-  const host=document.getElementById('ah-mkts'); if(host) host.innerHTML=MARKETS.map(M=>{ const open=_mktOpen(M);
-    return `<div class="mkt-m ${open?'open':'closed'}" title="${M.city} — janela de pregão aproximada (ignora feriados/DST)"><span class="dot"></span><span class="nm">${M.n}</span><span class="st">${open?'open':'closed'}</span><span class="tm">${_localTime(M.o)}</span></div>`; }).join('');
+  const host=document.getElementById('ah-mkts'), now=Date.now();
+  if(host) host.innerHTML=MARKETS.map(M=>{ const st=_mktState(M, now, _mktSess);
+    return `<div class="mkt-m ${st.open?'open':'closed'}" title="${st.tip}"><span class="dot"></span><span class="nm">${M.n}</span><span class="st">${st.open?'open':'closed'}</span><span class="tm">${st.time}</span></div>`; }).join('');
   if(_updatedAt){ const u=document.getElementById('mkt-updated'); if(u){ const s=Math.round((Date.now()-new Date(_updatedAt))/1000); u.textContent='updated '+(s<60?'now':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago'); } }
 }
 
