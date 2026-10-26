@@ -2134,6 +2134,8 @@ const _PULSE_CO = {
   'AURA':['AURA33','AURA33.SA','sm'], 'SOUTHERN COPPER':['SCCO','SCCO','sm'], 'GRUPO MEXICO':['GMEXICOB','GMEXICOB.MX','sm'],
   'SUZANO':['SUZB3','SUZB3.SA','pp'], 'KLABIN':['KLBN11','KLBN11.SA','pp'],   'IRANI':['RANI3','RANI3.SA','pp'],
   'CMPC':['CMPC','CMPC.SN','pp'],     'COPEC':['COPEC','COPEC.SN','pp'],
+  // terras raras — cobertura formal desde 2026-10-23 (ticker de tela = o _short do heatmap; cotação em `quotes`)
+  'ACLARA':['ARA','ARA.TO','sm'],     'VIRIDIS':['VMM','VMM.AX','sm'],
 };
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
 // TEMAS = os tópicos que o robô grava em cada manchete (take_topics, hunter/news_take_classifier.py), agrupados
@@ -2147,6 +2149,7 @@ const _THEMES = [
   {k:'paper',  label:'Paper & board', topics:['paper','tissue','containerboard','occ','newsprint'], tip:'Paper, packaging, tissue and OCC'},
   {k:'copper', label:'Copper',        topics:['copper']},
   {k:'gold',   label:'Gold & silver', topics:['gold','silver']},
+  {k:'rare',   label:'Rare earths',   topics:['rare_earths']},
   {k:'metals', label:'Other metals',  topics:['nickel','aluminum','zinc'], tip:'Nickel, aluminum and zinc'},
   {k:'macro',  label:'China & macro', topics:['macro']},
   {k:'policy', label:'Trade policy',  topics:['tariffs']},
