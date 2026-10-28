@@ -2849,12 +2849,18 @@ function _seriesFor(q, range){
   }
   const daily = _dailyLive(q);
   if(daily.length < 2) return { closes: [], pct: null };
-  let arr;
-  if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = daily.filter(p=>p[0]>=jan1); }
-  else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = daily.filter(p=>p[0]>=cut); }
+  const ini = _rangeStart(range);
+  let arr = daily.filter(p=>p[0]>=ini);
   if(arr.length < 2) arr = daily.slice(-2);
   const first = arr[0][1], last = arr[arr.length-1][1];   // last = preço AO VIVO (ponta de _dailyLive)
-  return { closes: arr.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
+  // Histórico que começa DEPOIS do início do período (IPSA da MSCI: só desde 01/09/2026) → sem número. Antes saía a
+  // variação desde o 1º dado com o rótulo do período ("YoY" do IPSA = desde setembro). O risquinho mostra o que há.
+  const cobre = daily[0][0] <= ini + 7*86400;
+  return { closes: arr.map(p=>p[1]), pct: cobre && first ? (last/first - 1)*100 : null };
+}
+// Início (epoch, s) da janela W/M/YTD/Y do heatmap.
+function _rangeStart(range){
+  return range === 'YTD' ? Date.UTC(new Date().getUTCFullYear(),0,1)/1000 : (Date.now()/1000) - _RANGE_DAYS[range]*86400;
 }
 
 // ── Performance RELATIVA (2026-10-28) ──────────────────────────────────
@@ -2926,10 +2932,13 @@ function _relFor(q, range){
     const ant = (s, x) => { const pc = _prevClose(x); return pc ? s.slice(0,-1).concat([[s[s.length-1][0], pc]]) : s; };
     if(ds < db) bd = ant(bd, b); else sd = ant(sd, q);
   }
-  let arr;   // mesma janela do _seriesFor
-  if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = sd.filter(p=>p[0]>=jan1); }
-  else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = sd.filter(p=>p[0]>=cut); }
+  const ini = _rangeStart(range);   // mesma janela do _seriesFor
+  let arr = sd.filter(p=>p[0]>=ini);
   if(arr.length < 2) arr = sd.slice(-2);
+  if(sd[0][0] > ini + 7*86400){   // o próprio papel não tem histórico desde o começo do período
+    const desde = new Date(sd[0][0]*1000).toLocaleDateString(NUM_LOC, {month:'short', day:'numeric', year:'numeric', timeZone:'UTC'});
+    return {closes:[], pct:null, bench:bt, why:`${_short(q.ticker)} history starts ${desde} — too short for this period`};
+  }
   const s0 = arr[0][1], s1 = arr[arr.length-1][1], b0 = _valAtDay(bd, arr[0][0]), b1 = bd[bd.length-1][1];
   if(b0 == null){   // o IPSA da MSCI só existe desde 01/09/2026 — YTD e YoY do Chile esperam a série crescer
     const desde = new Date(bd[0][0]*1000).toLocaleDateString(NUM_LOC, {month:'short', day:'numeric', year:'numeric', timeZone:'UTC'});

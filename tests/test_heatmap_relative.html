@@ -82,6 +82,15 @@ window.__RUN__=async function(){
   ok('Y · histórico do índice começa depois da janela → "—"', r.pct===null, r.pct);
   ok('Y · e o title diz desde quando há série', /history starts/.test(r.why) && /too short/.test(r.why), r.why);
 
+  // ── histórico que não alcança o começo do período (o IPSA da MSCI só existe desde 01/09/2026) ──
+  ok('absoluta · série que começa depois do período → "—" (não a variação desde o 1º dado)', M._seriesFor(IP,'Y').pct===null, M._seriesFor(IP,'Y').pct);
+  ok('absoluta · dentro do que existe, o número sai', near(M._seriesFor(IP,'M').pct,(5350/5500-1)*100), M._seriesFor(IP,'M').pct);
+  ok('absoluta · a linha continua com o que há', M._seriesFor(IP,'Y').closes.length>=3);
+  const novo={...S, ticker:'NEW.TO', daily:serie([12,6,3,1],[50,51,52,53])};
+  r=M._relFor(novo,'M');
+  ok('relativa · papel com histórico curto → "—" com o motivo', r.pct===null && /NEW history starts/.test(r.why), r.why);
+  ok('relativa · e no período que ele cobre, sai', M._relFor(novo,'W').pct!=null);
+
   // ── o próprio benchmark e bolsa sem benchmark ──
   r=M._relFor(B,'W');
   ok('benchmark · mostra o PRÓPRIO movimento (é a régua)', r.self===true && near(r.pct,(1040/1010-1)*100), r.pct);
