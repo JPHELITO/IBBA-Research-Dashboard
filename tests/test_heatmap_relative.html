@@ -13,7 +13,7 @@ const near=(a,b,e=1e-6)=>a!=null&&b!=null&&Math.abs(a-b)<e;
 window.__RUN__=async function(){
   const t=(await (await fetch('/index.html')).text()).split('\r\n').join('\n');
   const SRC=cut(t,'const EXCH_TZ = {','· index ${f(r.bPct)})`);\n}');
-  const REN=cut(t,'function _renderHeatmap(){','}).join(\'\');\n}');
+  const REN=cut(t,'function _renderHeatmap(){','v.textContent = v.dataset.short; });\n}');
   const now=Math.floor(Date.now()/1000), DAY=86400, H=3600;
   const dia=n=>Math.floor(now/DAY)*DAY+13.5*H-n*DAY;          // n dias atrás, 13:30 UTC (abertura TSX/NYSE)
   const serie=(dias,vals)=>dias.map((n,i)=>[dia(n),vals[i]]);
@@ -107,8 +107,11 @@ window.__RUN__=async function(){
     const card=x=>grid.querySelector(`.hm-card[data-ticker="${x}"]`);
     ok('relativo · ordem: ganhou do índice > benchmark (no zero) > perdeu > sem número', tk.join()==='CS.TO,SPTSX,LUN.TO,MT.AS', tk.join());
     ok('relativo · número em pp', /^\+\d+\.\d\dpp$/.test(card('CS.TO').querySelector('.hm-change').textContent), card('CS.TO').querySelector('.hm-change').textContent);
-    ok('relativo · etiqueta "vs S&P/TSX" ao lado do nome', card('CS.TO').querySelector('.hm-name.rel .hm-vs').textContent==='vs S&P/TSX'
-       && card('CS.TO').querySelector('.hm-name.rel .hm-nm').textContent==='Capstone Copper', card('CS.TO').querySelector('.hm-vs').textContent);
+    ok('relativo · etiqueta "vs S&P/TSX" ao lado do TICKER (3ª rodada, pedido do usuário)',
+       card('CS.TO').querySelector('.hm-card-top .hm-tkline .hm-ticker').textContent==='CS'
+       && card('CS.TO').querySelector('.hm-card-top .hm-tkline .hm-vs').textContent==='vs S&P/TSX', card('CS.TO').querySelector('.hm-vs').textContent);
+    ok('relativo · a linha do nome volta a ser só o nome', card('CS.TO').querySelector('.hm-name').textContent==='Capstone Copper'
+       && !card('CS.TO').querySelector('.hm-name .hm-vs'));
     ok('relativo · TODO cartão com benchmark leva a etiqueta (um por papel)', ['CS.TO','SPTSX','LUN.TO'].every(x=>!!card(x).querySelector('.hm-vs')));
     ok('relativo · benchmark com o próprio % e a etiqueta "benchmark", sem cor de ganho/perda',
        /%$/.test(card('SPTSX').querySelector('.hm-change').textContent) && card('SPTSX').querySelector('.hm-vs').textContent==='benchmark' && card('SPTSX').classList.contains('flat'));
@@ -116,6 +119,22 @@ window.__RUN__=async function(){
     ok('relativo · title com o índice e as duas pernas', /vs S&P\/TSX Composite: \+\d+\.\d\d pp \(CS \+5\.77% · index \+2\.97%\)/.test(tip), JSON.stringify(tip));
     ok('relativo · bolsa sem benchmark fica sem etiqueta e com "—"', !card('MT.AS').querySelector('.hm-vs') && card('MT.AS').querySelector('.hm-change').textContent==='—');
     ok('relativo · cor segue o número relativo', card('CS.TO').classList.contains('up') && card('LUN.TO').classList.contains('down'));
+    // ── etiqueta que não cabe (celular estreito + ticker longo) perde o "vs " — com as regras REAIS do CSS ──
+    {
+      const css=cut(t,'.hm-tkline{display:flex;','transparent);}');
+      const st=document.createElement('style');
+      st.textContent=`#heatmap-grid{display:grid;grid-template-columns:100px;font-family:Arial,sans-serif}
+        .hm-card{display:flex;flex-direction:column;overflow:hidden;padding:5px 7px}
+        .hm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px}
+        .hm-ticker{font-size:10px;font-weight:700;white-space:nowrap} .hm-change{font-size:9px;font-weight:700;flex:none}\n`+css;
+      document.head.appendChild(st);
+      render();
+      ok('etiqueta apertada · perde o "vs " e fica com o nome do índice', card('CS.TO').querySelector('.hm-vs').textContent==='S&P/TSX', card('CS.TO').querySelector('.hm-vs').textContent);
+      ok('etiqueta apertada · a do próprio benchmark vira "bmk" só se não couber', ['benchmark','bmk'].includes(card('SPTSX').querySelector('.hm-vs').textContent), card('SPTSX').querySelector('.hm-vs').textContent);
+      st.textContent=st.textContent.replace('100px','400px'); render();
+      ok('com espaço · a etiqueta fica inteira', card('CS.TO').querySelector('.hm-vs').textContent==='vs S&P/TSX', card('CS.TO').querySelector('.hm-vs').textContent);
+      st.remove();
+    }
     // absoluta: o cartão de sempre (sem etiqueta, %, ordem pelo movimento do papel)
     rctx._hmMode='abs'; render();
     const tkA=[...grid.querySelectorAll('.hm-card')].map(c=>c.dataset.ticker);

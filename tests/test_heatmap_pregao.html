@@ -80,7 +80,7 @@ window.__RUN__=async function(){
 
   // ── o cartão: selo na linha do preço + a dica no title ──
   {
-    const REN=cut(t,'function _renderHeatmap(){','}).join(\'\');\n}');
+    const REN=cut(t,'function _renderHeatmap(){','v.textContent = v.dataset.short; });\n}');   // fim = ajuste da etiqueta do relativo (28/10)
     const grid=document.createElement('div'); grid.id='heatmap-grid'; document.body.appendChild(grid);
     const now=Date.now()/1000, h=3600;
     const quotes=[

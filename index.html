@@ -623,14 +623,15 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-change{font-size:9px;font-weight:700;letter-spacing:-.01em;flex:none;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Modo relativo (2026-10-28): à direita do nome, o índice contra o qual o número foi medido.
-   Quem encolhe é o nome (reticências); o "vs IBOV" fica sempre inteiro. Etiqueta com CAIXA LEVE (pedido do
-   usuário ao ver a 1ª versão, só texto: "um pequeno indicativo... de qual o benchmark") — a mesma regra das
-   etiquetas do feed: fundo translúcido, raio 4px, cor firme, letra do mesmo tamanho e a linha NÃO cresce.
-   Fundo e fio saem da cor do texto do cartão: escurecem o claro, clareiam o forte (texto branco) e o escuro. */
-.hm-name.rel{display:flex;gap:4px;justify-content:space-between;align-items:center;opacity:1;}
-.hm-name.rel .hm-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.82;}
-.hm-vs{flex:none;font-weight:700;letter-spacing:.02em;line-height:1;padding:.75px 4px;border-radius:4px;
+/* Modo relativo (2026-10-28): o índice contra o qual o número foi medido, numa etiqueta AO LADO DO TICKER
+   ("VMM vs ASX 200 … +9.74pp"). Três rodadas com o usuário no mesmo dia: texto miúdo à direita do nome (não se
+   via) → caixa leve no mesmo lugar ("meio feio") → ao lado do ticker e "um pouco menorzinho". Caixa leve: fundo
+   e fio tirados da cor do texto do cartão (escurecem o claro, clareiam o forte e o escuro). O ticker e a
+   variação nunca encolhem; se faltar largura, quem ganha reticências é a etiqueta. */
+.hm-tkline{display:flex;align-items:baseline;gap:4px;min-width:0;}
+.hm-tkline .hm-ticker{flex:none;}
+.hm-vs{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:6.5px;font-weight:700;letter-spacing:.02em;line-height:1;padding:.5px 3px;border-radius:3px;
   background:color-mix(in srgb,currentColor 11%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 22%,transparent);}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
 .hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
@@ -1004,6 +1005,7 @@ html.dark .cm-nohist{color:#79818F;}
   /* Heatmap — 2 colunas com cartão alto o bastante p/ ler ticker, preço e variação */
   .heatmap-grid{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(66px,auto);gap:6px;padding:8px;}
   .hm-ticker{font-size:12px;} .hm-change{font-size:11.5px;}
+  .hm-tkline{gap:3px;} .hm-vs{font-size:7px;padding:.5px 2.5px;letter-spacing:0;}
   .hm-name{font-size:9.5px;} .hm-price{font-size:11px;} .hm-asof{font-size:9px;}
   .hm-card{padding:7px 9px;}
 
@@ -1218,7 +1220,6 @@ html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
 html.dark .hm-name{opacity:.95;}
-html.dark .hm-name.rel{opacity:1;} html.dark .hm-name.rel .hm-nm{opacity:.95;}   /* relativo: a etiqueta "vs" fica cheia */
 html.dark .hm-ccy{opacity:.95;}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
@@ -2866,7 +2867,9 @@ function _seriesFor(q, range){
 const BENCH_BY_EXCH = {B3:'IBOV', NYSE:'SPX', NASDAQ:'SPX', US:'SPX', TSX:'SPTSX', ASX:'ASX200',
                        BMV:'MEXBOL', BCS:'IPSA', LSE:'FTSE100', HEL:'OMXH25'};
 // Nome curto na etiqueta do cartão ("vs S&P/TSX") — legível sem decorar ticker; o nome inteiro vai no title.
-const BENCH_LABEL = {IBOV:'IBOV', SPX:'S&P 500', SPTSX:'S&P/TSX', ASX200:'ASX 200', MEXBOL:'MEXBOL',
+// México = "IPC" (o nome oficial, S&P/BMV IPC): "vs MEXBOL" ao lado de GMEXICOB não cabia no cartão de 149px
+// (notebook 1366×640) — faltavam 6px e a etiqueta ganhava reticências.
+const BENCH_LABEL = {IBOV:'IBOV', SPX:'S&P 500', SPTSX:'S&P/TSX', ASX200:'ASX 200', MEXBOL:'IPC',
                      IPSA:'IPSA', FTSE100:'FTSE 100', OMXH25:'OMXH25'};
 let _hmMode = 'abs';                           // 'abs' | 'rel' — não fica salvo: toda visita abre na absoluta
 
@@ -2986,16 +2989,17 @@ function _renderHeatmap(){
     const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}${pp?'pp':'%'}` : '—';
     const pg = _pregao(q);
     const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.text}</span>` : '';
-    const name = rel && r.bench
-      ? `<div class="hm-name rel"><span class="hm-nm">${q.name}</span><span class="hm-vs">${r.self?'benchmark':'vs '+(BENCH_LABEL[r.bench]||r.bench).replace(/&/g,'&amp;')}</span></div>`
-      : `<div class="hm-name">${q.name}</div>`;
+    const tk = `<div class="hm-ticker">${_short(q.ticker)}</div>`;
+    // etiqueta do benchmark só no relativo (o absoluto continua sem tocar em BENCH_LABEL)
+    const vs = !(rel && r.bench) ? '' : r.self ? `<span class="hm-vs" data-short="bmk">benchmark</span>`
+      : (lbl => `<span class="hm-vs" data-short="${lbl}">vs ${lbl}</span>`)((BENCH_LABEL[r.bench]||r.bench).replace(/&/g,'&amp;'));
     return `<a class="hm-card ${_heatClass(r.self ? null : pct)}" href="#" data-ticker="${q.ticker}"
         title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}${rel?`&#10;${_relTip(q, r)}`:''}&#10;Click to view history">
       <div class="hm-card-top">
-        <div class="hm-ticker">${_short(q.ticker)}</div>
+        ${vs ? `<div class="hm-tkline">${tk}${vs}</div>` : tk}
         <div class="hm-change">${pctStr}</div>
       </div>
-      ${name}
+      <div class="hm-name">${q.name}</div>
       ${_sparkline(closes)}
       <div class="hm-foot">
         <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
@@ -3003,6 +3007,9 @@ function _renderHeatmap(){
       </div>
     </a>`;
   }).join('');
+  // Etiqueta que não coube inteira (celular estreito + ticker longo, ex.: GMEXICOB em 360px): perde o "vs "
+  // antes de aceitar reticências. Pinta, mede, ajusta — a largura do texto varia por aparelho.
+  if(rel) grid.querySelectorAll('.hm-vs[data-short]').forEach(v=>{ if(v.scrollWidth > v.clientWidth + .5) v.textContent = v.dataset.short; });
 }
 
 // Botões de período do heatmap
