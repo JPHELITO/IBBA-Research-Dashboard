@@ -1,0 +1,74 @@
+name: 📰 Resumo do dia — e-mail das 18h
+
+# Junta os "resumos da última hora" da Home (tabela news_digest, gravada pelo robô do
+# news-hunter) num e-mail para os 4 do time, todo dia às 18h de Brasília. Detalhes em
+# _shared/daily_digest_mail.py.
+#
+# POR QUE TANTOS CRONS: o agendador do GitHub atrasa 3 a 9 horas neste repo (o cron das
+# 12:30 UTC do status_digest rodou entre 15:24 e 21:20 UTC no último mês). Os horários
+# abaixo são só DESPERTADORES: o primeiro que rodar dorme até as 18h (se começou cedo
+# demais para caber em um job, dorme o que cabe e pede um job novo). Quem chega depois
+# fica na fila (concurrency) e sai na hora, porque o dia já foi marcado como enviado.
+on:
+  schedule:
+    - cron: "17 9 * * *"    # 06:17 BRT
+    - cron: "17 12 * * *"   # 09:17 BRT
+    - cron: "47 14 * * *"   # 11:47 BRT
+    - cron: "17 17 * * *"   # 14:17 BRT
+    - cron: "12 21 * * *"   # 18:12 BRT (a hora certa, se o GitHub fosse pontual)
+  push:
+    branches: [main]
+    paths:
+      - "_shared/daily_digest_mail.py"
+      - ".github/workflows/daily_digest_mail.yml"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Reenviar um dia (AAAA-MM-DD). Vazio = hoje, esperando as 18h."
+        default: ""
+      to:
+        description: "Só para estes e-mails (vírgula). Vazio = os 4 do time."
+        default: ""
+      test:
+        description: "Teste: não confere nem marca o 'já mandei hoje'."
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-digest-mail
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    permissions:
+      contents: read
+      actions: write        # para pedir o job seguinte (rearm)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Montar e mandar o resumo do dia
+        id: mail
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SMTP_USER:            ${{ secrets.SMTP_USER }}
+          SMTP_PASS:            ${{ secrets.SMTP_PASS }}
+          PYTHONUTF8: "1"
+          IN_DATE: ${{ github.event.inputs.date }}
+          IN_TO:   ${{ github.event.inputs.to }}
+          IN_TEST: ${{ github.event.inputs.test }}
+        run: |
+          args="--send"
+          if [ -n "$IN_DATE" ]; then args="$args --date $IN_DATE"; else args="$args --wait"; fi
+          if [ -n "$IN_TO" ]; then args="$args --to $IN_TO"; fi
+          if [ "$IN_TEST" = "true" ]; then args="$args --test"; fi
+          python _shared/daily_digest_mail.py $args
+      - name: Pedir um job novo (começou cedo demais para caber num só)
+        if: steps.mail.outputs.rearm == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run daily_digest_mail.yml --ref ${{ github.ref_name }}
