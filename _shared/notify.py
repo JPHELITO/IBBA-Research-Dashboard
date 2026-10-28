@@ -42,6 +42,17 @@ def _env(name, default=None):
     return v if v not in (None, "") else default
 
 
+def _anotar(msg: str, user: str | None = None) -> None:
+    """No GitHub Actions, o motivo da falha vira um aviso na página do run (a API pública mostra,
+    sem login). Nunca leva senha; o endereço do robô sai trocado por <SMTP_USER>."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    txt = " ".join(str(msg).split())
+    if user:
+        txt = txt.replace(user, "<SMTP_USER>")
+    print("::warning title=notify::" + txt[:400])
+
+
 def send(subject: str, body: str, to: list[str] | None = None, html: bool = False) -> bool:
     """Envia 1 e-mail. Devolve True/False; NUNCA levanta exceção."""
     user = _env("SMTP_USER"); pw = _env("SMTP_PASS")
@@ -49,6 +60,7 @@ def send(subject: str, body: str, to: list[str] | None = None, html: bool = Fals
     to = to or DEFAULT_RECIPIENTS
     if not user or not pw:
         print("notify: SMTP_USER/SMTP_PASS ausentes — e-mail ignorado.", file=sys.stderr)
+        _anotar("SMTP_USER/SMTP_PASS ausentes — e-mail ignorado.")
         return False
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -65,6 +77,7 @@ def send(subject: str, body: str, to: list[str] | None = None, html: bool = Fals
         return True
     except Exception as e:
         print(f"notify: falha ao enviar (ignorado): {e}", file=sys.stderr)
+        _anotar(f"falha ao enviar: {type(e).__name__}: {e}", user)
         return False
 
 
