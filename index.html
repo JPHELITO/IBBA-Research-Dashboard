@@ -624,10 +624,14 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* Modo relativo (2026-10-28): à direita do nome, o índice contra o qual o número foi medido.
-   Quem encolhe é o nome (reticências); o "vs IBOV" fica sempre inteiro. */
-.hm-name.rel{display:flex;gap:4px;justify-content:space-between;}
-.hm-name.rel .hm-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.hm-vs{flex:none;font-weight:700;letter-spacing:.01em;}
+   Quem encolhe é o nome (reticências); o "vs IBOV" fica sempre inteiro. Etiqueta com CAIXA LEVE (pedido do
+   usuário ao ver a 1ª versão, só texto: "um pequeno indicativo... de qual o benchmark") — a mesma regra das
+   etiquetas do feed: fundo translúcido, raio 4px, cor firme, letra do mesmo tamanho e a linha NÃO cresce.
+   Fundo e fio saem da cor do texto do cartão: escurecem o claro, clareiam o forte (texto branco) e o escuro. */
+.hm-name.rel{display:flex;gap:4px;justify-content:space-between;align-items:center;opacity:1;}
+.hm-name.rel .hm-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.82;}
+.hm-vs{flex:none;font-weight:700;letter-spacing:.02em;line-height:1;padding:.75px 4px;border-radius:4px;
+  background:color-mix(in srgb,currentColor 11%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 22%,transparent);}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
 .hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
@@ -1214,6 +1218,7 @@ html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
 html.dark .hm-name{opacity:.95;}
+html.dark .hm-name.rel{opacity:1;} html.dark .hm-name.rel .hm-nm{opacity:.95;}   /* relativo: a etiqueta "vs" fica cheia */
 html.dark .hm-ccy{opacity:.95;}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
@@ -2860,6 +2865,9 @@ function _seriesFor(q, range){
 // (sobe quando o papel ganha do índice: o mesmo sinal do número).
 const BENCH_BY_EXCH = {B3:'IBOV', NYSE:'SPX', NASDAQ:'SPX', US:'SPX', TSX:'SPTSX', ASX:'ASX200',
                        BMV:'MEXBOL', BCS:'IPSA', LSE:'FTSE100', HEL:'OMXH25'};
+// Nome curto na etiqueta do cartão ("vs S&P/TSX") — legível sem decorar ticker; o nome inteiro vai no title.
+const BENCH_LABEL = {IBOV:'IBOV', SPX:'S&P 500', SPTSX:'S&P/TSX', ASX200:'ASX 200', MEXBOL:'MEXBOL',
+                     IPSA:'IPSA', FTSE100:'FTSE 100', OMXH25:'OMXH25'};
 let _hmMode = 'abs';                           // 'abs' | 'rel' — não fica salvo: toda visita abre na absoluta
 
 // Dia do último negócio no calendário DA BOLSA (AAAA-MM-DD) — para não comparar pregões diferentes.
@@ -2979,7 +2987,7 @@ function _renderHeatmap(){
     const pg = _pregao(q);
     const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.text}</span>` : '';
     const name = rel && r.bench
-      ? `<div class="hm-name rel"><span class="hm-nm">${q.name}</span><span class="hm-vs">${r.self?'benchmark':'vs '+_short(r.bench)}</span></div>`
+      ? `<div class="hm-name rel"><span class="hm-nm">${q.name}</span><span class="hm-vs">${r.self?'benchmark':'vs '+(BENCH_LABEL[r.bench]||r.bench).replace(/&/g,'&amp;')}</span></div>`
       : `<div class="hm-name">${q.name}</div>`;
     return `<a class="hm-card ${_heatClass(r.self ? null : pct)}" href="#" data-ticker="${q.ticker}"
         title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}${rel?`&#10;${_relTip(q, r)}`:''}&#10;Click to view history">

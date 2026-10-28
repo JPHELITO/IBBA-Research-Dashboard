@@ -35,7 +35,7 @@ window.__RUN__=async function(){
                  daily:serie([50,10,1],[5700,5500,5404])});
   const ctx={NUM_LOC:'en-US', _RANGE_DAYS:{W:7,M:31,Y:366}, _quotes:[S,B,T2,X,C,IP],
              _short:x=>x.replace(/\.(SA|SN|MX|L|HE|AX|F|TO|AS)$/,'')};
-  const M=new Function('ctx',`with(ctx){ ${SRC}\n return {_relFor,_relTip,_seriesFor,_pregao,_tradeDay,BENCH_BY_EXCH,get mode(){return _hmMode}}; }`)(ctx);
+  const M=new Function('ctx',`with(ctx){ ${SRC}\n return {_relFor,_relTip,_seriesFor,_pregao,_tradeDay,BENCH_BY_EXCH,BENCH_LABEL,get mode(){return _hmMode}}; }`)(ctx);
 
   // ── o mapa: cada bolsa do heatmap tem o seu índice ──
   const MAP={B3:'IBOV',NYSE:'SPX',NASDAQ:'SPX',US:'SPX',TSX:'SPTSX',ASX:'ASX200',BMV:'MEXBOL',BCS:'IPSA',LSE:'FTSE100',HEL:'OMXH25'};
@@ -44,6 +44,7 @@ window.__RUN__=async function(){
   const gi=/const G_INDEX\s*=\s*\[([^\]]*)\]/.exec(t)[1];
   ok('os 6 índices novos estão no grupo Index (aparecem no "Selected ▾")', ['SPTSX','ASX200','MEXBOL','IPSA','FTSE100','OMXH25'].every(x=>gi.includes(`'${x}'`)), gi);
   ok('todo benchmark do mapa está no grupo Index', Object.values(MAP).every(x=>gi.includes(`'${x}'`)));
+  ok('todo benchmark tem nome curto para a etiqueta do cartão', Object.values(MAP).every(x=>M.BENCH_LABEL[x]), JSON.stringify(M.BENCH_LABEL));
 
   // ── D: mesma sessão ──
   let r=M._relFor(S,'D');
@@ -97,7 +98,8 @@ window.__RUN__=async function(){
     const grid=document.createElement('div'); grid.id='heatmap-grid'; document.body.appendChild(grid);
     const rctx={document, _updateFilterCount(){}, _hmDisplayed:['CS.TO','SPTSX','LUN.TO','MT.AS'], _range:'W', _hmMode:'rel',
       _sparkline:c=>`<svg class="hm-spark" data-n="${(c||[]).length}"></svg>`, _heatClass:p=>p==null?'flat':(p>0?'up':'down'),
-      _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'CAD', _short:ctx._short, _pregao:M._pregao, _relFor:M._relFor, _relTip:M._relTip, _seriesFor:M._seriesFor};
+      _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'CAD', _short:ctx._short, _pregao:M._pregao, _relFor:M._relFor, _relTip:M._relTip, _seriesFor:M._seriesFor,
+      BENCH_LABEL:M.BENCH_LABEL};
     Object.defineProperty(rctx,'_quotes',{get:()=>ctx._quotes});
     const render=new Function('ctx',`with(ctx){ ${REN}\n return _renderHeatmap; }`)(rctx);
     render();
@@ -105,8 +107,9 @@ window.__RUN__=async function(){
     const card=x=>grid.querySelector(`.hm-card[data-ticker="${x}"]`);
     ok('relativo · ordem: ganhou do índice > benchmark (no zero) > perdeu > sem número', tk.join()==='CS.TO,SPTSX,LUN.TO,MT.AS', tk.join());
     ok('relativo · número em pp', /^\+\d+\.\d\dpp$/.test(card('CS.TO').querySelector('.hm-change').textContent), card('CS.TO').querySelector('.hm-change').textContent);
-    ok('relativo · "vs SPTSX" ao lado do nome', card('CS.TO').querySelector('.hm-name.rel .hm-vs').textContent==='vs SPTSX'
-       && card('CS.TO').querySelector('.hm-name.rel .hm-nm').textContent==='Capstone Copper');
+    ok('relativo · etiqueta "vs S&P/TSX" ao lado do nome', card('CS.TO').querySelector('.hm-name.rel .hm-vs').textContent==='vs S&P/TSX'
+       && card('CS.TO').querySelector('.hm-name.rel .hm-nm').textContent==='Capstone Copper', card('CS.TO').querySelector('.hm-vs').textContent);
+    ok('relativo · TODO cartão com benchmark leva a etiqueta (um por papel)', ['CS.TO','SPTSX','LUN.TO'].every(x=>!!card(x).querySelector('.hm-vs')));
     ok('relativo · benchmark com o próprio % e a etiqueta "benchmark", sem cor de ganho/perda',
        /%$/.test(card('SPTSX').querySelector('.hm-change').textContent) && card('SPTSX').querySelector('.hm-vs').textContent==='benchmark' && card('SPTSX').classList.contains('flat'));
     const tip=card('CS.TO').getAttribute('title');
