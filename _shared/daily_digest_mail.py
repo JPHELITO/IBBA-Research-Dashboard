@@ -272,7 +272,8 @@ def main() -> int:
     else:
         ok = notify.once(SOURCE, period, KIND, subject, body, to, html=True)
     if not ok:
-        print("::error::e-mail NÃO enviado — confira os secrets SMTP_USER / SMTP_PASS.")
+        print("::error::e-mail NÃO enviado — o motivo está no aviso 'notify' deste run "
+              "(senha de app do Gmail? secrets SMTP_USER / SMTP_PASS).")
     return 0 if ok else 1
 
 
