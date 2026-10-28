@@ -21,6 +21,8 @@ QUANDO SAI (workflow .github/workflows/daily_digest_mail.yml)
   para caber nas 6 h que o GitHub dá, dorme o que cabe e pede um job novo ("rearm").
   Uma vez por dia: notify.once lembra no update_log (source=daily_digest, method=mail:daily,
   detail=AAAA-MM-DD). Depois das 22h não manda mais: o job fica vermelho e o GitHub avisa.
+  Falha de envio: o motivo (porta e etapa) sai como aviso 'notify' do run, legível sem login
+  (28/10/2026: o Gmail derrubou a conexão do runner na porta 587 — o notify tenta a 465).
 
 USO
   python _shared/daily_digest_mail.py --html-out resumo.html [--date 2026-10-28]   (só monta)
