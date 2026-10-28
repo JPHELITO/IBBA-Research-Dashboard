@@ -67,18 +67,37 @@ def send(subject: str, body: str, to: list[str] | None = None, html: bool = Fals
     msg["From"] = f"IBBA Dashboard <{user}>"
     msg["To"] = ", ".join(to)
     msg.attach(MIMEText(body, "html" if html else "plain", "utf-8"))
-    try:
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP(server, port, timeout=30) as s:
-            s.starttls(context=ctx)
-            s.login(user, pw)
-            s.sendmail(user, to, msg.as_string())
-        print(f"notify: e-mail enviado ({subject!r}) → {', '.join(to)}")
-        return True
-    except Exception as e:
-        print(f"notify: falha ao enviar (ignorado): {e}", file=sys.stderr)
-        _anotar(f"falha ao enviar: {type(e).__name__}: {e}", user)
-        return False
+    raw = msg.as_string()
+    # 2026-10-28: do runner do GitHub, o Gmail passou a derrubar a conexão ("Connection unexpectedly
+    # closed") — daqui do PC as portas 587 e 465 respondem normal. Se cair ANTES de entregar a mensagem,
+    # tenta a 465 (SSL direto). Caiu na entrega: não repete (o Gmail pode ter aceitado → e-mail em dobro).
+    tentativas = [(port, False)] + ([(465, True)] if port == 587 else [])
+    erros = []
+    for p, ssl_direto in tentativas:
+        etapa = "conexão"
+        try:
+            ctx = ssl.create_default_context()
+            s = (smtplib.SMTP_SSL(server, p, timeout=30, context=ctx) if ssl_direto
+                 else smtplib.SMTP(server, p, timeout=30))
+            with s:
+                if not ssl_direto:
+                    etapa = "starttls"
+                    s.starttls(context=ctx)
+                etapa = "login"
+                s.login(user, pw)
+                etapa = "entrega"
+                s.sendmail(user, to, raw)
+            print(f"notify: e-mail enviado ({subject!r}) → {', '.join(to)} [porta {p}]")
+            if erros:
+                _anotar(f"enviado pela porta {p} depois de: {' | '.join(erros)}", user)
+            return True
+        except Exception as e:
+            erros.append(f"porta {p}, etapa {etapa}: {type(e).__name__}: {e}")
+            print(f"notify: falha ao enviar (porta {p}, etapa {etapa}; ignorado): {e}", file=sys.stderr)
+            if etapa == "entrega":
+                break
+    _anotar("falha ao enviar — " + " | ".join(erros), user)
+    return False
 
 
 # ── conveniências cientes do registro ────────────────────────────────────────
