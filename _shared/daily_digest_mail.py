@@ -22,7 +22,8 @@ QUANDO SAI (workflow .github/workflows/daily_digest_mail.yml)
   Uma vez por dia: notify.once lembra no update_log (source=daily_digest, method=mail:daily,
   detail=AAAA-MM-DD). Depois das 22h não manda mais: o job fica vermelho e o GitHub avisa.
   Falha de envio: o motivo (porta e etapa) sai como aviso 'notify' do run, legível sem login
-  (28/10/2026: o Gmail derrubou a conexão do runner na porta 587 — o notify tenta a 465).
+  (28/10/2026: o Gmail derrubava o LOGIN nas portas 587 e 465 — a senha de app do robô tinha
+  caído; nenhum aviso saía desde 25/09. Senha nova no secret SMTP_PASS no mesmo dia).
 
 USO
   python _shared/daily_digest_mail.py --html-out resumo.html [--date 2026-10-28]   (só monta)
