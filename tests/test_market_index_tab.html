@@ -1,0 +1,55 @@
+<!doctype html><meta charset="utf-8"><title>Market · aba Index da Watchlist + período sem histórico</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta o código REAL do market.html (não copia): o _wlUniverse (aba Index, 2026-10-28) e o trecho
+   _dailyLive → _cobre (retorno do período só quando o histórico alcança o começo dele).
+   Rodar: abrir /tests/test_market_index_tab.html e ler o #out (ou chamar window.__RUN__()). */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+
+window.__RUN__=async function(){
+  const t=(await (await fetch('/market.html')).text()).split('\r\n').join('\n');
+  const now=Math.floor(Date.now()/1000), DAY=86400;
+  const serie=(dias,vals)=>dias.map((n,i)=>[Math.floor(now/DAY)*DAY+12.5*3600-n*DAY,vals[i]]);
+
+  // ── a aba ──
+  const seg=cut(t,'<div class="seg" id="wl-mode">','</div>');
+  ok('Watchlist · 5 abas, com Index no fim', [...seg.matchAll(/data-m="(\w+)"/g)].map(m=>m[1]).join()==='all,coverage,peers,commodities,index', seg);
+  const gi=/const G_INDEX=\[([^\]]*)\]/.exec(t)[1].split(',').map(s=>s.replace(/'/g,'').trim());
+  const UNI=cut(t,'function _wlUniverse(){','return _quotes.filter(q=>set.has(q.ticker));\n}');
+  const quotes=[...gi,'VALE3.SA','CS.TO','ZZZ'].map(x=>({ticker:x}));
+  const ctx={_wlMode:'index', _sel:[], _anchor:null, _quotes:quotes, COMM_TICKERS:[], byT:x=>({ticker:x}), TICKER_SECTOR:{},
+    SECTOR_GROUPS:{}, SECTOR_INDEX:{}, COVERAGE:['VALE3.SA','CS.TO'], KNOWN:new Set([...gi,'VALE3.SA','CS.TO']), G_INDEX:gi};
+  const U=new Function('ctx',`with(ctx){ ${UNI}\n return _wlUniverse; }`)(ctx);
+  let tk=U().map(q=>q.ticker);
+  ok('aba Index · lista os 11 índices do grupo Index', tk.length===11 && gi.every(x=>tk.includes(x)), tk.join());
+  ok('aba Index · nenhuma empresa entra sozinha', !tk.includes('VALE3.SA') && !tk.includes('CS.TO'));
+  ok('aba Index · os 6 novos estão lá', ['SPTSX','ASX200','MEXBOL','IPSA','FTSE100','OMXH25'].every(x=>tk.includes(x)));
+  ctx._sel=['CS.TO']; tk=U().map(q=>q.ticker);
+  ok('aba Index · o selecionado continua aparecendo (para ver/remover), como nas outras abas', tk.includes('CS.TO') && tk.length===12, tk.join());
+  ctx._sel=[]; ctx._wlMode='coverage'; tk=U().map(q=>q.ticker);
+  ok('Coverage continua igual', tk.join()==='VALE3.SA,CS.TO', tk.join());
+
+  // ── retorno do período só com histórico que alcança o começo dele ──
+  const RET=cut(t,'function _dailyLive(q){','return d[0][0]<=ini+7*86400;\n}');
+  const hist={};
+  const c2={_histMap:hist, _cFrom:null, _cTo:null, _RANGE_DAYS:{'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372,'5Y':1860,'Max':40000}};
+  const F=new Function('ctx',`with(ctx){ function _dailyRaw(q){ return (q&&_histMap[q.ticker]) || ((q&&Array.isArray(q.daily))?q.daily:[]); }\n${RET}\n return {_ret,_cobre}; }`)(c2);
+  const ipsa={ticker:'IPSA', price:5350, change_pct:-0.8, daily:serie([57,40,20,6,1],[5720,5600,5500,5400,5390])};
+  const longa={ticker:'SPTSX', price:110, change_pct:0.2, daily:serie([800,400,300,40,20,6,1],[60,80,90,100,102,104,108])};
+  ok('IPSA · 1M sai (histórico desde 01/09 cobre)', Math.abs(F._ret(ipsa,'1M')-(5350/5500-1)*100)<1e-9, F._ret(ipsa,'1M'));
+  ok('IPSA · YTD e 1Y viram "—" (antes: variação desde setembro com rótulo do ano)', F._ret(ipsa,'YTD')===null && F._ret(ipsa,'1Y')===null);
+  ok('IPSA · 3M também "—" (começa antes de setembro)', F._ret(ipsa,'3M')===null);
+  ok('IPSA · Max segue contando desde o 1º dado', Math.abs(F._ret(ipsa,'Max')-(5350/5720-1)*100)<1e-9, F._ret(ipsa,'Max'));
+  ok('IPSA · 1D é a variação do dia, sempre', F._ret(ipsa,'1D')===-0.8);
+  ok('série longa · YTD e 1Y saem normalmente', F._ret(longa,'YTD')!=null && F._ret(longa,'1Y')!=null);
+  ok('série longa · 5Y sai se o histórico tem 5 anos', F._cobre({daily:serie([2000,1],[1,2])},'5Y')===true && F._cobre({daily:serie([900,1],[1,2])},'5Y')===false);
+  ok('folga de 7 dias (feriado/fim de semana no começo do período)', F._cobre({daily:serie([26,1],[1,2])},'1M')===true);
+  ok('sem série nenhuma · não decide aqui (o _series diz "—")', F._cobre({daily:[]},'YTD')===true && F._ret({daily:[],price:1},'YTD')===null);
+
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+window.__RUN__();
+</script></body>

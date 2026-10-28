@@ -251,6 +251,15 @@ body.theme-light .chart-dates input{color-scheme:light}
 .wl-card > .card-head{position:absolute;top:0;left:0;right:0;height:43px;z-index:2;flex-wrap:nowrap;overflow:hidden}
 .wl-card > .wl-scroll{position:absolute;top:43px;bottom:33px;left:0;right:0;overflow:auto}
 .wl-card > .wl-foot{position:absolute;bottom:0;left:0;right:0;height:33px}
+/* 5 abas na Watchlist (Index entrou em 28/10/2026). O cabeçalho é absoluto, de altura fixa e corta o que
+   passa: botões um pouco mais justos e, no notebook estreito, DUAS linhas (título + período em cima, abas
+   embaixo) em vez de esconder a última aba. Medido: 1 linha pede ~408px e cabe a partir de ~1300px de tela. */
+@media(min-width:1025px){ #wl-mode button{padding:4px 6px} }
+@media(min-width:1025px) and (max-width:1340px){
+  .wl-card > .card-head{flex-wrap:wrap;height:72px;align-content:center;row-gap:6px}
+  .wl-card > .card-head .card-tools{margin-left:0;flex-basis:100%}
+  .wl-card > .wl-scroll{top:72px}
+}
 table.wl{border-collapse:collapse;width:100%;font-size:10.5px}
 table.wl th,table.wl td{padding:4px 5px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border)}
 table.wl th{position:sticky;top:0;background:var(--panel);color:var(--mute);font-weight:600;font-size:9.5px;
@@ -645,7 +654,7 @@ body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;borde
           <span class="card-title">Watchlist</span>
           <span class="rng-badge" id="rb-wl"></span>
           <div class="card-tools">
-            <div class="seg" id="wl-mode"><button data-m="all" class="active">All</button><button data-m="coverage">Coverage</button><button data-m="peers">Peers</button><button data-m="commodities">Commodities</button></div>
+            <div class="seg" id="wl-mode"><button data-m="all" class="active">All</button><button data-m="coverage">Coverage</button><button data-m="peers">Peers</button><button data-m="commodities">Commodities</button><button data-m="index">Index</button></div>
           </div>
         </div>
         <div class="wl-scroll"><table class="wl" id="wl-table"></table></div>
@@ -890,7 +899,16 @@ function _series(q,range,mode){
   const base=arr[0][1];
   return arr.map(p=>[p[0], mode==='pct'?(base?(p[1]/base-1)*100:0):p[1]]);
 }
-function _ret(q,range){ if(range==='1D') return q.change_pct; const s=_series(q,range,'pct'); if(!s||s.length<2) return null; return s[s.length-1][1]; }
+function _ret(q,range){ if(range==='1D') return q.change_pct; if(!_cobre(q,range)) return null; const s=_series(q,range,'pct'); if(!s||s.length<2) return null; return s[s.length-1][1]; }
+// O histórico do ativo alcança o COMEÇO do período? O IPSA da MSCI só existe desde 01/09/2026 e o "YTD" dele era a
+// variação desde setembro com o rótulo do ano (28/10/2026). Sem cobertura → "—" no número; o gráfico segue
+// desenhando o trecho que existe. Max e datas livres continuam contando desde o 1º dado (é o que pedem).
+function _cobre(q,range){
+  if(range==='Max'||range==='custom') return true;
+  const d=_dailyRaw(q); if(!d||!d.length) return true;   // sem série: quem decide é o _series
+  const ini=range==='YTD'?Date.UTC(new Date().getUTCFullYear(),0,1)/1000:Date.now()/1000-(_RANGE_DAYS[range]||372)*86400;
+  return d[0][0]<=ini+7*86400;
+}
 // série diária de uma COMMODITY normalizada a 0% (comparação multi-linha na Thesis Strip) — também termina no preço ao vivo
 function _commSeries(c, range){
   const d=_dailyLive(c); if(d.length<2) return null;   // fechamentos + preço ao vivo da commodity
@@ -956,7 +974,7 @@ let _chartMode='price';
 let _rLong=null, _rShort=null;    // pernas do RATIO = espelho de _sel[0]/_sel[1] (no Ratio a seleção É o par)
 let _rAuto=null;                  // ponta short preenchida AUTOMATICAMENTE (benchmark do setor); null = escolha do usuário
 let _cmpH=0;                      // altura medida da linha "Compare" (escondida no Ratio; devolvida ao gráfico)
-let _wlMode='all', _wlSort={key:'tk',dir:1};   // modos: all(default)|coverage|peers; default alfabético por ticker
+let _wlMode='all', _wlSort={key:'tk',dir:1};   // modos: all(default)|coverage|peers|commodities|index; default alfabético por ticker
 let _wlCustom=[]; try{ _wlCustom=JSON.parse(localStorage.getItem('mkt_wl_custom'))||[]; }catch(e){_wlCustom=[];}
 if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
 function _wlCustomSave(){ try{localStorage.setItem('mkt_wl_custom',JSON.stringify(_wlCustom));}catch(e){} }
@@ -1768,6 +1786,7 @@ function _wlUniverse(){
   if(_wlMode==='commodities') return COMM_TICKERS.map(t=>byT(t));   // ouro / cobre / minério 62%
   let base;
   if(_wlMode==='all') base=_quotes.map(q=>q.ticker);
+  else if(_wlMode==='index') base=G_INDEX.slice();   // 2026-10-28: aba própria dos índices (pedido do usuário)
   else if(_wlMode==='peers'){ const sec=_anchor?TICKER_SECTOR[_anchor]:null;
     base=sec?[_anchor,...(SECTOR_GROUPS[sec]||[]),...(SECTOR_INDEX[sec]||[])]:COVERAGE.slice(); }
   else base=COVERAGE.slice();   // coverage (modo 'custom' removido)
