@@ -1,0 +1,140 @@
+<!doctype html><meta charset="utf-8"><title>heatmap · performance relativa ao índice da bolsa</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta o código REAL de index.html (não copia): do EXCH_TZ até o _relTip (selo de pregão, ponta ao
+   vivo, _seriesFor e o modo relativo inteiro) + o _renderHeatmap. Séries montadas em volta do "agora"
+   para os cortes de janela (W = 7 dias, M = 31, Y = 366) caírem sempre nos mesmos pontos.
+   Rodar: abrir /tests/test_heatmap_relative.html e ler o #out (ou chamar window.__RUN__()). */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const near=(a,b,e=1e-6)=>a!=null&&b!=null&&Math.abs(a-b)<e;
+
+window.__RUN__=async function(){
+  const t=(await (await fetch('/index.html')).text()).split('\r\n').join('\n');
+  const SRC=cut(t,'const EXCH_TZ = {','· index ${f(r.bPct)})`);\n}');
+  const REN=cut(t,'function _renderHeatmap(){','}).join(\'\');\n}');
+  const now=Math.floor(Date.now()/1000), DAY=86400, H=3600;
+  const dia=n=>Math.floor(now/DAY)*DAY+13.5*H-n*DAY;          // n dias atrás, 13:30 UTC (abertura TSX/NYSE)
+  const serie=(dias,vals)=>dias.map((n,i)=>[dia(n),vals[i]]);
+  const upd=new Date().toISOString();
+  // Toronto: papel e índice; o "agora" do índice e do papel no MESMO pregão
+  const D6=[30,20,10,6,3,1];
+  const mk=o=>Object.assign({sector:'copper',updated_at:upd,session:[now-3*H,now+3*H]},o);
+  const S  = mk({ticker:'CS.TO',name:'Capstone Copper',exchange:'TSX',price:110,change_pct:(110/108-1)*100,traded_at:now-300,
+                 daily:serie(D6,[90,95,100,104,106,108]), intraday:{prev:108,pts:[[now-600,109],[now-300,110]]}});
+  const B  = mk({ticker:'SPTSX',name:'S&P/TSX Composite',exchange:'TSX',sector:'index',price:1040,change_pct:(1040/1030-1)*100,traded_at:now-300,
+                 daily:serie(D6,[900,950,1000,1010,1020,1030]), intraday:{prev:1030,pts:[[now-600,1035],[now-300,1040]]}});
+  const T2 = mk({ticker:'LUN.TO',name:'Lundin Mining',exchange:'TSX',price:50,change_pct:-2,traded_at:now-300,
+                 daily:serie(D6,[60,58,56,55,54,51])});
+  const X  = mk({ticker:'MT.AS',name:'ArcelorMittal (AMS)',exchange:'AMS',price:30,change_pct:1,traded_at:now-300,daily:serie(D6,[1,2,3,4,5,6])});
+  // Chile: o IPSA da MSCI só tem os últimos 50 dias (existe desde 01/09/2026)
+  const C  = mk({ticker:'CMPC.SN',name:'CMPC',exchange:'BCS',price:950,change_pct:1,traded_at:now-300,
+                 daily:serie([400,300,200,100,10,1],[1000,1100,1050,980,960,940])});
+  const IP = mk({ticker:'IPSA',name:'MSCI IPSA',exchange:'BCS',sector:'index',price:5350,change_pct:-1,traded_at:now-300,
+                 daily:serie([50,10,1],[5700,5500,5404])});
+  const ctx={NUM_LOC:'en-US', _RANGE_DAYS:{W:7,M:31,Y:366}, _quotes:[S,B,T2,X,C,IP],
+             _short:x=>x.replace(/\.(SA|SN|MX|L|HE|AX|F|TO|AS)$/,'')};
+  const M=new Function('ctx',`with(ctx){ ${SRC}\n return {_relFor,_relTip,_seriesFor,_pregao,_tradeDay,BENCH_BY_EXCH,BENCH_LABEL,get mode(){return _hmMode}}; }`)(ctx);
+
+  // ── o mapa: cada bolsa do heatmap tem o seu índice ──
+  const MAP={B3:'IBOV',NYSE:'SPX',NASDAQ:'SPX',US:'SPX',TSX:'SPTSX',ASX:'ASX200',BMV:'MEXBOL',BCS:'IPSA',LSE:'FTSE100',HEL:'OMXH25'};
+  ok('mapa bolsa → benchmark (B3, NY, Toronto, Sydney, México, Santiago, Londres, Helsinque)', JSON.stringify(M.BENCH_BY_EXCH)===JSON.stringify(MAP), JSON.stringify(M.BENCH_BY_EXCH));
+  ok('padrão da visita = absoluta', M.mode==='abs', M.mode);
+  const gi=/const G_INDEX\s*=\s*\[([^\]]*)\]/.exec(t)[1];
+  ok('os 6 índices novos estão no grupo Index (aparecem no "Selected ▾")', ['SPTSX','ASX200','MEXBOL','IPSA','FTSE100','OMXH25'].every(x=>gi.includes(`'${x}'`)), gi);
+  ok('todo benchmark do mapa está no grupo Index', Object.values(MAP).every(x=>gi.includes(`'${x}'`)));
+  ok('todo benchmark tem nome curto para a etiqueta do cartão', Object.values(MAP).every(x=>M.BENCH_LABEL[x]), JSON.stringify(M.BENCH_LABEL));
+
+  // ── D: mesma sessão ──
+  let r=M._relFor(S,'D');
+  ok('D · relativa = variação do papel − variação do índice (pp)', near(r.pct,(110/108-1)*100-(1040/1030-1)*100), r.pct);
+  ok('D · risquinho = papel ÷ índice ao longo do pregão', r.closes.length===2 && near(r.closes[1],110/1040) && near(r.closes[0],109/1035), JSON.stringify(r.closes));
+  ok('D · diz contra quem', r.bench==='SPTSX');
+
+  // ── D: o índice já negocia hoje e o papel ainda não (atraso do Yahoo no B3, 26/10/2026) ──
+  const Sat={...S, traded_at:now-3*DAY};
+  r=M._relFor(Sat,'D');
+  ok('D · pregões diferentes → não compara (—)', r.pct===null, r.pct);
+  ok('D · e o title explica', /Not comparable yet/.test(r.why) && /arrives with a delay/.test(r.why), r.why);
+
+  // ── W: as duas pontas ao vivo, mesma janela ──
+  r=M._relFor(S,'W');
+  ok('W · (110/104 − 1) − (1040/1010 − 1), em pp', near(r.pct,(110/104-1)*100-(1040/1010-1)*100), r.pct);
+  ok('W · as pernas vão para o title', near(r.sPct,(110/104-1)*100) && near(r.bPct,(1040/1010-1)*100));
+  ok('W · risquinho termina no preço vivo ÷ índice vivo', near(r.closes[r.closes.length-1],110/1040) && near(r.closes[0],104/1010), JSON.stringify(r.closes));
+  ok('W · mesmo sinal no número e no risquinho', (r.pct>0)===(r.closes[r.closes.length-1]>r.closes[0]));
+
+  // ── W: papel parado no pregão anterior → o índice entra com o FECHAMENTO anterior, não o de agora ──
+  r=M._relFor(Sat,'W');
+  ok('W · ponta do índice recua para o fechamento anterior (1030)', near(r.bPct,(1030/1010-1)*100,1e-6), r.bPct);
+  // e o contrário: índice atrasado, papel já negociando hoje → o papel recua
+  r=M._relFor(S,'W'); const sVivo=r.sPct;
+  const Batr={...B, traded_at:now-3*DAY}; ctx._quotes=[S,Batr,T2,X,C,IP];
+  r=M._relFor(S,'W');
+  ok('W · índice atrasado → o papel entra com o fechamento anterior (108)', near(r.sPct,(108/104-1)*100) && !near(r.sPct,sVivo), r.sPct);
+  ctx._quotes=[S,B,T2,X,C,IP];
+
+  // ── M e Y com benchmark de histórico curto (IPSA da MSCI) ──
+  r=M._relFor(C,'M');
+  ok('M · Chile com o IPSA curto ainda dá (janela dentro do histórico)', near(r.pct,(950/960-1)*100-(5350/5500-1)*100), r.pct);
+  r=M._relFor(C,'Y');
+  ok('Y · histórico do índice começa depois da janela → "—"', r.pct===null, r.pct);
+  ok('Y · e o title diz desde quando há série', /history starts/.test(r.why) && /too short/.test(r.why), r.why);
+
+  // ── o próprio benchmark e bolsa sem benchmark ──
+  r=M._relFor(B,'W');
+  ok('benchmark · mostra o PRÓPRIO movimento (é a régua)', r.self===true && near(r.pct,(1040/1010-1)*100), r.pct);
+  ok('benchmark · title explica', /Benchmark: the other TSX tiles/.test(M._relTip(B,r)), M._relTip(B,r));
+  r=M._relFor(X,'W');
+  ok('bolsa fora do mapa (Amsterdã) · "—" sem quebrar', r.pct===null && r.bench===null, r.why);
+  ctx._quotes=[S,T2,X,C,IP];     // SPTSX ainda não chegou (robô novo ainda não rodou)
+  r=M._relFor(S,'W');
+  ok('benchmark ainda sem cotação · "—" com o motivo', r.pct===null && /no quote yet/.test(r.why), r.why);
+  ctx._quotes=[S,B,T2,X,C,IP];
+
+  // ── o cartão ──
+  {
+    const grid=document.createElement('div'); grid.id='heatmap-grid'; document.body.appendChild(grid);
+    const rctx={document, _updateFilterCount(){}, _hmDisplayed:['CS.TO','SPTSX','LUN.TO','MT.AS'], _range:'W', _hmMode:'rel',
+      _sparkline:c=>`<svg class="hm-spark" data-n="${(c||[]).length}"></svg>`, _heatClass:p=>p==null?'flat':(p>0?'up':'down'),
+      _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'CAD', _short:ctx._short, _pregao:M._pregao, _relFor:M._relFor, _relTip:M._relTip, _seriesFor:M._seriesFor,
+      BENCH_LABEL:M.BENCH_LABEL};
+    Object.defineProperty(rctx,'_quotes',{get:()=>ctx._quotes});
+    const render=new Function('ctx',`with(ctx){ ${REN}\n return _renderHeatmap; }`)(rctx);
+    render();
+    const cards=[...grid.querySelectorAll('.hm-card')], tk=cards.map(c=>c.dataset.ticker);
+    const card=x=>grid.querySelector(`.hm-card[data-ticker="${x}"]`);
+    ok('relativo · ordem: ganhou do índice > benchmark (no zero) > perdeu > sem número', tk.join()==='CS.TO,SPTSX,LUN.TO,MT.AS', tk.join());
+    ok('relativo · número em pp', /^\+\d+\.\d\dpp$/.test(card('CS.TO').querySelector('.hm-change').textContent), card('CS.TO').querySelector('.hm-change').textContent);
+    ok('relativo · etiqueta "vs S&P/TSX" ao lado do nome', card('CS.TO').querySelector('.hm-name.rel .hm-vs').textContent==='vs S&P/TSX'
+       && card('CS.TO').querySelector('.hm-name.rel .hm-nm').textContent==='Capstone Copper', card('CS.TO').querySelector('.hm-vs').textContent);
+    ok('relativo · TODO cartão com benchmark leva a etiqueta (um por papel)', ['CS.TO','SPTSX','LUN.TO'].every(x=>!!card(x).querySelector('.hm-vs')));
+    ok('relativo · benchmark com o próprio % e a etiqueta "benchmark", sem cor de ganho/perda',
+       /%$/.test(card('SPTSX').querySelector('.hm-change').textContent) && card('SPTSX').querySelector('.hm-vs').textContent==='benchmark' && card('SPTSX').classList.contains('flat'));
+    const tip=card('CS.TO').getAttribute('title');
+    ok('relativo · title com o índice e as duas pernas', /vs S&P\/TSX Composite: \+\d+\.\d\d pp \(CS \+5\.77% · index \+2\.97%\)/.test(tip), JSON.stringify(tip));
+    ok('relativo · bolsa sem benchmark fica sem etiqueta e com "—"', !card('MT.AS').querySelector('.hm-vs') && card('MT.AS').querySelector('.hm-change').textContent==='—');
+    ok('relativo · cor segue o número relativo', card('CS.TO').classList.contains('up') && card('LUN.TO').classList.contains('down'));
+    // absoluta: o cartão de sempre (sem etiqueta, %, ordem pelo movimento do papel)
+    rctx._hmMode='abs'; render();
+    const tkA=[...grid.querySelectorAll('.hm-card')].map(c=>c.dataset.ticker);
+    ok('absoluta · sem etiqueta "vs" e o número em %', !grid.querySelector('.hm-name.rel, .hm-vs')
+       && [...grid.querySelectorAll('.hm-change')].every(c=>/%$/.test(c.textContent)));
+    ok('absoluta · ordem pelo movimento do próprio papel', tkA.join()==='MT.AS,CS.TO,SPTSX,LUN.TO', tkA.join());
+    ok('absoluta · title igual ao de antes (sem a linha do relativo)', !/ pp /.test(card('CS.TO').getAttribute('title')));
+    grid.remove();
+  }
+  // ── o botão ──
+  {
+    const html=cut(t,'<div class="hm-range" id="hm-mode"','</div>');
+    ok('botões Absolute | Relative, com a absoluta acesa', /data-m="abs" class="active"[^>]*>Absolute</.test(html) && /data-m="rel"[^>]*>Relative</.test(html), html.replace(/\s+/g,' '));
+    const h=cut(t,"document.getElementById('hm-mode')?.addEventListener('click', e=>{",'\n});');
+    ok('o botão não busca nada (o benchmark já está em _quotes)', !/fetch|_load/.test(h));
+    ok('e não salva a escolha (toda visita abre na absoluta)', !/localStorage/.test(h));
+  }
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+window.__RUN__();
+</script></body>

@@ -623,6 +623,15 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
 .hm-change{font-size:9px;font-weight:700;letter-spacing:-.01em;flex:none;}
 .hm-name{font-size:7.5px;font-weight:500;opacity:.82;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Modo relativo (2026-10-28): à direita do nome, o índice contra o qual o número foi medido.
+   Quem encolhe é o nome (reticências); o "vs IBOV" fica sempre inteiro. Etiqueta com CAIXA LEVE (pedido do
+   usuário ao ver a 1ª versão, só texto: "um pequeno indicativo... de qual o benchmark") — a mesma regra das
+   etiquetas do feed: fundo translúcido, raio 4px, cor firme, letra do mesmo tamanho e a linha NÃO cresce.
+   Fundo e fio saem da cor do texto do cartão: escurecem o claro, clareiam o forte (texto branco) e o escuro. */
+.hm-name.rel{display:flex;gap:4px;justify-content:space-between;align-items:center;opacity:1;}
+.hm-name.rel .hm-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.82;}
+.hm-vs{flex:none;font-weight:700;letter-spacing:.02em;line-height:1;padding:.75px 4px;border-radius:4px;
+  background:color-mix(in srgb,currentColor 11%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 22%,transparent);}
 .hm-price{font-size:9px;font-weight:600;letter-spacing:-.01em;opacity:.92;white-space:nowrap;}
 .hm-ccy{font-weight:500;opacity:.78;font-size:.85em;margin-left:2px;}
 .hm-spark{display:block;width:100%;flex:1;min-height:0;margin:1px 0;}
@@ -654,15 +663,15 @@ html.dark .news-sec.nr{background:rgba(59,110,165,.32);color:#9ec3e8;}
   transition:background-color .24s cubic-bezier(.2,0,0,1);}
 #news-filter:has(.news-filter-chip.pos.active)>.ibba-slide{background:#16a34a;}
 #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:#c0392b;}
-#hm-range>.ibba-slide{background:var(--black);border-radius:6px;}
+#hm-range>.ibba-slide,#hm-mode>.ibba-slide{background:var(--black);border-radius:6px;}
 #co-ranges>.ibba-slide{background:var(--black);border-radius:6px;}
-html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:var(--orange);}
+html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #hm-mode>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:var(--orange);}
 html.dark #news-filter>.ibba-slide,html.dark #news-sector-filter>.ibba-slide{background:#343941;}
 html.dark #news-filter:has(.news-filter-chip.pos.active)>.ibba-slide{background:var(--green);}
 html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:var(--red);}
-:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#co-ranges).ibba-slide-on>button{position:relative;z-index:1;}
-:is(#hm-range,#co-ranges).ibba-slide-on>button{background:transparent;}
-:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#co-ranges).ibba-slide-on>button.active{background:transparent;border-color:transparent;}
+:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button{position:relative;z-index:1;}
+:is(#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button{background:transparent;}
+:is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button.active{background:transparent;border-color:transparent;}
 /* filtro de empresas (▾) + presets do heatmap */
 .hm-filter{position:relative;}
 .hm-filter-btn{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 7px;
@@ -1209,6 +1218,7 @@ html.dark .hm-range button.active,html.dark .hm-pop-chip.on,
 html.dark .modal-ranges button.active{color:#0A0C11;}
 html.dark .hm-filter-btn .hm-count{opacity:.88;}
 html.dark .hm-name{opacity:.95;}
+html.dark .hm-name.rel{opacity:1;} html.dark .hm-name.rel .hm-nm{opacity:.95;}   /* relativo: a etiqueta "vs" fica cheia */
 html.dark .hm-ccy{opacity:.95;}
 html.dark .footer-text{color:rgba(255,255,255,.52);}
 
@@ -1223,7 +1233,7 @@ html.dark .footer-text{color:rgba(255,255,255,.52);}
    #343941, o mesmo que os chips do feed já usavam, com texto branco (11:1). O chip "recomendado" do gráfico
    da empresa, quando escolhido, também sai do laranja. Os destaques (aviso "↑ new", foto dos setores) não
    mudam. Reverter = apagar este bloco. */
-html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:#343941;}
+html.dark #pulse-controls>.ibba-slide,html.dark #hm-range>.ibba-slide,html.dark #hm-mode>.ibba-slide,html.dark #co-ranges>.ibba-slide{background:#343941;}
 html.dark .pulse-chip.active,html.dark .hm-range button.active,
 html.dark .hm-pop-chip.on,html.dark .modal-ranges button.active{background:#343941;border-color:#343941;color:#fff;}
 .mc-reco-chip.on{background:var(--black);border-color:var(--black);color:#fff;}
@@ -1573,6 +1583,12 @@ html.dark .ndg-src{color:#FF8A4D;}
             Selected <span class="hm-count" id="hm-count">20/20</span> ▾
           </button>
           <div class="hm-pop" id="hm-pop" hidden></div>
+        </div>
+        <!-- Absoluta (padrão) × relativa ao índice da bolsa de cada papel. Usa a classe do
+             seletor de período (mesmo visual nos dois temas e no celular); id próprio. -->
+        <div class="hm-range" id="hm-mode" role="group" aria-label="Performance">
+          <button data-m="abs" class="active" title="Each stock's own move over the period">Absolute</button>
+          <button data-m="rel" title="Each stock's move minus the move of the main index of the exchange where it trades, in percentage points">Relative</button>
         </div>
         <div class="hm-range" id="hm-range">
           <button data-r="D" class="active">D</button>
@@ -2127,7 +2143,7 @@ let _pulseSector = 'all';
 // SELEÇÃO QUE DESLIZA (onda 3): o fundo do item ativo corre até a escolha (IBBASlide, topnav.js). Ele vigia a
 // CLASSE dos botões, então nenhum tratador mudou por causa disso — o do período do heatmap é recortado pelo
 // tests/test_intraday_split.html e continua idêntico.
-try{ if(window.IBBASlide) ['news-filter','news-sector-filter','hm-range'].forEach(id=>{
+try{ if(window.IBBASlide) ['news-filter','news-sector-filter','hm-range','hm-mode'].forEach(id=>{
   const b=document.getElementById(id); if(b) IBBASlide.watch(b,'button'); }); }catch(e){ console.warn('IBBASlide:',e); }
 
 // ─── MARKET PULSE — o noticiário desde o fechamento, por empresa e por tema ─────────
@@ -2602,7 +2618,8 @@ const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
 const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
-const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ','IBOV'];
+// 2026-10-28: + os índices das outras bolsas (benchmarks do modo relativo — ver BENCH_BY_EXCH)
+const G_INDEX    = ['GDX','SPX','MATB11.SA','NASDAQ','IBOV','SPTSX','ASX200','MEXBOL','IPSA','FTSE100','OMXH25'];
 let COVERAGE     = G_COVERAGE;                  // default do heatmap (admin pode sobrescrever)
 
 const HM_PRESETS = {
@@ -2839,6 +2856,98 @@ function _seriesFor(q, range){
   return { closes: arr.map(p=>p[1]), pct: first ? (last/first - 1)*100 : null };
 }
 
+// ── Performance RELATIVA (2026-10-28) ──────────────────────────────────
+// Pedido do analista: um botão para a performance absoluta (o padrão de sempre) e outro para a relativa
+// contra o benchmark. Benchmark = o índice principal da bolsa onde AQUELA linha negocia: a VALE do heatmap
+// é o ADR de NY → S&P 500; a CS.TO é Toronto → S&P/TSX. A chave é o `exchange` que o robô grava em cada
+// papel — os 6 índices novos entraram no QUOTES_LIST (hunter/prices.py) com o mesmo código das ações.
+// Número = DIFERENÇA em pontos percentuais (papel − índice) no mesmo período. Risquinho = papel ÷ índice
+// (sobe quando o papel ganha do índice: o mesmo sinal do número).
+const BENCH_BY_EXCH = {B3:'IBOV', NYSE:'SPX', NASDAQ:'SPX', US:'SPX', TSX:'SPTSX', ASX:'ASX200',
+                       BMV:'MEXBOL', BCS:'IPSA', LSE:'FTSE100', HEL:'OMXH25'};
+// Nome curto na etiqueta do cartão ("vs S&P/TSX") — legível sem decorar ticker; o nome inteiro vai no title.
+const BENCH_LABEL = {IBOV:'IBOV', SPX:'S&P 500', SPTSX:'S&P/TSX', ASX200:'ASX 200', MEXBOL:'MEXBOL',
+                     IPSA:'IPSA', FTSE100:'FTSE 100', OMXH25:'OMXH25'};
+let _hmMode = 'abs';                           // 'abs' | 'rel' — não fica salvo: toda visita abre na absoluta
+
+// Dia do último negócio no calendário DA BOLSA (AAAA-MM-DD) — para não comparar pregões diferentes.
+function _tradeDay(q){
+  const t = q ? Number(q.traded_at) : NaN;
+  if(!isFinite(t) || t <= 0) return null;
+  return new Date(t*1000).toLocaleDateString('en-CA', {timeZone: EXCH_TZ[q.exchange] || 'America/Sao_Paulo'});
+}
+// Fechamento do pregão anterior, pelo preço e pela variação do dia (a mesma conta do robô).
+function _prevClose(q){
+  if(q && q.price != null && q.change_pct != null && isFinite(q.change_pct)) return q.price/(1+q.change_pct/100);
+  const p = q && q.intraday && q.intraday.prev;
+  return (p != null && isFinite(p) && p > 0) ? +p : null;
+}
+// Valor da série no DIA de `t` ou no último dia antes dele. As barras das duas pontas são da mesma bolsa e
+// vêm carimbadas na abertura do mesmo pregão; casar pelo dia UTC tolera minutos de diferença no carimbo.
+function _valAtDay(arr, t){
+  const d = Math.floor(t/86400); let v = null;
+  for(const p of arr){ if(Math.floor(p[0]/86400) > d) break; v = p[1]; }
+  return v;
+}
+const _fmtDay = s => new Date(s+'T12:00:00Z').toLocaleDateString(NUM_LOC, {month:'short', day:'numeric', timeZone:'UTC'});
+
+// {closes, pct, bench, …} do papel contra o seu benchmark. pct = null quando não dá para medir com
+// honestidade — e `why` diz por quê (vai para o title do cartão). O próprio benchmark mostra o SEU
+// movimento (self: é a régua dos outros cartões da bolsa) e ordena no zero.
+function _relFor(q, range){
+  const bt = BENCH_BY_EXCH[q.exchange];
+  if(!bt) return {closes:[], pct:null, bench:null, why:'No benchmark for this exchange'};
+  if(q.ticker === bt) return {..._seriesFor(q, range), bench:bt, self:true};
+  const b = _quotes.find(x => x.ticker === bt), bn = b ? b.name : bt;
+  if(!b || b.price == null) return {closes:[], pct:null, bench:bt, why:`${bn}: no quote yet`};
+  const ds = _tradeDay(q), db = _tradeDay(b);
+  if(range === 'D'){
+    if(q.change_pct == null || b.change_pct == null) return {closes:[], pct:null, bench:bt, why:`${bn}: no change for the day yet`};
+    // O Yahoo atrasa as ações do B3 ~1 h na abertura enquanto o índice já anda: a variação do papel ainda
+    // seria a do pregão anterior e a do índice a de hoje. Subtrair as duas misturaria dias.
+    if(ds && db && ds !== db)
+      return {closes:[], pct:null, bench:bt, why:`Not comparable yet: ${_short(q.ticker)} last traded ${_fmtDay(ds)}, ${bn} ${_fmtDay(db)} (exchange data arrives with a delay)`};
+    const sp = (q.intraday && q.intraday.pts) || [], bp = (b.intraday && b.intraday.pts) || [];
+    const bAnt = _prevClose(b), closes = [];
+    for(const [t, v] of sp){
+      let bv = null; for(const p of bp){ if(p[0] > t) break; bv = p[1]; }
+      bv = bv ?? bAnt; if(bv) closes.push(v/bv);
+    }
+    return {closes, pct: q.change_pct - b.change_pct, bench:bt, sPct:q.change_pct, bPct:b.change_pct};
+  }
+  let sd = _dailyLive(q), bd = _dailyLive(b);
+  if(sd.length < 2 || bd.length < 2) return {closes:[], pct:null, bench:bt, why:`${bn}: no price history yet`};
+  // As duas pontas no MESMO pregão: se um já negociou hoje e o outro ainda não, o que está à frente entra
+  // com o fechamento anterior (senão um dia inteiro de índice entraria só de um lado da conta).
+  if(ds && db && ds !== db){
+    const ant = (s, x) => { const pc = _prevClose(x); return pc ? s.slice(0,-1).concat([[s[s.length-1][0], pc]]) : s; };
+    if(ds < db) bd = ant(bd, b); else sd = ant(sd, q);
+  }
+  let arr;   // mesma janela do _seriesFor
+  if(range === 'YTD'){ const jan1 = Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr = sd.filter(p=>p[0]>=jan1); }
+  else { const cut = (Date.now()/1000) - _RANGE_DAYS[range]*86400; arr = sd.filter(p=>p[0]>=cut); }
+  if(arr.length < 2) arr = sd.slice(-2);
+  const s0 = arr[0][1], s1 = arr[arr.length-1][1], b0 = _valAtDay(bd, arr[0][0]), b1 = bd[bd.length-1][1];
+  if(b0 == null){   // o IPSA da MSCI só existe desde 01/09/2026 — YTD e YoY do Chile esperam a série crescer
+    const desde = new Date(bd[0][0]*1000).toLocaleDateString(NUM_LOC, {month:'short', day:'numeric', year:'numeric', timeZone:'UTC'});
+    return {closes:[], pct:null, bench:bt, why:`${bn} history starts ${desde} — too short for this period`};
+  }
+  if(!s0 || !b0) return {closes:[], pct:null, bench:bt, why:'Missing prices'};
+  const sPct = (s1/s0 - 1)*100, bPct = (b1/b0 - 1)*100;
+  const closes = arr.map(([t, v], i) => { const bv = i === arr.length-1 ? b1 : _valAtDay(bd, t); return bv ? v/bv : null; })
+                    .filter(v => v != null);
+  return {closes, pct: sPct - bPct, bench:bt, sPct, bPct};
+}
+// Linha do title do cartão no modo relativo (texto já escapado para atributo).
+function _relTip(q, r){
+  const e = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const f = v => `${v>=0?'+':''}${v.toFixed(2)}%`;
+  if(r.self) return e(`Benchmark: the other ${EXCH_NAME[q.exchange] || q.exchange} tiles are measured against this index`);
+  if(r.pct == null) return e(r.why || 'Relative performance unavailable');
+  const b = _quotes.find(x => x.ticker === r.bench);
+  return e(`vs ${b ? b.name : r.bench}: ${r.pct>=0?'+':''}${r.pct.toFixed(2)} pp (${_short(q.ticker)} ${f(r.sPct)} · index ${f(r.bPct)})`);
+}
+
 // Sparkline SVG: usa currentColor → legível em qualquer cor de card. Estica na largura.
 function _sparkline(closes){
   if(!closes || closes.length < 2) return '<div class="hm-spark"></div>';
@@ -2864,21 +2973,29 @@ function _renderHeatmap(){
   if(!grid) return;
   if(!_quotes.length){ grid.innerHTML = '<div class="kv-loading">Loading quotes…</div>'; return; }
   const show = new Set(_hmDisplayed);
+  const rel = _hmMode === 'rel';
+  // relativo: o benchmark mostra o próprio movimento e ordena no ZERO — vira a divisa entre quem ganhou e
+  // quem perdeu do índice
+  const key = c => c.self ? 0 : (c.pct ?? -Infinity);
   const cards = _quotes.filter(q => show.has(q.ticker))
-                       .map(q => ({ q, ..._seriesFor(q, _range) }))
-                       .sort((a,b)=> (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
+                       .map(q => ({ q, ...(rel ? _relFor(q, _range) : _seriesFor(q, _range)) }))
+                       .sort((a,b)=> key(b) - key(a));
   if(!cards.length){ grid.innerHTML = '<div class="kv-loading">No companies selected — click “Selected ▾”.</div>'; return; }
-  grid.innerHTML = cards.map(({q, closes, pct}) => {
-    const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}%` : '—';
+  grid.innerHTML = cards.map(r => {
+    const {q, closes, pct} = r, pp = rel && !r.self;
+    const pctStr = pct != null ? `${pct>=0?'+':''}${pct.toFixed(2)}${pp?'pp':'%'}` : '—';
     const pg = _pregao(q);
     const asof = pg ? `<span class="hm-asof ${pg.state}">${pg.text}</span>` : '';
-    return `<a class="hm-card ${_heatClass(pct)}" href="#" data-ticker="${q.ticker}"
-        title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}&#10;Click to view history">
+    const name = rel && r.bench
+      ? `<div class="hm-name rel"><span class="hm-nm">${q.name}</span><span class="hm-vs">${r.self?'benchmark':'vs '+(BENCH_LABEL[r.bench]||r.bench).replace(/&/g,'&amp;')}</span></div>`
+      : `<div class="hm-name">${q.name}</div>`;
+    return `<a class="hm-card ${_heatClass(r.self ? null : pct)}" href="#" data-ticker="${q.ticker}"
+        title="${q.name} (${q.exchange})${pg?`&#10;${pg.tip}`:''}${rel?`&#10;${_relTip(q, r)}`:''}&#10;Click to view history">
       <div class="hm-card-top">
         <div class="hm-ticker">${_short(q.ticker)}</div>
         <div class="hm-change">${pctStr}</div>
       </div>
-      <div class="hm-name">${q.name}</div>
+      ${name}
       ${_sparkline(closes)}
       <div class="hm-foot">
         <div class="hm-price">${_fmtPrice(q.price, q.exchange)}${_ccy(q)?` <span class="hm-ccy">${_ccy(q)}</span>`:''}</div>
@@ -2904,6 +3021,15 @@ document.getElementById('hm-range')?.addEventListener('click', e=>{
         .catch(e=> console.warn('intraday error:', e));
     }
   }
+});
+// Absoluta × relativa (2026-10-28). Não é salva de propósito: o padrão de toda visita é a absoluta.
+// Não busca nada: o benchmark é uma linha de `quotes` como as outras (já em _quotes, com o diário e o
+// risquinho do dia que o seletor de período já traz).
+document.getElementById('hm-mode')?.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  _hmMode = b.dataset.m === 'rel' ? 'rel' : 'abs';
+  document.querySelectorAll('#hm-mode button').forEach(x=> x.classList.toggle('active', x===b));
+  _renderHeatmap();
 });
 // Clique num card → abre o terminal de ações (aba Market) com o ticker.
 // Fallback: enquanto a flag 'market' não estiver ligada p/ o cliente, mantém o modal (sem regressão).
