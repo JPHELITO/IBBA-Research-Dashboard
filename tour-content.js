@@ -95,8 +95,8 @@ window.IBBA_TOURS = {
           mobile: { body: 'Who was in the news since the last close: one chip per covered company, with our take on its headlines. {Click} a chip to read them.' } },
         { id: 'news-filters', unlessOff: 'news_feed', target: ['#news-filter', '#news-sector-filter'], title: 'Filter the feed',
           body: 'Show a single take or sector: S&M, P&P or NR (macro). **View history** opens the full archive.' },
-        { id: 'heat-tools', unlessOff: 'heatmap', target: ['#hm-range', '#hm-filter-btn'], title: 'Heatmap controls',
-          body: 'Choose the period (day, week, month, YTD, year) and pick up to 20 stocks or indices under **Selected**.' },
+        { id: 'heat-tools', unlessOff: 'heatmap', target: ['#hm-range', '#hm-mode', '#hm-filter-btn'], title: 'Heatmap controls',
+          body: 'Choose the period (day, week, month, YTD, year), switch between **Absolute** and **Relative** (each stock against the main index of its exchange, in percentage points) and pick up to 20 stocks or indices under **Selected**.' },
         { id: 'heat-grid', unlessOff: 'heatmap', target: '#heatmap-grid', clip: 360, title: 'Open a company',
           body: 'Each tile is a stock and its move over the period. {Click} one for its price chart and comparisons.' }
       ]

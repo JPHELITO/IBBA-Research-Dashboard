@@ -89,7 +89,7 @@ window.__RUN__=async function(){
       {ticker:'VMM.AX',name:'Viridis Mining',exchange:'ASX',price:3.57,change_pct:-1.5,traded_at:now-8*h,session:[now+9*h,now+15*h],updated_at:new Date().toISOString()},
       {ticker:'GGBR4.SA',name:'Gerdau',exchange:'B3',price:17.88,change_pct:.4,updated_at:new Date().toISOString()},   // robô antigo
     ];
-    const ctx={document, _updateFilterCount(){}, _quotes:quotes, _hmDisplayed:quotes.map(q=>q.ticker), _range:'D',
+    const ctx={document, _updateFilterCount(){}, _quotes:quotes, _hmDisplayed:quotes.map(q=>q.ticker), _range:'D', _hmMode:'abs',
       _seriesFor:q=>({closes:[], pct:q.change_pct}), _sparkline:()=>'<div class="hm-spark"></div>', _heatClass:()=>'flat',
       _fmtPrice:v=>v.toFixed(2), _ccy:()=> 'BRL', _short:x=>x.replace(/\.(SA|AX)$/,''), _pregao:M._pregao};
     new Function('ctx',`with(ctx){ ${REN}\n _renderHeatmap(); }`)(ctx);

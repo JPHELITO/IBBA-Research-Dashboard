@@ -720,7 +720,10 @@ const G_GOLD=['AUGO','ARIS','BVN','AEM','B','HOC.L'];
 const G_COPPER=['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
 const G_RARE=['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP=['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
-const G_INDEX=['GDX','SPX','MATB11.SA','NASDAQ','IBOV'];
+// 2026-10-28: + os índices das outras bolsas (benchmarks do modo relativo do heatmap)
+const G_INDEX=['GDX','SPX','MATB11.SA','NASDAQ','IBOV','SPTSX','ASX200','MEXBOL','IPSA','FTSE100','OMXH25'];
+// índice principal da bolsa de cada linha — o mesmo mapa do heatmap (index.html)
+const BENCH_BY_EXCH={B3:'IBOV',NYSE:'SPX',NASDAQ:'SPX',US:'SPX',TSX:'SPTSX',ASX:'ASX200',BMV:'MEXBOL',BCS:'IPSA',LSE:'FTSE100',HEL:'OMXH25'};
 let COVERAGE=G_COVERAGE.slice();
 const SECTOR_GROUPS={steel:G_STEEL,iron_ore:G_IRON,gold:G_GOLD,copper:G_COPPER,rare_earths:G_RARE,pp:G_PP};
 const SECTOR_INDEX={steel:['MATB11.SA','SPX'],iron_ore:['MATB11.SA','SPX'],gold:['GDX','SPX'],copper:['SPX','MATB11.SA'],rare_earths:['SPX','NASDAQ'],pp:['MATB11.SA','SPX']};
@@ -1722,6 +1725,9 @@ function renderChips(){
   const sec=_recoSector(_anchor); const have=new Set(_quotes.map(q=>q.ticker));   // âncora commodity/índice resolve p/ o setor certo (não some mais)
   let reco=[]; if(sec&&SECTOR_GROUPS[sec]){ reco=[...SECTOR_GROUPS[sec].filter(t=>have.has(t)),...(SECTOR_INDEX[sec]||[]).filter(t=>have.has(t))]; }
   else if(_anchor && (_isComm(_anchor)||TICKER_SECTOR[_anchor]==='index')){ reco=[...COVERAGE.filter(t=>have.has(t))]; }   // índice amplo (SPX/IBOV) sem setor único → cobertura
+  // + o índice da bolsa da própria linha (2026-10-28): CS.TO → S&P/TSX, VMM.AX → ASX 200, CMPC → IPSA
+  const loc=BENCH_BY_EXCH[(byT(_anchor)||{}).exchange];
+  if(loc && loc!==_anchor && have.has(loc) && !reco.includes(loc)) reco.push(loc);
   // commodity driver do setor (ouro/cobre/minério 62%) entra como recomendação p/ comparar a variação com a ação
   const drvChips=(SECTOR_DRIVER[sec]||[]).map(d=>COMM_CODE_TO_TICKER[d.code]).filter(t=>t&&_commByCode[COMM_BY_TICKER[t].code]);
   reco=[...drvChips,...reco];
