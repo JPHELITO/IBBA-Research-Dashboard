@@ -1385,8 +1385,8 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
    manchetes na 1ª tela (o _encaixar refaz a conta quando o bloco aparece ou muda de altura). No celular o bloco passa a
    aparecer, acima das fichas das empresas (antes era display:none). Letra: a mesma de antes (10,5px lógicos). */
 /* 2026-10-29 (3) — o usuário achou o resumo "pequenininho" e escolheu a variante B entre três: CARTÃO com moldura leve e fundo
-   laranja a 5%, texto 12,5px em peso médio (era 10,5px) e rótulo da janela em laranja. É a única letra da Home que cresceu, a
-   pedido dele. Custa ~1 manchete na 1ª tela (18 → 17 em 1536). */
+   laranja a 5%, texto no MESMO tamanho da manchete (11,5px, peso médio; era 10,5px) e rótulo da janela em laranja. É a única letra da Home
+   que cresceu, a pedido dele. Custa ~1 manchete na 1ª tela (18 → 17 em 1536). */
 .np-digest{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"head text foot" "head admin foot";
   align-items:start;column-gap:16px;row-gap:2px;margin:6px 12px 4px;padding:9px 13px 10px;border-radius:8px;
   border:1px solid rgba(255,80,0,.22);background:rgba(255,80,0,.05);}
@@ -1402,7 +1402,7 @@ html.dark .np-digest{border-color:rgba(255,120,60,.3);background:rgba(255,90,20,
 .ndg-btn{border:0;background:none;padding:0 4px;font:600 13px/1 var(--font);color:var(--gray-mid);cursor:pointer;border-radius:3px;}
 .ndg-btn:hover:not(:disabled){color:#C2410C;background:#F5F2EC;}
 .ndg-btn:disabled{opacity:.3;cursor:default;}
-.ndg-text{grid-area:text;font-size:12.5px;line-height:1.45;font-weight:500;color:var(--black);}
+.ndg-text{grid-area:text;font-size:11.5px;line-height:1.45;font-weight:500;color:var(--black);}   /* 29/10: o mesmo tamanho da manchete (.news-item-title), a pedido do usuário */
 .ndg-text.is-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;font-size:9.5px;line-height:1.35;}   /* sem resumo: as manchetes em 2 colunas */
 .ndg-li{display:flex;align-items:flex-start;gap:5px;min-width:0;}
 .ndg-li > span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
