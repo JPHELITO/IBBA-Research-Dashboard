@@ -295,7 +295,7 @@ body{height:100vh;overflow:hidden;}
   background:linear-gradient(120deg,rgba(0,0,0,.62),rgba(0,0,0,.34) 48%,rgba(0,0,0,.12));}
 .sector-bg-steel{background-color:#1a232c;background-image:url('assets/sector-steel.jpg');}
 .sector-bg-pp{background-color:#11401f;background-image:url('assets/sector-pp.jpg');}
-.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;}
+.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.svg');background-position:center;}
 .sector-card.has-bg > :not(.sector-bg){position:relative;z-index:1;}
 .sector-card.has-bg .sector-card-title{color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.4);}
 .sector-card.has-bg .sector-card-desc{color:rgba(255,255,255,.86);}
@@ -1270,7 +1270,7 @@ html.dark .sec-link,html.dark .ev-open{color:#FF7A45;}
 .sector-card.has-bg .sector-card-title{text-shadow:none;}
 .wip-badge{background:transparent;color:var(--gray-mid);border:1px solid var(--border);padding:2px 6px;letter-spacing:.07em;}
 html.dark .wip-badge{background:transparent;color:#8E949D;border-color:rgba(255,255,255,.14);}
-.area-events .sec-head{justify-content:flex-end;}
+.area-events .sec-head{justify-content:space-between;}
 .area-comm .kv-list{gap:0;}
 /* E7 · ETIQUETAS DA NOTÍCIA (setor + empresas cobertas): destaque leve pedido pelo usuário — fundo suave no setor; o ticker em laranja suave (a cor da casa marcando a NOSSA cobertura).
    A letra NÃO cresce (8px, como a etiqueta de setor sempre teve; ver o aviso do E1). Altura = 8px + 3px de
@@ -1421,6 +1421,40 @@ html.dark .ndg-src{color:#FF8A4D;}
   .rep-t{font-size:13px;line-height:1.3;}
   .rep-w{font-size:11px;} .rep-s{font-size:10px;}
 }
+/* ══ HOME · CARTÕES QUE INFORMAM + EVENTOS + RELATÓRIOS (2026-10-29 — raio-X da Home, item 1) ═══════════
+   Pedido do usuário depois do raio-X: os três cartões de setor passam a mostrar TRÊS NÚMEROS VIVOS cada um
+   (só com o que a Home já baixa: commodities do carrossel, cotações do heatmap e o USD/BRL de macro_indicators);
+   o cartão de eventos ganha a mesma etiqueta miúda dos relatórios ("This week · N earnings"), AMC/BMO nos
+   resultados que têm hora e o resultado de hoje em destaque; os relatórios mostram ticker + tipo + assunto; a
+   foto do Stock Guide (velas vermelhas em queda) virou um traço laranja neutro (assets/sector-stockguide.svg).
+   Nenhuma letra do resto da Home muda (regra do usuário desde o E1). */
+.sc-kpis{display:flex;gap:14px;align-items:flex-end;margin:2px 0 4px;min-width:0;}
+.sc-kpis:empty{display:none;}
+.sc-k{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.sc-k .l{font-size:7.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.66);white-space:nowrap;}
+.sc-k .v{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:-.01em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 1px 6px rgba(0,0,0,.45);}
+.sc-k .v small{font-size:7.5px;font-weight:500;color:rgba(255,255,255,.72);margin-left:2px;letter-spacing:0;}
+.sc-k .c{font-size:8.5px;font-weight:700;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.45);}
+.sc-k .c i{font-style:normal;font-weight:600;opacity:.7;margin-left:3px;font-size:7px;letter-spacing:.04em;}
+.sc-k .c.up{color:#5EDB8A;} .sc-k .c.down{color:#FF8A80;} .sc-k .c.flat{color:rgba(255,255,255,.72);}
+/* eventos: etiqueta (vazia some), resultado de hoje em destaque, AMC/BMO como selo miúdo, fim da lista esmaecido só quando rola */
+.ev-sub-head:empty{display:none;}
+.ev-item.ev-today .ev-t{font-weight:700;}
+.ev-item.ev-today .ev-when{color:#C2410C;}
+html.dark .ev-item.ev-today .ev-when{color:#FF7A45;}
+.ev-tod{flex:none;font-size:7.5px;font-weight:700;letter-spacing:.06em;padding:1.5px 4px;border-radius:4px;line-height:1;background:rgba(17,17,17,.06);color:#5F5A52;}
+html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
+.ev-body.ev-more{-webkit-mask-image:linear-gradient(#000 calc(100% - 16px),transparent);mask-image:linear-gradient(#000 calc(100% - 16px),transparent);}
+/* relatórios: ticker como etiqueta (a mesma do feed), tipo em peso médio, assunto em cinza */
+.rep-t .rep-co{display:inline-block;vertical-align:1px;margin-right:5px;}
+.rep-t .rep-kind{font-weight:600;}
+.rep-t .rep-sub2{color:#7A746B;font-weight:400;}
+html.dark .rep-t .rep-sub2{color:#A9B0BB;}
+@media (max-width:900px){
+  .sc-kpis{gap:18px;margin:6px 0 2px;}
+  .sc-k .l{font-size:9px;} .sc-k .v{font-size:16px;} .sc-k .v small{font-size:9px;} .sc-k .c{font-size:10.5px;} .sc-k .c i{font-size:8px;}
+  .ev-tod{font-size:9px;padding:2px 5px;}
+}
 </style>
 </head>
 <body>
@@ -1475,6 +1509,7 @@ html.dark .ndg-src{color:#FF8A4D;}
     <div class="sector-card live has-bg sc-card" data-flag="sector_steel">
       <div class="sector-bg sector-bg-steel"></div>
       <a class="sc-main" href="Steel and Mining/steel_sm_dashboard.html#prices"><span class="sector-card-title">Metals &amp; Mining</span></a>
+      <div class="sc-kpis" id="sck-steel"></div>
       <div class="sector-tabs">
         <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>
         <a class="sector-tab" href="Steel and Mining/steel_sm_dashboard.html#domestic">Domestic</a>
@@ -1486,6 +1521,7 @@ html.dark .ndg-src{color:#FF8A4D;}
     <div class="sector-card live has-bg sc-card" data-flag="sector_pp">
       <div class="sector-bg sector-bg-pp"></div>
       <a class="sc-main" href="Pulp and Paper/pp_dashboard.html#pulp"><span class="sector-card-title">Pulp &amp; Paper</span></a>
+      <div class="sc-kpis" id="sck-pp"></div>
       <div class="sector-tabs">
         <a class="sector-tab" href="Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>
         <a class="sector-tab" href="Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>
@@ -1495,6 +1531,7 @@ html.dark .ndg-src{color:#FF8A4D;}
     <div class="sector-card live has-bg sc-card" data-flag="stock_guide">
       <div class="sector-bg sector-bg-sg"></div>
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
+      <div class="sc-kpis" id="sck-sg"></div>
       <div class="sector-tabs">
         <a class="sector-tab" href="stock-guide.html">Comps</a>
         <a class="sector-tab" href="stock-guide.html">Sensitivity</a>
@@ -1516,6 +1553,7 @@ html.dark .ndg-src{color:#FF8A4D;}
   <!-- EVENTS (Executive Calendar) — só aparece com a flag exec_calendar (admin sempre) -->
   <div class="sec area-events" data-flag="exec_calendar" data-tour="home-events" style="display:none">
     <div class="sec-head">
+      <span class="rep-sub ev-sub-head" id="ev-head-sub"></span>
       <a class="ev-open" href="/agenda.html">Open calendar →</a>
     </div>
     <div class="ev-body" id="ev-body"><div class="ev-loading">Loading…</div></div>
@@ -2686,6 +2724,7 @@ function applyHeatmapConfig(rows){
     if(cov.length){ COVERAGE = cov; if(_hmFromDefault) _hmDisplayed = cov.slice(0,HM_MAX); }
     if(typeof _renderHeatmap==='function') _renderHeatmap();
     if(typeof _buildFilterPop==='function') _buildFilterPop();
+    if(typeof renderCardKpis==='function') renderCardKpis();
   }catch(e){ /* fail-safe: heatmap segue com o padrão atual */ }
 }
 
@@ -2717,6 +2756,7 @@ async function loadQuotes(){
     _quotes = rows.map(q => ({...prev[q.ticker], ...q, daily:_dailyMap[q.ticker], intraday:_intraMap[q.ticker]}));
     _renderHeatmap();
     if(_pulseLast) _renderRail(_pulseLast);   // a ação no dia, na coluna do Market Pulse
+    if(typeof renderCardKpis === 'function') renderCardKpis();   // os números do cartão Stock Guide
     _updateMeta('quotes-meta', stamp);
   } catch(e){ console.warn('quotes error:', e); }
 }
@@ -3630,6 +3670,7 @@ async function loadCommodities(){
     });
     _commUpdated=latest;
     _renderCommPage();
+    if(typeof renderCardKpis === 'function') renderCardKpis();   // os números dos cartões M&M e P&P
     // Rede de segurança: se as formas nunca chegaram (1ª busca falhou, sessão ainda não
     // existia), o próximo refresh tenta de novo em vez de deixar o painel sem gráfico.
     if(!Object.values(_commByCode).some(c=>c.spark)) loadCommSparks();
@@ -3648,6 +3689,7 @@ async function loadCommSparks(){
     if(!r.ok) return;
     (await r.json()).forEach(row=>{ if(_commByCode[row.code]) _commByCode[row.code].spark = row.spark; });
     _renderCommPage();
+    if(typeof renderCardKpis === 'function') renderCardKpis();   // as semanais (celulose) usam o WoW das formas
   }catch(e){ console.warn('commodity sparks:', e); }
 }
 
@@ -3772,17 +3814,20 @@ async function loadEvents(){
   const {data:{session}} = await sbAuth.auth.getSession(); if(!session) return;
   try{
     const today = CAL.todayISO(), to = CAL.addDays(today, 45);
+    // desde a SEGUNDA desta semana (não só hoje): a etiqueta "This week · N earnings" conta a semana inteira;
+    // o que já passou não entra na lista (os filtros abaixo seguem olhando a partir de hoje)
+    const from = _evWeek(today)[0];
     const [evs, cats, wins] = await Promise.all([
-      sbAuth.rpc('get_exec_calendar_events',{p_from:today,p_to:to}),
+      sbAuth.rpc('get_exec_calendar_events',{p_from:from,p_to:to}),
       sbAuth.rpc('get_exec_calendar_categories'),
       sbAuth.rpc('get_exec_calendar_data_windows'),
     ]);
     if(evs.error) throw evs.error;
     const catById={}; (cats.data||[]).forEach(c=>catById[c.id]=c);
     const items=[];
-    (evs.data||[]).forEach(e=>{ CAL.expandOccurrences(e, today, to).forEach(o=>{
+    (evs.data||[]).forEach(e=>{ const cat = catById[e.category_id]||{}; CAL.expandOccurrences(e, from, to).forEach(o=>{
       items.push({start:o.occ_start, end:o.occ_end, allDay:!!e.all_day||!e.start_time, st:e.start_time,
-        title:e.title||'(untitled)', color:(catById[e.category_id]||{}).color||'#8C8C8C'}); }); });
+        title:e.title||'(untitled)', color:cat.color||'#8C8C8C', kind:cat.kind||'', source:e.source||'', company:e.company||''}); }); });
     const drColor=((cats.data||[]).find(c=>c.kind==='data_release')||{}).color||'#00838F';
     // janela de dados: SÓ a próxima ocorrência de cada fonte (1 aviso, com RANGE) — não repetir mês a mês
     (wins.data||[]).forEach(w=>{ let cur=today.slice(0,7);
@@ -3796,20 +3841,39 @@ async function loadEvents(){
 }
 function _evD(s){ return CAL.MONTHS_SHORT[+s.slice(5,7)-1]+' '+(+s.slice(8,10)); }   // "Jul 15"
 function _evRange(s,e){ return _evD(s)+(s.slice(0,7)===e.slice(0,7)?('–'+(+e.slice(8,10))):(' – '+_evD(e))); }  // "Jul 15–17" (ou cross-mês)
+// segunda e domingo da semana de `today` (AAAA-MM-DD, calendário local)
+function _evWeek(today){
+  const d = new Date(today + 'T12:00:00'); const off = (d.getDay() + 6) % 7;   // 0 = segunda
+  const mon = CAL.addDays(today, -off); return [mon, CAL.addDays(mon, 6)];
+}
+// BMO/AMC só do RESULTADO com hora (antes de 12h / a partir das 16h); a call fica com o horário; sem hora não inventa
+function _evTod(i){ if(i.kind !== 'earnings' || !i.st || /\b(call|conference|webcast)\b/i.test(i.title)) return ''; const h = +String(i.st).slice(0,2); return h < 12 ? 'BMO' : h >= 16 ? 'AMC' : ''; }
 function renderEvents(items, today){
   const body=document.getElementById('ev-body'); if(!body) return;
   items.sort((a,b)=> a.start<b.start?-1:a.start>b.start?1:String(a.st||'').localeCompare(String(b.st||'')));
   const multi=i=> i.end && i.end>i.start;
   const todays=items.filter(i=> i.start<=today && (i.end||i.start)>=today);   // hoje OU em andamento (range)
   const upcoming=items.filter(i=> i.start>today).slice(0,7);
-  const line=(i,showDate)=>{ const when = multi(i) ? _evRange(i.start,i.end)   // +1 dia → mostra o RANGE (1 linha, sem repetir)
-      : (showDate ? _evD(i.start) : (i.allDay?'all-day':CAL.hhmm(i.st)));
-    return `<a class="ev-item" href="/agenda.html"><span class="ev-when">${when}</span>`
-      +`<span class="ev-dot" style="background:${i.color}"></span><span class="ev-t">${_evEsc(i.title)}</span></a>`; };
+  // etiqueta do cabeçalho (2026-10-29): quantos RESULTADOS nesta semana (categoria earnings, sem as calls), por empresa
+  const wk = _evWeek(today);
+  const nEarn = new Set(items.filter(i=> i.kind==='earnings' && !/\b(call|conference)\b/i.test(i.title) && i.start>=wk[0] && i.start<=wk[1])
+                             .map(i=> i.company || i.title.split('|')[0].trim())).size;
+  const sub=document.getElementById('ev-head-sub'); if(sub) sub.textContent = nEarn ? `This week · ${nEarn} earnings` : 'This week';
+  const line=(i,showDate)=>{ const tod = _evTod(i);
+    const when = multi(i) ? _evRange(i.start,i.end)   // +1 dia → mostra o RANGE (1 linha, sem repetir)
+      : (showDate ? _evD(i.start) : (tod || (i.allDay?'all-day':CAL.hhmm(i.st))));
+    const title = i.title.replace(/\s*\(B3\)\s*$/,'');   // a origem vai para a dica, não para a linha
+    const tip = i.title + (i.source==='b3' ? ' · from the B3 corporate events calendar' : '')
+              + (i.kind==='earnings' && !i.st ? ' · time not announced' : '');
+    const hoje = !showDate && i.kind==='earnings' && !multi(i);
+    return `<a class="ev-item${hoje?' ev-today':''}" href="/agenda.html" title="${_evEsc(tip)}"><span class="ev-when">${when}</span>`
+      +`<span class="ev-dot" style="background:${i.color}"></span><span class="ev-t">${_evEsc(title)}</span>${showDate && tod ? `<span class="ev-tod">${tod}</span>` : ''}</a>`; };
   let h='<div class="ev-sub">Today</div>';
   h += todays.length ? todays.map(i=>line(i,false)).join('') : '<div class="ev-none">No events today.</div>';
   if(upcoming.length) h+='<div class="ev-sub">Upcoming</div>'+upcoming.map(i=>line(i,true)).join('');
   body.innerHTML=h;
+  // esmaece o pé da lista só quando há mais linhas do que cabem (no celular o cartão cresce e nada esmaece)
+  body.classList.toggle('ev-more', body.scrollHeight > body.clientHeight + 1);
 }
 
 // ─── ÚLTIMOS RELATÓRIOS — a lista que o analista mantém na aba Clipping (Recent Publications) ─────────
@@ -3822,11 +3886,24 @@ function renderEvents(items, today){
 const REP_VISIBLE = 6;
 let _repRows = [], _repPop = null;
 function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:00').toLocaleDateString(NUM_LOC,{month:'short',day:'numeric'}) : ''; }catch(e){ return ''; } }
+// Partes do nome do relatório, como o analista escreve na aba Clipping: "Empresa (TICKER) - Tipo: assunto".
+// Com ticker entre parênteses → etiqueta do ticker + tipo + assunto; "Série - Tipo: assunto" → série · tipo + assunto;
+// qualquer outro formato → o nome inteiro, como antes. O nome completo segue na dica (title) da linha.
+function _repParts(name){
+  const s = String(name || '').trim();
+  let m = /^(.*?)\s*\(([A-Z0-9][A-Z0-9.]{1,11})\)\s*[-–—:]\s*(.+)$/.exec(s);
+  if(m){ const kt = /^([^:–—]+?)\s*[:–—]\s*(.+)$/.exec(m[3]); return {co:m[2], kind:(kt ? kt[1] : m[3]).trim(), sub:kt ? kt[2].trim() : ''}; }
+  m = /^([^:–—-]{2,48}?)\s*[-–—]\s*([^:]+?)(?::\s*(.+))?$/.exec(s);
+  if(m) return {co:'', kind:`${m[1].trim()} · ${m[2].trim()}`, sub:(m[3] || '').trim()};
+  return {co:'', kind:s, sub:''};
+}
 function _repRow(x){
   const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
   const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
   const d = _repDate(x.date);
-  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const p = _repParts(x.name);
+  const t = `${p.co ? `<span class="news-co rep-co">${_esc(p.co)}</span>` : ''}<span class="rep-kind">${_esc(p.kind)}</span>${p.sub ? ` <span class="rep-sub2">· ${_esc(p.sub)}</span>` : ''}`;
+  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${t}</span><span class="rep-s">${_esc(sec)}</span>`;
   const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec);
   return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`
             : `<div class="rep-item" title="${tip}">${inner}</div>`;
@@ -3865,6 +3942,68 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') _repClose(); });
 
+// ─── CARTÕES QUE INFORMAM (2026-10-29 — raio-X da Home, item 1) ──────────────────────────────────────────
+// Três números vivos em cada cartão de setor, com o que a Home JÁ baixa: commodities do carrossel (`_commByCode`,
+// a cada 5 min), cotações do heatmap (`_quotes`, 1 min) e o USD/BRL de `macro_indicators` (busca NOVA e leve:
+// 1 linha e 4 colunas a cada 5 min, ~0,2 KB — a mesma tabela que a aba Market já lê). Os códigos moram aqui
+// (SC_KPIS); nas semanais (celulose) o número de variação é o WoW, como no carrossel. O que ainda não chegou
+// mostra "—" em vez de sumir. O 3º cartão resume a cobertura do heatmap (COVERAGE): quantas sobem/caem, melhor e pior.
+const SC_KPIS = {
+  'sck-steel': [{code:'IRON_ORE', label:'Iron ore 62%'}, {code:'HRC_CHINA', label:'HRC China'}, {code:'COPPER', label:'Copper'}],
+  'sck-pp':    [{code:'PULP_BHKP_CHINA', label:'BHKP China'}, {code:'PULP_NBSK_EUROPE', label:'NBSK Europe'}, {fx:'USD_BRL', label:'USD/BRL'}],
+};
+let _macroHome = {};
+async function loadMacroHome(){
+  const {data:{session}} = await sbAuth.auth.getSession();
+  if(!session) return;
+  try{
+    const r = await fetch(`${SUPA_URL}/rest/v1/macro_indicators?select=code,value,change_pct,updated_at&code=in.(USD_BRL)`,
+      {headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}});
+    if(!r.ok) throw new Error('macro_indicators');
+    (await r.json()).forEach(m => { if(m && m.code) _macroHome[m.code] = m; });
+    renderCardKpis();
+  }catch(e){ console.warn('macro (home cards):', e); }
+}
+const _scPct = v => (v == null || !isFinite(v)) ? '—' : `${v >= 0 ? '+' : ''}${(+v).toFixed(2)}%`;
+const _scVal = v => (v == null || !isFinite(v)) ? '—'
+  : (Math.abs(v) >= 100 ? (+v).toLocaleString(NUM_LOC, {maximumFractionDigits:2}) : (+v).toFixed(2));
+function _scKpi(label, valStr, unit, pct, tip, extra){
+  return `<div class="sc-k" title="${_esc(tip || label)}"><span class="l">${_esc(label)}</span>`
+       + `<span class="v">${valStr}${unit ? `<small>${_esc(unit)}</small>` : ''}</span>`
+       + `<span class="c ${_sinal(pct)}">${_scPct(pct)}${extra ? `<i>${extra}</i>` : ''}</span></div>`;
+}
+function _scCommodity(k){
+  const c = _commByCode[k.code];
+  if(!c) return _scKpi(k.label, '—', '', null, `${k.label}: waiting for data`);
+  const freq = _freqOf(c), semanal = freq === 'Weekly';
+  const sp = (c.spark && !Array.isArray(c.spark)) ? c.spark : null;
+  const pct = semanal ? (sp && sp.w ? sp.w.c : null) : c.change_pct;
+  const when = _fmtAssessed(c.assessed_at, freq);
+  const tip = `${c.name || k.label}${when ? ` · ${when}` : ''}${semanal ? ' · weekly assessment (change = week on week)' : ''}`;
+  return _scKpi(k.label, _scVal(c.price), c.unit || '', pct, tip, semanal ? 'WoW' : '');
+}
+function _scFx(k){
+  const m = _macroHome[k.fx];
+  if(!m || m.value == null) return _scKpi(k.label, '—', '', null, `${k.label}: waiting for data`);
+  return _scKpi(k.label, (+m.value).toFixed(2), '', m.change_pct, `${k.label} ${(+m.value).toFixed(4)} · change vs previous close`);
+}
+function _scCoverage(){
+  const cov = new Set(COVERAGE);
+  const rows = _quotes.filter(q => cov.has(q.ticker) && q.change_pct != null && isFinite(q.change_pct));
+  if(!rows.length) return _scKpi('Our names today', '—', '', null, 'Waiting for quotes') + _scKpi('Top', '—', '', null, 'Waiting for quotes') + _scKpi('Bottom', '—', '', null, 'Waiting for quotes');
+  const up = rows.filter(q => q.change_pct > 0).length, dn = rows.filter(q => q.change_pct < 0).length;
+  const sorted = rows.slice().sort((a, b) => b.change_pct - a.change_pct);
+  const top = sorted[0], bot = sorted[sorted.length - 1];
+  const tip = `${rows.length} of ${COVERAGE.length} names with a quote · change vs previous close, as in the heatmap (exchanges open at different hours)`;
+  return `<div class="sc-k" title="${_esc(tip)}"><span class="l">Our names today</span><span class="v">${up} ▲ · ${dn} ▼</span><span class="c flat">of ${rows.length}</span></div>`
+       + _scKpi('Top', _esc(_short(top.ticker)), '', top.change_pct, `${top.name || top.ticker}: ${_scPct(top.change_pct)}`)
+       + _scKpi('Bottom', _esc(_short(bot.ticker)), '', bot.change_pct, `${bot.name || bot.ticker}: ${_scPct(bot.change_pct)}`);
+}
+function renderCardKpis(){
+  for(const id in SC_KPIS){ const el = document.getElementById(id); if(el) el.innerHTML = SC_KPIS[id].map(k => k.fx ? _scFx(k) : _scCommodity(k)).join(''); }
+  const sg = document.getElementById('sck-sg'); if(sg) sg.innerHTML = _scCoverage();
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────
 renderTeam();
 applyDashboardConfig();   // aplica flags (liga/desliga) + analistas do Supabase (ao vivo); fail-safe
@@ -3875,6 +4014,7 @@ loadQuotes();
 loadQuotesDaily();
 _initCommCarousel();
 loadCommodities().then(loadCommSparks);
+loadMacroHome();   // USD/BRL do cartão Pulp & Paper
 
 // Relógios de REDE via everyVisible (topnav.js): dormem enquanto a aba está escondida
 // e, ao voltar, refazem NA HORA o ciclo que venceu — a tela nunca fica mais velha do que
@@ -3891,6 +4031,7 @@ _every(loadQuotes, 60 * 1000);
 _every(loadQuotesDaily, 60 * 60 * 1000);   // série diária muda 1x/dia → 1x/h basta
 _every(loadCommodities, 5 * 60 * 1000);
 _every(loadCommSparks, 60 * 60 * 1000);   // as formas mudam ~1x/dia (27 KB por busca)
+_every(loadMacroHome, 5 * 60 * 1000);   // 1 linha (~0,2 KB)
 _every(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 * 60 * 1000);
 </script>
 
