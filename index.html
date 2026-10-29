@@ -1466,6 +1466,10 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
 .ev-body.ev-more{-webkit-mask-image:linear-gradient(#000 calc(100% - 16px),transparent);mask-image:linear-gradient(#000 calc(100% - 16px),transparent);}
 /* relatórios: ticker como etiqueta (a mesma do feed), tipo em peso médio, assunto em cinza */
 .rep-t .rep-co{display:inline-block;vertical-align:1px;margin-right:4px;}
+/* item 3 (2026-10-29): selo "+N" da mesma história em outras fontes — a cara da etiqueta de setor; chip "Our names" = um toggle */
+.news-grp{flex:none;font-size:8px;font-weight:700;letter-spacing:.03em;white-space:nowrap;padding:1.5px 5px;border-radius:4px;line-height:1;background:rgba(17,17,17,.06);color:#5F5A52;margin-left:5px;cursor:help;}
+html.dark .news-grp{background:rgba(255,255,255,.07);color:#A9B0BB;}
+.news-our-filter .news-filter-chip{min-width:0;}
 .sc-k.sc-alt{min-width:66px;}                       /* HRC China e Rebar Turkey têm larguras diferentes: o cobre não pula */
 .sc-k.sc-flip{animation:scFade .45s ease-out both;}
 @keyframes scFade{from{opacity:.1}to{opacity:1}}
@@ -1596,6 +1600,9 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
           <button class="news-filter-chip" data-sec="sm" title="Steel &amp; Mining">S&amp;M</button>
           <button class="news-filter-chip" data-sec="pp" title="Pulp &amp; Paper">P&amp;P</button>
           <button class="news-filter-chip" data-sec="nr" title="Natural Resources — macro / cross-sector">NR</button>
+        </div>
+        <div class="news-filter news-sec-filter news-our-filter" id="news-our-filter">
+          <button class="news-filter-chip" data-our="1" title="Only headlines that cite one of our covered companies">Our names</button>
         </div>
         <span class="sec-new-badge" id="news-new-badge" onclick="window.scrollTo({top:0,behavior:'smooth'})"></span>
       </div>
@@ -1918,6 +1925,7 @@ let _seenUrls = new Set();
 let _firstLoad = true;
 let _newsTakeFilter = 'all';   // 'all' | '+' | '-' | '='
 let _newsSectorFilter = 'all'; // 'all' | 'sm' | 'pp' | 'nr' (resolvido por fonte+keyword)
+let _newsOurOnly = false;      // chip "Our names" (2026-10-29, item 3 do raio-X): só manchetes que citam uma coberta
 
 const _LABEL_ALIAS = {
   'CVM':'CVM filing',   // comunicado oficial da empresa (Market Watch → hunter/cvm_filings.py)
@@ -2004,6 +2012,7 @@ async function loadNews(){
     +`&order=found_at.desc&limit=60`;
   // Filtro pela IA (take_llm); cobertura da janela é ~total, robô só cobre o recém-chegado.
   if(_newsTakeFilter!=='all') newsUrl+=`&take_llm=eq.${encodeURIComponent(_newsTakeFilter)}`;
+  if(_newsOurOnly) newsUrl+='&take_covered_companies=not.is.null';   // "Our names": só o que cita coberta (o vazio sai no cliente)
   // Setor é resolvido no cliente (carimbo por fonte + NR) → filtragem client-side em _renderNews.
   try{
     const [newsRes,runRes]=await Promise.all([
@@ -2086,6 +2095,24 @@ function _titulosCortados(){
   });
 }
 
+// Agrupamento da mesma história (item 3 do raio-X, 2026-10-29): palavras do título sem acento, sem termos vazios;
+// duas manchetes com Jaccard ≥ 0,45 são a mesma história (o mesmo limiar que o robô usa no resumo da hora,
+// hunter/digest.py). Título em outra língua não casa — e não deve: é outra leitura.
+const NEWS_GROUP_JACCARD = 0.45;
+const _NEWS_STOP = new Set(['the','and','for','with','from','that','this','after','over','into','amid','says','said','will',
+  'has','have','are','its','per','ton','tons','tonne','tonnes','como','para','com','por','uma','dos','das','que','nos','nas',
+  'sobre','mais','ser','tem','pelo','pela','ano','but','not','new','off','out','up']);
+function _newsToks(t){
+  return new Set(String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ')
+    .split(' ').filter(w => w.length > 2 && !_NEWS_STOP.has(w)));
+}
+function _jaccard(a, b){ if(!a || !b || !a.size || !b.size) return 0; let n=0; for(const w of a) if(b.has(w)) n++; return n / (a.size + b.size - n); }
+function _grpTag(a){
+  const g = a._grp || []; if(!g.length) return '';
+  const srcs = [...new Set(g.map(x => _label(x)))];
+  const tip = `Same story in ${g.length} more source${g.length > 1 ? 's' : ''}: ${srcs.join(' · ')}`;
+  return `<span class="news-grp" title="${_esc(tip)}">+${g.length}</span>`;
+}
 // Pintura pura: usa o _newsRows atual e NAO mexe nele. Quem decide o numero e _encaixar.
 function _pintarNews(articles){
   const feed=document.getElementById('news-feed');
@@ -2105,11 +2132,18 @@ function _pintarNews(articles){
     // deixa passar como PENDENTE (loading) — não trava o feed.
     if(a.take_llm == null && (_now - _foundMs(a)) < IA_PENDING_GRACE) continue;
     if(_newsSectorFilter!=='all' && _resolveSec(a)!==_newsSectorFilter) continue;   // filtro de setor (client-side)
+    if(_newsOurOnly && !String(a.take_covered_companies||'').trim()) continue;      // chip "Our names"
     const key=(a.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,55);
     if(!key||seenTitle.has(key)) continue;
     seenTitle.add(key);
-    picked.push(a);
-    if(picked.length>=_newsLimit()) break;
+    // A MESMA HISTÓRIA em outra fonte (2026-10-29, item 3 do raio-X): títulos parecidos (Jaccard ≥ NEWS_GROUP_JACCARD
+    // nas palavras, a régua do resumo da hora) viram UMA linha — a mais recente representa, as outras ficam no selo
+    // "+N" (fontes na dica). O laço não para no limite: continua só para pendurar repetidas nas linhas que já existem.
+    const toks=_newsToks(a.title); let dono=null;
+    for(const p of picked){ if(_jaccard(p._toks, toks) >= NEWS_GROUP_JACCARD){ dono=p; break; } }
+    if(dono){ dono._grp.push(a); continue; }
+    if(picked.length>=_newsLimit()) continue;
+    a._toks=toks; a._grp=[]; picked.push(a);
   }
   articles=picked;
   const now=Date.now();
@@ -2133,7 +2167,7 @@ function _pintarNews(articles){
     const isNew=foundMs>0 && (now-foundMs)<NEW_HIGHLIGHT_WINDOW;
     const reason=(a.take_reason||'').replace(/"/g,'&quot;');
     return`<a class="news-item ${isNew?'is-new':''}${fimDeColuna?' col-end':''}${colunaDireita?' col-right':''}" href="${a.url}" target="_blank" rel="noopener"${reason?` title="${reason}"`:''}>
-      <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div>${_newsCols()===1 ? _coTag(a) : ''}</div>
+      <div class="news-item-titlerow">${a.take_llm != null ? _takeBadge(a.take_llm) : _loadingBadge()}<div class="news-item-title">${a.title}</div>${_grpTag(a)}${_newsCols()===1 ? _coTag(a) : ''}</div>
       <div class="news-item-meta">
         <span class="news-item-source">${lbl}</span>${_PRIMARY_SOURCES.has(a.source_name)?'<span class="news-item-primary" title="Primary source — official company filing">PRIMARY</span>':''}
         <span class="sep">·</span>
@@ -2175,11 +2209,20 @@ document.getElementById('news-sector-filter').addEventListener('click', e => {
   document.querySelectorAll('#news-sector-filter .news-filter-chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   _newsSectorFilter = btn.dataset.sec;
+  try{ localStorage.setItem('ibba_news_sec', btn.dataset.sec); }catch(e){}   // lembrado neste aparelho (item 3)
   const _ps = (btn.dataset.sec === 'sm' || btn.dataset.sec === 'pp') ? btn.dataset.sec : 'all';
   if(_ps !== _pulseSector){ _pulseSector = _ps; loadPulse(); }   // a coluna acompanha o setor do feed
   _firstLoad = true;
   _newsFx = true;
   loadNews();
+});
+
+// Chip "Our names" (item 3): liga/desliga; só manchetes que citam uma coberta. Lembrado neste aparelho.
+document.getElementById('news-our-filter').addEventListener('click', e => {
+  const btn = e.target.closest('.news-filter-chip'); if(!btn) return;
+  _newsOurOnly = !_newsOurOnly; btn.classList.toggle('active', _newsOurOnly);
+  try{ localStorage.setItem('ibba_news_our', _newsOurOnly ? '1' : '0'); }catch(e){}
+  _firstLoad = true; _newsFx = true; loadNews();
 });
 
 function _updateNewsMeta(){
@@ -4058,6 +4101,16 @@ setInterval(() => { if(document.hidden) return; _scAlt++; renderCardKpis(true); 
 // ─── INIT ─────────────────────────────────────────────────────────────
 renderTeam();
 applyDashboardConfig();   // aplica flags (liga/desliga) + analistas do Supabase (ao vivo); fail-safe
+// Filtro de setor e "Our names" lembrados neste aparelho (2026-10-29, item 3): quem só acompanha P&P não clica P&P
+// toda visita. A classe .active muda ANTES da 1ª busca; a seleção que desliza (IBBASlide) acompanha sozinha.
+try{
+  const sec = localStorage.getItem('ibba_news_sec');
+  if(sec && sec !== 'all' && document.querySelector(`#news-sector-filter [data-sec="${sec}"]`)){
+    _newsSectorFilter = sec; _pulseSector = (sec === 'sm' || sec === 'pp') ? sec : 'all';
+    document.querySelectorAll('#news-sector-filter .news-filter-chip').forEach(c => c.classList.toggle('active', c.dataset.sec === sec));
+  }
+  if(localStorage.getItem('ibba_news_our') === '1'){ _newsOurOnly = true; const b = document.querySelector('#news-our-filter .news-filter-chip'); if(b) b.classList.add('active'); }
+}catch(e){}
 loadNews();
 loadPulse();
 loadReports();
