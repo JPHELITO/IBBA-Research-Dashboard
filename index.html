@@ -1380,24 +1380,30 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
 }
 /* RESUMO DA ÚLTIMA HORA (2026-10-21) — topo da coluna do Market Pulse, só no computador. Letra no tamanho da
    coluna (rótulos 9,5px; texto 10,5px como na maquete aprovada): nenhuma letra da Home cresce. */
-.np-digest{display:flex;flex-direction:column;gap:5px;padding:0 4px 10px;margin-bottom:4px;border-bottom:1px solid var(--rule);}
+/* 2026-10-29 (item 2 do raio-X): o resumo da hora saiu da coluna estreita e virou a LINHA DE ABERTURA do feed — a única
+   leitura em prosa da Home passa a ter a largura do feed; a coluna fica com o tom, as empresas e os temas. Custa ~2
+   manchetes na 1ª tela (o _encaixar refaz a conta quando o bloco aparece ou muda de altura). No celular o bloco passa a
+   aparecer, acima das fichas das empresas (antes era display:none). Letra: a mesma de antes (10,5px lógicos). */
+.np-digest{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"head text foot" "head admin foot";
+  align-items:start;column-gap:14px;row-gap:2px;padding:6px 16px 7px;border-bottom:1px solid var(--rule);background:rgba(255,80,0,.035);}
+html.dark .np-digest{background:rgba(255,90,20,.06);}
 .np-digest[hidden]{display:none;}
-.ndg-head{display:flex;align-items:center;gap:6px;min-width:0;}
+.ndg-head{grid-area:head;display:flex;align-items:center;gap:6px;min-width:0;padding-top:1px;}
 .ndg-when{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .ndg-when b{color:var(--black);font-weight:700;font-variant-numeric:tabular-nums;}
-.ndg-admin{font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);}
+.ndg-admin{grid-area:admin;font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);}
 .ndg-admin[hidden]{display:none;}
-.ndg-nav{margin-left:auto;display:flex;gap:2px;flex:none;}
+.ndg-nav{margin-left:2px;display:flex;gap:2px;flex:none;}
 .ndg-btn{border:0;background:none;padding:0 4px;font:600 12px/1 var(--font);color:var(--gray-mid);cursor:pointer;border-radius:3px;}
 .ndg-btn:hover:not(:disabled){color:#C2410C;background:#F5F2EC;}
 .ndg-btn:disabled{opacity:.3;cursor:default;}
-.ndg-text{font-size:10.5px;line-height:1.42;color:#2B2B2B;}
-.ndg-text.is-list{display:flex;flex-direction:column;gap:4px;font-size:9.5px;line-height:1.35;}
+.ndg-text{grid-area:text;font-size:10.5px;line-height:1.42;color:#2B2B2B;}
+.ndg-text.is-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;font-size:9.5px;line-height:1.35;}   /* sem resumo: as manchetes em 2 colunas */
 .ndg-li{display:flex;align-items:flex-start;gap:5px;min-width:0;}
 .ndg-li > span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .ndg-li .news-take{flex:none;min-width:12px;height:12px;font-size:8.5px;margin-top:0;}
-.ndg-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.ndg-foot{grid-area:foot;display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:1px;}
 .ndg-src{border:0;background:none;padding:0;font:600 9.5px var(--font);color:#C2410C;cursor:pointer;white-space:nowrap;}
 .ndg-src[hidden]{display:none;}
 .ndg-src.on{text-decoration:underline;text-underline-offset:2px;}
@@ -1406,7 +1412,16 @@ html.dark .ndg-when b{color:#DDE2EA;}
 html.dark .ndg-text{color:#DDE2EA;}
 html.dark .ndg-btn:hover:not(:disabled){color:#FF8A4D;background:rgba(255,255,255,.05);}
 html.dark .ndg-src{color:#FF8A4D;}
-@media (max-width:1024px){ .np-digest{display:none!important;} }
+@media (max-width:1024px){
+  /* celular: o resumo vem ANTES das fichas das empresas. `.news-main` vira transparente (display:contents) para o resumo,
+     a faixa de filtro e o feed virarem filhos diretos da coluna e aceitarem `order`. */
+  .news-main{display:contents;}
+  .np-digest{order:1;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "text" "foot" "admin";padding:10px 13px;row-gap:5px;}
+  .news-pulse{order:2;} .np-filterbar{order:3;} .news-feed{order:4;}
+  .ndg-foot{flex-direction:row;align-items:center;justify-content:space-between;}
+  .ndg-when{font-size:11px;} .ndg-text{font-size:12.5px;line-height:1.45;} .ndg-text.is-list{grid-template-columns:1fr;font-size:12px;}
+  .ndg-src{font-size:11px;} .ndg-ai{font-size:9.5px;} .ndg-btn{font-size:14px;padding:0 6px;}
+}
 /* celular: a faixa quebra em várias linhas (as fichas não cortam); sem a coluna e sem o filtro */
 @media (max-width:1024px){
   .news-pulse{flex-wrap:wrap;padding:8px 13px;row-gap:6px;}
@@ -1590,9 +1605,16 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
            empresas cobertas citadas e os temas, cada linha com uma barra pintada pelo take da IA; clicar numa linha
            deixa no feed só aquelas manchetes. No celular a coluna sai e ficam as fichas das empresas (como antes). -->
       <div class="news-pulse" id="news-pulse" data-tour="home-pulse">
-        <!-- RESUMO DA ÚLTIMA HORA (2026-10-21): duas frases por hora fechada (7h–20h) e uma da madrugada, escritas por
-             IA só com os títulos (robô news-hunter, hunter/digest.py → tabela news_digest → RPC get_news_digest).
-             Admin sempre; cliente só com a flag home_digest. "N headlines" deixa no feed as manchetes do resumo. -->
+        <span class="np-when" id="np-when">since close</span>
+        <div class="np-tone" id="np-tone"></div>
+        <div class="pulse-names" id="pulse-names"></div>
+        <div class="np-lists" id="np-lists"></div>
+      </div>
+      <div class="news-main">
+        <!-- RESUMO DA ÚLTIMA HORA (2026-10-21; desde 2026-10-29 é a LINHA DE ABERTURA do feed, item 2 do raio-X): duas
+             frases por hora fechada (7h–20h) e uma da madrugada, escritas por IA só com os títulos (robô news-hunter,
+             hunter/digest.py → tabela news_digest → RPC get_news_digest). Admin sempre; cliente só com a flag home_digest.
+             "N headlines" deixa no feed as manchetes do resumo. No celular aparece acima das fichas das empresas. -->
         <div class="np-digest" id="np-digest" hidden>
           <div class="ndg-head"><span class="ndg-when" id="ndg-when"></span>
             <span class="ndg-nav"><button type="button" class="ndg-btn" id="ndg-prev" title="Earlier brief" aria-label="Earlier brief">‹</button><button type="button" class="ndg-btn" id="ndg-next" title="Later brief" aria-label="Later brief">›</button></span></div>
@@ -1600,12 +1622,6 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
           <div class="ndg-foot"><button type="button" class="ndg-src" id="ndg-src" hidden></button><span class="ndg-ai" id="ndg-ai" title="Written automatically from this hour's headlines. It may contain errors: check the headlines.">Auto-summary</span></div>
           <div class="ndg-admin" id="ndg-admin" hidden>Admin only · clients don't see it yet</div>
         </div>
-        <span class="np-when" id="np-when">since close</span>
-        <div class="np-tone" id="np-tone"></div>
-        <div class="pulse-names" id="pulse-names"></div>
-        <div class="np-lists" id="np-lists"></div>
-      </div>
-      <div class="news-main">
         <div class="np-filterbar" id="np-filterbar" hidden></div>
         <div class="news-feed" id="news-feed">
           <div class="news-empty">Loading news…</div>
@@ -2560,10 +2576,13 @@ function _dgLabel(r, latest){
            : new Date(r.slot_start).toLocaleDateString(NUM_LOC, {timeZone:'America/Sao_Paulo', weekday:'short'});
   return `${wd} · ${faixa}`;
 }
+// o resumo é a linha de abertura do feed: quando ele aparece, some ou muda de altura, o feed refaz a conta de linhas
+function _dgRefit(){ if(typeof _encaixar === 'function' && _ultimasNoticias && !_encaixando && window.innerWidth > 1024) _encaixar(); }
 function _renderDigest(){
   const box = document.getElementById('np-digest'); if(!box) return;
+  const h0 = box.hidden ? 0 : box.offsetHeight;
   const vis = _dgVisible();
-  if(!_dgOn || !vis.length){ box.hidden = true; return; }
+  if(!_dgOn || !vis.length){ box.hidden = true; if(h0) _dgRefit(); return; }
   _dgI = Math.max(0, Math.min(_dgI, vis.length - 1));
   const r = vis[_dgI], items = Array.isArray(r.items) ? r.items : [];
   document.getElementById('ndg-when').innerHTML = _dgLabel(r, _dgI === 0);
@@ -2581,6 +2600,7 @@ function _renderDigest(){
   document.getElementById('ndg-prev').disabled = _dgI >= vis.length - 1;
   document.getElementById('ndg-next').disabled = _dgI <= 0;
   box.hidden = false;
+  if(box.offsetHeight !== h0) _dgRefit();
 }
 async function loadDigest(force){
   if(!_dgOn || (!force && Date.now() < _dgNextAt)) return;
