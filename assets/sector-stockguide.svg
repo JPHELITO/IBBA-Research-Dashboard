@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 360" width="840" height="360">
+  <!-- Stock Guide card background (2026-10-29): a neutral orange line on the house dark panel.
+       Replaces the stock photo of red candles falling (it told a 'crash' story on a research dashboard). -->
+  <rect width="840" height="360" fill="#080808"/>
+  <g stroke="#ffffff" stroke-opacity=".07" stroke-width="1">
+    <path d="M0 90H840M0 180H840M0 270H840"/>
+    <path d="M140 0V360M280 0V360M420 0V360M560 0V360M700 0V360"/>
+  </g>
+  <path d="M0 300 L70 272 L140 286 L210 232 L280 250 L350 200 L420 222 L490 160 L560 182 L630 128 L700 146 L770 96 L840 112 L840 360 L0 360 Z" fill="#FF5000" fill-opacity=".08"/>
+  <polyline fill="none" stroke="#FF5000" stroke-opacity=".38" stroke-width="2.4" stroke-linejoin="round" points="0,262 70,250 140,268 210,228 280,240 350,206 420,220 490,186 560,196 630,160 700,172 770,140 840,148"/>
+  <polyline fill="none" stroke="#FF5000" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" points="0,300 70,272 140,286 210,232 280,250 350,200 420,222 490,160 560,182 630,128 700,146 770,96 840,112"/>
+  <circle cx="770" cy="96" r="7" fill="#FF5000"/>
+  <circle cx="770" cy="96" r="14" fill="#FF5000" fill-opacity=".22"/>
+</svg>
