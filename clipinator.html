@@ -198,8 +198,17 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
 .pub-row.dated{
   grid-template-columns:auto auto 116px 58px minmax(0,1fr) auto;
   grid-template-areas:"num alca data setor nome  xis"
-                      "num alca link link  link  .";
+                      "num alca link link  link  ."
+                      "num alca cos  cos   cos   .";
   row-gap:4px;}
+/* Empresas do relatório (2026-10-29): chips de marcar; "All S&M"/"All P&P" marcam o setor inteiro. Vão para a Home (etiquetas). */
+.pub-row.dated .pub-cos{grid-area:cos;display:flex;flex-wrap:wrap;gap:3px;align-items:center;}
+.pub-co{font:600 9.5px var(--font);padding:2px 6px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--gray-mid);cursor:pointer;line-height:1.2;}
+.pub-co:hover{border-color:var(--orange);}
+.pub-co.on{background:rgba(255,80,0,.12);border-color:rgba(255,80,0,.55);color:#C2410C;}
+.pub-co.all{font-weight:700;}
+.pub-co-l{font:600 9px var(--font);color:var(--gray-mid);margin-right:2px;text-transform:uppercase;letter-spacing:.05em;}
+html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60,.6);color:#FF8A4D;}
 .pub-row.dated .pub-n{grid-area:num;align-self:center;}
 .pub-row.dated .pub-h{grid-area:alca;align-self:center;}
 .pub-row.dated .pub-date{grid-area:data;}
@@ -449,6 +458,18 @@ const S={ cand:[], byUrl:{}, sel:new Map(), order:[], pins:[], hours:24, filter:
                    // (so le — quem manda na config do Clipping e o Clipping).
                    blast_highlights:{} } };
 const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
+// Empresas cobertas, por setor (tickers de tela). O que o analista marca em cada publicação vai para a Home como etiqueta,
+// pela get_recent_reports_v3 (admin/supabase_recent_reports.sql). ⚠️ Mesma lista em index.html (REP_UNIVERSE).
+const PUB_COS={SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'], PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
+function pubCosHtml(p){
+  const sel=new Set(Array.isArray(p.companies)?p.companies:[]);
+  const all=sec=>PUB_COS[sec].every(t=>sel.has(t));
+  const b=(t,cls,title)=>`<button type="button" class="pub-co${cls}" data-co="${esc(t)}" title="${esc(title||t)}">${esc(t)}</button>`;
+  return `<span class="pub-co-l" title="Empresas que o relatório cobre — aparecem como etiqueta na Home">Cos</span>`
+    + b('All S&M',' all'+(all('SM')?' on':''),'Marca/desmarca todas de Steel & Mining')
+    + b('All P&P',' all'+(all('PP')?' on':''),'Marca/desmarca todas de Pulp & Paper')
+    + PUB_COS.SM.concat(PUB_COS.PP).map(t=>b(t, sel.has(t)?' on':'')).join('');
+}
 const SEC_TAG={SM:'sm',PP:'pp',NR:'nr'};
 const SEC_ORDER=['NR','SM','PP'];                        // agrupamento/ordem do clipping (= SECTOR_ORDER do motor)
 const SEC_FULL={NR:'Natural Resources',SM:'Steel & Mining',PP:'Pulp & Paper'};
@@ -1418,6 +1439,7 @@ function renderPubList(hostId, list, comData){
     <input class="pub-name" placeholder="Nome a exibir" value="${esc(p.name||'')}">
     <select class="pub-sec">${SECTORS.map(([v,l])=>`<option value="${v}"${p.sector===v?' selected':''}>${l}</option>`).join('')}</select>
     <input class="pub-link" placeholder="Link do relatório" value="${esc(p.link||'')}">
+    ${comData?`<div class="pub-cos">${pubCosHtml(p)}</div>`:''}
     <button class="pub-x" title="Remover">×</button></div>`).join('');
   const cnt=document.getElementById(hostId+'-n');
   if(cnt){ cnt.textContent=(list||[]).length; cnt.title=(list||[]).length+' relatório(s) neste bloco'; }
@@ -1429,6 +1451,13 @@ function renderPubList(hostId, list, comData){
     row.querySelector('.pub-sec').onchange=e=>{ list[i].sector=e.target.value; saveConfig(); };
     row.querySelector('.pub-link').oninput=e=>{ list[i].link=e.target.value; saveConfig(); };
     row.querySelector('.pub-x').onclick=()=>{ list.splice(i,1); renderConfig(); saveConfig(); };
+    // empresas do relatório: chip liga/desliga; "All S&M"/"All P&P" ligam o setor inteiro (ou desligam, se já estava todo ligado)
+    row.querySelectorAll('.pub-co').forEach(bt=>{ bt.onclick=()=>{ const t=bt.dataset.co;
+      const cur=new Set(Array.isArray(list[i].companies)?list[i].companies:[]);
+      if(t==='All S&M'||t==='All P&P'){ const sec=t==='All S&M'?'SM':'PP'; const todas=PUB_COS[sec].every(x=>cur.has(x));
+        PUB_COS[sec].forEach(x=>{ if(todas) cur.delete(x); else cur.add(x); }); }
+      else if(cur.has(t)) cur.delete(t); else cur.add(t);
+      list[i].companies=PUB_COS.SM.concat(PUB_COS.PP).filter(x=>cur.has(x)); renderConfig(); saveConfig(); }; });
     const h=row.querySelector('.pub-h');
     h.addEventListener('dragstart',e=>{ dragI=i; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',''); });
     h.addEventListener('dragend',()=>{ dragI=null; host.querySelectorAll('.pub-row').forEach(r=>r.classList.remove('dragging')); });
