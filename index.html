@@ -295,7 +295,7 @@ body{height:100vh;overflow:hidden;}
   background:linear-gradient(120deg,rgba(0,0,0,.62),rgba(0,0,0,.34) 48%,rgba(0,0,0,.12));}
 .sector-bg-steel{background-color:#1a232c;background-image:url('assets/sector-steel.jpg');}
 .sector-bg-pp{background-color:#11401f;background-image:url('assets/sector-pp.jpg');}
-.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.svg');background-position:center;}
+.sector-bg-sg{background-color:#080808;background-image:url('assets/sector-stockguide.jpg');background-position:center;transform:scaleY(-1);}   /* espelhada (29/10): a foto é a mesma, mas o gráfico sobe */
 .sector-card.has-bg > :not(.sector-bg){position:relative;z-index:1;}
 .sector-card.has-bg .sector-card-title{color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.4);}
 .sector-card.has-bg .sector-card-desc{color:rgba(255,255,255,.86);}
@@ -1426,7 +1426,7 @@ html.dark .ndg-src{color:#FF8A4D;}
    (só com o que a Home já baixa: commodities do carrossel, cotações do heatmap e o USD/BRL de macro_indicators);
    o cartão de eventos ganha a mesma etiqueta miúda dos relatórios ("This week · N earnings"), AMC/BMO nos
    resultados que têm hora e o resultado de hoje em destaque; os relatórios mostram ticker + tipo + assunto; a
-   foto do Stock Guide (velas vermelhas em queda) virou um traço laranja neutro (assets/sector-stockguide.svg).
+   foto do Stock Guide ficou (o usuário gosta dela), espelhada na vertical para o gráfico subir em vez de cair.
    Nenhuma letra do resto da Home muda (regra do usuário desde o E1). */
 .sc-kpis{display:flex;gap:14px;align-items:flex-end;margin:2px 0 4px;min-width:0;}
 .sc-kpis:empty{display:none;}
@@ -1446,10 +1446,11 @@ html.dark .ev-item.ev-today .ev-when{color:#FF7A45;}
 html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
 .ev-body.ev-more{-webkit-mask-image:linear-gradient(#000 calc(100% - 16px),transparent);mask-image:linear-gradient(#000 calc(100% - 16px),transparent);}
 /* relatórios: ticker como etiqueta (a mesma do feed), tipo em peso médio, assunto em cinza */
-.rep-t .rep-co{display:inline-block;vertical-align:1px;margin-right:5px;}
-.rep-t .rep-kind{font-weight:600;}
-.rep-t .rep-sub2{color:#7A746B;font-weight:400;}
-html.dark .rep-t .rep-sub2{color:#A9B0BB;}
+.rep-t .rep-co{display:inline-block;vertical-align:1px;margin-right:4px;}
+.sc-k.sc-alt{min-width:66px;}                       /* HRC China e Rebar Turkey têm larguras diferentes: o cobre não pula */
+.sc-k.sc-flip{animation:scFade .45s ease-out both;}
+@keyframes scFade{from{opacity:.1}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sc-k.sc-flip{animation:none;}}
 @media (max-width:900px){
   .sc-kpis{gap:18px;margin:6px 0 2px;}
   .sc-k .l{font-size:9px;} .sc-k .v{font-size:16px;} .sc-k .v small{font-size:9px;} .sc-k .c{font-size:10.5px;} .sc-k .c i{font-size:8px;}
@@ -3854,11 +3855,17 @@ function renderEvents(items, today){
   const multi=i=> i.end && i.end>i.start;
   const todays=items.filter(i=> i.start<=today && (i.end||i.start)>=today);   // hoje OU em andamento (range)
   const upcoming=items.filter(i=> i.start>today).slice(0,7);
-  // etiqueta do cabeçalho (2026-10-29): quantos RESULTADOS nesta semana (categoria earnings, sem as calls), por empresa
-  const wk = _evWeek(today);
-  const nEarn = new Set(items.filter(i=> i.kind==='earnings' && !/\b(call|conference)\b/i.test(i.title) && i.start>=wk[0] && i.start<=wk[1])
-                             .map(i=> i.company || i.title.split('|')[0].trim())).size;
-  const sub=document.getElementById('ev-head-sub'); if(sub) sub.textContent = nEarn ? `This week · ${nEarn} earnings` : 'This week';
+  // etiqueta do cabeçalho (2026-10-29, regra do usuário): 1º um evento do ITAÚ nesta semana (categoria de destaque/IBBA);
+  // senão quantos RESULTADOS por empresa (categoria earnings — as calls têm categoria própria desde 29/10; o título é a rede
+  // de segurança para eventos antigos); só base de dados → nada (a etiqueta some).
+  const wk = _evWeek(today), semana = items.filter(i=> i.start<=wk[1] && (i.end||i.start)>=wk[0]);
+  const ibba = semana.filter(i=> i.kind==='highlight' || i.kind==='ibba');
+  const nEarn = new Set(semana.filter(i=> i.kind==='earnings' && !/\b(call|conference|webcast)\b/i.test(i.title))
+                              .map(i=> i.company || i.title.split('|')[0].trim())).size;
+  const sub=document.getElementById('ev-head-sub');
+  if(sub) sub.textContent = ibba.length === 1 ? `This week · ${ibba[0].title.slice(0, 34)}`
+                          : ibba.length > 1 ? `This week · ${ibba.length} IBBA events`
+                          : nEarn ? `This week · ${nEarn} earnings` : '';
   const line=(i,showDate)=>{ const tod = _evTod(i);
     const when = multi(i) ? _evRange(i.start,i.end)   // +1 dia → mostra o RANGE (1 linha, sem repetir)
       : (showDate ? _evD(i.start) : (tod || (i.allDay?'all-day':CAL.hhmm(i.st))));
@@ -3886,25 +3893,33 @@ function renderEvents(items, today){
 const REP_VISIBLE = 6;
 let _repRows = [], _repPop = null;
 function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:00').toLocaleDateString(NUM_LOC,{month:'short',day:'numeric'}) : ''; }catch(e){ return ''; } }
-// Partes do nome do relatório, como o analista escreve na aba Clipping: "Empresa (TICKER) - Tipo: assunto".
-// Com ticker entre parênteses → etiqueta do ticker + tipo + assunto; "Série - Tipo: assunto" → série · tipo + assunto;
-// qualquer outro formato → o nome inteiro, como antes. O nome completo segue na dica (title) da linha.
-function _repParts(name){
-  const s = String(name || '').trim();
-  let m = /^(.*?)\s*\(([A-Z0-9][A-Z0-9.]{1,11})\)\s*[-–—:]\s*(.+)$/.exec(s);
-  if(m){ const kt = /^([^:–—]+?)\s*[:–—]\s*(.+)$/.exec(m[3]); return {co:m[2], kind:(kt ? kt[1] : m[3]).trim(), sub:kt ? kt[2].trim() : ''}; }
-  m = /^([^:–—-]{2,48}?)\s*[-–—]\s*([^:]+?)(?::\s*(.+))?$/.exec(s);
-  if(m) return {co:'', kind:`${m[1].trim()} · ${m[2].trim()}`, sub:(m[3] || '').trim()};
-  return {co:'', kind:s, sub:''};
+// Empresas do relatório = o que o analista MARCOU na aba Clipping (campo `companies` de cada publicação, 2026-10-29)
+// — a Home NÃO adivinha pelo nome. Tickers de tela (VALE3, SCCO, ARA…), os mesmos do feed. Marcou um setor inteiro
+// → uma etiqueta só ("All S&M"); até 3 etiquetas; mais que isso vira "+N". Sem marcação → só o nome, como sempre.
+// ⚠️ A mesma lista vive em clipinator.html (PUB_COS): mudou a cobertura, mudar nos dois.
+const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'],
+                      PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
+function _repCos(list){
+  let cos = Array.isArray(list) ? [...new Set(list.map(t => String(t || '').trim().toUpperCase()).filter(Boolean))] : [];
+  if(!cos.length) return '';
+  const chip = t => `<span class="news-co rep-co">${_esc(t)}</span>`;
+  const allSM = REP_UNIVERSE.SM.every(t => cos.includes(t)), allPP = REP_UNIVERSE.PP.every(t => cos.includes(t));
+  if(allSM && allPP) return chip('All names');
+  const out = [];
+  if(allSM){ out.push(chip('All S&M')); cos = cos.filter(t => !REP_UNIVERSE.SM.includes(t)); }
+  if(allPP){ out.push(chip('All P&P')); cos = cos.filter(t => !REP_UNIVERSE.PP.includes(t)); }
+  const n = cos.length, show = n > 3 ? cos.slice(0, 2) : cos;
+  show.forEach(t => out.push(chip(t)));
+  if(n > 3) out.push(chip(`+${n - 2}`));
+  return out.join('');
 }
 function _repRow(x){
   const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
   const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
   const d = _repDate(x.date);
-  const p = _repParts(x.name);
-  const t = `${p.co ? `<span class="news-co rep-co">${_esc(p.co)}</span>` : ''}<span class="rep-kind">${_esc(p.kind)}</span>${p.sub ? ` <span class="rep-sub2">· ${_esc(p.sub)}</span>` : ''}`;
-  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${t}</span><span class="rep-s">${_esc(sec)}</span>`;
-  const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec);
+  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_repCos(x.companies)}${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const cosTip = Array.isArray(x.companies) && x.companies.length ? ' · ' + x.companies.join(', ') : '';
+  const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec + cosTip);
   return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`
             : `<div class="rep-item" title="${tip}">${inner}</div>`;
 }
@@ -3913,10 +3928,11 @@ async function loadReports(){
   const body = document.getElementById('rep-body'), all = document.getElementById('rep-all');
   if(!body) return;
   try{
-    let r = await sbAuth.rpc('get_recent_reports_v2', {p_limit: 10});
-    // a v2 vem num SQL que o usuário roda: enquanto ela não existir no banco, cai na v1 (só Recent Publications)
-    if(r.error && (r.error.code === 'PGRST202' || /get_recent_reports_v2/.test(r.error.message || '')))
-      r = await sbAuth.rpc('get_recent_reports', {p_limit: 10});
+    // v3 (2026-10-29) traz também as EMPRESAS marcadas no Clipping; enquanto o SQL dela não rodar cai na v2, e sem a v2 na v1
+    const semFn = (r, fn) => !!(r.error && (r.error.code === 'PGRST202' || (r.error.message || '').includes(fn)));
+    let r = await sbAuth.rpc('get_recent_reports_v3', {p_limit: 10});
+    if(semFn(r, 'get_recent_reports_v3')) r = await sbAuth.rpc('get_recent_reports_v2', {p_limit: 10});
+    if(semFn(r, 'get_recent_reports_v2')) r = await sbAuth.rpc('get_recent_reports', {p_limit: 10});
     if(r.error) throw r.error;
     _repRows = (r.data || []).filter(x => x && x.name).slice(0, 10);
     body.innerHTML = _repRows.length ? _repList(_repRows.slice(0, REP_VISIBLE)) : '<div class="rep-none">No reports yet.</div>';
@@ -3948,10 +3964,14 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') _repClose(); 
 // 1 linha e 4 colunas a cada 5 min, ~0,2 KB — a mesma tabela que a aba Market já lê). Os códigos moram aqui
 // (SC_KPIS); nas semanais (celulose) o número de variação é o WoW, como no carrossel. O que ainda não chegou
 // mostra "—" em vez de sumir. O 3º cartão resume a cobertura do heatmap (COVERAGE): quantas sobem/caem, melhor e pior.
+// Escolha do usuário (29/10, 2ª rodada): M&M = minério 61% · HRC China ⇄ Rebar Turquia (o 2º espaço ALTERNA entre os dois,
+// com um fade a cada SC_ALT_MS) · cobre; P&P = BHKP China · NBSK China · USD/BRL.
 const SC_KPIS = {
-  'sck-steel': [{code:'IRON_ORE', label:'Iron ore 62%'}, {code:'HRC_CHINA', label:'HRC China'}, {code:'COPPER', label:'Copper'}],
-  'sck-pp':    [{code:'PULP_BHKP_CHINA', label:'BHKP China'}, {code:'PULP_NBSK_EUROPE', label:'NBSK Europe'}, {fx:'USD_BRL', label:'USD/BRL'}],
+  'sck-steel': [{code:'IRON_ORE', label:'Iron ore 61%'}, {alt:[{code:'HRC_CHINA', label:'HRC China'}, {code:'REBAR_TURKEY', label:'Rebar Turkey'}]}, {code:'COPPER', label:'Copper'}],
+  'sck-pp':    [{code:'PULP_BHKP_CHINA', label:'BHKP China'}, {code:'PULP_NBSK_CHINA', label:'NBSK China'}, {fx:'USD_BRL', label:'USD/BRL'}],
 };
+const SC_ALT_MS = 8000;   // HRC China ⇄ Rebar Turkey
+let _scAlt = 0;
 let _macroHome = {};
 async function loadMacroHome(){
   const {data:{session}} = await sbAuth.auth.getSession();
@@ -3999,10 +4019,17 @@ function _scCoverage(){
        + _scKpi('Top', _esc(_short(top.ticker)), '', top.change_pct, `${top.name || top.ticker}: ${_scPct(top.change_pct)}`)
        + _scKpi('Bottom', _esc(_short(bot.ticker)), '', bot.change_pct, `${bot.name || bot.ticker}: ${_scPct(bot.change_pct)}`);
 }
-function renderCardKpis(){
-  for(const id in SC_KPIS){ const el = document.getElementById(id); if(el) el.innerHTML = SC_KPIS[id].map(k => k.fx ? _scFx(k) : _scCommodity(k)).join(''); }
+function _scSlot(k, flip){
+  if(!k.alt) return k.fx ? _scFx(k) : _scCommodity(k);
+  const a = k.alt[_scAlt % k.alt.length], h = a.fx ? _scFx(a) : _scCommodity(a);
+  return h.replace('<div class="sc-k"', `<div class="sc-k sc-alt${flip ? ' sc-flip' : ''}"`);
+}
+function renderCardKpis(flip){
+  for(const id in SC_KPIS){ const el = document.getElementById(id); if(el) el.innerHTML = SC_KPIS[id].map(k => _scSlot(k, flip)).join(''); }
   const sg = document.getElementById('sck-sg'); if(sg) sg.innerHTML = _scCoverage();
 }
+// o espaço que alterna troca a cada SC_ALT_MS com um fade; aba escondida não troca (nem gasta nada: é só tela)
+setInterval(() => { if(document.hidden) return; _scAlt++; renderCardKpis(true); }, SC_ALT_MS);
 
 // ─── INIT ─────────────────────────────────────────────────────────────
 renderTeam();

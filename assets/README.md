@@ -6,7 +6,7 @@ Coloque aqui os arquivos com estes **nomes exatos** (.jpg):
 |---|---|
 | `sector-steel.jpg`  | fundo do card **Steel** (siderurgia / metal incandescente) |
 | `sector-pp.jpg`     | fundo do card **Pulp & Paper** (floresta / folhas) |
-| `sector-stockguide.svg` | fundo do card **Stock Guide** (traço laranja neutro, desenhado em código — 2026-10-29; o `sector-stockguide.jpg` de velas vermelhas ficou no repo sem uso) |
+| `sector-stockguide.jpg` | fundo do card **Stock Guide** (gráfico de velas; o CSS espelha na vertical desde 2026-10-29 para o gráfico subir) |
 | `team-daniel.jpg`   | foto do **Daniel Sasson** |
 | `team-edgard.jpg`   | foto do **Edgard Pinto Souza** |
 | `team-marcelo.jpg`  | foto do **Marcelo Furlan** |

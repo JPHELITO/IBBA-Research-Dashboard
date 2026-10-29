@@ -122,3 +122,62 @@ grant execute on function public.get_recent_reports_v2(int) to authenticated;
 comment on function public.get_recent_reports_v2(int) is
   'Home da dashboard (2026-10-21): os últimos relatórios = Recent Publications + o bloco Earnings Review da aba Clipping '
   '(só enquanto ligado) — só nome, setor, link e data. SECURITY DEFINER; nada mais da configuração sai.';
+
+-- =============================================================================
+-- 3ª VERSÃO (2026-10-29) — get_recent_reports_v3: igual à v2 + as EMPRESAS que o analista marcou
+-- em cada publicação na aba Clipping (campo `companies`, lista de tickers de tela: VALE3, SCCO, ARA…).
+-- A Home mostra essas empresas como etiquetas ao lado do nome do relatório — em vez de adivinhar pelo
+-- texto do nome, que foi o que o usuário recusou. Sem marcação a lista vem vazia e a Home mostra só o nome.
+-- Rodar este arquivo inteiro numa consulta NOVA do SQL Editor ("New query") — tudo é create or replace.
+-- Enquanto esta função não existir, a Home cai sozinha na v2 (e, sem a v2, na v1).
+-- =============================================================================
+create or replace function public.get_recent_reports_v3(p_limit int default 10)
+  returns table(name text, sector text, link text, date date, companies jsonb)
+  language sql stable security definer set search_path = public, pg_temp as $$
+  with fontes as (
+    select c.updated_at, 0 as bloco, e.p, e.ord
+      from public.clipping_config c
+      cross join lateral jsonb_array_elements(
+        case when jsonb_typeof(c.settings->'recent_publications') = 'array'
+             then c.settings->'recent_publications' else '[]'::jsonb end) with ordinality as e(p, ord)
+    union all
+    select c.updated_at, 1 as bloco, e.p, e.ord
+      from public.clipping_config c
+      cross join lateral jsonb_array_elements(
+        case when c.settings->'earnings_review'->'on' = 'true'::jsonb
+              and jsonb_typeof(c.settings->'earnings_review'->'items') = 'array'
+             then c.settings->'earnings_review'->'items' else '[]'::jsonb end) with ordinality as e(p, ord)
+  ), itens as (
+    select nullif(btrim(f.p->>'name'), '')                          as name,
+           upper(coalesce(nullif(btrim(f.p->>'sector'), ''), 'SM')) as sector,
+           nullif(btrim(f.p->>'link'), '')                          as link,
+           public._try_date(f.p->>'date')                           as date,
+           case when jsonb_typeof(f.p->'companies') = 'array'
+                then (select coalesce(jsonb_agg(upper(btrim(x))), '[]'::jsonb)
+                        from jsonb_array_elements_text(f.p->'companies') as x
+                       where btrim(x) <> '')
+                else '[]'::jsonb end                                 as companies,
+           f.updated_at, f.bloco, f.ord
+      from fontes f
+  ), unicos as (
+    select distinct on (coalesce(i.link, lower(i.name))) i.*
+      from itens i
+     where i.name is not null
+     order by coalesce(i.link, lower(i.name)), i.date desc nulls last, i.updated_at desc, i.bloco, i.ord
+  )
+  select u.name,
+         case when u.sector in ('SM', 'PP', 'NR') then u.sector else 'SM' end,
+         case when u.link ~* '^https?://' then u.link end,
+         u.date,
+         u.companies
+    from unicos u
+   order by u.date desc nulls last, u.updated_at desc, u.bloco, u.ord
+   limit greatest(1, least(coalesce(p_limit, 10), 20));
+$$;
+revoke all on function public.get_recent_reports_v3(int) from public, anon;
+grant execute on function public.get_recent_reports_v3(int) to authenticated;
+
+comment on function public.get_recent_reports_v3(int) is
+  'Home da dashboard (2026-10-29): últimos relatórios (Recent Publications + Earnings Review ligado) com as EMPRESAS marcadas '
+  'no Clipping (companies). Só nome, setor, link, data e tickers. SECURITY DEFINER; nada mais da configuração sai.';
+notify pgrst, 'reload schema';
