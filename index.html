@@ -1384,32 +1384,36 @@ html.dark .np-filterbar b,html.dark .np-clear{color:#FF8A4D;}
    leitura em prosa da Home passa a ter a largura do feed; a coluna fica com o tom, as empresas e os temas. Custa ~2
    manchetes na 1ª tela (o _encaixar refaz a conta quando o bloco aparece ou muda de altura). No celular o bloco passa a
    aparecer, acima das fichas das empresas (antes era display:none). Letra: a mesma de antes (10,5px lógicos). */
+/* 2026-10-29 (3) — o usuário achou o resumo "pequenininho" e escolheu a variante B entre três: CARTÃO com moldura leve e fundo
+   laranja a 5%, texto 12,5px em peso médio (era 10,5px) e rótulo da janela em laranja. É a única letra da Home que cresceu, a
+   pedido dele. Custa ~1 manchete na 1ª tela (18 → 17 em 1536). */
 .np-digest{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"head text foot" "head admin foot";
-  align-items:start;column-gap:14px;row-gap:2px;padding:6px 16px 7px;border-bottom:1px solid var(--rule);background:rgba(255,80,0,.035);}
-html.dark .np-digest{background:rgba(255,90,20,.06);}
+  align-items:start;column-gap:16px;row-gap:2px;margin:6px 12px 4px;padding:9px 13px 10px;border-radius:8px;
+  border:1px solid rgba(255,80,0,.22);background:rgba(255,80,0,.05);}
+html.dark .np-digest{border-color:rgba(255,120,60,.3);background:rgba(255,90,20,.08);}
 .np-digest[hidden]{display:none;}
 .ndg-head{grid-area:head;display:flex;align-items:center;gap:6px;min-width:0;padding-top:1px;}
-.ndg-when{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-mid);white-space:nowrap;
+.ndg-when{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#C2410C;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .ndg-when b{color:var(--black);font-weight:700;font-variant-numeric:tabular-nums;}
 .ndg-admin{grid-area:admin;font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);}
 .ndg-admin[hidden]{display:none;}
 .ndg-nav{margin-left:2px;display:flex;gap:2px;flex:none;}
-.ndg-btn{border:0;background:none;padding:0 4px;font:600 12px/1 var(--font);color:var(--gray-mid);cursor:pointer;border-radius:3px;}
+.ndg-btn{border:0;background:none;padding:0 4px;font:600 13px/1 var(--font);color:var(--gray-mid);cursor:pointer;border-radius:3px;}
 .ndg-btn:hover:not(:disabled){color:#C2410C;background:#F5F2EC;}
 .ndg-btn:disabled{opacity:.3;cursor:default;}
-.ndg-text{grid-area:text;font-size:10.5px;line-height:1.42;color:#2B2B2B;}
+.ndg-text{grid-area:text;font-size:12.5px;line-height:1.45;font-weight:500;color:var(--black);}
 .ndg-text.is-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;font-size:9.5px;line-height:1.35;}   /* sem resumo: as manchetes em 2 colunas */
 .ndg-li{display:flex;align-items:flex-start;gap:5px;min-width:0;}
 .ndg-li > span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .ndg-li .news-take{flex:none;min-width:12px;height:12px;font-size:8.5px;margin-top:0;}
 .ndg-foot{grid-area:foot;display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:1px;}
-.ndg-src{border:0;background:none;padding:0;font:600 9.5px var(--font);color:#C2410C;cursor:pointer;white-space:nowrap;}
+.ndg-src{border:0;background:none;padding:0;font:600 10.5px var(--font);color:#C2410C;cursor:pointer;white-space:nowrap;}
 .ndg-src[hidden]{display:none;}
 .ndg-src.on{text-decoration:underline;text-underline-offset:2px;}
 .ndg-ai{font-size:8px;letter-spacing:.03em;color:var(--gray-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-html.dark .ndg-when b{color:#DDE2EA;}
-html.dark .ndg-text{color:#DDE2EA;}
+html.dark .ndg-when{color:#FF8A4D;} html.dark .ndg-when b{color:#EEF1F6;}
+html.dark .ndg-text{color:#EEF1F6;}
 html.dark .ndg-btn:hover:not(:disabled){color:#FF8A4D;background:rgba(255,255,255,.05);}
 html.dark .ndg-src{color:#FF8A4D;}
 @media (max-width:1024px){
