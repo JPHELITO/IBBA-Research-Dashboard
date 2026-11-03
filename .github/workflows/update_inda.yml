@@ -61,10 +61,12 @@ jobs:
             git push
           fi
 
+      # Dado novo publicado → vai para o TIME (--team, 2026-11-03). Os outros avisos do INDA
+      # (saiu no site, atraso, conferência) saem do .py e vão só para o João.
       - name: E-mail — base atualizada
         if: env.INDA_NEW_DATA == 'true'
         run: |
-          python _shared/notify.py --source inda_distribution --period "${INDA_LATEST}" --kind updated \
+          python _shared/notify.py --team --source inda_distribution --period "${INDA_LATEST}" --kind updated \
             --subject "✅ INDA ${INDA_LATEST} publicado no dashboard" \
             --body "O In Data foi lido, passou nos checksums e está publicado no dashboard (até ${INDA_LATEST}). https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/"
 

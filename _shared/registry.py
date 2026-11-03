@@ -27,10 +27,16 @@ Campos de cada fonte:
 """
 from __future__ import annotations
 
-# Destinatários padrão de todos os e-mails (mesma lista em todo o projeto hoje).
+# Destinatários dos e-mails.
 # 2026-08-03 (pedido do usuário): SÓ o e-mail do Itaú — tirado o jphelito@gmail.com.
 # 2026-09-25 (pedido do usuário): + Marcelo Palhares, Daniel Sasson e Rafael Giacometti.
-DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]
+# 2026-11-03 (pedido do usuário): o TIME só recebe (1) o resumo do dia e (2) o aviso de DADO NOVO
+#   publicado na dashboard por uma fonte (mês novo do SECEX, IABr, INDA, IBÁ, Empapel…). Todo o
+#   resto — "saiu no site", atraso, conferência, revisão sem mês novo, panorama, sentinelas,
+#   calendário da B3, trimestral, Market Watch, inbox do customs, testes — vai SÓ para o João.
+#   O padrão é o João: e-mail novo só chega ao time se pedir TEAM_RECIPIENTS (no CLI: --team).
+DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]
+TEAM_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]
 
 # Onde vive cada banco versionado (caminho relativo à raiz do repo do frontend).
 DB_PATHS = {

@@ -237,7 +237,8 @@ def sync_country(conn, agg, years, allow_mass_delete=False):
     return len(new), len(rev), len(gone), touched
 
 
-def _write_gh_env(new, period):
+def _write_gh_env(new, period, new_months=()):
+    """PULP_NEW_MONTH separa MÊS NOVO de revisão (2026-11-03): só mês novo vai para o time."""
     gh = os.environ.get("GITHUB_ENV")
     if not gh:
         return
@@ -245,6 +246,7 @@ def _write_gh_env(new, period):
         f.write(f"PULP_NEW_DATA={new}\n")
         if period:
             f.write(f"PULP_LATEST={period}\n")
+        f.write(f"PULP_NEW_MONTH={', '.join(new_months)}\n")
 
 
 def reconcile(conn, agg_p, agg_c, months):
@@ -346,7 +348,8 @@ def main():
         if changed:
             conn.execute("VACUUM")   # INSERT OR REPLACE/DELETE deixam páginas soltas no arquivo
         latest_now = _latest(conn)
-        _write_gh_env("true" if changed else "false", latest_now if changed else None)
+        _write_gh_env("true" if changed else "false", latest_now if changed else None,
+                      new_periods if changed else ())
     else:
         print("Use --check, --update, --backfill, --backfill-country ou --reconcile.")
     conn.close()

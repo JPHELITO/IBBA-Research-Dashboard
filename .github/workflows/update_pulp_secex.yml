@@ -71,22 +71,25 @@ jobs:
       # nunca chegou na dashboard. Agora o dado é gravado primeiro e o e-mail
       # vem depois: se o SMTP estiver morto o job fica VERMELHO (o alarme
       # continua), mas a base já subiu.
+      # 2026-11-03 (pedido do usuário): o TIME só recebe quando sai MÊS NOVO (--team); rodada só
+      # de revisão vai só para o João. notify.py no lugar do action-send-mail: lista do time num
+      # lugar só (registry.py) e porta 465 de reserva. --require = job VERMELHO se não sair.
       - name: Send email notification
         if: env.PULP_NEW_DATA == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port:    587
-          secure:         false
-          username:       ${{ secrets.SMTP_USER }}
-          password:       ${{ secrets.SMTP_PASS }}
-          to:             joao.helito@itaubba.com,marcelo.palhares@itaubba.com,daniel.sasson@itaubba.com,rafael.giacometti@itaubba.com
-          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 Celulose por porto e país (SECEX) — atualizado: ${{ env.PULP_LATEST }}"
-          body: |
-            A exportação de celulose por porto e por país (SECEX/MDIC ao vivo) foi atualizada
-            automaticamente no dashboard de Pulp & Paper.
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          PARA=""
+          if [ -n "$PULP_NEW_MONTH" ]; then PARA="--team"; fi
+          cat > "$RUNNER_TEMP/pulp_mail.txt" <<FIM
+          A exportação de celulose por porto e por país (SECEX/MDIC ao vivo) foi atualizada
+          automaticamente no dashboard de Pulp & Paper.
 
-            📅 Novo período: ${{ env.PULP_LATEST }}
-            ---
-            Itaú BBA — Equity Research | Pulp & Paper (mensagem automática)
+          📅 Novo período: ${PULP_LATEST}
+          ---
+          Itaú BBA — Equity Research | Pulp & Paper (mensagem automática)
+          FIM
+          python _shared/notify.py $PARA --require \
+            --subject "🔔 Celulose por porto e país (SECEX) — atualizado: ${PULP_LATEST}" \
+            --body-file "$RUNNER_TEMP/pulp_mail.txt"

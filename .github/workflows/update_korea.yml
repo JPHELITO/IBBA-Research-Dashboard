@@ -74,22 +74,21 @@ jobs:
       # nunca chegou na dashboard. Agora o dado é gravado primeiro e o e-mail
       # vem depois: se o SMTP estiver morto o job fica VERMELHO (o alarme
       # continua), mas a base já subiu.
+      # 2026-11-03: dado novo de fonte → vai para o TIME (--team); a lista mora no registry.py.
       - name: Send email notification
         if: env.KOREA_NEW_DATA == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port:    587
-          secure:         false
-          username:       ${{ secrets.SMTP_USER }}
-          password:       ${{ secrets.SMTP_PASS }}
-          to:             joao.helito@itaubba.com,marcelo.palhares@itaubba.com,daniel.sasson@itaubba.com,rafael.giacometti@itaubba.com
-          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 Linha preta (Coreia) — novo dado: ${{ env.KOREA_LATEST }}"
-          body: |
-            A linha preta (exportações de aço da Coreia → Brasil, SH6 antidumping) foi
-            atualizada automaticamente via API oficial da Aduana Coreana (data.go.kr).
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          cat > "$RUNNER_TEMP/korea_mail.txt" <<FIM
+          A linha preta (exportações de aço da Coreia → Brasil, SH6 antidumping) foi
+          atualizada automaticamente via API oficial da Aduana Coreana (data.go.kr).
 
-            📅 Novo período: ${{ env.KOREA_LATEST }}
-            ---
-            Itaú BBA — Equity Research | Steel & Mining (mensagem automática)
+          📅 Novo período: ${KOREA_LATEST}
+          ---
+          Itaú BBA — Equity Research | Steel & Mining (mensagem automática)
+          FIM
+          python _shared/notify.py --team --require \
+            --subject "🔔 Linha preta (Coreia) — novo dado: ${KOREA_LATEST}" \
+            --body-file "$RUNNER_TEMP/korea_mail.txt"

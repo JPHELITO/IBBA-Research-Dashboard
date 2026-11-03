@@ -59,11 +59,12 @@ jobs:
             git push
           fi
 
-      # Só DEPOIS do commit → e-mail "base atualizada" (dedup 1×/mês)
+      # Só DEPOIS do commit → e-mail "base atualizada" (dedup 1×/mês). Dado novo → TIME (--team,
+      # 2026-11-03); os outros avisos do IBÁ (saiu no site, atraso, conferência) só para o João.
       - name: E-mail — base atualizada
         if: env.IBA_NEW_DATA == 'true'
         run: |
-          python _shared/notify.py --source iba_paper --period "${IBA_LATEST}" --kind updated \
+          python _shared/notify.py --team --source iba_paper --period "${IBA_LATEST}" --kind updated \
             --subject "✅ IBÁ ${IBA_LATEST} publicado no dashboard" \
             --body "O boletim DadosPapel de ${IBA_LATEST} foi lido por visão (${IBA_MODEL}), passou nos 3 checksums e já está publicado no dashboard. https://metals-mining-pulp-paper-dashboard.vercel.app"
 

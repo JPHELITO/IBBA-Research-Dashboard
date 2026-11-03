@@ -127,9 +127,13 @@ jobs:
       # Assunto e corpo saem do próprio update_iabr.py (mês novo OU a lista das revisões).
       # --require deixa o job VERMELHO se o e-mail não sair: a senha de app do Gmail já
       # expirou uma vez sem ninguém perceber, porque o notify engole erro de SMTP de propósito.
+      # 2026-11-03 (pedido do usuário): mês novo (kind "updated") vai para o TIME; revisão sem mês
+      # novo ("revised-N") só para o João.
       - name: E-mail — base atualizada / revisada
         if: env.IABR_NEW_DATA == 'true'
         run: |
-          python _shared/notify.py --source iabr --period "${IABR_LATEST}" --kind "${IABR_KIND}" \
+          PARA=""
+          if [ "$IABR_KIND" = "updated" ]; then PARA="--team"; fi
+          python _shared/notify.py $PARA --source iabr --period "${IABR_LATEST}" --kind "${IABR_KIND}" \
             --subject "${IABR_SUBJECT}" \
             --body-file "Steel and Mining/_iabr_notice.txt" --require

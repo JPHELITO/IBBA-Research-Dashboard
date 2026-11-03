@@ -177,33 +177,37 @@ jobs:
       # nunca chegou na dashboard. Agora o dado é gravado primeiro e o e-mail
       # vem depois: se o SMTP estiver morto o job fica VERMELHO (o alarme
       # continua), mas a base já subiu.
+      # 2026-11-03 (pedido do usuário): o TIME só recebe quando sai MÊS NOVO (--team); rodada só
+      # de revisão do MDIC vai só para o João. Saiu do action-send-mail para o notify.py: a lista
+      # do time mora num lugar só (registry.py) e o envio tenta a porta 465 se o Gmail derrubar a
+      # 587 (o que passou a acontecer no runner em 28/10). --require = job VERMELHO se não sair.
       - name: Send email notification
         if: env.NEW_DATA == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port:    587
-          secure:         false
-          username:       ${{ secrets.SMTP_USER }}
-          password:       ${{ secrets.SMTP_PASS }}
-          to:             joao.helito@itaubba.com,marcelo.palhares@itaubba.com,daniel.sasson@itaubba.com,rafael.giacometti@itaubba.com
-          from:           "IBBA Dashboard <${{ secrets.SMTP_USER }}>"
-          subject:        "🔔 SECEX Steel & Mining — base até ${{ env.LATEST_PERIOD }}"
-          body: |
-            Olá,
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          PARA=""
+          if [ -n "$NEW_MONTH" ]; then PARA="--team"; fi
+          cat > "$RUNNER_TEMP/secex_mail.txt" <<FIM
+          Olá,
 
-            A base SECEX (MDIC) do Steel & Mining foi atualizada.
+          A base SECEX (MDIC) do Steel & Mining foi atualizada.
 
-            📅 Base agora vai até: ${{ env.LATEST_PERIOD }}
-            🆕 Mês novo nesta rodada: ${{ env.NEW_MONTH }}
-            ♻️ Revisões do MDIC em meses JÁ publicados: ${{ env.REVISED }}
+          📅 Base agora vai até: ${LATEST_PERIOD}
+          🆕 Mês novo nesta rodada: ${NEW_MONTH}
+          ♻️ Revisões do MDIC em meses JÁ publicados: ${REVISED}
 
-            (o MDIC reajusta meses anteriores; quando isso acontece o número antigo
-            é regravado, e é isso que a linha acima lista — período e quantos números
-            mudaram. Vazio = nenhuma revisão nesta rodada.)
+          (o MDIC reajusta meses anteriores; quando isso acontece o número antigo
+          é regravado, e é isso que a linha acima lista — período e quantos números
+          mudaram. Vazio = nenhuma revisão nesta rodada.)
 
-            📊 https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/
+          📊 https://metals-mining-pulp-paper-dashboard.vercel.app/Steel%20and%20Mining/
 
-            ---
-            Itaú BBA — Equity Research | Steel & Mining
-            (mensagem automática gerada pelo GitHub Actions)
+          ---
+          Itaú BBA — Equity Research | Steel & Mining
+          (mensagem automática gerada pelo GitHub Actions)
+          FIM
+          python _shared/notify.py $PARA --require \
+            --subject "🔔 SECEX Steel & Mining — base até ${LATEST_PERIOD}" \
+            --body-file "$RUNNER_TEMP/secex_mail.txt"
