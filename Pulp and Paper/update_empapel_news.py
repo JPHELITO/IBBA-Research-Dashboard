@@ -333,10 +333,13 @@ def _gh(**kv):
                 f.write(f"{k}={v}\n")
 
 
-def _mail(kind, period, subject, body):
+def _mail(kind, period, subject, body, team=False):
+    """team=True só para número PUBLICADO (preliminar ou oficial) — o resto vai só para o João
+    (pedido do usuário, 2026-11-03)."""
     if notify:
         try:
-            notify.once(SOURCE, period, kind, subject, body)
+            notify.once(SOURCE, period, kind, subject, body,
+                        list(notify.TEAM_RECIPIENTS) if team else None)
         except Exception as e:
             print(f"  (e-mail '{kind}' ignorado: {e})")
 
@@ -467,12 +470,12 @@ def main():
         if old is not None or k == "official":
             _mail("updated", p, f"✅ Empapel {p}: número oficial publicado",
                   f"O número OFICIAL do Empapel de {p} (papelão ondulado) foi {'revisado' if old else 'publicado'} "
-                  f"no dashboard: {new:.3f} mil t. {DASH_URL}")
+                  f"no dashboard: {new:.3f} mil t. {DASH_URL}", team=True)
         else:
             _mail("new", p, f"📦 Empapel {p}: preliminar publicado",
                   f"Saiu o dado PRELIMINAR do Empapel de {p} (papelão ondulado): {new:.3f} mil t. "
                   f"Publiquei no dashboard; vou corrigir p/ o número oficial quando o IBPO divulgar "
-                  f"(~começo do mês seguinte). {DASH_URL}")
+                  f"(~começo do mês seguinte). {DASH_URL}", team=True)
 
     latest = max(p for p, *_ in changed)
     _gh(EMP_NEW_DATA="true", EMP_LATEST=latest)

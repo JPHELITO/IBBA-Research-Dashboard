@@ -11,7 +11,10 @@ Env: SMTP_USER, SMTP_PASS (app password do Gmail), SMTP_SERVER=smtp.gmail.com, S
 Uso (linha de comando, p/ os workflows):
   python _shared/notify.py --kind new_data --source pulp_secex --period 2026-06 \
       [--detail "cron MDIC"]
-  python _shared/notify.py --subject "..." --body "..." [--to a@x,b@y] [--html]
+  python _shared/notify.py --subject "..." --body "..." [--to a@x,b@y | --team] [--html]
+
+Quem recebe (2026-11-03, pedido do usuário): sem --to/--team, SÓ o João (DEFAULT_RECIPIENTS).
+--team (TEAM_RECIPIENTS, os 4) é só para o resumo do dia e o aviso de DADO NOVO de uma fonte.
 
 Uso (import, p/ o status_digest):
   from notify import send
@@ -30,9 +33,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 try:
-    from registry import DEFAULT_RECIPIENTS, get
-except Exception:                       # rodando fora do _shared (fallback)
-    DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]   # 2026-09-25: mesma lista do registry.py
+    from registry import DEFAULT_RECIPIENTS, TEAM_RECIPIENTS, get
+except Exception:                       # rodando fora do _shared (fallback) — 2026-11-03: as listas do registry.py
+    DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]
+    TEAM_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]
     def get(_key):  # type: ignore
         return None
 
@@ -178,12 +182,16 @@ def main():
     ap.add_argument("--source"); ap.add_argument("--period"); ap.add_argument("--kind")
     ap.add_argument("--subject"); ap.add_argument("--body"); ap.add_argument("--body-file")
     ap.add_argument("--to"); ap.add_argument("--html", action="store_true")
+    ap.add_argument("--team", action="store_true",
+                    help="manda para o TIME (TEAM_RECIPIENTS). Só p/ dado novo de fonte e o resumo do "
+                         "dia; sem isto (e sem --to) vai só para o João.")
     ap.add_argument("--require", action="store_true",
                     help="sai com erro se o e-mail NÃO for enviado — deixa o job VERMELHO e o "
                          "GitHub avisa. Sem isso, falha de SMTP é engolida (default histórico) e "
                          "some no log: foi assim que a senha do Gmail expirou sem ninguém ver.")
     a = ap.parse_args()
-    to = [x.strip() for x in a.to.split(",")] if a.to else None
+    to = ([x.strip() for x in a.to.split(",")] if a.to else
+          list(TEAM_RECIPIENTS) if a.team else None)
     body = a.body
     if a.body_file:
         with open(a.body_file, encoding="utf-8") as f:

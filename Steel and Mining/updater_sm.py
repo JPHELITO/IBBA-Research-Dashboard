@@ -78,7 +78,7 @@ MDIC_ESPERA_S   = 5
 MAX_SUMICO_FRAC = 0.10
 
 # ── E-mail ─────────────────────────────────────────────────────────────────────
-EMAIL_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]   # 2026-09-25: mesma lista do _shared/registry.py
+EMAIL_RECIPIENTS = ["joao.helito@itaubba.com"]   # 2026-11-03: só o João. O aviso do SECEX para o TIME é o do update_secex.yml (este send_email fica sem SMTP no CI)
 NOW = datetime.utcnow().isoformat()
 
 # ── MDIC ───────────────────────────────────────────────────────────────────────
