@@ -38,6 +38,12 @@ from __future__ import annotations
 DEFAULT_RECIPIENTS = ["joao.helito@itaubba.com"]
 TEAM_RECIPIENTS = ["joao.helito@itaubba.com", "marcelo.palhares@itaubba.com", "daniel.sasson@itaubba.com", "rafael.giacometti@itaubba.com"]
 
+# Aviso de DADO NOVO de fonte (SECEX, celulose, IABr, IBÁ, INDA, Empapel, Coreia — o `--team` dos workflows).
+# 2026-11-05 (pedido do usuário): PAUSADO para o time — "no momento", só o João recebe.
+# Para voltar a mandar para os 4: FONTES_PARA_O_TIME = True. O resumo do dia NÃO passa por aqui (segue no time).
+FONTES_PARA_O_TIME = False
+SOURCE_ALERT_RECIPIENTS = TEAM_RECIPIENTS if FONTES_PARA_O_TIME else DEFAULT_RECIPIENTS
+
 # Onde vive cada banco versionado (caminho relativo à raiz do repo do frontend).
 DB_PATHS = {
     "steel": "Steel and Mining/steel_sm.db",

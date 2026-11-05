@@ -99,11 +99,20 @@ def test_sem_destinatario_vai_so_para_o_joao(smtp):
     assert smtp == [[JOAO], [JOAO]]
 
 
-def test_linha_de_comando_padrao_joao_e_team_o_time(monkeypatch, smtp):
+def test_linha_de_comando_padrao_joao_e_team_a_lista_de_fontes(monkeypatch, smtp):
     _cli(monkeypatch)
     _cli(monkeypatch, "--team")
     _cli(monkeypatch, "--to", "a@x.com,b@y.com")
-    assert smtp == [[JOAO], registry.TEAM_RECIPIENTS, ["a@x.com", "b@y.com"]]
+    assert smtp == [[JOAO], registry.SOURCE_ALERT_RECIPIENTS, ["a@x.com", "b@y.com"]]
+
+
+def test_avisos_de_fonte_pausados_para_o_time():
+    # 2026-11-05 (pedido do usuário): "no momento" os avisos de dado novo de fonte vão só para o João.
+    # Religar = registry.FONTES_PARA_O_TIME = True (e trocar este teste).
+    assert registry.FONTES_PARA_O_TIME is False
+    assert registry.SOURCE_ALERT_RECIPIENTS == [JOAO]
+    assert notify.SOURCE_ALERT_RECIPIENTS == [JOAO]
+    assert len(registry.TEAM_RECIPIENTS) == 4      # o resumo do dia continua indo para os 4
 
 
 # ── workflows ─────────────────────────────────────────────────────────────────────────────────────
@@ -163,8 +172,7 @@ def test_os_passos_de_email_tem_smtp_e_python():
 # ── código Python ─────────────────────────────────────────────────────────────────────────────────
 def test_team_recipients_so_em_quem_pode():
     permitidos = {os.path.join("_shared", "registry.py"), os.path.join("_shared", "notify.py"),
-                  os.path.join("_shared", "daily_digest_mail.py"),
-                  os.path.join("Pulp and Paper", "update_empapel_news.py")}
+                  os.path.join("_shared", "daily_digest_mail.py")}
     usam = set()
     for p in glob.glob(os.path.join(RAIZ, "**", "*.py"), recursive=True):
         rel = os.path.relpath(p, RAIZ)
@@ -193,7 +201,7 @@ def test_empapel_entrega_no_endereco_certo(monkeypatch):
     monkeypatch.setattr(E.notify, "once", lambda s, p, k, subj, body, to=None, html=False: para.append(to))
     E._mail("review", "2026-10", "s", "b")
     E._mail("new", "2026-10", "s", "b", team=True)
-    assert para == [None, registry.TEAM_RECIPIENTS]          # None = o padrão do notify = só o João
+    assert para == [None, registry.SOURCE_ALERT_RECIPIENTS]  # None = o padrão do notify = só o João
 
 
 def test_celulose_separa_mes_novo_de_revisao(tmp_path, monkeypatch):
