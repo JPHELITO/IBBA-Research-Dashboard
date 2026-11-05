@@ -581,6 +581,51 @@ html.dark .ov-card{background:#20242b}
         <button class="btn" id="sgsub-companies" onclick="sgShowSub('companies')">📊 Dados (upload)</button>
         <button class="btn sec" id="sgsub-sens" onclick="sgShowSub('sens')">📈 Sensibilidade</button>
         <button class="btn sec" id="sgsub-quarterly" onclick="sgShowSub('quarterly')">🗓 Trimestral</button>
+        <button class="btn sec" id="sgsub-ratings" onclick="sgShowSub('ratings')">⭐ Recomendações</button>
+      </div>
+
+      <div id="sg-ratings" hidden>
+        <style>
+          .rh-t{border-collapse:collapse;width:100%;font-size:12px}
+          .rh-t th,.rh-t td{border-bottom:1px solid var(--border,#E3E3E3);padding:5px 8px;text-align:left;white-space:nowrap}
+          .rh-t th{font-size:11px;color:var(--gray-mid);font-weight:600}
+          .rh-t td.num{text-align:right;font-variant-numeric:tabular-nums}
+          .rh-t tr.rh-grp td{background:var(--g-light,#F4F3F0);font-weight:700;padding-top:7px}
+          .rh-t tr.rh-bad td{background:rgba(192,57,43,.08)}
+          .rh-r{display:inline-block;font-weight:700;font-size:10.5px;padding:1px 7px;border-radius:6px}
+          .rh-r.OP{background:#E3F4E9;color:#1E8E4E}.rh-r.MP{background:#F1EFEA;color:#5A6573}.rh-r.UP{background:#FBE6E3;color:#C0392B}.rh-r.NR{border:1px dashed #BBB;color:#8C8C8C}
+          .rh-src{font-size:10.5px;color:var(--gray-mid)}
+          .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1.2fr .9fr .7fr 1.4fr;gap:8px;align-items:center}
+          @media(max-width:900px){.rh-form{grid-template-columns:1fr 1fr}}
+          textarea.rh-paste{width:100%;min-height:120px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical}
+        </style>
+        <div class="card">
+          <h2>⭐ Histórico de recomendações <span class="muted" style="font-weight:400;font-size:13px">— alimenta o "Since last update" e as etiquetas OP/MP/UP da aba Market</span></h2>
+          <p class="sub">Cada linha é uma publicação: empresa, data, recomendação e preço-alvo. <b>O upload do Stock Guide grava sozinho</b> a atualização mais recente de cada empresa — a data vem da célula <b>E2</b> de cada aba ("Last Model Update Release"). Aqui você completa o <b>histórico anterior</b> e as empresas fora do Stock Guide (Aclara, Viridis). O cliente só vê com a flag <b>market_ratings</b> ligada (aba Funcionalidades); você, como admin, já vê na Market.</p>
+          <div class="row"><select class="in" id="rh-filter" onchange="rhRender()" style="max-width:300px"></select><button class="btn sec" onclick="rhLoad()">🔄 Recarregar</button></div>
+          <div id="rh-status" class="status"></div>
+          <div id="rh-list" style="overflow-x:auto"></div>
+        </div>
+        <div class="card">
+          <h2 id="rh-form-title">➕ Adicionar uma publicação</h2>
+          <p class="sub">Mesma empresa e mesma data = substitui a que existe. Para corrigir uma linha da lista, use <b>Editar</b> nela.</p>
+          <div class="rh-form">
+            <select class="in" id="rh-co" onchange="rhCoChanged()" aria-label="Empresa"></select>
+            <input class="in" id="rh-date" type="date" aria-label="Data da publicação">
+            <select class="in" id="rh-rating" aria-label="Recomendação"><option value="OP">OP — Outperform</option><option value="MP">MP — Market Perform</option><option value="UP">UP — Underperform</option><option value="NR">NR — sem recomendação</option></select>
+            <input class="in" id="rh-tp" placeholder="Preço-alvo (ex.: 95,50)" aria-label="Preço-alvo">
+            <input class="in" id="rh-ccy" placeholder="Moeda" maxlength="3" aria-label="Moeda">
+            <input class="in" id="rh-note" placeholder="Nota (opcional): Upgrade, Initiation…" maxlength="200" aria-label="Nota">
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn" onclick="rhSave()">Salvar</button><button class="btn sec" onclick="rhClear()">Limpar</button><span id="rh-form-status" class="muted"></span></div>
+        </div>
+        <div class="card">
+          <h2>📋 Colar várias linhas do Excel</h2>
+          <p class="sub">Uma linha por publicação, nesta ordem: <b>Empresa · Data · Recomendação · Preço-alvo · Moeda · Nota</b> (moeda e nota são opcionais — sem moeda vale a da empresa). A empresa pode vir pelo ticker ou pelo nome (USIM5, Usiminas…); <b>VALE3 = preço-alvo em R$</b>, <b>VALE = ADR em US$</b> (o mesmo para AURA33/AUGO). Data em DD/MM/AAAA. A prévia mostra como cada linha foi lida; uma linha com problema bloqueia o lote inteiro.</p>
+          <textarea class="in rh-paste" id="rh-paste" spellcheck="false" placeholder="USIM5&#9;10/08/2026&#9;MP&#9;8&#9;BRL&#9;Downgrade&#10;USIM5&#9;18/05/2026&#9;OP&#9;11"></textarea>
+          <div class="row" style="margin-top:8px"><button class="btn sec" onclick="rhPastePreview()">Pré-visualizar</button><span id="rh-paste-status" class="muted"></span></div>
+          <div id="rh-paste-preview" style="margin-top:8px;overflow-x:auto"></div>
+        </div>
       </div>
 
       <div id="sg-companies">
@@ -1745,10 +1790,206 @@ let _sgCos=[], _sgDrivers=[], _sgCfg={};
 
 function loadStockGuide(){ sgShowSub('companies'); loadSGConfig(); loadSGCompanies(); }
 function sgShowSub(s){
-  ['companies','sens','quarterly'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
+  ['companies','sens','quarterly','ratings'].forEach(k=>{ const el=document.getElementById('sg-'+k); if(el)el.hidden=(k!==s);
     const b=document.getElementById('sgsub-'+k); if(b)b.className='btn'+(k===s?'':' sec'); });
   if(s==='sens') loadSGSens();
   if(s==='quarterly') loadSGQuarterly();
+  if(s==='ratings') rhLoad();
+}
+
+/* ══ ⭐ RECOMENDAÇÕES (2026-11-05) — histórico OP/MP/UP + preço-alvo, uma linha por publicação ══════════
+   Alimenta o "Since last update" e as etiquetas "Ratings" da aba Market. Tabela stock_guide_rating_history
+   (admin/supabase_market_ratings.sql). O upload do Stock Guide grava sozinho a última atualização de cada
+   empresa (gatilho no banco, com a data da célula E2 de cada aba); aqui entram o histórico ANTERIOR e as
+   empresas cobertas que não estão no Stock Guide. Toda gravação passa pela MESMA validação no banco (_rh_clean). */
+let _rhRows=[], _rhEditId=null, _rhPaste=null;
+// cobertas fora do Stock Guide (terras raras, cobertura formal desde 23/10/2026)
+const RH_EXTRA=[{ticker:'ARA',company_name:'Aclara Resources',yahoo_symbol:'ARA.TO',trade_ccy:'CAD'},
+                {ticker:'VMM',company_name:'Viridis Mining',yahoo_symbol:'VMM.AX',trade_ccy:'AUD'}];
+// a mesma empresa escrita de outro jeito; `l`/`c` = OUTRA linha, com o preço-alvo na moeda dela (VALE3 em R$ ≠ VALE ADR em US$)
+const RH_ALT={VALE3:{k:'VALE',l:'VALE3.SA',c:'BRL'},AURA33:{k:'AUGO',l:'AURA33.SA',c:'BRL'},AURA:{k:'AUGO'},GGB:{k:'GGBR4',l:'GGB',c:'USD'},
+  GERDAU:{k:'GGBR4'},USIMINAS:{k:'USIM5'},CSN:{k:'CSNA3'},'CSN MINERACAO':{k:'CMIN3'},CMIN:{k:'CMIN3'},TERNIUM:{k:'TX'},
+  'SOUTHERN COPPER':{k:'SCCO'},'GRUPO MEXICO':{k:'GMEXICOB'},GMEXICO:{k:'GMEXICOB'},GMEX:{k:'GMEXICOB'},SUZANO:{k:'SUZB3'},
+  KLABIN:{k:'KLBN11'},IRANI:{k:'RANI3'},ACLARA:{k:'ARA'},VIRIDIS:{k:'VMM'}};
+const RH_SRC={stock_guide:'upload do Stock Guide',manual:'manual',import:'colado do Excel'};
+function _rhEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _rhNorm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+function _rhDay(iso){ if(!iso) return '—'; const p=String(iso).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:_rhEsc(iso); }
+// na prévia da colagem o mês vai POR EXTENSO: "08/10" lido ao contrário (Excel em inglês) salta aos olhos
+const _RH_MES_PT=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function _rhDayLong(iso){ const p=String(iso||'').slice(0,10).split('-'); return p.length===3?(+p[2])+' '+_RH_MES_PT[+p[1]-1]+' '+p[0]:'—'; }
+// empresas que aceitam histórico: as do Stock Guide + as cobertas de fora + as que já têm linha no histórico
+function _rhCos(){
+  const by={};
+  (_sgCos||[]).forEach(c=>{ by[c.ticker]={ticker:c.ticker,company_name:c.company_name,yahoo_symbol:c.yahoo_symbol,trade_ccy:c.trade_ccy||null}; });
+  RH_EXTRA.forEach(c=>{ if(!by[c.ticker]) by[c.ticker]=Object.assign({},c); });
+  _rhRows.forEach(r=>{ if(!by[r.ticker]) by[r.ticker]={ticker:r.ticker,company_name:r.ticker,yahoo_symbol:r.listing,trade_ccy:r.currency}; });
+  return Object.values(by).sort((a,b)=>String(a.company_name).localeCompare(String(b.company_name)));
+}
+// "VALE3", "Vale", "usim5", "Grupo México", "CMPC.SN" → {key, listing, ccy}; null = não reconheci
+function rhResolve(tok){
+  const n=_rhNorm(tok).replace(/\.(SA|SN|MX|TO|AX|N)$/,''); if(!n) return null;
+  const cos=_rhCos(), find=k=>cos.find(c=>c.ticker===k), alt=RH_ALT[n];
+  if(alt){ const c=find(alt.k); return c?{key:c.ticker, listing:alt.l||c.yahoo_symbol, ccy:alt.c||c.trade_ccy||null}:null; }
+  const strip=s=>_rhNorm(String(s||'').replace(/\.(SA|SN|MX|TO|AX)$/i,''));
+  const c=cos.find(c=>c.ticker===n||_rhNorm(c.company_name)===n||strip(c.yahoo_symbol)===n);
+  return c?{key:c.ticker, listing:c.yahoo_symbol, ccy:c.trade_ccy||null}:null;
+}
+// número escrito em pt-BR OU en-US: "1.110" / "1,110" = mil cento e dez; "95,50" / "95.50" = noventa e cinco e meio
+function _rhNum(s){
+  let t=String(s==null?'':s).replace(/[^\d.,-]/g,''); if(!t) return null;
+  const hasD=t.includes('.'), hasC=t.includes(',');
+  if(hasD&&hasC){ t=t.lastIndexOf(',')>t.lastIndexOf('.')?t.replace(/\./g,'').replace(',','.'):t.replace(/,/g,''); }
+  else if(hasC){ t=/^\d{1,3}(,\d{3})+$/.test(t)?t.replace(/,/g,''):t.replace(',','.'); }
+  else if(hasD&&/^\d{1,3}(\.\d{3})+$/.test(t)){ t=t.replace(/\./g,''); }
+  const v=Number(t); return Number.isFinite(v)&&v>0?v:null;
+}
+const _RH_MES={JAN:1,FEB:2,FEV:2,MAR:3,APR:4,ABR:4,MAY:5,MAI:5,JUN:6,JUL:7,AUG:8,AGO:8,SEP:9,SET:9,OCT:10,OUT:10,NOV:11,DEC:12,DEZ:12};
+// data → 'YYYY-MM-DD' ou null. DD/MM/AAAA (o padrão da planilha), AAAA-MM-DD, 10-ago-2026, serial do Excel
+function _rhDate(s){
+  const v=String(s==null?'':s).trim(); let y,m,d,x;
+  if((x=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))){ y=+x[1]; m=+x[2]; d=+x[3]; }
+  else if((x=v.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/))){ d=+x[1]; m=+x[2]; y=+x[3]; if(y<100) y+=2000; }
+  else if((x=v.match(/^(\d{1,2})[-\s\/]([A-Za-zçÇ]{3})[a-zç]*\.?[-\s\/](\d{2,4})$/))){ d=+x[1]; m=_RH_MES[_rhNorm(x[2])]; y=+x[3]; if(y<100) y+=2000; }
+  else if(/^\d{5}$/.test(v)){ const t=new Date(Math.round((+v-25569)*864e5)); y=t.getUTCFullYear(); m=t.getUTCMonth()+1; d=t.getUTCDate(); }
+  else return null;
+  if(!(y>=1990&&y<=2100&&m>=1&&m<=12&&d>=1&&d<=31)) return null;
+  const dt=new Date(Date.UTC(y,m-1,d)); if(dt.getUTCMonth()!==m-1) return null;
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+function _rhRating(s){ const n=_rhNorm(s);
+  if(/^(OP|OUTPERFORM|BUY|COMPRA)\b/.test(n)) return 'OP';
+  if(/^(MP|MARKET ?PERFORM|NEUTRAL|NEUTRO)\b/.test(n)) return 'MP';
+  if(/^(UP|UNDERPERFORM|SELL|VENDA)\b/.test(n)) return 'UP';
+  if(/^(NR|NOT RATED|RESTRICT|UNDER REVIEW|SUSPEN|SEM RECOM)/.test(n)) return 'NR';
+  return null; }
+function _rhToday(){ const d=new Date(Date.now()-3*3600e3); return d.toISOString().slice(0,10); }   // hoje em Brasília
+
+async function rhLoad(){
+  const st=_v('rh-status'); st.textContent='Carregando…';
+  if(!_sgCos||!_sgCos.length){ const r=await sbAuth.rpc('admin_get_stock_guide_companies'); if(!r.error) _sgCos=r.data||[]; }
+  const {data,error}=await sbAuth.rpc('admin_list_rating_history');
+  if(error){ st.innerHTML='<b style="color:#C0392B">Erro:</b> '+_rhEsc(error.message)+' — rodou o <code>admin/supabase_market_ratings.sql</code> no Supabase?'; _v('rh-list').innerHTML=''; return; }
+  _rhRows=data||[];
+  const f=_v('rh-filter'), keep=f.value, cos=_rhCos();
+  f.innerHTML='<option value="">Todas as empresas</option>'+cos.map(c=>`<option value="${_rhEsc(c.ticker)}">${_rhEsc(c.company_name)} (${_rhEsc(c.ticker)})</option>`).join('');
+  if(keep&&cos.some(c=>c.ticker===keep)) f.value=keep;
+  const sel=_v('rh-co'), keepCo=sel.value, alts=Object.entries(RH_ALT).filter(([k,a])=>a.l&&cos.some(c=>c.ticker===a.k));
+  sel.innerHTML=cos.map(c=>`<option value="${_rhEsc(c.ticker)}">${_rhEsc(c.company_name)} — ${_rhEsc(c.ticker)}${c.trade_ccy?' ('+_rhEsc(c.trade_ccy)+')':''}</option>`).join('')
+    +alts.map(([k,a])=>{ const c=cos.find(x=>x.ticker===a.k); return `<option value="${_rhEsc(k)}">${_rhEsc(c.company_name)} — ${_rhEsc(k)} (${_rhEsc(a.c)})</option>`; }).join('');
+  if(keepCo) sel.value=keepCo;
+  if(!_v('rh-date').value) _v('rh-date').value=_rhToday();
+  _v('rh-date').max=_rhToday();
+  rhCoChanged();
+  rhRender();
+}
+function rhRender(){
+  const host=_v('rh-list'), st=_v('rh-status'), only=_v('rh-filter').value;
+  const rows=_rhRows.filter(r=>!only||r.ticker===only);
+  const nCos=new Set(_rhRows.map(r=>r.ticker)).size;
+  st.innerHTML=_rhRows.length?`<b>${_rhRows.length}</b> publicações de <b>${nCos}</b> empresas.`:'Nenhuma publicação ainda. Suba o Stock Guide (aba 📊 Dados) para gravar a última atualização de cada empresa, e cole o histórico anterior abaixo.';
+  if(!rows.length){ host.innerHTML=''; return; }
+  const names=Object.fromEntries(_rhCos().map(c=>[c.ticker,c.company_name]));
+  const by={}; rows.forEach(r=>(by[r.ticker]=by[r.ticker]||[]).push(r));
+  let h='<table class="rh-t"><thead><tr><th>Data</th><th>Rec</th><th class="num">Preço-alvo</th><th>Linha</th><th>Nota</th><th>Origem</th><th></th></tr></thead><tbody>';
+  Object.keys(by).sort((a,b)=>String(names[a]||a).localeCompare(String(names[b]||b))).forEach(k=>{
+    const evs=by[k].sort((a,b)=>String(b.effective_date).localeCompare(String(a.effective_date)));   // mais recente primeiro
+    const last=evs[0], age=Math.round((Date.now()-Date.parse(String(last.effective_date).slice(0,10)+'T12:00:00Z'))/864e5);
+    const old=age>365?` <span style="color:#B8860B;font-weight:600" title="A última publicação tem mais de 1 ano — confira a data (célula E2 da aba no Stock Guide)">⚠ última há ${Math.round(age/30.4)} meses</span>`:'';
+    h+=`<tr class="rh-grp"><td colspan="7">${_rhEsc(names[k]||k)} <span class="muted" style="font-weight:400">${_rhEsc(k)} · ${evs.length} publicaç${evs.length===1?'ão':'ões'}</span>${old}</td></tr>`;
+    evs.forEach(r=>{
+      h+=`<tr><td>${_rhDay(r.effective_date)}</td><td><span class="rh-r ${_rhEsc(r.rating||'NR')}">${_rhEsc(r.rating||'NR')}</span></td>`
+        +`<td class="num">${r.target_price==null?'—':_rhEsc(Number(r.target_price).toLocaleString('pt-BR',{maximumFractionDigits:2}))+' '+_rhEsc(r.currency||'')}</td>`
+        +`<td>${_rhEsc(r.listing||'')}</td><td>${_rhEsc(r.note||'')}</td><td class="rh-src">${_rhEsc(RH_SRC[r.source]||r.source||'')}</td>`
+        +`<td><button class="chip" onclick="rhEdit(${+r.id})">Editar</button> <button class="chip" onclick="rhDelete(${+r.id})">Apagar</button></td></tr>`;
+    });
+  });
+  host.innerHTML=h+'</tbody></table>';
+}
+function rhCoChanged(){ const r=rhResolve(_v('rh-co').value); const c=_v('rh-ccy'); c.placeholder=r&&r.ccy?r.ccy:'Moeda'; }
+function rhClear(){ _rhEditId=null; _v('rh-form-title').textContent='➕ Adicionar uma publicação';
+  ['rh-tp','rh-ccy','rh-note'].forEach(id=>_v(id).value=''); _v('rh-date').value=_rhToday(); _v('rh-rating').value='OP'; _v('rh-form-status').textContent=''; rhCoChanged(); }
+function rhEdit(id){
+  const r=_rhRows.find(x=>+x.id===+id); if(!r) return;
+  _rhEditId=+id; _v('rh-form-title').textContent='✏️ Corrigir a publicação de '+_rhDay(r.effective_date);
+  // a linha da edição volta pelo mesmo seletor: a ADR/BDR (VALE3, AURA33, GGB) tem opção própria
+  const alt=Object.entries(RH_ALT).find(([k,a])=>a.k===r.ticker&&a.l&&a.l===r.listing);
+  _v('rh-co').value=alt?alt[0]:r.ticker; rhCoChanged();
+  _v('rh-date').value=String(r.effective_date).slice(0,10); _v('rh-rating').value=r.rating||'NR';
+  _v('rh-tp').value=r.target_price==null?'':String(r.target_price).replace('.',','); _v('rh-ccy').value=r.currency||''; _v('rh-note').value=r.note||'';
+  _v('rh-form-status').textContent='';
+  _v('rh-form-title').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function rhSave(){
+  const st=_v('rh-form-status'), res=rhResolve(_v('rh-co').value);
+  const date=_v('rh-date').value, tpRaw=_v('rh-tp').value.trim(), tp=_rhNum(tpRaw);
+  const ccy=(_v('rh-ccy').value.trim()||(res&&res.ccy)||'').toUpperCase();
+  const err=!res?'escolha a empresa':!_rhDate(date)?'data inválida':date>_rhToday()?'data no futuro':(tpRaw&&tp==null)?'preço-alvo inválido':(ccy&&!/^[A-Z]{3}$/.test(ccy))?'moeda: 3 letras (BRL, USD…)':'';
+  if(err){ st.innerHTML='<b style="color:#C0392B">'+_rhEsc(err)+'</b>'; return; }
+  st.textContent='Gravando…';
+  const p_data={ticker:res.key, effective_date:date, rating:_v('rh-rating').value, target_price:tp, currency:ccy||null, listing:res.listing||null, note:_v('rh-note').value.trim()||null};
+  const {error}=await sbAuth.rpc('admin_save_rating_event',{p_id:_rhEditId, p_data});
+  if(error){ st.innerHTML='<b style="color:#C0392B">Erro:</b> '+_rhEsc(error.message); return; }
+  rhClear(); st.innerHTML='<b style="color:#1E8E4E">Gravado.</b>'; await rhLoad();
+}
+async function rhDelete(id){
+  const r=_rhRows.find(x=>+x.id===+id); if(!r) return;
+  if(!confirm(`Apagar a publicação de ${r.ticker} em ${_rhDay(r.effective_date)} (${r.rating||'NR'})?`)) return;
+  const {error}=await sbAuth.rpc('admin_delete_rating_event',{p_id:+id});
+  if(error){ alert('Erro: '+error.message); return; }
+  if(_rhEditId===+id) rhClear();
+  await rhLoad();
+}
+// colar do Excel: lê cada linha, mostra COMO foi lida, e só libera gravar com o lote inteiro válido
+function rhPastePreview(){
+  const out=_v('rh-paste-preview'), st=_v('rh-paste-status'); _rhPaste=null;
+  const lines=String(_v('rh-paste').value||'').split(/\r?\n/).map(l=>l.replace(/\s+$/,'')).filter(l=>l.trim());
+  if(!lines.length){ out.innerHTML=''; st.textContent='Cole as linhas primeiro.'; return; }
+  const seen={}, today=_rhToday(), have=new Map(_rhRows.map(r=>[r.ticker+'|'+String(r.effective_date).slice(0,10),r]));
+  const rows=lines.map((l,i)=>{
+    const c=(l.includes('\t')?l.split('\t'):l.includes(';')?l.split(';'):l.trim().split(/\s{2,}|\s+(?=\S)/)).map(x=>x.trim());
+    const res=rhResolve(c[0]), date=_rhDate(c[1]), rating=_rhRating(c[2]), tp=c[3]?_rhNum(c[3]):null;
+    const ccy=((c[4]||'').trim()||(res&&res.ccy)||'').toUpperCase(), note=(c.slice(5).join(' ')||'').trim();
+    let err='';
+    if(i===0&&!date&&/empresa|company|ticker|data|date/i.test(l)) return {skip:true, raw:l};   // cabeçalho
+    if(!res) err='empresa não reconhecida: '+(c[0]||'(vazio)');
+    else if(!date) err='data inválida: '+(c[1]||'(vazia)');
+    else if(date>today) err='data no futuro';
+    else if(!rating) err='recomendação inválida: '+(c[2]||'(vazia)')+' (use OP, MP, UP ou NR)';
+    else if(c[3]&&tp==null) err='preço-alvo inválido: '+c[3];
+    else if(ccy&&!/^[A-Z]{3}$/.test(ccy)) err='moeda inválida: '+ccy;
+    const key=res&&date?res.key+'|'+date:null;
+    if(!err&&key&&seen[key]) err='repetida no lote (mesma empresa e data da linha '+seen[key]+')';
+    if(key&&!seen[key]) seen[key]=i+1;
+    return {i:i+1, raw:l, res, date, rating, tp, ccy, note, err, replaces:key?have.get(key)||null:null};
+  }).filter(r=>!r.skip);
+  const bad=rows.filter(r=>r.err).length, rep=rows.filter(r=>!r.err&&r.replaces).length;
+  let h='<table class="rh-t"><thead><tr><th>#</th><th>Empresa</th><th>Data</th><th>Rec</th><th class="num">Preço-alvo</th><th>Moeda</th><th>Linha</th><th>Nota</th><th>Situação</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    // substituir mostra O QUE sai: colar VALE3 (R$) numa data em que já existe o alvo da ADR (US$) troca a linha do preço-alvo
+    const old=r.replaces, oldTxt=old?`${old.rating||'NR'}${old.target_price!=null?' · '+Number(old.target_price).toLocaleString('pt-BR',{maximumFractionDigits:2})+' '+(old.currency||''):''}${old.listing?' ('+old.listing+')':''}`:'';
+    const sit=r.err?`<b style="color:#C0392B">${_rhEsc(r.err)}</b>`:old?`<span style="color:#B8860B" title="Mesma empresa e mesma data: a linha atual sai">substitui: ${_rhEsc(oldTxt)}</span>`:'<span style="color:#1E8E4E">nova</span>';
+    h+=`<tr class="${r.err?'rh-bad':''}"><td>${r.i}</td><td>${r.res?_rhEsc(r.res.key):'<span class="muted">'+_rhEsc(r.raw.split(/\t|;/)[0])+'</span>'}</td><td>${r.date?_rhDayLong(r.date):'—'}</td>`
+      +`<td>${r.rating?`<span class="rh-r ${r.rating}">${r.rating}</span>`:'—'}</td><td class="num">${r.tp==null?'—':_rhEsc(r.tp.toLocaleString('pt-BR',{maximumFractionDigits:4}))}</td>`
+      +`<td>${_rhEsc(r.ccy||'')}</td><td>${r.res?_rhEsc(r.res.listing||''):''}</td><td>${_rhEsc(r.note)}</td><td>${sit}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  if(!bad&&rows.length){
+    _rhPaste=rows.map(r=>({ticker:r.res.key, effective_date:r.date, rating:r.rating, target_price:r.tp, currency:r.ccy||null, listing:r.res.listing||null, note:r.note||null}));
+    h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="rhPasteCommit()">Gravar ${rows.length} publicaç${rows.length===1?'ão':'ões'}${rep?` (${rep} substituem as que existem)`:''}</button><button class="btn sec" onclick="rhPasteCancel()">Cancelar</button></div>`;
+    st.innerHTML=`<b style="color:#1E8E4E">${rows.length} linha${rows.length===1?'':'s'} lida${rows.length===1?'':'s'}.</b> Confira datas e preços abaixo antes de gravar.`;
+  } else st.innerHTML=`<b style="color:#C0392B">${bad} linha${bad===1?'':'s'} com problema</b> — corrija no texto e pré-visualize de novo. Nada é gravado enquanto houver erro.`;
+  out.innerHTML=h;
+}
+function rhPasteCancel(){ _rhPaste=null; _v('rh-paste-preview').innerHTML=''; _v('rh-paste-status').textContent=''; }
+async function rhPasteCommit(){
+  if(!_rhPaste||!_rhPaste.length) return;
+  const st=_v('rh-paste-status'); st.textContent='Gravando…';
+  const {data,error}=await sbAuth.rpc('admin_import_rating_history',{p_rows:_rhPaste});
+  if(error){ st.innerHTML='<b style="color:#C0392B">Nada gravado:</b> '+_rhEsc(error.message); return; }
+  _rhPaste=null; _v('rh-paste').value=''; _v('rh-paste-preview').innerHTML='';
+  st.innerHTML=`<b style="color:#1E8E4E">${data} publicações gravadas.</b>`;
+  await rhLoad();
 }
 
 // (Modelo Vivo / Gerador de cenários / editor de coeficientes — REMOVIDOS 2026-07-02:
@@ -1826,8 +2067,13 @@ async function sgModelPreview(file){
     try{ const pr=SG.parseStockGuidePeers(wb); _sgParsed.peers=pr.rows||[]; (pr.warnings||[]).forEach(w=>res.warnings.push(w)); }catch(e){ _sgParsed.peers=[]; res.warnings.push('peers: '+(e.message||e)); }
     const fx=res.fxRates||{}; const fxTxt=Object.keys(fx).map(k=>k+'/USD '+(Math.round(fx[k]*100)/100)).join(' · ')||'(câmbio não lido — coluna US$ pode faltar p/ nomes locais)';
     const f=v=>v==null?'<span style="color:#C0392B">—</span>':(Math.round(v*100)/100).toLocaleString('pt-BR');
-    let h='<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Ações(mn)</th><th>EBITDA 26E</th><th>NetDebt 26E</th><th>CashE 26E</th><th>Div 26E</th><th>fx→base</th><th>fx→US$</th><th>base</th></tr></thead><tbody>';
-    res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b></td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${f(r.fx_to_base)}</td><td>${f(r.fx_to_usd)}</td><td>${esc(r.base_ccy||'')}</td></tr>`; });
+    // data da última atualização do modelo (célula E2 de cada aba): vira o evento do histórico de recomendações
+    // e a âncora do "Since last update" da Market. Sem data = sem evento; mais de 1 ano = vale conferir.
+    const upd=v=>{ if(!v) return '<span style="color:#C0392B" title="Sem data: o histórico de recomendações não ganha este evento">—</span>';
+      const age=(Date.now()-Date.parse(v+'T12:00:00Z'))/864e5;
+      return _rhDay(v)+(age>365?' <span style="color:#B8860B" title="Mais de 1 ano — confira a data (célula E2 da aba)">⚠</span>':''); };
+    let h='<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Atualização</th><th>Ações(mn)</th><th>EBITDA 26E</th><th>NetDebt 26E</th><th>CashE 26E</th><th>Div 26E</th><th>fx→base</th><th>fx→US$</th><th>base</th></tr></thead><tbody>';
+    res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b></td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${upd(r.last_update)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${f(r.fx_to_base)}</td><td>${f(r.fx_to_usd)}</td><td>${esc(r.base_ccy||'')}</td></tr>`; });
     h+='</tbody></table>';
     const np=(_sgParsed.peers||[]).length;
     const peerNames=(_sgParsed.peers||[]).map(p=>p.company).join(', ');

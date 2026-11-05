@@ -187,6 +187,50 @@ body.theme-light .chart-dates input{color-scheme:light}
 .rb-stats b{color:var(--text);font-weight:700;font-family:var(--mono)}
 .rb-stats .z.hot{color:var(--orange)}
 .rb-note{font:600 10px var(--font);color:var(--mute)}
+/* ══ RECOMENDAÇÕES DA CASA (2026-11-05): "Since last update" no Range + etiquetas OP/MP/UP no gráfico ══
+   Cores: OP verde, MP grafite, UP vermelho (o mesmo código de cor do Stock Guide); NR = só contorno. */
+.rt-pill{display:inline-flex;align-items:center;justify-content:center;min-width:24px;font:800 9.5px var(--font);
+  letter-spacing:.04em;line-height:1.2;padding:2px 6px;border-radius:5px;white-space:nowrap}
+.rt-pill.OP{background:rgba(34,197,94,.16);color:var(--up)}
+.rt-pill.MP{background:rgba(157,167,179,.2);color:var(--text)}
+.rt-pill.UP{background:rgba(239,68,68,.16);color:var(--down)}
+.rt-pill.NR{background:none;color:var(--mute);border:1px dashed var(--border-2)}
+/* faixa do "Since last update", acima do gráfico (a altura dela sai do gráfico: o card não muda de tamanho) */
+.rt-bar{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;box-sizing:border-box;min-height:34px;margin:0 0 8px;
+  padding:5px 10px;background:var(--panel-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:8px;
+  font:600 11px var(--font);color:var(--dim)}
+.rt-bar .rt-what b{color:var(--text)}
+.rt-bar .rt-when{color:var(--mute);font-weight:500}
+.rt-bar .rt-move{font-weight:700;color:var(--dim)}
+.rt-bar .rt-move.up{color:var(--up)} .rt-bar .rt-move.down{color:var(--down)}
+.rt-bar .rt-stats{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap;white-space:nowrap}
+.rt-bar .rt-stats b{font-family:var(--mono);font-weight:700;color:var(--text)}
+.rt-bar .rt-stats b.up{color:var(--up)} .rt-bar .rt-stats b.down{color:var(--down)}
+/* liga/desliga das etiquetas no cabeçalho do gráfico */
+.rt-tog{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--font);letter-spacing:.02em;color:var(--dim);
+  background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;margin-right:4px}
+.rt-tog:hover{color:var(--text);border-color:var(--border-2)}
+.rt-tog .rt-sw{width:22px;height:12px;border-radius:999px;background:var(--border-2);position:relative;transition:background .15s}
+.rt-tog .rt-sw::after{content:"";position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:var(--panel);transition:left .15s}
+.rt-tog.on{color:var(--text);border-color:rgba(255,80,0,.45)}
+.rt-tog.on .rt-sw{background:var(--orange)}
+.rt-tog.on .rt-sw::after{left:12px;background:#fff}
+.rt-tog:disabled{opacity:.4;cursor:not-allowed}
+/* no gráfico: a cor vem do `color` da classe rt-k-* e os desenhos usam currentColor */
+.rt-k-OP{color:var(--up)} .rt-k-MP{color:#9DA7B3} .rt-k-UP{color:var(--down)} .rt-k-NR{color:var(--mute)}
+body.theme-light .rt-k-MP{color:#5A6573}
+.rt-rib{fill:currentColor;opacity:.85}
+.rt-line{stroke:currentColor;stroke-width:1;stroke-dasharray:3 3;opacity:.6}
+.rt-tag rect{fill:currentColor;stroke:currentColor;stroke-width:1}
+.rt-tag text{font:800 9px var(--font);letter-spacing:.03em;fill:#0E1116}
+body.theme-light .rt-tag text{fill:#fff}
+.rt-tag.outline rect,.rt-tag.edge rect{fill:var(--panel)}
+.rt-tag.outline text,.rt-tag.edge text{fill:currentColor}
+.rt-tag.edge{opacity:.8} .rt-tag.edge rect{stroke-dasharray:2 2}
+.c-tip .rt-tip{display:flex;align-items:center;gap:5px;margin-top:5px;padding-top:5px;border-top:1px solid var(--border-2);white-space:nowrap}
+/* recomendação no cabeçalho do ativo (clique = "Since last update") */
+.ah-fact.rt-fact .rt-pill{padding:1px 5px}
+.ah-fact.rt-fact.on{border-color:var(--orange)}
 .c-grid{stroke:var(--grid);stroke-width:1}
 .c-zero{stroke:var(--mute);stroke-dasharray:3 3;stroke-width:1}
 .c-axis{fill:var(--mute);font:500 10px var(--mono)}
@@ -605,6 +649,7 @@ body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;borde
               <button data-r="YTD">YTD</button><button data-r="1Y">1Y</button>
               <button data-r="5Y" title="Daily history — loads on demand for the assets on the chart">5Y</button>
               <button data-r="Max" title="The longest daily history we have for these assets">Max</button>
+              <button data-r="UPD" id="rng-upd" hidden>Since last update</button>
             </div>
             <div class="chart-dates">
               <span class="dl">From</span><input type="date" id="c-from" aria-label="From">
@@ -622,6 +667,7 @@ body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;borde
           <span class="rng-badge" id="rb-chart"></span>
           <span class="card-sub" id="chart-sub"></span>
           <div class="card-tools">
+            <button class="rt-tog" id="rt-tog" type="button" aria-pressed="false" hidden><span class="rt-sw" aria-hidden="true"></span>Ratings</button>
             <div class="seg mode" id="chart-mode">
               <button data-m="price" class="active">Price</button>
               <button data-m="pct">% Change</button>
@@ -630,6 +676,8 @@ body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;borde
           </div>
         </div>
         <div class="card-body">
+          <!-- nossa recomendação + desempenho desde a última atualização: só no Range "Since last update" -->
+          <div class="rt-bar" id="rt-bar" hidden></div>
           <!-- pernas do ratio: só aparece no modo Ratio -->
           <div class="ratio-bar" id="ratio-bar" hidden>
             <span class="rb-lbl">Long</span><select id="rb-long" aria-label="Long leg"></select>
@@ -893,6 +941,7 @@ function _series(q,range,mode){
   }
   const d=_dailyLive(q);   // fechamentos + preço ao vivo como ponta
   if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?_dailyRaw(q):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }   // To fixa no passado = janela histórica (sem ponta ao vivo); To vazia = até hoje (ponta viva)
+  else if(range==='UPD'){ arr=_updSlice(d); }   // "Since last update": do fechamento anterior à publicação até agora
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
   else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
   if(!arr||arr.length<2){ if(d.length>=2) arr=d.slice(-2); else return null; }
@@ -906,6 +955,7 @@ function _ret(q,range){ if(range==='1D') return q.change_pct; if(!_cobre(q,range
 function _cobre(q,range){
   if(range==='Max'||range==='custom') return true;
   const d=_dailyRaw(q); if(!d||!d.length) return true;   // sem série: quem decide é o _series
+  if(range==='UPD'){ const t0=_updT0(); return t0!=null && _updBaseOk(d,t0); }   // precisa do fechamento DIÁRIO de antes da publicação
   const ini=range==='YTD'?Date.UTC(new Date().getUTCFullYear(),0,1)/1000:Date.now()/1000-(_RANGE_DAYS[range]||372)*86400;
   return d[0][0]<=ini+7*86400;
 }
@@ -914,6 +964,7 @@ function _commSeries(c, range){
   const d=_dailyLive(c); if(d.length<2) return null;   // fechamentos + preço ao vivo da commodity
   let arr;
   if(range==='custom' && _cFrom!=null){ const src=(_cTo!=null)?((c&&Array.isArray(c.daily))?c.daily:[]):d; const to=_cTo!=null?_cTo:Date.now()/1000; arr=src.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
+  else if(range==='UPD'){ arr=_updSlice(d); }
   else if(range==='1D'){ arr=d.slice(-2); }   // commodity não tem intraday → penúltimo fechamento → preço ao vivo
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
   else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
@@ -956,11 +1007,14 @@ function _sparkline(pts,cls,span){
     <polyline points="${line}" fill="none" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.95"></polyline></svg>`;
 }
 function _rangeLabel(r){
+  if(r==='UPD'){ const e=_updEvent(); return e?`Since last update (${_fmtDay(e.t,true)})`:'Since last update'; }
   if(r==='custom'){ const o={day:'2-digit',month:'short',timeZone:'UTC'}; const f=_cFrom?new Date(_cFrom*1000).toLocaleDateString('en-US',o):'…'; const t=_cTo?new Date(_cTo*1000).toLocaleDateString('en-US',o):'today'; return `${f} – ${t}`; }
   return {'1D':'Today','1W':'1 week','1M':'1 month','3M':'3 months','6M':'6 months','YTD':'Year to date',
           '1Y':'1 year','5Y':'5 years','Max':'Full history'}[r]||r;
 }
-function _rngBadgeText(){ return _range==='custom'?_rangeLabel('custom'):_range; }   // etiqueta compacta do range por bloco
+function _rngBadgeText(){   // etiqueta compacta do range por bloco
+  if(_range==='UPD'){ const e=_updEvent(); return e?'Since '+_fmtDay(e.t):'Since update'; }
+  return _range==='custom'?_rangeLabel('custom'):_range; }
 function _setRngBadges(){ const t=_rngBadgeText(); ['rb-chart','rb-wl','rb-corr'].forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=t; }); }   // rb-thesis = "Today" fixo; rb-pf é setado no _pfRecompute
 
 /* ── estado central ── */
@@ -980,6 +1034,79 @@ if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
 function _wlCustomSave(){ try{localStorage.setItem('mkt_wl_custom',JSON.stringify(_wlCustom));}catch(e){} }
 let _newsFilter='all', _news=[], _pulse={pos:0,neg:0,neu:0,tot:0};
 let _updatedAt='';
+
+/* ══ RECOMENDAÇÕES DA CASA (2026-11-05) ═══════════════════════════════════════════════════════
+   Pedido do analista: no Range, "Since last update" = a ação desde a última atualização de modelo, com a
+   nossa recomendação; e no gráfico, um liga/desliga "Ratings" com as etiquetas OP / MP / UP nas datas das
+   atualizações + a faixa da recomendação em vigor ao longo do tempo. Só para as cobertas.
+   Fonte: get_rating_history (tabela stock_guide_rating_history — enche sozinha a cada upload do Stock
+   Guide, com a data da "Last Model Update Release" de cada aba; o histórico anterior entra pelo /admin).
+   Quem vê: admin sempre; cliente só com a flag market_ratings (sem ela a função devolve vazio).
+   Sem a função no banco (SQL ainda não rodado) cai no estado ATUAL do Stock Guide (get_stock_guide_comps),
+   que já traz a data da última atualização — o "Since last update" funciona; o histórico fica com 1 ponto. */
+const RT_LABEL={OP:'Outperform',MP:'Market Perform',UP:'Underperform',NR:'Not rated'};
+const RT_RANK={OP:3,MP:2,UP:1};
+// a empresa por TODAS as linhas que a Market mostra: o Stock Guide guarda a Vale pela ADR (VALE) e a Aura pela
+// AUGO, mas o cabeçalho costuma estar na VALE3/AURA33; a Gerdau também negocia em NY (GGB)
+const RT_ALIAS={VALE:['VALE3.SA','VALE'],AUGO:['AURA33.SA','AUGO'],GGBR4:['GGBR4.SA','GGB'],ARA:['ARA.TO'],VMM:['VMM.AX']};
+const RT_CCY={BRL:'R$',USD:'US$',CLP:'CLP$',MXN:'MX$',CAD:'C$',AUD:'A$',GBP:'£',EUR:'€'};
+let _rt={on:false, ready:false, byKey:{}, keyOf:{}};   // on = esta conta pode ver (admin ou flag)
+let _rtFlag=false;
+let _rtOverlay=false; try{ _rtOverlay=localStorage.getItem('mkt_ratings_on')==='1'; }catch(e){}
+async function loadRatings(){
+  if(!_rt.on) return;
+  let rows=null;
+  try{ rows=await rpc('get_rating_history'); }catch(e){ console.warn('get_rating_history', e); }
+  if(!Array.isArray(rows)){
+    try{ const c=await rpc('get_stock_guide_comps');
+      rows=(c||[]).filter(r=>r&&r.last_update&&r.recommendation).map(r=>({ticker:r.ticker, company_name:r.company_name,
+        yahoo_symbol:r.yahoo_symbol, effective_date:r.last_update, rating:r.recommendation, target_price:r.target_price,
+        currency:r.trade_ccy, listing:r.yahoo_symbol, note:null}));
+    }catch(e){ console.warn('ratings (Stock Guide)', e); rows=[]; }
+  }
+  _rtBuild(rows);
+}
+// linhas do banco → {chave: {name, sym, ev:[{t, r, tp, ccy, listing, note, chg, prev}]}} + mapa ticker da Market → chave.
+// `t` = meia-noite UTC do dia da publicação. `chg` = o que a atualização fez: first | up | down | chg | tp | same.
+function _rtBuild(rows){
+  const now=Date.now()/1000, by={};
+  (rows||[]).forEach(r=>{
+    const k=r&&r.ticker, t=(r&&r.effective_date)?Date.parse(String(r.effective_date).slice(0,10)+'T00:00:00Z')/1000:NaN;
+    if(!k||!isFinite(t)||t>now+86400) return;                 // sem data (ou no futuro) não vira etiqueta
+    const co=by[k]||(by[k]={key:k, name:r.company_name||k, sym:r.yahoo_symbol||null, ev:[]});
+    const tp=(r.target_price!=null&&isFinite(+r.target_price)&&+r.target_price>0)?+r.target_price:null;
+    co.ev.push({t, r:RT_LABEL[r.rating]?r.rating:null, tp, ccy:r.currency||null, listing:r.listing||r.yahoo_symbol||null, note:r.note||''});
+  });
+  const keyOf={};
+  Object.values(by).forEach(co=>{
+    co.ev.sort((a,b)=>a.t-b.t);
+    co.ev.forEach((e,i)=>{ const p=co.ev[i-1]||null; e.prev=p;
+      e.chg=!p?'first':(p.r!==e.r?((RT_RANK[e.r]&&RT_RANK[p.r])?(RT_RANK[e.r]>RT_RANK[p.r]?'up':'down'):'chg'):(p.tp!==e.tp?'tp':'same')); });
+    [co.sym,...(RT_ALIAS[co.key]||[]),...co.ev.map(e=>e.listing)].forEach(s=>{ if(s&&!keyOf[s]) keyOf[s]=co.key; });
+  });
+  _rt.byKey=by; _rt.keyOf=keyOf; _rt.ready=true;
+}
+function _rtCo(t){ if(!_rt.on||!_rt.ready||!t) return null; const k=_rt.keyOf[t]; return k?(_rt.byKey[k]||null):null; }
+function _rtAt(co,t){ let e=null; if(co) for(const x of co.ev){ if(x.t<=t) e=x; else break; } return e; }   // a recomendação em vigor em t
+function _rtLast(co){ return (co&&co.ev.length)?co.ev[co.ev.length-1]:null; }
+function _updEvent(){ return _rtLast(_rtCo(_anchor)); }      // a última atualização da empresa em foco
+function _updT0(){ const e=_updEvent(); return e?e.t:null; }
+/* Base do "Since last update" = o último fechamento ANTES do dia da publicação (o preço da tela quando o
+   relatório saiu). O Yahoo carimba a barra diária na ABERTURA do pregão (B3 13h UTC, NY 13h30, Santiago e
+   México ~14h), então a barra do próprio dia da publicação cai depois da meia-noite UTC e não vira base. Na
+   ASX (abre 23-24h UTC da véspera) a barra do dia conta como base — e está certo: ela fechou antes de o
+   relatório sair aqui. Cada papel da página acha a SUA base para a mesma data. */
+function _updBaseIdx(d,t0){ let i=-1; for(let j=0;j<d.length;j++){ if(d[j][0]<t0) i=j; else break; } return i; }
+function _updSlice(d){ const t0=_updT0(); if(t0==null||!d||!d.length) return null; const i=_updBaseIdx(d,t0); return i>=0?d.slice(i):d.filter(p=>p[0]>=t0); }
+// base com fechamento DIÁRIO de verdade (no máx. 10 dias antes da publicação): na série leve, antes de 1 ano
+// atrás os pontos são mensais — a base cairia no dia 1º do mês e o número mentiria
+function _updBaseOk(d,t0){ const i=_updBaseIdx(d,t0); return i>=0 && t0-d[i][0]<=10*86400; }
+function _updFrom(){ const t0=_updT0(); if(t0==null) return null; const d=_dailyRaw(_qa()); const i=_updBaseIdx(d,t0);
+  return (i>=0&&t0-d[i][0]<=10*86400)?d[i][0]:t0-86400; }
+function _benchOf(t){ const q=byT(t), b=q&&BENCH_BY_EXCH[q.exchange]; return (b&&b!==t&&_quotes.some(x=>x.ticker===b))?b:null; }
+function _fmtTP(v,ccy){ if(v==null||!isFinite(v)) return '—'; const s=RT_CCY[ccy]||ccy||'', big=Math.abs(v)>=1000;
+  return (s?s+' ':'')+v.toLocaleString('en-US',{minimumFractionDigits:big?0:2,maximumFractionDigits:big?0:2}); }
+function _fmtDay(t,yr){ const o={day:'2-digit',month:'short',timeZone:'UTC'}; if(yr) o.year='numeric'; return new Date(t*1000).toLocaleDateString('en-US',o); }
 
 /* ── data layer ── */
 async function loadQuotes(){
@@ -1115,8 +1242,10 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   if(bands){ vMin=Math.min(vMin,bands.mean-2.1*bands.sd); vMax=Math.max(vMax,bands.mean+2.1*bands.sd); }
   if(vMin===vMax){ const e=Math.abs(vMin)*0.02||1; vMin-=e; vMax+=e; }
   const pad=(vMax-vMin)*0.08; vMin-=pad; vMax+=pad;
+  // recomendações da casa (liga/desliga "Ratings"): só no gráfico central, da empresa em foco
+  const RT=(opts&&opts.ratings&&opts.ratings.co&&opts.ratings.co.ev.length)?opts.ratings.co:null;
   // viewBox = tamanho REAL do host (mede após reflow) → escala 1:1, sem distorcer ("puxado")
-  const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)), P={l:52,r:14,t:12,b:24};
+  const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)), P={l:52,r:14,t:RT?22:12,b:RT?30:24};
   const X=t=>P.l+(t-tMin)/((tMax-tMin)||1)*(W-P.l-P.r);
   const Y=v=>P.t+(1-(v-vMin)/((vMax-vMin)||1))*(H-P.t-P.b);
   const rdec=_ratDec(vMax-vMin);   // casas decimais do eixo do ratio: pelo INTERVALO, não pela magnitude
@@ -1140,15 +1269,48 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   g+=`<text class="c-axis" x="${P.l}" y="${H-7}">${fmtD(tMin)}</text><text class="c-axis" x="${W-P.r}" y="${H-7}" text-anchor="end">${fmtD(tMax)}</text>`;
   const paths=lines.map((l,i)=>{ const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
     return `<path data-i="${i}" d="${d}" fill="none" stroke="${l.color}" stroke-width="1.9" stroke-linejoin="round"></path>`; }).join('');
+  const rt=RT?_rtOverlaySVG(RT,X,tMin,tMax,W,H,P):'';
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}
     <rect class="c-sel" x="0" y="${P.t}" width="0" height="${(H-P.t-P.b).toFixed(1)}" style="display:none"></rect>
     <line class="c-seledge c-se0" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
     <line class="c-seledge c-se1" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
-    ${paths}
+    ${rt.under||''}${paths}${rt.over||''}
     <line class="c-cross" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" style="display:none"></line></svg>
     <div class="c-tip"></div><div class="c-selbox"></div>`;
-  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands});
+  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings:RT});
 }
+/* Camada das recomendações no gráfico central (liga/desliga "Ratings"):
+   · faixa fina sob o gráfico = a recomendação EM VIGOR em cada trecho da janela (verde OP, grafite MP, vermelho UP);
+   · linha tracejada + etiqueta em cada atualização de modelo dentro da janela — etiqueta CHEIA quando a
+     recomendação mudou (ou é a 1ª que temos), só o CONTORNO quando a atualização manteve a recomendação;
+   · sem atualização no começo da janela: etiqueta apagada no canto esquerdo com a que estava valendo.
+   Etiquetas que se encostam descem uma linha (até 3); sem espaço fica só a linha — o balão do mouse diz qual é.
+   As linhas vão POR BAIXO das séries; as etiquetas, por cima. */
+function _rtOverlaySVG(co,X,tMin,tMax,W,H,P){
+  const ev=co.ev, yT=P.t, yB=H-P.b, xL=P.l, xR=W-P.r, TW=26, TH=15;
+  let under='', over='';
+  for(let i=0;i<ev.length;i++){
+    const a=Math.max(ev[i].t,tMin), b=Math.min(i+1<ev.length?ev[i+1].t:Infinity,tMax);
+    if(!(b>a)) continue;
+    under+=`<rect class="rt-rib rt-k-${ev[i].r||'NR'}" x="${X(a).toFixed(1)}" y="${(yB+3).toFixed(1)}" width="${Math.max(1,X(b)-X(a)).toFixed(1)}" height="4" rx="1"><title>${esc(_rtTipText(ev[i]))}</title></rect>`;
+  }
+  const tag=(x,y,e,kind)=>`<g class="rt-tag ${kind} rt-k-${e.r||'NR'}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">`
+    +`<rect width="${TW}" height="${TH}" rx="4"></rect><text x="${TW/2}" y="10.6" text-anchor="middle">${e.r||'NR'}</text></g>`;
+  const rows=[-Infinity,-Infinity,-Infinity];
+  const inWin=ev.filter(e=>e.t>=tMin&&e.t<=tMax);
+  const ini=_rtAt(co,tMin);
+  if(ini && !(inWin.length && X(inWin[0].t)-xL<TW+6)){ over+=tag(xL+2,yT+2,ini,'edge'); rows[0]=xL+2+TW; }
+  inWin.forEach(e=>{
+    const x=X(e.t);
+    under+=`<line class="rt-line rt-k-${e.r||'NR'}" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${yT}" y2="${yB}"></line>`;
+    const tx=Math.min(Math.max(x-TW/2,xL),xR-TW), row=rows.findIndex(r=>tx>=r+3);
+    if(row<0) return;
+    rows[row]=tx+TW;
+    over+=tag(tx, yT+2+row*(TH+2), e, e.chg==='same'||e.chg==='tp'?'outline':'solid');
+  });
+  return {under, over};
+}
+function _rtTipText(e){ return `${RT_LABEL[e.r]||'Not rated'}${e.tp!=null?' · TP '+_fmtTP(e.tp,e.ccy):''} · since ${_fmtDay(e.t,true)}`; }
 // casas decimais de um eixo de RATIO a partir do INTERVALO exibido (não da magnitude) — 5 linhas de grade legíveis
 function _ratDec(span){ span=Math.abs(span)||0; if(!isFinite(span)||span<=0) return 2;
   return Math.max(0,Math.min(4, 2-Math.floor(Math.log10(span/4)))); }
@@ -1159,7 +1321,7 @@ function _attachHover(host, lines, dom){
   const svg=host.querySelector('svg'), tip=host.querySelector('.c-tip'), cross=host.querySelector('.c-cross');
   const selR=host.querySelector('.c-sel'), se0=host.querySelector('.c-se0'), se1=host.querySelector('.c-se1'), selbox=host.querySelector('.c-selbox');
   const paths=[...host.querySelectorAll('path[data-i]')];
-  const {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands}=dom;
+  const {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings}=dom;
   const dragEnabled = host.id==='main-chart';   // arrastar-p/-medir só no gráfico central
   const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%')
               : mode==='ratio'?_fmtRatio(v,Math.min(4,(rdec==null?2:rdec)+1))
@@ -1212,9 +1374,13 @@ function _attachHover(host, lines, dom){
     let near=-1; if(rows.length>1){ let nd=Infinity; rows.forEach(r=>{ if(r.dy<nd){nd=r.dy;near=r.i;} }); }
     paths.forEach(p=>{ const i=+p.dataset.i; p.style.opacity=(near<0||i===near)?'1':'0.22'; p.style.strokeWidth=(i===near)?'2.6':'1.9'; });
     const dt=lines[0].pts.reduce((a,p)=>Math.abs(p[0]-t)<Math.abs(a[0]-t)?p:a)[0];
-    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}${mode==='ratio'?zAt(r.v):''}`).join('');
+    // com "Ratings" ligado: a recomendação da casa que valia NAQUELE dia
+    const re=ratings?_rtAt(ratings,dt):null;
+    const rtLine=re?`<div class="rt-tip"><span class="rt-pill ${re.r||'NR'}">${re.r||'NR'}</span>${re.tp!=null?`TP ${esc(_fmtTP(re.tp,re.ccy))}`:''}<span class="mute">since ${_fmtDay(re.t,true)}</span></div>`:'';
+    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}${mode==='ratio'?zAt(r.v):''}`).join('')+rtLine;
     tip.style.opacity='1';
-    const hx=ev.clientX-rect.left; tip.style.left=Math.min(hx+12,rect.width-150)+'px'; tip.style.top='8px';
+    const hx=ev.clientX-rect.left; tip.style.left=Math.max(0,Math.min(hx+12,rect.width-Math.max(150,tip.offsetWidth+4)))+'px';
+    tip.style.top=(ratings?Math.round((P.t+20)/H*rect.height):8)+'px';   // com "Ratings": abaixo da fileira de etiquetas
   };
   if(dragEnabled){ host.onmouseup=finishDrag; }
   host.onmouseleave=ev=>{ if(dragging) finishDrag(ev); tip.style.opacity='0'; cross.style.display='none'; paths.forEach(p=>{p.style.opacity='';p.style.strokeWidth='';}); };
@@ -1231,6 +1397,11 @@ function setFocus(t){ if(!t)return; if(_chartMode==='ratio')return _ratioPick(t)
 function clearSel(){ _sel=[]; afterSel(); }
 function afterSel(){
   _anchor=_sel[0]||null;
+  // "Since last update" é da empresa em foco: trocou para quem não tem recomendação nossa → volta ao padrão (3M)
+  if(_range==='UPD'){
+    if(!_updEvent()){ _range='3M'; _cFrom=null; _cTo=null; document.querySelectorAll('#chart-range button').forEach(b=>b.classList.toggle('active',b.dataset.r==='3M')); }
+    _syncDates();
+  }
   if(_sel.length>1 && _chartMode==='price') _chartMode='pct';   // preço = 1 ativo por vez
   _ratioEnter();                                                // no Ratio: no máximo 2 (long=_sel[0], short=_sel[1])
   if(_anchor){ const ci=_carOrder.indexOf(_anchor); if(ci>=0)_carIdx=ci; _urlSync(); }
@@ -1488,8 +1659,16 @@ function renderMWTabs(){
    já em cache (renderHeader roda a cada 60 s; aqui nunca vai à rede). */
 function renderHeaderFacts(){
   const host=document.getElementById('ah-facts'); if(!host) return;
+  const facts=[];
+  // a NOSSA recomendação vem primeiro (cobertas); o clique abre o "Since last update"
+  const re=_updEvent();
+  if(re) facts.push(`<span class="ah-fact rt-fact${_range==='UPD'?' on':''}" data-upd="1" title="${esc(_rtTipText(re))} — click for the performance since that update"><span class="k">Our rating</span><span class="rt-pill ${re.r||'NR'}">${re.r||'NR'}</span>${re.tp!=null?`<span class="k">TP</span><b>${esc(_fmtTP(re.tp,re.ccy))}</b>`:''}</span>`);
   const co=_anchor?_mwCompanyOf(_anchor):null, d=co&&_mw.data[co];
-  if(!co||!d||!_mwEnabled()){ host.innerHTML=''; return; }
+  if(co&&d&&_mwEnabled()) _mwFacts(co,d).forEach(f=>facts.push(f));
+  host.innerHTML=facts.join('');
+  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>{ if(el.dataset.upd) setRange('UPD'); else setMTab(el.dataset.t,{anim:1}); });
+}
+function _mwFacts(co,d){
   const c=_mw.companies[co]||{}, lat=_mw.latest[co]||[], cur=lat.find(r=>r.ticker===c.ticker)||lat[0];
   const cls=_mwClass(co), pf=(cur&&cls.float&&cur.qty_total!=null)?cur.qty_total/cls.float*100:null;
   const today=new Date().toISOString().slice(0,10);
@@ -1500,8 +1679,7 @@ function renderHeaderFacts(){
   if(pf!=null) facts.push(`<span class="ah-fact" data-t="short"><span class="k">Short</span><b>${_mwPct(pf)}</b><span class="k">of float</span></span>`);
   facts.push(`<span class="ah-fact${active.length?' hot':''}" data-t="buybacks"><span class="k">Buyback</span><b>${active.length?'active':'none'}</b></span>`);
   if(n) facts.push(`<span class="ah-fact" data-t="insiders"><span class="k">Insiders 12m</span><b style="color:${net>0?'var(--up)':net<0?'var(--down)':'var(--text)'}">${net>0?'+':''}${_mwCompact(net)}</b><span class="k">net</span></span>`);
-  host.innerHTML=facts.join('');
-  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>setMTab(el.dataset.t,{anim:1}));
+  return facts;
 }
 
 /* ── P1 — Asset header (info distribuída + sparkline = variação intraday) ── */
@@ -1658,10 +1836,12 @@ function _ratioFitHost(on){
     if(r.height>0) _cmpH=Math.ceil(r.height+(parseFloat(getComputedStyle(cmp).marginTop)||0)); }
   host.style.height='';                                        // volta ao valor do CSS (360; 280 no mobile)
   if(cmp) cmp.hidden=!!on;
-  if(!on) return;
+  // a faixa da recomendação ("Since last update") também sai da altura do gráfico — em qualquer modo
+  const rtb=document.getElementById('rt-bar'), rh=(rtb&&!rtb.hidden)?Math.ceil(rtb.getBoundingClientRect().height)+8:0;
+  if(!on&&!rh) return;
   const base=parseFloat(getComputedStyle(host).height)||360;
-  const bh=(bar&&!bar.hidden)?Math.ceil(bar.getBoundingClientRect().height)+8:0;   // +8 = margin-bottom da barra
-  host.style.height=Math.max(220,Math.round(base-bh+_cmpH))+'px';
+  const bh=(on&&bar&&!bar.hidden)?Math.ceil(bar.getBoundingClientRect().height)+8:0;   // +8 = margin-bottom da barra
+  host.style.height=Math.max(220,Math.round(base-bh-rh+(on?_cmpH:0)))+'px';
 }
 function _ratioStats(r){
   const el=document.getElementById('rb-stats'); if(!el) return;
@@ -1697,9 +1877,12 @@ function renderChart(){
   // os preços diários". Enquanto não está pronto, mostra que está carregando e não desenha nada
   // que vá mudar de forma. Na prática a espera quase sempre já aconteceu, por causa da pré-carga
   // por intenção no hover dos botões 5Y/Max (ver _initRangeWarm).
+  _rtSyncControls();
   const precisaHist=_sel.length>0 && _needsHistory();
-  if(precisaHist) _ensureHistory(_sel).then(ok=>{ if(ok) renderChart(); });
+  if(precisaHist) _ensureHistory(_rtHistTickers()).then(ok=>{ if(ok) renderChart(); });   // + o índice da bolsa no "Since last update"
   const carregandoHist=precisaHist && !_histReady(_sel);
+  _rtBarRender(carregandoHist);   // ANTES do _ratioFitHost, que mede a faixa para tirá-la da altura do gráfico
+  const rtOpt=_rtOverlayOpt();
   if(!_sel.length){
     document.getElementById('chart-sub').textContent='';
     _mainLines=[]; _ratioBar(false); _ratioFitHost(false);
@@ -1721,7 +1904,7 @@ function renderChart(){
     _ratioFitHost(true);
     if(r){
       _mainLines=[{ticker:an+' / '+bn,color:'#FF5000',pts:r.pts}];
-      _renderChart('main-chart',_mainLines,'ratio',null,{bands:{mean:r.mean,sd:r.sd}});
+      _renderChart('main-chart',_mainLines,'ratio',null,{bands:{mean:r.mean,sd:r.sd},ratings:rtOpt});
     } else {
       _mainLines=[];
       _renderChart('main-chart',[],'ratio', bad?'Pick two different assets for the long and short legs.'
@@ -1733,9 +1916,61 @@ function renderChart(){
     if(carregandoHist){ _mainLines=[]; _histPlaceholder(); renderChips(); renderReco(); return; }
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
     _mainLines=lines;
-    _renderChart('main-chart', lines, _chartMode);
+    _renderChart('main-chart', lines, _chartMode, null, {ratings:rtOpt});
   }
   renderChips(); renderReco();
+}
+/* ── recomendações da casa: controles, faixa do "Since last update" e camada do gráfico ── */
+// botão do Range e liga/desliga: aparecem quando há histórico para mostrar; apagados (com o porquê no
+// balão) quando a empresa em foco não é coberta — a função existe, só não vale para aquele papel
+function _rtSyncControls(){
+  const vis=_rt.on&&_rt.ready&&Object.keys(_rt.byKey).length>0;
+  const co=_rtCo(_anchor), e=_rtLast(co);
+  const b=document.getElementById('rng-upd');
+  if(b){ b.hidden=!vis; b.disabled=!e;
+    b.title=e?`Since our last model update on ${_fmtDay(e.t,true)} — ${RT_LABEL[e.r]||'not rated'}${e.tp!=null?', TP '+_fmtTP(e.tp,e.ccy):''}`
+             :'Covered companies only — pick one of our names (Coverage, in the Watchlist)'; }
+  const tg=document.getElementById('rt-tog');
+  if(tg){ const on=_rtOverlay&&!!co; tg.hidden=!vis; tg.disabled=!co; tg.classList.toggle('on',on); tg.setAttribute('aria-pressed',on?'true':'false');
+    tg.title=co?(on?'Hide':'Show')+' our rating history (OP / MP / UP) on the chart':'Our rating history exists for covered companies only'; }
+}
+function _rtOverlayOpt(){ if(!_rtOverlay) return null; const co=_rtCo(_anchor); return (co&&co.ev.length)?{co}:null; }
+// no "Since last update" o índice da bolsa da empresa entra na busca do diário longo (a comparação da faixa)
+function _rtHistTickers(){ const b=_range==='UPD'?_benchOf(_anchor):null; return (b&&!_sel.includes(b))?[..._sel,b]:_sel; }
+/* Faixa acima do gráfico no "Since last update": a recomendação e o preço-alvo da última atualização, a data,
+   o que ela mudou (upgrade/downgrade/preço-alvo) e, desde então: a ação, a ação contra o índice da SUA bolsa
+   (em pontos percentuais, a mesma régua do "Relative" do heatmap) e quanto falta até o preço-alvo HOJE.
+   Os números só saem com o fechamento DIÁRIO da véspera da publicação em mãos (ver _updBaseOk). */
+function _rtBarRender(loading){
+  const bar=document.getElementById('rt-bar'); if(!bar) return;
+  const e=_updEvent();
+  if(_range!=='UPD'||!e||!_sel.length){ bar.hidden=true; bar.innerHTML=''; return; }
+  const q=_qa(), days=Math.max(0,Math.round((Date.now()/1000-e.t)/86400));
+  const other=e.listing&&e.listing!==_anchor;   // preço-alvo de outra linha (ex.: VALE3 na tela, alvo da ADR)
+  const tpTxt=e.tp!=null?` · TP <b>${esc(_fmtTP(e.tp,e.ccy))}</b>${other?` <span class="rt-when">(${esc(_short(e.listing))})</span>`:''}`:'';
+  let mv='';
+  if(e.chg==='up') mv=`<span class="rt-move up">▲ Upgraded from ${esc(e.prev.r||'NR')}</span>`;
+  else if(e.chg==='down') mv=`<span class="rt-move down">▼ Downgraded from ${esc(e.prev.r||'NR')}</span>`;
+  else if(e.chg==='chg') mv=`<span class="rt-move">Changed from ${esc(e.prev.r||'NR')}</span>`;
+  else if(e.chg==='tp'&&e.prev&&e.prev.tp!=null&&e.tp!=null) mv=`<span class="rt-move">TP ${e.tp>e.prev.tp?'raised':'cut'} from ${esc(_fmtTP(e.prev.tp,e.prev.ccy))}</span>`;
+  let st;
+  if(loading) st='<span class="rt-when">loading daily history…</span>';
+  else {
+    const pct=s=>(s&&s.length>=2&&s[0][1])?(s[s.length-1][1]/s[0][1]-1)*100:null;
+    const s=_series(q,'UPD','price'), ret=_cobre(q,'UPD')?pct(s):null;
+    const bt=_benchOf(_anchor), bq=bt?byT(bt):null, bret=(bq&&_cobre(bq,'UPD'))?pct(_series(bq,'UPD','price')):null;
+    const rel=(ret!=null&&bret!=null)?ret-bret:null;
+    const lq=e.listing?byT(e.listing):null, lp=lq&&lq.price, up=(e.tp!=null&&lp>0)?(e.tp/lp-1)*100:null;
+    const base=(ret!=null&&s&&s.length)?`${_short(q.ticker)}: close of ${_fmtDay(s[0][0],true)} (the last before the update) → ${_px(q)} now`:'';
+    st=`<span title="${esc(base)}">Since then <b class="${_signCls(ret)}">${_pctStr(ret,1)}</b></span>`
+      +(bt?`<span title="${esc(_short(_anchor)+' minus '+_short(bt)+' over the same days, in percentage points')}">vs ${esc(_short(bt))} <b class="${_signCls(rel)}">${rel==null?'—':(rel>=0?'+':'')+rel.toFixed(1)+' pp'}</b></span>`:'')
+      +(e.tp!=null?`<span title="${esc('Target price ÷ current price of '+_short(e.listing||_anchor)+' − 1')}">Upside to TP <b class="${_signCls(up)}">${_pctStr(up,1)}</b></span>`:'');
+  }
+  bar.innerHTML=`<span class="rt-pill ${e.r||'NR'}">${e.r||'NR'}</span>`
+    +`<span class="rt-what"><b>${esc(RT_LABEL[e.r]||'Not rated')}</b>${tpTxt}</span>`
+    +`<span class="rt-when">updated ${_fmtDay(e.t,true)} · ${days===0?'today':days===1?'1 day ago':days+' days ago'}</span>`
+    +mv+`<span class="rt-stats">${st}</span>`;
+  bar.hidden=false;
 }
 // Compare: SÓ recommended (pares+índice do primário) inline; selecionados realçados.
 function renderChips(){
@@ -1825,7 +2060,7 @@ function renderWatchlist(){
   let rows=_wlUniverse().map(q=>({q, v:Object.fromEntries(WL_COLS.filter(c=>!['tk','spark'].includes(c.k)).map(c=>[c.k,_wlVal(q,c.k)]))}));
   const sk=_wlSort.key, dir=_wlSort.dir;
   rows.sort((a,b)=>{ let av,bv; if(sk==='tk'){av=_short(a.q.ticker);bv=_short(b.q.ticker);return dir*av.localeCompare(bv);} av=a.v[sk];bv=b.v[sk]; av=av==null?-Infinity:av; bv=bv==null?-Infinity:bv; return dir*(av-bv); });
-  const rlbl=_range==='custom'?'Custom':_range;   // a coluna do risquinho DIZ o período (era em branco: ninguém sabia de quando era)
+  const rlbl=_range==='custom'?'Custom':_range==='UPD'?'Since upd.':_range;   // a coluna do risquinho DIZ o período (era em branco: ninguém sabia de quando era)
   const head=`<thead><tr>${WL_COLS.map(c=>{const lbl=(c.k==='custom'||c.k==='spark')?rlbl:c.l;return `<th class="${c.cls||''}${c.k==='spark'?' nos':''}" data-k="${c.k}">${lbl}${_wlSort.key===c.k?` <span class="ar">${dir<0?'▾':'▴'}</span>`:''}</th>`;}).join('')}</tr></thead>`;
   const body='<tbody>'+rows.map(({q,v})=>{
     const on=_sel.includes(q.ticker), col=colorOf(q.ticker), sp=_wlSpark(q);
@@ -1904,6 +2139,7 @@ function _commPriceSeries(c,range){
   const d=c&&c.daily; if(!Array.isArray(d)||d.length<2) return null;
   let arr;
   if(range==='custom'&&_cFrom!=null){ const to=_cTo!=null?_cTo:Date.now()/1000; arr=d.filter(p=>p[0]>=_cFrom&&p[0]<=to); }
+  else if(range==='UPD'){ arr=_updSlice(d); }
   else if(range==='1D'){ arr=d.slice(-2); }
   else if(range==='YTD'){ const j=Date.UTC(new Date().getUTCFullYear(),0,1)/1000; arr=d.filter(p=>p[0]>=j); }
   else { const cut=Date.now()/1000-(_RANGE_DAYS[range]||372)*86400; arr=d.filter(p=>p[0]>=cut); }
@@ -1973,6 +2209,7 @@ function _endOf(r){ return (r&&r.end!=null&&r.end>0)?r.end:Date.now()/1000; }
 (function(){ if(!_pfSched||_pfSched._v3)return; const rs=_pfSched.rows||[]; if(rs.length){ let li=0; for(let i=1;i<rs.length;i++) if((+rs[i].start||0)>(+rs[li].start||0))li=i; rs[li].end=null; } _pfSched._v3=true; _pfSave(); })();
 function _rangeBounds(range){ const now=Date.now()/1000;
   if(range==='custom'&&_cFrom!=null) return [_cFrom,_cTo!=null?_cTo:now];
+  if(range==='UPD'){ const f=_updFrom(); if(f!=null) return [f,now]; }   // do fechamento anterior à última atualização
   if(range==='YTD') return [Date.UTC(new Date().getUTCFullYear(),0,1)/1000, now];
   return [now-(_RANGE_DAYS[range]||372)*86400, now]; }
 function _dataFloor(){ let f=Infinity; _sel.forEach(t=>{ const d=_dailyRaw(byT(t)); if(d&&d.length)f=Math.min(f,d[0][0]); }); return isFinite(f)?f:(Date.now()/1000-6*372*86400); }   // 1ª data com dado (limite p/ trás no Advanced)
@@ -2187,14 +2424,16 @@ function _syncDates(){
   const now=Date.now()/1000;
   // em 'Max' a caixa De mostra a 1ª data com DADO (o corte teórico cairia em 1916)
   const from = _range==='1D' ? now-2*86400
+             : _range==='UPD' ? (_updFrom()||now-372*86400)
              : _range==='YTD' ? Date.UTC(new Date().getUTCFullYear(),0,1)/1000
              : _range==='Max' ? _dataFloor()
              : now-(_RANGE_DAYS[_range]||372)*86400;
   f.value=_toDateInput(from); tt.value=_toDateInput(now);
 }
-function setRange(r){ _range=r; _cFrom=null; _cTo=null;
+function setRange(r){ if(r==='UPD'&&!_updEvent()) return;   // só p/ a empresa coberta em foco
+  _range=r; _cFrom=null; _cTo=null;
   document.querySelectorAll('#chart-range button').forEach(b=>b.classList.toggle('active',b.dataset.r===r));
-  _syncDates(); renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio(); _setRngBadges(); }
+  _syncDates(); renderChart(); renderWatchlist(); renderThesis(); renderCorr(); renderPortfolio(); _setRngBadges(); renderHeaderFacts(); }
 function onDates(){
   const f=_fromDateInput(document.getElementById('c-from').value), tt=_fromDateInput(document.getElementById('c-to').value);
   if(f==null && tt==null) return;
@@ -2315,8 +2554,14 @@ async function init(){
   document.getElementById('rb-long').onchange=e=>{ _noteInteract(); _ratioSetLeg('long',e.target.value); };
   document.getElementById('rb-short').onchange=e=>{ _noteInteract(); _ratioSetLeg('short',e.target.value); };
   document.getElementById('rb-swap').onclick=()=>{ _noteInteract(); _ratioSetLeg('long',_sel[1]); };
-  document.getElementById('chart-range').onclick=e=>{ const b=e.target.closest('button'); if(b)setRange(b.dataset.r); };
+  document.getElementById('chart-range').onclick=e=>{ const b=e.target.closest('button'); if(b&&!b.disabled)setRange(b.dataset.r); };
   _initRangeWarm();
+  // recomendações da casa (admin sempre; cliente com a flag market_ratings): "Since last update" + "Ratings"
+  _rt.on=_isAdmin||_rtFlag;
+  document.getElementById('rt-tog').onclick=()=>{ const tg=document.getElementById('rt-tog'); if(!tg||tg.disabled) return;
+    _rtOverlay=!_rtOverlay; try{ localStorage.setItem('mkt_ratings_on',_rtOverlay?'1':'0'); }catch(e){}
+    renderChart(); };
+  loadRatings().then(()=>{ if(_rt.on) renderAll(); }).catch(e=>console.warn('ratings',e));
   document.getElementById('c-from').onchange=onDates;
   document.getElementById('c-to').onchange=onDates;
   document.getElementById('c-clear').onclick=()=>setRange('3M');
@@ -2388,6 +2633,7 @@ async function boot(){
     try{ const fl=await rpc('get_dashboard_flags'); if(Array.isArray(fl)){
       enabled=fl.some(f=>(f.key==='market'||f.flag==='market'||f.name==='market')&&(f.enabled||f.value||f.is_enabled));
       _mwFlag=fl.some(f=>f.key==='market_watch'&&!!f.enabled);   // linha Company (Market Watch) p/ o cliente
+      _rtFlag=fl.some(f=>f.key==='market_ratings'&&!!f.enabled);  // recomendações da casa p/ o cliente
       // recado p/ o menu do topo (o topnav.js não lê flags): grava só a flag — admin ele reconhece pelo ibba_is_admin
       try{ localStorage.setItem('ibba_mw_on',_mwFlag?'1':'0'); }catch(e){}
     } }catch(e){}
