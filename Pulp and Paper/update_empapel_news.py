@@ -339,7 +339,7 @@ def _mail(kind, period, subject, body, team=False):
     if notify:
         try:
             notify.once(SOURCE, period, kind, subject, body,
-                        list(notify.TEAM_RECIPIENTS) if team else None)
+                        list(notify.SOURCE_ALERT_RECIPIENTS) if team else None)
         except Exception as e:
             print(f"  (e-mail '{kind}' ignorado: {e})")
 
