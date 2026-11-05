@@ -1,0 +1,147 @@
+<!doctype html><meta charset="utf-8"><title>Market · recomendações da casa ("Since last update" + Ratings)</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta o código REAL (não copia) e confere as contas da função pedida em 2026-11-05:
+   market.html  — histórico → empresa (aliases VALE3/AURA33/GGB), o que cada atualização mudou, a BASE do
+                  "Since last update" (último fechamento ANTES do dia da publicação), a recusa da base mensal,
+                  as etiquetas do gráfico (cheia × contorno × canto) e o empilhamento quando se encostam;
+   stock-guide-lib.js — a data da "Last Model Update Release" (célula E2) em todos os formatos que chegam;
+   admin.html   — o que o analista cola do Excel: empresa por ticker/nome, número pt/en, data DD/MM, recomendação.
+   Rodar: abrir /tests/test_market_ratings.html e ler o #out (ou chamar window.__RUN__()). */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d!==''?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i); if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const DAY=86400, utc=(y,m,d,h)=>Date.UTC(y,m-1,d,h||0)/1000;
+
+window.__RUN__=async function(){
+ try{
+  const t=(await (await fetch('/market.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const BLOCO=cut(t,'const RT_LABEL=','return new Date(t*1000).toLocaleDateString(\'en-US\',o); }');
+  const OVER=cut(t,'function _rtOverlaySVG(co,X,tMin,tMax,W,H,P){','function _rtTipText(e){')+' return `${RT_LABEL[e.r]||\'Not rated\'}`; }';
+  const SERIE=[cut(t,'function _dailyLive(q){','  return out;\n}'), cut(t,'function _series(q,range,mode){','\n}'),
+               cut(t,'function _cobre(q,range){','return d[0][0]<=ini+7*86400;\n}')].join('\n');
+  const ctx={_anchor:null,_quotes:[],_histMap:{},_cFrom:null,_cTo:null,_RANGE_DAYS:{'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372,'5Y':1860,'Max':40000},
+    BENCH_BY_EXCH:{B3:'IBOV',NYSE:'SPX'}, localStorage:{getItem:()=>null}, console,
+    esc:s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+    rpc:async()=>[]};
+  ctx.byT=x=>ctx._quotes.find(q=>q.ticker===x)||{};
+  ctx._qa=()=>ctx._anchor?ctx.byT(ctx._anchor):null;
+  const M=new Function('ctx',`with(ctx){ function _dailyRaw(q){ return (q&&_histMap[q.ticker]) || ((q&&Array.isArray(q.daily))?q.daily:[]); }
+    ${BLOCO}\n${SERIE}\n${OVER}\n _rt.on=true;
+    return {_rt,_rtBuild,_rtCo,_rtAt,_rtLast,_updEvent,_updT0,_updBaseIdx,_updSlice,_updBaseOk,_updFrom,_benchOf,_fmtTP,_fmtDay,_series,_cobre,_rtOverlaySVG}; }`)(ctx);
+
+  // ── 1. histórico → empresa ──
+  const now=Math.floor(Date.now()/1000);
+  const hoje=new Date(now*1000).toISOString().slice(0,10), futuro=new Date((now+5*DAY)*1000).toISOString().slice(0,10);
+  M._rtBuild([
+    {ticker:'VALE',company_name:'Vale',yahoo_symbol:'VALE',effective_date:'2026-04-30',rating:'OP',target_price:19,currency:'USD',listing:'VALE'},
+    {ticker:'VALE',company_name:'Vale',yahoo_symbol:'VALE',effective_date:'2025-10-28',rating:'MP',target_price:13,currency:'USD',listing:'VALE'},
+    {ticker:'VALE',company_name:'Vale',yahoo_symbol:'VALE',effective_date:'2026-08-17',rating:'OP',target_price:18,currency:'USD',listing:'VALE'},
+    {ticker:'VALE',company_name:'Vale',yahoo_symbol:'VALE',effective_date:'2026-02-10',rating:'OP',target_price:16,currency:'BRL',listing:'VALE3.SA'},
+    {ticker:'USIM5',company_name:'Usiminas',yahoo_symbol:'USIM5.SA',effective_date:'2026-05-18',rating:'OP',target_price:11,currency:'BRL',listing:'USIM5.SA'},
+    {ticker:'USIM5',company_name:'Usiminas',yahoo_symbol:'USIM5.SA',effective_date:'2026-08-10',rating:'MP',target_price:8,currency:'BRL',listing:'USIM5.SA'},
+    {ticker:'USIM5',company_name:'Usiminas',yahoo_symbol:'USIM5.SA',effective_date:futuro,rating:'UP',target_price:5,currency:'BRL'},
+    {ticker:'ARA',company_name:null,yahoo_symbol:null,effective_date:'2026-10-23',rating:'OP',target_price:4.92,currency:'CAD',listing:'ARA.TO'},
+    {ticker:'AUGO',company_name:'Aura',yahoo_symbol:'AUGO',effective_date:null,rating:'OP',target_price:98,currency:'USD'},
+  ]);
+  const vale=M._rt.byKey.VALE, usim=M._rt.byKey.USIM5;
+  ok('ordem por data (a ordem do banco não importa)', vale.ev.map(e=>new Date(e.t*1000).toISOString().slice(0,10)).join()==='2025-10-28,2026-02-10,2026-04-30,2026-08-17');
+  ok('o que cada atualização fez: 1ª · upgrade MP→OP · só preço-alvo · só preço-alvo', vale.ev.map(e=>e.chg).join()==='first,up,tp,tp', vale.ev.map(e=>e.chg).join());
+  ok('downgrade OP→MP (Usiminas 10/08)', usim.ev[1].chg==='down' && usim.ev[1].prev.r==='OP');
+  ok('data no FUTURO não vira etiqueta', usim.ev.length===2);
+  ok('sem data não entra (AUGO sem last_update)', !M._rt.byKey.AUGO);
+  ok('a mesma empresa por TODAS as linhas: VALE3.SA, VALE (ADR)', M._rt.keyOf['VALE3.SA']==='VALE' && M._rt.keyOf['VALE']==='VALE');
+  ok('Aclara fora do Stock Guide (sem yahoo_symbol) acha a linha pelo apelido ARA.TO', M._rt.keyOf['ARA.TO']==='ARA');
+  ok('papel sem recomendação nossa → nada', M._rtCo('MT')===null && M._rtCo('IBOV')===null);
+  ok('a recomendação EM VIGOR num dia', M._rtAt(vale,utc(2026,1,15)).r==='MP' && M._rtAt(vale,utc(2026,2,10)).r==='OP' && M._rtAt(vale,utc(2025,1,1))===null);
+  ok('preço-alvo na moeda da linha: US$ 18.00 · CLP$ 1,030 · R$ 8.00', M._fmtTP(18,'USD')==='US$ 18.00' && M._fmtTP(1030,'CLP')==='CLP$ 1,030' && M._fmtTP(8,'BRL')==='R$ 8.00', [M._fmtTP(18,'USD'),M._fmtTP(1030,'CLP'),M._fmtTP(8,'BRL')].join(' | '));
+
+  // ── 2. a BASE do "Since last update" ──
+  // barras como o Yahoo carimba: na ABERTURA (B3 13h UTC). Publicação numa SEGUNDA (10/08/2026) → base = SEXTA 07/08.
+  const b3=[]; for(let dd=3; dd<=14; dd++){ const wd=new Date(Date.UTC(2026,7,dd)).getUTCDay(); if(wd===0||wd===6) continue; b3.push([utc(2026,8,dd,13), 100+dd]); }
+  const t0=utc(2026,8,10);
+  ok('base = último fechamento ANTES do dia da publicação (seg 10/08 → sex 07/08)', b3[M._updBaseIdx(b3,t0)][0]===utc(2026,8,7,13));
+  ctx._anchor='USIM5.SA';
+  ctx._quotes=[{ticker:'USIM5.SA',exchange:'B3',price:120,daily:b3}];
+  const fat=M._updSlice(b3);
+  ok('a barra do próprio dia da publicação (seg 13h UTC) é o 2º ponto, não a base', fat[0][0]===utc(2026,8,7,13) && fat[1][0]===utc(2026,8,10,13));
+  ctx._quotes=[{ticker:'USIM5.SA',exchange:'B3',price:120,daily:b3},{ticker:'IBOV',exchange:'B3',price:110,daily:b3.map(p=>[p[0],100])}];
+  // na janela: só o que tem a data de hoje é "ponta ao vivo"; aqui a série é histórica (ago/26), então o _dailyLive
+  // acrescenta o preço atual como último ponto
+  const s=M._series(ctx.byT('USIM5.SA'),'UPD','price');
+  ok('série começa na base (sex 07/08, 107) e termina no preço ao vivo (120)', s[0][0]===utc(2026,8,7,13) && s[0][1]===107 && s[s.length-1][1]===120, JSON.stringify([s[0],s[s.length-1]]));
+  const pct=M._series(ctx.byT('USIM5.SA'),'UPD','pct');
+  ok('% desde a atualização = 120/107 − 1', Math.abs(pct[pct.length-1][1]-(120/107-1)*100)<1e-9);
+  ok('cobre com fechamento diário', M._cobre(ctx.byT('USIM5.SA'),'UPD')===true);
+  ok('índice da bolsa do papel (B3 → IBOV)', M._benchOf('USIM5.SA')==='IBOV');
+  // série LEVE: antes de 1 ano atrás os pontos são MENSAIS (dia 1º) → a base mentiria → "—"
+  const mensal=[[utc(2025,7,1,13),90],[utc(2025,8,1,13),95],[utc(2025,9,1,13),99]];
+  ok('base mensal (dia 1º, 17 dias antes) é RECUSADA', M._updBaseOk(mensal,utc(2025,8,18))===false);
+  ok('base diária (até 10 dias antes, feriado incluso) é aceita', M._updBaseOk(b3,t0)===true && M._updBaseOk([[utc(2026,2,13,13),1]],utc(2026,2,19))===true);
+  ok('papel sem histórico antes da publicação: série a partir dela, sem base', (()=>{ const d=[[utc(2026,9,1,13),5],[utc(2026,9,2,13),6]]; const r=M._updSlice(d); return r.length===2&&r[0][1]===5&&M._updBaseOk(d,t0)===false; })());
+  ok('ASX: a barra do dia (carimbada às 23h UTC da véspera) fechou ANTES do relatório sair aqui → é a base', (()=>{ const d=[[utc(2026,8,6,23),10],[utc(2026,8,9,23),11],[utc(2026,8,10,23),12]]; return d[M._updBaseIdx(d,t0)][1]===11; })());
+  ok('_updFrom = a data da base (vai para o "From" e para o corte do diário longo)', M._updFrom()===utc(2026,8,7,13));
+  ctx._anchor='MT';
+  ok('sem empresa coberta em foco → sem "Since last update"', M._updEvent()===null && M._updT0()===null && M._updFrom()===null);
+
+  // ── 3. as etiquetas do gráfico ──
+  const W=800,H=300,P={l:52,r:14,t:22,b:30};
+  const mk=(tMin,tMax)=>{ const X=x=>P.l+(x-tMin)/(tMax-tMin)*(W-P.l-P.r); return M._rtOverlaySVG(vale,X,tMin,tMax,W,H,P); };
+  const conta=(s,re)=>(s.match(re)||[]).length;
+  let o=mk(utc(2025,9,1),utc(2026,11,1));   // janela com as 4 atualizações
+  ok('4 atualizações na janela → 4 linhas tracejadas', conta(o.under,/class="rt-line/g)===4);
+  ok('mudou a recomendação (1ª e upgrade) = etiqueta CHEIA; manteve = CONTORNO', conta(o.over,/rt-tag solid/g)===2 && conta(o.over,/rt-tag outline/g)===2, o.over.match(/rt-tag \w+/g).join());
+  ok('a faixa da recomendação em vigor: MP (out→fev) e OP (fev→)', conta(o.under,/rt-rib rt-k-MP/g)===1 && conta(o.under,/rt-rib rt-k-OP/g)===3);
+  o=mk(utc(2026,9,1),utc(2026,11,1));       // janela DEPOIS da última atualização
+  ok('sem atualização na janela: etiqueta apagada no canto com a que vale (OP)', conta(o.over,/rt-tag edge rt-k-OP/g)===1 && conta(o.under,/rt-line/g)===0);
+  ok('…e a faixa inteira em OP', conta(o.under,/rt-rib rt-k-OP/g)===1);
+  // atualizações coladas (5 dias numa janela de 5 anos) → descem uma linha em vez de se sobrepor
+  const junto={ev:[{t:utc(2026,1,5),r:'OP',chg:'first'},{t:utc(2026,1,8),r:'MP',chg:'down'},{t:utc(2026,1,12),r:'UP',chg:'down'},{t:utc(2026,1,15),r:'OP',chg:'up'}]};
+  const X5=x=>P.l+(x-utc(2021,11,1))/(utc(2026,11,1)-utc(2021,11,1))*(W-P.l-P.r);
+  o=M._rtOverlaySVG(junto,X5,utc(2021,11,1),utc(2026,11,1),W,H,P);
+  const ys=[...o.over.matchAll(/translate\([\d.]+,([\d.]+)\)/g)].map(m=>+m[1]);
+  ok('etiquetas que se encostam descem (3 linhas) e a 4ª fica só com a linha', ys.length===3 && new Set(ys).size===3 && conta(o.under,/rt-line/g)===4, ys.join());
+
+  // ── 4. stock-guide-lib: a data da planilha ──
+  const lib=await (await fetch('/stock-guide-lib.js?v='+Date.now())).text();
+  const G={}; new Function('window','globalThis',lib)(G,G);
+  const cd=G.SG.cellDate;
+  ok('Date à meia-noite LOCAL → mesmo dia', cd(new Date(2026,3,30))==='2026-04-30');
+  ok('Date à meia-noite UTC → mesmo dia (sem o +12h viraria a véspera no Brasil)', cd(new Date(Date.UTC(2026,3,30)))==='2026-04-30');
+  ok('serial do Excel 46142 → 2026-04-30', cd(46142)==='2026-04-30', cd(46142));
+  ok('texto DD/MM/AAAA (o rótulo da planilha pede assim)', cd('18/05/2026')==='2026-05-18');
+  ok('texto AAAA-MM-DD', cd('2025-11-28')==='2025-11-28');
+  ok('30/02 não existe · vazio · lixo → null', cd('30/02/2026')===null && cd('')===null && cd(null)===null && cd('n.a.')===null && cd(7.5)===null);
+
+  // ── 5. admin: o que o analista cola do Excel ──
+  const a=(await (await fetch('/admin.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const ADM=cut(a,'const RH_EXTRA=','function _rhToday(){ const d=new Date(Date.now()-3*3600e3); return d.toISOString().slice(0,10); }');
+  const actx={_sgCos:[{ticker:'VALE',company_name:'Vale',yahoo_symbol:'VALE',trade_ccy:'USD'},{ticker:'USIM5',company_name:'Usiminas',yahoo_symbol:'USIM5.SA',trade_ccy:'BRL'},
+    {ticker:'GMEXICOB',company_name:'Grupo México',yahoo_symbol:'GMEXICOB.MX',trade_ccy:'MXN'},{ticker:'CMPC',company_name:'CMPC',yahoo_symbol:'CMPC.SN',trade_ccy:'CLP'},
+    {ticker:'AUGO',company_name:'Aura Minerals',yahoo_symbol:'AUGO',trade_ccy:'USD'},{ticker:'GGBR4',company_name:'Gerdau',yahoo_symbol:'GGBR4.SA',trade_ccy:'BRL'}], _rhRows:[]};
+  const A=new Function('ctx',`with(ctx){ ${ADM}\n return {rhResolve,_rhNum,_rhDate,_rhRating}; }`)(actx);
+  const rv=x=>{ const r=A.rhResolve(x); return r?[r.key,r.listing,r.ccy].join('/'):'null'; };
+  ok('empresa pelo ticker: USIM5 → USIM5/USIM5.SA/BRL', rv('USIM5')==='USIM5/USIM5.SA/BRL', rv('USIM5'));
+  ok('pelo nome, com acento e caixa qualquer: "grupo méxico"', rv('grupo méxico')==='GMEXICOB/GMEXICOB.MX/MXN', rv('grupo méxico'));
+  ok('VALE3 = a linha da B3 em R$; VALE = a ADR em US$', rv('VALE3')==='VALE/VALE3.SA/BRL' && rv('VALE')==='VALE/VALE/USD', rv('VALE3')+' | '+rv('VALE'));
+  ok('AURA33 = BDR em R$; AURA = AUGO', rv('AURA33')==='AUGO/AURA33.SA/BRL' && rv('Aura')==='AUGO/AUGO/USD');
+  ok('com sufixo de bolsa: CMPC.SN', rv('CMPC.SN')==='CMPC/CMPC.SN/CLP');
+  ok('Aclara/Viridis (fora do Stock Guide)', rv('Aclara')==='ARA/ARA.TO/CAD' && rv('VMM')==='VMM/VMM.AX/AUD');
+  ok('desconhecida → null', A.rhResolve('Petrobras')===null);
+  ok('número pt e en: "1.110" = "1,110" = 1110; "95,50" = "95.50" = 95.5; "7.400,00" = 7400', A._rhNum('1.110')===1110 && A._rhNum('1,110')===1110 && A._rhNum('95,50')===95.5 && A._rhNum('95.50')===95.5 && A._rhNum('7.400,00')===7400 && A._rhNum('R$ 8')===8, [A._rhNum('1.110'),A._rhNum('1,110'),A._rhNum('95,50'),A._rhNum('7.400,00')].join());
+  ok('preço-alvo zero/negativo/vazio → null', A._rhNum('0')===null && A._rhNum('-3')===null && A._rhNum('')===null);
+  ok('data DD/MM/AAAA, AAAA-MM-DD, 10-ago-2026, 10/08/26, serial', A._rhDate('10/08/2026')==='2026-08-10' && A._rhDate('2026-08-10')==='2026-08-10' && A._rhDate('10-ago-2026')==='2026-08-10' && A._rhDate('10/08/26')==='2026-08-10' && A._rhDate('46244')==='2026-08-10', [A._rhDate('10-ago-2026'),A._rhDate('46244')].join());
+  ok('data impossível → null', A._rhDate('31/02/2026')===null && A._rhDate('2026-13-01')===null && A._rhDate('ontem')===null);
+  ok('recomendação: OP/Outperform/Buy · MP/Neutral · UP/Underperform · NR/Restricted', A._rhRating('Outperform')==='OP' && A._rhRating('buy')==='OP' && A._rhRating('Market Perform')==='MP' && A._rhRating('neutral')==='MP' && A._rhRating('UP')==='UP' && A._rhRating('Restricted')==='NR' && A._rhRating('?')===null);
+
+  // ── 6. sinais de vida no HTML ──
+  ok('botão "Since last update" no Range (nasce escondido)', /<button data-r="UPD" id="rng-upd" hidden>Since last update<\/button>/.test(t));
+  ok('liga/desliga "Ratings" no cabeçalho do gráfico (nasce escondido)', /id="rt-tog"[^>]*hidden>/.test(t));
+  ok('flag market_ratings lida no boot', /_rtFlag=fl\.some\(f=>f\.key==='market_ratings'/.test(t));
+  ok('no /admin a aba ⭐ Recomendações', /id="sgsub-ratings"/.test(a) && /id="sg-ratings" hidden/.test(a));
+ }catch(e){ R.push('FAIL · exceção: '+(e&&e.stack||e)); }
+  const txt=R.join('\n')+`\n\n${R.filter(x=>x.startsWith('PASS')).length}/${R.length} PASS`;
+  document.getElementById('out').textContent=txt;
+  return txt;
+};
+window.__RUN__();
+</script></body>

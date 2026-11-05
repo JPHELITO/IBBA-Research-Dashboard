@@ -239,6 +239,34 @@
     return Number.isFinite(n) ? n : null;
   }
   function _isNum(v) { return typeof v === 'number' && Number.isFinite(v); }
+  // célula de DATA → 'YYYY-MM-DD' (ou null). O /admin lê o .xlsm com cellDates:true → vem um Date; sem
+  // isso vem o serial do Excel. Texto também vale: 'DD/MM/YYYY' (é o que o rótulo da planilha pede) e
+  // 'YYYY-MM-DD'. No Date, +12h antes de ler dia/mês/ano: o SheetJS pode entregar a meia-noite em UTC ou
+  // no fuso local, e as duas caem no MESMO dia assim (sem o +12h, a de UTC vira a véspera no Brasil).
+  function _sgCellDate(v) {
+    const pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    const ok = function (y, m, d) {
+      if (!(y >= 1990 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      if (dt.getUTCMonth() !== m - 1) return null;            // 30/02 não existe
+      return y + '-' + pad(m) + '-' + pad(d);
+    };
+    if (v instanceof Date) {
+      if (isNaN(v.getTime())) return null;
+      const t = new Date(v.getTime() + 12 * 3600 * 1000);
+      return ok(t.getFullYear(), t.getMonth() + 1, t.getDate());
+    }
+    if (typeof v === 'number' && v > 30000 && v < 80000) {      // serial do Excel (1982…2119)
+      const t = new Date(Math.round((v - 25569) * 86400000));
+      return ok(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+    }
+    if (typeof v === 'string') {
+      const s = v.trim(); let m;
+      if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return ok(+m[1], +m[2], +m[3]);
+      if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return ok(+m[3], +m[2], +m[1]);
+    }
+    return null;
+  }
   // 1ª célula (string) que casa `re`; predicado opcional sobre a linha. Devolve {r,c} ou null.
   function _sgFindCell(aoa, re, pred) {
     for (let r = 0; r < aoa.length; r++) {
@@ -327,6 +355,17 @@
     const priceLocal = blk ? blkNum(/^share\s+price/i) : hNum(/^share\s+price/i);   // 1ª = moeda de negociação
     const target = blk ? blkNum(/^target\s+price/i) : hNum(/^target\s+price/i);
     const rec = (function () { const t = hTxt(/^analyst\s+recommend/i); return /^(OP|MP|UP)$/i.test(t || '') ? t.toUpperCase() : null; })();
+    // Data da última atualização do modelo: "Last Model Update Release (DD/MM/YEAR):" em B2, com a data
+    // algumas colunas à direita (E2). Vira o `last_update` da empresa — a âncora do "Since last update" da
+    // aba Market e a data do evento no histórico de recomendações (gatilho sg_capture_rating no banco).
+    // Sem ela o upload segue (aviso abaixo), mas o histórico não ganha evento: data inventada não entra.
+    const lastUpdate = (function () {
+      const f = _sgFindCell(aoa, /^last\s+model\s+update/i); if (!f) return null;
+      const row = aoa[f.r] || [];
+      for (let c = f.c + 1; c < Math.min(row.length, f.c + 10); c++) { const d = _sgCellDate(row[c]); if (d) return d; }
+      return null;
+    })();
+    if (!lastUpdate) warnings.push(meta.tab + ': data da última atualização (Last Model Update Release) não lida');
 
     const ebitda = est(/^ebitda\s*\(/i);
     const netDebt = est(/^net\s+debt\s*\(/i);              // exclui "Net Debt/EBITDA (x)"
@@ -357,7 +396,7 @@
       row: {
         ticker: meta.ticker, company_name: meta.name, yahoo_symbol: meta.yahoo,
         sector: meta.sector, trade_ccy: meta.trade_ccy, base_ccy: baseCcy,
-        shares_outstanding: shares, target_price: target, recommendation: rec,
+        shares_outstanding: shares, target_price: target, recommendation: rec, last_update: lastUpdate,
         net_debt_y1: netDebt.y1, net_debt_y2: netDebt.y2,
         ebitda_y1: ebitda.y1, ebitda_y2: ebitda.y2,
         net_income_y1: netInc.y1, net_income_y2: netInc.y2,
@@ -612,6 +651,7 @@
     parseStockGuideWorkbook: parseStockGuideWorkbook,
     parseStockGuidePeers: parseStockGuidePeers,
     parseSGFXRates: parseSGFXRates,
+    cellDate: _sgCellDate,
     MARKET_DRIVER_CATALOG: MARKET_DRIVER_CATALOG,
     MARKET_DRIVER_CATALOG_BY_KEY: MARKET_DRIVER_CATALOG_BY_KEY,
     isDynamicSource: isDynamicSource,

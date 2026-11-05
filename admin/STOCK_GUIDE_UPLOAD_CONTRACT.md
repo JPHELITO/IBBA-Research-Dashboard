@@ -35,6 +35,15 @@ A estrutura é **idêntica** nas 14 abas. Endereçar pelos **rótulos da coluna 
 inserção de linhas), com a regra de bloco abaixo. Anos: estimativas em colunas FIXAS
 **T (20) = 2026E** e **U (21) = 2027E** (mesmo no Copec, que começa em 2013 sem desalinhar).
 
+### Data da última atualização do modelo (linha 2) — desde 2026-11-05
+| Campo dashboard | Onde |
+|---|---|
+| last_update | rótulo `Last Model Update Release (DD/MM/YEAR):` em **B2**; a data em **E2** (1ª célula de data à direita do rótulo) |
+
+> É a âncora do "Since last update" da aba Market e a data do evento no histórico de recomendações
+> (`stock_guide_rating_history`, gatilho `sg_capture_rating`). Sem data → o upload segue (aviso) e o
+> histórico NÃO ganha evento. Lida por `SG.cellDate` (Date local/UTC, serial do Excel, DD/MM/AAAA, AAAA-MM-DD).
+
 ### Bloco-cabeçalho (linhas ~5–11), valor na coluna C
 | Campo dashboard | Rótulo (col B) começa com |
 |---|---|
