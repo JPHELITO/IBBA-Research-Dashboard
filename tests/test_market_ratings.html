@@ -101,6 +101,24 @@ window.__RUN__=async function(){
   const ys=[...o.over.matchAll(/translate\([\d.]+,([\d.]+)\)/g)].map(m=>+m[1]);
   ok('etiquetas que se encostam descem (3 linhas) e a 4ª fica só com a linha', ys.length===3 && new Set(ys).size===3 && conta(o.under,/rt-line/g)===4, ys.join());
 
+  // ── 3b. COMPARAÇÃO: cada empresa na sua linha (06/11/2026) ──
+  const LSRC=cut(t,'function _rtLinesSVG(per,lines,X,Y,tMin,tMax,W,H,P){','  return {under:\'\', over:stems+dots+tags};\n}');
+  const L=new Function('ctx','_rtAt',`with(ctx){ ${LSRC}\n return _rtLinesSVG; }`)(ctx, M._rtAt);
+  const Pm={l:52,r:44,t:18,b:24}, tA=utc(2025,9,1), tB=utc(2026,11,1), Xm=x=>Pm.l+(x-tA)/(tB-tA)*(W-Pm.l-Pm.r), Ym=v=>Pm.t+(1-(v+50)/100)*(H-Pm.t-Pm.b);
+  const serieL=(v0,v1)=>{ const a=[]; for(let k=0;k<=60;k++){ const tt=tA+(tB-tA)*k/60; a.push([tt, v0+(v1-v0)*k/60]); } return a; };
+  const linhas=[{ticker:'VALE3.SA',color:'#FF5000',pts:serieL(0,20)},{ticker:'USIM5.SA',color:'#3B82F6',pts:serieL(0,-30)},{ticker:'IBOV',color:'#22C55E',pts:serieL(0,5)}];
+  const om=L([vale,usim,null],linhas,Xm,Ym,tA,tB,W,H,Pm);
+  const nVale=vale.ev.filter(e=>e.t>tA&&e.t<=tB).length, nUsim=usim.ev.filter(e=>e.t>tA&&e.t<=tB).length;
+  // bolinhas = uma por atualização dentro da janela + uma na ponta de cada coberta (a de hoje)
+  ok('uma bolinha por atualização dentro da janela + uma na ponta de cada empresa', conta(om.over,/class="rt-dot"/g)===nVale+nUsim+2, conta(om.over,/class="rt-dot"/g)+' × '+(nVale+nUsim+2));
+  ok('a bolinha tem a cor da linha da empresa (inclusive a da ponta)', conta(om.over,/rt-dot[^>]*fill="#FF5000"/g)===nVale+1 && conta(om.over,/rt-dot[^>]*fill="#3B82F6"/g)===nUsim+1);
+  ok('nada para o índice (não coberto)', !/#22C55E/.test(om.over));
+  ok('a recomendação de HOJE na ponta de cada coberta (Vale OP, Usiminas MP)', (()=>{ const xs=[...om.over.matchAll(/translate\(([\d.]+),([\d.]+)\)"><rect[^>]*><\/rect><text[^>]*>(\w+)</g)].map(m=>[+m[1],m[3]]);
+    const pontas=xs.filter(([x])=>x>=W-Pm.r-2); return pontas.length===2 && pontas.map(p=>p[1]).sort().join()==='MP,OP'; })());
+  const juntas=L([vale,usim],[{ticker:'A',color:'#111',pts:serieL(0,10)},{ticker:'B',color:'#222',pts:serieL(0,10)}],Xm,Ym,tA,tB,W,H,Pm);
+  const yPontas=[...juntas.over.matchAll(/translate\(([\d.]+),([\d.]+)\)/g)].filter(m=>+m[1]>=W-Pm.r-2).map(m=>+m[2]).sort((a,b)=>a-b);
+  ok('pontas na mesma altura não se sobrepõem (empilham: etiqueta de 13 px + 2 de folga)', yPontas.length===2 && yPontas[1]-yPontas[0]>=14.5, yPontas.join());
+
   // ── 4. stock-guide-lib: a data da planilha ──
   const lib=await (await fetch('/stock-guide-lib.js?v='+Date.now())).text();
   const G={}; new Function('window','globalThis',lib)(G,G);
@@ -136,6 +154,7 @@ window.__RUN__=async function(){
   // ── 6. sinais de vida no HTML ──
   ok('botão "Since last update" no Range (nasce escondido)', /<button data-r="UPD" id="rng-upd" hidden>Since last update<\/button>/.test(t));
   ok('liga/desliga "Ratings" no cabeçalho do gráfico (nasce escondido)', /id="rt-tog"[^>]*hidden>/.test(t));
+  ok('tema claro: letra branca SÓ na etiqueta cheia (a de contorno fica com a cor da recomendação)', /body\.theme-light \.rt-tag\.solid text\{fill:#fff\}/.test(t) && !/body\.theme-light \.rt-tag text\{/.test(t));
   ok('flag market_ratings lida no boot', /_rtFlag=fl\.some\(f=>f\.key==='market_ratings'/.test(t));
   ok('no /admin a aba ⭐ Recomendações', /id="sgsub-ratings"/.test(a) && /id="sg-ratings" hidden/.test(a));
  }catch(e){ R.push('FAIL · exceção: '+(e&&e.stack||e)); }
