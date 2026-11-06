@@ -223,11 +223,17 @@ body.theme-light .rt-k-MP{color:#5A6573}
 .rt-line{stroke:currentColor;stroke-width:1;stroke-dasharray:3 3;opacity:.6}
 .rt-tag rect{fill:currentColor;stroke:currentColor;stroke-width:1}
 .rt-tag text{font:800 9px var(--font);letter-spacing:.03em;fill:#0E1116}
-body.theme-light .rt-tag text{fill:#fff}
+/* ⚠️ o texto branco é SÓ da etiqueta cheia: como "body.theme-light .rt-tag text" ele pesava mais que a regra do
+   contorno (0,2,2 × 0,2,1) e as atualizações sem mudança de recomendação ficavam com letra branca em fundo branco */
+body.theme-light .rt-tag.solid text{fill:#fff}
 .rt-tag.outline rect,.rt-tag.edge rect{fill:var(--panel)}
 .rt-tag.outline text,.rt-tag.edge text{fill:currentColor}
 .rt-tag.edge{opacity:.8} .rt-tag.edge rect{stroke-dasharray:2 2}
 .c-tip .rt-tip{display:flex;align-items:center;gap:5px;margin-top:5px;padding-top:5px;border-top:1px solid var(--border-2);white-space:nowrap}
+/* comparação: cada empresa na sua linha (bolinha na cor da linha + fio até a etiqueta) e a recomendação no balão */
+.rt-dot{stroke:var(--panel);stroke-width:1.5}
+.rt-stem{stroke-width:1;opacity:.75}
+.rt-pill.sm{font-size:8.5px;padding:0 4px;min-width:20px;margin-left:3px;vertical-align:1px;line-height:1.45}
 /* recomendação no cabeçalho do ativo (clique = "Since last update") */
 .ah-fact.rt-fact .rt-pill{padding:1px 5px}
 .ah-fact.rt-fact.on{border-color:var(--orange)}
@@ -1242,10 +1248,14 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   if(bands){ vMin=Math.min(vMin,bands.mean-2.1*bands.sd); vMax=Math.max(vMax,bands.mean+2.1*bands.sd); }
   if(vMin===vMax){ const e=Math.abs(vMin)*0.02||1; vMin-=e; vMax+=e; }
   const pad=(vMax-vMin)*0.08; vMin-=pad; vMax+=pad;
-  // recomendações da casa (liga/desliga "Ratings"): só no gráfico central, da empresa em foco
-  const RT=(opts&&opts.ratings&&opts.ratings.co&&opts.ratings.co.ev.length)?opts.ratings.co:null;
+  // recomendações da casa (liga/desliga "Ratings"), só no gráfico central. UMA empresa: etiquetas no topo + faixa
+  // (RT). COMPARAÇÃO: cada empresa na SUA linha (RM = uma entrada por linha; null onde não é coberta)
+  const RO=(opts&&opts.ratings)||null;
+  const RT=(RO&&RO.co&&RO.co.ev.length)?RO.co:null;
+  const RM=(RO&&RO.per&&RO.per.some(c=>c&&c.ev.length))?RO.per:null;
   // viewBox = tamanho REAL do host (mede após reflow) → escala 1:1, sem distorcer ("puxado")
-  const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)), P={l:52,r:14,t:RT?22:12,b:RT?30:24};
+  const W=Math.max(280,Math.round(host.clientWidth||720)), H=Math.max(120,Math.round(host.clientHeight||300)),
+        P={l:52, r:RM?54:14, t:RT?22:(RM?18:12), b:RT?30:24};   // RM: margem direita p/ a recomendação de hoje na ponta
   const X=t=>P.l+(t-tMin)/((tMax-tMin)||1)*(W-P.l-P.r);
   const Y=v=>P.t+(1-(v-vMin)/((vMax-vMin)||1))*(H-P.t-P.b);
   const rdec=_ratDec(vMax-vMin);   // casas decimais do eixo do ratio: pelo INTERVALO, não pela magnitude
@@ -1269,7 +1279,7 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   g+=`<text class="c-axis" x="${P.l}" y="${H-7}">${fmtD(tMin)}</text><text class="c-axis" x="${W-P.r}" y="${H-7}" text-anchor="end">${fmtD(tMax)}</text>`;
   const paths=lines.map((l,i)=>{ const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
     return `<path data-i="${i}" d="${d}" fill="none" stroke="${l.color}" stroke-width="1.9" stroke-linejoin="round"></path>`; }).join('');
-  const rt=RT?_rtOverlaySVG(RT,X,tMin,tMax,W,H,P):'';
+  const rt=RT?_rtOverlaySVG(RT,X,tMin,tMax,W,H,P):(RM?_rtLinesSVG(RM,lines,X,Y,tMin,tMax,W,H,P):'');
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}
     <rect class="c-sel" x="0" y="${P.t}" width="0" height="${(H-P.t-P.b).toFixed(1)}" style="display:none"></rect>
     <line class="c-seledge c-se0" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
@@ -1277,7 +1287,47 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
     ${rt.under||''}${paths}${rt.over||''}
     <line class="c-cross" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" style="display:none"></line></svg>
     <div class="c-tip"></div><div class="c-selbox"></div>`;
-  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings:RT});
+  _attachHover(host, lines, {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings:RT,ratingsPer:RM});
+}
+/* COMPARAÇÃO com "Ratings" (pedido do analista, 06/11/2026: "colocar o rating nas linhas, para que cada uma possa
+   apresentar seus ratings"): cada empresa mostra as SUAS recomendações em cima da PRÓPRIA linha —
+   · na ponta direita, a recomendação de HOJE colada no fim da linha (empilha quando as pontas se encostam);
+   · ao longo da linha, uma bolinha na cor da empresa em cada atualização dentro da janela, com a etiqueta OP/MP/UP
+     presa por um fio (cheia = mudou a recomendação; contorno = manteve).
+   Sem faixa e sem linhas verticais (com várias empresas elas se misturavam). Etiqueta que encostaria noutra tenta o
+   outro lado da linha; sem lugar, fica só a bolinha — o balão do mouse diz a recomendação de cada uma naquele dia. */
+function _rtLinesSVG(per,lines,X,Y,tMin,tMax,W,H,P){
+  const TW=22, TH=13, boxes=[]; let dots='', stems='', tags='';
+  const hit=(x,y)=>boxes.some(b=>x<b.x+TW+2&&x+TW>b.x-2&&y<b.y+TH+1&&y+TH>b.y-1);
+  const tag=(x,y,e,kind)=>{ boxes.push({x,y});
+    return `<g class="rt-tag ${kind} rt-k-${e.r||'NR'}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">`
+      +`<rect width="${TW}" height="${TH}" rx="3.5"></rect><text x="${TW/2}" y="9.4" text-anchor="middle">${e.r||'NR'}</text></g>`; };
+  // 1) a recomendação de hoje na ponta de cada linha
+  const ends=[];
+  lines.forEach((l,i)=>{ const co=per[i], e=co&&_rtAt(co,tMax); if(!e||!l.pts.length) return;
+    const p=l.pts[l.pts.length-1]; ends.push({e, x:X(p[0])+5, y:Y(p[1])-TH/2, color:l.color}); });
+  ends.sort((a,b)=>a.y-b.y);
+  const lo=P.t-4, hi=H-P.b-TH;
+  ends.forEach((t,k)=>{ t.y=Math.min(hi,Math.max(lo,t.y)); if(k&&t.y<ends[k-1].y+TH+2) t.y=ends[k-1].y+TH+2; });
+  const sobra=ends.length?ends[ends.length-1].y-hi:0; if(sobra>0) ends.forEach(t=>{ t.y-=sobra; });
+  // bolinha na cor da LINHA antes da etiqueta: pontas empilhadas (linhas que terminam perto) continuam dizendo de quem é cada uma
+  ends.forEach(t=>{ const x=Math.min(t.x,W-TW-12);
+    tags+=`<circle class="rt-dot" cx="${(x+3.5).toFixed(1)}" cy="${(t.y+TH/2).toFixed(1)}" r="3.4" fill="${t.color}"></circle>`+tag(x+10,t.y,t.e,'solid'); });
+  // 2) as atualizações dentro da janela, na linha de cada empresa
+  lines.forEach((l,i)=>{ const co=per[i]; if(!co||!l.pts.length) return;
+    co.ev.filter(e=>e.t>tMin&&e.t<=tMax).forEach(e=>{
+      const p=l.pts.find(q=>q[0]>=e.t)||l.pts[l.pts.length-1], cx=X(p[0]), cy=Y(p[1]);
+      dots+=`<circle class="rt-dot" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.4" fill="${l.color}"></circle>`;
+      const x=Math.min(Math.max(cx-TW/2,P.l),W-P.r-TW);
+      for(const y of [cy-TH-7, cy+7, cy-2*TH-10]){
+        if(y<1||y+TH>H-P.b+4||hit(x,y)) continue;
+        stems+=`<line class="rt-stem" x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${(y<cy?y+TH:y).toFixed(1)}" y2="${cy.toFixed(1)}" stroke="${l.color}"></line>`;
+        tags+=tag(x,y,e,(e.chg==='same'||e.chg==='tp')?'outline':'solid');
+        break;
+      }
+    });
+  });
+  return {under:'', over:stems+dots+tags};
 }
 /* Camada das recomendações no gráfico central (liga/desliga "Ratings"):
    · faixa fina sob o gráfico = a recomendação EM VIGOR em cada trecho da janela (verde OP, grafite MP, vermelho UP);
@@ -1321,7 +1371,7 @@ function _attachHover(host, lines, dom){
   const svg=host.querySelector('svg'), tip=host.querySelector('.c-tip'), cross=host.querySelector('.c-cross');
   const selR=host.querySelector('.c-sel'), se0=host.querySelector('.c-se0'), se1=host.querySelector('.c-se1'), selbox=host.querySelector('.c-selbox');
   const paths=[...host.querySelectorAll('path[data-i]')];
-  const {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings}=dom;
+  const {tMin,tMax,vMin,vMax,W,H,P,mode,rdec,bands,ratings,ratingsPer}=dom;
   const dragEnabled = host.id==='main-chart';   // arrastar-p/-medir só no gráfico central
   const fmtV=v=> mode==='pct'?((v>=0?'+':'')+v.toFixed(2)+'%')
               : mode==='ratio'?_fmtRatio(v,Math.min(4,(rdec==null?2:rdec)+1))
@@ -1377,7 +1427,9 @@ function _attachHover(host, lines, dom){
     // com "Ratings" ligado: a recomendação da casa que valia NAQUELE dia
     const re=ratings?_rtAt(ratings,dt):null;
     const rtLine=re?`<div class="rt-tip"><span class="rt-pill ${re.r||'NR'}">${re.r||'NR'}</span>${re.tp!=null?`TP ${esc(_fmtTP(re.tp,re.ccy))}`:''}<span class="mute">since ${_fmtDay(re.t,true)}</span></div>`:'';
-    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}${mode==='ratio'?zAt(r.v):''}`).join('')+rtLine;
+    // comparação: a recomendação que valia NAQUELE dia ao lado de cada empresa
+    const rtOf=i=>{ const co=ratingsPer&&ratingsPer[i], e=co&&_rtAt(co,dt); return e?` <span class="rt-pill sm ${e.r||'NR'}">${e.r||'NR'}</span>`:''; };
+    tip.innerHTML=`<b>${fmtDate(dt)}</b>`+rows.map(r=>`<br><i style="background:${r.color}"></i>${r.tk} ${fmtV(r.v)}${mode==='ratio'?zAt(r.v):''}${rtOf(r.i)}`).join('')+rtLine;
     tip.style.opacity='1';
     const hx=ev.clientX-rect.left; tip.style.left=Math.max(0,Math.min(hx+12,rect.width-Math.max(150,tip.offsetWidth+4)))+'px';
     tip.style.top=(ratings?Math.round((P.t+20)/H*rect.height):8)+'px';   // com "Ratings": abaixo da fileira de etiquetas
@@ -1916,7 +1968,7 @@ function renderChart(){
     if(carregandoHist){ _mainLines=[]; _histPlaceholder(); renderChips(); renderReco(); return; }
     const lines=_sel.map((t,i)=>({ticker:t,color:_MC_COLORS[i%_MC_COLORS.length],pts:_series(byT(t),_range,_chartMode)})).filter(l=>l.pts);
     _mainLines=lines;
-    _renderChart('main-chart', lines, _chartMode, null, {ratings:rtOpt});
+    _renderChart('main-chart', lines, _chartMode, null, {ratings:_rtOverlayOpt(lines)});   // várias linhas: cada empresa na sua
   }
   renderChips(); renderReco();
 }
@@ -1930,11 +1982,16 @@ function _rtSyncControls(){
   if(b){ b.hidden=!vis; b.disabled=!e;
     b.title=e?`Since our last model update on ${_fmtDay(e.t,true)} — ${RT_LABEL[e.r]||'not rated'}${e.tp!=null?', TP '+_fmtTP(e.tp,e.ccy):''}`
              :'Covered companies only — pick one of our names (Coverage, in the Watchlist)'; }
+  // o liga/desliga vale se QUALQUER empresa do gráfico for coberta (na comparação, cada uma mostra a sua)
+  const anyCo=_sel.some(t=>_rtCo(t));
   const tg=document.getElementById('rt-tog');
-  if(tg){ const on=_rtOverlay&&!!co; tg.hidden=!vis; tg.disabled=!co; tg.classList.toggle('on',on); tg.setAttribute('aria-pressed',on?'true':'false');
-    tg.title=co?(on?'Hide':'Show')+' our rating history (OP / MP / UP) on the chart':'Our rating history exists for covered companies only'; }
+  if(tg){ const on=_rtOverlay&&anyCo; tg.hidden=!vis; tg.disabled=!anyCo; tg.classList.toggle('on',on); tg.setAttribute('aria-pressed',on?'true':'false');
+    tg.title=anyCo?(on?'Hide':'Show')+' our rating history (OP / MP / UP) on the chart':'Our rating history exists for covered companies only'; }
 }
-function _rtOverlayOpt(){ if(!_rtOverlay) return null; const co=_rtCo(_anchor); return (co&&co.ev.length)?{co}:null; }
+// 1 linha (ou Ratio) = a empresa em foco; várias linhas = cada uma com a SUA (null onde não é coberta)
+function _rtOverlayOpt(lines){ if(!_rtOverlay) return null;
+  if(lines&&lines.length>1){ const per=lines.map(l=>_rtCo(l.ticker)); return per.some(c=>c&&c.ev.length)?{per}:null; }
+  const co=_rtCo(_anchor); return (co&&co.ev.length)?{co}:null; }
 // no "Since last update" o índice da bolsa da empresa entra na busca do diário longo (a comparação da faixa)
 function _rtHistTickers(){ const b=_range==='UPD'?_benchOf(_anchor):null; return (b&&!_sel.includes(b))?[..._sel,b]:_sel; }
 /* Faixa acima do gráfico no "Since last update": a recomendação e o preço-alvo da última atualização, a data,

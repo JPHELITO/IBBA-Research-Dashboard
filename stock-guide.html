@@ -450,7 +450,9 @@ const MODEL_URL={
   KLBN11:'https://www.itau.com.br/itaubba-pt/portal/equity/company/KLBN11',
   RANI3:'https://www.itau.com.br/itaubba-pt/portal/equity/company/RANI3',
   CMPC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/CMPC',
-  COPEC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/COPEC'
+  COPEC:'https://www.itau.com.br/itaubba-pt/portal/equity/company/COPEC',
+  ARA:'https://www.itau.com.br/itaubba-pt/portal/equity/company/ARA',      // Aclara (06/11/2026)
+  VMM:'https://www.itau.com.br/itaubba-pt/portal/equity/company/VMM'       // Viridis (06/11/2026)
 };
 const DL_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 function modelCell(r){ const u=MODEL_URL[r.ticker]||MODEL_URL[_short(r.ticker)]; return u?`<a class="model-dl" href="${esc(u)}" target="_blank" rel="noopener" title="Open model — ${esc(r.displayName||r.ticker)}">${DL_ICON}</a>`:''; }
