@@ -601,7 +601,7 @@ html.dark .ov-card{background:#20242b}
         </style>
         <div class="card">
           <h2>⭐ Histórico de recomendações <span class="muted" style="font-weight:400;font-size:13px">— alimenta o "Since last update" e as etiquetas OP/MP/UP da aba Market</span></h2>
-          <p class="sub">Cada linha é uma publicação: empresa, data, recomendação e preço-alvo. <b>O upload do Stock Guide grava sozinho</b> a atualização mais recente de cada empresa — a data vem da célula <b>E2</b> de cada aba ("Last Model Update Release"). Aqui você completa o <b>histórico anterior</b> e as empresas fora do Stock Guide (Aclara, Viridis). O cliente só vê com a flag <b>market_ratings</b> ligada (aba Funcionalidades); você, como admin, já vê na Market.</p>
+          <p class="sub">Cada linha é uma publicação: empresa, data, recomendação e preço-alvo. <b>O upload do Stock Guide grava sozinho</b> cada mudança de recomendação ou de preço-alvo, com a data da célula <b>E2</b> de cada aba ("Last Model Update Release"); revisão que manteve os dois não vira linha nova. Aqui você completa o <b>histórico anterior</b> e as empresas fora do Stock Guide (Aclara, Viridis). O cliente só vê com a flag <b>market_ratings</b> ligada (aba Funcionalidades); você, como admin, já vê na Market.</p>
           <div class="row"><select class="in" id="rh-filter" onchange="rhRender()" style="max-width:300px"></select><button class="btn sec" onclick="rhLoad()">🔄 Recarregar</button></div>
           <div id="rh-status" class="status"></div>
           <div id="rh-list" style="overflow-x:auto"></div>
@@ -631,7 +631,7 @@ html.dark .ov-card{background:#20242b}
       <div id="sg-companies">
         <div class="card">
           <h2>📤 Subir modelo (.xlsm) <span class="muted" style="font-weight:400;font-size:13px">— fonte única dos dados</span></h2>
-          <p class="sub">Arraste o <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as <b>14 empresas cobertas</b> + os <b>global peers</b> (que têm cotação na Market), mostra um resumo e grava tudo de uma vez. Preço, câmbio e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva a visibilidade (hide-aware).</p>
+          <p class="sub">Arraste o <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as <b>16 empresas cobertas</b> (as 14 + Aclara e Viridis) + os <b>global peers</b> (que têm cotação na Market), mostra um resumo e grava tudo de uma vez. Preço, câmbio e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva a visibilidade (hide-aware).</p>
           <style>#sg-xlsm-preview table{border-collapse:collapse;width:100%;font-size:11px}#sg-xlsm-preview th,#sg-xlsm-preview td{border:1px solid var(--border,#E3E3E3);padding:3px 6px;text-align:right;white-space:nowrap}#sg-xlsm-preview th{background:var(--g-light,#F4F3F0)}#sg-xlsm-preview th:nth-child(-n+2),#sg-xlsm-preview td:nth-child(-n+2){text-align:left}</style>
           <div class="row"><input class="in" id="sg-xlsm-file" type="file" accept=".xlsm,.xlsx" onchange="sgModelPreview(this.files[0])"></div>
           <div id="sg-xlsm-status" class="status" style="margin-top:8px"></div>
@@ -2080,8 +2080,13 @@ async function sgModelPreview(file){
     const peerLine = np
       ? `<div style="font-size:12px;margin-top:8px;color:#1E8E4E"><b>+ ${np} global peers</b> <span class="muted">(com cotação na Market): ${esc(peerNames)}</span></div>`
       : `<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ 0 global peers lidos.</b> O arquivo tem as abas <b>Steel Peers / Mining Peers / Pulp &amp; Paper Peers / Gold Peers</b>? Sem peers válidos, a tabela de peers fica com os dados antigos.</div>`;
+    // MOEDA-BASE que mudou em relação ao banco (06/11/2026): foi assim que GMEX/CMPC/Copec passaram a ser lidas em
+    // MXN/CLP (planilha com vínculos da Bloomberg em #N/A) e o Stock Guide mostrou EV/EBITDA de 2.000x. Grita antes de gravar.
+    const flips=res.rows.map(r=>{ const o=(_sgCos||[]).find(c=>c.ticker===r.ticker);
+      return (o&&o.base_ccy&&r.base_ccy&&o.base_ccy!==r.base_ccy)?`${r.ticker}: ${o.base_ccy} → ${r.base_ccy}`:null; }).filter(Boolean);
+    const flipLine=flips.length?`<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ Moeda-base mudou em relação ao que está no ar:</b> ${flips.map(esc).join(' · ')}. Se a planilha está com vínculos da Bloomberg em #N/A, os múltiplos dessas empresas vão sair errados — atualize os vínculos e suba de novo.</div>`:'';
     prev.innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
-      peerLine+
+      peerLine+flipLine+
       (res.warnings.length?`<div class="status" style="margin-top:8px;color:#B8860B">Avisos (não bloqueiam): ${res.warnings.map(esc).join(' · ')}</div>`:'')+
       `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas + ${np} peers</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
     stat.innerHTML='<b style="color:#1E8E4E">'+res.rows.length+' empresas lidas.</b> Confira o resumo abaixo e confirme para gravar.';

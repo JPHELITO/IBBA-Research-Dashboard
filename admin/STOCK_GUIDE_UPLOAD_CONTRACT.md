@@ -26,6 +26,14 @@
 | CMPC | CMPC.SN | pulp_paper | CLP |
 | COPEC | COPEC.SN | pulp_paper | CLP |
 | GRUPO MEXICO | GMEXICOB.MX | copper | MXN |
+| ACLARA *(desde 06/11/2026)* | ARA.TO (chave **ARA**) | rare_earths | CAD |
+| VIRIDIS *(desde 06/11/2026)* | VMM.AX (chave **VMM**) | rare_earths | AUD |
+
+**Aclara e Viridis** (terras raras): mesmo modelo de aba; o "Stock Ticker" do bloco da esquerda vem com o sufixo
+da bolsa (ARA.TO / VMM.AX) e preço/alvo em C$ / A$; as estimativas são em US$ (base USD, fx_to_base lido do modelo,
+mas a página usa o câmbio ao vivo). São **opcionais**: arquivo sem essas abas sobe com aviso. Grupo próprio
+"Rare Earths" no Stock Guide e "Terras Raras" no Weekly. A aba "Rare Earths Peers" ainda não é lida (nenhum peer
+tem cotação na Market). ⚠️ Em 06/11/2026 a aba VIRIDIS converte A$ em US$ ao contrário (A$ 3,28 → "US$ 4,77").
 
 **CBA fica de fora** (alumínio não é cobertura). Abas de Cement, Peers, BBG* e os índices são ignoradas.
 

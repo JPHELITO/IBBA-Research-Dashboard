@@ -16,10 +16,12 @@
 --
 -- COMO ELA ENCHE
 --   1. Sozinha, a cada upload do Stock Guide: um gatilho na stock_guide_companies grava
---      um evento quando a data da "Last Model Update Release" (célula E2 de cada aba de
---      empresa), a recomendação ou o preço-alvo mudam. Regravar igual (o mesmo arquivo de
---      novo) não cria nada. SEM DATA NÃO HÁ EVENTO — "preço sem data não é preço": um
---      upload que não traga a data (leitor antigo) não inventa "hoje".
+--      um evento — com a data da "Last Model Update Release" (célula E2 de cada aba de
+--      empresa) — SÓ SE a recomendação ou o preço-alvo forem diferentes do último evento do
+--      histórico (regra do usuário, 2026-11-06: mudar só a data não conta). Regravar igual
+--      não cria nada; Stock Guide com data anterior ao último evento não reescreve o passado.
+--      SEM DATA NÃO HÁ EVENTO — "preço sem data não é preço": um upload que não traga a
+--      data (leitor antigo) não inventa "hoje".
 --   2. À mão, no /admin → Stock Guide → ⭐ Recomendações: o histórico ANTERIOR (a planilha
 --      só conhece a atualização mais recente) e as empresas fora do Stock Guide
 --      (Aclara, Viridis). Dá para colar várias linhas do Excel de uma vez.
@@ -53,9 +55,12 @@ comment on table public.stock_guide_rating_history is
   'Histórico de recomendações da casa (OP/MP/UP + preço-alvo) por data de publicação. Enche sozinha a cada upload '
   'do Stock Guide (gatilho sg_capture_rating) e à mão pelo /admin. Lida pela aba Market (get_rating_history).';
 
--- 2. O GATILHO: cada upload do Stock Guide vira evento ---------------------------
+-- 2. O GATILHO: cada upload do Stock Guide vira evento — SÓ SE MUDAR a recomendação ou o alvo
+--    (regra do usuário em 2026-11-06; a mesma do supabase_market_ratings_v2_so_se_mudar.sql) ----------
 create or replace function public._sg_capture_rating() returns trigger
   language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_last public.stock_guide_rating_history%rowtype;
 begin
   -- renomeou a empresa (botão "Renomear" do /admin, ou VALE3 → VALE no upload): o histórico acompanha
   if tg_op = 'UPDATE' and new.ticker is distinct from old.ticker then
@@ -74,6 +79,19 @@ begin
      and new.recommendation is not distinct from old.recommendation
      and new.target_price   is not distinct from old.target_price then
     return new;
+  end if;
+  -- SÓ SE MUDAR: compara com o ÚLTIMO evento do histórico (que pode ter sido corrigido à mão no /admin)
+  select * into v_last from public.stock_guide_rating_history h
+   where h.ticker = new.ticker
+   order by h.effective_date desc limit 1;
+  if found then
+    if v_last.rating is not distinct from new.recommendation
+       and v_last.target_price is not distinct from new.target_price then
+      return new;                                   -- mesma recomendação e mesmo alvo: só a data mudou
+    end if;
+    if new.last_update < v_last.effective_date then
+      return new;                                   -- Stock Guide atrás do histórico: não reescreve o passado
+    end if;
   end if;
   insert into public.stock_guide_rating_history as h
          (ticker, effective_date, rating, target_price, currency, listing, source, updated_by)
@@ -98,10 +116,12 @@ create trigger sg_capture_rating
 
 -- 2b. a ORDEM dos passos não importa: se a planilha (já com a data da E2) foi subida ANTES deste SQL, o
 -- gatilho não existia para ver. O que o Stock Guide já sabe vira o 1º evento agora. Sem data, nada entra.
+-- SÓ para empresa SEM histórico nenhum: rodar este arquivo de novo não recria datas corrigidas à mão.
 insert into public.stock_guide_rating_history (ticker, effective_date, rating, target_price, currency, listing, source)
 select c.ticker, c.last_update, c.recommendation, c.target_price, c.trade_ccy, c.yahoo_symbol, 'stock_guide'
   from public.stock_guide_companies c
  where c.last_update is not null and c.recommendation is not null
+   and not exists (select 1 from public.stock_guide_rating_history h where h.ticker = c.ticker)
 on conflict (ticker, effective_date) do nothing;
 
 -- 3. LEITURA da aba Market (cliente logado) -------------------------------------
