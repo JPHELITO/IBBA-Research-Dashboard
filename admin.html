@@ -601,7 +601,7 @@ html.dark .ov-card{background:#20242b}
         </style>
         <div class="card">
           <h2>⭐ Histórico de recomendações <span class="muted" style="font-weight:400;font-size:13px">— alimenta o "Since last update" e as etiquetas OP/MP/UP da aba Market</span></h2>
-          <p class="sub">Cada linha é uma publicação: empresa, data, recomendação e preço-alvo. <b>O upload do Stock Guide grava sozinho</b> a atualização mais recente de cada empresa — a data vem da célula <b>E2</b> de cada aba ("Last Model Update Release"). Aqui você completa o <b>histórico anterior</b> e as empresas fora do Stock Guide (Aclara, Viridis). O cliente só vê com a flag <b>market_ratings</b> ligada (aba Funcionalidades); você, como admin, já vê na Market.</p>
+          <p class="sub">Cada linha é uma publicação: empresa, data, recomendação e preço-alvo. <b>O upload do Stock Guide grava sozinho</b> cada mudança de recomendação ou de preço-alvo, com a data da célula <b>E2</b> de cada aba ("Last Model Update Release"); revisão que manteve os dois não vira linha nova. Aqui você completa o <b>histórico anterior</b> e as empresas fora do Stock Guide (Aclara, Viridis). O cliente só vê com a flag <b>market_ratings</b> ligada (aba Funcionalidades); você, como admin, já vê na Market.</p>
           <div class="row"><select class="in" id="rh-filter" onchange="rhRender()" style="max-width:300px"></select><button class="btn sec" onclick="rhLoad()">🔄 Recarregar</button></div>
           <div id="rh-status" class="status"></div>
           <div id="rh-list" style="overflow-x:auto"></div>
