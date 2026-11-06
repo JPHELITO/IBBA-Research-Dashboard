@@ -527,8 +527,8 @@ async function carregarAcoes(){
 // E o preço segue a MESMA régua da tabela de ações (`aplicarAoVivo`): tela quando a
 // referência é hoje, fechamento quando a semana já encerrou. Se as duas divergissem,
 // o mesmo papel apareceria com dois preços dentro do mesmo e-mail.
-const GRUPO_NOME={mining:'Mineração', steel:'Siderurgia', pulp_paper:'Papel & Celulose'};
-const GRUPO_ORDEM=['mining','steel','pulp_paper'];
+const GRUPO_NOME={mining:'Mineração', rare_earths:'Terras Raras', steel:'Siderurgia', pulp_paper:'Papel & Celulose'};
+const GRUPO_ORDEM=['mining','rare_earths','steel','pulp_paper'];   // terras raras (Aclara, Viridis) desde 06/11/2026
 
 async function carregarComps(){
   S.comps=null;

@@ -201,7 +201,7 @@
   }
 
   // ── 8. INGESTÃO do modelo de equity research (.xlsm) ──────────────────────
-  // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 14 abas de empresa cobertas
+  // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 16 abas de empresa cobertas (14 + Aclara/Viridis desde 06/11/2026)
   // (CBA/Cement FORA) e devolve linhas prontas p/ admin_bulk_upsert_stock_guide_companies.
   // Detecção DINÂMICA (acha a coluna 2026E/2027E e os rótulos por varredura) → imune a
   // inserção de linhas/colunas. Múltiplos NÃO são lidos — são recalculados ao vivo na página.
@@ -220,6 +220,12 @@
     { tab:'IRANI',           ticker:'RANI3',    yahoo:'RANI3.SA',    name:'Irani',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
     { tab:'CMPC',            ticker:'CMPC',     yahoo:'CMPC.SN',     name:'CMPC',            sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
     { tab:'COPEC',           ticker:'COPEC',    yahoo:'COPEC.SN',    name:'Copec',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
+    // Terras raras (cobertura formal desde 23/10/2026; abas novas no Stock Guide em 06/11/2026). Mesmo modelo de
+    // aba das outras; o bloco da esquerda traz o ticker com o sufixo da bolsa ("ARA.TO"/"VMM.AX") e preço/alvo em
+    // C$/A$, e as estimativas em US$ (base = USD). Chaves ARA/VMM = as do histórico de recomendações.
+    // `optional`: arquivo sem a aba (planilha antiga) sobe com AVISO em vez de travar o upload das outras 14.
+    { tab:'ACLARA',          ticker:'ARA',      yahoo:'ARA.TO',      name:'Aclara Resources', sector:'rare_earths', group:'rare_earths', trade_ccy:'CAD', optional:true },
+    { tab:'VIRIDIS',         ticker:'VMM',      yahoo:'VMM.AX',      name:'Viridis Mining',   sector:'rare_earths', group:'rare_earths', trade_ccy:'AUD', optional:true },
   ];
 
   // Ticker que mudou de linha (antigo → novo). O ticker é a CHAVE da empresa no banco: sem renomear antes,
@@ -378,9 +384,13 @@
     const adj = est(/^adjustment/i);
 
     // fx_to_base direto do modelo (validado): mktcap_base / (preço × ações). ≈1 quando base==negociação.
-    let fxBase = (_isNum(mcBase) && _isNum(priceLocal) && _isNum(shares) && priceLocal * shares !== 0)
-      ? mcBase / (priceLocal * shares) : 1;
-    if (!Number.isFinite(fxBase) || fxBase <= 0) { fxBase = 1; warnings.push(meta.tab + ': fx_to_base indeterminado → 1'); }
+    // ⚠️ 06/11/2026: sem o market cap da série (vínculo da Bloomberg em #N/A na planilha) isto caía em 1 CALADO — e
+    // empresa modelada em US$ (GMEX, CMPC, Copec…) passava a ser lida na moeda local: EV/EBITDA de 2.000x no ar.
+    // Agora avisa; e o /admin compara a moeda-base com a do banco antes de gravar.
+    const fxOk = _isNum(mcBase) && _isNum(priceLocal) && _isNum(shares) && priceLocal * shares !== 0;
+    let fxBase = fxOk ? mcBase / (priceLocal * shares) : 1;
+    if (!fxOk) warnings.push(meta.tab + ': câmbio do modelo NÃO lido (market cap da série, preço ou ações vazio/#N/A) → tratado como moeda local; atualize os vínculos da planilha');
+    else if (!Number.isFinite(fxBase) || fxBase <= 0) { fxBase = 1; warnings.push(meta.tab + ': fx_to_base indeterminado → 1'); }
     const baseIsUsd = Math.abs(fxBase - 1) > 0.02;          // único base ≠ negociação observado = USD
     const baseCcy = baseIsUsd ? 'USD' : meta.trade_ccy;
     // fx_to_usd p/ a coluna "Mkt cap US$": USD-base usa fxBase; local-base usa 1/(taxa por USD)
@@ -420,7 +430,7 @@
     const rows = [], perCompany = [], warnings = [], errors = [];
     SG_COVERAGE.forEach(function (meta, i) {
       const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === meta.tab.toLowerCase(); });
-      if (!nm) { errors.push('aba ausente: ' + meta.tab + ' (' + meta.ticker + ')'); return; }
+      if (!nm) { (meta.optional ? warnings : errors).push('aba ausente: ' + meta.tab + ' (' + meta.ticker + ')'); return; }
       const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
       const res = _sgParseCompanyAoa(aoa, meta, fxRates);
       if (res.error) { errors.push(res.error); return; }
@@ -682,7 +692,9 @@
   // montam em paralelo, uma deriva da outra.)
   //
   // `stock-guide.html` delega para cá; o comportamento ao vivo não mudou.
-  var GROUP_OF = {iron_ore:'mining', copper:'mining', gold:'mining', mining:'mining',
+  // terras raras = grupo PRÓPRIO (como a aba "Rare Earths" do Stock Guide): desenvolvedoras sem receita, com EBITDA
+  // negativo — dentro de Mining, entrariam no agregado do grupo (Σ EV ÷ Σ EBITDA) e o distorceriam
+  var GROUP_OF = {iron_ore:'mining', copper:'mining', gold:'mining', mining:'mining', rare_earths:'rare_earths',
                   steel:'steel', pulp_paper:'pulp_paper', pp:'pulp_paper'};
   function shortTicker(t){ return String(t||'').replace(/\.(SA|SN|MX|L|HE|AX|F|TO)$/,''); }
 
