@@ -2465,7 +2465,7 @@ function genCopy(){ const t=_v('gen-out'); if(!t.value){ alert('Gere a lista pri
 // ── IMPORTA a aba "Sensitivity (cenarios)" gerada no Excel (build_scenario.py) ──
 // Le a aba, monta UM grid sensitivity por empresa (eixos = drivers; outputs = EV/EBITDA·FCF yield·Div yield·
 // Preco-alvo, ao vivo) + o mesh, reutilizando os RPCs existentes. Sem SQL novo, sem mudar o cliente.
-const _SGI_PANEL={VALE:'Iron Ore',VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',AUGO:'Gold',AURA33:'Gold'};
+const _SGI_PANEL={VALE:'Iron Ore',VALE3:'Iron Ore',CMIN3:'Iron Ore',CSNA3:'Steel',USIM5:'Steel',GGBR4:'Steel',TX:'Steel',SUZB3:'Pulp & Paper',KLBN11:'Pulp & Paper',CMPC:'Pulp & Paper',COPEC:'Pulp & Paper',AUGO:'Gold',AURA33:'Gold',ARA:'Rare Earths',VMM:'Rare Earths'};
 function _sgiNum(v){ if(v==null||v==='')return null; if(typeof v==='number')return isFinite(v)?v:null;
   const n=Number(String(v).replace(/[^0-9eE+\-.,]/g,'').replace(',','.')); return isFinite(n)?n:null; }
 function _sgiNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
@@ -2678,11 +2678,17 @@ function sgParseSens2d(sheets, opts){
       }
     });
   });
-  const mktcap=_s2Median(caps);
+  let mktcap=_s2Median(caps);
   let spread=null;
   if(caps.length&&mktcap){ const mn=Math.min.apply(null,caps), mx=Math.max.apply(null,caps); spread=(mx-mn)/Math.abs(mktcap); }
   if(mktcap==null) warnings.push('nao deduzi o valor de mercado do modelo (faltou o par FCF + FCF yield); os multiplos ficam como publicados');
-  else if(spread>0.01) warnings.push('o valor de mercado deduzido varia '+(spread*100).toFixed(1)+' por cento entre celulas; o esperado e zero. Confira o arquivo');
+  else if(spread>0.01){
+    // FCF e FCF yield que NÃO são o mesmo numerador (a Copec de Aug-26 publica o FCF total e o yield
+    // "ex growth"): a mediana daria um valor de mercado sem sentido (saiu −14.420) e a página
+    // reescreveria os múltiplos com ele. Sem valor confiável, os múltiplos ficam como publicados.
+    warnings.push('o valor de mercado deduzido varia '+(spread*100).toFixed(1)+' por cento entre celulas (o esperado e zero): FCF e FCF yield nao conversam. Os multiplos ficam como publicados. Confira o arquivo');
+    mktcap=null;
+  }
   const shares=(mktcap!=null&&modelPrice)?mktcap/modelPrice:null;
   outSheets.forEach(function(sh){ sh.tables.forEach(function(t){
     if(t.metric==='ev_ebitda'&&!t.pairId) warnings.push(t.title+': nao achei o EBITDA da mesma grade; fica como publicado'); }); });
@@ -2705,10 +2711,50 @@ function sgParseSens2d(sheets, opts){
 }
 
 
+// ── VÁRIAS ANÁLISES DA MESMA EMPRESA (2026-11-11) ──────────────────────────────
+// A Vale publica três arquivos (minério × câmbio, × frete e × cobre). No banco eles moram numa
+// linha só, uma "aba" por análise com o bloco `analysis` (chave, rótulo e tudo o que é do ARQUIVO:
+// preço da ação, valor de mercado embutido, premissas). Importar UMA análise troca só ela e
+// mantém as outras; os ids das tabelas ganham a chave na frente ("fx-t1") p/ nunca colidir.
+// A página (stock-guide.html, _s2Analyses) mostra uma por vez, com um seletor.
+// O espelho em Python que gravou a Vale em 11/11 segue EXATAMENTE estas regras.
+function sgMergeSens2dAnalysis(prev, cur, key, label){
+  const meta={key:key, label:label, source_file:cur.source_file||'', model_date:cur.model_date||'',
+    currency:cur.currency||null, model_price:cur.model_price, mktcap_model:cur.mktcap_model,
+    shares_mn:cur.shares_mn, assumptions:cur.assumptions||[]};
+  const pref=key+'-';
+  const novas=(cur.sheets||[]).map(function(sh,i,arr){
+    return {name:(arr.length>1?label+' · '+sh.name:label), analysis:meta,
+      tables:(sh.tables||[]).map(function(t){ return Object.assign({},t,{id:pref+t.id, pairId:t.pairId?pref+t.pairId:null}); })}; });
+  const fica=[]; let pos=-1;
+  ((prev&&prev.sheets)||[]).forEach(function(sh){
+    if(!sh.analysis||sh.analysis.key==null) return;                 // tabela antiga sem análise: sai
+    if(String(sh.analysis.key)===key){ if(pos<0) pos=fica.length; return; }   // a análise que chegou: troca no MESMO lugar
+    fica.push(sh); });
+  if(pos<0) pos=fica.length;
+  const sheets=fica.slice(0,pos).concat(novas,fica.slice(pos));
+  // topo da definição = a 1ª análise (é o que a página antiga e a lista do admin leem); as premissas
+  // de todas vão juntas p/ a página antiga ainda achar o caso-base de cada grade
+  const first=sheets[0].analysis; const assum=[]; const viu={};
+  sheets.forEach(function(sh){ const k=String(sh.analysis.key); if(viu[k]) return; viu[k]=1;
+    (sh.analysis.assumptions||[]).forEach(function(a){ assum.push(a); }); });
+  return Object.assign({},cur,{source_file:first.source_file, model_date:first.model_date, currency:first.currency,
+    model_price:first.model_price, mktcap_model:first.mktcap_model, shares_mn:first.shares_mn,
+    assumptions:assum, sheets:sheets});
+}
+// "…_Sensitivity_FX.xlsx" -> "FX" (o sufixo que o analista põe em cada análise)
+function _s2AnaFromFile(nm){ const m=/_sensitivity_([^.()]+?)\s*(\(\d+\))?\.xls[xm]?$/i.exec(String(nm||'')); return m?m[1].trim():''; }
+function _s2AnaKey(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function _s2Existing(tk,title){ return (_sgSens||[]).find(function(t){ return t.definition&&(t.definition.import_ticker===tk||t.title===title); }); }
+function _s2AnaList(def){ const out=[], viu={};
+  ((def&&def.sheets)||[]).forEach(function(sh){ const a=sh.analysis; if(!a||a.key==null||viu[a.key]) return; viu[a.key]=1; out.push(a); });
+  return out; }
+
 // ── importador das TABELAS PUBLICADAS: le o _Sensitivity.xlsx do analista como ele e ──
 let _sgS2=null;   // {buf, name, parsed}
 const _S2_FILE_TICKER=[['mineraç','CMIN3'],['mineracao','CMIN3'],['vale','VALE'],['suzano','SUZB3'],
-  ['gerdau','GGBR4'],['usiminas','USIM5'],['ternium','TX'],['aura','AUGO'],['klabin','KLBN11'],['csn','CSNA3']];
+  ['gerdau','GGBR4'],['usiminas','USIM5'],['ternium','TX'],['aura','AUGO'],['klabin','KLBN11'],['csn','CSNA3'],
+  ['cmpc','CMPC'],['copec','COPEC'],['aclara','ARA'],['viridis','VMM']];
 function _s2TickerFromFile(nm){ const s=String(nm||'').toLowerCase();
   for(let i=0;i<_S2_FILE_TICKER.length;i++) if(s.indexOf(_S2_FILE_TICKER[i][0])>=0) return _S2_FILE_TICKER[i][1];
   return ''; }
@@ -2751,14 +2797,25 @@ function sgS2RenderForm(){ const g=_sgS2; if(!g)return; const form=_v('sg-s2-for
   });
   const warn=g.parsed.warnings.length
     ? '<div style="margin-top:8px;color:#8a6d1f;background:rgba(214,168,42,.13);border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:6px 9px;font-size:12px"><b>Atenção:</b><br>'+g.parsed.warnings.map(esc).join('<br>')+'</div>' : '';
+  // análise (Vale: _FX/_Freight/_Copper): o sufixo do arquivo vira a chave; o rótulo é o que já está no
+  // banco p/ essa chave (ou o próprio sufixo, p/ uma análise nova)
+  const sufixo=_s2AnaFromFile(g.name);
+  const ex=_s2Existing(d.ticker, 'Sensitivity - '+(d.ticker||'?'));
+  const anasEx=_s2AnaList(ex&&ex.definition);
+  const igual=anasEx.filter(function(a){ return a.key===_s2AnaKey(sufixo); })[0];
+  const rotulo=igual?igual.label:sufixo;
   form.innerHTML='<div style="border:1px solid #e2e2e2;border-radius:10px;padding:12px;margin:8px 0;background:#fafafa">'
     +'<div style="font-weight:600;margin-bottom:2px">Tabelas publicadas — '+esc(g.name)+'</div>'
     +'<div class="foot" style="margin-bottom:8px">Lido direto do modelo do analista. O cliente vê estas tabelas sem poder mexer; múltiplos e yields são recalculados no preço de tela.</div>'
     +'<div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">'
     +'<div style="width:120px"><div class="foot">Ticker</div><input id="s2-tk" value="'+esc(d.ticker||'')+'" placeholder="VALE3" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
     +'<div style="width:120px"><div class="foot">Data do modelo</div><input id="s2-dt" value="'+esc(d.model_date||'')+'" placeholder="2026-08-17" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
+    +'<div style="width:110px" title="Preencha quando a empresa tem várias análises (a Vale: FX, Freight, Copper). Vazio = o arquivo substitui tudo."><div class="foot">Análise (opcional)</div><input id="s2-ana" value="'+esc(sufixo)+'" placeholder="FX" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
+    +'<div style="width:170px"><div class="foot">Nome da análise na tela</div><input id="s2-ana-lbl" value="'+esc(rotulo)+'" placeholder="Iron ore × FX" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;width:100%"></div>'
     +'<div class="foot" style="padding-bottom:6px">Moeda <b>'+esc(d.currency||'?')+'</b> · preço do modelo <b>'+fmt(d.model_price,2)+'</b> · valor de mercado <b>'+fmt(inf.mktcap)+'</b> · ações <b>'+fmt(d.shares_mn)+' mn</b></div>'
     +'</div>'+tabs+warn
+    +(anasEx.length?'<div class="foot" style="margin-top:8px">'+esc(d.ticker)+' tem hoje '+anasEx.length+' análise(s): <b>'
+      +anasEx.map(function(a){ return esc(a.label); }).join(' · ')+'</b>. Com "Análise" preenchida, só ela é trocada (ou entra como nova).</div>':'')
     +'<div class="row" style="margin-top:12px;gap:8px"><button class="btn" onclick="sgSens2dImport()">Importar</button>'
     +'<button class="chip" onclick="_sgS2=null;_v(\'sg-s2-form\').innerHTML=\'\'">Cancelar</button></div></div>';
 }
@@ -2771,8 +2828,24 @@ async function sgSens2dImport(){ const setS=function(h){ const el=_v('sg-import-
   try{
     const p=sgParseSens2d(g.sheets,{ticker:tk, sourceFile:g.name, modelDate:dt});
     if(p.error){ setS('<b style="color:#C0392B">'+esc(p.error)+'</b>'); return; }
+    const existing=_s2Existing(tk,p.def.title);
+    const anasEx=_s2AnaList(existing&&existing.definition);
+    const anaTxt=((_v('s2-ana')&&_v('s2-ana').value)||'').trim(), anaKey=_s2AnaKey(anaTxt);
+    if(anaKey){
+      const anaLbl=((_v('s2-ana-lbl')&&_v('s2-ana-lbl').value)||'').trim()||anaTxt;
+      const prev=(existing&&existing.definition&&existing.definition.kind==='sens2d')?existing.definition:null;
+      if(prev&&!anasEx.length&&(prev.sheets||[]).length&&
+         !confirm(tk+' hoje tem tabelas SEM análise. Importar como a análise "'+anaLbl+'" substitui essas tabelas. Continuar?')) return;
+      p.def.definition=sgMergeSens2dAnalysis(prev,p.def.definition,anaKey,anaLbl);
+    } else if(anasEx.length>1 &&
+      !confirm(tk+' tem '+anasEx.length+' análises ('+anasEx.map(function(a){return a.label;}).join(', ')+
+               '). Sem "Análise" preenchida este arquivo SUBSTITUI todas. Continuar?')) return;
     setS('Salvando '+esc(tk)+'…');
-    const existing=_sgSens.find(function(t){ return t.definition&&(t.definition.import_ticker===tk||t.title===p.def.title); });
+    // a ordem das abinhas segue a do Stock Guide (sem isso a importação zerava a ordem e a empresa
+    // pulava para a 1ª aba): quem já existe mantém a sua; empresa nova herda a da comp table
+    if(existing&&existing.display_order!=null) p.def.display_order=existing.display_order;
+    else{ try{ if(!_sgCos||!_sgCos.length){ const r=await sbAuth.rpc('admin_get_stock_guide_companies'); if(!r.error) _sgCos=r.data||[]; }
+      const co=(_sgCos||[]).find(function(c){ return c.ticker===tk; }); if(co&&co.display_order!=null) p.def.display_order=co.display_order; }catch(e){} }
     const up=await sbAuth.rpc('admin_upsert_stock_guide_sensitivity_table',
       {p_id:existing?Number(existing.id):null, p_data:p.def});
     if(up.error){ setS('<b style="color:#C0392B">Falhou:</b> '+esc(up.error.message)); return; }

@@ -1,0 +1,223 @@
+<!doctype html><meta charset="utf-8"><title>sensitivity — várias análises (Vale), câmbio CLP, Brent e desenvolvedoras</title>
+<body><pre id="out">rodando…</pre><script>
+/* 2026-11-11 — quatro coisas novas na aba Sensitivity do Stock Guide:
+     1. VÁRIAS ANÁLISES numa empresa só (a Vale manda minério × câmbio, × frete e × cobre, três
+        arquivos): o /admin junta (sgMergeSens2dAnalysis) e a página mostra uma de cada vez,
+        com TUDO o que é do arquivo (preço da ação, valor de mercado, premissas) vindo da análise;
+     2. eixo de câmbio em PESO CHILENO (CMPC) lê USD/CLP — antes lia USD/BRL; Brent (Copec) lê Brent;
+     3. DESENVOLVEDORA (Aclara, Viridis) sem EBITDA/FCF: a aba mostra DCF upside e P/NAV, reescritos
+        no preço de tela pela razão de preços (sem o valor de mercado do modelo);
+     4. "MX" da premissa da Ternium casa "Mexico" do eixo (o carimbo do caso-base volta).
+   O código vem RECORTADO do stock-guide.html e do admin.html (mesmo método dos outros testes).
+   ⚠️ Números FICTÍCIOS: o repositório é público e a grade do analista é conteúdo de cliente. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+const near=(a,b,tol)=>a!=null&&b!=null&&Math.abs(a-b)<=(tol||1e-9)*Math.max(1,Math.abs(b));
+
+window.__RUN__=async function(){
+  new Function(await (await fetch('/stock-guide-lib.js?v='+Date.now())).text())();
+  const cru=(await (await fetch('/stock-guide.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const adm=(await (await fetch('/admin.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const COMPS={};
+  const MV={iron_ore_61:95, fx_usdbrl:5.5, fx_usdclp:950, brent:65, copper:6.0};
+  const CTX={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US',
+    _SENS_CTX:{drivers:[],marketValues:MV,comps:[],config:{}}, compByTicker:function(tk){ return COMPS[tk]||null; }};
+  const P=new Function('ctx',`with(ctx){ ${cut(cru,'function _s2Def(t){','  pane.innerHTML=h;\n}')}
+    return {_s2Analyses,_s2AnaView,_s2Ctx,_s2RenderPane,_s2DriverKey,_s2SrcName,_s2Sheets,_s2BaseCell,_s2TableHtml,_s2TitleParts,_S2_ANA}; }`)(CTX);
+  const A=new Function(`${cut(adm,'function sgMergeSens2dAnalysis(','  return out; }')}
+    return {sgMergeSens2dAnalysis,_s2AnaFromFile,_s2AnaKey,_s2AnaList}; `)();
+  const CSS=cut(cru,'<style>','</style>');
+
+  // ── uma análise "como o parser do admin devolve" (fictícia, mas coerente) ──
+  const COLS=[85,90,95,100,105], ROWS={fx:[4.5,5,5.5,6,6.5], freight:[20,22,24,26,28], copper:[9000,11000,13000,15000,17000]};
+  const ROWLBL={fx:'Average FX 2027 (USD/BRL)', freight:'Avg. Freight Cost 2027 (USD/ton)', copper:'Avg. Copper Price 2027 (USD/ton)'};
+  const COLLBL='Average Iron Ore 61% Price 2027 (Real Terms, USD/ton)';
+  function analise(k,price,mc,debt){
+    const rows=ROWS[k];
+    const eb=rows.map((r,i)=>COLS.map((c,j)=>10000+300*(c-95)+200*(i-2)));
+    const fcf=rows.map((r,i)=>COLS.map((c,j)=>2500+220*(c-95)+150*(i-2)));
+    const T=(id,title,metric,values,pair)=>({id:id,title:title,metric:metric,year:'2027',kind:'2d',corner:values[2][2],
+      rowLabel:ROWLBL[k],colLabel:COLLBL,rowLevels:rows,colLevels:COLS,values:values,pairId:pair||null});
+    const tabs=[T('t1','Proforma EBITDA 2027 (USD million)','ebitda',eb),
+      T('t2','EV/EBITDA 2027 (x)','ev_ebitda',eb.map(r=>r.map(e=>(mc+debt)/e)),'t1'),
+      T('t3','FCF 2027 (USD million)','fcf',fcf), T('t4','FCF Yield 2027 (%)','fcf_yield',fcf.map(r=>r.map(f=>f/mc)))];
+    if(k==='copper') tabs.push(T('t5','Dividend Yield 2027 (%)','div_yield',fcf.map(r=>r.map(f=>0.4*f/mc))));
+    return {kind:'sens2d',ticker:'VALE',import_ticker:'VALE',source_file:'Vale_Sensitivity_'+k+'.xlsx',model_date:'2026-11-09',
+      currency:'USD',model_price:price,mktcap_model:mc,shares_mn:mc/price,panel:'Iron Ore',
+      sheets:[{name:'Sensitivity 2027',tables:tabs}],
+      assumptions:[{label:'Avg. Iron Ore Price 2027',value:95},{label:k==='fx'?'Avg. FX 2027':k==='freight'?'Avg. Freight Cost 2027':'Avg. Copper Price 2027',value:rows[2]},{label:'Stock Price',value:price}]};
+  }
+  const FX=analise('fx',11.97,47880,17000), FR=analise('freight',11.90,47600,17000), CU=analise('copper',11.97,47880,17000);
+
+  // ── 1. o /admin junta as três numa linha só ─────────────────────────────
+  let d=A.sgMergeSens2dAnalysis(null,FX,'fx','Iron ore × FX');
+  d=A.sgMergeSens2dAnalysis(d,FR,'freight','Iron ore × Freight');
+  d=A.sgMergeSens2dAnalysis(d,CU,'copper','Iron ore × Copper');
+  ok('três análises, na ordem em que entraram', d.sheets.map(s=>s.analysis.key).join()==='fx,freight,copper');
+  ok('a aba de cada análise leva o NOME da análise (a página antiga mostra isso como título de bloco)',
+     d.sheets.map(s=>s.name).join(' | ')==='Iron ore × FX | Iron ore × Freight | Iron ore × Copper');
+  ok('ids ganham a chave na frente (nunca colidem entre análises) e o par EV/EBITDA→EBITDA acompanha',
+     d.sheets[1].tables.map(t=>t.id).join()==='freight-t1,freight-t2,freight-t3,freight-t4' &&
+     d.sheets[1].tables[1].pairId==='freight-t1' && d.sheets[2].tables[4].id==='copper-t5');
+  ok('cada análise guarda o que é do SEU arquivo (preço da ação e valor de mercado)',
+     d.sheets[1].analysis.model_price===11.90 && d.sheets[1].analysis.mktcap_model===47600 &&
+     d.sheets[0].analysis.model_price===11.97 && d.sheets[1].analysis.source_file==='Vale_Sensitivity_freight.xlsx');
+  ok('o topo da definição = a 1ª análise (é o que a página antiga e a lista do admin leem)',
+     d.model_price===11.97 && d.mktcap_model===47880 && d.source_file==='Vale_Sensitivity_fx.xlsx');
+  ok('as premissas das três vão juntas no topo (a página antiga ainda acha o caso-base de cada grade)',
+     d.assumptions.length===9);
+  const FR2=analise('freight',12.50,50000,17000);
+  const d2=A.sgMergeSens2dAnalysis(d,FR2,'freight','Iron ore × Freight');
+  ok('reimportar UMA análise troca só ela, no mesmo lugar',
+     d2.sheets.map(s=>s.analysis.key).join()==='fx,freight,copper' && d2.sheets[1].analysis.model_price===12.5);
+  ok('…e as outras duas ficam intactas', JSON.stringify(d2.sheets[0])===JSON.stringify(d.sheets[0]) &&
+     JSON.stringify(d2.sheets[2])===JSON.stringify(d.sheets[2]));
+  const d3=A.sgMergeSens2dAnalysis(d,analise('fx',11,44000,17000),'nova','Iron ore × Nova');
+  ok('chave nova entra no fim', d3.sheets.map(s=>s.analysis.key).join()==='fx,freight,copper,nova');
+  const legado={kind:'sens2d',ticker:'VALE',sheets:[{name:'Sensitivity 2027',tables:FX.sheets[0].tables}]};
+  ok('tabelas antigas SEM análise saem quando a 1ª análise chega (o admin pergunta antes)',
+     A.sgMergeSens2dAnalysis(legado,FR,'freight','Iron ore × Freight').sheets.map(s=>s.analysis.key).join()==='freight');
+  ok('o sufixo do arquivo vira a análise ("_FX", "_Freight (1)", "_Copper.xlsm"; sem sufixo = nenhuma)',
+     A._s2AnaFromFile('Mining - Vale Model Itaú BBA - Nov-09-2026_Sensitivity_FX.xlsx')==='FX' &&
+     A._s2AnaFromFile('Mining - Vale Model Itaú BBA - Nov-09-2026_Sensitivity_Freight (1).xlsx')==='Freight' &&
+     A._s2AnaFromFile('x_Sensitivity_Copper.xlsm')==='Copper' &&
+     A._s2AnaFromFile('P&P - Suzano Model Itaú BBA - Aug-26-2026_Sensitivity.xlsx')==='' &&
+     A._s2AnaFromFile('Steels - Gerdau Model Itaú BBA - Oct-28-2026_Sensitivity (1).xlsx')==='');
+  ok('chave da análise é minúscula e sem acento', A._s2AnaKey(' Câmbio ')==='cambio' && A._s2AnaKey('FX')==='fx');
+  ok('lista de análises da definição (o form do admin mostra quais existem)',
+     A._s2AnaList(d).map(a=>a.label).join(' | ')==='Iron ore × FX | Iron ore × Freight | Iron ore × Copper' &&
+     A._s2AnaList(FX).length===0);
+
+  // ── 2. a página mostra UMA análise por vez ──────────────────────────────
+  COMPS.VALE={ticker:'VALE',company_name:'Vale',livePrice:11.5,marketCapBrlMn:11.5*4000};
+  const T={id:7,title:'Sensitivity - VALE',definition:d};
+  const anas=P._s2Analyses(d);
+  ok('a página acha as três análises', anas.map(a=>a.key+'='+a.label).join(' | ')===
+     'fx=Iron ore × FX | freight=Iron ore × Freight | copper=Iron ore × Copper');
+  const pane={innerHTML:''};
+  P._s2RenderPane(T,pane); const h1=pane.innerHTML;
+  const botoes=(h1.match(/<button [^>]*data-ana="[^"]+"[^>]*>[^<]*<\/button>/g)||[]);
+  ok('seletor com as três análises, a 1ª aberta', botoes.length===3 && /class="on"[^>]*data-ana="fx"/.test(botoes[0]) &&
+     botoes.every((b,i)=>i===0||b.indexOf('class="on"')<0), botoes.length+'');
+  ok('o botão leva empresa e análise e chama _s2PickAna', /data-tk="VALE" data-ana="freight" onclick="_s2PickAna\(this\)"/.test(h1));
+  ok('só as tabelas da análise aberta: 4 cartões, e o eixo é o de câmbio',
+     (h1.match(/class="s2-card"/g)||[]).length===4 && h1.indexOf('Average FX 2027 (USD/BRL)')>0 && h1.indexOf('Freight Cost')<0);
+  ok('cabeçalho com o arquivo da análise', h1.indexOf('Vale_Sensitivity_fx.xlsx')>0);
+  ok('preço do modelo = o da análise (11,97)', /Share price<\/div><div class="s2-v">11\.97/.test(h1));
+  P._S2_ANA.VALE='freight';
+  P._s2RenderPane(T,pane); const h2=pane.innerHTML;
+  ok('trocando para o frete: botão, arquivo, preço e eixo do frete',
+     /class="on"[^>]*data-ana="freight"/.test(h2) && h2.indexOf('Vale_Sensitivity_freight.xlsx')>0 &&
+     /Share price<\/div><div class="s2-v">11\.90/.test(h2) && h2.indexOf('Avg. Freight Cost 2027')>0 && h2.indexOf('Average FX 2027')<0);
+  const vFr=P._s2AnaView(d,anas[1]);
+  const cFr=P._s2Ctx(T,vFr);
+  ok('o valor de mercado do modelo é o da análise do frete (47.600), não o do topo (47.880)',
+     cFr.mcModel===47600 && cFr.mcLive===46000 && !cFr.ratioOnly, cFr.mcModel+' / '+cFr.mcLive);
+  // EV/EBITDA ao vivo da célula do meio do frete, à mão: (mcLive + (pub×EBITDA − mcModel)) / EBITDA
+  const evT=vFr.sheets[0].tables[1], ebT=vFr.sheets[0].tables[0];
+  const pub=evT.values[2][2], eb=ebT.values[2][2], mao=(46000+(pub*eb-47600))/eb;
+  const byId={}; vFr.sheets[0].tables.forEach(x=>byId[x.id]=x);
+  const hEv=P._s2TableHtml(evT,byId,cFr);
+  ok('EV/EBITDA ao vivo do frete sai com o valor de mercado DELE', hEv.indexOf('>'+mao.toFixed(1)+'x<')>0, mao.toFixed(2));
+  const errado=(46000+(pub*eb-47880))/eb;
+  ok('(com o do topo daria outro número — por isso o recorte por análise)', errado.toFixed(1)!==mao.toFixed(1) ||
+     Math.abs(errado-mao)>1e-3, errado.toFixed(3)+' vs '+mao.toFixed(3));
+  P._S2_ANA.VALE='nao-existe';
+  P._s2RenderPane(T,pane);
+  ok('análise guardada que sumiu do banco → volta para a 1ª', /class="on"[^>]*data-ana="fx"/.test(pane.innerHTML));
+  COMPS.SUZB3={ticker:'SUZB3',company_name:'Suzano',livePrice:50,marketCapBrlMn:60000};
+  const semAna={id:3,title:'x',definition:Object.assign({},FX,{ticker:'SUZB3'})};
+  P._s2RenderPane(semAna,pane);
+  ok('empresa de UMA análise desenha como sempre (sem seletor)', pane.innerHTML.indexOf('s2-anas')<0 &&
+     (pane.innerHTML.match(/class="s2-card"/g)||[]).length===4);
+  ok('o seletor é NEUTRO (o laranja segue exclusivo do spot)',
+     /\.s2-ana button\.on\{background:var\(--black\)/.test(CSS) && !/\.s2-ana[^{]*\{[^}]*--orange/.test(CSS));
+
+  // ── 3. câmbio em CLP e Brent ────────────────────────────────────────────
+  ok('eixo "(CLP/USD)" da CMPC lê USD/CLP', P._s2DriverKey('Average FX 2027 (CLP/USD)')==='fx_usdclp');
+  ok('eixos de real continuam no USD/BRL (Vale/Suzano/Klabin e o "(USD/ton)" da Gerdau)',
+     P._s2DriverKey('Average FX 2027 (USD/BRL)')==='fx_usdbrl' && P._s2DriverKey('Avg. FX 2027 (USD/ton)')==='fx_usdbrl');
+  ok('moeda sem série ligada fica SEM leitura (não cai no real)',
+     P._s2DriverKey('Average FX 2027 (MXN/USD)')===null && P._s2DriverKey('Avg. FX 2027 (USD/CAD)')===null);
+  ok('Brent (Copec) lê o Brent', P._s2DriverKey('Average Brent Prices 2027 (USD/bbl)')==='brent' &&
+     P._s2SrcName('Average Brent Prices 2027 (USD/bbl)')==='Brent');
+  const cat={}; SG.MARKET_DRIVER_CATALOG.forEach(x=>cat[x.key]=x);
+  ok('catálogo: fx_usdclp → macro USD_CLP e brent → commodities BRENT',
+     cat.fx_usdclp&&cat.fx_usdclp.src.table==='macro'&&cat.fx_usdclp.src.code==='USD_CLP'&&
+     cat.brent&&cat.brent.src.table==='commodities'&&cat.brent.src.code==='BRENT');
+  const cmpc={id:'c1',title:'EBITDA 2027 (USD million)',metric:'ebitda',year:'2027',kind:'2d',pairId:null,
+    rowLabel:'Average FX 2027 (CLP/USD)',rowLevels:[830,890,950,1010],colLabel:'Average Hardwood Pulp Net Price 2027 (USD/ton)',
+    colLevels:[520,560,600],values:[[1,2,3],[4,5,6],[7,8,9],[10,11,12]]};
+  const hC=P._s2TableHtml(cmpc,{},{mv:{fx_usdclp:950,fx_usdbrl:5.5,pulp_bhkp_china:560},mcLive:null,mcModel:null,def:{}});
+  ok('na grade da CMPC a linha laranja cai no 950 (e não "fora da grade")', /<th class="s2-hit">950<\/th>/.test(hC));
+  ok('…e o "At spot" diz que a leitura é USD/CLP', /class="s2-spot" title="[^"]*USD\/CLP/.test(hC));
+
+  // ── 4. desenvolvedora: upside pela razão de PREÇOS (moeda local), P/NAV pelo valor de mercado em US$ ──
+  // Aclara: alvo CAD 4,37 ÷ preço CAD − 1 é o upside; P/NAV = valor de mercado em US$ (do modelo) ÷ NAV
+  COMPS.ARA={ticker:'ARA',company_name:'Aclara Resources',livePrice:2.4,marketCapBrlMn:800};
+  const dev={kind:'sens2d',ticker:'ARA',import_ticker:'ARA',source_file:'Aclara_Sensitivity.xlsx',model_date:'2026-10-16',
+    currency:null,model_price:3,mktcap_model:1000,shares_mn:null,
+    sheets:[{name:'Sensitivity',tables:[
+      {id:'t1',title:'DCF Upside',metric:'upside',year:null,kind:'2d',rowLabel:'Dy Price (2029E USD/kg)',rowLevels:[610,1010,1410],
+       colLabel:'Y Price (2029E USD/kg)',colLevels:[220,320,420],values:[[0.40,0.43,0.46],[0.43,0.4567,0.49],[0.46,0.49,0.52]],pairId:null},
+      {id:'t2',title:'P/NAV',metric:'p_nav',year:null,kind:'2d',rowLabel:'Dy Price (2029E USD/kg)',rowLevels:[610,1010,1410],
+       colLabel:'Y Price (2029E USD/kg)',colLevels:[220,320,420],values:[[0.71,0.70,0.69],[0.70,0.6868,0.67],[0.69,0.67,0.66]],pairId:null}]}],
+    assumptions:[{label:'Avg. Y Price 2029',value:320},{label:'Avg. Dy Price 2029',value:1010},{label:'Stock Price',value:3}]};
+  const TD={id:20,title:'Sensitivity - ARA',definition:dev};
+  const cD=P._s2Ctx(TD);
+  ok('com o valor de mercado do modelo (US$): sem atalho, e os preços seguem p/ o upside',
+     cD.ratioOnly===false && cD.mcModel===1000 && cD.mcLive===800 && cD.pModel===3 && cD.pLive===2.4);
+  P._s2RenderPane(TD,pane); const hD=pane.innerHTML;
+  const up=(1+0.4567)*3/2.4-1, pn=0.6868*800/1000;
+  ok('as duas tabelas aparecem (antes a aba dizia "no EBITDA… grid")',
+     (hD.match(/class="s2-card"/g)||[]).length===2 && hD.indexOf('This model has no')<0);
+  ok('DCF upside ao vivo = (1+publicado) × preço do modelo / preço de tela − 1 (moeda local, como a comp table)',
+     hD.indexOf('>'+Math.round(up*100)+'%<')>0, (up*100).toFixed(1)+'%');
+  ok('P/NAV ao vivo = publicado × valor de mercado de tela / do modelo (US$, entra o câmbio do dia)',
+     hD.indexOf('>'+pn.toFixed(2)+'x<')>0, pn.toFixed(3));
+  const devSemMc={id:21,title:'x',definition:Object.assign({},dev,{mktcap_model:null})};
+  const cR=P._s2Ctx(devSemMc);
+  ok('sem valor de mercado do modelo: cai na razão de preços (ratioOnly)', cR.ratioOnly===true && cR.mcModel===3 && cR.mcLive===2.4);
+  P._s2RenderPane(devSemMc,pane);
+  ok('…e o P/NAV vai pela razão de preços', pane.innerHTML.indexOf('>'+(0.6868*2.4/3).toFixed(2)+'x<')>0);
+  ok('preço do modelo em outra moeda (5× fora): upside fica como publicado',
+     P._s2Ctx({definition:Object.assign({},dev,{model_price:30})}).pModel===null);
+  ok('a nota diz o que foi reescrito (upside e P/NAV, não EV/EBITDA)',
+     hD.indexOf('DCF upside and P/NAV are recomputed at the current screen price')>0 && hD.indexOf('EV/EBITDA and FCF yield are recomputed')<0);
+  ok('o carimbo do caso-base sai no meio (as premissas confirmam 1010 × 320)', /s2-base/.test(hD));
+  const evRatio={id:'e',title:'EV/EBITDA 2027 (x)',metric:'ev_ebitda',year:'2027',kind:'2d',pairId:'b',
+    rowLabel:'X',rowLevels:[1,2,3],colLabel:'Y',colLevels:[1,2,3],values:[[5,5,5],[5,5,5],[5,5,5]]};
+  const hE=P._s2TableHtml(evRatio,{b:{values:[[10,10,10],[10,10,10],[10,10,10]]}},{mv:{},mcModel:3,mcLive:2.4,ratioOnly:true,def:{}});
+  ok('EV/EBITDA NUNCA usa o atalho da razão de preços (precisa do valor absoluto)',
+     hE.indexOf('s2-live')<0 && hE.indexOf('>5.0x<')>0);
+  const cS=P._s2Ctx({definition:Object.assign({},FX,{ticker:'SUZB3'})});
+  ok('empresa com valor de mercado do modelo segue como sempre (sem o atalho)',
+     cS.ratioOnly===false && cS.mcModel===47880 && cS.mcLive===60000);
+  COMPS.ARA.livePrice=null; COMPS.ARA.marketCapBrlMn=null;
+  const cSem=P._s2Ctx(TD);
+  ok('sem cotação, a desenvolvedora volta ao publicado (e o aviso aparece)', cSem.mcLive==null && cSem.pLive==null);
+  P._s2RenderPane(TD,pane);
+  ok('…com o aviso de "no live quote"', pane.innerHTML.indexOf('No live quote right now')>0 &&
+     pane.innerHTML.indexOf('>46%<')>0);
+
+  // ── 4b. título com parêntese no MEIO (Aura: "FCF (Ex. Growth) 2027E (USD million)") ──
+  const tp=P._s2TitleParts('FCF (Ex. Growth) 2027E (USD million)');
+  ok('só o parêntese do FIM vira a unidade', tp.head==='FCF (Ex. Growth) 2027E' && tp.note==='USD million', JSON.stringify(tp));
+  const tk2=P._s2TitleParts('EBITDA 2027  (BRL million)'), tu=P._s2TitleParts('DCF Upside'), tm=P._s2TitleParts('FCF Yield (%) 2027E');
+  ok('os títulos de sempre continuam iguais', tk2.head==='EBITDA 2027' && tk2.note==='BRL million' &&
+     tu.head==='DCF Upside' && tu.note==='' && tm.head==='FCF Yield (%) 2027E' && tm.note==='');
+
+  // ── 5. Ternium: "MX" da premissa casa "Mexico" do eixo ─────────────────
+  const tx={rowLabel:'Mexico Steel Volume Growth 2027 (%)',rowLevels:[0.01,0.03,0.05,0.07,0.09],
+    colLabel:'Mexico Steel Real Price Growth 2027 (%)',colLevels:[0,0.02,0.04,0.06,0.08]};
+  const base=P._s2BaseCell(tx,[{label:'Steel Prices',value:0.04},{label:'MX Steel Volume',value:0.05},{label:'Stock Price',value:52.39}]);
+  ok('as duas premissas confirmam o meio → carimbo do caso-base', base&&base.i===2&&base.j===2, JSON.stringify(base));
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM');
+  return falhas;
+};
+window.__RUN__().catch(e=>{ document.getElementById('out').textContent='ERRO: '+(e&&e.stack||e); });
+</script>

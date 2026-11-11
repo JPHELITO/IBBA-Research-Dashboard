@@ -60,10 +60,19 @@ window.__RUN__=async function(){
   const so2026={sheets:[{name:'S',tables:[tb('a','ebitda',2026),tb('b','fcf',2026)]}]};
   ok('empresa que só publicou 2026 continua aparecendo (melhor o ano do analista que aba vazia)',
      M._s2Sheets(so2026)[0].tables.length===2);
+  // 2026-11-11: desenvolvedora (Aclara, Viridis) só publica DCF upside e P/NAV → sem nenhum dos 4,
+  // a aba mostra ESSES (antes ficava vazia); margem continua de fora
   const soOutros={sheets:[{name:'S',tables:[tb('a','margin',2027),tb('b','upside',2027)]}]};
-  ok('modelo sem nenhum dos 4: a aba não quebra, fica sem tabela (e o pane avisa)',
-     M._s2Sheets(soOutros).length===0 &&
-     cru.indexOf('This model has no EBITDA, EV/EBITDA, FCF or FCF yield grid.')>0);
+  ok('modelo sem nenhum dos 4: mostra o que publicou de upside/P-NAV, nunca a margem',
+     M._s2Sheets(soOutros).length===1 && M._s2Sheets(soOutros)[0].tables.map(t=>t.id).join()==='b',
+     JSON.stringify(M._s2Sheets(soOutros).map(s=>s.tables.map(t=>t.id))));
+  const soMargem={sheets:[{name:'S',tables:[tb('a','margin',2027)]}]};
+  ok('modelo só com margem: a aba não quebra, fica sem tabela (e o pane avisa)',
+     M._s2Sheets(soMargem).length===0 &&
+     cru.indexOf('This model has no EBITDA, EV/EBITDA, FCF, FCF yield, DCF upside or P/NAV grid.')>0);
+  const padraoEDev={sheets:[{name:'S',tables:[tb('a','ebitda',2027),tb('b','upside',2027),tb('c','p_nav',2027)]}]};
+  ok('quem TEM os 4 (a Aura) não ganha upside/P-NAV na tela — a regra dela não muda',
+     M._s2Sheets(padraoEDev)[0].tables.map(t=>t.id).join()==='a');
   ok('aba inteira sem os 4 indicadores não vira aba vazia na tela',
      M._s2Sheets({sheets:[{name:'A',tables:[tb('a','margin',2027)]},
                           {name:'B',tables:[tb('b','ebitda',2027)]}]}).map(s=>s.name).join()==='B');
