@@ -38,6 +38,12 @@
     { key: 'pulp_bhkp_china', label: 'BHKP China net (PIX)', unit: 'USD/t',   src: { table: 'commodities', code: 'PULP_BHKP_CHINA' } },
     { key: 'pulp_nbsk_china', label: 'NBSK China net (PIX)', unit: 'USD/t',   src: { table: 'commodities', code: 'PULP_NBSK_CHINA' } },
     { key: 'fx_usdbrl',    label: 'USD/BRL',                  unit: 'BRL/USD', src: { table: 'macro',       code: 'USD_BRL' } },
+    // 2026-11-11: as tabelas da CMPC e da Copec trouxeram dois eixos novos — "Average FX 2027
+    // (CLP/USD)" (peso chileno por dólar, ~890) e "Average Brent Prices 2027 (USD/bbl)". As duas
+    // séries já estavam no banco (macro USD_CLP e commodities BRENT); sem elas no catálogo o eixo
+    // de Brent ficava sem leitura e o de CLP lia o USD/BRL (5,5) num eixo que nem é de real.
+    { key: 'fx_usdclp',    label: 'USD/CLP',                  unit: 'CLP/USD', src: { table: 'macro',       code: 'USD_CLP' } },
+    { key: 'brent',        label: 'Brent',                    unit: 'USD/bbl', src: { table: 'commodities', code: 'BRENT' } },
   ];
   const MARKET_DRIVER_CATALOG_BY_KEY = MARKET_DRIVER_CATALOG.reduce(function (m, d) { m[d.key] = d; return m; }, {});
 

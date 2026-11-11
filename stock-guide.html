@@ -135,6 +135,18 @@ html.dark{--s2-ink:255,255,255;--s2-plate:#1c2026;--s2-near:#2a1d18;--s2-hit:#3d
   border:1px solid rgba(214,168,42,.35);border-radius:8px;padding:7px 10px}
 .s2-sheet{font:700 10.5px var(--font);color:var(--g-mid);text-transform:uppercase;
   letter-spacing:.5px;margin:22px 0 10px}
+/* VÁRIAS ANÁLISES DA MESMA EMPRESA (a Vale publica minério × câmbio, × frete e × cobre):
+   um seletor no topo do painel, NEUTRO — o laranja continua exclusivo do spot de hoje, e
+   o sublinhado laranja é das abas de empresa logo acima (dois controles iguais confundiriam). */
+.s2-anas{display:flex;align-items:center;gap:8px;margin:0 0 12px;min-width:0}
+.s2-anas-k{flex:none;font:700 9px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.6px}
+.s2-ana{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border);border-radius:999px;
+  background:var(--s2-plate);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.s2-ana::-webkit-scrollbar{display:none}
+.s2-ana button{flex:none;font:600 11.5px var(--font);padding:5px 12px;border:0;border-radius:999px;
+  background:none;color:var(--g-mid);cursor:pointer;white-space:nowrap}
+.s2-ana button:hover{color:var(--black)}
+.s2-ana button.on{background:var(--black);color:var(--s2-plate)}
 .s2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,510px),1fr));
   gap:16px;align-items:start}
 
@@ -216,6 +228,8 @@ html.dark .s2-tbl td.s2-cell-hit{color:#fff}
   .s2-tbl{font-size:10.5px}
   .s2-tbl th,.s2-tbl td{padding:4px 5px}
   .s2-tbl tbody th{padding-right:8px}
+  .s2-anas-k{display:none}
+  .s2-ana button{font-size:11px;padding:5px 10px}
 }
 
 .g6d{font-size:9.5px;color:var(--g-mid);font-weight:600;margin-left:3px}
@@ -674,10 +688,18 @@ function _s2Label(t){ const tk=_s2Def(t).ticker||''; const c=compByTicker(tk);
 // 2027 continua mostrando o que publicou (melhor o ano do analista do que uma aba vazia).
 // Tabela sem ano no título ("FCF Ex-Prepayments", da CMIN) FICA: é a mesma grade das outras.
 const _S2_SHOW={ebitda:1,ev_ebitda:1,fcf:1,fcf_yield:1};
+// DESENVOLVEDORA sem receita (Aclara e Viridis, terras raras, 2026-11-11) não publica EBITDA nem
+// FCF: a grade dela é DCF upside e P/NAV. Esses dois só entram quando a empresa NÃO tem nenhuma
+// das quatro de cima — a Aura também publica upside e P/NAV, mas tem as quatro, e para ela nada
+// muda. Mesma filosofia do "2027 de preferência": melhor o que o analista publicou do que aba vazia.
+const _S2_SHOW_DEV={upside:1,p_nav:1};
 const _S2_ANO=2027;
 function _s2Sheets(d){
-  const shs=((d&&d.sheets)||[]).map(function(sh){
-    return {name:sh.name, tables:(sh.tables||[]).filter(function(x){return !!_S2_SHOW[x.metric];})}; });
+  const todas=(d&&d.sheets)||[];
+  const temPadrao=todas.some(function(sh){ return (sh.tables||[]).some(function(x){ return !!_S2_SHOW[x.metric]; }); });
+  const mostrar=temPadrao?_S2_SHOW:_S2_SHOW_DEV;
+  const shs=todas.map(function(sh){
+    return {name:sh.name, tables:(sh.tables||[]).filter(function(x){return !!mostrar[x.metric];})}; });
   const tem=shs.some(function(sh){ return sh.tables.some(function(x){return Number(x.year)===_S2_ANO;}); });
   return (tem?shs.map(function(sh){ return {name:sh.name, tables:sh.tables.filter(function(x){
       return x.year==null||Number(x.year)===_S2_ANO; })}; }):shs)
@@ -710,8 +732,14 @@ function _s2Norm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD')
 function _s2Ano(s){ const m=/\b(20\d\d)\b/.exec(String(s==null?'':s)); return m?Number(m[1]):null; }
 const _S2_STOP={avg:1,average:1,price:1,prices:1,net:1,rate:1,real:1,terms:1,the:1,of:1,and:1,
   per:1,usd:1,brl:1,ton:1,tonne:1,t:1,lb:1,oz:1,mn:1,million:1};
+// abreviação de PAÍS que o analista usa na premissa e escreve por extenso no eixo: a Ternium diz
+// "MX Steel Volume" para o eixo "Mexico Steel Volume Growth". Sem isto a premissa de PREÇO ("Steel
+// Prices", que casa só por "steel") era a única candidata no eixo de VOLUME, e a página concluía que
+// o modelo roda fora do meio — quando os dois eixos estão exatamente no centro. Só o que apareceu em
+// arquivo real; "US"/"BZ" continuam sem coringa.
+const _S2_TOK_ALIAS={mx:'mexico'};
 function _s2Toks(s){ return _s2Norm(s).split(' ').filter(function(w){
-  return w&&!_S2_STOP[w]&&!/^20\d\d$/.test(w); }); }
+  return w&&!_S2_STOP[w]&&!/^20\d\d$/.test(w); }).map(function(w){ return _S2_TOK_ALIAS[w]||w; }); }
 // "Dom." e "Domestic" são a mesma palavra: o analista abrevia no rótulo da premissa e
 // escreve por extenso no eixo (só casa com 3 letras ou mais, p/ "US"/"BZ" não virarem coringa)
 function _s2TokEq(a,b){ if(a===b) return true;
@@ -801,7 +829,17 @@ function _s2DriverKey(label){
   if(L.indexOf('iron ore')>=0) return L.indexOf('62')>=0?'iron_ore_62':'iron_ore_61';
   if(L.indexOf('copper')>=0) return 'copper';
   if(L.indexOf('gold')>=0) return 'gold';
-  if(L.indexOf('fx')>=0||L.indexOf('usd/brl')>=0) return 'fx_usdbrl';
+  if(L.indexOf('brent')>=0) return 'brent';
+  // CÂMBIO: quem decide a série é a MOEDA escrita no eixo. A CMPC publica "Average FX 2027
+  // (CLP/USD)" — peso chileno por dólar, ~890 — e ler o USD/BRL ali (5,5) fazia o cartão dizer
+  // "spot fora da grade" num eixo que nem é de real. Sem moeda no rótulo continua o real: é o caso
+  // da Vale, do Suzano, da Klabin e do eixo da Gerdau (que o analista rotulou "(USD/ton)" por engano).
+  // Moeda sem série ligada fica SEM leitura, em vez de cair no real.
+  if(L.indexOf('fx')>=0||L.indexOf('usd/brl')>=0||L.indexOf('clp')>=0){
+    if(L.indexOf('clp')>=0) return 'fx_usdclp';
+    if(/\b(mxn|cad|aud|eur|cny|pen|ars|cop)\b/.test(L)) return null;
+    return 'fx_usdbrl';
+  }
   return null;
 }
 // nome da serie que esta por tras da marca laranja — vai no tooltip, para o cliente saber
@@ -809,7 +847,8 @@ function _s2DriverKey(label){
 // catalogo do lib e para o admin escolher driver).
 const _S2_SRC_NAME={ iron_ore_61:'Platts iron ore fines 61%', iron_ore_62:'Iron ore 62% Fe CFR China',
   copper:'Copper (LME proxy)',
-  gold:'Gold', fx_usdbrl:'USD/BRL', pulp_bhkp_china:'BHKP China net price (PIX)',
+  gold:'Gold', fx_usdbrl:'USD/BRL', fx_usdclp:'USD/CLP', brent:'Brent',
+  pulp_bhkp_china:'BHKP China net price (PIX)',
   pulp_nbsk_china:'NBSK China net price (PIX)' };
 function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[k]||''):''; }
 // EIXO EM "REAL TERMS": o analista publica o preco em dolares CONSTANTES do ano-base do
@@ -874,17 +913,35 @@ function _s2NearIdx(levels,v){
   return best;
 }
 
-// contexto ao vivo de UMA empresa
-function _s2Ctx(t){
-  const d=_s2Def(t); const comp=compByTicker(d.ticker);
-  const mcModel=n(d.mktcap_model);
+// contexto ao vivo de UMA empresa. `dv` = a definição já recortada na análise aberta (Vale);
+// sem ela vale a definição inteira, como sempre foi.
+function _s2Ctx(t,dv){
+  const d=dv||_s2Def(t); const comp=compByTicker(d.ticker);
+  let mcModel=n(d.mktcap_model);
   let mcLive=comp?n(comp.marketCapBrlMn):null;
   let price=comp?n(comp.livePrice):null;
+  // SEM o par FCF + FCF yield (desenvolvedora: só DCF upside e P/NAV) o valor de mercado embutido
+  // não sai da grade. Para upside e P/NAV só a RAZÃO importa (mesmas ações dos dois lados), então
+  // basta preço do modelo × preço de tela, os dois na moeda em que a ação negocia — conferido no
+  // histórico: Aclara 3,00 = fechamento em CAD de 15/10; Viridis 3,11 = fechamento em AUD de 14/10.
+  // EV/EBITDA precisa do valor ABSOLUTO e fica de fora desse atalho (ratioOnly).
+  const pModel=n(d.model_price);
+  let ratioOnly=false;
+  if(mcModel==null){
+    if(pModel!=null&&pModel>0&&price!=null&&price>0){ mcModel=pModel; mcLive=price; ratioOnly=true; }
+    else mcLive=null;                       // sem nada do modelo p/ comparar: tudo como publicado (e o aviso aparece)
+  }
   // guarda de moeda: a grade e o comp tem de estar na MESMA moeda-base. Se destoar por mais
   // de 5x, algo esta trocado -> cai para o publicado em vez de mostrar numero errado.
   let mismatch=false;
   if(mcModel&&mcLive&&(mcLive/mcModel>5||mcModel/mcLive>5)){ mismatch=true; mcLive=null; }
+  // DCF UPSIDE vai pela razão de PREÇOS, na moeda em que a ação negocia: o alvo publicado é nessa
+  // moeda (Aclara CAD 4,37, Viridis AUD 6) e é assim que a comp table calcula o upside (alvo ÷ preço
+  // de tela − 1). Pelo valor de mercado em US$ entraria o câmbio do dia, como se o alvo fosse fixo em
+  // dólar. Para quem negocia na moeda do modelo as duas contas dão o mesmo número.
+  const upOk=!mismatch&&pModel!=null&&pModel>0&&price!=null&&price>0&&!(price/pModel>5||pModel/price>5);
   return {def:d, comp:comp, mcModel:mcModel, mcLive:mcLive, price:price, mismatch:mismatch,
+          ratioOnly:ratioOnly, pModel:upOk?pModel:null, pLive:upOk?price:null,
           mv:(_SENS_CTX&&_SENS_CTX.marketValues)||{}};
 }
 
@@ -912,11 +969,13 @@ function _s2At(tab,r,c){
   if(v0==null||v1==null) return null;
   return v0+(v1-v0)*rs.w;
 }
-// "EBITDA 2026E (BRL million)" vira {head:"EBITDA 2026E", note:"BRL million"}
+// "EBITDA 2026E (BRL million)" vira {head:"EBITDA 2026E", note:"BRL million"}. Só o parêntese do
+// FIM é a unidade: "FCF (Ex. Growth) 2027E (USD million)" (Aura) partia no 1º e saía "FCF" +
+// "Ex. Growth) 2027E (USD million". Parêntese no meio, sem unidade no fim, fica no título.
 function _s2TitleParts(title){
   const t=String(title==null?'':title).trim();
-  const i=t.indexOf('('), j=t.lastIndexOf(')');
-  if(i>0&&j>i) return {head:t.slice(0,i).trim(), note:t.slice(i+1,j).trim()};
+  const m=/^(.*\S)\s*\(([^()]*)\)$/.exec(t);
+  if(m) return {head:m[1].trim(), note:m[2].trim()};
   return {head:t, note:''};
 }
 
@@ -936,12 +995,15 @@ function _s2TableHtml(tab,byId,ctx){
   const colLive=_s2Fit(tab.colLevels,_s2LiveAxis(tab.colLabel,ctx.mv),colDec),
         rowLive=tab.rowLevels?_s2Fit(tab.rowLevels,_s2LiveAxis(tab.rowLabel,ctx.mv),rowDec):null;
   const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
-  const canLive=live&&ctx.mcLive!=null&&ctx.mcModel!=null&&(met!=='ev_ebitda'||!!pair);
+  // upside: razão de preços na moeda de negociação (ver _s2Ctx); o resto: valor de mercado
+  const porPreco=(met==='upside'&&ctx.pModel!=null&&ctx.pLive!=null);
+  const mcM=porPreco?ctx.pModel:ctx.mcModel, mcL=porPreco?ctx.pLive:ctx.mcLive;
+  const canLive=live&&mcL!=null&&mcM!=null&&(met!=='ev_ebitda'||(!!pair&&!ctx.ratioOnly));
   const hasRow=!!(tab.rowLevels&&tab.rowLevels.length);
   const rows=tab.rowLevels||[null];
   // o preço de tela reescreve múltiplos/yields; EBITDA, FCF e margens saem como publicados
   const toScreen=function(pub,eb){ return canLive?SG.sens2dLiveValue({metric:met,published:pub,
-      ebitda:eb,mktcapModel:ctx.mcModel,mktcapLive:ctx.mcLive}):pub; };
+      ebitda:eb,mktcapModel:mcM,mktcapLive:mcL}):pub; };
   const vals=rows.map(function(rv,i){ return tab.colLevels.map(function(cv,j){
     return toScreen(tab.values[i]?tab.values[i][j]:null, pair&&pair.values[i]?pair.values[i][j]:null); }); });
   const ink=_s2Ink(rows.length,tab.colLevels.length);
@@ -1030,14 +1092,59 @@ function _s2DriverStrip(d,ctx){
   return out;
 }
 
+// ── VÁRIAS ANÁLISES DA MESMA EMPRESA (2026-11-11) ────────────────────────────
+// A Vale publica três: minério × câmbio, × frete e × cobre — três arquivos, cada um com a sua
+// grade, o preço da ação do dia em que foi salvo e as suas premissas. No banco ficam numa linha
+// só: uma "aba" (sheet) por análise, com o bloco `analysis` = {key, label, source_file,
+// model_date, model_price, mktcap_model, assumptions…}. A página mostra UMA de cada vez, com um
+// seletor no topo do painel, e TUDO o que vem do arquivo (preço do modelo, valor de mercado
+// embutido, premissas do carimbo, faixas dos eixos) passa a ser o da análise aberta: o frete foi
+// salvo com a ação a US$ 11,90 e os outros dois a 11,97 — misturar daria 0,6% de erro no
+// EV/EBITDA e no FCF yield ao vivo. Empresa sem `analysis` desenha exatamente como antes.
+const _S2_ANA={};   // ticker -> chave da análise aberta (sobrevive ao auto-refresh de 1 min)
+function _s2Analyses(d){
+  const lista=[], onde={};
+  ((d&&d.sheets)||[]).forEach(function(sh){ const a=sh&&sh.analysis; if(!a||a.key==null) return;
+    const k=String(a.key);
+    if(onde[k]==null){ onde[k]=lista.length; lista.push({key:k, label:a.label||sh.name||k, meta:a, sheets:[]}); }
+    lista[onde[k]].sheets.push(sh); });
+  return lista;
+}
+// a definição "como se fosse de um arquivo só": os campos da análise por cima dos da empresa
+function _s2AnaView(d,ana){
+  const m=ana.meta||{}; const v=Object.assign({},d,{sheets:ana.sheets});
+  ['source_file','model_date','currency','model_price','mktcap_model','shares_mn','assumptions'].forEach(function(k){
+    if(m[k]!=null) v[k]=m[k]; });
+  return v;
+}
+// clique no seletor: troca a análise e redesenha só esta empresa (as grades entram num fade, sem deslizar)
+function _s2PickAna(btn){
+  const tk=btn&&btn.getAttribute('data-tk'), key=btn&&btn.getAttribute('data-ana');
+  if(!tk||key==null||_S2_ANA[tk]===key) return;
+  _S2_ANA[tk]=key;
+  const pane=document.getElementById('s2-pane'); const tab=_S2_TABS[_s2Cur()];
+  if(pane&&tab&&tab.t){ _s2RenderPane(tab.t,pane); _s2In(pane,0,'.s2-kpis,.s2-sheet,.s2-card,.s2-warn,.s2-note'); }
+}
+
 function _s2RenderPane(t,pane){
-  const d=_s2Def(t); const ctx=_s2Ctx(t);
+  const d0=_s2Def(t); const tk=String(d0.ticker||t.id);
+  const anas=_s2Analyses(d0);
+  const ana=anas.length?(anas.filter(function(a){ return a.key===_S2_ANA[tk]; })[0]||anas[0]):null;
+  const d=ana?_s2AnaView(d0,ana):d0;
+  const ctx=_s2Ctx(t,d);
   const byId={}; (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(x){ byId[x.id]=x; }); });
   const ccy=d.currency||'';
   let h='<div class="s2-top">';
   h+='<div class="s2-hdr"><div class="s2-name">'+esc(_s2Label(t))+'</div>'+
      '<div class="s2-meta">'+esc(d.source_file||'model')+(d.model_date?' · '+esc(d.model_date):'')+
      (ccy?' · '+esc(ccy)+' mn':'')+'</div></div>';
+  if(anas.length>1){
+    h+='<div class="s2-anas"><span class="s2-anas-k">Analysis</span><div class="s2-ana" role="tablist">';
+    anas.forEach(function(a){ const on=(a.key===ana.key);
+      h+='<button type="button" role="tab" aria-selected="'+(on?'true':'false')+'"'+(on?' class="on"':'')+
+         ' data-tk="'+esc(tk)+'" data-ana="'+esc(a.key)+'" onclick="_s2PickAna(this)">'+esc(a.label)+'</button>'; });
+    h+='</div></div>';
+  }
   // preço do modelo × preço de tela + faixa de cada driver (e onde o spot está hoje)
   const pm=n(d.model_price), pl=ctx.price;
   h+='<div class="s2-kpis">';
@@ -1059,7 +1166,7 @@ function _s2RenderPane(t,pane){
   else if(ctx.mcLive==null) h+='<div class="s2-warn">No live quote right now — multiples and yields are shown as published.</div>';
   h+='</div>';
   const shs=_s2Sheets(d);
-  if(!shs.length) h+='<div class="s2-warn">This model has no EBITDA, EV/EBITDA, FCF or FCF yield grid.</div>';
+  if(!shs.length) h+='<div class="s2-warn">This model has no EBITDA, EV/EBITDA, FCF, FCF yield, DCF upside or P/NAV grid.</div>';
   // sem unidade: o par de eixos é TÍTULO, e "(%)"/"(USD/ton)" já aparecem na grade
   const semUn=function(s){ return String(s==null?'':s).replace(/\s*\([^)]*\)\s*$/,'').trim(); };
   shs.forEach(function(sh){
@@ -1081,12 +1188,18 @@ function _s2RenderPane(t,pane){
     });
   });
   const notaReal=_s2RealTermsNote(d,new Date().getFullYear());
+  // o que a nota diz que é reescrito acompanha o que está NA TELA (desenvolvedora: upside e P/NAV)
+  const mets={}; shs.forEach(function(sh){ (sh.tables||[]).forEach(function(x){ mets[x.metric]=1; }); });
+  const soDev=!!(mets.upside||mets.p_nav)&&!(mets.ebitda||mets.ev_ebitda||mets.fcf||mets.fcf_yield);
+  const leitura=soDev
+    ? 'DCF upside and P/NAV are recomputed at the current screen price (the model’s share price against today’s).'
+    : 'EBITDA and FCF are exactly as the analyst published; EV/EBITDA and FCF yield are recomputed at the current screen price, '+
+      'with the net debt embedded in the published EV.';
   h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading deepens toward the centre of each grid, '+
      'where the model runs — each ring out is one step of the analyst’s assumptions; a dashed cell marks the '+
      'base case where the assumptions in the file confirm it. Orange marks where the market is trading today, and '+
-     '“At spot” reads the grid at the exact quote, interpolated between the published levels. EBITDA and '+
-     'FCF are exactly as the analyst published; EV/EBITDA and FCF yield are recomputed at the current screen price, '+
-     'with the net debt embedded in the published EV.'+(notaReal?' '+esc(notaReal):'')+'</span></div>';
+     '“At spot” reads the grid at the exact quote, interpolated between the published levels. '+leitura+
+     (notaReal?' '+esc(notaReal):'')+'</span></div>';
   pane.innerHTML=h;
 }
 
@@ -1114,9 +1227,10 @@ function _s2ShowTab(i,o){
 // abinha de empresa (onda 3): os blocos da empresa escolhida entram pelo lado do clique (0,6 s), em
 // cascata de 30 ms (teto 8). Só no clique — o auto-refresh de 1 min (_s2Tick) redesenha sem animar.
 let _s2InTok=0;
-function _s2In(pane,dir){
+// dir 0 = só o fade (troca de análise da mesma empresa); sel = quais blocos entram
+function _s2In(pane,dir,sel){
   if(!window.IBBAMotion||IBBAMotion.reduced()) return;
-  const all=[...pane.querySelectorAll('.s2-top,.s2-sheet,.s2-card,.s2-warn,.s2-note')];
+  const all=[...pane.querySelectorAll(sel||'.s2-top,.s2-sheet,.s2-card,.s2-warn,.s2-note')];
   const els=all.filter(el=>!all.some(p=>p!==el&&p.contains(el)));   // bloco dentro de bloco anima uma vez só
   const tok=++_s2InTok; let last=null;
   document.documentElement.classList.add('ibba-swap');
