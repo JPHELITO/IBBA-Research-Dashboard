@@ -1,0 +1,123 @@
+<!doctype html><meta charset="utf-8"><title>Baskets · cestas da Market e da faixa do heatmap</title>
+<body><pre id="out">rodando…</pre>
+<script>
+/* Recorta o código REAL (não copia): no market.html, do BASKET_SKIP ao _bkDays (as contas da aba Baskets) + o
+   _dailyLive; no index.html, do BASKET_SKIP ao _bkCls (a faixa de cestas do heatmap). Dados FICTÍCIOS.
+   Rodar: abrir /tests/test_market_baskets.html e ler o #out (ou chamar window.__RUN__()). */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d!==''?'  ['+d+']':''));
+function cut(src,ini,fim){ const i=src.indexOf(ini), j=src.indexOf(fim,i);
+  if(i<0||j<0) throw new Error('trecho não achado: '+ini); return src.slice(i,j+fim.length); }
+const near=(a,b,e)=>a!=null&&b!=null&&Math.abs(a-b)<(e||1e-9);
+function grupos(src){
+  const g={}; for(const k of ['G_STEEL','G_IRON','G_GOLD','G_COPPER','G_RARE','G_PP','G_COVERAGE']){
+    const m=new RegExp('const '+k+'\\s*=\\s*\\[([^\\]]*)\\]').exec(src);
+    g[k]=m?m[1].split(',').map(s=>s.replace(/'/g,'').trim()).filter(Boolean):null; }
+  return g;
+}
+
+window.__RUN__=async function(){
+  R.length=0;
+  try{
+    const mk=(await (await fetch('/market.html?v='+Date.now())).text()).split('\r\n').join('\n');
+    const ix=(await (await fetch('/index.html?v='+Date.now())).text()).split('\r\n').join('\n');
+    const now=Math.floor(Date.now()/1000), DAY=86400, d0=Math.floor(now/DAY)*DAY;
+    const serie=(pts,h)=>pts.map(([n,v])=>[d0-n*DAY+(h==null?13:h)*3600,v]);   // [dias atrás, valor] → barra carimbada às 13h UTC
+
+    // ── 1) abas: Stocks (chave 'performance') e Baskets logo depois ──
+    const tabs=cut(mk,'<div class="mtabs mt-off" id="mtabs">','</div>');
+    const keys=[...tabs.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]), lbls=[...tabs.matchAll(/data-tab="[^"]+"[^>]*>([^<]+)</g)].map(m=>m[1]);
+    ok('abas · Stocks, Baskets, Commodities… (a chave da Stocks segue performance)', keys.join()==='performance,baskets,commodities,short,buybacks,insiders,filings', keys.join());
+    ok('abas · rótulo "Stocks" e "Baskets"', lbls[0]==='Stocks'&&lbls[1]==='Baskets', lbls.join());
+    ok('abas · INNER_TABS conhece a baskets', /const INNER_TABS=\['baskets','commodities',\.\.\.MW_TABS\]/.test(mk));
+
+    // ── 2) as cestas (market) ──
+    const gm=grupos(mk);
+    const SG={steel:gm.G_STEEL,iron_ore:gm.G_IRON,gold:gm.G_GOLD,copper:gm.G_COPPER,rare_earths:gm.G_RARE,pp:gm.G_PP};
+    const LABEL={steel:'Steel',iron_ore:'Iron Ore',gold:'Gold',copper:'Copper',rare_earths:'Rare Earths',pp:'Pulp & Paper'};
+    const BLOCK=cut(mk,'const BASKET_SKIP=new Set(','function _bkDays(s0,end){ const d=[]; for(let t=s0;t<end;t+=BK_DAY) d.push(t); d.push(end); return d; }');
+    const LIVE=cut(mk,'function _dailyLive(q){','  return out;\n}');
+    const ctx={SECTOR_GROUPS:SG, SECTOR_LABEL:LABEL, G_COVERAGE:gm.G_COVERAGE, _RANGE_DAYS:{'1W':7,'1M':31,'3M':93,'6M':186,'1Y':372},
+      BENCH_BY_EXCH:{B3:'IBOV',NYSE:'SPX',NASDAQ:'SPX',US:'SPX',TSX:'SPTSX',ASX:'ASX200',BMV:'MEXBOL',BCS:'IPSA',LSE:'FTSE100',HEL:'OMXH25'},
+      _histMap:{}, _quotes:[], esc:s=>String(s)};
+    const F=new Function('ctx',`with(ctx){ function _dailyRaw(q){ return (q&&_histMap[q.ticker]) || ((q&&Array.isArray(q.daily))?q.daily:[]); }
+      ${LIVE}\n${BLOCK}
+      return {_baskets,_bkRet,_bkMeasure,_bkStats,_bkPath,_bkMemberPath,_bkDays,_bkStart,BASKET_SKIP,BK_COV,
+              use:(qs)=>{ _bkQ=Object.fromEntries(qs.map(q=>[q.ticker,q])); _bkSer=new Map(); }, mode:(m)=>{ _bkMode=m; } }; }`)(ctx);
+    const B=F._baskets(), byK=Object.fromEntries(B.map(b=>[b.k,b.list]));
+    ok('cestas · 6, na ordem do heatmap', B.map(b=>b.k).join()==='steel,iron_ore,gold,copper,rare_earths,pp', B.map(b=>b.k).join());
+    ok('cestas · sem o ADR da Gerdau e sem as holdings (decisão do analista)', !B.some(b=>b.list.some(t=>['GGB','GOAU4.SA','BRAP3.SA'].includes(t))));
+    ok('cestas · Barrick em Ouro E em Cobre', byK.gold.includes('B')&&byK.copper.includes('B'));
+    ok('cestas · aço = lista do heatmap menos GGB e GOAU4', byK.steel.length===gm.G_STEEL.length-2 && byK.steel.includes('GGBR4.SA'), byK.steel.join());
+    ok('cestas · minério = lista menos a Bradespar', byK.iron_ore.length===gm.G_IRON.length-1 && byK.iron_ore.includes('VALE'), byK.iron_ore.join());
+    ok('cobertura · Vale e Aura pelas linhas de NY (as das cestas)', F.BK_COV.has('VALE')&&F.BK_COV.has('AUGO')&&!F.BK_COV.has('VALE3.SA'));
+
+    // ── 3) retorno: a régua do _ret (base = 1º fechamento da janela, ponta = preço ao vivo) ──
+    const s1M=now-31*DAY;
+    const A={ticker:'AAA',exchange:'B3',price:110,change_pct:1,daily:serie([[40,90],[30,100],[20,104],[10,106],[1,108]])};
+    const NEW={ticker:'NEW',exchange:'B3',price:50,change_pct:0,daily:serie([[20,40],[5,45]])};
+    // mensal antes de ~1 ano (a série leve), diário depois
+    const OLD={ticker:'OLD',exchange:'B3',price:200,change_pct:0,daily:serie([[400,100],[380,120],[370,130],[369,131],[2,150]])};
+    F.use([A,NEW,OLD]); F.mode('abs');
+    ok('retorno · base = 1º fechamento dentro da janela, ponta = preço ao vivo', near(F._bkRet(A,s1M,now).r,(110/100-1)*100), F._bkRet(A,s1M,now).r);
+    ok('retorno · histórico que começa depois da janela (+7 dias) → sem número', F._bkRet(NEW,s1M,now)===null);
+    ok('rastro (strict) · base mensal a mais de 6 dias do começo → some', F._bkRet(OLD,now-395*DAY,now-14*DAY,true)===null);
+    ok('rastro (strict) · base a até 6 dias → vale', F._bkRet(OLD,now-372*DAY,now,true)!==null);
+    ok('sem strict (o número de hoje) · igual ao _ret da Watchlist', F._bkRet(OLD,now-395*DAY,now)!==null);
+
+    // ── 4) Relative: papel − índice da bolsa; base do índice no MESMO dia; pontas no mesmo pregão ──
+    const IBOV={ticker:'IBOV',exchange:'B3',price:130,change_pct:2,traded_at:now-600,daily:serie([[30,100],[20,110],[1,125]],13.1)};
+    const P={ticker:'PPP',exchange:'B3',price:121,change_pct:1,traded_at:now-600,daily:serie([[30,100],[20,105],[1,119]])};
+    F.use([P,IBOV]); F.mode('rel');
+    ok('relative · mesma régua do heatmap (pp)', near(F._bkMeasure(P,s1M,now),((121/100-1)-(130/100-1))*100), F._bkMeasure(P,s1M,now));
+    // o Yahoo atrasa o B3: o papel ainda está no pregão de ontem e o índice já negocia hoje → o índice entra com o fechamento anterior
+    const ontem=now-DAY;
+    const P2={...P, traded_at:ontem-3600};
+    F.use([P2,IBOV]);
+    const prevIbov=130/(1+2/100);
+    ok('relative · pregões diferentes: o índice à frente usa o fechamento anterior', near(F._bkMeasure(P2,s1M,now),((121/100-1)-(prevIbov/100-1))*100), F._bkMeasure(P2,s1M,now));
+    ok('relative · numa data passada não mexe em nada (fechamento contra fechamento)', near(F._bkMeasure(P2,s1M,now-5*DAY),((105/100-1)-(110/100-1))*100), F._bkMeasure(P2,s1M,now-5*DAY));
+
+    // ── 5) estatística da cesta = média SIMPLES (peso igual); o caminho termina no mesmo número ──
+    const q1={ticker:'X1',exchange:'NYSE',price:120,change_pct:0,daily:serie([[40,100],[30,100],[10,110]])};
+    const q2={ticker:'X2',exchange:'NYSE',price:90,change_pct:0,daily:serie([[40,100],[30,100],[10,95]])};
+    const q3={ticker:'X3',exchange:'NYSE',price:10,change_pct:0,daily:serie([[5,9]])};   // sem histórico no período
+    const SPX={ticker:'SPX',exchange:'US',price:105,change_pct:0,daily:serie([[40,100],[30,100],[10,102]],14.5)};
+    F.use([q1,q2,q3,SPX]); F.mode('abs');
+    const b={k:'t',label:'T',list:['X1','X2','X3','NAO_EXISTE']};
+    const st=F._bkStats(b,s1M,now);
+    ok('cesta · média simples dos que têm número', st.n===2 && near(st.avg,((120/100-1)*100+(90/100-1)*100)/2), st.avg);
+    ok('cesta · melhor e pior', st.best.q.ticker==='X1'&&st.worst.q.ticker==='X2');
+    const days=F._bkDays(s1M,now), path=F._bkPath(b,s1M,days,'abs');
+    ok('ao longo do tempo · a ponta da linha = o número do ranking', near(path[path.length-1],st.avg,1e-9), path[path.length-1]+' vs '+st.avg);
+    F.mode('rel'); const str=F._bkStats(b,s1M,now), pr=F._bkPath(b,s1M,days,'rel');
+    ok('ao longo do tempo (relative) · a ponta = o ranking', near(pr[pr.length-1],str.avg,1e-9), pr[pr.length-1]+' vs '+str.avg);
+    ok('ao longo do tempo · começa em zero', near(path.find(v=>v!=null),0,1e-9));
+
+    // ── 6) a faixa do heatmap (index.html): mesmas cestas, mesmas funções dos cartões ──
+    const gi=grupos(ix);
+    const SGi={steel:gi.G_STEEL,iron_ore:gi.G_IRON,gold:gi.G_GOLD,copper:gi.G_COPPER,rare_earths:gi.G_RARE,pp:gi.G_PP};
+    ok('home · as listas dos grupos são as mesmas da Market', JSON.stringify(SGi)===JSON.stringify(SG));
+    const HB=cut(ix,'const BASKET_SKIP = new Set(','const _bkCls = v =>');
+    ok('home · nome curto para o chip estreito (Iron, REE, P&P)', /const BASKET_SHORT = \{steel:'Steel', iron_ore:'Iron', gold:'Gold', copper:'Copper', rare_earths:'REE', pp:'P&P'\}/.test(ix));
+    ok('home · BASKET_SKIP igual ao da Market', /const BASKET_SKIP = new Set\(\['GGB','GOAU4\.SA','BRAP3\.SA'\]\)/.test(ix) && /const BASKET_SKIP=new Set\(\['GGB','GOAU4\.SA','BRAP3\.SA'\]\)/.test(mk));
+    const pct={'SCCO':10,'ERO':-4,'B':2,'GMEXICOB.MX':null,'CS.TO':6,'HBM.TO':0,'LUN.TO':-2,'AUGO':20,'ARIS':5,'BVN':-1,'AEM':3,'HOC.L':1};
+    const qs=Object.keys(pct).map(t=>({ticker:t}));
+    const c2={SECTOR_GROUPS:SGi, SECTOR_LABEL:LABEL, _quotes:qs, _hmMode:'abs', _range:'W',
+      _seriesFor:(q)=>({pct:pct[q.ticker]}), _relFor:(q)=>({pct:pct[q.ticker]==null?null:pct[q.ticker]-1, why:pct[q.ticker]==null?'motivo':null})};
+    const H=new Function('ctx',`with(ctx){ ${HB} 0; return {_basketRows, set:(m)=>{ _hmMode=m; }}; }`)(c2);
+    let rows=H._basketRows(), cu=rows.find(r=>r.k==='copper'), go=rows.find(r=>r.k==='gold');
+    const media=v=>v.reduce((a,b)=>a+b,0)/v.length;
+    ok('home · cobre = média dos que têm número (GMEXICO sem número fica fora)', cu.n===6 && near(cu.avg,media([10,-4,2,6,0,-2])), cu.avg);
+    ok('home · Barrick entra em Ouro também', go.mem.some(m=>m.q.ticker==='B') && near(go.avg,media([20,5,-1,3,2,1])), go.avg);
+    c2._hmMode='rel'; rows=H._basketRows(); cu=rows.find(r=>r.k==='copper');
+    ok('home · Relative usa o _relFor (o mesmo dos cartões)', near(cu.avg,media([9,-5,1,5,-1,-3])), cu.avg);
+    ok('home · quem não tem número leva o motivo para o balão', cu.mem.find(m=>m.q.ticker==='GMEXICOB.MX').why==='motivo');
+    // ligação: a faixa existe antes da grade e o _renderHeatmap chama a faixa com typeof (os testes do heatmap recortam a função sem ela)
+    ok('home · #hm-baskets fica entre o cabeçalho e a grade', ix.indexOf('id="hm-baskets"')>0 && ix.indexOf('id="hm-baskets"')<ix.indexOf('id="heatmap-grid"'));
+    ok('home · _renderHeatmap chama as cestas protegido por typeof', /function _renderHeatmap\(\)\{[\s\S]{0,200}if\(typeof _renderBaskets === 'function'\) _renderBaskets\(\);/.test(ix));
+  }catch(e){ ok('exceção: '+e.message, false); }
+  document.getElementById('out').textContent=R.join('\n');
+  return R.join('\n');
+};
+window.__RUN__();
+</script></body>

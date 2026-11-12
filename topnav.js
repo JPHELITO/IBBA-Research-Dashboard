@@ -393,7 +393,8 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       <a href="/stock-guide.html#sens">Sensitivity</a>\
       <a href="/quarterly.html" class="gn-quarterly" style="display:none">Quarterly</a></div></div>\
     <div class="gn-group gn-solo" id="gnav-market"><a class="gn-item" href="/market.html">Market<span class="gn-caret"> ▾</span></a><div class="gn-drop"><div class="gn-cat">Market</div>\
-      <a href="/market.html?tab=performance">Performance</a>\
+      <a href="/market.html?tab=performance">Stocks</a>\
+      <a href="/market.html?tab=baskets">Baskets</a>\
       <a href="/market.html?tab=commodities">Commodities</a>\
       <a href="/market.html?tab=short">Short Interest</a>\
       <a href="/market.html?tab=buybacks">Buybacks</a>\
@@ -430,7 +431,8 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
     <a class="gnm-a sub gnm-quarterly" href="/quarterly.html" style="display:none">Quarterly</a>\
     <div class="gnm-cat gnm-mkt" style="display:none">Market</div>\
-    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=performance" style="display:none">Performance</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=performance" style="display:none">Stocks</a>\
+    <a class="gnm-a sub gnm-mkt" href="/market.html?tab=baskets" style="display:none">Baskets</a>\
     <a class="gnm-a sub gnm-mkt" href="/market.html?tab=commodities" style="display:none">Commodities</a>\
     <a class="gnm-a sub gnm-mkt" href="/market.html?tab=short" style="display:none">Short Interest</a>\
     <a class="gnm-a sub gnm-mkt" href="/market.html?tab=buybacks" style="display:none">Buybacks</a>\

@@ -673,6 +673,37 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 :is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button{position:relative;z-index:1;}
 :is(#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button{background:transparent;}
 :is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button.active{background:transparent;border-color:transparent;}
+/* ── CESTAS (baskets) em cima dos cartões (2026-11-12) ─────────────────────────────
+   Uma fileira fina: o rótulo "Baskets" + as 6 cestas, cada uma com a COR do cartão do heatmap (as mesmas 7 faixas,
+   porque o chip É um .hm-card — a cor mora num lugar só) e a média da cesta. O mouse em cima (ou o toque) abre a
+   lista das empresas da cesta (#hm-bk-pop, no <body>, fora do #stage escalado — mesmo arranjo do #hm-pop).
+   ⚠️ Estado aberto = OUTLINE: o box-shadow das faixas do tema escuro (html.dark .hm-card.up…) ganharia de qualquer
+   box-shadow daqui. */
+.hm-baskets{flex:none;display:flex;align-items:stretch;gap:5px;padding:6px 6px 0;min-width:0;}
+.hm-baskets:empty{display:none;}
+.hm-bk-lbl{flex:none;align-self:center;font-size:7.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--gray-mid);padding:0 2px 0 3px;cursor:help;}
+.hm-card.hm-bk{flex:1 1 0;min-width:0;flex-direction:row;align-items:baseline;justify-content:space-between;gap:4px;
+  padding:3px 7px;min-height:0;border:0;font:inherit;text-align:left;cursor:pointer;}
+.hm-bk .hm-bk-name{font-size:9px;font-weight:700;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.hm-bk .hm-change{font-size:9px;}
+.hm-card.hm-bk.open,.hm-card.hm-bk:focus-visible{outline:1.5px solid var(--gray-dark);outline-offset:-1.5px;}
+html.dark .hm-card.hm-bk.open,html.dark .hm-card.hm-bk:focus-visible{outline-color:#C9D1DB;}
+.hm-bk-pop{position:fixed;z-index:4000;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-pop);padding:9px 11px 8px;font-size:11px;color:var(--gray-dark);overflow:auto;text-align:left;}
+.hm-bk-pop[hidden]{display:none;}
+.hm-bk-pop .bp-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.hm-bk-pop .bp-t{font-weight:700;font-size:12px;color:var(--black);}
+.hm-bk-pop .bp-v{font-weight:700;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.hm-bk-pop .bp-s{color:var(--gray-mid);font-size:10px;margin:1px 0 6px;}
+.hm-bk-pop table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.hm-bk-pop td{padding:2.5px 0;font-size:10.5px;border-top:1px solid var(--border);}
+.hm-bk-pop td.tk{font-weight:700;width:72px;white-space:nowrap;color:var(--black);}
+.hm-bk-pop td.nm{color:var(--gray-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hm-bk-pop td.v{width:68px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.hm-bk-pop .pos{color:#15803d;} .hm-bk-pop .neg{color:#b42318;} .hm-bk-pop .na{color:var(--gray-mid);font-weight:500;}
+html.dark .hm-bk-pop .pos{color:#4ADE80;} html.dark .hm-bk-pop .neg{color:#FCA5A5;}
+.hm-bk-pop .bp-f{border-top:1px solid var(--border);margin-top:6px;padding-top:5px;color:var(--gray-mid);font-size:9.5px;}
 /* filtro de empresas (▾) + presets do heatmap */
 .hm-filter{position:relative;}
 .hm-filter-btn{font:inherit;font-size:9px;font-weight:700;letter-spacing:.02em;padding:2px 7px;
@@ -1008,6 +1039,11 @@ html.dark .cm-nohist{color:#79818F;}
   .hm-tkline{gap:3px;} .hm-vs{font-size:7px;padding:.5px 2.5px;letter-spacing:0;}
   .hm-name{font-size:9.5px;} .hm-price{font-size:11px;} .hm-asof{font-size:9px;}
   .hm-card{padding:7px 9px;}
+  /* cestas no celular: 3 por linha, rótulo numa linha própria, letra de leitura */
+  .hm-baskets{flex-wrap:wrap;padding:8px 8px 0;gap:6px;}
+  .hm-bk-lbl{flex-basis:100%;font-size:9px;padding:0 1px;}
+  .hm-card.hm-bk{flex:1 1 30%;padding:6px 8px;}
+  .hm-bk .hm-bk-name,.hm-bk .hm-change{font-size:11px;}
 
   /* Commodities */
   .kv-row{padding:9px 13px;gap:8px;}
@@ -1660,6 +1696,8 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
       </div>
       <span class="sec-meta" id="quotes-meta">—</span>
     </div>
+    <!-- as cestas dos setores (2026-11-12): seguem os botões do heatmap; o mouse em cima mostra as empresas -->
+    <div class="hm-baskets" id="hm-baskets" role="group" aria-label="Baskets"></div>
     <div class="heatmap-grid" id="heatmap-grid">
       <div class="kv-loading">Loading quotes…</div>
     </div>
@@ -3047,6 +3085,7 @@ function _sparkline(closes){
 function _renderHeatmap(){
   const grid = document.getElementById('heatmap-grid');
   _updateFilterCount();
+  if(typeof _renderBaskets === 'function') _renderBaskets();   // as cestas seguem os mesmos botões (os testes recortam esta função sem ela)
   if(!grid) return;
   if(!_quotes.length){ grid.innerHTML = '<div class="kv-loading">Loading quotes…</div>'; return; }
   const show = new Set(_hmDisplayed);
@@ -3222,6 +3261,99 @@ document.body.appendChild(document.getElementById('hm-pop'));
 document.addEventListener('click', e=>{ if(!e.target.closest('.hm-filter') && !e.target.closest('#hm-pop')) _toggleFilterPop(false); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') _toggleFilterPop(false); });
 window.addEventListener('resize', ()=>{ const p=document.getElementById('hm-pop'); if(p&&!p.hidden) _positionPop(); });
+
+// ── CESTAS (baskets) em cima dos cartões (2026-11-12) ─────────────────────────────
+// Pedido do analista: ver os GRUPOS no heatmap e, passando o mouse, os componentes de cada um. As cestas são as
+// MESMAS da aba Market → Baskets: a lista de cada grupo (SECTOR_GROUPS — já sem o que o admin esconde), PESO IGUAL,
+// uma linha por empresa: sem o ADR da Gerdau (GGB = a mesma GGBR4) e sem as holdings (Metalúrgica Gerdau,
+// Bradespar), decisão do analista; a Barrick conta em Ouro e em Cobre, como na lista. O número de cada empresa sai
+// das MESMAS funções dos cartões (_seriesFor / _relFor), então segue os botões do heatmap (D/WoW/MoM/YTD/YoY e
+// Absolute/Relative) e as mesmas regras (sem número quando não dá para medir com honestidade). Zero rede nova: a
+// home já baixa cotação, diário e intradiário de todas as linhas de `quotes`.
+const BASKET_SKIP = new Set(['GGB','GOAU4.SA','BRAP3.SA']);
+const BASKET_KEYS = ['steel','iron_ore','gold','copper','rare_earths','pp'];
+let _bkRows = [], _bkOpenK = null, _bkPinned = false, _bkHideT = 0;
+function _basketRows(){
+  const rel = _hmMode === 'rel', byT = Object.fromEntries(_quotes.map(q=>[q.ticker,q]));
+  return BASKET_KEYS.filter(k=>SECTOR_GROUPS[k]).map(k=>{
+    const mem = SECTOR_GROUPS[k].filter(t=>!BASKET_SKIP.has(t)).map(t=>byT[t]).filter(Boolean).map(q=>{
+      const r = rel ? _relFor(q, _range) : _seriesFor(q, _range);
+      const v = (r && !r.self && r.pct != null && isFinite(r.pct)) ? r.pct : null;
+      return {q, v, why: v == null && r ? r.why : null};
+    });
+    const ok = mem.filter(m=>m.v != null);
+    return {k, label: SECTOR_LABEL[k] || k, mem, n: ok.length, avg: ok.length ? ok.reduce((s,m)=>s+m.v,0)/ok.length : null};
+  });
+}
+const _bkFmt = (v, rel, d) => v == null ? '—' : `${v>=0?'+':'−'}${Math.abs(v).toFixed(d == null ? 2 : d)}${rel?'pp':'%'}`;
+// nome curto quando o cheio não cabe no chip (notebook de 1366 e celular): "pinta, mede, ajusta", como o "vs" do Relative
+const BASKET_SHORT = {steel:'Steel', iron_ore:'Iron', gold:'Gold', copper:'Copper', rare_earths:'REE', pp:'P&P'};
+const _bkCls = v => v == null ? 'na' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+function _renderBaskets(){
+  const host = document.getElementById('hm-baskets'); if(!host) return;
+  if(!_quotes.length){ host.innerHTML = ''; return; }
+  _bkRows = _basketRows();
+  const rel = _hmMode === 'rel';
+  host.innerHTML = `<span class="hm-bk-lbl" title="Equal-weighted baskets of the stocks we follow in each sector. Hover over a basket to see its companies.">Baskets</span>` +
+    _bkRows.map(r => `<button type="button" class="hm-card hm-bk ${_heatClass(r.avg)}${_bkOpenK===r.k?' open':''}" data-bk="${r.k}"
+        aria-haspopup="dialog" aria-expanded="${_bkOpenK===r.k}" aria-label="${_esc(r.label)} basket, ${_bkFmt(r.avg, rel)}">
+        <span class="hm-bk-name" data-short="${_esc(BASKET_SHORT[r.k] || r.label)}">${_esc(r.label)}</span><span class="hm-change">${_bkFmt(r.avg, rel, 1)}</span></button>`).join('');
+  host.querySelectorAll('.hm-bk-name[data-short]').forEach(n=>{ if(n.scrollWidth > n.clientWidth + .5) n.textContent = n.dataset.short; });
+  if(_bkOpenK) _bkShow(_bkOpenK);   // o balão aberto acompanha o número novo (refresh de 60 s, troca de período)
+}
+function _bkPop(){
+  let pop = document.getElementById('hm-bk-pop');
+  if(!pop){
+    pop = document.createElement('div'); pop.id = 'hm-bk-pop'; pop.className = 'hm-bk-pop'; pop.hidden = true;
+    pop.setAttribute('role', 'dialog'); document.body.appendChild(pop);   // fora do #stage escalado (como o #hm-pop)
+    pop.addEventListener('mouseenter', ()=> clearTimeout(_bkHideT));
+    pop.addEventListener('mouseleave', ()=>{ if(!_bkPinned) _bkHideSoon(); });
+  }
+  return pop;
+}
+function _bkShow(k){
+  const r = _bkRows.find(x=>x.k===k), chip = document.querySelector(`#hm-baskets .hm-bk[data-bk="${k}"]`);
+  if(!r || !chip){ _bkHide(); return; }
+  clearTimeout(_bkHideT);
+  const pop = _bkPop(), rel = _hmMode === 'rel';
+  const per = {D:'Today', W:'Week', M:'Month', YTD:'Year to date', Y:'12 months'}[_range] || _range;
+  const rows = [...r.mem].sort((a,b)=> (b.v ?? -1e9) - (a.v ?? -1e9));
+  pop.innerHTML = `<div class="bp-h"><span class="bp-t">${_esc(r.label)} basket</span><span class="bp-v ${_bkCls(r.avg)}">${_bkFmt(r.avg, rel)}</span></div>
+    <div class="bp-s">${per} · average of ${r.n} ${r.n===1?'company':'companies'}, equal weight${rel?' · each stock vs the main index of its exchange':''}</div>
+    <table>${rows.map(m=>`<tr><td class="tk">${_esc(_short(m.q.ticker))}</td><td class="nm">${_esc(m.q.name||'')}</td>
+      <td class="v ${_bkCls(m.v)}"${m.why?` title="${_esc(m.why)}"`:''}>${_bkFmt(m.v, rel)}</td></tr>`).join('')}</table>
+    ${r.mem.some(m=>m.q.ticker==='B') ? '<div class="bp-f">Barrick counts in both the Gold and the Copper baskets.</div>' : ''}`;
+  document.querySelectorAll('#hm-baskets .hm-bk').forEach(c=>{ const on = c === chip; c.classList.toggle('open', on); c.setAttribute('aria-expanded', on); });
+  const rc = chip.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(320, vw - 16), below = vh - rc.bottom - 10, above = rc.top - 10;
+  pop.style.width = w + 'px';
+  pop.style.left = Math.max(8, Math.min(rc.left, vw - w - 8)) + 'px';
+  if(below >= 220 || below >= above){ pop.style.top = (rc.bottom + 6) + 'px'; pop.style.bottom = 'auto'; pop.style.maxHeight = Math.max(140, below) + 'px'; }
+  else { pop.style.bottom = (vh - rc.top + 6) + 'px'; pop.style.top = 'auto'; pop.style.maxHeight = Math.max(140, above) + 'px'; }
+  pop.hidden = false; _bkOpenK = k;
+}
+function _bkHide(){
+  clearTimeout(_bkHideT);
+  const pop = document.getElementById('hm-bk-pop'); if(pop) pop.hidden = true;
+  _bkOpenK = null; _bkPinned = false;
+  document.querySelectorAll('#hm-baskets .hm-bk.open').forEach(c=>{ c.classList.remove('open'); c.setAttribute('aria-expanded', 'false'); });
+}
+function _bkHideSoon(){ clearTimeout(_bkHideT); _bkHideT = setTimeout(()=>{ if(!_bkPinned) _bkHide(); }, 160); }
+(function(){
+  const host = document.getElementById('hm-baskets'); if(!host) return;
+  // mouse: passar por cima abre; sair (sem ir para o balão) fecha. Toque/clique: abre e FIXA; clicar de novo fecha.
+  host.addEventListener('pointerover', e=>{ if(e.pointerType !== 'mouse') return; const c = e.target.closest('.hm-bk'); if(!c) return;
+    if(_bkOpenK !== c.dataset.bk){ _bkPinned = false; _bkShow(c.dataset.bk); } else clearTimeout(_bkHideT); });
+  host.addEventListener('pointerout', e=>{ if(e.pointerType !== 'mouse') return; const c = e.target.closest('.hm-bk');
+    if(c && !c.contains(e.relatedTarget) && !_bkPinned) _bkHideSoon(); });
+  host.addEventListener('click', e=>{ const c = e.target.closest('.hm-bk'); if(!c) return; e.stopPropagation();
+    if(_bkOpenK === c.dataset.bk && _bkPinned) _bkHide(); else { _bkShow(c.dataset.bk); _bkPinned = true; } });
+  document.addEventListener('click', e=>{ if(_bkOpenK && !e.target.closest('#hm-baskets') && !e.target.closest('#hm-bk-pop')) _bkHide(); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && _bkOpenK) _bkHide(); });
+  window.addEventListener('resize', ()=>{ if(_bkOpenK) _bkHide(); });
+  // rolar a página/grade desgruda o balão (ele é fixo na tela); rolar a PRÓPRIA lista do balão não
+  window.addEventListener('scroll', e=>{ const t = e.target; if(t && t.nodeType === 1 && t.closest('#hm-bk-pop')) return; if(_bkOpenK) _bkHide(); }, true);
+})();
 
 // ─── MODAL — histórico + comparação (SVG à mão) ───────────────────────
 const _MC_COLORS = ['#FF5000','#111111','#2563eb','#16a34a','#9333ea','#0891b2','#c0392b','#b45309'];
