@@ -674,15 +674,14 @@ html.dark #news-filter:has(.news-filter-chip.neg.active)>.ibba-slide{background:
 :is(#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button{background:transparent;}
 :is(#pulse-controls,#news-filter,#news-sector-filter,#hm-range,#hm-mode,#co-ranges).ibba-slide-on>button.active{background:transparent;border-color:transparent;}
 /* ── CESTAS (baskets) em cima dos cartões (2026-11-12) ─────────────────────────────
-   Uma fileira fina: o rótulo "Baskets" + as 6 cestas, cada uma com a COR do cartão do heatmap (as mesmas 7 faixas,
+   Uma fileira fina com as 6 cestas (sem rótulo "Baskets" desde 12/11/2026, pedido do analista), cada uma com a COR do
+   cartão do heatmap (as mesmas 7 faixas,
    porque o chip É um .hm-card — a cor mora num lugar só) e a média da cesta. O mouse em cima (ou o toque) abre a
    lista das empresas da cesta (#hm-bk-pop, no <body>, fora do #stage escalado — mesmo arranjo do #hm-pop).
    ⚠️ Estado aberto = OUTLINE: o box-shadow das faixas do tema escuro (html.dark .hm-card.up…) ganharia de qualquer
    box-shadow daqui. */
 .hm-baskets{flex:none;display:flex;align-items:stretch;gap:5px;padding:6px 6px 0;min-width:0;}
 .hm-baskets:empty{display:none;}
-.hm-bk-lbl{flex:none;align-self:center;font-size:7.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--gray-mid);padding:0 2px 0 3px;cursor:help;}
 .hm-card.hm-bk{flex:1 1 0;min-width:0;flex-direction:row;align-items:baseline;justify-content:space-between;gap:4px;
   padding:3px 7px;min-height:0;border:0;font:inherit;text-align:left;cursor:pointer;}
 .hm-bk .hm-bk-name{font-size:9px;font-weight:700;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
@@ -1039,9 +1038,8 @@ html.dark .cm-nohist{color:#79818F;}
   .hm-tkline{gap:3px;} .hm-vs{font-size:7px;padding:.5px 2.5px;letter-spacing:0;}
   .hm-name{font-size:9.5px;} .hm-price{font-size:11px;} .hm-asof{font-size:9px;}
   .hm-card{padding:7px 9px;}
-  /* cestas no celular: 3 por linha, rótulo numa linha própria, letra de leitura */
+  /* cestas no celular: 3 por linha, letra de leitura */
   .hm-baskets{flex-wrap:wrap;padding:8px 8px 0;gap:6px;}
-  .hm-bk-lbl{flex-basis:100%;font-size:9px;padding:0 1px;}
   .hm-card.hm-bk{flex:1 1 30%;padding:6px 8px;}
   .hm-bk .hm-bk-name,.hm-bk .hm-change{font-size:11px;}
 
@@ -3294,7 +3292,7 @@ function _renderBaskets(){
   if(!_quotes.length){ host.innerHTML = ''; return; }
   _bkRows = _basketRows();
   const rel = _hmMode === 'rel';
-  host.innerHTML = `<span class="hm-bk-lbl" title="Equal-weighted baskets of the stocks we follow in each sector. Hover over a basket to see its companies.">Baskets</span>` +
+  host.innerHTML =
     _bkRows.map(r => `<button type="button" class="hm-card hm-bk ${_heatClass(r.avg)}${_bkOpenK===r.k?' open':''}" data-bk="${r.k}"
         aria-haspopup="dialog" aria-expanded="${_bkOpenK===r.k}" aria-label="${_esc(r.label)} basket, ${_bkFmt(r.avg, rel)}">
         <span class="hm-bk-name" data-short="${_esc(BASKET_SHORT[r.k] || r.label)}">${_esc(r.label)}</span><span class="hm-change">${_bkFmt(r.avg, rel, 1)}</span></button>`).join('');
