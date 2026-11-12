@@ -97,6 +97,9 @@ window.IBBA_TOURS = {
           body: 'Show a single take or sector: S&M, P&P or NR (macro). **View history** opens the full archive.' },
         { id: 'heat-tools', unlessOff: 'heatmap', target: ['#hm-range', '#hm-mode', '#hm-filter-btn'], title: 'Heatmap controls',
           body: 'Choose the period (day, week, month, YTD, year), switch between **Absolute** and **Relative** (each stock against the main index of its exchange, in percentage points) and pick up to 20 stocks or indices under **Selected**.' },
+        { id: 'heat-baskets', unlessOff: 'heatmap', target: '#hm-baskets', title: 'Baskets',
+          body: 'Each sector as an equal-weighted basket, on the same period and measure as the tiles. Hover over a basket to see its companies.',
+          mobile: { body: 'Each sector as an equal-weighted basket, on the same period and measure as the tiles. Tap a basket to see its companies.' } },
         { id: 'heat-grid', unlessOff: 'heatmap', target: '#heatmap-grid', clip: 360, title: 'Open a company',
           body: 'Each tile is a stock and its move over the period. {Click} one for its price chart and comparisons.' }
       ]
@@ -159,7 +162,9 @@ window.IBBA_TOURS = {
       cleanup: PERF,   // devolve a página na Performance
       steps: [
         { id: 'tabs', call: PERF, target: '#mtabs', title: 'More tabs',
-          body: 'Besides Performance, Market has a commodities table and four tabs built on B3 and CVM data.' },
+          body: 'Besides Stocks, Market has our sector baskets, a commodities table and four tabs built on B3 and CVM data.' },
+        { id: 'baskets', call: TAB('baskets'), target: '#bk-host', clip: 360, title: 'Baskets',
+          body: 'Each sector as an equal-weighted basket. The map shows where every company sits (the long move across, the recent move up); the ranking and the chart compare the baskets and their commodity.' },
         { id: 'commodities', call: TAB('commodities'), target: '#ct-host', clip: 360, title: 'All commodities',
           body: 'Every price in one table, grouped like the carousel. {Click} a column header to sort.' },
         { id: 'short', call: TAB('short'), target: '#mw-host', clip: 360, title: 'Short interest',

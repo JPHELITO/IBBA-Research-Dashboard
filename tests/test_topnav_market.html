@@ -29,7 +29,11 @@ window.__RUN__=async function(){
     const blk=(src.match(/<div class="mtabs[^"]*" id="mtabs">([\s\S]*?)<\/div>/)||[])[1]||'';
     const page=[...blk.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);
     const desk=$$('#gnav-market .gn-drop a').map(tabOf), mob=$$('a.gnm-mkt').map(tabOf);
-    ok('desktop = abas do #mtabs, na mesma ordem', page.length===6 && JSON.stringify(desk)===JSON.stringify(page), desk.join(',')+' vs '+page.join(','));
+    // 7 desde 12/11/2026: entrou a Baskets (a Performance virou "Stocks", mas a chave da aba segue 'performance')
+    ok('desktop = abas do #mtabs, na mesma ordem', page.length===7 && JSON.stringify(desk)===JSON.stringify(page), desk.join(',')+' vs '+page.join(','));
+    // a maiúscula pode diferir ("Short Interest" no menu × "Short interest" na barra, desde 2026-09) — o nome não
+    const nomes=l=>JSON.stringify(l.map(s=>s.trim().toLowerCase()));
+    ok('rótulos do menu = os da barra (Stocks, Baskets…)', nomes($$('#gnav-market .gn-drop a').map(a=>a.textContent))===nomes([...blk.matchAll(/data-tab="[^"]+"[^>]*>([^<]+)</g)].map(m=>m[1])), $$('#gnav-market .gn-drop a').map(a=>a.textContent.trim()).join(','));
     ok('celular = as mesmas', JSON.stringify(mob)===JSON.stringify(page), mob.join(','));
 
     // 2) sem flag e sem admin: "Market" simples, como antes (sem ▾, a lista não abre nem no hover)
@@ -45,8 +49,8 @@ window.__RUN__=async function(){
     try{ localStorage.setItem('ibba_mw_on','1'); }catch(e){}
     __gnavMarketTabs(true);
     ok('com flag: ▾ aparece e a lista abre no hover', vis(caret) && vis(drop));
-    ok('com flag (celular): grupo Market com as 6, sem o link simples',
-       vis($('div.gnm-mkt')) && $$('a.gnm-mkt').filter(vis).length===6 && !vis($('.gnm-mkt-solo')));
+    ok('com flag (celular): grupo Market com as 7, sem o link simples',
+       vis($('div.gnm-mkt')) && $$('a.gnm-mkt').filter(vis).length===7 && !vis($('.gnm-mkt-solo')));
 
     // 4) escolheu um destino → a lista fecha; o mouse saiu → reabre no próximo hover; Ctrl-clique não fecha
     const link=drop.querySelector('a[href*="tab=short"]');
@@ -67,7 +71,9 @@ window.__RUN__=async function(){
     ok('?tab=short acende só Short Interest (celular)', JSON.stringify(litM())==='["short"]', litM().join(','));
     ok('e acende a cabeça Market', head.classList.contains('on'));
     history.replaceState(null,'','/market.html?t=VALE3.SA'); __gnavMarkCurrent();
-    ok('sem ?tab= acende Performance', JSON.stringify(lit())==='["performance"]' && JSON.stringify(litM())==='["performance"]', lit().join(',')+' / '+litM().join(','));
+    ok('sem ?tab= acende Stocks (chave performance)', JSON.stringify(lit())==='["performance"]' && JSON.stringify(litM())==='["performance"]', lit().join(',')+' / '+litM().join(','));
+    history.replaceState(null,'','/market.html?tab=baskets'); __gnavMarkCurrent();
+    ok('?tab=baskets acende só Baskets', JSON.stringify(lit())==='["baskets"]' && JSON.stringify(litM())==='["baskets"]', lit().join(',')+' / '+litM().join(','));
     history.replaceState(null,'','/market.html?tab=Filings'); __gnavMarkCurrent();
     ok('?tab= não diferencia maiúscula', JSON.stringify(lit())==='["filings"]', lit().join(','));
 

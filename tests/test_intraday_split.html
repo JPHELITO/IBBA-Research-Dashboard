@@ -80,10 +80,11 @@ window.__RUN__=async function(){
   const M=new Function('ctx',`with(ctx){ ${SRC}\n return {loadQuotes}; }`)(ctx);
   pedidos=[]; await M.loadQuotes();
   ok('Market · 1ª volta busca leve + intraday', pedidos.length===2, 'n='+pedidos.length);
-  // desde 26/10/2026 a leve tira UMA chave do JSON do intraday (janela do pregão → faixa de bolsas), nunca a série
+  // desde 26/10/2026 a leve tira chaves do JSON do intraday, nunca a série: a janela do pregão (faixa de bolsas) e,
+  // desde 12/11/2026, o dia do último negócio (o Relative da aba Baskets não mistura pregões — a régua do heatmap)
   const msel=decodeURIComponent(pedidos[0].split('select=')[1]).split(',');
-  ok('Market · leve sem a série intraday (só a janela do pregão)',
-     !msel.includes('intraday') && msel.filter(c=>c.includes('intraday')).join()==='session:intraday->session', msel.join(','));
+  ok('Market · leve sem a série intraday (só as 2 chaves: janela do pregão e último negócio)',
+     !msel.includes('intraday') && msel.filter(c=>c.includes('intraday')).join()==='session:intraday->session,traded_at:intraday->traded_at', msel.join(','));
   ok('Market · sparkline do cabeçalho tem dado', (ctx._quotes[0].intraday||{}).pts?.length===7);
   pedidos=[]; await M.loadQuotes();
   ok('Market · nada mudou → só a leve', pedidos.length===1, 'n='+pedidos.length);
