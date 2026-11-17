@@ -167,6 +167,10 @@ html.dark .bl-warn{background:#2a2213;color:#f0c674;border-color:#4a3c18;}
 .dl{display:inline-block;padding:6px 12px;border-radius:7px;background:var(--orange);color:#fff!important;text-decoration:none;font-weight:600;font-size:11.5px;}
 .dl:hover{opacity:.9;}
 .dl.ghost{background:transparent;color:var(--gray-mid)!important;border:1px solid var(--border);}
+/* HTML do WhatsApp (2026-11-17): o arquivo que vai como DOCUMENTO no blast, ao lado do Word */
+.dl.wa{background:#111;border:1px solid var(--orange);color:#fff!important;}
+html.dark .dl.wa{background:#000;}
+.wa-err{font-size:11px;color:var(--gray-mid);border-bottom:1px dotted var(--gray-mid);cursor:help;}
 .last-clip{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--gray-mid);}
 .last-clip .lc-when{font-weight:700;color:var(--black);}
@@ -1280,6 +1284,16 @@ function _fmtBRT(iso){
   return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',
                                    year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(', ',' às ');
 }
+// HTML do WhatsApp — o robô devolve o link DENTRO do config do job (`config.whatsapp`), o mesmo
+// caminho do blast: `admin_get_clipping_job(s)` já traz o config, então não há SQL novo.
+// Sem link (rodada antiga, ou o HTML falhou) não aparece nada que pareça erro do Word.
+function waLink(job){
+  const w=((job&&job.config)||{}).whatsapp||{};
+  if(w.url) return '<a class="dl wa" href="'+esc(w.url)+'" target="_blank" rel="noopener" '
+    +'title="'+esc((w.name||'')+(w.kb?' · '+w.kb+' KB':'')+' — mande no WhatsApp como documento')+'">⬇ HTML (WhatsApp)</a>';
+  if(w.error) return '<span class="wa-err" title="'+esc(w.error)+'">HTML do WhatsApp não saiu nesta rodada</span>';
+  return '';
+}
 function renderLastJob(job){
   const host=document.getElementById('clip-last'); if(!host) return;
   if(!job || !job.docx_path){ host.hidden=true; host.innerHTML=''; return; }
@@ -1293,6 +1307,7 @@ function renderLastJob(job){
       ? '<span class="lc-old">o link expirou (vale '+SIGN_TTL_D+' dias) — gere de novo</span>'
       : '<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
         +(job.eml_path?'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>':'')
+        +waLink(job)
         +(job.preview_path?'<a class="dl ghost" href="'+esc(job.preview_path)+'" target="_blank" rel="noopener">Ver prévia</a>':''));
 }
 async function loadLastJob(){
@@ -1329,7 +1344,8 @@ async function pollJob(jobId, st, btn){
       st.className='gen-status ok';
       st.innerHTML='✓ Pronto! '
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
-        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
+        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>'
+        +waLink(job);
       btn.disabled=false; renderFailures(job.errors);           // corpos que falharam → colar e regerar
       renderLastJob(job);                                       // substitui o "último gerado"
       return;
@@ -1914,7 +1930,8 @@ const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[
 window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
               cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
               blEhMinerioPreco, blSgxFrase, blComSgx, blBuild,
-              rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl };
+              rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl,
+              renderLastJob, waLink };
 
 ;(async()=>{
   wire();
