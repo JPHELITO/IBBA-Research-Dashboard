@@ -55,6 +55,16 @@ jobs:
           ANOS=""
           if [ -n "${{ github.event.inputs.anos }}" ]; then ANOS="--anos ${{ github.event.inputs.anos }}"; fi
           python "Steel and Mining/updater_sm.py" --reconcile $ANOS
+      # Minério: base × MDIC (país e porto) + soma dos portos = soma dos países, mês a mês.
+      # Roda mesmo se a conferência do aço acima ficar vermelha (são alarmes independentes).
+      - name: Conferir o minério contra o MDIC (não grava)
+        if: ${{ !cancelled() }}
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          ANOS=""
+          if [ -n "${{ github.event.inputs.anos }}" ]; then ANOS="--anos ${{ github.event.inputs.anos }}"; fi
+          python "Steel and Mining/update_iron_ore.py" --reconcile $ANOS
 
   update:
     if: github.event.schedule != '30 12 15 * *' && github.event.inputs.reconcile != 'true'
@@ -95,7 +105,8 @@ jobs:
         # (um daqui + o do passo "Send email notification" abaixo). Sem as credenciais,
         # o send_email() interno cai no guard (linha ~701) e não envia → resta 1 e-mail.
 
-      # ── 3a. Minério de ferro (mesma janela do SECEX → tabela secex_iron_ore) ──
+      # ── 3a. Minério de ferro: secex_iron_ore (país) + secex_iron_ore_port (porto), do MESMO
+      #        download e com a mesma janela de revisão do aço (ano corrente + anterior) ──
       - name: Update iron ore (Fines/Pellets)
         if: github.event.inputs.backfill_sh6 != 'true'
         run: python "Steel and Mining/update_iron_ore.py" --update
