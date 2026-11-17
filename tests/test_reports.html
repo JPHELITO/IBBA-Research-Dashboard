@@ -17,6 +17,9 @@
      IABr com SECEX); o relatório HTML mostra como o IABr publica (planos/longos/semi).
    • SECEX de aço e minério: o banco já tem as revisões do MDIC feitas DEPOIS de 13/10
      (ex.: importação 3T26 1.370 × 1.369 no PDF). A celulose não foi revisada e bate exato.
+   • Minério (re-recortado em 17/11, quando o robô passou a pegar revisões): 3T26 108.488 ×
+     108.601 no PDF = a revisão de setembro (−113 kt, MDIC 06/11). Por PORTO, 2T26 e 3T25
+     batem exato com a tabela "Iron Ore Volumes" da página 10.
 
    Rodar: servir a pasta do repositório e abrir /tests/test_reports.html             */
 const out=[], ok=(n,c,d='')=>out.push((c?'PASS':'FAIL')+' · '+n+(d!==''?'  ['+d+']':''));
@@ -161,6 +164,19 @@ try{
      q3(S.impTable,'(c) Working days')[0]===65 && q3(S.ironTable,'(c) Working days')[0]===65);
   ok('minério: preço médio 3T26 US$62/t (PDF 62)', q3(S.ironTable,'(b)/(a) Average price (US$/t)')[0]===62);
   ok('minério: QoQ +4% e YoY −7% (PDF +4%/−7%)', Math.round(line(S.ironTable,'(a) Volumes (ktons)').d.qoq*100)===4 && Math.round(line(S.ironTable,'(a) Volumes (ktons)').d.qyoy*100)===-7);
+  // minério por PORTO (secex_iron_ore_port, 17/11) — a tabela "Iron Ore Volumes" da página 10 do PDF.
+  // 2T26 e 3T25 batem EXATO; o 3T26 é o revisado (o MDIC tirou 113 kt de setembro em 06/11, depois do PDF).
+  const PORTOS=['São Luís','Vitória','Itaguaí','Goytacazes (Açu)','Others','Total'];
+  ok('minério por porto: linhas na ordem do PDF', S.ironPortTable.map(l=>l.label).join()===PORTOS.join(), S.ironPortTable.map(l=>l.label).join());
+  const colPorto=c=>S.ironPortTable.map(l=>r0(l.v[c])).join();
+  ok('minério por porto: 2T26 = PDF exato (39.156 · 26.103 · 29.485 · 6.553 · 3.204 · 104.502)', colPorto('qp')==='39156,26103,29485,6553,3204,104502', colPorto('qp'));
+  ok('minério por porto: 3T25 = PDF exato (49.825 · 26.895 · 30.766 · 6.066 · 3.306 · 116.856)', colPorto('qy')==='49825,26895,30766,6066,3306,116856', colPorto('qy'));
+  ok('minério por porto: 3T26 revisado (PDF 42.378 · 26.129 · 30.194 · 6.900 · 3.000 · 108.601)', colPorto('q')==='42369,26123,30139,6900,2957,108488', colPorto('q'));
+  ok('minério por porto: QoQ/YoY do PDF (São Luís +8%/−15% · Açu +5%/+14% · total +4%/−7%)',
+     [['São Luís',8,-15],['Goytacazes (Açu)',5,14],['Total',4,-7]].every(g=>{const l=line(S.ironPortTable,g[0]); return Math.round(l.d.qoq*100)===g[1]&&Math.round(l.d.qyoy*100)===g[2];}));
+  ok('minério por porto: total = volume da tabela de minério em TODAS as colunas (mesmo download do MDIC)',
+     ['m','m1','y1','ytd','ytd1','q','qp','qy'].every(c=>Math.abs(line(S.ironPortTable,'Total').v[c]-line(S.ironTable,'(a) Volumes (ktons)').v[c])<1e-6));
+  ok('minério por porto: Others = Corumbá + resíduos (≈ 2,96 Mt no 3T26), não um porto grande escondido', r0(line(S.ironPortTable,'Others').v.q)===2957);
   // origem: Vietnã ~37–38% em setembro (PDF "~37%")
   const o=S.origins.month;
   ok('origem: Vietnã lidera setembro com ~38% (PDF "~37%")', R.countryEN(o.list[0].c)==='Vietnam' && Math.round(o.list[0].v/o.all*100)===38, o.list[0].c+' '+(o.list[0].v/o.all*100).toFixed(1));
@@ -179,6 +195,11 @@ try{
   ok('SECEX documento: sem NaN/undefined', !/NaN|undefined/.test(sh), (sh.match(/.{30}(NaN|undefined).{30}/)||[''])[0]);
   ok('SECEX documento: 4 seções + KPIs de aço, minério e celulose', (sh.match(/<section class="sec/g)||[]).length===4 && sh.indexOf('Iron ore exports')>=0 && sh.indexOf('Market pulp exports')>=0);
   ok('SECEX documento: "(c) Working days" literal (sem ©)', sh.indexOf('(c) Working days')>=0 && sh.indexOf('©')<0);
+  ok('SECEX documento: tabela e gráfico do minério por porto, com o rótulo do PDF (não o nome da URF)',
+     sh.indexOf('Iron ore exports by port')>=0 && sh.indexOf('Monthly iron ore exports by port')>=0 &&
+     sh.indexOf('Goytacazes (Açu)')>=0 && sh.indexOf('Campos Dos Goytacazes')<0);
+  ok('SECEX documento: porto vem depois do gráfico por produto e antes dos destinos',
+     sh.indexOf('Monthly iron ore exports by product')<sh.indexOf('Iron ore exports by port') && sh.indexOf('Iron ore exports by port')<sh.indexOf('Iron ore destinations'));
 
   // ══ 4. a faixa de destaques (pedido de 17/11: tamanho padronizado, eixos, alinhamento) ═══
   // Cada quadro tem as MESMAS 5 linhas, na mesma ordem: nome · número · variações · trimestre ·
@@ -201,8 +222,9 @@ try{
   });
   ok('IABr destaques: eixo da penetração com casas certas (10% · 20% · 30%)',
      [...new DOMParser().parseFromString(html,'text/html').querySelectorAll('.kpi')[3].querySelectorAll('.yl span')].map(e=>e.textContent).join()==='10%,20%,30%');
-  ok('SECEX destaques: minério em milhões de t (33.9 Mt) e o gráfico também em Mt',
-     /33\.9/.test(new DOMParser().parseFromString(sh,'text/html').querySelectorAll('.kpi')[2].querySelector('.kv').textContent) &&
+  // set/26 = 33,8 Mt: o recorte do minério foi refeito com a revisão do MDIC (era 33,9 no 1º número)
+  ok('SECEX destaques: minério em milhões de t (33.8 Mt) e o gráfico também em Mt',
+     /33\.8/.test(new DOMParser().parseFromString(sh,'text/html').querySelectorAll('.kpi')[2].querySelector('.kv').textContent) &&
      [...new DOMParser().parseFromString(sh,'text/html').querySelectorAll('.kpi')[2].querySelectorAll('.yl span')].every(e=>+e.textContent.replace(/,/g,'')<100));
 
   // ══ 5. fonte que ainda não publicou o mês (os robôs rodam em horários diferentes) ═══════
@@ -212,6 +234,14 @@ try{
   const S2=R.secexModel(sm,pp2,'2026-09');
   ok('SECEX sem a celulose do mês: a tela avisa "celulose" e "celulose por porto"',
      S2.missing.indexOf('celulose')>=0 && S2.missing.indexOf('celulose por porto')>=0 && S2.missing.indexOf('minério de ferro')<0, S2.missing.join());
+  // minério por porto: o mês que faltar avisa; banco SEM a tabela (antigo) não quebra o relatório
+  const sm2=mk(fx.sm); sm2.run("DELETE FROM secex_iron_ore_port WHERE period='2026-09'");
+  const S3=R.secexModel(sm2,pp,'2026-09');
+  ok('SECEX sem o porto do mês: a tela avisa "minério por porto" (e só isso)', S3.missing.join()==='minério por porto', S3.missing.join());
+  const sm3=mk(fx.sm); sm3.run('DROP TABLE secex_iron_ore_port');
+  const S4=R.secexModel(sm3,pp,'2026-09'), sh4=R.renderSecex(S4,R.secexDefaults(S4,'2026-10-13'),{});
+  ok('SECEX com banco sem a tabela de porto: monta, avisa e o bloco do porto some (sem travessões)',
+     S4.missing.indexOf('minério por porto')>=0 && sh4.indexOf('Iron ore exports by port')<0 && sh4.indexOf('Iron ore exports')>=0 && !/NaN|undefined/.test(sh4));
 }catch(e){ ok('EXCEÇÃO', false, e.stack); }
   const f=out.filter(x=>x.indexOf('FAIL')===0).length;
   document.getElementById('out').textContent=(f?'❌ '+f+' FALHA(S)':'✅ TUDO OK')+' — '+out.length+' asserts\n\n'+out.join('\n');

@@ -349,7 +349,7 @@ const KINDS={
     label:'SECEX',
     async ready(){
       await loadSM(); await loadPP();
-      if(!R.hasTable(DB.sm,'secex_iron_ore')) await loadSMFull();
+      if(!R.hasTable(DB.sm,'secex_iron_ore')||!R.hasTable(DB.sm,'secex_iron_ore_port')) await loadSMFull();
     },
     periods(){ return R.secexPeriods ? R.secexPeriods(DB.sm) : []; },
     model(p){ return R.secexModel(DB.sm,DB.pp,p); },
