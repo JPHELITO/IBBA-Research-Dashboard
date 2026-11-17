@@ -242,6 +242,58 @@ try{
   const S4=R.secexModel(sm3,pp,'2026-09'), sh4=R.renderSecex(S4,R.secexDefaults(S4,'2026-10-13'),{});
   ok('SECEX com banco sem a tabela de porto: monta, avisa e o bloco do porto some (sem travessões)',
      S4.missing.indexOf('minério por porto')>=0 && sh4.indexOf('Iron ore exports by port')<0 && sh4.indexOf('Iron ore exports')>=0 && !/NaN|undefined/.test(sh4));
+
+  // ══ 6. o clipping de notícias (o HTML do WhatsApp) ═════════════════════════════
+  // O modelo vem pronto do robô (news-hunter/clipping/whatsapp.py); aqui só se confere o desenho.
+  const PNG1='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const NM={date:'2026-11-13', intro_html:'<b>Bom dia</b> <script>alert(1)<\/script><a href="javascript:x()">x</a>',
+    highlights:['Destaque um','Destaque dois'],
+    items:[
+      {i:0, sector:'PP', take:'=', title:'PIX Pulp China BHKP up', tr_title:'', source:'Fastmarkets', url:'https://fm/x',
+       blocks:[{t:'p',x:'P1'},{t:'p',x:'P2'},{t:'p',x:'P3'},{t:'p',x:'P4'},{t:'img',src:PNG1,w:800,h:400},
+               {t:'img',src:'https://evil.example/track.png'},{t:'table',rows:[[{text:'Grade',header:true},{text:'Price',header:true,align:'right'}],[{text:'BHKP'},{text:'610',align:'right'}]]}], tr_blocks:[]},
+      {i:1, sector:'SM', take:'-', title:'<img src=x onerror=alert(1)> Iron ore falls', tr_title:'', source:'S&P Platts', url:'https://platts/y',
+       blocks:[{t:'p',x:'Only one paragraph.'}], tr_blocks:[]},
+      {i:2, sector:'SM', take:'+', title:'Vale adota medidas', tr_title:'Vale adopts measures', source:'Valor Econômico', url:'https://valor/z',
+       blocks:[{t:'p',x:'Texto original.'}], tr_blocks:[{t:'p',x:'Translated text.'}]},
+      {i:3, sector:'NR', take:'=', title:'Rare earths deal', tr_title:'', source:'Mining.com', url:'javascript:alert(1)', blocks:[], tr_blocks:[]}
+    ],
+    publications:[{sector:'SM', name:'Vale: Update', link:'https://itau/r1', date:'2026-11-09', companies:['VALE3']},
+                  {sector:'PP', name:'Suzano: Pulp', link:'javascript:alert(2)', date:'2026-11-05', companies:[]}],
+    earnings:{label:'3Q26 Review', items:[{sector:'SM', name:'Aura: 3Q26 Call', link:'https://itau/r2', date:'2026-11-06', companies:['AURA33']}]},
+    analysts:[{name:'Daniel Sasson, CFA', role:'', phone:'+55 11', email:'d@itaubba.com'}]};
+  const NT=R.newsDefaults(NM), nh=R.renderNews(NM, NT, {display:'AAAA', body:'BBBB'});
+  const nd=new DOMParser().parseFromString(nh,'text/html');
+  ok('notícias: capa "Nov 13 · Daily News" e a contagem por setor na manchete',
+     NT.big==='Nov 13' && NT.title==='Daily News' && /4 headlines/.test(NT.deck) && /1 in Natural Resources/.test(NT.deck), NT.big+' | '+NT.deck);
+  ok('notícias: documento autossuficiente, sem NaN/undefined',
+     !/NaN|undefined/.test(nh) && !/<script[^>]+src=/i.test(nh) && !/<link\b/i.test(nh) && nh.indexOf("url(data:font/woff2;base64,AAAA)")>=0);
+  ok('notícias: imagem só se vier EMBUTIDA (data:image) — endereço externo nunca entra',
+     nh.indexOf('evil.example')<0 && nd.querySelectorAll('.st-img img').length===1);
+  ok('notícias: título escapado (nunca vira HTML)', !nd.querySelector('.hl-t img') && nh.indexOf('&lt;img src=x onerror=alert(1)&gt;')>=0);
+  ok('notícias: recado do analista sanitizado (sem <script>, link javascript: sem href)',
+     nd.querySelector('.note') && !nd.querySelector('.note script') && !nd.querySelector('.note a[href^="javascript"]') && /Bom dia/.test(nd.querySelector('.note').textContent));
+  ok('notícias: ordem do Word NR → S&M → P&P nas manchetes',
+     [...nd.querySelectorAll('.hl-sec')].map(e=>e.dataset.sector).join()==='NR,SM,PP');
+  ok('notícias: cada manchete leva à matéria certa (#st-i existe)',
+     [...nd.querySelectorAll('.hl-row')].every(a=>nd.getElementById(a.getAttribute('href').slice(1))));
+  ok('notícias: placar dos takes 1 positivo · 2 neutros · 1 negativo', /1 positive/.test(nd.querySelector('.glance').textContent) &&
+     /2 neutral/.test(nd.querySelector('.glance').textContent) && /1 negative/.test(nd.querySelector('.glance').textContent));
+  ok('notícias: filtro por setor com All + 3 setores', [...nd.querySelectorAll('.filter button')].map(b=>b.dataset.f).join()==='all,NR,SM,PP');
+  ok('notícias: bilíngue abre em inglês (free translation) com o original na outra aba',
+     (()=>{const st=nd.getElementById('st-2'); const r=st.querySelector('input.vr[checked]'); return st.querySelector('.st-h').textContent==='Vale adopts measures' && r && r.dataset.o==='en' && /Texto original/.test(st.textContent);})());
+  ok('notícias: corpo longo esconde o resto em "Read the full story"; curto não',
+     nd.getElementById('st-0').querySelector('details.rm') && !nd.getElementById('st-1').querySelector('details.rm'));
+  ok('notícias: tabela da matéria vira tabela (2 linhas, cabeçalho)', nd.querySelectorAll('#st-0 .st-t tr').length===2 && nd.querySelectorAll('#st-0 .st-t th').length===2);
+  ok('notícias: matéria sem corpo avisa e não quebra', /Full text not available/.test(nd.getElementById('st-3').textContent));
+  ok('notícias: link para a fonte só se for http(s)', nd.getElementById('st-0').querySelector('a.st-l') && !nd.getElementById('st-3').querySelector('a.st-l'));
+  ok('notícias: publicações e Earnings Review (link javascript: vira texto)',
+     nd.querySelectorAll('#research .pub').length===3 && nd.querySelectorAll('#research a.pub').length===2 && /3Q26 Review/.test(nd.getElementById('research').textContent));
+  ok('notícias: destaques no topo só quando há', nd.getElementById('hl') && nd.querySelectorAll('#hl li.tk').length===2 &&
+     !new DOMParser().parseFromString(R.renderNews(Object.assign({},NM,{highlights:[]}),null,{}),'text/html').getElementById('hl'));
+  ok('notícias: índice e barra do celular com o número certo de colunas',
+     nd.querySelector('.index').getAttribute('style')==='--n:4' && nd.querySelector('.dock').getAttribute('style')==='--n:4');
+  ok('notícias: rodapé com os analistas do clipping', nd.querySelectorAll('.person').length===1 && /Daniel Sasson/.test(nd.querySelector('.person').textContent));
 }catch(e){ ok('EXCEÇÃO', false, e.stack); }
   const f=out.filter(x=>x.indexOf('FAIL')===0).length;
   document.getElementById('out').textContent=(f?'❌ '+f+' FALHA(S)':'✅ TUDO OK')+' — '+out.length+' asserts\n\n'+out.join('\n');
