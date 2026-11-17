@@ -279,7 +279,12 @@ try{
      [...nd.querySelectorAll('.hl-row')].every(a=>nd.getElementById(a.getAttribute('href').slice(1))));
   ok('notícias: placar dos takes 1 positivo · 2 neutros · 1 negativo', /1 positive/.test(nd.querySelector('.glance').textContent) &&
      /2 neutral/.test(nd.querySelector('.glance').textContent) && /1 negative/.test(nd.querySelector('.glance').textContent));
-  ok('notícias: filtro por setor com All + 3 setores', [...nd.querySelectorAll('.filter button')].map(b=>b.dataset.f).join()==='all,NR,SM,PP');
+  ok('notícias: filtro por setor com All + 3 setores (rótulos de rádios, funciona sem JS)',
+     [...nd.querySelectorAll('.filter label')].map(l=>l.getAttribute('for')).join()==='flt-all,flt-NR,flt-SM,flt-PP' &&
+     [...nd.querySelectorAll('main > input.fr[name="ibba-filter"]')].map(i=>i.id).join()==='flt-all,flt-NR,flt-SM,flt-PP' &&
+     nd.getElementById('flt-all').checked && !nd.querySelector('.filter button'));
+  ok('notícias: os rádios do filtro vêm ANTES das seções (o CSS "~" só enxerga irmãos seguintes)',
+     (()=>{const k=[...nd.querySelector('main').children]; const r=k.map(e=>e.matches('input.fr')).lastIndexOf(true), sc=k.findIndex(e=>e.classList.contains('sec')); return r>=0 && r<sc;})());
   ok('notícias: bilíngue abre em inglês (free translation) com o original na outra aba',
      (()=>{const st=nd.getElementById('st-2'); const r=st.querySelector('input.vr[checked]'); return st.querySelector('.st-h').textContent==='Vale adopts measures' && r && r.dataset.o==='en' && /Texto original/.test(st.textContent);})());
   ok('notícias: corpo longo esconde o resto em "Read the full story"; curto não',
@@ -294,6 +299,75 @@ try{
   ok('notícias: índice e barra do celular com o número certo de colunas',
      nd.querySelector('.index').getAttribute('style')==='--n:4' && nd.querySelector('.dock').getAttribute('style')==='--n:4');
   ok('notícias: rodapé com os analistas do clipping', nd.querySelectorAll('.person').length===1 && /Daniel Sasson/.test(nd.querySelector('.person').textContent));
+
+  // ══ 7. sem JavaScript — o visualizador de HTML do Android abre com o JS DESLIGADO ═══
+  // (o iOS roda o JS). Tema, filtro e animações têm que funcionar só com HTML + CSS.
+  const idoc=new DOMParser().parseFromString(html,'text/html');
+  const bk=[...idoc.body.children];
+  ok('sem JS: tema = 2 rádios (Dark marcado) ANTES da folha + rótulos Dark/Light no botão',
+     bk[0].id==='th-d' && bk[0].checked && bk[1].id==='th-l' && !bk[1].checked && bk[2].classList.contains('sheet') &&
+     [...idoc.querySelectorAll('.theme-sw label')].map(l=>l.getAttribute('for')).join()==='th-d,th-l' && !idoc.querySelector('.theme-sw button'));
+  ok('sem JS: nada esconde o botão de tema nem o filtro quando o JS não roda',
+     !/\.no-js \.theme-sw|\.no-js \.filter|\.no-js \.theme-sw,/.test(html+nh));
+  ok('sem JS: o rádio "Light" pinta a folha e (com :has) a página toda',
+     html.indexOf('#th-l:checked~.sheet{--pos:')>=0 && html.indexOf('html:has(#th-l:checked){--pos:')>=0 && html.indexOf('html[data-theme="light"]{--pos:')>=0);
+  ok('sem JS: a folha corta com overflow:clip (com hidden ela vira caixa de rolagem e a animação não roda)',
+     html.indexOf('.sheet{position:relative;display:flow-root;') >= 0 && html.indexOf('overflow:hidden;overflow:clip}') >= 0);
+  ok('sem JS: rádios escondidos PRESOS na tela (tocar no rótulo não faz a página pular)',
+     html.indexOf('.thr,.fr{position:fixed;top:0;left:0;')>=0);
+  ok('sem JS: animação presa à rolagem só para .no-js, dentro de @supports e sem movimento reduzido',
+     /@supports \(animation-timeline:view\(\)\)\{@media \(prefers-reduced-motion:no-preference\)\{\s*\.no-js \.kpi/.test(html) &&
+     html.indexOf('.no-js figure.ch .cur{display:block;animation:wipe linear both;animation-timeline:--chv;')>=0);
+
+  // na prática: iframe com sandbox SEM "allow-scripts" = o roteiro não roda, como no Android
+  const frame=(h,js)=>new Promise(res=>{const f=document.createElement('iframe');
+    f.setAttribute('sandbox','allow-same-origin'+(js?' allow-scripts':''));
+    f.style.cssText='position:fixed;left:0;top:0;width:390px;height:780px;border:0;opacity:0;pointer-events:none';
+    f.onload=()=>setTimeout(()=>res(f),250); f.srcdoc=h; document.body.appendChild(f);});
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  const fN=await frame(nh,false), dN=fN.contentDocument, wN=fN.contentWindow;
+  const sheetBg=()=>wN.getComputedStyle(dN.querySelector('.sheet')).backgroundColor;
+  const bg0=sheetBg(); dN.querySelector('.theme-sw label[for="th-l"]').click(); const bg1=sheetBg();
+  const pageBg=wN.getComputedStyle(dN.documentElement).backgroundColor;
+  dN.querySelector('.theme-sw label[for="th-d"]').click(); const bg2=sheetBg();
+  ok('sem JS (na prática): o roteiro não rodou e o botão de tema aparece',
+     dN.body.classList.contains('no-js') && wN.getComputedStyle(dN.querySelector('.theme-sw')).display!=='none');
+  ok('sem JS (na prática): Light deixa a folha branca, Dark volta ao preto',
+     bg1==='rgb(255, 255, 255)' && bg0!==bg1 && bg2===bg0, bg0+' → '+bg1+' → '+bg2);
+  ok('sem JS (na prática): com :has() o fundo da página inteira também fica claro',
+     !CSS.supports('selector(:has(*))') || pageBg==='rgb(255, 255, 255)', pageBg);
+  const nVis=sel=>[...dN.querySelectorAll(sel)].filter(e=>e.getClientRects().length).length;
+  dN.querySelector('.filter label[for="flt-SM"]').click(); const fSM=[nVis('.hl-row'),nVis('article.story')];
+  dN.querySelector('.filter label[for="flt-all"]').click(); const fAll=[nVis('.hl-row'),nVis('article.story')];
+  ok('sem JS (na prática): filtro S&M deixa só as 2 de S&M (manchetes e matérias); All volta as 4',
+     fSM.join()==='2,2' && fAll.join()==='4,4', fSM+' | '+fAll);
+  fN.remove();
+
+  const fI=await frame(html,false), dI=fI.contentDocument, wI=fI.contentWindow;
+  if(CSS.supports('animation-timeline','view()')){
+    // tem que seguir a rolagem DA TELA: lá embaixo começa apagado e com a cortina fechada; no fim, tudo aberto.
+    // (com a .sheet em overflow:hidden a medida era feita dentro da folha e o teste passava sem animar nada)
+    const lastP=[...dI.querySelectorAll('.person')].pop();
+    const lastCh=[...dI.querySelectorAll('figure.ch')].filter(f=>f.getClientRects().length).pop(), cur=lastCh.querySelector('.cur');
+    const st0=wI.getComputedStyle(cur).animationName, tr0=wI.getComputedStyle(cur).transform, op0=wI.getComputedStyle(lastP).opacity;
+    wI.scrollTo({top:dI.documentElement.scrollHeight,behavior:'instant'}); await wait(350);
+    const tr=wI.getComputedStyle(cur).transform, op=wI.getComputedStyle(lastP).opacity;
+    ok('sem JS (na prática): a animação segue a rolagem da tela — começa apagada/fechada e no fim fica tudo aberto',
+       st0==='wipe' && /^matrix\(1,/.test(tr0) && op0==='0' && /^matrix\(0,/.test(tr) && op==='1', [op0,tr0,tr,op].join(' | '));
+  } else ok('sem JS: navegador sem scroll-driven — tudo aparece parado (sem animação)', true);
+  fI.remove();
+
+  // com JS (o iOS): o mesmo botão continua funcionando e a escolha é lembrada
+  const fJ=await frame(html,true), dJ=fJ.contentDocument;
+  const jsOn=dJ.documentElement.classList.contains('js') && !dJ.body.classList.contains('no-js');
+  dJ.querySelector('.theme-sw label[for="th-l"]').click(); await wait(50);
+  const tL=dJ.documentElement.getAttribute('data-theme'), saved=localStorage.getItem('ibba-rpt-theme');
+  dJ.querySelector('.theme-sw label[for="th-d"]').click(); await wait(50);
+  const tD=dJ.documentElement.getAttribute('data-theme');
+  ok('com JS (iOS): Light/Dark marcam o documento e a escolha é guardada',
+     jsOn && tL==='light' && saved==='light' && tD===null && localStorage.getItem('ibba-rpt-theme')==='dark', [jsOn,tL,saved,tD].join());
+  try{ localStorage.removeItem('ibba-rpt-theme'); }catch(e){}
+  fJ.remove();
 }catch(e){ ok('EXCEÇÃO', false, e.stack); }
   const f=out.filter(x=>x.indexOf('FAIL')===0).length;
   document.getElementById('out').textContent=(f?'❌ '+f+' FALHA(S)':'✅ TUDO OK')+' — '+out.length+' asserts\n\n'+out.join('\n');
