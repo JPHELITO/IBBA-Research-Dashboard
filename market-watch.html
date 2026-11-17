@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-pg="mw">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -136,6 +136,8 @@ body.embed #app{padding:2px 0 10px;}
 html.embed,body.embed,body.embed #app,body.embed .splash{min-height:0!important;height:auto!important;}
 body.embed .tbl-wrap{max-height:520px!important;overflow:auto;}
 </style>
+<!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
+<link rel="stylesheet" href="/ibba-design.css"/>
 <script>try{ const _p=new URLSearchParams(location.search); if(_p.get('embed')==='1'){ document.documentElement.classList.add('embed');
   // dentro da gaveta do Market o tema é o do Market (escuro por padrão), não o global da dashboard
   if(_p.get('theme')==='dark') document.documentElement.classList.add('dark'); else if(_p.get('theme')==='light') document.documentElement.classList.remove('dark'); } }catch(e){}</script>

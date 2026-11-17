@@ -1,0 +1,372 @@
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   IBBA · CAMADA DE DESIGN (nov/2026) — "folhas de papel iluminadas de cima"
+   ───────────────────────────────────────────────────────────────────────────────────────────────
+   UM arquivo, carregado DEPOIS do <style> de cada página do cliente (link no fim do <head>). Só
+   APARÊNCIA: superfície, luz, sombra, material e microinteração. Nada aqui muda grade, tamanho de
+   letra, dado, rota ou comportamento. Para desligar tudo: tirar o <link> da página.
+
+   A IDEIA
+     · o fundo é PAPEL (fosco, com luz vindo de cima); cada cartão é uma FOLHA pousada nele;
+     · quem separa a folha do fundo é o fio de sempre (--border, calibrado em 25/08 — não mexer)
+       MAIS uma sombra de contato curta e uma sombra longa e ESTREITA (espalhamento negativo): ela
+       fica embaixo da folha e não suja as laterais — é o que permite profundidade numa tela densa;
+     · a sombra é da cor da TINTA (#16191D), nunca preto puro;
+     · 5 planos: 0 papel · 1 folha · 2 folha em destaque · 3 folha sob o mouse · 4 o que flutua
+       (menus, dicas, janelas — estes com vidro fosco, e só estes);
+     · laranja continua sendo marca e ação principal (regra D2 de 19/10). Verde/vermelho/cinza de
+       dado financeiro ficam EXATAMENTE como eram.
+
+   ESCOPO POR PÁGINA: <html data-pg="home|market|news|sg|mm|pp|agenda|mw|data|quarterly">.
+   Régua de movimento: as variáveis --ibba-t-* / --ibba-* do topnav.js (onda 1). Régua de cantos:
+   6 · 8 · 12 · 16 · pílula (onda 4). Aqui só se USA as duas.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. TOKENS ─────────────────────────────────────────────────────────────────────────────── */
+:root{
+  --dz-ink:22,25,29;                        /* tinta: cor das sombras e dos fios translúcidos */
+  --dz-hi:rgba(255,255,255,.9);             /* luz na aresta de cima de uma folha */
+  --dz-well:rgba(22,25,29,.05);             /* trilho afundado (grupo de botões, campo) */
+  --dz-well-in:inset 0 1px 2px rgba(22,25,29,.08);
+  --dz-glass:rgba(253,252,250,.90);         /* vidro fosco do que flutua */
+  --dz-blur:blur(18px) saturate(1.6);
+  /* os 3 nomes que as páginas já usam (onda 4) passam a apontar para a escala nova */
+  --shadow:0 1px 0 rgba(var(--dz-ink),.035),0 2px 4px -2px rgba(var(--dz-ink),.08),0 16px 26px -20px rgba(var(--dz-ink),.34);
+  --dz-e2:0 1px 0 rgba(var(--dz-ink),.04),0 3px 7px -3px rgba(var(--dz-ink),.10),0 24px 38px -24px rgba(var(--dz-ink),.40);
+  --shadow-hover:0 1px 0 rgba(var(--dz-ink),.04),0 8px 14px -6px rgba(var(--dz-ink),.12),0 32px 52px -28px rgba(var(--dz-ink),.46);
+  --shadow-pop:0 0 0 1px rgba(var(--dz-ink),.04),0 10px 20px -8px rgba(var(--dz-ink),.18),0 30px 60px -22px rgba(var(--dz-ink),.42);
+  --dz-key:inset 0 1px 0 rgba(255,255,255,.14),0 1px 2px rgba(var(--dz-ink),.30),0 4px 8px -4px rgba(var(--dz-ink),.35);   /* tecla escolhida */
+}
+html.dark{
+  --dz-ink:0,0,0;
+  --dz-hi:rgba(255,255,255,.055);
+  --dz-well:rgba(0,0,0,.28);
+  --dz-well-in:inset 0 1px 2px rgba(0,0,0,.45);
+  --dz-glass:rgba(22,26,32,.88);
+  --shadow:0 1px 0 rgba(0,0,0,.45),0 2px 4px -2px rgba(0,0,0,.55),0 18px 28px -18px rgba(0,0,0,.85);
+  --dz-e2:0 1px 0 rgba(0,0,0,.5),0 4px 8px -3px rgba(0,0,0,.6),0 26px 40px -22px rgba(0,0,0,.9);
+  --shadow-hover:0 1px 0 rgba(0,0,0,.5),0 8px 16px -6px rgba(0,0,0,.6),0 34px 54px -26px rgba(0,0,0,.95);
+  --shadow-pop:0 0 0 1px rgba(255,255,255,.05),0 12px 24px -8px rgba(0,0,0,.7),0 32px 64px -20px rgba(0,0,0,.9);
+  --dz-key:inset 0 1px 0 rgba(255,255,255,.10),0 1px 2px rgba(0,0,0,.5),0 4px 8px -4px rgba(0,0,0,.6);
+}
+/* o Market guarda os tokens do tema claro no <body> (body.theme-light) — repete lá */
+html[data-pg="market"] body.theme-light{
+  --shadow-hover:0 1px 0 rgba(var(--dz-ink),.04),0 8px 14px -6px rgba(var(--dz-ink),.12),0 32px 52px -28px rgba(var(--dz-ink),.46);
+  --shadow-pop:0 0 0 1px rgba(var(--dz-ink),.04),0 10px 20px -8px rgba(var(--dz-ink),.18),0 30px 60px -22px rgba(var(--dz-ink),.42);
+}
+
+/* ── 2. PAPEL: o fundo ganha luz (de cima, ao centro) e um calor quase invisível no canto ─────── */
+html[data-pg] body{
+  background-image:
+    radial-gradient(1280px 460px at 50% -90px,rgba(255,255,255,.66),rgba(255,255,255,0) 72%),
+    radial-gradient(760px 420px at 100% -80px,rgba(255,122,51,.07),rgba(255,122,51,0) 70%);
+  background-repeat:no-repeat;
+}
+html.dark[data-pg] body{
+  background-image:
+    radial-gradient(1280px 460px at 50% -90px,rgba(140,160,190,.075),rgba(140,160,190,0) 72%),
+    radial-gradient(760px 420px at 100% -80px,rgba(255,80,0,.055),rgba(255,80,0,0) 70%);
+}
+
+/* ── 3. TEXTO: seleção com a cor da marca; números de coluna com largura fixa ──────────────────── */
+html[data-pg] ::selection{background:rgba(255,80,0,.20);}
+html[data-pg]{text-rendering:optimizeLegibility;}
+
+/* ── 4. BARRA DO TOPO (topnav.js injeta o CSS dela DEPOIS deste arquivo → seletor com html na frente).
+        Sem brilho e sem halo, como combinado: só um degradê de tinta e a sombra que ela projeta no papel. */
+html .gnav{background:linear-gradient(180deg,#1A1C20 0%,#121316 52%,#0D0E10 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055);}
+/* ⚠️ a posição só no computador: no celular (≤900px) a régua é position:sticky;top:52px (topnav.js) — trocar
+   por relative descia a linha laranja 52px (pego pela medição de estrutura a 375px). */
+@media (min-width:901px){ html .gnav-rule{position:relative;z-index:499;} }
+html .gnav-rule{box-shadow:0 12px 22px -14px rgba(22,25,29,.60);}
+html.dark .gnav-rule{box-shadow:0 14px 26px -12px rgba(0,0,0,.9);}
+html .gnav-mark{background:linear-gradient(180deg,#FF6418 0%,#F04A00 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 -1px 0 rgba(0,0,0,.14);}
+html .gnav-out,html .gnav-theme,html .gnav-tut{background:rgba(255,255,255,.035);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+html .gnav-out:hover,html .gnav-theme:hover,html .gnav-tut:hover{background:rgba(255,255,255,.08);}
+/* menus e cartão do time: plano 4 (vidro fosco + sombra de flutuação) */
+html .gn-drop,html .gnt-pop{background:var(--dz-glass);-webkit-backdrop-filter:var(--dz-blur);backdrop-filter:var(--dz-blur);
+  border-color:rgba(var(--dz-ink),.10);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html.dark .gn-drop,html.dark .gnt-pop{background:var(--dz-glass);border-color:rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html .gn-drop a{transition:background var(--ibba-t-toque,140ms) ease,color var(--ibba-t-toque,140ms) ease,padding-left var(--ibba-t-ui,240ms) var(--ibba-decidida,ease);}
+html .gn-drop a:hover{background:rgba(var(--dz-ink),.055);}
+html.dark .gn-drop a:hover{background:rgba(255,255,255,.07);}
+
+/* ── 5. BOTÕES DE DOWNLOAD (export-lib.js): chapinha discreta, com o mesmo material dos seletores ── */
+html .ibba-dl button,html .ibba-tb button{font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;
+  border-color:rgba(var(--dz-ink),.14);background:rgba(255,255,255,.72);color:rgba(var(--dz-ink),.62);
+  box-shadow:0 1px 0 rgba(var(--dz-ink),.04);
+  transition:color var(--ibba-t-toque,140ms) ease,border-color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+html.dark .ibba-dl button,html.dark .ibba-tb button{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:rgba(255,255,255,.66);box-shadow:none;}
+html .ibba-dl button:hover,html .ibba-tb button:hover{background:rgba(255,80,0,.08);}
+
+/* ── 6. O QUE FLUTUA nas páginas: entra saindo de perto (só opacidade e transform) ─────────────── */
+@keyframes dz-flutua{from{opacity:0;transform:translateY(5px) scale(.985);}}
+@keyframes dz-surge{from{opacity:0;}}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   HOME
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+/* folha (todo painel da home) */
+html[data-pg="home"] .sec{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+
+/* cartões de setor: são a peça de destaque (plano 2). A sombra longa puxa para o âmbar da foto;
+   as fichas viram vidro fosco sobre a imagem; no mouse o cartão sobe 2px e a sombra alonga. */
+html[data-pg="home"] .sector-card.has-bg{
+  box-shadow:0 1px 0 rgba(var(--dz-ink),.10),0 4px 8px -4px rgba(var(--dz-ink),.30),0 22px 34px -22px rgba(74,26,0,.62);
+  transition:transform .34s var(--ibba-expo,ease),box-shadow .34s var(--ibba-expo,ease),border-color .24s ease;}
+html[data-pg="home"] .sector-card.has-bg.live:hover{
+  box-shadow:0 1px 0 rgba(var(--dz-ink),.10),0 10px 16px -8px rgba(var(--dz-ink),.34),0 34px 48px -26px rgba(74,26,0,.72);}
+html.dark[data-pg="home"] .sector-card.has-bg{box-shadow:0 1px 0 rgba(0,0,0,.6),0 22px 34px -20px rgba(0,0,0,.95);}
+html.dark[data-pg="home"] .sector-card.has-bg.live:hover{box-shadow:0 1px 0 rgba(0,0,0,.6),0 34px 48px -24px rgba(0,0,0,1);}
+html[data-pg="home"] .sector-card.has-bg .sector-tab{background:rgba(10,12,16,.34);
+  -webkit-backdrop-filter:blur(8px) saturate(1.4);backdrop-filter:blur(8px) saturate(1.4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+  transition:background var(--ibba-t-toque,140ms) ease,border-color var(--ibba-t-toque,140ms) ease,color var(--ibba-t-toque,140ms) ease;}
+html[data-pg="home"] .sector-card.has-bg a.sector-tab:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.22);}
+
+/* commodities: as colunas separadas por fio (desenho de 31/08) FICAM como estão; só a troca de
+   fundo no mouse deixa de ser seca. O carrossel e a barrinha de tempo não são tocados. */
+html[data-pg="home"] .cm-card{transition:background-color var(--ibba-t-ui,240ms) ease;}
+
+/* heatmap: os cartões já têm luz de cima; no mouse ganham a sombra de contato (sem trocar de lugar) */
+html[data-pg="home"] .hm-card{transition:transform .22s var(--ibba-expo,ease),box-shadow .22s ease,filter .22s ease;}
+html[data-pg="home"] .hm-card:hover{filter:saturate(1.06) brightness(1.02);}
+
+/* feed: a linha sob o mouse acende de leve a partir da borda do take */
+html[data-pg="home"] .news-item{transition:background var(--ibba-t-toque,140ms) ease;}
+html[data-pg="home"] .news-take,html[data-pg="news"] .news-take{box-shadow:inset 0 0 0 1px rgba(var(--dz-ink),.045);}
+html.dark[data-pg="home"] .news-take,html.dark[data-pg="news"] .news-take{box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);}
+
+/* seletores: a opção escolhida é uma TECLA (luz em cima, sombra curta embaixo) */
+html[data-pg="home"] #pulse-controls>.ibba-slide,html[data-pg="home"] #news-filter>.ibba-slide,
+html[data-pg="home"] #news-sector-filter>.ibba-slide,html[data-pg="home"] #hm-range>.ibba-slide,
+html[data-pg="home"] #hm-mode>.ibba-slide,html[data-pg="home"] #co-ranges>.ibba-slide{box-shadow:var(--dz-key);}
+
+/* o que flutua na home: plano 4 */
+html[data-pg="home"] .pn-pop,html[data-pg="home"] .hm-pop,html[data-pg="home"] .hm-bk-pop,html[data-pg="home"] .tn-menu{
+  background:var(--dz-glass);-webkit-backdrop-filter:var(--dz-blur);backdrop-filter:var(--dz-blur);
+  border-color:rgba(var(--dz-ink),.10);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html.dark[data-pg="home"] .pn-pop,html.dark[data-pg="home"] .hm-pop,html.dark[data-pg="home"] .hm-bk-pop{
+  background:var(--dz-glass);border-color:rgba(255,255,255,.08);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html[data-pg="home"] .modal-backdrop{background:rgba(22,25,29,.40);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+html[data-pg="home"] .modal{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);border-color:rgba(var(--dz-ink),.10);}
+html.dark[data-pg="home"] .modal{border-color:rgba(255,255,255,.08);}
+html[data-pg="home"] .mc-tip,html[data-pg="home"] .th-name{background:rgba(22,25,29,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 10px 20px -8px rgba(var(--dz-ink),.5);}
+@media (prefers-reduced-motion:no-preference){
+  html[data-pg="home"] .pn-pop,html[data-pg="home"] .hm-pop:not([hidden]),html[data-pg="home"] .hm-bk-pop:not([hidden]){
+    animation:dz-flutua .26s var(--ibba-decidida,ease) backwards;}
+  html[data-pg="home"] .modal-backdrop:not([hidden]){animation:dz-surge .2s ease backwards;}
+  html[data-pg="home"] .modal-backdrop:not([hidden]) .modal{animation:dz-flutua .32s var(--ibba-expo,ease) backwards;}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   M&M  e  P&P  (mesma casa: faixa do setor → barra de seções → filtros → gráficos)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+/* a barra de seções e a de filtros ficam PRESAS no topo: viram vidro fosco, e a sombra que projetam
+   diz que o conteúdo passa por baixo */
+html:is([data-pg="mm"],[data-pg="pp"]) .sticky-header{box-shadow:0 1px 0 rgba(var(--dz-ink),.05),0 14px 22px -18px rgba(var(--dz-ink),.36);}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .sticky-header{box-shadow:0 1px 0 rgba(0,0,0,.5),0 16px 26px -16px rgba(0,0,0,.9);}
+@media (min-width:769px){
+  html:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(253,252,250,.86);
+    -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);}
+  html:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(235,232,226,.80);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(28,32,38,.84);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html.dark:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(21,23,27,.80);}
+
+  /* aba de SEÇÃO: continua laranja (D2), mas deixa de ser um retângulo de ponta a ponta — vira uma tecla
+     recuada dentro da barra. O bloco que desliza (IBBASlide) é só o trilho; quem desenha é o ::before. */
+  html:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav>.ibba-slide{background:transparent;}
+  html:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav>.ibba-slide::before{content:"";position:absolute;inset:7px 3px;border-radius:8px;
+    background:linear-gradient(180deg,#FF6216 0%,#F54C00 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 1px 2px rgba(120,40,0,.35),0 6px 10px -5px rgba(200,60,0,.55);}
+  html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn::before{inset:7px 3px;border-radius:8px;transform:none;opacity:0;background:rgba(var(--dz-ink),.07);
+    transition:opacity var(--ibba-t-toque,140ms) ease;}
+  html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn:hover{color:var(--black);}
+  html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn:hover::before{transform:none;opacity:1;}
+  html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn.active,html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn.active:hover{color:#fff;}
+  html:is([data-pg="mm"],[data-pg="pp"]) .snav-btn.active::before{opacity:1;background:linear-gradient(180deg,#FF6216 0%,#F54C00 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 1px 2px rgba(120,40,0,.35),0 6px 10px -5px rgba(200,60,0,.55);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .snav-btn::before{background:rgba(255,255,255,.08);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .snav-btn:hover{color:#fff;}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .snav-btn.active::before{background:linear-gradient(180deg,#FF6216 0%,#F54C00 100%);}
+}
+/* filtros: a opção escolhida é uma tecla */
+html:is([data-pg="mm"],[data-pg="pp"]) .filter-btns>.ibba-slide,html:is([data-pg="mm"],[data-pg="pp"]) .pred-btns>.ibba-slide{box-shadow:var(--dz-key);}
+html:is([data-pg="mm"],[data-pg="pp"]) .fbtn{transition:color var(--ibba-t-toque,140ms) ease,border-color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+html:is([data-pg="mm"],[data-pg="pp"]) .pill-btn.active{box-shadow:var(--dz-key);}
+html:is([data-pg="mm"],[data-pg="pp"]) .custom-range{box-shadow:var(--dz-well-in);background:rgba(255,255,255,.7);
+  transition:border-color var(--ibba-t-toque,140ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .custom-range{background:rgba(0,0,0,.22);}
+html:is([data-pg="mm"],[data-pg="pp"]) .custom-range:focus-within{box-shadow:var(--dz-well-in),0 0 0 3px rgba(255,80,0,.14);}
+html:is([data-pg="mm"],[data-pg="pp"]) .dl-data-btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+  transition:background var(--ibba-t-toque,140ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
+html:is([data-pg="mm"],[data-pg="pp"]) .dl-data-btn:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 12px -8px rgba(255,80,0,.7);}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .dl-data-btn{box-shadow:none;}
+
+/* folha de gráfico (plano 1 → plano 3 no mouse, sem sair do lugar) */
+html:is([data-pg="mm"],[data-pg="pp"]) .chart-card{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);
+  transition:box-shadow .34s var(--ibba-expo,ease),border-color .24s ease;}
+html:is([data-pg="mm"],[data-pg="pp"]) .chart-card:hover{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-hover);}
+html:is([data-pg="mm"],[data-pg="pp"]) .chart-title{letter-spacing:-.018em;}
+
+/* indicador (KPI): plano 2. A tarja laranja de ponta a ponta sai; entra uma lingueta curta que
+   morde a aresta de cima do cartão — a marca aparece, o cartão respira. */
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-card{position:relative;border-top:1px solid var(--border);padding-top:17px;
+  box-shadow:inset 0 1px 0 var(--dz-hi),var(--dz-e2);
+  background-image:radial-gradient(260px 90px at 0% 0%,rgba(255,80,0,.045),rgba(255,80,0,0) 70%);background-repeat:no-repeat;}
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-card::before{content:"";position:absolute;left:17px;top:-1px;width:26px;height:3px;
+  border-radius:0 0 3px 3px;background:linear-gradient(180deg,#FF6216,#F54C00);box-shadow:0 2px 6px -1px rgba(255,80,0,.55);}
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-value{font-variant-numeric:tabular-nums;}
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-delta{font-variant-numeric:tabular-nums;}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .kpi-card{background-image:radial-gradient(260px 90px at 0% 0%,rgba(255,80,0,.07),rgba(255,80,0,0) 70%);}
+
+/* abas internas (SECEX · GACC…): a escolhida é uma orelha de pasta com luz em cima */
+html:is([data-pg="mm"],[data-pg="pp"]) .inner-tab-bar{box-shadow:0 1px 0 rgba(255,255,255,.7);}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .inner-tab-bar{box-shadow:none;}
+html:is([data-pg="mm"],[data-pg="pp"]) .inner-tab-bar>.ibba-slide{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -6px 12px -8px rgba(var(--dz-ink),.35);}
+html:is([data-pg="mm"],[data-pg="pp"]) .info-box{box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 12px 20px -18px rgba(255,80,0,.5);}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .info-box{box-shadow:none;}
+html:is([data-pg="mm"],[data-pg="pp"]) .cs-panel{background:var(--dz-glass);-webkit-backdrop-filter:var(--dz-blur);backdrop-filter:var(--dz-blur);
+  border:1px solid rgba(var(--dz-ink),.10);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html.dark:is([data-pg="mm"],[data-pg="pp"]) .cs-panel{border-color:rgba(255,255,255,.08);}
+html:is([data-pg="mm"],[data-pg="pp"]) .mob-sections-list{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+@media (prefers-reduced-motion:no-preference){
+  html:is([data-pg="mm"],[data-pg="pp"]) .cs-panel.open{animation:dz-flutua .26s var(--ibba-decidida,ease) backwards;}
+}
+@media (max-width:768px){
+  html:is([data-pg="mm"],[data-pg="pp"]) .cs-panel.open{animation:slideUp .25s ease-out;}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   MARKET  (terminal: os tokens do tema claro moram em body.theme-light; o escuro é o :root)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+html[data-pg="market"] .card{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+/* cabeçalho do ativo = a peça de destaque: plano 2 e uma luz morna, bem fraca, atrás do nome e do preço */
+html[data-pg="market"] .ah-card{box-shadow:inset 0 1px 0 var(--dz-hi),var(--dz-e2);
+  background-image:radial-gradient(560px 210px at 10% -34%,rgba(255,80,0,.075),rgba(255,80,0,0) 70%);background-repeat:no-repeat;}
+/* seletores: trilho afundado + tecla */
+html[data-pg="market"] .seg{box-shadow:var(--dz-well-in);}
+html[data-pg="market"] .seg>.ibba-slide{box-shadow:var(--dz-key);}
+html[data-pg="market"] .seg button{transition:color var(--ibba-t-toque,140ms) ease;}
+/* fichas e blocos pequenos: folhinha com luz na aresta */
+html[data-pg="market"] .tile,html[data-pg="market"] .mkt-m,html[data-pg="market"] .cmp-chip,html[data-pg="market"] .cn-item,
+html[data-pg="market"] .rt-tog,html[data-pg="market"] .ratio-bar,html[data-pg="market"] .rt-bar{box-shadow:inset 0 1px 0 var(--dz-hi);}
+html[data-pg="market"] .tile{transition:transform .28s var(--ibba-expo,ease),box-shadow .28s var(--ibba-expo,ease),border-color .2s ease;}
+html[data-pg="market"] .tile.clk:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 var(--dz-hi),0 10px 16px -12px rgba(var(--dz-ink),.45);}
+html[data-pg="market"] .cmp-chip{transition:border-color var(--ibba-t-toque,140ms) ease,color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+html[data-pg="market"] .cmp-chip.on{box-shadow:var(--dz-key);}
+html[data-pg="market"] .mkt-search input,html[data-pg="market"] .chart-dates input,html[data-pg="market"] .mdl-q{box-shadow:var(--dz-well-in);
+  transition:border-color var(--ibba-t-toque,140ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
+html[data-pg="market"] .mkt-search input:focus,html[data-pg="market"] .chart-dates input:focus,html[data-pg="market"] .mdl-q:focus{
+  box-shadow:var(--dz-well-in),0 0 0 3px rgba(255,80,0,.16);}
+/* tabela da Watchlist: cabeçalho de vidro (a lista passa por baixo), fios mais leves, linha que responde */
+html[data-pg="market"] table.wl th{background:color-mix(in srgb,var(--panel) 84%,transparent);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 1px 0 var(--border);border-bottom-color:transparent;}
+html[data-pg="market"] table.wl td{border-bottom-color:color-mix(in srgb,var(--border) 58%,transparent);}
+html[data-pg="market"] table.wl tbody tr{transition:background-color var(--ibba-t-toque,140ms) ease;}
+/* o que flutua: dica do gráfico, caixa da seleção, sugestões da busca, janela "Other" */
+html[data-pg="market"] .c-tip,html[data-pg="market"] .c-selbox,html[data-pg="market"] .mkt-sug{background:var(--dz-glass);
+  -webkit-backdrop-filter:var(--dz-blur);backdrop-filter:var(--dz-blur);border-color:rgba(var(--dz-ink),.12);
+  box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+html.dark[data-pg="market"] .c-tip,html.dark[data-pg="market"] .c-selbox,html.dark[data-pg="market"] .mkt-sug{border-color:rgba(255,255,255,.10);}
+html[data-pg="market"] .mdl-back{-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+html[data-pg="market"] .mdl{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
+@media (prefers-reduced-motion:no-preference){
+  html[data-pg="market"] .mdl-back:not([hidden]){animation:dz-surge .2s ease backwards;}
+  html[data-pg="market"] .mdl-back:not([hidden]) .mdl{animation:dz-flutua .32s var(--ibba-expo,ease) backwards;}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   NEWS
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+html[data-pg="news"] .card,html[data-pg="news"] .feed,html[data-pg="news"] .filters{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+/* placar: plano 2; o cartão clicável sobe 1px e a sombra alonga */
+html[data-pg="news"] .stat{box-shadow:inset 0 1px 0 var(--dz-hi),var(--dz-e2);
+  transition:transform .3s var(--ibba-expo,ease),box-shadow .3s var(--ibba-expo,ease),border-color .2s ease;}
+html[data-pg="news"] .stat.click:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-hover);}
+html[data-pg="news"] .stat.sel{box-shadow:inset 0 0 0 1px var(--orange),var(--dz-e2);}
+html[data-pg="news"] .seg>.ibba-slide{box-shadow:var(--dz-key);}
+html[data-pg="news"] .search-input,html[data-pg="news"] .date-in{background:rgba(255,255,255,.62);box-shadow:var(--dz-well-in);
+  transition:border-color var(--ibba-t-toque,140ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
+html.dark[data-pg="news"] .search-input,html.dark[data-pg="news"] .date-in{background:rgba(0,0,0,.22);}
+html[data-pg="news"] .search-input:focus,html[data-pg="news"] .date-in:focus{box-shadow:var(--dz-well-in),0 0 0 3px rgba(255,80,0,.14);}
+html[data-pg="news"] .facet-row .bx{box-shadow:var(--dz-well-in);}
+html[data-pg="news"] .facet-row.on .bx{box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
+/* divisor do dia fica preso no topo da lista: vidro fosco */
+html[data-pg="news"] .day-divider{background:rgba(251,250,247,.84);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+  box-shadow:0 1px 0 rgba(var(--dz-ink),.04),0 10px 14px -14px rgba(var(--dz-ink),.4);}
+html.dark[data-pg="news"] .day-divider{background:rgba(35,39,46,.84);}
+html[data-pg="news"] .tl-tip{background:rgba(22,25,29,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 10px 20px -8px rgba(var(--dz-ink),.5);}
+html[data-pg="news"] .load-more{box-shadow:var(--dz-key);transition:background var(--ibba-t-ui,240ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
+html[data-pg="news"] .btn-clear{box-shadow:inset 0 1px 0 var(--dz-hi);}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   STOCK GUIDE
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+html[data-pg="sg"] .card,html[data-pg="sg"] .s2-card{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+html[data-pg="sg"] .s2-kpi{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.03),0 12px 18px -16px rgba(var(--dz-ink),.38);}
+html[data-pg="sg"] .s2-ana{box-shadow:var(--dz-well-in);}
+html[data-pg="sg"] .s2-ana button.on{box-shadow:var(--dz-key);}
+html[data-pg="sg"] table.data th{box-shadow:inset 0 -1px 0 var(--border);}
+html[data-pg="sg"] table.data td{border-bottom-color:color-mix(in srgb,var(--border) 62%,transparent);}
+html[data-pg="sg"] table.data tbody tr{transition:background-color var(--ibba-t-toque,140ms) ease;}
+html[data-pg="sg"] .rec{box-shadow:inset 0 0 0 1px rgba(var(--dz-ink),.06);}
+html.dark[data-pg="sg"] .rec{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+html[data-pg="sg"] .hbtn,html[data-pg="sg"] .stepper button{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.04);}
+html[data-pg="sg"] .stepper input{box-shadow:var(--dz-well-in);}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   CALENDAR (agenda)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+/* cabeçalho dos dias + grade do mês formam UMA folha: a luz fica na aresta do cabeçalho, a sombra na base */
+html[data-pg="agenda"] .cal-dow{box-shadow:inset 0 1px 0 var(--dz-hi);}
+html[data-pg="agenda"] .cal-month,html[data-pg="agenda"] .cal-week,html[data-pg="agenda"] .cal-list{box-shadow:var(--shadow);}
+html[data-pg="agenda"] .cal-arrow,html[data-pg="agenda"] .cal-today-btn,html[data-pg="agenda"] .cchip,
+html[data-pg="agenda"] .cal-company,html[data-pg="agenda"] .cal-seg{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.04),0 6px 10px -9px rgba(var(--dz-ink),.4);}
+html[data-pg="agenda"] .cal-seg button.on{box-shadow:var(--dz-key);}
+html[data-pg="agenda"] .cal-seg button{transition:color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+/* faixas de evento: luz em cima, como uma etiqueta colada na folha */
+html[data-pg="agenda"] .band{box-shadow:inset 0 1px 0 rgba(255,255,255,.24);}
+html[data-pg="agenda"] .band.hl,html[data-pg="agenda"] .ev.hl{box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 5px 9px -5px rgba(var(--dz-ink),.5);}
+html[data-pg="agenda"] .wk-ev{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 5px 9px -5px rgba(var(--dz-ink),.45);}
+html[data-pg="agenda"] .cal-dnum.today,html[data-pg="agenda"] .wk-head .cell.today .wk-date{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 7px -2px rgba(255,80,0,.6);}
+html[data-pg="agenda"] .cal-col{transition:background-color var(--ibba-t-toque,140ms) ease;}
+html[data-pg="agenda"] .cal-modal{background:rgba(22,25,29,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+html[data-pg="agenda"] .cm-card{box-shadow:var(--shadow-pop);border-color:rgba(var(--dz-ink),.10);}
+html.dark[data-pg="agenda"] .cm-card{border-color:rgba(255,255,255,.08);}
+@media (prefers-reduced-motion:no-preference){
+  html[data-pg="agenda"] .cal-modal.open{animation:dz-surge .2s ease backwards;}
+  html[data-pg="agenda"] .cal-modal.open .cm-card{animation:dz-flutua .32s var(--ibba-expo,ease) backwards;}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   MARKET WATCH (abas internas do Market, em iframe) · DATA · QUARTERLY — mesmo vocabulário
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+/* dentro do iframe o papel é o da página de fora: sem a luz própria */
+html[data-pg="mw"] body{background-image:none;}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) .card{box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow);}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) .seg{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.04),0 6px 10px -9px rgba(var(--dz-ink),.4);}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) .seg button.on{box-shadow:var(--dz-key);}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) .seg button{transition:color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) .chip{box-shadow:inset 0 1px 0 var(--dz-hi);
+  transition:border-color var(--ibba-t-toque,140ms) ease,color var(--ibba-t-toque,140ms) ease,background var(--ibba-t-toque,140ms) ease;}
+html:is([data-pg="mw"],[data-pg="data"]) .chip.on{box-shadow:var(--dz-key);}
+html:is([data-pg="mw"],[data-pg="data"],[data-pg="quarterly"]) table.data tr{transition:background-color var(--ibba-t-toque,140ms) ease;}
+html[data-pg="mw"] .kpi,html[data-pg="mw"] .bb,html[data-pg="mw"] .ctx{box-shadow:inset 0 1px 0 var(--dz-hi);}
+html[data-pg="mw"] .tip{background:rgba(22,25,29,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 10px 20px -8px rgba(var(--dz-ink),.5);}
+html[data-pg="data"] .search,html[data-pg="quarterly"] .sel{box-shadow:var(--dz-well-in);}
+html[data-pg="quarterly"] .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
+html.dark[data-pg="quarterly"] .btn{box-shadow:none;}
+html[data-pg="quarterly"] .btn.ghost{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.04);}
