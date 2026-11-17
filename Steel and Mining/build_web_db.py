@@ -71,7 +71,17 @@ WEB_TABLES = [
     # Reports (/reports.html, relatório HTML da SECEX): minério por produto e destino.
     # Pequena (~3 mil linhas); sem ela a tela de Reports baixa o banco completo (~42 MB).
     "secex_iron_ore",
+    # Reports: minério exportado por PORTO (URF do MDIC), mesmo download do de cima. ~2 mil linhas.
+    "secex_iron_ore_port",
 ]
+
+# Da allowlist, as que PODEM faltar no banco sem derrubar o build. A tabela de porto nasce do
+# robô do minério (update_iron_ore.py, só no update_secex.yml), mas este build roda também no
+# IABr, INDA, Coreia, customs e uploads: se um banco sem ela chegasse a um desses (ex.: conflito
+# de merge resolvido com o banco da main), o dado DELES deixaria de ser publicado por causa do
+# minério. Faltando, a cópia web sai sem ela (aviso no log) e a tela de Reports cai no completo;
+# o robô do minério recria e preenche a tabela na rodada seguinte.
+OPCIONAIS = {"secex_iron_ore_port"}
 
 
 # chave da cópia web de secex_country: direção e categoria NA FRENTE (é o WHERE da página)
@@ -109,17 +119,22 @@ def build() -> int:
         existing = {r[0] for r in ro.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
 
-    missing = [t for t in WEB_TABLES if t not in existing]
+    missing = [t for t in WEB_TABLES if t not in existing and t not in OPCIONAIS]
     if missing:
         print(f"ERRO: tabelas da allowlist não existem no banco: {missing}")
         return 1
+    keep = [t for t in WEB_TABLES if t in existing]
+    for t in WEB_TABLES:
+        if t not in existing:
+            print(f"::warning::{t} não existe no banco — a cópia web sai sem ela "
+                  f"(o robô dela recria na próxima rodada)")
 
     tmp = Path(tempfile.gettempdir()) / "steel_sm_web.build.db"
     tmp.unlink(missing_ok=True)
     shutil.copy(SRC, tmp)
 
     db = sqlite3.connect(tmp)
-    dropped = sorted(existing - set(WEB_TABLES))
+    dropped = sorted(existing - set(keep))
     for t in dropped:
         db.execute(f'DROP TABLE IF EXISTS "{t}"')
     n_country = rebuild_secex_country(db)   # na ordem das consultas da página (ver docstring)
@@ -133,7 +148,7 @@ def build() -> int:
 
     mb = lambda n: n / 1e6
     print(f"  completo   : {mb(SRC.stat().st_size):6.1f} MB  ({len(existing)} tabelas)")
-    print(f"  só web     : {mb(len(raw)):6.1f} MB  ({len(WEB_TABLES)} tabelas)")
+    print(f"  só web     : {mb(len(raw)):6.1f} MB  ({len(keep)} tabelas)")
     print(f"  comprimido : {mb(OUT.stat().st_size):6.1f} MB  -> {OUT.name}")
     print(f"  removidas  : {', '.join(dropped) or '(nenhuma)'}")
     print(f"  secex_country refeita na ordem da página: {n_country} linhas, chave {COUNTRY_KEY}")
