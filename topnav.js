@@ -405,6 +405,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gn-item gn-admin" id="gnav-scenario" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gn-item gn-admin" id="gnav-clipinator" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gn-item gn-admin" id="gnav-weekly" href="/weekly.html" style="display:none">Weekly</a>\
+    <a class="gn-item gn-admin" id="gnav-reports" href="/reports.html" style="display:none">Reports</a>\
     <a class="gn-item gn-admin" id="gnav-admin" href="/admin.html" style="display:none">Admin</a>\
     <span class="gn-ind" aria-hidden="true"></span>\
   </nav>\
@@ -447,6 +448,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <a class="gnm-a adm gnm-admin" href="/scenario-gen.html" style="display:none">Cenários</a>\
     <a class="gnm-a adm gnm-admin" href="/clipinator.html" style="display:none">Clipping</a>\
     <a class="gnm-a adm gnm-admin" href="/weekly.html" style="display:none">Weekly</a>\
+    <a class="gnm-a adm gnm-admin" href="/reports.html" style="display:none">Reports</a>\
     <a class="gnm-a adm gnm-admin" href="/admin.html" style="display:none">Admin</a>\
     <div class="gnm-cat">Equity Research</div>\
     <div class="gnm-team" id="gnav-mteam"></div>\
@@ -586,7 +588,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   function _sb(){ try{ if(typeof sbAuth!=='undefined' && sbAuth && sbAuth.rpc) return sbAuth; }catch(e){}
     return (window.sbAuth && window.sbAuth.rpc) ? window.sbAuth : null; }
   function _setAdminLinks(show){
-    ['gnav-admin','gnav-clipinator','gnav-scenario','gnav-weekly'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
+    ['gnav-admin','gnav-clipinator','gnav-scenario','gnav-weekly','gnav-reports'].forEach(function(id){ var a=document.getElementById(id); if(a) a.style.display = show ? 'inline-flex' : 'none'; });
     [].slice.call(document.querySelectorAll('.gnm-admin')).forEach(function(a){ a.style.display = show ? 'flex' : 'none'; });
     _fitTeam();   // os 3 botões de admin mudam a largura da barra → re-avalia se os nomes cabem
   }

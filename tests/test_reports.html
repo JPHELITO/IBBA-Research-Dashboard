@@ -1,0 +1,187 @@
+<!doctype html><meta charset="utf-8"><title>reports — relatórios HTML (IABr / SECEX)</title>
+<body><pre id="out">rodando…</pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script src="/reports-lib.js"></script>
+<script>
+/* Testa o reports-lib.js — o montador dos relatórios HTML do blast de WhatsApp.
+
+   O GABARITO do IABr é o PDF REAL que o time mandou aos clientes (IABr_3Q26, 16/10/2026,
+   página 3 "Summary"): cada número da tabela foi copiado de lá. Os dados vêm de um
+   RECORTE CONGELADO das bases da dashboard (tests/fixtures/reports_fixture.json) — o
+   banco vivo muda com as revisões do IABr/MDIC e quebraria o gabarito sem haver bug.
+
+   ⚠️ Divergências CONHECIDAS com o PDF (o motor está certo, o PDF não bate por desenho):
+   • Importação do TRIMESTRE: o PDF soma só planos+longos (1.152) — no mês e no YTD ele
+     inclui os semiacabados. O motor usa sempre o total do IABr (com semis): 1.379.
+   • Exportação por produto: o PDF mostra Flat* e Long** (com placas/tarugos, mistura de
+     IABr com SECEX); o relatório HTML mostra como o IABr publica (planos/longos/semi).
+   • SECEX de aço e minério: o banco já tem as revisões do MDIC feitas DEPOIS de 13/10
+     (ex.: importação 3T26 1.370 × 1.369 no PDF). A celulose não foi revisada e bate exato.
+
+   Rodar: servir a pasta do repositório e abrir /tests/test_reports.html             */
+const out=[], ok=(n,c,d='')=>out.push((c?'PASS':'FAIL')+' · '+n+(d!==''?'  ['+d+']':''));
+const R=window.IBBAReports;
+const r1=x=>x==null?null:Math.round(x*10)/10, r0=x=>x==null?null:Math.round(x);
+const pct=x=>x==null?null:Math.round(x*1000)/10;          // fração → % com 1 casa
+
+(async()=>{
+try{
+  // ══ 0. funções puras ════════════════════════════════════════════════════════
+  ok('milhar com vírgula (en-US)', R.fmtInt(1846.269)==='1,846', R.fmtInt(1846.269));
+  ok('negativo com sinal tipográfico', R.fmtPct(-0.0072)==='−0.7%', R.fmtPct(-0.0072));
+  ok('positivo ganha +', R.fmtPct(0.517)==='+51.7%', R.fmtPct(0.517));
+  ok('zero não ganha sinal nem vira −0', R.fmtPct(0.00001)==='0.0%', R.fmtPct(0.00001));
+  ok('pontos percentuais', R.fmtPP(0.0214)==='+2.1 p.p.', R.fmtPP(0.0214));
+  ok('travessão p/ dado ausente', R.fmtInt(null)==='—' && R.fmtPct(undefined)==='—');
+  ok('pAdd vira o ano', R.pAdd('2026-01',-1)==='2025-12' && R.pAdd('2025-11',3)==='2026-02');
+  ok('rótulo do mês', R.monLabel('2026-09')==='Sep-26' && R.monLong('2026-09')==='September 2026');
+  const Q3=R.quarterOf('2026-09'), Q4=R.quarterOf('2026-10');
+  ok('set/26 é fim do 3T26', Q3.label==='3Q26' && Q3.end===true && Q3.months.join()==='2026-07,2026-08,2026-09');
+  ok('out/26 NÃO é fim de trimestre', Q4.label==='4Q26' && Q4.end===false);
+  ok('data por extenso', R.dateLong('2026-10-16')==='October 16, 2026', R.dateLong('2026-10-16'));
+  // sanitizador do texto do analista
+  const bad='<b>Our</b> take <script>alert(1)<\/script><img src=x onerror=alert(2)> <a href="javascript:alert(3)">x</a> <a href="https://itau.com.br" onclick="y()">link</a> <span style="color:red">ok</span>';
+  const cl=R.cleanRich(bad);
+  ok('sanitizador: tira <script>', cl.indexOf('<script')<0 && cl.indexOf('alert(1)')<0, cl);
+  ok('sanitizador: tira <img onerror>', cl.indexOf('<img')<0 && cl.indexOf('onerror')<0);
+  ok('sanitizador: link javascript: perde o href', cl.indexOf('javascript:')<0);
+  ok('sanitizador: link https fica, sem o onclick', cl.indexOf('href="https://itau.com.br"')>=0 && cl.indexOf('onclick')<0);
+  ok('sanitizador: mantém o negrito', cl.indexOf('<b>Our</b>')>=0);
+  ok('sanitizador: texto com & e < vira entidade', R.cleanRich('P&P <3')==='P&amp;P &lt;3', R.cleanRich('P&P <3'));
+  ok('**negrito** do rascunho vira <b>', R.plainToRich('a **b** c')==='a <b>b</b> c');
+  ok('nome de país em inglês', R.countryEN('Vietnã')==='Vietnam' && R.countryEN('Coreia do Sul')==='South Korea' && R.countryEN('Xyz')==='Xyz');
+  ok('forma do Itaú sem NaN', R.itauShape(60,60,55).indexOf('NaN')<0 && /^M[\d.]+ [\d.]+C/.test(R.itauShape(60,60,55)));
+
+  // ══ 1. o banco congelado ═══════════════════════════════════════════════════
+  const SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+  const fx=await (await fetch('/tests/fixtures/reports_fixture.json')).json();
+  function mk(part){
+    const db=new SQL.Database();
+    Object.keys(part).forEach(t=>{
+      const T=part[t]; db.run(T.ddl);
+      const st=db.prepare('INSERT INTO "'+t+'" ('+T.cols.map(c=>'"'+c+'"').join(',')+') VALUES ('+T.cols.map(()=>'?').join(',')+')');
+      T.rows.forEach(r=>st.run(r)); st.free();
+    });
+    return db;
+  }
+  const sm=mk(fx.sm), pp=mk(fx.pp);
+
+  // ══ 2. IABr set/26 × o PDF (página 3) ══════════════════════════════════════
+  const M=R.iabrModel(sm,'2026-09'), B=M.byK;
+  ok('períodos disponíveis começam em set/26', R.iabrPeriods(sm)[0]==='2026-09', R.iabrPeriods(sm)[0]);
+  // [chave, mês, mês-1, mesmo mês ano anterior, YTD'26, YTD'25, 3Q26, 2Q26, 3Q25] — números do PDF
+  const GAB=[
+    ['dom',      1846,1860,1890, 16045,16050, 5562,5392,5572],
+    ['dom_flat', 1110,1117,1088,  9573, 9309, 3344,3234,3184],
+    ['dom_long',  737, 743, 802,  6473, 6741, 2218,2158,2387],
+    ['imp',       600, 395, 446,  4293, 5075, null,null,null],     // trimestre: ver divergência no topo
+    ['imp_flat',  392, 254, 306,  2713, 3292,  873, 660, 974],
+    ['imp_long',   48, 106, 103,   975, 1191,  279, 308, 331],
+    ['imp_semi',  160,  35,  36,   605,  593,  227, 191, 248],
+    ['exp',       598, 959, 774,  7916, 7832, 2569,2563,2662],
+    ['prod',     2640,2589,2751, 23642,23961, 7982,7976,8107],
+    ['prod_flat',1846,1717,1844, 16060,15975, 5464,5451,5398],
+    ['prod_long', 794, 872, 908,  7581, 7986, 2518,2525,2709],
+    ['rolled',   2007,2002,1971, 17441,17798, 6060,5773,5939],
+    ['crude',    2791,2693,2814, 24566,25000, 8288,8299,8487],
+    ['ca',       2282,2232,2262, 19699,20434, 6740,6371,6780],
+    ['ca_flat',  1475,1378,1356, 12216,12398, 4215,3898,4044],
+    ['ca_long',   806, 854, 906,  7484, 8036, 2525,2472,2735]
+  ];
+  const COLS=['m','m1','y1','ytd','ytd1','q','qp','qy'];
+  GAB.forEach(g=>{
+    const l=B[g[0]], bad=[];
+    COLS.forEach((c,i)=>{ const want=g[i+1]; if(want==null) return; const got=r0(l.v[c]); if(got!==want) bad.push(c+': '+got+'≠'+want); });
+    ok('IABr '+g[0]+' bate com o PDF nas 8 colunas', !bad.length, bad.join(' · '));
+  });
+  // penetração (% e p.p.) — PDF: mês 19.1/16.7/16.5, YTD 18.5/21.5, tri 17.5/15.4/17.8
+  const PEN=[['pen',19.1,16.7,16.5,18.5,21.5,17.5,15.4,17.8],['pen_flat',24.8,19.0,19.8,21.6,24.9,20.7,17.0,21.3],['pen_long',8.6,13.0,11.5,13.5,16.1,12.1,12.7,12.7]];
+  PEN.forEach(g=>{
+    const l=B[g[0]], bad=[];
+    COLS.forEach((c,i)=>{ const got=pct(l.v[c]); if(got!==g[i+1]) bad.push(c+': '+got+'≠'+g[i+1]); });
+    ok('penetração '+g[0]+' = (CA − vendas) ÷ CA, bate com o PDF', !bad.length, bad.join(' · '));
+  });
+  ok('Δ penetração em p.p. (mês +2.4, YoY +2.6, QoQ +2.1, tri YoY −0.3)',
+     pct(B.pen.d.mom)===2.4 && pct(B.pen.d.yoy)===2.6 && pct(B.pen.d.qoq)===2.1 && pct(B.pen.d.qyoy)===-0.3,
+     [B.pen.d.mom,B.pen.d.yoy,B.pen.d.qoq,B.pen.d.qyoy].map(pct).join(' '));
+  ok('Δ % do PDF: CA +2.2% MoM, +5.8% QoQ · importação +51.7% MoM, +19.0% QoQ',
+     pct(B.ca.d.mom)===2.2 && pct(B.ca.d.qoq)===5.8 && pct(B.imp.d.mom)===51.7 && pct(B.imp.d.qoq)===19.0);
+  ok('importação do trimestre = total do IABr COM semis (1.379), não 1.152 do PDF', r0(B.imp.v.q)===1379, r0(B.imp.v.q));
+  ok('trimestre cheio no fim do 3T: rótulos 3Q26/2Q26/3Q25', M.cols.q==='3Q26' && M.cols.qp==='2Q26' && M.cols.qy==='3Q25');
+  ok('gráficos: 7 anos (85 meses) terminando em set/26', M.series.x.length===85 && M.series.x[84]==='2026-09');
+  ok('sazonalidade: 2022→2026, 2026 para em set', M.years.join()==='2022,2023,2024,2025,2026' && M.seasonal.ca_flat[4].v[8]!=null && M.seasonal.ca_flat[4].v[9]===null);
+  // QTD fora do fim de trimestre: ago/26 = jul+ago contra jul+ago/25
+  const Ma=R.iabrModel(sm,'2026-08');
+  ok('ago/26: trimestre vira 3Q26 QTD contra 3Q25 QTD (sem "trimestre anterior")',
+     Ma.cols.q==='3Q26 QTD' && Ma.cols.qp===null && r0(Ma.byK.dom.v.q)===r0(B.dom.v.q-B.dom.v.m), Ma.cols.q+' '+r0(Ma.byK.dom.v.q));
+
+  // rascunho
+  const D=R.iabrDraft(M);
+  ok('rascunho: What’s new + Long + Flat + Our take', D.length===4 && /What/.test(D[0].lead) && /^Long steel/.test(D[1].lead) && /^Flat steel/.test(D[2].lead) && D[3].text==='');
+  ok('rascunho: Long — vendas internas superaram importação (+3% vs −9%)', /Domestic sales outperformed imports in 3Q26/.test(D[1].lead) && D[1].text.indexOf('+3% vs. −9% QoQ')>=0, D[1].text.slice(0,60));
+  ok('rascunho: Flat — importação superou (+3% vs +32%), penetração ~21% vs ~17%', /Imports outpaced/.test(D[2].lead) && D[2].text.indexOf('~21%')>=0 && D[2].text.indexOf('~17%')>=0);
+  ok('manchete cita +19% QoQ e 17.5%', /19% QoQ/.test(R.iabrDeck(M)) && /17\.5%/.test(R.iabrDeck(M)), R.iabrDeck(M));
+
+  // documento
+  const T=R.iabrDefaults(M,'2026-10-16');
+  T.takeaways[3].html='Imports are back. <b>Flat</b> is the concern.';
+  const html=R.renderIabr(M,T,{display:'AAAA',body:'BBBB'});
+  ok('documento: sem NaN/undefined', !/NaN|undefined/.test(html), (html.match(/.{30}(NaN|undefined).{30}/)||[''])[0]);
+  ok('documento: autossuficiente (sem <script src>, sem <link>, sem fonte externa)',
+     !/<script[^>]+src=/i.test(html) && !/<link\b/i.test(html) && !/url\((?!data:|#)/.test(html.replace(/url\(data:[^)]*\)/g,'')));
+  ok('documento: fontes embutidas como data:', html.indexOf("url(data:font/woff2;base64,AAAA)")>=0 && html.indexOf("url(data:font/woff2;base64,BBBB)")>=0);
+  ok('documento: cabeçalho do time', html.indexOf('STEEL &amp; MINING <span>/</span> PULP &amp; PAPER')>=0);
+  ok('documento: emblema com 3 traços + logo', (html.match(/class="t[123]"/g)||[]).length===3 && html.indexOf('class="lgf"')>=0);
+  ok('documento: "Our take" escrito entra; vazio sairia', html.indexOf('Imports are back.')>=0 && (html.match(/<li class="tk/g)||[]).length===4);
+  const T2=R.iabrDefaults(M,'2026-10-16'), h2=R.renderIabr(M,T2,{});
+  ok('documento: "Our take" VAZIO não vai para o cliente', (h2.match(/<li class="tk/g)||[]).length===3 && h2.indexOf('Our take')<0);
+  ok('documento: dado dos gráficos escapa "<" (não fecha o <script> de dados)', (html.match(/<script type="application\/json" class="chd">/g)||[]).length>=10 && !/class="chd">[^<]*<\/(?!script)/.test(html));
+  ok('documento: a fonte não troca "(c)" por "©" (calt desligado)', html.indexOf('"calt" 0!important')>=0);
+  ok('documento: modo calmo da prévia só quando pedido', html.indexOf('class="calm"')<0 && R.renderIabr(M,T,{},{calm:true}).indexOf('<html lang="en" class="calm">')>=0);
+  ok('documento: link externo só o da plataforma (sem link do relatório vazio)', (html.match(/href="https?:/g)||[]).length===1);
+  ok('documento: tamanho razoável sem as fontes (< 250 KB)', html.length<250000, Math.round(html.length/1024)+' KB');
+
+  // ══ 3. SECEX set/26 (3Q26) ═════════════════════════════════════════════════
+  const S=R.secexModel(sm,pp,'2026-09');
+  ok('SECEX: períodos começam em set/26 (recorte)', R.secexPeriods(sm)[0]==='2026-09');
+  function line(L,label){ return L.find(l=>l.label===label); }
+  function q3(L,label){ const l=line(L,label); return l?[r0(l.v.q),r0(l.v.qp),r0(l.v.qy)]:null; }
+  // celulose: não revisada → bate EXATO com o PDF (página 12)
+  const PULP=[['Market pulp (ktons)',5040,4627,5152],['BKP',5005,4613,5140],['Hardwood',4948,4543,5086],['Softwood',57,70,54],
+              ['UKP / BCTMP',35,14,12],['Dissolving pulp¹ (ktons)',436,509,268],['BKP revenues (US$ mn)',2596,2238,2074],
+              ['(c) Working days',65,61,66],['BKP avg. volume per working day',77,76,78],['BKP average price (US$/t)',519,485,404]];
+  PULP.forEach(g=>{ const got=q3(S.pulpTable,g[0]); ok('celulose 3T26 "'+g[0]+'" = PDF', got&&got.join()===g.slice(1).join(), got&&got.join()); });
+  ok('celulose: preço médio da fibra curta 514/480/399 (PDF)', q3(S.pulpTable.filter(l=>l.lvl===1),'Hardwood').join()==='514,480,399' ||
+     S.pulpTable.filter(l=>l.label==='Hardwood').map(l=>r0(l.v.q)).indexOf(514)>=0);
+  // aço: semiacabado não foi revisado → exato; total revisado pelo MDIC
+  ok('aço importado: semiacabado 227/191/248 (PDF exato)', q3(S.impTable,'Semi-finished volumes (ktons)').join()==='227,191,248');
+  ok('aço importado: total 1.370 (PDF 1.369 antes da revisão do MDIC)', q3(S.impTable,'(a) Total imports (ktons)')[0]===1370);
+  ok('aço importado: QoQ +19% (PDF +19%)', Math.round(line(S.impTable,'(a) Total imports (ktons)').d.qoq*100)===19);
+  ok('dias úteis: UM calendário (65 no 3T26) para aço, minério e celulose',
+     q3(S.impTable,'(c) Working days')[0]===65 && q3(S.ironTable,'(c) Working days')[0]===65);
+  ok('minério: preço médio 3T26 US$62/t (PDF 62)', q3(S.ironTable,'(b)/(a) Average price (US$/t)')[0]===62);
+  ok('minério: QoQ +4% e YoY −7% (PDF +4%/−7%)', Math.round(line(S.ironTable,'(a) Volumes (ktons)').d.qoq*100)===4 && Math.round(line(S.ironTable,'(a) Volumes (ktons)').d.qyoy*100)===-7);
+  // origem: Vietnã ~37–38% em setembro (PDF "~37%")
+  const o=S.origins.month;
+  ok('origem: Vietnã lidera setembro com ~38% (PDF "~37%")', R.countryEN(o.list[0].c)==='Vietnam' && Math.round(o.list[0].v/o.all*100)===38, o.list[0].c+' '+(o.list[0].v/o.all*100).toFixed(1));
+  ok('origem: soma dos países = importação total do mês (597)', r0(o.all)===597, r0(o.all));
+  // portos (todas as fibras)
+  ok('porto: Rio Grande +41% QoQ (PDF, só fibra curta: +40%)', Math.round(line(S.portTable,'Rio Grande (CMPC)').d.qoq*100)===41);
+  ok('porto: total de todos os portos = 5.476', q3(S.portTable,'Total pulp (all grades)')[0]===5476);
+  // preditivo
+  const P=S.charts.pred.HRC;
+  ok('preditivo HRC: importação até set/26 e exportação deslocada até dez/26', P && P.x[P.x.length-1]==='2026-12' && P.imp[P.x.indexOf('2026-09')]!=null && P.imp[P.x.indexOf('2026-10')]===null && P.exp[P.x.length-1]!=null);
+  // rascunho + documento
+  const SD=R.secexDraft(S);
+  ok('rascunho SECEX: 7 tópicos na ordem do PDF', SD.length===7 && /^Steel imports rebounded in 3Q26/.test(SD[0].lead) && /^Vietnam/.test(SD[1].lead) && /^September imports accelerated/.test(SD[2].lead) && /^Steel exports/.test(SD[3].lead) && /^Iron ore/.test(SD[4].lead) && /^Pulp exports recovered/.test(SD[5].lead), SD.map(x=>x.lead).join(' | '));
+  ok('rascunho SECEX: volume mensal < 1 Mt sai em ktons', R.secexDraft(R.secexModel(sm,pp,'2026-09')).every(t=>!/~0\.\d mtons/.test(t.text)));
+  const sh=R.renderSecex(S,R.secexDefaults(S,'2026-10-13'),{});
+  ok('SECEX documento: sem NaN/undefined', !/NaN|undefined/.test(sh), (sh.match(/.{30}(NaN|undefined).{30}/)||[''])[0]);
+  ok('SECEX documento: 4 seções + KPIs de aço, minério e celulose', (sh.match(/<section class="sec/g)||[]).length===4 && sh.indexOf('Iron ore exports')>=0 && sh.indexOf('Market pulp exports')>=0);
+  ok('SECEX documento: "(c) Working days" literal (sem ©)', sh.indexOf('(c) Working days')>=0 && sh.indexOf('©')<0);
+}catch(e){ ok('EXCEÇÃO', false, e.stack); }
+  const f=out.filter(x=>x.indexOf('FAIL')===0).length;
+  document.getElementById('out').textContent=(f?'❌ '+f+' FALHA(S)':'✅ TUDO OK')+' — '+out.length+' asserts\n\n'+out.join('\n');
+  document.title=(f?'FAIL ':'PASS ')+out.length;
+})();
+</script>

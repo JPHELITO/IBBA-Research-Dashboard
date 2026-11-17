@@ -68,6 +68,9 @@ WEB_TABLES = [
     "secex_country",
     "secex_exports",
     "secex_imports",
+    # Reports (/reports.html, relatório HTML da SECEX): minério por produto e destino.
+    # Pequena (~3 mil linhas); sem ela a tela de Reports baixa o banco completo (~42 MB).
+    "secex_iron_ore",
 ]
 
 

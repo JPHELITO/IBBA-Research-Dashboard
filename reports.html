@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#111111"/>
+<title>Reports</title>
+<script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script src="/topnav.js"></script>
+<script src="/reports-lib.js"></script>
+<style>
+:root{
+  --orange:#FF5000;--black:#111111;--gray-dark:#2C2C2C;--gray-mid:#737373;
+  --gray-light:#EBE8E2;--border:#D6D1C9;--white:#FDFCFA;--green:#16a34a;--red:#c0392b;
+  --bg:#F7F6F3;--card:#fff;--font:'Inter','Segoe UI',Helvetica,Arial,sans-serif;--radius:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+html.dark{
+  --black:#e8eaed;--gray-dark:#c3c7cd;--gray-mid:#828892;--gray-light:#15171b;
+  --border:#2b3038;--white:#1c2026;--green:#22c55e;--red:#ef4444;--bg:#0d0e11;--card:#1c2026;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 22px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--black);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh;}
+[hidden]{display:none!important}
+.splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.muted{color:var(--gray-mid);font-size:13px;}
+.hbtn{display:inline-block;margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--orange);color:#fff;
+  text-decoration:none;font-size:12.5px;font-weight:600;border:none;cursor:pointer;}
+
+#app{flex:1;width:100%;max-width:1600px;margin:0 auto;padding:14px 20px 26px;}
+.rp-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px;}
+.rp-title{font-size:22px;font-weight:700;letter-spacing:-.01em;}
+.rp-title small{display:block;font-size:12px;font-weight:500;color:var(--gray-mid);margin-top:3px;letter-spacing:0;}
+.rp-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
+  border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:2px 8px;vertical-align:middle;}
+/* ⚠️ `minmax(0,…)`, nunca `1fr` puro (é minmax(auto,1fr): a coluna não encolhe e a página rola de lado) */
+.rp-grid{display:grid;grid-template-columns:minmax(440px,1fr) minmax(0,var(--pw,440px));gap:18px;align-items:start;}
+.rp-grid>*{min-width:0;}
+.rp-grid.wide{--pw:820px;}
+@media(max-width:1180px){.rp-grid,.rp-grid.wide{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:760px){#app{padding:12px 12px 20px;}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 15px;border-bottom:1px solid var(--border);}
+.panel-h h2{font-size:13px;font-weight:700;}
+.panel-h .sub{font-size:11px;color:var(--gray-mid);font-weight:400;}
+.panel-b{padding:12px 15px;}
+details.panel>summary{cursor:pointer;list-style:none;}
+details.panel>summary::-webkit-details-marker{display:none;}
+details.panel:not([open])>summary{border-bottom:0;}
+.caret{display:inline-block;font-size:9px;color:var(--gray-mid);transition:transform .13s;}
+details.panel[open]>summary .caret{transform:rotate(180deg);}
+
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+button.b,a.b{font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;border:1px solid var(--border);
+  background:var(--card);color:var(--black);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+button.b:hover,a.b:hover{border-color:var(--orange);color:var(--orange);}
+button.b.pri{background:var(--orange);border-color:var(--orange);color:#fff;}
+button.b.pri:hover{filter:brightness(1.06);color:#fff;}
+button.b.sm{font-size:11px;padding:4px 9px;}
+button.b:disabled{opacity:.45;cursor:not-allowed;}
+.segc{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);}
+.segc button{font:inherit;font-size:12px;font-weight:600;padding:6px 13px;border:0;background:transparent;color:var(--gray-mid);cursor:pointer;}
+.segc button+button{border-left:1px solid var(--border);}
+.segc button.on{background:var(--orange);color:#fff;}
+input[type=date],input[type=text],input[type=url],input[type=email],select,textarea{
+  font:inherit;font-size:12.5px;color:var(--black);background:var(--card);
+  border:1px solid var(--border);border-radius:7px;padding:6px 9px;width:100%;}
+select{width:auto;}
+input:focus,select:focus,textarea:focus,.rt:focus{outline:none;border-color:var(--orange);}
+label.f{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);margin-bottom:4px;}
+.fld{margin-bottom:12px;}
+.fld:last-child{margin-bottom:0;}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.row3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:10px;}
+@media(max-width:760px){.row2,.row3{grid-template-columns:minmax(0,1fr);}}
+.hint{font-size:11px;color:var(--gray-mid);margin-top:7px;line-height:1.5;}
+.hint code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;background:rgba(0,0,0,.05);padding:1px 4px;border-radius:3px;}
+.warn{font-size:11.5px;line-height:1.5;background:rgba(255,80,0,.08);border:1px solid rgba(255,80,0,.35);
+  border-radius:7px;padding:8px 11px;color:var(--gray-dark);margin-bottom:12px;}
+.warn b{color:var(--orange);}
+.warn code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:rgba(0,0,0,.05);padding:1px 4px;border-radius:3px;}
+
+/* editor de texto rico (B / I / link) */
+.rtw{border:1px solid var(--border);border-radius:7px;background:var(--card);}
+.rtw:focus-within{border-color:var(--orange);}
+.rtb{display:flex;gap:2px;padding:3px 4px;border-bottom:1px solid var(--border);}
+.rtb button{font:inherit;font-size:11.5px;min-width:24px;padding:2px 6px;border:0;border-radius:4px;background:transparent;color:var(--gray-dark);cursor:pointer;}
+.rtb button:hover{background:var(--gray-light);color:var(--orange);}
+.rt{min-height:58px;padding:7px 9px;font-size:12.5px;line-height:1.55;outline:none;border:0;}
+.rt.one{min-height:36px;}
+.rt:empty::before{content:attr(data-ph);color:var(--gray-mid);}
+.rt a{color:var(--orange);}
+
+/* itens dos takeaways */
+.tki{border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-bottom:8px;background:var(--bg);}
+.tki.sub{margin-left:22px;}
+.tki .top{display:flex;gap:6px;align-items:center;margin-bottom:7px;}
+.tki .top input{flex:1;font-weight:700;}
+.tki .top select{font-size:11.5px;padding:5px 6px;}
+.xbtn{border:none;background:transparent;color:var(--gray-mid);cursor:pointer;font-size:14px;line-height:1;padding:3px 5px;border-radius:5px;}
+.xbtn:hover{color:var(--orange);background:var(--gray-light);}
+.xbtn.del:hover{color:var(--red);}
+.empty-tag{font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.05em;margin-left:4px;}
+
+/* time */
+.tm{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1fr) auto;gap:6px;margin-bottom:6px;align-items:center;}
+@media(max-width:760px){.tm{grid-template-columns:minmax(0,1fr) auto;}}
+
+/* diagnóstico */
+.auto-l{display:grid;grid-template-columns:96px 1fr;gap:10px;font-size:12px;line-height:1.5;padding:7px 0;border-bottom:1px solid var(--gray-light);}
+.auto-l:last-child{border-bottom:none;}
+.auto-k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);padding-top:2px;}
+
+/* prévia */
+.prev-wrap{position:sticky;top:12px;}
+.prev-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+#prev{width:100%;height:calc(100vh - 175px);min-height:560px;border:1px solid var(--border);border-radius:16px;background:#000;display:block;}
+.rp-grid:not(.wide) #prev{border-radius:26px;border:6px solid #1b1b1b;box-shadow:0 0 0 1px var(--border);}
+.status{font-size:11px;color:var(--gray-mid);margin-top:7px;line-height:1.5;min-height:16px;}
+.ok{color:var(--green);font-weight:600;}
+.bad{color:var(--red);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="splash"><div class="spin"></div><div class="muted" id="gate-msg">Carregando Reports…</div></div>
+
+<div id="denied" class="splash" hidden>
+  <div style="font-size:34px">🔒</div>
+  <div><b>Área restrita</b></div>
+  <div class="muted" style="max-width:400px">Reports é uma ferramenta interna, disponível apenas para administradores.</div>
+  <a class="hbtn" href="/index.html">← Voltar para a home</a>
+</div>
+
+<div id="app" hidden>
+  <div class="rp-head">
+    <div class="rp-title">Reports <span class="rp-badge">admin</span>
+      <small>HTML para o blast de WhatsApp. Números e gráficos saem da dashboard; títulos e textos você edita aqui.</small>
+    </div>
+    <div class="bar">
+      <div class="segc" id="kind" role="group" aria-label="Relatório">
+        <button data-k="iabr" class="on">IABr</button><button data-k="secex">SECEX</button>
+      </div>
+      <select id="period" aria-label="Mês de referência"></select>
+      <button class="b" id="reload" title="Rele a base da dashboard">↻ Recarregar dados</button>
+      <button class="b" id="open" title="Abre o HTML final numa aba nova">↗ Abrir</button>
+      <button class="b pri" id="download">⬇ Baixar HTML</button>
+    </div>
+  </div>
+
+  <div class="rp-grid" id="grid">
+    <!-- ═══════════ EDITOR ═══════════ -->
+    <div>
+      <div id="sqlwarn" hidden></div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>Capa</h2><span class="sub" id="cover-sub"></span></div>
+        <div class="panel-b">
+          <div class="row3">
+            <div class="fld"><label class="f" for="t-kicker">Sobretítulo</label><input type="text" id="t-kicker"/></div>
+            <div class="fld"><label class="f" for="t-big">Destaque (grande)</label><input type="text" id="t-big"/></div>
+            <div class="fld"><label class="f" for="t-title">Título</label><input type="text" id="t-title"/></div>
+          </div>
+          <div class="fld"><label class="f">Manchete</label>
+            <div class="rtw"><div class="rtb" data-for="t-deck"></div><div class="rt one" id="t-deck" contenteditable="true" data-ph="Uma frase com a mensagem principal"></div></div>
+          </div>
+          <div class="row2">
+            <div class="fld"><label class="f" for="t-date">Data de publicação</label><input type="date" id="t-date"/></div>
+            <div class="fld"><label class="f" for="t-stamp">Selo (abaixo da data)</label><input type="text" id="t-stamp"/></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>Key takeaways</h2>
+          <div class="bar"><button class="b sm" id="tk-redraft" title="Reescreve os tópicos com os números da base">↻ Refazer rascunho dos números</button></div></div>
+        <div class="panel-b">
+          <div class="fld"><label class="f">Frase de abertura <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(opcional, aparece grande acima dos tópicos)</span></label>
+            <div class="rtw"><div class="rtb" data-for="t-lead"></div><div class="rt one" id="t-lead" contenteditable="true" data-ph="Ex.: With the 3Q26 data out, we share our main takeaways."></div></div>
+          </div>
+          <div id="tk-list"></div>
+          <div class="bar" style="margin-top:4px">
+            <button class="b sm" id="tk-add">+ Tópico</button>
+            <button class="b sm" id="tk-add-sub">+ Subtópico</button>
+          </div>
+          <div class="hint">O <b>negrito de abertura</b> sai em destaque no início do tópico. Tópico sem texto não vai para o relatório
+            (o “Our take” nasce vazio de propósito — a opinião é sua). Os números do rascunho vêm da base; se ela for revisada,
+            use “Refazer rascunho”.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>Link do relatório completo</h2><span class="sub">opcional</span></div>
+        <div class="panel-b">
+          <div class="row2">
+            <div class="fld"><label class="f" for="t-link-label">Texto do link</label><input type="text" id="t-link-label"/></div>
+            <div class="fld"><label class="f" for="t-link-url">Endereço (https://…)</label><input type="url" id="t-link-url" placeholder="https://www.itau.com.br/itaubba-pt/…"/></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="panel" id="team-panel">
+        <summary class="panel-h"><h2>Time e disclosures</h2><span class="sub"><span id="team-n"></span> <span class="caret">▼</span></span></summary>
+        <div class="panel-b">
+          <div id="team-list"></div>
+          <button class="b sm" id="team-add">+ Analista</button>
+          <div class="fld" style="margin-top:12px"><label class="f" for="t-disc">Analistas no quadro de disclosure (separados por vírgula)</label>
+            <input type="text" id="t-disc"/></div>
+          <div class="hint">Fica salvo junto com esta edição e vira o padrão das próximas.</div>
+        </div>
+      </details>
+
+      <details class="panel" id="auto-panel">
+        <summary class="panel-h"><h2>Montado automaticamente</h2><span class="sub"><span id="auto-sum"></span> <span class="caret">▼</span></span></summary>
+        <div class="panel-b" id="auto-body"></div>
+      </details>
+    </div>
+
+    <!-- ═══════════ PRÉVIA ═══════════ -->
+    <div class="prev-wrap">
+      <div class="prev-bar">
+        <div class="segc" id="pw" role="group" aria-label="Largura da prévia">
+          <button data-w="m" class="on">📱 Celular</button><button data-w="d">🖥 Tela cheia</button>
+        </div>
+        <button class="b sm" id="replay" title="Mostra as animações de entrada de novo">▶ Rever animações</button>
+      </div>
+      <iframe id="prev" title="Prévia do relatório"></iframe>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase + auth (idêntico às demais páginas) ─────────────────────────────
+const SUPA_URL='https://mmhkqkpjrvyxovpihnio.supabase.co';
+const SUPA_KEY='sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA';
+let sbAuth=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{storage:window.sessionStorage}});
+function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; path=/; SameSite=Lax; Secure`}
+async function rpc(name,args){
+  const {data,error}=(args===undefined)?await sbAuth.rpc(name):await sbAuth.rpc(name,args);
+  if(error) throw Object.assign(new Error(name+': '+(error.message||error)),{code:error.code});
+  return data;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const R=window.IBBAReports;
+// harness local (sem login, rascunho só no navegador): reports.html?rptest=1 em localhost
+const RPTEST=/[?&]rptest=1\b/.test(location.search)&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+
+// hoje em São Paulo (YYYY-MM-DD) — o relógio do PC pode estar em UTC
+function hojeSP(){
+  const d=new Date(Date.now()-3*3600*1000);
+  return d.toISOString().slice(0,10);
+}
+
+// ═══════════════ OS BANCOS (os mesmos arquivos que as páginas de M&M e P&P leem) ═══
+let SQL=null;
+const DB={sm:null,pp:null,smFull:false};
+async function _gunzip(buf){
+  const stream=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function loadSM(force){
+  if(DB.sm&&!force) return DB.sm;
+  SQL=SQL||await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+  // versão WEB (~6 MB) primeiro; cai no banco completo se faltar
+  let bytes=null;
+  if(typeof DecompressionStream==='function'){
+    try{
+      const r=await fetch('/Steel%20and%20Mining/steel_sm_web.db.gz',{cache:'no-cache'});
+      if(r.ok) bytes=await _gunzip(await r.arrayBuffer());
+    }catch(e){ console.warn('web db',e); }
+  }
+  if(!bytes){
+    const r=await fetch('/Steel%20and%20Mining/steel_sm.db',{cache:'no-cache'});
+    if(!r.ok) throw new Error('steel_sm.db: HTTP '+r.status);
+    bytes=new Uint8Array(await r.arrayBuffer()); DB.smFull=true;
+  }
+  DB.sm=new SQL.Database(bytes);
+  return DB.sm;
+}
+// o completo (~42 MB) só quando a versão web não tiver uma tabela de que o SECEX precisa
+async function loadSMFull(){
+  if(DB.smFull) return DB.sm;
+  const r=await fetch('/Steel%20and%20Mining/steel_sm.db',{cache:'no-cache'});
+  if(!r.ok) throw new Error('steel_sm.db: HTTP '+r.status);
+  DB.sm=new SQL.Database(new Uint8Array(await r.arrayBuffer())); DB.smFull=true;
+  return DB.sm;
+}
+async function loadPP(force){
+  if(DB.pp&&!force) return DB.pp;
+  SQL=SQL||await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`});
+  const r=await fetch('/Pulp%20and%20Paper/pulp_paper.db',{cache:'no-cache'});
+  if(!r.ok) throw new Error('pulp_paper.db: HTTP '+r.status);
+  DB.pp=new SQL.Database(new Uint8Array(await r.arrayBuffer()));
+  return DB.pp;
+}
+
+// ═══════════════ AS FONTES (vão embutidas no arquivo final) ═══════════════
+const FONT_URL={display:'/assets/fonts/unbounded.woff2',body:'/assets/fonts/manrope.woff2'};
+let _fonts64=null;
+async function fonts64(){
+  if(_fonts64) return _fonts64;
+  const b64=async u=>{
+    const r=await fetch(u); if(!r.ok) throw new Error(u+': HTTP '+r.status);
+    const blob=await r.blob();
+    return await new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(',')[1]);fr.onerror=ko;fr.readAsDataURL(blob);});
+  };
+  _fonts64={display:await b64(FONT_URL.display),body:await b64(FONT_URL.body)};
+  return _fonts64;
+}
+
+// ═══════════════ OS TIPOS DE RELATÓRIO ═══════════════════════════════════
+const KINDS={
+  iabr:{
+    label:'IABr',
+    async ready(){ await loadSM(); },
+    periods(){ return R.iabrPeriods(DB.sm); },
+    model(p){ return R.iabrModel(DB.sm,p); },
+    defaults(M){ return R.iabrDefaults(M,hojeSP()); },
+    draft(M){ return R.iabrDraft(M).map(t=>({lead:t.lead,html:R.plainToRich(t.text),lvl:t.lvl})); },
+    deck(M){ return R.plainToRich(R.iabrDeck(M)); },
+    render(M,T,f,o){ return R.renderIabr(M,T,f,o); },
+    file(M){ return 'IABr_'+(M.quarter.end?M.quarter.label:M.label.replace('-',''))+'.html'; },
+    optLabel(p,M){ return R.monLabel(p)+(R.quarterOf(p).end?' · '+R.quarterOf(p).label:''); },
+    auto(M){
+      const per=M.label, q=M.quarter;
+      return [
+        ['Fonte','Instituto Aço Brasil (IABr), tabelas <code>iabr_*</code> da página de M&amp;M — dado até <b>'+esc(M.long)+'</b>.'],
+        ['Trimestre', q.end ? esc(q.label)+' cheio contra '+esc(q.prev)+' e '+esc(q.yago)+'.'
+                          : 'Mês fora do fim de trimestre: a vista “Quarter” vira <b>'+esc(q.label)+' QTD</b> contra o mesmo pedaço de '+esc(String(+M.period.slice(0,4)-1))+'.'],
+        ['Convenções','Flat* = planos + placas · Long** = longos + blocos/tarugos (a base do consumo aparente do IABr). Penetração = (consumo aparente − vendas internas) ÷ consumo aparente. Importação e exportação como o IABr publica (com semiacabados no total).'],
+        ['Gráficos','7 anos mensais ('+esc(R.monLabel(M.series.x[0]))+' → '+esc(per)+') e sazonalidade de '+M.years[0]+' a '+M.years[M.years.length-1]+'.'],
+      ];
+    }
+  },
+  secex:{
+    label:'SECEX',
+    async ready(){
+      await loadSM(); await loadPP();
+      if(!R.hasTable(DB.sm,'secex_iron_ore')) await loadSMFull();
+    },
+    periods(){ return R.secexPeriods ? R.secexPeriods(DB.sm) : []; },
+    model(p){ return R.secexModel(DB.sm,DB.pp,p); },
+    defaults(M){ return R.secexDefaults(M,hojeSP()); },
+    draft(M){ return R.secexDraft(M).map(t=>({lead:t.lead,html:R.plainToRich(t.text),lvl:t.lvl})); },
+    deck(M){ return R.plainToRich(R.secexDeck(M)); },
+    render(M,T,f,o){ return R.renderSecex(M,T,f,o); },
+    file(M){ return 'SECEX_SM_PP_'+(M.quarter.end?M.quarter.label:M.label.replace('-',''))+'.html'; },
+    optLabel(p){ return R.monLabel(p)+(R.quarterOf(p).end?' · '+R.quarterOf(p).label:''); },
+    auto(M){ return R.secexAuto?R.secexAuto(M):[]; }
+  }
+};
+
+// ═══════════════ ESTADO ═══════════════════════════════════════════════════
+const S={kind:'iabr',period:null,M:null,T:null,drafts:{},sqlOk:null,dirty:false,savedAt:null};
+
+// ═══════════════ PERSISTÊNCIA ═════════════════════════════════════════════
+// Banco (admin/supabase_reports.sql) com reserva no navegador. Guarda SÓ texto.
+function lsKey(k,p){return 'ibba_rpt_draft:'+k+':'+p;}
+function lsGet(k,p){try{return JSON.parse(localStorage.getItem(lsKey(k,p))||'null');}catch(e){return null;}}
+function lsSet(k,p,v){try{localStorage.setItem(lsKey(k,p),JSON.stringify(v));}catch(e){}}
+function textsToSave(){
+  const T=S.T; if(!T) return null;
+  return {kicker:T.kicker,big:T.big,title:T.title,deck:T.deck,date:T.date,stamp:T.stamp,takeLead:T.takeLead,
+    takeaways:T.takeaways,link:T.link,team:T.team,disclosure:T.disclosure,v:1};
+}
+async function loadDraft(k,p){
+  let d=null;
+  if(!RPTEST&&S.sqlOk!==false){
+    try{ d=await rpc('admin_get_report_draft',{p_kind:k,p_period:p}); S.sqlOk=true; }
+    catch(e){ if(isMissing(e)){ S.sqlOk=false; showSqlWarn(); } else console.warn('get draft',e); }
+  }
+  if(!d) d=lsGet(k,p);
+  return d;
+}
+function isMissing(e){ const m=String(e&&e.message||''); return /PGRST202|not find the function|does not exist/i.test(m); }
+let _saveT=null;
+function scheduleSave(){
+  S.dirty=true; setStatus('Salvando…');
+  clearTimeout(_saveT);
+  _saveT=setTimeout(saveNow,900);
+}
+async function saveNow(){
+  clearTimeout(_saveT);
+  const v=textsToSave(); if(!v||!S.period) return;
+  const k=S.kind,p=S.period;
+  lsSet(k,p,v);                                         // reserva local sempre
+  lsSet('_team','-',{team:v.team,disclosure:v.disclosure});
+  if(RPTEST||S.sqlOk===false){ S.dirty=false; setStatus(RPTEST?'Salvo neste navegador (modo teste).':'Salvo SÓ neste navegador — falta rodar o SQL (veja o aviso).'); return; }
+  try{
+    await rpc('admin_save_report_draft',{p_kind:k,p_period:p,p_draft:v});
+    S.sqlOk=true; S.dirty=false; S.drafts[k+':'+p]=true;
+    S.savedAt=new Date(); setStatus('<span class="ok">✓ Salvo</span> às '+S.savedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),true);
+    markOptions();
+  }catch(e){
+    if(isMissing(e)){ S.sqlOk=false; showSqlWarn(); setStatus('Salvo SÓ neste navegador — falta rodar o SQL.'); }
+    else { console.warn('save',e); setStatus('<span class="bad">Não consegui salvar no banco</span> ('+esc(e.message)+'). O texto está guardado neste navegador.',true); }
+  }
+}
+function showSqlWarn(){
+  const w=document.getElementById('sqlwarn');
+  w.className='warn'; w.hidden=false;
+  w.innerHTML='<b>Rascunho guardado só neste navegador.</b> Para guardar no banco (e abrir de qualquer computador), rode uma vez '+
+    '<code>admin/supabase_reports.sql</code> no SQL Editor do Supabase. O relatório funciona igual sem ele.';
+}
+function setStatus(html,isHtml){ const el=document.getElementById('status'); el.innerHTML=isHtml?html:esc(html); }
+
+// ═══════════════ EDITOR DE TEXTO RICO ════════════════════════════════════
+function mkToolbar(bar){
+  const id=bar.dataset.for;
+  bar.innerHTML='<button type="button" data-c="bold" title="Negrito (Ctrl+B)"><b>B</b></button>'+
+    '<button type="button" data-c="italic" title="Itálico (Ctrl+I)"><i>I</i></button>'+
+    '<button type="button" data-c="link" title="Link">🔗</button>'+
+    '<button type="button" data-c="clear" title="Limpar formatação">⌫</button>';
+  bar.addEventListener('mousedown',e=>e.preventDefault());   // não perde a seleção
+  bar.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const ed=document.getElementById(id)||bar.parentElement.querySelector('.rt'); ed.focus();
+    const c=b.dataset.c;
+    if(c==='link'){ const u=prompt('Endereço do link (https://…):'); if(u&&/^https?:\/\//i.test(u.trim())) document.execCommand('createLink',false,u.trim()); }
+    else if(c==='clear') document.execCommand('removeFormat');
+    else document.execCommand(c);
+    ed.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+}
+// colar = texto puro (o Word/Outlook trazem fonte, cor, tamanho que não cabem no relatório)
+document.addEventListener('paste',e=>{
+  const ed=e.target.closest&&e.target.closest('.rt'); if(!ed) return;
+  e.preventDefault();
+  const t=(e.clipboardData||window.clipboardData).getData('text/plain');
+  document.execCommand('insertText',false,t.replace(/\r?\n+/g,' '));
+});
+document.addEventListener('keydown',e=>{
+  const ed=e.target.closest&&e.target.closest('.rt'); if(!ed) return;
+  if(e.key==='Enter'&&ed.classList.contains('one')){ e.preventDefault(); }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); const u=prompt('Endereço do link (https://…):'); if(u&&/^https?:\/\//i.test(u.trim())) document.execCommand('createLink',false,u.trim()); }
+});
+
+// ═══════════════ RENDERIZA O EDITOR A PARTIR DE S.T ══════════════════════
+function fillEditor(){
+  const T=S.T;
+  document.getElementById('t-kicker').value=T.kicker||'';
+  document.getElementById('t-big').value=T.big||'';
+  document.getElementById('t-title').value=T.title||'';
+  document.getElementById('t-deck').innerHTML=R.cleanRich(T.deck||'');
+  document.getElementById('t-lead').innerHTML=R.cleanRich(T.takeLead||'');
+  document.getElementById('t-date').value=T.date||hojeSP();
+  document.getElementById('t-stamp').value=T.stamp||'';
+  document.getElementById('t-link-label').value=(T.link&&T.link.label)||'Read the full report';
+  document.getElementById('t-link-url').value=(T.link&&T.link.url)||'';
+  document.getElementById('t-disc').value=(T.disclosure||[]).join(', ');
+  renderTakeaways(); renderTeam();
+}
+function renderTakeaways(){
+  const host=document.getElementById('tk-list');
+  host.innerHTML=S.T.takeaways.map((t,i)=>{
+    const empty=!R.cleanRich(t.html).replace(/<[^>]+>/g,'').trim();
+    return '<div class="tki'+(t.lvl?' sub':'')+'" data-i="'+i+'">'+
+      '<div class="top"><select data-f="lvl" title="Nível"><option value="0"'+(t.lvl?'':' selected')+'>• Tópico</option><option value="1"'+(t.lvl?' selected':'')+'>◦ Subtópico</option></select>'+
+      '<input type="text" data-f="lead" value="'+esc(t.lead||'')+'" placeholder="Negrito de abertura (ex.: Our take:)"/>'+
+      (empty?'<span class="empty-tag" title="Sem texto: não vai para o relatório">vazio</span>':'')+
+      '<button class="xbtn" data-a="up" title="Subir">↑</button><button class="xbtn" data-a="dn" title="Descer">↓</button>'+
+      '<button class="xbtn del" data-a="del" title="Apagar">✕</button></div>'+
+      '<div class="rtw"><div class="rtb"></div><div class="rt" data-f="html" contenteditable="true" data-ph="Texto do tópico">'+R.cleanRich(t.html||'')+'</div></div></div>';
+  }).join('')||'<div class="muted" style="margin-bottom:8px">Nenhum tópico.</div>';
+  host.querySelectorAll('.rtb').forEach(b=>{ b.dataset.for=''; mkToolbar(b); });
+}
+function renderTeam(){
+  const host=document.getElementById('team-list');
+  host.innerHTML=(S.T.team||[]).map((p,i)=>'<div class="tm" data-i="'+i+'">'+
+    '<input type="text" data-f="name" value="'+esc(p.name||'')+'" placeholder="Nome, CFA"/>'+
+    '<input type="email" data-f="email" value="'+esc(p.email||'')+'" placeholder="e-mail"/>'+
+    '<input type="text" data-f="phone" value="'+esc(p.phone||'')+'" placeholder="+55-11-…"/>'+
+    '<span><button class="xbtn" data-a="up" title="Subir">↑</button><button class="xbtn del" data-a="del" title="Remover">✕</button></span></div>').join('');
+  document.getElementById('team-n').textContent=(S.T.team||[]).length+' analistas';
+}
+
+// ═══════════════ EVENTOS DO EDITOR ═══════════════════════════════════════
+function wire(){
+  // tipo de relatório
+  document.querySelectorAll('#kind button').forEach(b=>b.addEventListener('click',async()=>{
+    if(b.dataset.k===S.kind) return;
+    await saveNow();
+    document.querySelectorAll('#kind button').forEach(x=>x.classList.toggle('on',x===b));
+    S.kind=b.dataset.k; S.period=null;
+    await carregar();
+  }));
+  document.getElementById('period').addEventListener('change',async e=>{
+    await saveNow(); S.period=e.target.value; await abrirEdicao();
+  });
+  document.getElementById('reload').addEventListener('click',async()=>{
+    await saveNow(); DB.sm=null; DB.pp=null; DB.smFull=false; await carregar(true);
+  });
+  document.getElementById('download').addEventListener('click',baixar);
+  document.getElementById('open').addEventListener('click',abrirAba);
+  document.getElementById('replay').addEventListener('click',()=>atualizarPrevia(true));
+  document.querySelectorAll('#pw button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#pw button').forEach(x=>x.classList.toggle('on',x===b));
+    document.getElementById('grid').classList.toggle('wide',b.dataset.w==='d');
+    try{localStorage.setItem('ibba_rpt_pw',b.dataset.w);}catch(e){}
+  }));
+  try{ if(localStorage.getItem('ibba_rpt_pw')==='d') document.querySelector('#pw button[data-w="d"]').click(); }catch(e){}
+  document.querySelectorAll('.rtb[data-for]').forEach(mkToolbar);
+
+  // campos simples da capa
+  const map={'t-kicker':'kicker','t-big':'big','t-title':'title','t-date':'date','t-stamp':'stamp'};
+  Object.keys(map).forEach(id=>document.getElementById(id).addEventListener('input',e=>{ S.T[map[id]]=e.target.value; changed(); }));
+  document.getElementById('t-deck').addEventListener('input',e=>{ S.T.deck=R.cleanRich(e.target.innerHTML); changed(); });
+  document.getElementById('t-lead').addEventListener('input',e=>{ S.T.takeLead=R.cleanRich(e.target.innerHTML); changed(); });
+  document.getElementById('t-link-label').addEventListener('input',e=>{ S.T.link=Object.assign({},S.T.link,{label:e.target.value}); changed(); });
+  document.getElementById('t-link-url').addEventListener('input',e=>{ S.T.link=Object.assign({},S.T.link,{url:e.target.value.trim()}); changed(); });
+  document.getElementById('t-disc').addEventListener('input',e=>{ S.T.disclosure=e.target.value.split(',').map(x=>x.trim()).filter(Boolean); changed(); });
+
+  // takeaways (delegado)
+  const tk=document.getElementById('tk-list');
+  tk.addEventListener('input',e=>{
+    const box=e.target.closest('.tki'); if(!box) return; const i=+box.dataset.i, f=e.target.dataset.f;
+    if(f==='lead') S.T.takeaways[i].lead=e.target.value;
+    if(f==='html'){ S.T.takeaways[i].html=R.cleanRich(e.target.innerHTML);
+      const empty=!S.T.takeaways[i].html.replace(/<[^>]+>/g,'').trim(), tag=box.querySelector('.empty-tag');
+      if(empty&&!tag) box.querySelector('.top input').insertAdjacentHTML('afterend','<span class="empty-tag" title="Sem texto: não vai para o relatório">vazio</span>');
+      if(!empty&&tag) tag.remove(); }
+    changed();
+  });
+  tk.addEventListener('change',e=>{
+    const box=e.target.closest('.tki'); if(!box||e.target.dataset.f!=='lvl') return;
+    S.T.takeaways[+box.dataset.i].lvl=+e.target.value; renderTakeaways(); changed();
+  });
+  tk.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-a]'); if(!b) return; const box=b.closest('.tki'); const i=+box.dataset.i, L=S.T.takeaways;
+    if(b.dataset.a==='del'){ if(!confirm('Apagar este tópico?')) return; L.splice(i,1); }
+    if(b.dataset.a==='up'&&i>0){ [L[i-1],L[i]]=[L[i],L[i-1]]; }
+    if(b.dataset.a==='dn'&&i<L.length-1){ [L[i+1],L[i]]=[L[i],L[i+1]]; }
+    renderTakeaways(); changed();
+  });
+  document.getElementById('tk-add').addEventListener('click',()=>{ S.T.takeaways.push({lead:'',html:'',lvl:0}); renderTakeaways(); changed(); focusLast(); });
+  document.getElementById('tk-add-sub').addEventListener('click',()=>{ S.T.takeaways.push({lead:'',html:'',lvl:1}); renderTakeaways(); changed(); focusLast(); });
+  document.getElementById('tk-redraft').addEventListener('click',()=>{
+    if(!S.M) return;
+    if(!confirm('Reescrever os tópicos e a manchete com os números da base?\n\nO texto que você escreveu nos tópicos será substituído (o "Our take" é mantido se tiver texto).')) return;
+    const K=KINDS[S.kind], novo=K.draft(S.M);
+    // preserva o que é OPINIÃO: qualquer tópico cujo negrito comece com "Our take"
+    const keep=S.T.takeaways.filter(t=>/^our take/i.test((t.lead||'').trim())&&R.cleanRich(t.html).replace(/<[^>]+>/g,'').trim());
+    if(keep.length){ const ix=novo.findIndex(t=>/^our take/i.test(t.lead||'')); if(ix>=0) novo.splice(ix,1,...keep); else novo.push(...keep); }
+    S.T.takeaways=novo; S.T.deck=K.deck(S.M);
+    document.getElementById('t-deck').innerHTML=S.T.deck;
+    renderTakeaways(); changed();
+  });
+
+  // time
+  const tm=document.getElementById('team-list');
+  tm.addEventListener('input',e=>{ const row=e.target.closest('.tm'); if(!row) return; S.T.team[+row.dataset.i][e.target.dataset.f]=e.target.value; changed(); document.getElementById('team-n').textContent=S.T.team.length+' analistas'; });
+  tm.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-a]'); if(!b) return; const i=+b.closest('.tm').dataset.i, L=S.T.team;
+    if(b.dataset.a==='del'){ if(!confirm('Remover '+(L[i].name||'este analista')+'?')) return; L.splice(i,1); }
+    if(b.dataset.a==='up'&&i>0){ [L[i-1],L[i]]=[L[i],L[i-1]]; }
+    renderTeam(); changed();
+  });
+  document.getElementById('team-add').addEventListener('click',()=>{ S.T.team.push({name:'',email:'',phone:''}); renderTeam(); changed(); });
+  window.addEventListener('beforeunload',e=>{ if(S.dirty){ saveNow(); } });
+}
+function focusLast(){ const all=document.querySelectorAll('#tk-list .tki .top input'); if(all.length) all[all.length-1].focus(); }
+function changed(){ scheduleSave(); atualizarPreviaDebounced(); }
+
+// ═══════════════ PRÉVIA E SAÍDAS ═════════════════════════════════════════
+let _pT=null, _firstPreview=true;
+function atualizarPreviaDebounced(){ clearTimeout(_pT); _pT=setTimeout(()=>atualizarPrevia(false),450); }
+function htmlFinal(fonts,opts){ return KINDS[S.kind].render(S.M,S.T,fonts,opts||{}); }
+function atualizarPrevia(animar){
+  if(!S.M||!S.T) return;
+  const fr=document.getElementById('prev');
+  let y=0; try{ y=fr.contentWindow.scrollY||0; }catch(e){}
+  // na prévia as fontes vêm por endereço (leve, redesenha a cada tecla); no arquivo, embutidas
+  const calm=!(animar||_firstPreview);
+  _firstPreview=false;
+  fr.onload=()=>{ try{ if(calm&&y) fr.contentWindow.scrollTo(0,y); }catch(e){} };
+  fr.srcdoc=htmlFinal({displayUrl:FONT_URL.display,bodyUrl:FONT_URL.body},{calm:calm});
+}
+async function baixar(){
+  if(!S.M) return;
+  await saveNow();
+  const btn=document.getElementById('download'); btn.disabled=true; const old=btn.textContent; btn.textContent='Gerando…';
+  try{
+    const html=htmlFinal(await fonts64());
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=KINDS[S.kind].file(S.M);
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    setStatus('<span class="ok">✓ Baixado:</span> '+esc(a.download)+' ('+Math.round(html.length/1024)+' KB). Envie pelo WhatsApp como documento.',true);
+  }catch(e){ console.error(e); setStatus('<span class="bad">Falhou ao gerar</span>: '+esc(e.message),true); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+async function abrirAba(){
+  if(!S.M) return;
+  const html=htmlFinal(await fonts64());
+  const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  const w=window.open(url,'_blank'); if(!w) setStatus('O navegador bloqueou a aba nova — use “Baixar HTML”.');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+// ═══════════════ CARGA ═══════════════════════════════════════════════════
+function markOptions(){
+  const sel=document.getElementById('period');
+  [...sel.options].forEach(o=>{
+    const has=S.drafts[S.kind+':'+o.value]||lsGet(S.kind,o.value);
+    o.textContent=KINDS[S.kind].optLabel(o.value)+(has?'  ✎':'');
+  });
+}
+async function carregar(force){
+  const K=KINDS[S.kind];
+  setStatus('Carregando a base de '+K.label+'…');
+  document.getElementById('prev').srcdoc='<body style="background:#000;color:#888;font:13px sans-serif;display:grid;place-items:center;height:90vh">Carregando a base…</body>';
+  try{ await K.ready(force); }
+  catch(e){ console.error(e); setStatus('<span class="bad">Não consegui ler a base</span>: '+esc(e.message),true); return; }
+  const ps=K.periods();
+  const sel=document.getElementById('period');
+  sel.innerHTML=ps.slice(0,36).map(p=>'<option value="'+p+'">'+esc(K.optLabel(p))+'</option>').join('');
+  if(!ps.length){ setStatus('Sem dados para '+K.label+'.'); return; }
+  if(!RPTEST&&S.sqlOk!==false){
+    try{ (await rpc('admin_list_report_drafts',{p_kind:S.kind})||[]).forEach(r=>{ S.drafts[r.kind+':'+r.period]=true; }); S.sqlOk=true; }
+    catch(e){ if(isMissing(e)){ S.sqlOk=false; showSqlWarn(); } }
+  }
+  S.period=S.period&&ps.includes(S.period)?S.period:ps[0];
+  sel.value=S.period; markOptions();
+  await abrirEdicao();
+}
+async function abrirEdicao(){
+  const K=KINDS[S.kind];
+  try{ S.M=K.model(S.period); }
+  catch(e){ console.error(e); setStatus('<span class="bad">Erro ao montar os números</span>: '+esc(e.message),true); return; }
+  const d=await loadDraft(S.kind,S.period);
+  const base=K.defaults(S.M);
+  // time/disclosure: o último usado vira o padrão das novas edições
+  const lastTeam=lsGet('_team','-');
+  if(lastTeam&&Array.isArray(lastTeam.team)&&lastTeam.team.length){ base.team=lastTeam.team; if(lastTeam.disclosure) base.disclosure=lastTeam.disclosure; }
+  S.T=d?Object.assign({},base,d):base;
+  if(!Array.isArray(S.T.takeaways)) S.T.takeaways=base.takeaways;
+  if(!Array.isArray(S.T.team)) S.T.team=base.team;
+  S.dirty=false;
+  fillEditor();
+  document.getElementById('cover-sub').textContent=d?(d._updated_at?'rascunho salvo em '+new Date(d._updated_at).toLocaleString('pt-BR'):'rascunho deste navegador'):'rascunho novo, montado com os números';
+  // diagnóstico
+  const rows=K.auto(S.M)||[];
+  document.getElementById('auto-body').innerHTML=rows.map(r=>'<div class="auto-l"><div class="auto-k">'+r[0]+'</div><div>'+r[1]+'</div></div>').join('');
+  document.getElementById('auto-sum').textContent='dado até '+S.M.long;
+  _firstPreview=true; atualizarPrevia(true);
+  setStatus(d?'Rascunho aberto.':'Rascunho novo — os tópicos vieram dos números; escreva o “Our take”.');
+}
+
+// ═══════════════ HARNESS LOCAL ═══════════════════════════════════════════
+;(async()=>{
+  wire();
+  if(RPTEST){
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    await carregar(); return;
+  }
+  try{
+    const {data:{session}}=await sbAuth.auth.getSession();
+    if(!session){window.location.replace('/login.html');return}
+    _setAuthCookie(session);
+    sbAuth.auth.onAuthStateChange((ev,s)=>{if(s&&s.access_token){_setAuthCookie(s);}
+      else if(ev==='SIGNED_OUT'){document.cookie='sb-access-token=; Max-Age=0; Path=/';window.location.replace('/login.html')}});
+    // Portão ADMIN-ONLY: esta ferramenta NUNCA é exposta ao cliente.
+    let isAdmin=false;
+    try{ isAdmin=(await rpc('get_my_role'))==='admin'; }catch(e){ console.warn('get_my_role',e); }
+    if(!isAdmin){ try{ isAdmin=(await rpc('is_admin'))===true; }catch(e){ console.warn('is_admin',e); } }
+    if(!isAdmin){ document.getElementById('gate').hidden=true; document.getElementById('denied').hidden=false; return; }
+    document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
+    await carregar();
+  }catch(e){ console.error(e);
+    document.getElementById('gate').innerHTML='<div style="text-align:center;max-width:440px"><div style="font-size:32px">📄</div>'
+      +'<div style="font-weight:700;margin:8px 0 4px">Reports indisponível</div>'
+      +'<div class="muted">'+esc(String(e&&e.message||e))+'</div>'
+      +'<a class="hbtn" href="/index.html" style="margin-top:12px">← Voltar para a home</a></div>'; }
+})();
+</script>
+</body>
+</html>
