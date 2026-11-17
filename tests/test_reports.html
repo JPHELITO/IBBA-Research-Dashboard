@@ -179,6 +179,39 @@ try{
   ok('SECEX documento: sem NaN/undefined', !/NaN|undefined/.test(sh), (sh.match(/.{30}(NaN|undefined).{30}/)||[''])[0]);
   ok('SECEX documento: 4 seções + KPIs de aço, minério e celulose', (sh.match(/<section class="sec/g)||[]).length===4 && sh.indexOf('Iron ore exports')>=0 && sh.indexOf('Market pulp exports')>=0);
   ok('SECEX documento: "(c) Working days" literal (sem ©)', sh.indexOf('(c) Working days')>=0 && sh.indexOf('©')<0);
+
+  // ══ 4. a faixa de destaques (pedido de 17/11: tamanho padronizado, eixos, alinhamento) ═══
+  // Cada quadro tem as MESMAS 5 linhas, na mesma ordem: nome · número · variações · trimestre ·
+  // gráfico — a grade (subgrid) alinha linha a linha entre os quadros. O mês saiu de dentro do
+  // quadro (empurrava "Apparent consumption" para 2 linhas) e virou o título da faixa.
+  [['IABr', html], ['SECEX', sh]].forEach(function(x){
+    const d=new DOMParser().parseFromString(x[1],'text/html'), ks=[...d.querySelectorAll('.kpi')];
+    ok(x[0]+' destaques: 4 quadros', ks.length===4, ks.length);
+    ok(x[0]+' destaques: cada quadro tem nome, número, variações, trimestre e gráfico, nessa ordem',
+       ks.every(k=>[...k.children].map(c=>c.className).join()==='kl,kv,kd,kq,kc'), ks.map(k=>[...k.children].map(c=>c.className).join('|')).join(' / '));
+    ok(x[0]+' destaques: o mês não fica mais dentro do quadro (título único da faixa)',
+       !d.querySelector('.kl em') && d.querySelector('.kcap b') && d.querySelector('.kcap b').textContent==='September 2026');
+    const figs=ks.map(k=>k.querySelector('figure.ch.mini'));
+    ok(x[0]+' destaques: 4 gráficos do MESMO tamanho (--h:104px)', figs.every(f=>f&&f.querySelector('.plot').getAttribute('style')==='--h:104px'));
+    ok(x[0]+' destaques: gráfico com eixo Y (3 a 4 valores) e eixo X Sep-25 · Mar-26 · Sep-26',
+       figs.every(f=>{const y=f.querySelectorAll('.yl span').length, xs=[...f.querySelectorAll('.xl span')].map(e=>e.textContent).join(); return y>=3&&y<=4&&xs==='Sep-25,Mar-26,Sep-26';}),
+       figs.map(f=>f.querySelectorAll('.yl span').length+':'+[...f.querySelectorAll('.xl span')].map(e=>e.textContent).join('/')).join(' '));
+    ok(x[0]+' destaques: ponto no último mês + dado para a dica ao toque', figs.every(f=>f.querySelector('.dot')&&f.querySelector('script.chd')));
+    ok(x[0]+' destaques: variações em 2 linhas (MoM e YoY) e trimestre com QoQ', ks.every(k=>k.querySelectorAll('.kd .dl').length===2 && /QoQ/.test(k.querySelector('.kq').textContent)));
+  });
+  ok('IABr destaques: eixo da penetração com casas certas (10% · 20% · 30%)',
+     [...new DOMParser().parseFromString(html,'text/html').querySelectorAll('.kpi')[3].querySelectorAll('.yl span')].map(e=>e.textContent).join()==='10%,20%,30%');
+  ok('SECEX destaques: minério em milhões de t (33.9 Mt) e o gráfico também em Mt',
+     /33\.9/.test(new DOMParser().parseFromString(sh,'text/html').querySelectorAll('.kpi')[2].querySelector('.kv').textContent) &&
+     [...new DOMParser().parseFromString(sh,'text/html').querySelectorAll('.kpi')[2].querySelectorAll('.yl span')].every(e=>+e.textContent.replace(/,/g,'')<100));
+
+  // ══ 5. fonte que ainda não publicou o mês (os robôs rodam em horários diferentes) ═══════
+  ok('IABr set/26 completo: nada faltando', (M.missing||[]).length===0, (M.missing||[]).join());
+  ok('SECEX set/26 completo: nada faltando', (S.missing||[]).length===0, (S.missing||[]).join());
+  const pp2=mk(fx.pp); pp2.run("DELETE FROM secex_pulp_country WHERE period='2026-09'"); pp2.run("DELETE FROM secex_pulp_port WHERE period='2026-09'");
+  const S2=R.secexModel(sm,pp2,'2026-09');
+  ok('SECEX sem a celulose do mês: a tela avisa "celulose" e "celulose por porto"',
+     S2.missing.indexOf('celulose')>=0 && S2.missing.indexOf('celulose por porto')>=0 && S2.missing.indexOf('minério de ferro')<0, S2.missing.join());
 }catch(e){ ok('EXCEÇÃO', false, e.stack); }
   const f=out.filter(x=>x.indexOf('FAIL')===0).length;
   document.getElementById('out').textContent=(f?'❌ '+f+' FALHA(S)':'✅ TUDO OK')+' — '+out.length+' asserts\n\n'+out.join('\n');
