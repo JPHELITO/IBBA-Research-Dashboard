@@ -151,6 +151,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .gen-status.ok{color:var(--green);} .gen-status.err{color:var(--red);}
 /* Blast do WhatsApp */
 .gen.blast{border-top:1px solid var(--border);}
+.gen-date{padding:10px 12px;}
+.step-h{gap:7px;margin-bottom:8px;align-items:center;flex-wrap:wrap;} .step-h b{font-size:12.5px;}
+.step-n{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;font-weight:700;flex:none;}
+.step-sub{font-size:10.5px;color:var(--gray-mid);}
+.step-hint{font-size:11px;margin:-2px 0 8px;color:var(--gray-mid);} .step-hint.ok{color:var(--green);} .step-hint.warn{color:var(--orange);}
 .gen.blast .btn.primary{width:auto;padding:7px 14px;}
 .bl-hint{font-size:11px;color:var(--gray-mid);}
 .bl-selo{font-size:10.5px;color:var(--gray-mid);cursor:default;}
@@ -359,28 +364,24 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         <input id="clip-url" type="url" placeholder="Colar uma URL avulsa…"/>
         <button class="btn" id="clip-add">Adicionar</button>
       </div>
-      <div class="gen">
-        <div class="bar" style="margin-bottom:8px">
+      <!-- ordem de uso: a data vale para as duas etapas; 1) blast (grava os 3 destaques do dia)
+           2) clipping (o HTML do WhatsApp pega os destaques gravados na etapa 1) -->
+      <div class="gen gen-date">
+        <div class="bar" style="margin:0">
           <label for="cfg-ref-date" style="font-size:11px;color:var(--gray-mid)">Data do clipping:</label>
           <input type="date" class="sel" id="cfg-ref-date" title="Data de referência do clipping (default: hoje)">
         </div>
-        <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
-        <div class="gen-status" id="clip-status"></div>
-        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
-             polling escreve em #clip-status moram só na tela; este bloco relê o último job
-             pronto do banco no boot, então o Word já feito nunca mais "some". -->
-        <div id="clip-last" class="last-clip" hidden></div>
-        <div id="clip-fails" class="fails" hidden></div>
       </div>
 
       <!-- BLAST DO WHATSAPP - monta aqui, no navegador, o texto pronto p/ colar.
            Precos e manchetes saem do banco (zero IA); so os 3 destaques sao
            escritos por IA, num job separado e leve. Ver clipping/blast.py. -->
       <div class="gen blast">
-        <div class="bar" style="margin-bottom:8px">
-          <b style="font-size:12px">Blast do WhatsApp</b>
-          <span class="bl-selo" id="bl-selo" title=""></span>
+        <div class="bar step-h">
+          <span class="step-n">1</span><b>Blast do WhatsApp</b>
+          <span class="step-sub">primeira etapa — os 3 destaques entram no HTML</span>
         </div>
+        <div style="margin-bottom:8px"><span class="bl-selo" id="bl-selo" title=""></span></div>
         <div class="bar" style="gap:6px;margin-bottom:8px">
           <button class="btn primary" id="bl-gen" disabled>Gerar blast</button>
           <button class="btn" id="bl-copy" disabled>Copiar</button>
@@ -390,6 +391,21 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         <div class="gen-status" id="bl-status"></div>
         <textarea id="bl-out" class="bl-out" spellcheck="false" readonly hidden></textarea>
         <div class="bl-warn" id="bl-warn" hidden></div>
+      </div>
+
+      <div class="gen">
+        <div class="bar step-h">
+          <span class="step-n">2</span><b>Gerar clipping</b>
+          <span class="step-sub">Word · e-mail · HTML do WhatsApp</span>
+        </div>
+        <div class="step-hint" id="clip-step-hint"></div>
+        <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
+        <div class="gen-status" id="clip-status"></div>
+        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
+             polling escreve em #clip-status moram só na tela; este bloco relê o último job
+             pronto do banco no boot, então o Word já feito nunca mais "some". -->
+        <div id="clip-last" class="last-clip" hidden></div>
+        <div id="clip-fails" class="fails" hidden></div>
       </div>
 
     </div>
@@ -1256,7 +1272,13 @@ function blRenderPin(){
 function blRenderSelo(){
   const el=document.getElementById('bl-selo'); if(!el) return;
   const data=blDataRef(), r=blOficialDoDia(data);
-  if(!r){ el.textContent='sem destaques marcados para '+data.split('-').reverse().join('/'); el.className='bl-selo'; return; }
+  const hint=document.getElementById('clip-step-hint'), dd=data.split('-').reverse().join('/');
+  if(hint){
+    hint.textContent = r ? '✓ o HTML vai com os '+r.destaques.length+' destaques do blast de '+dd
+                         : '⚠ etapa 1 ainda não feita para '+dd+' — o HTML sai sem os destaques (Word e e-mail não mudam)';
+    hint.className='step-hint '+(r?'ok':'warn');
+  }
+  if(!r){ el.textContent='sem destaques marcados para '+dd; el.className='bl-selo'; return; }
   const q=r.at ? new Date(r.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
   el.textContent='★ '+r.destaques.length+' destaque(s) marcados para '+data.split('-').reverse().join('/')+(q?' · '+q:'');
   el.className='bl-selo on';
