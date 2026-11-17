@@ -27,7 +27,7 @@
   --dz-hi:rgba(255,255,255,.9);             /* luz na aresta de cima de uma folha */
   --dz-well:rgba(22,25,29,.05);             /* trilho afundado (grupo de botões, campo) */
   --dz-well-in:inset 0 1px 2px rgba(22,25,29,.08);
-  --dz-glass:rgba(253,252,250,.90);         /* vidro fosco do que flutua */
+  --dz-glass:rgba(253,252,250,.965);        /* vidro fosco do que flutua: quase opaco — a leitura nunca depende do desfoque */
   --dz-blur:blur(18px) saturate(1.6);
   /* os 3 nomes que as páginas já usam (onda 4) passam a apontar para a escala nova */
   --shadow:0 1px 0 rgba(var(--dz-ink),.035),0 2px 4px -2px rgba(var(--dz-ink),.08),0 16px 26px -20px rgba(var(--dz-ink),.34);
@@ -41,7 +41,7 @@ html.dark{
   --dz-hi:rgba(255,255,255,.055);
   --dz-well:rgba(0,0,0,.28);
   --dz-well-in:inset 0 1px 2px rgba(0,0,0,.45);
-  --dz-glass:rgba(22,26,32,.88);
+  --dz-glass:rgba(22,26,32,.955);
   --shadow:0 1px 0 rgba(0,0,0,.45),0 2px 4px -2px rgba(0,0,0,.55),0 18px 28px -18px rgba(0,0,0,.85);
   --dz-e2:0 1px 0 rgba(0,0,0,.5),0 4px 8px -3px rgba(0,0,0,.6),0 26px 40px -22px rgba(0,0,0,.9);
   --shadow-hover:0 1px 0 rgba(0,0,0,.5),0 8px 16px -6px rgba(0,0,0,.6),0 34px 54px -26px rgba(0,0,0,.95);
@@ -67,9 +67,8 @@ html.dark[data-pg] body{
     radial-gradient(760px 420px at 100% -80px,rgba(255,80,0,.055),rgba(255,80,0,0) 70%);
 }
 
-/* ── 3. TEXTO: seleção com a cor da marca; números de coluna com largura fixa ──────────────────── */
+/* ── 3. TEXTO: seleção com a cor da marca (tamanho e família de letra não mudam em lugar nenhum) ── */
 html[data-pg] ::selection{background:rgba(255,80,0,.20);}
-html[data-pg]{text-rendering:optimizeLegibility;}
 
 /* ── 4. BARRA DO TOPO (topnav.js injeta o CSS dela DEPOIS deste arquivo → seletor com html na frente).
         Sem brilho e sem halo, como combinado: só um degradê de tinta e a sombra que ela projeta no papel. */
