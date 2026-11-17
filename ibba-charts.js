@@ -18,7 +18,7 @@
 (function () {
   'use strict';
   if (!window.Chart) return;
-  var FONT = "'Inter','Segoe UI',Helvetica,Arial,sans-serif";
+  var FONT = "'Manrope','Inter','Segoe UI',Helvetica,Arial,sans-serif";
   function dark() { return document.documentElement.classList.contains('dark'); }
 
   function applyDefaults() {

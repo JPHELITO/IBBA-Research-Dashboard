@@ -14,6 +14,9 @@ function _syncThemeIcon(){var on=document.documentElement.classList.contains('da
   var b=document.getElementById('theme-btn');if(b)b.title=on?'Switch to light':'Switch to dark';}
 document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 </script>
+<!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
+<link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -23,6 +26,8 @@ document.addEventListener('DOMContentLoaded',_syncThemeIcon);
 <!-- Barra de navegação GLOBAL (mesma de todas as páginas). Injeta o .gnav no topo e esconde o
      .header/.orange-rule próprios da home no desktop (topnav.js CSS) → barra IDÊNTICA às demais. -->
 <script src="/topnav.js"></script>
+<!-- Cenas vivas dos ambientes (mina, floresta, órbita de empresas): só desenho e movimento -->
+<script src="/ibba-scenes.js"></script>
 <script src="/calendar-lib.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
@@ -1512,6 +1517,8 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
 <link rel="stylesheet" href="/ibba-design.css"/>
+<!-- O HUB (nov/2026): grade e pele novas da Home. Desligar = tirar esta linha e o ibba-hub.js do fim do <body>. -->
+<link rel="stylesheet" href="/ibba-hub.css"/>
 </head>
 <body>
 
@@ -1563,7 +1570,7 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
   <div class="area-secrow" data-tour="home-sectors">
 
     <div class="sector-card live has-bg sc-card" data-flag="sector_steel">
-      <div class="sector-bg sector-bg-steel"></div>
+      <div class="sector-bg sector-bg-steel" data-scene="mm"></div>
       <a class="sc-main" href="Steel and Mining/steel_sm_dashboard.html#prices"><span class="sector-card-title">Metals &amp; Mining</span></a>
       <div class="sc-kpis" id="sck-steel"></div>
       <div class="sector-tabs">
@@ -1575,7 +1582,7 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
     </div>
 
     <div class="sector-card live has-bg sc-card" data-flag="sector_pp">
-      <div class="sector-bg sector-bg-pp"></div>
+      <div class="sector-bg sector-bg-pp" data-scene="pp"></div>
       <a class="sc-main" href="Pulp and Paper/pp_dashboard.html#pulp"><span class="sector-card-title">Pulp &amp; Paper</span></a>
       <div class="sc-kpis" id="sck-pp"></div>
       <div class="sector-tabs">
@@ -1585,7 +1592,7 @@ html.dark .ev-tod{background:rgba(255,255,255,.08);color:#A9B0BB;}
     </div>
 
     <div class="sector-card live has-bg sc-card" data-flag="stock_guide">
-      <div class="sector-bg sector-bg-sg"></div>
+      <div class="sector-bg sector-bg-sg" data-scene="sg"></div>
       <a class="sc-main" href="stock-guide.html"><span class="sector-card-title">Stock Guide</span></a>
       <div class="sc-kpis" id="sck-sg"></div>
       <div class="sector-tabs">
@@ -4230,5 +4237,6 @@ _every(()=>{ if(document.querySelector('.page.has-events')) loadEvents(); }, 5 *
   }
 })();
 </script>
+<script src="/ibba-hub.js"></script>
 </body>
 </html>

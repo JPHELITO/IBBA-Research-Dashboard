@@ -10,12 +10,17 @@
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <!-- esqueleto nas molduras dos gráficos desde o 1º desenho; o loadDB() tira a classe ao terminar -->
 <script>document.documentElement.classList.add('ibba-loading')</script>
+<!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
+<link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <!-- ── Supabase Auth ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<!-- Cena viva da faixa do topo (a mesma do hub): só desenho e movimento -->
+<script src="/ibba-scenes.js"></script>
 <script src="/export-lib.js"></script>
 <script>
 // ⚠️  Substitua pelos seus valores: Supabase → Settings → API
@@ -596,8 +601,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
 <!-- Faixa do setor (2026-10-19): a foto do cartão da home "abre" o topo da página na troca de
      página (CSS e transição no topnav.js). Só computador. -->
-<div class="ibba-band"><div class="ibba-band-photo" style="background-image:url('/assets/sector-steel.jpg');background-position:right 42%"></div>
-  <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1">Metals &amp; Mining</div></div></div>
+<div class="ibba-band"><div class="ibba-band-photo ibba-band-scene" data-scene="mm" data-scene-k="0.54"></div>
+  <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1" data-n="01">Metals &amp; Mining</div></div></div>
 
 <!-- ══ STICKY HEADER ══════════════════════════════════════════════════════════ -->
 <div class="sticky-header">
@@ -1345,7 +1350,7 @@ function baseOpts(ov={}){
   const mobile=IS_MOBILE();
   const tickSize=mobile?8:9;
   const _dark=document.documentElement.classList.contains('dark');
-  const TICK={color:_dark?'#9aa1ab':'#ADADAD',font:{size:tickSize,family:"'Inter','Segoe UI',sans-serif"},maxRotation:0};
+  const TICK={color:_dark?'#9aa1ab':'#ADADAD',font:{size:tickSize,family:"'Manrope','Inter','Segoe UI',sans-serif"},maxRotation:0};
   return{
     responsive:true,maintainAspectRatio:false,
     interaction:{mode:'index',intersect:false},
@@ -1357,8 +1362,8 @@ function baseOpts(ov={}){
         backgroundColor:'#1A1A1A',titleColor:'rgba(255,255,255,.75)',
         bodyColor:'#fff',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
         padding:mobile?8:10,cornerRadius:8,boxPadding:4,
-        titleFont:{size:mobile?9.5:10,weight:'600',family:"'Inter','Segoe UI',sans-serif"},
-        bodyFont:{size:mobile?10.5:11,family:"'Inter','Segoe UI',sans-serif"},
+        titleFont:{size:mobile?9.5:10,weight:'600',family:"'Manrope','Inter','Segoe UI',sans-serif"},
+        bodyFont:{size:mobile?10.5:11,family:"'Manrope','Inter','Segoe UI',sans-serif"},
         ...(window.IBBAChart?IBBAChart.tip(mobile):{}),
         ...(tooltip||{}),
         callbacks:{...(window.IBBAChart?IBBAChart.tipCallbacks:{}),...((tooltip&&tooltip.callbacks)||{})}

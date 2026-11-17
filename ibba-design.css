@@ -21,6 +21,10 @@
    6 · 8 · 12 · 16 · pílula (onda 4). Aqui só se USA as duas.
    ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 
+/* ── 0. FONTES DA CASA (as mesmas dos relatórios em HTML: Unbounded em títulos e números, Manrope no texto) ── */
+@font-face{font-family:"Unbounded";font-style:normal;font-weight:200 900;font-display:swap;src:url("/assets/fonts/unbounded.woff2") format("woff2");}
+@font-face{font-family:"Manrope";font-style:normal;font-weight:200 800;font-display:swap;src:url("/assets/fonts/manrope.woff2") format("woff2");}
+
 /* ── 1. TOKENS ─────────────────────────────────────────────────────────────────────────────── */
 :root{
   --dz-ink:22,25,29;                        /* tinta: cor das sombras e dos fios translúcidos */
@@ -84,6 +88,11 @@ html .gnav-mark{background:linear-gradient(180deg,#FF6418 0%,#F04A00 100%);
 html .gnav-out,html .gnav-theme,html .gnav-tut{background:rgba(255,255,255,.035);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
 html .gnav-out:hover,html .gnav-theme:hover,html .gnav-tut:hover{background:rgba(255,255,255,.08);}
+/* letras da casa na barra: Manrope nos itens, Unbounded na marca */
+html .gnav,html .gnav-out,html .gnav-tut,html .gn-drop a,html .gnt-pop,html .gnav-sheet{font-family:"Manrope","Inter","Segoe UI",Helvetica,Arial,sans-serif;}
+html .gnav-brand b{font-family:"Unbounded","Manrope",sans-serif;font-weight:600;font-size:12px;letter-spacing:.01em;}
+html .gn-item{font-weight:700;letter-spacing:.01em;}
+html .gn-cat{font-family:"Manrope",sans-serif;font-weight:800;}
 /* menus e cartão do time: plano 4 (vidro fosco + sombra de flutuação) */
 html .gn-drop,html .gnt-pop{background:var(--dz-glass);-webkit-backdrop-filter:var(--dz-blur);backdrop-filter:var(--dz-blur);
   border-color:rgba(var(--dz-ink),.10);box-shadow:inset 0 1px 0 var(--dz-hi),var(--shadow-pop);}
@@ -369,3 +378,86 @@ html[data-pg="data"] .search,html[data-pg="quarterly"] .sel{box-shadow:var(--dz-
 html[data-pg="quarterly"] .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
 html.dark[data-pg="quarterly"] .btn{box-shadow:none;}
 html[data-pg="quarterly"] .btn.ghost{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px 0 rgba(var(--dz-ink),.04);}
+
+
+/* ── TROCA DE PÁGINA em camadas (todas as páginas): a que sai recua e escurece, a que chega sobe por cima ── */
+@keyframes ibba-vt-recua{to{transform:scale(.972);opacity:0;}}
+@keyframes ibba-vt-sobe{from{opacity:0;transform:translateY(34px);}}
+@media (prefers-reduced-motion:no-preference){
+  html::view-transition-old(root){animation:.3s cubic-bezier(.4,0,1,1) both ibba-vt-recua;transform-origin:50% 30%;}
+  html::view-transition-new(root){animation:.56s cubic-bezier(.16,1,.3,1) .07s both ibba-vt-sobe;}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   FAIXA DO AMBIENTE (M&M · P&P · Stock Guide) — a cena viva do hub continua no topo da página
+   ───────────────────────────────────────────────────────────────────────────────────────────────
+   A faixa de 64px com foto virou um cabeçalho de 132px com a MESMA cena do ambiente (ibba-scenes.js),
+   título em Unbounded e o número vazado. Na viagem hub → página, a laje do hub encolhe até esta faixa
+   (View Transition, nomes ibba-sector / ibba-sector-title do topnav.js) e o conteúdo sobe de mais
+   fundo (classe ibba-chega no <html>, só durante a viagem). Só computador (≥901px), como antes.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+@media (min-width:901px){
+  html .ibba-band{height:132px;background:#000;box-shadow:inset 0 -1px 0 rgba(255,85,0,.5);}
+  html .ibba-band-photo.ibba-band-scene{left:0;right:0;width:auto;background:none;-webkit-mask-image:none;mask-image:none;isolation:auto;}
+  html .ibba-band-photo.ibba-band-scene::before{display:none;}
+  html .ibba-band-in{padding:0 28px;background:linear-gradient(90deg,#000 0,#000 210px,rgba(0,0,0,.72) 390px,rgba(0,0,0,0) 640px);}
+  html .ibba-band-title{font:500 30px/1.05 "Unbounded","Manrope",sans-serif;letter-spacing:-.03em;}
+  html .ibba-band-title[data-n]::before{content:attr(data-n);display:block;margin-bottom:9px;font:300 14px/1 "Unbounded",sans-serif;letter-spacing:.02em;
+    color:#000;-webkit-text-stroke:.9px #FF5500;paint-order:stroke fill;}
+  html .ibba-band-title::after{width:34px;height:2px;margin-top:12px;border-radius:0;}
+  /* Stock Guide: a tela de espera começa embaixo da faixa (que já está na tela na chegada) */
+  html[data-pg="sg"] .splash{top:190px;}
+}
+@keyframes ibba-vt-fundo{from{opacity:0;transform:translateY(72px);}}
+@media (prefers-reduced-motion:no-preference){
+  html.ibba-chega::view-transition-new(root){animation:.74s cubic-bezier(.16,1,.3,1) both ibba-vt-fundo;}
+  html.ibba-chega::view-transition-group(ibba-sector),html.ibba-chega::view-transition-group(ibba-sector-title){animation-duration:.74s;animation-timing-function:cubic-bezier(.65,0,.35,1);}
+}
+
+/* a laje que encolhe até a faixa: o que a foto não cobrir é PRETO (não o fundo da página) e as duas fotos ficam presas ao topo */
+::view-transition-group(ibba-sector){background:#000;}
+::view-transition-old(ibba-sector),::view-transition-new(ibba-sector){object-position:right top;}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   IDENTIDADE (nov/2026, 2ª rodada) — as letras e o preto / branco / laranja dos relatórios em HTML
+   passam a valer em TODAS as páginas do cliente (a Home tem a sua própria folha: ibba-hub.css).
+     · texto em Manrope (var(--font) de cada página passa a apontar para ela);
+     · títulos de página e números de destaque em Unbounded;
+     · claro: mesa cinza-neutra com folhas brancas; escuro: preto de verdade (#050506 / #0D0D0F),
+       no lugar do azulado antigo; cantos de 16px.
+   Verde e vermelho de dado financeiro NÃO mudam.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+html[data-pg]{--font:"Manrope","Inter","Segoe UI",Helvetica,Arial,sans-serif;--display:"Unbounded","Manrope",system-ui,sans-serif;--radius:16px;}
+html[data-pg]:not([data-pg="home"]):not([data-pg="market"]){
+  --gray-light:#E8E7E3;--g-light:#E8E7E3;--bg:#E8E7E3;--white:#FFFFFF;--card:#FFFFFF;--border:#D8D6D0;--black:#0A0A0B;}
+html.dark[data-pg]:not([data-pg="home"]):not([data-pg="market"]){
+  --gray-light:#050506;--g-light:#050506;--bg:#050506;--white:#0D0D0F;--card:#0D0D0F;--border:#232326;
+  --black:#F4F4F2;--gray-dark:#CFCFCC;--g-dark:#CFCFCC;--gray-mid:#8C8C88;--g-mid:#8C8C88;--rule:#19191C;--tint:#131316;}
+html[data-pg="market"]{--bg:#050506;--panel:#0D0D0F;--panel-2:#141417;--panel-3:#1D1D21;--border:#232326;--border-2:#34343A;
+  --text:#F4F4F2;--dim:#A9A9A5;--mute:#77777A;--grid:#1A1A1D;}
+html[data-pg="market"] body.theme-light{--bg:#E8E7E3;--panel:#FFFFFF;--panel-2:#F6F5F2;--panel-3:#ECEAE5;--border:#D8D6D0;--border-2:#C9C7C0;
+  --text:#0A0A0B;--dim:#55544F;--mute:#85847F;--grid:#ECEAE6;}
+html[data-pg] body{font-family:var(--font);}
+/* o fundo deixa de ter o calor laranja no canto (a marca agora está nas cenas e nos fios) */
+html[data-pg]:not([data-pg="home"]) body{background-image:radial-gradient(1280px 460px at 50% -90px,rgba(255,255,255,.55),rgba(255,255,255,0) 72%);}
+html.dark[data-pg]:not([data-pg="home"]) body{background-image:none;}
+html[data-pg="mw"] body{background-image:none;}
+
+/* títulos de página e números de destaque */
+html[data-pg="news"] .page-title,html[data-pg="agenda"] .cal-title,html[data-pg="mw"] .mw-title,
+html:is([data-pg="data"],[data-pg="quarterly"]) .title,html:is([data-pg="mm"],[data-pg="pp"]) .mob-picker-title{
+  font-family:var(--display);font-weight:500;letter-spacing:-.035em;}
+html[data-pg="news"] .page-title{font-size:23px;}
+html[data-pg="agenda"] .cal-title{font-size:19px;min-width:216px;}
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-value{font-family:var(--display);font-weight:300;letter-spacing:-.045em;}
+html:is([data-pg="mm"],[data-pg="pp"]) .kpi-label{font-weight:700;letter-spacing:.08em;}
+html:is([data-pg="mm"],[data-pg="pp"]) .chart-title{font-weight:700;letter-spacing:-.012em;}
+html[data-pg="news"] .stat-num{font-family:var(--display);font-weight:400;letter-spacing:-.045em;}
+html[data-pg="market"] .ah-id .ah-nm{font-family:var(--display);font-weight:500;font-size:19.5px;letter-spacing:-.035em;}
+html[data-pg="market"] .ah-px .px{font-family:var(--display);font-weight:300;font-size:27px;letter-spacing:-.045em;}
+html[data-pg="mw"] .kpi .v{font-family:var(--display);font-weight:300;letter-spacing:-.04em;}
+html[data-pg="sg"] .s2-name{font-family:var(--display);font-weight:500;letter-spacing:-.02em;}
+html[data-pg="sg"] .sg-tab,html[data-pg="quarterly"] .tab{font-weight:700;}
+html[data-pg="market"] .mtabs button{font-family:var(--font);}

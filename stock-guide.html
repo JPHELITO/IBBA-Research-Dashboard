@@ -6,12 +6,17 @@
 <meta name="theme-color" content="#111111"/>
 <title>Stock Guide</title>
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+<!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
+<link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="stock-guide-lib.js"></script>
 <script src="/topnav.js"></script>
+<!-- Cena viva da faixa do topo (a mesma do hub): só desenho e movimento -->
+<script src="/ibba-scenes.js"></script>
 <script src="/export-lib.js"></script>
 <style>
 :root{--orange:#FF5000;--black:#111;--g-dark:#2C2C2C;--g-mid:#8C8C8C;--g-light:#EBE8E2;--border:#D6D1C9;
@@ -312,6 +317,11 @@ html.dark .sec-sub{color:var(--g-mid)}
 <link rel="stylesheet" href="/ibba-design.css"/>
 </head>
 <body>
+
+<!-- FAIXA DO AMBIENTE (nov/2026): a cena viva do hub continua no topo da página; o cartão do Stock Guide na home
+     cresce até virar esta faixa (CSS e viagem no topnav.js / ibba-design.css). Só computador. -->
+<div class="ibba-band"><div class="ibba-band-photo ibba-band-scene" data-scene="sg" data-scene-k="0.54"></div>
+  <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1" data-n="03">Stock Guide</div></div></div>
 
 <div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading the Stock Guide…</div></div>
 <div id="denied" class="splash" hidden><div style="font-size:34px">🔒</div><div><b>Unavailable</b></div>
