@@ -294,6 +294,10 @@ try{
   ok('notícias: link para a fonte só se for http(s)', nd.getElementById('st-0').querySelector('a.st-l') && !nd.getElementById('st-3').querySelector('a.st-l'));
   ok('notícias: publicações e Earnings Review (link javascript: vira texto)',
      nd.querySelectorAll('#research .pub').length===3 && nd.querySelectorAll('#research a.pub').length===2 && /3Q26 Review/.test(nd.getElementById('research').textContent));
+  ok('notícias: tickers da publicação embaixo do título; à direita só a data (título nunca espremido)',
+     (()=>{const r=nd.querySelector('#research .pub'); return r.querySelector('.pub-b .pub-n').textContent==='Vale: Update' &&
+       r.querySelector('.pub-b .pub-c').textContent==='VALE3' && r.querySelector('.pub-m').textContent==='Nov 9';})() &&
+     !nd.querySelectorAll('#research .pub')[1].querySelector('.pub-c'));
   ok('notícias: destaques no topo só quando há', nd.getElementById('hl') && nd.querySelectorAll('#hl li.tk').length===2 &&
      !new DOMParser().parseFromString(R.renderNews(Object.assign({},NM,{highlights:[]}),null,{}),'text/html').getElementById('hl'));
   ok('notícias: índice e barra do celular com o número certo de colunas',
