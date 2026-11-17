@@ -163,6 +163,7 @@ label.f{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;
     <!-- ═══════════ EDITOR ═══════════ -->
     <div>
       <div id="sqlwarn" hidden></div>
+      <div id="datawarn" class="warn" hidden></div>
 
       <div class="panel">
         <div class="panel-h"><h2>Capa</h2><span class="sub" id="cover-sub"></span></div>
@@ -613,7 +614,8 @@ function markOptions(){
   const sel=document.getElementById('period');
   [...sel.options].forEach(o=>{
     const has=S.drafts[S.kind+':'+o.value]||lsGet(S.kind,o.value);
-    o.textContent=KINDS[S.kind].optLabel(o.value)+(has?'  ✎':'');
+    // edição que já tem texto seu salvo (as outras abrem com o rascunho montado dos números)
+    o.textContent=KINDS[S.kind].optLabel(o.value)+(has?' · rascunho salvo':'');
   });
 }
 async function carregar(force){
@@ -653,6 +655,12 @@ async function abrirEdicao(){
   const rows=K.auto(S.M)||[];
   document.getElementById('auto-body').innerHTML=rows.map(r=>'<div class="auto-l"><div class="auto-k">'+r[0]+'</div><div>'+r[1]+'</div></div>').join('');
   document.getElementById('auto-sum').textContent='dado até '+S.M.long;
+  // fonte que ainda não publicou ESTE mês: o relatório sairia com travessão nessa parte
+  const dw=document.getElementById('datawarn'), miss=S.M.missing||[];
+  dw.hidden=!miss.length;
+  dw.innerHTML=miss.length?'<b>Ainda sem dado de '+esc(miss.join(', '))+' em '+esc(S.M.label)+'.</b> '+
+    'Os robôs das fontes rodam em horários diferentes; essa parte do relatório sai com travessão (—) até o dado chegar. '+
+    'Se o mês acabou de sair, espere o próximo ciclo e clique em ↻ Recarregar dados.':'';
   _firstPreview=true; atualizarPrevia(true);
   setStatus(d?'Rascunho aberto.':'Rascunho novo — os tópicos vieram dos números; escreva o “Our take”.');
 }
