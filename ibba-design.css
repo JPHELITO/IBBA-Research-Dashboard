@@ -31,7 +31,7 @@
   --dz-hi:rgba(255,255,255,.9);             /* luz na aresta de cima de uma folha */
   --dz-well:rgba(22,25,29,.05);             /* trilho afundado (grupo de botões, campo) */
   --dz-well-in:inset 0 1px 2px rgba(22,25,29,.08);
-  --dz-glass:rgba(253,252,250,.965);        /* vidro fosco do que flutua: quase opaco — a leitura nunca depende do desfoque */
+  --dz-glass:rgba(255,255,255,.97);        /* vidro fosco do que flutua: quase opaco — a leitura nunca depende do desfoque */
   --dz-blur:blur(18px) saturate(1.6);
   /* os 3 nomes que as páginas já usam (onda 4) passam a apontar para a escala nova */
   --shadow:0 1px 0 rgba(var(--dz-ink),.035),0 2px 4px -2px rgba(var(--dz-ink),.08),0 16px 26px -20px rgba(var(--dz-ink),.34);
@@ -45,7 +45,7 @@ html.dark{
   --dz-hi:rgba(255,255,255,.055);
   --dz-well:rgba(0,0,0,.28);
   --dz-well-in:inset 0 1px 2px rgba(0,0,0,.45);
-  --dz-glass:rgba(22,26,32,.955);
+  --dz-glass:rgba(16,16,18,.965);
   --shadow:0 1px 0 rgba(0,0,0,.45),0 2px 4px -2px rgba(0,0,0,.55),0 18px 28px -18px rgba(0,0,0,.85);
   --dz-e2:0 1px 0 rgba(0,0,0,.5),0 4px 8px -3px rgba(0,0,0,.6),0 26px 40px -22px rgba(0,0,0,.9);
   --shadow-hover:0 1px 0 rgba(0,0,0,.5),0 8px 16px -6px rgba(0,0,0,.6),0 34px 54px -26px rgba(0,0,0,.95);
@@ -180,13 +180,13 @@ html[data-pg="home"] .mc-tip,html[data-pg="home"] .th-name{background:rgba(22,25
 html:is([data-pg="mm"],[data-pg="pp"]) .sticky-header{box-shadow:0 1px 0 rgba(var(--dz-ink),.05),0 14px 22px -18px rgba(var(--dz-ink),.36);}
 html.dark:is([data-pg="mm"],[data-pg="pp"]) .sticky-header{box-shadow:0 1px 0 rgba(0,0,0,.5),0 16px 26px -16px rgba(0,0,0,.9);}
 @media (min-width:769px){
-  html:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(253,252,250,.86);
+  html:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(255,255,255,.86);
     -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.9);}
-  html:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(235,232,226,.80);
+  html:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(232,231,227,.82);
     -webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);}
-  html.dark:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(28,32,38,.84);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
-  html.dark:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html.dark:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(21,23,27,.80);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .secondary-nav{background:rgba(13,13,15,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+  html.dark:is([data-pg="mm"],[data-pg="pp"]) .filter-bar,html.dark:is([data-pg="mm"],[data-pg="pp"]) .pred-controls{background:rgba(5,5,6,.82);}
 
   /* aba de SEÇÃO: continua laranja (D2), mas deixa de ser um retângulo de ponta a ponta — vira uma tecla
      recuada dentro da barra. O bloco que desliza (IBBASlide) é só o trilho; quem desenha é o ::before. */
@@ -310,9 +310,9 @@ html[data-pg="news"] .search-input:focus,html[data-pg="news"] .date-in:focus{box
 html[data-pg="news"] .facet-row .bx{box-shadow:var(--dz-well-in);}
 html[data-pg="news"] .facet-row.on .bx{box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
 /* divisor do dia fica preso no topo da lista: vidro fosco */
-html[data-pg="news"] .day-divider{background:rgba(251,250,247,.84);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+html[data-pg="news"] .day-divider{background:rgba(246,245,242,.86);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
   box-shadow:0 1px 0 rgba(var(--dz-ink),.04),0 10px 14px -14px rgba(var(--dz-ink),.4);}
-html.dark[data-pg="news"] .day-divider{background:rgba(35,39,46,.84);}
+html.dark[data-pg="news"] .day-divider{background:rgba(19,19,22,.88);}
 html[data-pg="news"] .tl-tip{background:rgba(22,25,29,.94);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 10px 20px -8px rgba(var(--dz-ink),.5);}
 html[data-pg="news"] .load-more{box-shadow:var(--dz-key);transition:background var(--ibba-t-ui,240ms) ease,box-shadow var(--ibba-t-ui,240ms) ease;}
 html[data-pg="news"] .btn-clear{box-shadow:inset 0 1px 0 var(--dz-hi);}
@@ -406,10 +406,16 @@ html[data-pg="quarterly"] .btn.ghost{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px
   html .ibba-band-title[data-n]::before{content:attr(data-n);display:block;margin-bottom:9px;font:300 14px/1 "Unbounded",sans-serif;letter-spacing:.02em;
     color:#000;-webkit-text-stroke:.9px #FF5500;paint-order:stroke fill;}
   html .ibba-band-title::after{width:34px;height:2px;margin-top:12px;border-radius:0;}
+  /* a aba em que você está, ao lado do fio laranja do título; entra a cada troca */
+  html .ibba-band-in{position:relative;}
+  html .ibba-band-sec{position:absolute;left:76px;bottom:27px;font:500 9.5px/1 "Unbounded","Manrope",sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#FF5500;white-space:nowrap;}
+  html .ibba-band-sec:empty{display:none;}
   /* Stock Guide: a tela de espera começa embaixo da faixa (que já está na tela na chegada) */
   html[data-pg="sg"] .splash{top:190px;}
 }
 @keyframes ibba-vt-fundo{from{opacity:0;transform:translateY(72px);}}
+@keyframes ibba-sec-in{from{opacity:0;transform:translateX(-14px);}}
+@media (prefers-reduced-motion:no-preference){ html .ibba-band-sec.in{animation:ibba-sec-in .55s cubic-bezier(.16,1,.3,1) backwards;} }
 @media (prefers-reduced-motion:no-preference){
   html.ibba-chega::view-transition-new(root){animation:.74s cubic-bezier(.16,1,.3,1) both ibba-vt-fundo;}
   html.ibba-chega::view-transition-group(ibba-sector),html.ibba-chega::view-transition-group(ibba-sector-title){animation-duration:.74s;animation-timing-function:cubic-bezier(.65,0,.35,1);}

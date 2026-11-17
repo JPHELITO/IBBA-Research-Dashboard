@@ -24,7 +24,7 @@
   /* ── estilo (uma vez) ─────────────────────────────────────────────────────────────────────── */
   var CSS = '\
 .sc{position:absolute;inset:0;overflow:hidden;background:#000;contain:strict;pointer-events:none;isolation:isolate;}\
-.sc-board{position:absolute;left:0;bottom:0;height:' + H + 'px;transform-origin:left bottom;transform:scale(var(--sc-k,1));}\
+/* atmosfera: um clarão quente no horizonte de cada ambiente (parado; quem se move são as peças) */\n.sc::before{content:"";position:absolute;inset:0;pointer-events:none;}\n.sc-mm::before{background:radial-gradient(58% 92% at 90% 100%,rgba(255,85,0,.26),rgba(255,85,0,.07) 46%,rgba(255,85,0,0) 72%);}\n.sc-pp::before{background:radial-gradient(52% 84% at 84% 100%,rgba(255,110,30,.17),rgba(255,110,30,0) 70%),radial-gradient(46% 70% at 34% 100%,rgba(64,170,96,.10),rgba(64,170,96,0) 72%);}\n.sc-sg::before{background:radial-gradient(44% 70% at 74% 44%,rgba(255,85,0,.16),rgba(255,85,0,0) 72%);}\n.sc-board{position:absolute;left:0;bottom:0;height:' + H + 'px;transform-origin:left bottom;transform:scale(var(--sc-k,1));}\
 .sc-strip{position:absolute;left:0;bottom:0;height:' + H + 'px;background-repeat:repeat-x;background-position:left bottom;will-change:transform;}\
 .sc-obj{position:absolute;right:0;bottom:0;width:560px;height:' + H + 'px;}\
 .sc-obj>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}\
@@ -332,7 +332,24 @@
       });
     } catch (e) {}
   }
+  /* FAIXA DO AMBIENTE: mostra a aba em que você está (Prices, Imports, Comp Table…) e o nome entra a cada troca.
+     Só lê a classe da aba ativa que a página já mantém — nenhuma função da página muda. */
+  function bandSync() {
+    try {
+      var into = document.querySelector('.ibba-band-in'); if (!into || into.querySelector('.ibba-band-sec')) return;
+      var nav = document.querySelector('.secondary-nav') || document.querySelector('.wrap > .sg-tabs'); if (!nav) return;
+      var lab = el('ibba-band-sec'); into.appendChild(lab);
+      var set = function () {
+        var a = nav.querySelector('.snav-btn.active, .sg-tab.active'), txt = a ? (a.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        if (!txt || lab.getAttribute('data-t') === txt) return;
+        lab.setAttribute('data-t', txt); lab.textContent = txt;
+        lab.classList.remove('in'); void lab.offsetWidth; lab.classList.add('in');
+      };
+      if (window.MutationObserver) new MutationObserver(set).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+      set();
+    } catch (e) {}
+  }
   window.IBBAScenes = { mount: mount, auto: auto, setMoves: setMoves, logos: LOGOS, names: SG_NAMES };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { auto(); });
-  else auto();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { auto(); bandSync(); });
+  else { auto(); bandSync(); }
 })();

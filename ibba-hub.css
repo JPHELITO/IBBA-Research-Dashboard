@@ -239,14 +239,14 @@ html[data-pg="home"] .hm-pop-chip.on,html[data-pg="home"] .modal-ranges button.a
 @keyframes hub-some{from{opacity:0;}}
 @media (min-width:1025px) and (prefers-reduced-motion:no-preference){
   html[data-pg="home"] .page::before{animation:hub-laje .9s var(--ibba-expo,ease) backwards;}
-  html[data-pg="home"] .sector-card.has-bg{animation:hub-amb 1.05s var(--ibba-expo,ease) backwards;}
-  html[data-pg="home"] .sector-card.has-bg:nth-child(2){animation-delay:.09s;}
-  html[data-pg="home"] .sector-card.has-bg:nth-child(3){animation-delay:.18s;}
-  html[data-pg="home"] .area-events{animation:hub-some .9s ease .34s backwards;}
-  html[data-pg="home"] .area-reports{animation:hub-some .9s ease .42s backwards;}
-  html[data-pg="home"] .area-news{animation:hub-sobe .95s var(--ibba-expo,ease) .26s backwards;}
-  html[data-pg="home"] .area-comm{animation:hub-sobe .95s var(--ibba-expo,ease) .36s backwards;}
-  html[data-pg="home"] .area-heat{animation:hub-sobe .95s var(--ibba-expo,ease) .46s backwards;}
+  html[data-pg="home"] .sector-card.has-bg{animation:hub-amb .85s var(--ibba-expo,ease) backwards;}
+  html[data-pg="home"] .sector-card.has-bg:nth-child(2){animation-delay:.07s;}
+  html[data-pg="home"] .sector-card.has-bg:nth-child(3){animation-delay:.14s;}
+  html[data-pg="home"] .area-events{animation:hub-some .7s ease .2s backwards;}
+  html[data-pg="home"] .area-reports{animation:hub-some .7s ease .26s backwards;}
+  html[data-pg="home"] .area-news{animation:hub-sobe .8s var(--ibba-expo,ease) .1s backwards;}
+  html[data-pg="home"] .area-comm{animation:hub-sobe .8s var(--ibba-expo,ease) .17s backwards;}
+  html[data-pg="home"] .area-heat{animation:hub-sobe .8s var(--ibba-expo,ease) .24s backwards;}
 }
 
 /* ══ 5. ENTRAR NO AMBIENTE (ibba-hub.js põe .hub-entra no <html> e .entra no ambiente clicado) ════
