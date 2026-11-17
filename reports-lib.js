@@ -1017,7 +1017,8 @@
   // Fontes = as MESMAS tabelas das páginas de M&M e P&P:
   //   aço      → secex_imports / secex_exports (categorias do dicionário único de SH6)
   //              + secex_country (origem/destino) + import_prediction/pred_exports
-  //   minério  → secex_iron_ore (finos/pelotas × país)
+  //   minério  → secex_iron_ore (finos/pelotas × país) + secex_iron_ore_port (porto; MESMO
+  //              download do MDIC, então porto e país somam igual)
   //   celulose → secex_pulp_country (produto × país) + secex_pulp_port (porto, todas as fibras)
   //   dias úteis → calendar (pulp_paper.db) — UM calendário para os três
   var PT_EN = {
@@ -1179,6 +1180,20 @@
     // ── minério
     var iron = seriesBy(sm, "SELECT period, product AS k, SUM(volume_ktons) AS v, SUM(revenue_usd_mn) AS r FROM secex_iron_ore WHERE direction='exp' GROUP BY period, product");
     var ironTot = { vol: addMaps((iron.Fines || {}).vol, (iron.Pellets || {}).vol), rev: addMaps((iron.Fines || {}).rev, (iron.Pellets || {}).rev) };
+    // ── minério por PORTO — as 4 linhas do PDF do analista + Others (Corumbá e resíduos).
+    //    Nomes = os da base (_shared/ports.py); o Porto do Açu é a URF "Campos Dos Goytacazes".
+    var IRON_PORTS = [['São Luís', 'São Luís'], ['Vitória', 'Vitória'], ['Itaguaí', 'Itaguaí'],
+      ['Campos Dos Goytacazes', 'Goytacazes (Açu)']];
+    var ironPortRows = hasTable(sm, 'secex_iron_ore_port')
+      ? rows(sm, 'SELECT period, port, SUM(volume_ktons) AS v FROM secex_iron_ore_port GROUP BY period, port') : [];
+    var ironPortS = {}; IRON_PORTS.forEach(function (p) { ironPortS[p[0]] = {}; }); ironPortS.Others = {};
+    ironPortRows.forEach(function (r) {
+      var k = ironPortS[r.port] ? r.port : 'Others';
+      if (isNum(r.v)) ironPortS[k][r.period] = (ironPortS[k][r.period] || 0) + r.v;
+    });
+    // mês publicado em que um porto não embarcou = 0, não "falta" (senão o total do trimestre vira travessão)
+    var ironPortPer = {}; ironPortRows.forEach(function (r) { ironPortPer[r.period] = 1; });
+    Object.keys(ironPortS).forEach(function (k) { Object.keys(ironPortPer).forEach(function (p2) { if (!isNum(ironPortS[k][p2])) ironPortS[k][p2] = 0; }); });
     // ── celulose
     var pulp = seriesBy(pp, 'SELECT period, product AS k, SUM(volume_ktons) AS v, SUM(revenue_usd_mn) AS r FROM secex_pulp_country GROUP BY period, product');
     var pulpPer = {}; Object.keys(pulp).forEach(function (k) { Object.keys(pulp[k].vol).forEach(function (pp2) { pulpPer[pp2] = 1; }); });
@@ -1249,6 +1264,14 @@
       { label: 'Fines', lvl: 1, fn: price(cat(iron, 'Fines')) },
       { label: 'Pellets', lvl: 1, fn: price(cat(iron, 'Pellets')) }
     ], C);
+    // a tabela "Iron Ore Volumes (ktons)" do PDF: um porto por linha + Others + Total
+    var ironPortTable = buildLines(IRON_PORTS.map(function (p) {
+      return { label: p[1], fn: (function (m) { return function (s) { return s(m); }; })(ironPortS[p[0]]) };
+    }).concat([{ label: 'Others', fn: function (s) { return s(ironPortS.Others); } },
+      { label: 'Total', strong: true, fn: function (s) {
+        var t = 0, ok = true;
+        Object.keys(ironPortS).forEach(function (k) { var x = s(ironPortS[k]); if (isNum(x)) t += x; else ok = false; });
+        return ok ? t : null; } }]), C);
     var pulpTable = buildLines([
       { label: 'Market pulp (ktons)', fn: V(mkt), strong: true },
       { label: 'BKP', lvl: 1, fn: V(bkp) },
@@ -1342,6 +1365,7 @@
 
     var missing = [];
     if (!isNum(ironTot.vol[period])) missing.push('minério de ferro');
+    if (!ironPortRows.some(function (r) { return r.period === period; })) missing.push('minério por porto');
     if (!isNum(pm('hardwood').vol[period]) || !pm('hardwood').vol[period]) missing.push('celulose');
     if (!portRows.some(function (r) { return r.period === period; })) missing.push('celulose por porto');
     if (!isNum(wd[period])) missing.push('dias úteis (calendário)');
@@ -1351,7 +1375,7 @@
       C: C, cols: C.labels,
       snapExp: snapExp, snapImp: snapImp,
       impTable: steelTable(imp, 'imports'), expTable: steelTable(exp, 'exports'),
-      ironTable: ironTable, pulpTable: pulpTable, portTable: portTable,
+      ironTable: ironTable, ironPortTable: ironPortTable, pulpTable: pulpTable, portTable: portTable,
       charts: {
         m25: m25, qLabels: qLabels, q12L: q12L, m60: m60,
         impVol: serM(cat(imp, 'total').vol, m25), impPrice: priceSer(cat(imp, 'total'), m25),
@@ -1360,12 +1384,13 @@
         expQ: { flat: serQ(cat(exp, 'flat').vol, qs), semi: serQ(cat(exp, 'semi').vol, qs), long: serQ(cat(exp, 'long').vol, qs) },
         ironQ: serQ(ironTot.vol, q12),
         ironM: { fines: serM(cat(iron, 'Fines').vol, m60), pellets: serM(cat(iron, 'Pellets').vol, m60), price: priceSer(ironTot, m60) },
+        ironPorts: IRON_PORTS.map(function (p) { return { name: p[1], v: serM(ironPortS[p[0]], m60) }; }).concat([{ name: 'Others', v: serM(ironPortS.Others, m60) }]),
         pulpQ: { market: serQ(mkt.vol, qs), diss: serQ(pm('dissolving').vol, qs) },
         ports: PORTS.map(function (p) { return { name: p[0], v: serM(portS[p[0]], m60) }; }).concat([{ name: 'Others', v: serM(portS.Others, m60) }]),
         pred: pred
       },
       origins: { month: originsM, quarter: originsQ, prev: prevM }, ironDest: ironDest, pulpDest: pulpDest,
-      raw: { imp: imp, exp: exp, ironTot: ironTot, mkt: mkt, portS: portS, wd: wd }
+      raw: { imp: imp, exp: exp, ironTot: ironTot, ironPortS: ironPortS, mkt: mkt, portS: portS, wd: wd }
     };
     // KPIs do topo
     function kp(label, o, unit, scale, dec) {
@@ -1461,11 +1486,11 @@
   };
   R.secexAuto = function (M) {
     return [
-      ['Fonte', 'SECEX/MDIC pelas tabelas da dashboard (aço: <code>secex_imports/exports</code> + <code>secex_country</code>; minério: <code>secex_iron_ore</code>; celulose: <code>secex_pulp_country</code> + <code>secex_pulp_port</code>) — dado até <b>' + esc(M.long) + '</b>, já com as revisões do MDIC.'],
+      ['Fonte', 'SECEX/MDIC pelas tabelas da dashboard (aço: <code>secex_imports/exports</code> + <code>secex_country</code>; minério: <code>secex_iron_ore</code> + <code>secex_iron_ore_port</code>; celulose: <code>secex_pulp_country</code> + <code>secex_pulp_port</code>) — dado até <b>' + esc(M.long) + '</b>, já com as revisões do MDIC.'],
       ['Trimestre', M.quarter.end ? esc(M.quarter.label) + ' cheio contra ' + esc(M.quarter.prev) + ' e ' + esc(M.quarter.yago) + '.' : 'Fora do fim de trimestre: a vista “Quarter” mostra <b>' + esc(M.quarter.label) + ' QTD</b> contra o mesmo pedaço do ano anterior; os gráficos trimestrais marcam o trimestre parcial com *.'],
       ['Dias úteis', 'Um calendário só (<code>calendar</code> do P&amp;P) para aço, minério e celulose.'],
       ['Celulose', 'Market pulp = BKP (fibra curta + longa) + UKP/BCTMP; dissolving inclui a mecânica. <b>Porto = todas as fibras</b> (a base não quebra porto por produto).'],
-      ['Minério', 'A base da dashboard tem minério por <b>produto</b> (finos/pelotas) e <b>destino</b>, não por porto — o relatório mostra essas duas quebras.'],
+      ['Minério', 'Por <b>produto</b> (finos/pelotas), <b>porto</b> e <b>destino</b>, do mesmo download do MDIC (porto e país somam igual). O Porto do Açu vem na base como a URF “Campos Dos Goytacazes” e sai como <b>Goytacazes (Açu)</b>; Others é quase todo Corumbá.'],
       ['Preditivo', 'Acumulado de 12 meses: exportação China + Coreia deslocada 3 meses × importação do Brasil, nos mesmos SH6 (a conta da página de M&amp;M).']
     ];
   };
@@ -1514,6 +1539,14 @@
       series: [{ name: 'Fines', type: 'area', cls: 'o', values: K.ironM.fines }, { name: 'Pellets', type: 'area', cls: 'g1', values: K.ironM.pellets },
         { name: 'Average price', type: 'line', axis: 'r', cls: 'f', values: K.ironM.price, fmt: 'usd', w: 1.4, dash: true }],
       yl: { fmt: 'int' }, yr: { fmt: 'usd', zero: false } });
+    // por porto: só aparece se a base tiver o porto (banco antigo sem a tabela → bloco some, sem travessões)
+    var ironPortCls = ['o', 'f', 'g1', 'g2', 'g3'];
+    var ironPortSer = K.ironPorts || [];
+    var ironPortHTML = ironPortSer.some(function (p) { return p.v.some(isNum); })
+      ? '<h3 class="sh sm">Iron ore exports by port</h3>' + viewTable(M.ironPortTable, M.C, defV, 'ktons') +
+        chartHTML({ title: 'Monthly iron ore exports by port', sub: 'ktons · 5 years', x: K.m60, xMode: 'my', ticks: 7, height: 250, stack: true,
+          series: ironPortSer.map(function (p, i) { return { name: p.name, type: 'area', cls: ironPortCls[i], values: p.v }; }), yl: { fmt: 'int' } })
+      : '';
     var iD = M.ironDest;
     var ironDest = iD.list.length ? hbarsHTML('Iron ore destinations', 'Share of exports in ' + (q ? M.quarter.label : M.quarter.label + ' QTD'),
       iD.list.map(function (r, i) { return { name: en(r.c), v: r.v, hl: i === 0, vtxt: fmtNum(r.v / 1000, 1) + ' Mt · ' + fmtShare(iD.all ? r.v / iD.all : null, 0) }; })) : '';
@@ -1540,7 +1573,7 @@
           '<h3 class="sh">Exports</h3>' + viewTable(M.expTable, M.C, defV, '') + monthlyBars(K.expVol, K.expPrice, 'Monthly steel exports and revenue per ton', 'Revenue per ton') +
           qStack(K.expQ, 'Quarterly steel exports by type') + fnS },
       { id: 'iron', num: 'IV', title: 'Iron ore & pulp', short: 'Iron ore & pulp', dock: 'Ore & pulp',
-        html: '<h3 class="sh first">Iron ore exports</h3>' + viewTable(M.ironTable, M.C, defV, '') + ironQ + ironM + ironDest +
+        html: '<h3 class="sh first">Iron ore exports</h3>' + viewTable(M.ironTable, M.C, defV, '') + ironQ + ironM + ironPortHTML + ironDest +
           '<h3 class="sh">Pulp exports</h3>' + viewTable(M.pulpTable, M.C, defV, '') +
           '<p class="fn">¹ Dissolving pulp includes mechanical pulp. Market pulp = BKP (hardwood + softwood) + UKP/BCTMP.</p>' +
           '<h3 class="sh sm">Pulp exports by port (all grades)</h3>' + viewTable(M.portTable, M.C, defV, 'ktons') + pulpPorts + pulpQ + pulpDest + fnS }
