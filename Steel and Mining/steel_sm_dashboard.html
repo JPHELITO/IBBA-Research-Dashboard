@@ -34,6 +34,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <!-- Acabamento dos gráficos (nov/2026): só aparência; depois do Chart.js e antes do script da página. -->
 <script src="/ibba-charts.js"></script>
+<!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
+<script src="/data-desk.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -595,6 +597,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
 <link rel="stylesheet" href="/ibba-design.css"/>
+<!-- Data Desk (nov/2026): estilo da mesa de leitura; só vale com a chave data_desk (html.desk-on). -->
+<link rel="stylesheet" href="/data-desk.css"/>
 </head>
 <body>
 
@@ -1008,6 +1012,9 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </div>
 
 
+<!-- ══ DATA DESK: a mesa de leitura (chave data_desk). Vazia e oculta enquanto a chave estiver desligada. ══ -->
+<div id="desk-root" class="section"></div>
+
 <div class="note-bar">
   Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
   <em>SECEX/MDIC</em> (foreign trade by NCM/category) · <em>INDA</em> (flat distributors) ·
@@ -1053,16 +1060,18 @@ window.addEventListener('hashchange',()=>{
   // O display:false fica no baseOpts de propósito: se alguém voltar com o complemento, nada aparece sozinho.
   loadDB()
   applyPredFlag()
+  applyDeskFlag()      // chave data_desk: admin vê a mesa; cliente só com a chave ligada
   initDownloads()      // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 // flag 'pred_model' (admin → Funcionalidades): off + cliente → esconde a sub-aba Predictive Model. Admin sempre vê.
 async function applyPredFlag(){
   try{
-    const [fl, role] = await Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])
+    const [fl, role] = await _flagsRole()   // a mesma resposta serve à chave data_desk (uma busca só)
     const isAdmin = !!(role && !role.error && role.data === 'admin')
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='pred_model') : null
     const on = f ? !!f.enabled : true
+    _predHidden = !(on || isAdmin)
     if(on || isAdmin) return
     const btn = document.querySelector('.itab[data-itab="prediction"]'); if(btn) btn.style.display='none'
     const content = document.getElementById('im-tab-prediction'); if(content) content.style.display='none'
@@ -2512,8 +2521,123 @@ function renderPrices(){
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DATA DESK — a "mesa de leitura" (chave data_desk · plano em IBBA-Dashboard/data-desk/PLANO.md)
+//  Com a chave DESLIGADA nada daqui muda a tela: o cliente vê as seções de sempre. Com ela ligada
+//  (ou admin), a seção que já tem catálogo abaixo passa a ser desenhada pelo motor data-desk.js;
+//  as demais continuam nas telas antigas. Os FILTROS são os mesmos botões e as mesmas funções
+//  (setProd, setGran, setWin, setCustomRange): a mesa só lê o estado e redesenha.
+//  Conferência: ?desk=0 força a tela antiga · ?desk=1 força a mesa (só admin ou máquina local).
+// ═══════════════════════════════════════════════════════════════════════════
+let _deskOn=false, DESK=null, _predHidden=false, _frP=null;
+function _flagsRole(){ return _frP||(_frP=Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])); }
+const _deskLocal=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function _deskParam(){ try{ return new URLSearchParams(location.search).get('desk'); }catch(e){ return null; } }
+function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('desk-on',_deskOn); }
+// palpite antes do 1º desenho (evita piscar a tela antiga): o que valeu na última visita
+(function(){ const q=_deskParam(); let on=false; try{ on=localStorage.getItem('ibba_desk')==='1'; }catch(e){}
+  if(q==='0') on=false; else if(q==='1'&&_deskLocal) on=true; _deskSet(on); })();
+async function applyDeskFlag(){
+  try{
+    const [fl, role] = await _flagsRole()
+    const isAdmin = !!(role && !role.error && role.data === 'admin')
+    const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='data_desk') : null
+    const q = _deskParam()
+    const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
+    try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
+    if(on!==_deskOn){ _deskSet(on); if(_dbReady) render(); }
+  }catch(e){}
+}
+/* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
+function _deskRender(){
+  const root=document.getElementById('desk-root'); if(!root) return false;
+  const picker=document.body.classList.contains('mob-picker-active');
+  const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(currentSub) && !(currentSub==='imports'&&importTab==='prediction');
+  const legacy=document.getElementById('sec-'+currentSub);
+  if(!use){
+    if(root.classList.contains('active')){ root.classList.remove('active'); if(legacy&&!picker) legacy.classList.add('active'); }
+    if(DESK&&DESK.cur) DESK.hide();
+    return false;
+  }
+  if(legacy) legacy.classList.remove('active');
+  root.classList.add('active');
+  DESK.show(currentSub);
+  return true;
+}
+/* Preço do trimestre/ano: 'last' = o do último mês do período (como a tela antiga faz);
+   'ratio' = receita ÷ volume do período (como o P&P faz). DECISÃO PENDENTE do usuário — não mudar sem perguntar. */
+const DESK_PRICE_AGG='last';
+function _dkMap(arr,f,scale){ const o={}; (arr||[]).forEach(r=>{ const v=r[f]; if(v!=null) o[r.period]=scale?v*scale:v; }); return o; }
+function _dkSum(maps){ const o={}; maps.forEach(m=>{ for(const k in m) o[k]=(o[k]||0)+m[k]; }); return o; }
+const _dkCats=p=>p==='total'?['flat','long','semi']:[p];
+/* preço do período: mensal = a coluna da fonte; trimestre/ano conforme DESK_PRICE_AGG; LTM = receita ÷ volume dos 12 meses */
+function _dkPrice(A,c,o){ const F=IBBADesk.core.F;
+  if(A.ltm || (o.gran!=='monthly' && DESK_PRICE_AGG==='ratio')) return F.div(A.sum(c.r),A.sum(c.v),1000);
+  return A.last(c.p); }
+const _dkPriceComp=(SRC,p)=>({p:_dkMap(SRC[p],'price_usd_ton'), r:_dkMap(SRC[p],'revenue_usd_mn'), v:_dkMap(SRC[p],'volume_ktons')});
+/* países de um recorte (direção + categorias), TODOS os da base, em ordem de relevância (últimos 36 meses) */
+const _dkEnt={};
+function _dkCountries(dir,cats){
+  const key=dir+'|'+cats.join('+'); if(_dkEnt[key]) return _dkEnt[key];
+  _ensureSCTY();
+  const by={}; let last='';
+  cats.forEach(cat=>(SCTY[dir]?.[cat]||[]).forEach(r=>{ const n=trCountry(r.country||'—'), m=by[n]||(by[n]={});
+    m[r.period]=(m[r.period]||0)+(r.volume_ktons||0); if(r.period>last) last=r.period; }));
+  const cut=shiftPeriod(last,-35);
+  const sc=Object.entries(by).map(([n,m])=>{ let rec=0,tot=0; for(const p in m){ tot+=m[p]; if(p>=cut) rec+=m[p]; } return [n,rec,tot]; })
+    .sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
+  return (_dkEnt[key]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
+}
+function _desk(){
+  if(DESK) return DESK; if(!window.IBBADesk||!window.Chart) return null;
+  const F=IBBADesk.core.F;
+  /* ⚠️ PENDÊNCIA PARA O USUÁRIO: a penetração da tela antiga divide por consumo COM placas/tarugos mas subtrai a venda SEM
+     placas/tarugos (DOM.flat / DOM.long_prod) — o comentário do loadDB diz que isso foi corrigido para flat_incl/long_incl,
+     mas a linha da penetração ficou com a conta antiga (+0,6 a +2 pp em Flat/Long). A mesa repete a conta ANTIGA até ele decidir. */
+  const consF={total:'total',flat:'flat',long:'long_prod'}, domF={total:'total',flat:'flat',long:'long_prod'};
+  const cid2key=cid=>cid==='dk-stage-cv'?'stage':cid==='dk-who-cv'?'who':'mini:'+String(cid).replace('dk-mini-','');
+  DESK=IBBADesk.mount({
+    sector:'mm', root:'#desk-root',
+    state:()=>({prod:currentProd, gran:currentGran, win:currentWin, from:customRange.from, to:customRange.to}),
+    setRange:(f,t)=>{ document.getElementById('win-from').value=f; document.getElementById('win-to').value=t; setCustomRange(); },
+    afterRender:d=>{ if(!window.IBBAExport) return;
+      IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
+        prefix:'steel', fullAOA:cid=>d.fullAOA(cid2key(cid)), titleOf:cid=>d.titleOf(cid2key(cid)), alwaysVisible:true}); },
+    sections:{
+      imports:{
+        label:'Imports', stage:'vol', tiles:['vol','price','prem','lead','pen'],
+        views:[{label:'SECEX analysis'},{label:'Predictive model', visible:()=>!_predHidden, onPick:()=>setImportTab('prediction',{anim:1})}],
+        metrics:[
+          {id:'vol', label:'Import volume', unit:'kt', dec:0, flow:true, legacy:['im-vol','im-yoy'],
+            comp:x=>({v:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'volume_ktons')))}), calc:(A,c)=>A.sum(c.v)},
+          {id:'price', label:'Import price', unit:'US$/t', dec:0, comp:x=>_dkPriceComp(SEIMP,x.prod), calc:_dkPrice},
+          {id:'prem', label:'Import premium', unit:'US$/t', dec:0, diff:true, ref:'windowAvg',
+            comp:x=>{ const i=_dkPriceComp(SEIMP,x.prod), e=_dkPriceComp(SEEXP,x.prod); return {p:i.p,r:i.r,v:i.v, ep:e.p,er:e.r,ev:e.v}; },
+            calc:(A,c,o)=>F.sub(_dkPrice(A,c,o), _dkPrice(A,{p:c.ep,r:c.er,v:c.ev},o))},
+          {id:'lead', label:x=>_dkCountries('imp',_dkCats(x.prod)).names[0]+' share', unit:'%', dec:1, pp:true,
+            comp:x=>{ const e=_dkCountries('imp',_dkCats(x.prod)); return {l:e.maps[0]||{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+          {id:'pen', label:'Import penetration', unit:'%', dec:1, pp:true, ref:'windowAvg', available:x=>x.prod!=='semi', naText:'IABr has no apparent consumption for semi-finished',
+            comp:x=>x.prod==='semi'?{}:({c:_dkMap(CONS,consF[x.prod]), d:_dkMap(DOM,domF[x.prod])}), calc:(A,c)=>c.c?F.div(F.sub(A.sum(c.c),A.sum(c.d)),A.sum(c.c),100):[]},
+          {id:'rev', label:'Import revenue', unit:'US$ mn', dec:0, flow:true,
+            comp:x=>({r:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'revenue_usd_mn')))}), calc:(A,c)=>A.sum(c.r)},
+        ],
+        who:[
+          {id:'country', label:'Countries', tab:'By country', noun:'countries', lead:'China', unit:'kt', title:'Imports by country',
+            pills:()=>getPillDefs().map(d=>({k:d.label,l:d.label,cats:d.cats})),
+            entities:(x,pill)=>_dkCountries('imp',pill?pill.cats:_dkCats(x.prod))},
+          {id:'family', label:'Families', tab:'By family', noun:'families', unit:'kt', title:'Imports by family', noSelect:true, noOthers:true, top:3, available:x=>x.prod==='total',
+            entities:()=>({names:['Flat','Long','Semi'], maps:['flat','long','semi'].map(c=>_dkMap(SEIMP[c],'volume_ktons'))})},
+        ],
+      },
+    },
+  });
+  return DESK;
+}
+
 // ─── RENDER DISPATCH ─────────────────────────────────────────────────────────
 function render(){
+  if(_deskRender()) return;   // Data Desk: a mesa cuida desta seção (chave data_desk)
   if(currentSub==='exports')  renderExports();
   if(currentSub==='imports')  renderImports();
   if(currentSub==='domestic') renderDomestic();
@@ -2601,6 +2725,7 @@ function setImportTab(t,o){
   // Global filter-bar visibility
   updateGlobalFilters();
   renderImports();
+  _deskRender();   // Data Desk: SECEX Analysis volta para a mesa; Predictive Model fica na tela de sempre
   // aba interna: o conteúdo novo entra pelo lado da aba (SECEX à esquerda, Predictive à direita)
   if(anim){
     const c=document.getElementById(t==='secex'?'im-tab-secex':'im-tab-prediction');
