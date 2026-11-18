@@ -22,6 +22,11 @@ eq('mensal: rótulo Oct-26 e chave 2026-10', [PM[35].label, PM[35].key], ['Oct-2
 eq('trimestral: 4T23 (2 meses) e 4T26 (1 mês) ficam de fora', [PQ.length, PQ[0].label, PQ[PQ.length - 1].label], [11, '1Q24', '3Q26']);
 eq('trimestral: rótulo em inglês e chave canônica', [PQ[3].label, PQ[3].key, PQ[3].a, PQ[3].b], ['4Q24', '2024-Q4', 11, 13]);
 eq('anual: só 2024 e 2025 (2023 e 2026 incompletos)', PA.map(p => p.label), ['2024', '2025']);
+const PQp = C.buildPeriods(ax, 'quarterly', true), PAp = C.buildPeriods(ax, 'annual', true);
+eq('parcial (a pedido): o trimestre em andamento entra no fim, marcado', [PQp.length, PQp[PQp.length - 1].label, PQp[PQp.length - 1].partial, PQp[PQp.length - 1].months, PQp[0].label], [12, '4Q26 QTD', true, 1, '1Q24']);
+eq('parcial anual: 2026 YTD com 10 meses; 2023 (início incompleto) continua de fora', [PAp.map(p => p.label), PAp[2].months, PAp[2].a, PAp[2].b], [['2024', '2025', '2026 YTD'], 10, 26, 35]);
+eq('LTM não existe no período parcial (o trimestre cheio anterior soma 4 × 3 meses)', C.aggregators(PQp, 4).ltm.sum(ax.map(() => 1)).slice(-2), [12, null]);
+eq('mensal nunca tem parcial', C.buildPeriods(ax, 'monthly', true).length, 36);
 eq('períodos por ano', [C.perYear('monthly'), C.perYear('quarterly'), C.perYear('annual')], [12, 4, 1]);
 
 // ── janelas (mesmas regras da tela antiga, exceto o YTD) ──

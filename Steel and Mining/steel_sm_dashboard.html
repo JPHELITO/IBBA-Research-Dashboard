@@ -2565,9 +2565,9 @@ function _deskRender(){
   DESK.show(currentSub);
   return true;
 }
-/* Preço do trimestre/ano: 'last' = o do último mês do período (como a tela antiga faz);
-   'ratio' = receita ÷ volume do período (como o P&P faz). DECISÃO PENDENTE do usuário — não mudar sem perguntar. */
-const DESK_PRICE_AGG='last';
+/* Preço do trimestre/ano = receita ÷ volume do período (decisão do usuário em 18/11/2026; a tela antiga usa o preço do
+   ÚLTIMO mês do período, e o P&P já usava receita ÷ volume). 'last' devolve a regra antiga. Mensal = a coluna da fonte. */
+const DESK_PRICE_AGG='ratio';
 function _dkMap(arr,f,scale){ const o={}; (arr||[]).forEach(r=>{ const v=r[f]; if(v!=null) o[r.period]=scale?v*scale:v; }); return o; }
 function _dkSum(maps){ const o={}; maps.forEach(m=>{ for(const k in m) o[k]=(o[k]||0)+m[k]; }); return o; }
 const _dkCats=p=>p==='total'?['flat','long','semi']:[p];
@@ -2592,10 +2592,19 @@ function _dkCountries(dir,cats){
 function _desk(){
   if(DESK) return DESK; if(!window.IBBADesk||!window.Chart) return null;
   const F=IBBADesk.core.F;
-  /* ⚠️ PENDÊNCIA PARA O USUÁRIO: a penetração da tela antiga divide por consumo COM placas/tarugos mas subtrai a venda SEM
-     placas/tarugos (DOM.flat / DOM.long_prod) — o comentário do loadDB diz que isso foi corrigido para flat_incl/long_incl,
-     mas a linha da penetração ficou com a conta antiga (+0,6 a +2 pp em Flat/Long). A mesa repete a conta ANTIGA até ele decidir. */
-  const consF={total:'total',flat:'flat',long:'long_prod'}, domF={total:'total',flat:'flat',long:'long_prod'};
+  /* Penetração = (consumo − vendas domésticas) ÷ consumo, as DUAS pontas com placas/tarugos (flat_incl / long_incl).
+     Decisão do usuário em 18/11/2026: a tela antiga subtraía a venda SEM placas/tarugos (DOM.flat / DOM.long_prod) e
+     inflava a penetração de Flat/Long em 0,6 a 2 pp — a mesa usa a conta corrigida (Total não muda). */
+  const consF={total:'total',flat:'flat',long:'long_prod'}, domF={total:'total',flat:'flat_incl',long:'long_incl'};
+  /* subprodutos de cada família (os mesmos de getPillDefs), para chegar a eles direto do Total */
+  const SUBS={flat:[['HRC','hrc'],['CRC','crc'],['Coated','coated'],['Heavy Plate','heavy_plate'],['Others','flat_others']],
+              long:[['Rebar','rebar'],['Bar','bar'],['Wire Rod','wire_rod'],['Shapes','shapes'],['Others','long_others']],
+              semi:[['Ingot/Billet','ingot_billet'],['Slab','placa']]};
+  const subOf=f=>SUBS[f].map(x=>({k:x[0],l:x[0],cats:[x[1]]}));
+  const pillsOf=prod=>prod==='total'
+    ? [{k:'Total',l:'Total',cats:['flat','long','semi']},{k:'Flat',l:'Flat',cats:['flat'],sub:subOf('flat')},{k:'Long',l:'Long',cats:['long'],sub:subOf('long')},{k:'Semi',l:'Semi',cats:['semi'],sub:subOf('semi')}]
+    : getPillDefs().map(d=>({k:d.label,l:d.label,cats:d.cats}));
+  const mixOf=(SRC,prod)=>{ const defs=prod==='total'?[['Flat','flat'],['Long','long'],['Semi','semi']]:SUBS[prod]; return {names:defs.map(x=>x[0]), maps:defs.map(x=>_dkMap(SRC[x[1]],'volume_ktons'))}; };
   const cid2key=cid=>cid==='dk-stage-cv'?'stage':cid==='dk-who-cv'?'who':'mini:'+String(cid).replace('dk-mini-','');
   DESK=IBBADesk.mount({
     sector:'mm', root:'#desk-root',
@@ -2624,10 +2633,10 @@ function _desk(){
         ],
         who:[
           {id:'country', label:'Countries', tab:'By country', noun:'countries', lead:'China', unit:'kt', title:'Imports by country',
-            pills:()=>getPillDefs().map(d=>({k:d.label,l:d.label,cats:d.cats})),
+            pills:x=>pillsOf(x.prod),
             entities:(x,pill)=>_dkCountries('imp',pill?pill.cats:_dkCats(x.prod))},
-          {id:'family', label:'Families', tab:'By family', noun:'families', unit:'kt', title:'Imports by family', noSelect:true, noOthers:true, top:3, available:x=>x.prod==='total',
-            entities:()=>({names:['Flat','Long','Semi'], maps:['flat','long','semi'].map(c=>_dkMap(SEIMP[c],'volume_ktons'))})},
+          {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Imports by product', noSelect:true, noOthers:true, top:9,
+            entities:x=>mixOf(SEIMP,x.prod)},
         ],
       },
     },

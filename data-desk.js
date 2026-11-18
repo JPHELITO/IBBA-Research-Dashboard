@@ -30,7 +30,7 @@
   function align(map, ax) { var o = new Array(ax.length); for (var i = 0; i < ax.length; i++) { var v = map ? map[ax[i]] : null; o[i] = (v == null || !isFinite(v)) ? null : +v; } return o; }
 
   /* períodos da granularidade: só os COMPLETOS (trimestre com 3 meses, ano com 12) — regra de sempre */
-  function buildPeriods(ax, gran) {
+  function buildPeriods(ax, gran, withPartial) {
     var P = [], i;
     if (gran === 'monthly') {
       for (i = 0; i < ax.length; i++) { var y0 = +ax[i].slice(0, 4), m0 = +ax[i].slice(5, 7);
@@ -43,10 +43,14 @@
       if (!g[id]) { g[id] = { y: y, q: q, idx: [] }; order.push(id); }
       g[id].idx.push(i);
     }
-    order.forEach(function (id) { var o = g[id]; if (o.idx.length !== need) return;
-      P.push(gran === 'quarterly'
-        ? { a: o.idx[0], b: o.idx[2], y: o.y, k: o.q - 1, key: o.y + '-Q' + o.q, label: o.q + 'Q' + String(o.y).slice(2) }
-        : { a: o.idx[0], b: o.idx[11], y: o.y, k: 0, key: String(o.y), label: String(o.y) }); });
+    order.forEach(function (id, oi) { var o = g[id], part = o.idx.length !== need;
+      /* o período EM ANDAMENTO (último, incompleto) só entra a pedido, marcado como parcial */
+      if (part && !(withPartial && oi === order.length - 1 && oi > 0)) return;
+      var pr = gran === 'quarterly'
+        ? { a: o.idx[0], b: o.idx[o.idx.length - 1], y: o.y, k: o.q - 1, key: o.y + '-Q' + o.q, label: o.q + 'Q' + String(o.y).slice(2) }
+        : { a: o.idx[0], b: o.idx[o.idx.length - 1], y: o.y, k: 0, key: String(o.y), label: String(o.y) };
+      if (part) { pr.partial = true; pr.months = o.idx.length; pr.label += gran === 'quarterly' ? ' QTD' : ' YTD'; }
+      P.push(pr); });
     return P;
   }
   function perYear(gran) { return gran === 'monthly' ? 12 : gran === 'quarterly' ? 4 : 1; }
@@ -76,7 +80,7 @@
   function aggregators(P, PER) {
     function sum(a) { return P.map(function (p) { var s = 0; for (var i = p.a; i <= p.b; i++) { if (a[i] == null) return null; s += a[i]; } return s; }); }
     function last(a) { return P.map(function (p) { return a[p.b]; }); }
-    function roll(v) { return v.map(function (_, i) { if (i < PER - 1) return null; var s = 0; for (var k = i - PER + 1; k <= i; k++) { if (v[k] == null) return null; s += v[k]; } return s; }); }
+    function roll(v) { return v.map(function (_, i) { if (i < PER - 1 || P[i].partial) return null; var s = 0; for (var k = i - PER + 1; k <= i; k++) { if (v[k] == null) return null; s += v[k]; } return s; }); }
     function rollAvg(v) { return roll(v).map(function (x) { return x == null ? null : x / PER; }); }
     return {
       level: { sum: sum, last: last, ltm: false },
@@ -114,7 +118,6 @@
   function isDark() { return document.documentElement.classList.contains('dark'); }
   function theme(stage) {
     var d = isDark();
-    if (stage) return { dark: true, surf: d ? '#08090b' : '#0f1012', ink: '#f3f1ec', mut: d ? '#8d929b' : '#9a968e', grid: d ? '#1f2227' : '#24262a', band: '255,255,255', veil: d ? '8,9,11' : '15,16,18' };
     return d ? { dark: true, surf: '#1c2026', ink: '#e8eaed', mut: '#828892', grid: 'rgba(255,255,255,.06)', band: '255,255,255', veil: '28,32,38' }
              : { dark: false, surf: '#FDFCFA', ink: '#111111', mut: '#7b7770', grid: '#ECE8E0', band: '17,17,17', veil: '253,252,250' };
   }
@@ -138,7 +141,7 @@
       return { a: a, xs: xs, n: n, slot: slot };
     },
     beforeDatasetsDraw: function (chart, _a, o) {
-      var s = chart.$dk, g; if (!o || !o.on || !s || s.hover == null || s.hover < 0) return; g = this._geo(chart); if (!g || s.hover >= g.n) return;
+      var s = chart.$dk, g; if (!o || !o.on || o.tip || !s || s.hover == null || s.hover < 0) return; g = this._geo(chart); if (!g || s.hover >= g.n) return;
       var t = theme(o.stage), x = g.xs.getPixelForValue(s.hover), w = o.bar ? Math.min(g.slot, Math.min(34, g.slot * .72) + 12) : Math.max(22, Math.min(46, g.slot));
       var c = chart.ctx, gr = c.createLinearGradient(0, g.a.top, 0, g.a.bottom);
       gr.addColorStop(0, 'rgba(' + t.band + ',' + (t.dark ? .11 : .075) + ')'); gr.addColorStop(1, 'rgba(' + t.band + ',' + (t.dark ? .02 : .015) + ')');
@@ -148,7 +151,7 @@
       var s = chart.$dk, g; if (!o || !o.on || !s) return; g = this._geo(chart); if (!g) return;
       var t = theme(o.stage), c = chart.ctx, a = g.a, hv = s.hover;
       c.save();
-      if (hv != null && hv >= 0 && hv < g.n) {
+      if (!o.tip && hv != null && hv >= 0 && hv < g.n) {
         var x = g.xs.getPixelForValue(hv);
         if (o.bar) {   // as outras barras recuam: um véu na cor do fundo dos dois lados da coluna
           var half = Math.min(g.slot, Math.min(34, g.slot * .72) + 12) / 2;
@@ -168,7 +171,7 @@
           });
         }
       }
-      [['pinA', ORANGE, 'A', '#fff'], ['pinB', t.dark ? '#f3f1ec' : '#111111', 'B', t.dark ? '#111' : '#fff']].forEach(function (p) {
+      if (o.pins) [['pinA', ORANGE, 'A', '#fff'], ['pinB', t.dark ? '#f3f1ec' : '#111111', 'B', t.dark ? '#111' : '#fff']].forEach(function (p) {
         var i = s[p[0]]; if (i == null || i < 0 || i >= g.n) return; var px = g.xs.getPixelForValue(i);
         c.globalAlpha = .85; c.beginPath(); c.moveTo(px, a.top + (o.mini ? 0 : 6)); c.lineTo(px, a.bottom); c.lineWidth = 1.2; c.strokeStyle = p[1]; c.setLineDash([]); c.stroke(); c.globalAlpha = 1;
         if (!o.mini) { c.beginPath(); c.arc(px, a.top, 7, 0, Math.PI * 2); c.fillStyle = p[1]; c.fill(); c.font = '700 8.5px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = p[3]; c.fillText(p[2], px, a.top + .5); c.textBaseline = 'alphabetic'; }
@@ -183,11 +186,12 @@
   function chartOptions(o) {
     var t = theme(o.stage), tick = { color: t.mut, font: { size: 9.5, family: FONT } };
     return {
-      responsive: true, maintainAspectRatio: false, events: [], locale: 'en-US',
+      responsive: true, maintainAspectRatio: false, events: o.tip ? ['mousemove', 'mouseout', 'touchstart', 'touchmove'] : [], locale: 'en-US',
+      interaction: { mode: 'index', intersect: false },
       animation: o.animate ? { duration: 280 } : false,
       layout: { padding: o.mini ? { top: 6, right: 3, bottom: 3, left: 3 } : { top: o.stack ? 18 : 12, right: 10, bottom: 0, left: 0 } },
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false }, ibbaCross: false,
-        ibbaDeskSync: { on: true, stage: !!o.stage, bar: !!o.bar, stack: !!o.stack, share: !!o.share, mini: !!o.mini } },
+      plugins: { legend: { display: false }, tooltip: o.tip ? tipOptions(o) : { enabled: false }, datalabels: { display: false }, ibbaCross: false,
+        ibbaDeskSync: { on: true, stage: !!o.stage, bar: !!o.bar, stack: !!o.stack, share: !!o.share, mini: !!o.mini, tip: !!o.tip, pins: !!o.pins } },
       scales: {
         x: { display: !o.mini, stacked: !!o.stack, offset: !!o.bar, grid: { display: false }, border: { display: false },
           ticks: Object.assign({}, tick, { autoSkip: false, maxRotation: 0, padding: 4,
@@ -199,12 +203,24 @@
       }
     };
   }
+  /* dica clássica (a mesma tinta das outras dicas da dashboard): um item por série, com o valor; total no pé do empilhado */
+  function tipOptions(o) {
+    var base = window.IBBAChart ? IBBAChart.tip(window.innerWidth <= 768) : {}, cb = window.IBBAChart ? IBBAChart.tipCallbacks : {};
+    return Object.assign({ enabled: true }, base, {
+      filter: function (it) { return it.parsed && it.parsed.y != null && it.parsed.y !== 0; },
+      itemSort: function (a, b) { return b.datasetIndex - a.datasetIndex; },
+      callbacks: Object.assign({}, cb, {
+        labelColor: function (c) { var b = c.dataset.backgroundColor; b = Array.isArray(b) ? b[c.dataIndex] : b; return { borderColor: b, backgroundColor: b, borderWidth: 0, borderRadius: 2 }; },
+        label: function (c) { return ' ' + (c.dataset.label || '') + ': ' + fmt(c.parsed.y, o.share ? 1 : (o.dec || 0)) + (o.unitTip ? ' ' + o.unitTip : o.share ? '%' : ''); },
+        footer: function (items) { if (!o.stack || o.share || items.length < 2) return ''; var t = 0; items.forEach(function (i) { t += i.parsed.y || 0; }); return 'Total: ' + fmt(t, o.dec || 0); } }) });
+  }
   function areaFill(c) { var ch = c.chart, a = ch.chartArea; if (!a) return 'rgba(255,80,0,.18)'; var g = ch.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, 'rgba(255,80,0,.30)'); g.addColorStop(1, 'rgba(255,80,0,0)'); return g; }
-  function lineSet(data, color, o) { o = o || {}; var li = lastIdx(data);
-    return { type: 'line', label: o.label || '', data: data, borderColor: color, borderWidth: o.w || 2, tension: 0, spanGaps: false, borderJoinStyle: 'round', borderCapStyle: 'round',
+  function lineSet(data, color, o) { o = o || {}; var li = lastIdx(data), pa = o.partialAt == null ? -1 : o.partialAt, endPart = li === pa;
+    return { type: 'line', segment: { borderDash: function (c) { return c.p1DataIndex === pa ? [3, 3] : undefined; } }, label: o.label || '', data: data, borderColor: color, borderWidth: o.w || 2, tension: 0, spanGaps: false, borderJoinStyle: 'round', borderCapStyle: 'round',
       borderDash: o.dash || [], fill: o.area ? 'origin' : false, backgroundColor: o.area ? areaFill : 'transparent', $noDot: !!o.noDot, $ring: color,
-      pointRadius: function (c) { return (o.end && c.dataIndex === li) ? 3.5 : 0; }, pointBackgroundColor: color, pointBorderColor: o.surf || '#0f1012', pointBorderWidth: 2, pointHoverRadius: 0, order: o.order || 1 }; }
+      pointRadius: function (c) { return (o.end && c.dataIndex === li) ? 3.5 : 0; }, pointBackgroundColor: endPart ? (o.surf || '#fff') : color, pointBorderColor: endPart ? color : (o.surf || '#fff'), pointBorderWidth: 2, pointHoverRadius: 0, order: o.order || 1 }; }
   function barSet(data, color, o) { o = o || {};
+    if (o.partialAt != null && o.partialAt >= 0) color = data.map(function (_, k) { var c0 = Array.isArray(color) ? color[k] : color; return k === o.partialAt ? hexA(c0, .45) : c0; });
     return { type: 'bar', label: o.label || '', data: data, backgroundColor: color, borderWidth: o.gap ? { top: 0, right: 0, bottom: 1.5, left: 0 } : 0, borderColor: o.surf || 'transparent',
       borderRadius: 4, borderSkipped: o.stacked ? false : 'start', maxBarThickness: 34, categoryPercentage: 1, barPercentage: .72, stack: o.stacked ? 's' : undefined }; }
 
@@ -243,7 +259,7 @@
       sec.metrics.forEach(function (M) { comp[M.id] = {}; Object.keys(maps[M.id]).forEach(function (k) { comp[M.id][k] = align(maps[M.id][k], ax); }); });
       base = this._cache[ck] = { ax: ax, comp: comp };
     }
-    var P = buildPeriods(base.ax, st.gran), PER = perYear(st.gran), A = aggregators(P, PER);
+    var P = buildPeriods(base.ax, st.gran, true), PER = perYear(st.gran), A = aggregators(P, PER);
     var mw = monthWindow(base.ax, base.ax.length - 1, st), pw = periodWindow(P, mw[0], mw[1]), memo = {};
     var ctx = { sec: sec, st: st, u: u, ax: base.ax, P: P, PER: PER, A: A, i0: pw[0], i1: pw[1], m0: mw[0], m1: mw[1],
       M: function (id) { for (var i = 0; i < sec.metrics.length; i++) if (sec.metrics[i].id === id) return sec.metrics[i]; return null; },
@@ -251,8 +267,15 @@
       vals: function (id, mode) { mode = mode || 'level'; var key = id + '|' + mode; if (memo[key]) return memo[key];
         var M = this.M(id), c = base.comp[id], v;
         if (mode === 'ltm') v = M.calc(A.ltm, c, { gran: st.gran, prod: st.prod });
-        else { v = M.calc(A.level, c, { gran: st.gran, prod: st.prod }); if (mode === 'yoy') { var lv = v; v = lv.map(function (_, i) { return change(lv, i, PER, M); }); } }
+        else { v = M.calc(A.level, c, { gran: st.gran, prod: st.prod });
+          if (mode === 'yoy') { var lv = v; v = lv.map(function (_, i) {
+            if (!P[i].partial) return change(lv, i, PER, M);
+            if (P[i].a - 12 < 0) return null;   // parcial: compara com os MESMOS meses do ano anterior
+            var b0 = M.calc(aggregators([{ a: P[i].a - 12, b: P[i].b - 12 }], PER).level, c, { gran: st.gran, prod: st.prod })[0];
+            return change([b0, lv[i]], 1, 1, M); }); } }
         return (memo[key] = v); },
+      lastFull: function (v) { for (var i = v.length - 1; i >= 0; i--) if (v[i] != null && !P[i].partial) return i; return -1; },
+      partialAt: function () { var n = P.length - 1; return (n >= 0 && P[n].partial && n >= pw[0] && n <= pw[1]) ? n - pw[0] : null; },
       label: function (i) { return P[i] ? P[i].label : ''; }
     };
     return ctx;
@@ -267,30 +290,29 @@
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
       '<div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
-      '<div class="dk-hint">Hover: read · Click: pin A, then B · Drag the strip: change period</div>');
+      '<div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>');
     E.who = h('div', 'dk-card dk-who chart-card',
       '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div>' +
       '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
       '<div class="dk-pop"><button type="button" class="dk-pill dk-popbtn" aria-expanded="false"></button><div class="dk-popp" hidden></div></div></div>' +
-      '<div class="dk-whogrid"><div class="dk-rank"></div><div class="dk-chart dk-whochart"><canvas id="dk-who-cv"></canvas></div></div>');
+      '<div class="dk-pills dk-subpills" role="group" aria-label="Sub-product" hidden></div><div class="dk-whogrid"><div class="dk-rank"></div><div class="dk-chart dk-whochart"><canvas id="dk-who-cv"></canvas></div></div>');
     E.minis = h('div', 'dk-minis');
     E.read = h('div', 'dk-card dk-read', '<div class="dk-ch"><h3>Reading</h3><em class="dk-when"></em></div><div class="dk-big"></div><div class="dk-kv"></div><div class="dk-pins"></div>');
-    E.main.appendChild(E.stage); E.main.appendChild(E.who); E.main.appendChild(E.minis);
-    E.side.appendChild(E.read);
-    E.cols.appendChild(E.main); E.cols.appendChild(E.side);
+    E.cols.appendChild(E.stage); E.cols.appendChild(E.read);
     var sec0 = this.sections[this.cur], vs = (sec0.views || []).filter(function (v) { return !v.visible || v.visible(); });
     if (vs.length > 1) { E.views = h('div', 'dk-seg dk-views', vs.map(function (v, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === 0) + '">' + esc(v.label) + '</button>'; }).join(''));
       E.views.setAttribute('role', 'group'); E.views.setAttribute('aria-label', 'View');
       E.views.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var v = vs[+b.dataset.k]; if (v && v.onPick) v.onPick(); });
       var vb = h('div', 'dk-viewbar'); vb.appendChild(E.views); body.appendChild(vb); }
-    body.appendChild(E.tiles); body.appendChild(E.cols); r.appendChild(body);
+    body.appendChild(E.tiles); body.appendChild(E.cols); body.appendChild(E.who); body.appendChild(E.minis); r.appendChild(body);
     // eventos fixos
     E.tiles.addEventListener('click', function (e) { var b = e.target.closest('.dk-tile[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
     E.minis.addEventListener('click', function (e) { if (e.target.closest('.ibba-dl')) return; var b = e.target.closest('.dk-mini[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
     E.stage.querySelector('.dk-modes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || b.disabled) return; self._u().mode = b.dataset.k; self.refresh(); });
     E.who.querySelector('.dk-whomodes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; self._u().who.mode = b.dataset.k; self._who(); });
-    E.who.querySelector('.dk-dims').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var w = self._u().who; w.dim = +b.dataset.k; w.pill = null; w.sel = null; w.hi = null; self._who(); self._paintMarks(); self._rank(); });
-    E.who.querySelector('.dk-pills').addEventListener('click', function (e) { var b = e.target.closest('.dk-pill'); if (!b) return; var w = self._u().who; w.pill = b.dataset.k; w.sel = null; w.hi = null; self._who(); self._rank(); });
+    E.who.querySelector('.dk-dims').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var w = self._u().who; w.dim = +b.dataset.k; w.pill = null; w.sub = null; w.sel = null; w.hi = null; self._who(); self._paintMarks(); self._rank(); });
+    E.who.querySelector('.dk-pills').addEventListener('click', function (e) { var b = e.target.closest('.dk-pill'); if (!b) return; var w = self._u().who; w.pill = b.dataset.k; w.sub = null; w.sel = null; w.hi = null; self._who(); self._rank(); });
+    E.who.querySelector('.dk-subpills').addEventListener('click', function (e) { var b = e.target.closest('.dk-pill'); if (!b) return; var w = self._u().who; w.sub = b.dataset.k || null; w.sel = null; w.hi = null; self._who(); self._rank(); });
     var pb = E.who.querySelector('.dk-popbtn'), pp = E.who.querySelector('.dk-popp');
     pb.addEventListener('click', function (e) { e.stopPropagation(); self._openPop(pp.hidden); });
     document.addEventListener('click', function (e) { if (!e.target.closest('.dk-pop')) self._openPop(false); });
@@ -306,7 +328,7 @@
       var i = Math.round(xs.getValueForPixel(x)); return Math.max(0, Math.min(n - 1, i)); };
     cv.addEventListener('pointermove', function (ev) { var i = at(ev); if (i == null) return; var ch = self.charts[id]; if (ch.$local) { self._localHover(id, i); return; } self.hover(self.ctx.i0 + i); });
     cv.addEventListener('pointerleave', function () { var ch = self.charts[id]; if (ch && ch.$local) { self._localHover(id, null); return; } self.hover(null); });
-    cv.addEventListener('click', function (ev) { var ch = self.charts[id]; if (!ch || ch.$local) return; var i = at(ev); if (i != null) self.pick(self.ctx.i0 + i); });
+    if (id === 'stage') cv.addEventListener('click', function (ev) { var ch = self.charts[id]; if (!ch || ch.$local || ch.config.type === 'bar') return; var i = at(ev); if (i != null) self.pick(self.ctx.i0 + i); });
   };
   Desk.prototype.hover = function (i) {
     var u = this._u(); if (u.hover === i) return; u.hover = i; var self = this;
@@ -319,7 +341,7 @@
       ch.$dk = { hover: u.hover == null ? null : u.hover - c.i0, pinA: u.pinA == null ? null : u.pinA - c.i0, pinB: u.pinB == null ? null : u.pinB - c.i0 }; ch.draw(); }
   };
   Desk.prototype.pick = function (i) { var u = this._u(); if (u.pinA == null || (u.pinA != null && u.pinB != null)) { u.pinA = i; u.pinB = null; } else if (i === u.pinA) u.pinA = null; else u.pinB = i; this._paintMarks(); this._read(); this._rank(); };
-  Desk.prototype._ref = function () { var u = this._u(), c = this.ctx; if (u.hover != null) return u.hover; if (u.pinA != null) return u.pinA; var li = lastIdx(c.vals(u.metric)); return li < 0 ? c.i1 : Math.min(li, c.P.length - 1); };
+  Desk.prototype._ref = function () { var u = this._u(), c = this.ctx; if (u.hover != null) return u.hover; if (u.pinA != null) return u.pinA; var li = c.lastFull(c.vals(u.metric)); return li < 0 ? c.i1 : Math.min(li, c.P.length - 1); };
 
   /* cria ou atualiza um gráfico Chart.js no canvas */
   Desk.prototype._chart = function (id, cv, type, labels, datasets, o) {
@@ -346,7 +368,7 @@
     if (!this.cur) return;
     if (this._built !== this.cur) this._build();
     var st = this.cfg.state(), u = this._u();
-    if (this._lastProd !== st.prod || this._lastGran !== st.gran) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
+    if (this._lastProd !== st.prod || this._lastGran !== st.gran) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
     var c = this.ctx = this._ctx();
     if (!c.has(u.metric)) u.metric = this.sections[this.cur].stage;
     if (st.gran === 'annual' && (u.mode === 'ltm' || u.mode === 'seasonal')) u.mode = 'level';
@@ -361,7 +383,7 @@
     this.el.tiles.innerHTML = c.sec.tiles.map(function (id) {
       var M = c.M(id); if (!M) return '';
       if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(M.label) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
-      var v = c.vals(id), i = lastIdx(v); if (i < 0) return '';
+      var v = c.vals(id), i = c.lastFull(v); if (i < 0) return '';
       var r = rangeN(v, i, 5 * c.PER), mo = change(v, i, 1, M), yy = change(v, i, c.PER, M), sp = v.slice(Math.max(0, i - 2 * c.PER + 1), i + 1), lbl = typeof M.label === 'function' ? M.label({ prod: c.st.prod }) : M.label;
       return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i) + '</span></div>' +
         '<div class="dk-tv">' + fmt(v[i], M.dec) + '<small>' + esc(M.unit) + '</small></div>' +
@@ -383,16 +405,16 @@
       return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (m[2] ? ' disabled title="Not available in annual view"' : '') + '>' + m[1] + '</button>'; }).join('');
     var title = E.stage.querySelector('.dk-st'), brush = E.stage.querySelector('.dk-brush');
     if (u.mode === 'seasonal') {
-      var v = c.vals(u.metric), li = lastIdx(v), yL = c.P[li].y, byY = {}, PER = c.PER;
-      v.forEach(function (x, i) { var p = c.P[i]; (byY[p.y] = byY[p.y] || new Array(PER).fill(null))[p.k] = x; });
+      var v = c.vals(u.metric), li = c.lastFull(v), yL = c.P[li].y, byY = {}, PER = c.PER;
+      v.forEach(function (x, i) { var p = c.P[i]; if (p.partial) return; (byY[p.y] = byY[p.y] || new Array(PER).fill(null))[p.k] = x; });
       var lo = [], hi = [], m, y; for (m = 0; m < PER; m++) { var a = []; for (y = yL - 5; y < yL; y++) if (byY[y] && byY[y][m] != null) a.push(byY[y][m]); lo.push(a.length ? Math.min.apply(null, a) : null); hi.push(a.length ? Math.max.apply(null, a) : null); }
-      var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], bandC = 'rgba(255,255,255,.07)';
+      var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], bandC = 'rgba(' + t.band + ',.07)';
       var ds = [
         { type: 'line', label: (yL - 5) + '–' + (yL - 1) + ' low', data: lo, borderWidth: 0, pointRadius: 0, fill: false, $noDot: true, tension: 0 },
         { type: 'line', label: (yL - 5) + '–' + (yL - 1) + ' high', data: hi, borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: bandC, $noDot: true, tension: 0 },
         lineSet(byY[yL - 1] || [], t.ink, { label: String(yL - 1), w: 1.6, dash: [4, 3], surf: t.surf }),
         lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf })];
-      ds[2].borderColor = 'rgba(243,241,236,.75)';
+      ds[2].borderColor = 'rgba(' + t.band + ',.6)';
       this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true });
       this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: 'Orange ' + yL + ' · dashed ' + (yL - 1) + ' · band = ' + (yL - 5) + '–' + (yL - 1) + ' range' };
       title.textContent = this._lbl(M) + ' · seasonality';
@@ -401,15 +423,16 @@
     } else {
       brush.style.visibility = 'visible';
       var si = this._stageInfo(), sl = function (arr) { return arr.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), sets;
-      if (si.bars) sets = [barSet(sl(si.v), sl(si.v).map(function (x) { return x == null ? 'transparent' : x >= 0 ? UP() : DOWN(); }), { label: 'YoY' })];
+      var pa = c.partialAt();
+      if (si.bars) sets = [barSet(sl(si.v), sl(si.v).map(function (x) { return x == null ? 'transparent' : x >= 0 ? UP() : DOWN(); }), { label: 'YoY', partialAt: pa })];
       else {
-        sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf })];
+        sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf, partialAt: pa })];
         if (u.mode === 'level' && c.st.gran === 'monthly') { var ma = c.vals(u.metric, 'ltm').map(function (x) { return x == null ? null : (M.flow ? x / 12 : x); });
-          var s2 = lineSet(sl(ma), 'rgba(243,241,236,.55)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
+          var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
         if (M.ref === 'windowAvg') { var w = sl(si.v).filter(function (x) { return x != null; }), avg = w.length ? w.reduce(function (p, q) { return p + q; }, 0) / w.length : null;
-          var s3 = lineSet(labels.map(function () { return avg; }), 'rgba(243,241,236,.6)', { label: 'Window average', w: 1.2, dash: [5, 3], noDot: true }); s3.order = 3; sets.push(s3); this._refAvg = avg; } else this._refAvg = null;
+          var s3 = lineSet(labels.map(function () { return avg; }), 'rgba(' + t.band + ',.5)', { label: 'Window average', w: 1.2, dash: [5, 3], noDot: true }); s3.order = 3; sets.push(s3); this._refAvg = avg; } else this._refAvg = null;
       }
-      this._chart('stage', cv, si.bars ? 'bar' : 'line', labels, sets, { stage: true, dec: si.dec, bar: !!si.bars });
+      this._chart('stage', cv, si.bars ? 'bar' : 'line', labels, sets, { stage: true, dec: si.dec, bar: !!si.bars, tip: !!si.bars, pins: !si.bars, unitTip: si.bars ? si.unit : '' });
       title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
     }
   };
@@ -422,12 +445,12 @@
   Desk.prototype._brush = function () {
     var c = this.ctx, self = this, el = this.el.stage.querySelector('.dk-brush'), v = c.vals(this._u().metric), n = c.P.length, W = el.clientWidth || 600, H = 38;
     if (n < 2) { el.innerHTML = ''; return; }
-    var x = function (i) { return i / (n - 1) * W; }, i0 = c.i0, i1 = c.i1, yrs = '', seen = {}, stepY = Math.max(1, Math.ceil((c.P[n - 1].y - c.P[0].y + 1) / Math.max(4, Math.floor(W / 46))));
-    c.P.forEach(function (p, i) { if (!seen[p.y] && p.k === 0) { seen[p.y] = 1; if ((c.P[n - 1].y - p.y) % stepY) return; yrs += '<text x="' + (x(i) + 3) + '" y="' + (H - 1) + '" font-size="8.5" fill="#8d929b">' + p.y + '</text><line x1="' + x(i) + '" x2="' + x(i) + '" y1="0" y2="' + H + '" stroke="#24262a"/>'; } });
+    var tb = theme(), x = function (i) { return i / (n - 1) * W; }, i0 = c.i0, i1 = c.i1, yrs = '', seen = {}, stepY = Math.max(1, Math.ceil((c.P[n - 1].y - c.P[0].y + 1) / Math.max(4, Math.floor(W / 46))));
+    c.P.forEach(function (p, i) { if (!seen[p.y] && p.k === 0) { seen[p.y] = 1; if ((c.P[n - 1].y - p.y) % stepY) return; yrs += '<text x="' + (x(i) + 3) + '" y="' + (H - 1) + '" font-size="8.5" fill="' + tb.mut + '">' + p.y + '</text><line x1="' + x(i) + '" x2="' + x(i) + '" y1="0" y2="' + H + '" stroke="' + tb.grid + '"/>'; } });
     var pts = [], k; for (k = 0; k < n; k++) if (v[k] != null) pts.push([k, v[k]]);
     var mn = Math.min.apply(null, pts.map(function (p) { return p[1]; })), mx = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
     var d = pts.map(function (p, j) { return (j ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + (H - 11 - (mx > mn ? (p[1] - mn) / (mx - mn) : .5) * (H - 13)).toFixed(1); }).join('');
-    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + yrs + '<path d="' + d + '" fill="none" stroke="#8d929b" stroke-width="1"/>' +
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + yrs + '<path d="' + d + '" fill="none" stroke="' + tb.mut + '" stroke-width="1"/>' +
       '<rect class="w" x="' + x(i0) + '" y="0" width="' + Math.max(6, x(i1) - x(i0)) + '" height="' + (H - 10) + '" fill="rgba(255,80,0,.16)" stroke="' + ORANGE + '" rx="3" style="cursor:grab"/>' +
       '<rect class="hl" x="' + (x(i0) - 4) + '" y="0" width="8" height="' + (H - 10) + '" fill="' + ORANGE + '" rx="2" style="cursor:ew-resize"/><rect class="hr" x="' + (x(i1) - 4) + '" y="0" width="8" height="' + (H - 10) + '" fill="' + ORANGE + '" rx="2" style="cursor:ew-resize"/></svg>';
     var svg = el.firstChild, drag = null, minSpan = Math.min(n - 1, c.st.gran === 'monthly' ? 5 : c.st.gran === 'quarterly' ? 3 : 2);
@@ -450,18 +473,19 @@
     var c = this.ctx, u = this._u(), M = c.M(u.metric), v = c.vals(u.metric), i = this._ref(), x = v[i], r = rangeN(v, i, 5 * c.PER), E = this.el.read, PER = c.PER, self = this;
     var sm = [], k; for (k = 1; k <= 5; k++) if (v[i - PER * k] != null) sm.push(v[i - PER * k]);
     var avg = sm.length ? sm.reduce(function (a, b) { return a + b; }, 0) / sm.length : null, vsAvg = (x == null || avg == null) ? null : ((M.pp || M.diff) ? x - avg : (avg ? (x / avg - 1) * 100 : null));
-    var unitW = { monthly: 'month', quarterly: 'quarter', annual: 'year' }[c.st.gran], mo = change(v, i, 1, M), yy = change(v, i, PER, M);
-    E.querySelector('.dk-when').textContent = c.label(i) + (u.hover != null ? '' : u.pinA != null ? ' · pinned' : ' · latest');
+    var part = !!c.P[i].partial, unitW = { monthly: 'month', quarterly: 'quarter', annual: 'year' }[c.st.gran], mo = part ? null : change(v, i, 1, M), yy = part ? c.vals(u.metric, 'yoy')[i] : change(v, i, PER, M);
+    E.querySelector('.dk-when').textContent = c.label(i) + (part ? ' · in progress' : u.hover != null ? '' : u.pinA != null ? ' · pinned' : ' · latest');
     E.querySelector('.dk-big').innerHTML = fmt(x, M.dec) + '<small>' + esc(M.unit) + ' · ' + esc(this._lbl(M)) + '</small>';
-    var kv = '<span>vs previous ' + unitW + '</span><b class="' + cls(mo) + '">' + chgTxt(M, mo) + '</b>';
-    if (c.st.gran !== 'annual') kv += '<span>vs same ' + unitW + ' last year</span><b class="' + cls(yy) + '">' + chgTxt(M, yy) + '</b><span>vs 5-year average for ' + (PER === 12 ? MON[c.P[i].k] : 'Q' + (c.P[i].k + 1)) + '</span><b class="' + cls(vsAvg) + '">' + chgTxt(M, vsAvg) + '</b>';
-    kv += '<span>Rank in the last ' + (r ? r.n : 5 * PER) + ' ' + unitW + 's</span><b>' + (r ? '#' + r.rank : '—') + '</b>';
+    var kv = part ? '<span>' + c.P[i].months + ' month' + (c.P[i].months > 1 ? 's' : '') + ' so far, vs the same months last year</span><b class="' + cls(yy) + '">' + chgTxt(M, yy) + '</b>'
+      : '<span>vs previous ' + unitW + '</span><b class="' + cls(mo) + '">' + chgTxt(M, mo) + '</b>';
+    if (c.st.gran !== 'annual' && !part) kv += '<span>vs same ' + unitW + ' last year</span><b class="' + cls(yy) + '">' + chgTxt(M, yy) + '</b><span>vs 5-year average for ' + (PER === 12 ? MON[c.P[i].k] : 'Q' + (c.P[i].k + 1)) + '</span><b class="' + cls(vsAvg) + '">' + chgTxt(M, vsAvg) + '</b>';
+    if (!part) kv += '<span>Rank in the last ' + (r ? r.n : 5 * PER) + ' ' + unitW + 's</span><b>' + (r ? '#' + r.rank : '—') + '</b>';
     c.sec.metrics.forEach(function (m2) { if (m2.id === u.metric || !c.has(m2.id) || m2.hideInReading) return; var v2 = c.vals(m2.id); if (lastIdx(v2) < 0) return; kv += '<span>' + esc(self._lbl(m2)) + '</span><b>' + fmt(v2[i], m2.dec) + ' ' + esc(m2.unit) + '</b>'; });
     E.querySelector('.dk-kv').innerHTML = kv;
     var p = '';
     if (u.pinA != null) p += '<span class="dk-pin"><i></i>A ' + c.label(u.pinA) + '</span>';
     if (u.pinB != null) { var a = v[u.pinA], b = v[u.pinB], dd = (a == null || b == null) ? null : ((M.pp || M.diff) ? b - a : (a ? (b / a - 1) * 100 : null)); p += '<span class="dk-pin dk-b"><i></i>B ' + c.label(u.pinB) + '</span><span>A→B <b class="' + cls(dd) + '">' + chgTxt(M, dd) + '</b></span>'; }
-    p += u.pinA != null ? '<button type="button" class="dk-lnk dk-clr">Clear</button>' : '<span>Click a chart to pin a period</span>';
+    p += u.pinA != null ? '<button type="button" class="dk-lnk dk-clr">Clear</button>' : '<span>To compare two periods, click one on the main chart, then another.</span>';
     var pe = E.querySelector('.dk-pins'); pe.innerHTML = p; var cl = pe.querySelector('.dk-clr'); if (cl) cl.onclick = function () { u.pinA = u.pinB = null; self._paintMarks(); self._read(); self._rank(); };
     if (u.mode !== 'seasonal') { var si = this._stageInfo(), S = this.el.stage;
       S.querySelector('.dk-sv').innerHTML = fmt(si.v[i], si.dec) + '<small>' + esc(si.unit) + ' · ' + c.label(i) + '</small>';
@@ -473,7 +497,8 @@
   Desk.prototype._whoData = function () {
     var c = this.ctx, w = this._u().who, dims = (c.sec.who || []).filter(function (x) { return !x.available || x.available({ prod: c.st.prod }); });
     if (w.dim >= dims.length) w.dim = 0; var dim = dims[w.dim]; if (!dim) return null;
-    var pills = dim.pills ? dim.pills({ prod: c.st.prod }) : null, pill = pills ? (pills.filter(function (p) { return p.k === w.pill; })[0] || pills[0]) : null;
+    var pills = dim.pills ? dim.pills({ prod: c.st.prod }) : null, top = pills ? (pills.filter(function (p) { return p.k === w.pill; })[0] || pills[0]) : null;
+    var subs = top && top.sub ? top.sub : null, sub = subs ? (subs.filter(function (p) { return p.k === w.sub; })[0] || null) : null, pill = sub || top;   // pill = o recorte que vale
     var ck = this.cur + '|' + dim.id + '|' + c.st.prod + '|' + (pill ? pill.k : ''), base = (this._who_cache = this._who_cache || {})[ck];
     if (!base) { var raw = dim.entities({ prod: c.st.prod }, pill);   // {names:[], maps:[ {AAAA-MM: v} ]} já em ordem de relevância
       base = this._who_cache[ck] = { names: raw.names, series: raw.maps.map(function (m) { return align(m, c.ax).map(function (x) { return x == null ? 0 : x; }); }) }; }
@@ -483,7 +508,7 @@
     if (dim.defaultSel) def = dim.defaultSel(names);
     else { var sc = names.map(function (n, k) { var t = 0, ms = base.series[k]; for (var i = c.m0; i <= c.m1; i++) t += ms[i] || 0; return [n, t]; }).sort(function (a, b) { return b[1] - a[1]; }); def = sc.slice(0, dim.top || 5).map(function (x) { return x[0]; }); }
     var sel = w.sel || def.concat(dim.noOthers ? [] : ['Others']);
-    return { dim: dim, dims: dims, pills: pills, pill: pill, names: names, agg: agg.v, sel: sel };
+    return { dim: dim, dims: dims, pills: pills, top: top, subs: subs, sub: sub, pill: pill, names: names, agg: agg.v, ser: base.series, sel: sel };
   };
   Desk.prototype._slot = function (name, sel) {   // cor por ENTIDADE; dois marcados nunca dividem a cor enquanto houver cor livre
     if (name === 'Others') return 'others'; var S = this._slots, dim = this._whoDim || {};
@@ -498,7 +523,10 @@
     var dg = E.who.querySelector('.dk-dims'); dg.hidden = d.dims.length < 2;
     dg.innerHTML = d.dims.map(function (x, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === w.dim) + '">' + esc(x.tab || x.label) + '</button>'; }).join('');
     E.who.querySelector('.dk-pop').hidden = !!d.dim.noSelect;
-    E.who.querySelector('.dk-pills').innerHTML = d.pills ? d.pills.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (p.k === d.pill.k) + '">' + esc(p.l) + '</button>'; }).join('') : '';
+    E.who.querySelector('.dk-pills').innerHTML = d.pills ? '<span class="dk-plbl">Product</span>' + d.pills.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (p.k === d.top.k) + '">' + esc(p.l) + (p.sub ? ' ▾' : '') + '</button>'; }).join('') : '';
+    var sp = E.who.querySelector('.dk-subpills'); sp.hidden = !d.subs;
+    sp.innerHTML = d.subs ? '<span class="dk-plbl">Within ' + esc(d.top.l) + '</span><button type="button" class="dk-pill" data-k="" aria-pressed="' + (!d.sub) + '">All ' + esc(d.top.l.toLowerCase()) + '</button>' +
+      d.subs.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (!!d.sub && p.k === d.sub.k) + '">' + esc(p.l) + '</button>'; }).join('') : '';
     var modes = d.dim.modes || [['volume', 'Volume (kt)'], ['share', 'Share (%)']];
     E.who.querySelector('.dk-whomodes').innerHTML = modes.map(function (m) { return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (w.mode === m[0]) + '">' + m[1] + '</button>'; }).join('');
     E.who.querySelector('.dk-popbtn').innerHTML = esc(d.dim.label) + ' ▾';
@@ -508,8 +536,8 @@
     selNamed.forEach(function (n) { stack.push({ name: n, v: d.agg[d.names.indexOf(n)] }); });
     if (d.sel.indexOf('Others') >= 0) stack.push({ name: 'Others', v: c.P.map(function (_, i) { var s = tot[i]; selNamed.forEach(function (n) { s -= d.agg[d.names.indexOf(n)][i] || 0; }); return Math.max(0, s); }) });
     var sets = stack.map(function (s) { var col = slotColor(self._slot(s.name, d.sel)), data = sl(s.v).map(function (x, k) { var T = tot[c.i0 + k]; return share ? (T ? +(x / T * 100).toFixed(2) : 0) : +(+x || 0).toFixed(1); });
-      var b = barSet(data, (w.hi && w.hi !== s.name) ? hexA(col, .16) : col, { label: s.name, stacked: true, gap: true, surf: t.surf }); return b; });
-    this._chart('who', E.who.querySelector('canvas'), 'bar', labels, sets, { bar: true, stack: true, share: share, dec: 0 });
+      var b = barSet(data, (w.hi && w.hi !== s.name) ? hexA(col, .16) : col, { label: s.name, stacked: true, gap: true, surf: t.surf, partialAt: c.partialAt() }); return b; });
+    this._chart('who', E.who.querySelector('canvas'), 'bar', labels, sets, { bar: true, stack: true, share: share, dec: 0, tip: true });
     this._whoTitle = d.dim.title || 'Breakdown';
     if (!E.who.querySelector('.dk-popp').hidden) this._fillPop();
   };
@@ -530,7 +558,9 @@
   };
   Desk.prototype._rank = function () {
     var c = this.ctx, d = this._whoData(), E = this.el, w = this._u().who, self = this; if (!d) return;
-    var i = this._ref(), PER = c.PER, unit = d.dim.unit || 'kt', tot = 0, all = d.names.map(function (n, k) { var v = d.agg[k][i] || 0; tot += v; return { n: n, v: v, p: d.agg[k][i - PER] || 0 }; });
+    var i = this._ref(), PER = c.PER, unit = d.dim.unit || 'kt', tot = 0, pp = c.P[i];
+    var prevOf = function (k) { if (!pp.partial) return d.agg[k][i - PER] || 0; var s0 = 0; for (var m = pp.a - 12; m <= pp.b - 12; m++) if (m >= 0) s0 += d.ser[k][m] || 0; return s0; };   // parcial: mesmos meses do ano anterior
+    var all = d.names.map(function (n, k) { var v = d.agg[k][i] || 0; tot += v; return { n: n, v: v, p: prevOf(k) }; });
     E.who.querySelector('.dk-when').textContent = c.label(i);
     var rest = all.filter(function (r) { return d.sel.indexOf(r.n) < 0; }).sort(function (a, b) { return b.v - a.v; }), nSel = d.sel.filter(function (n) { return n !== 'Others'; }).length;
     var rows = all.filter(function (r) { return d.sel.indexOf(r.n) >= 0; }).concat(rest.slice(0, Math.max(0, 10 - nSel))).sort(function (a, b) { return b.v - a.v; });
@@ -551,12 +581,14 @@
     var ids = c.sec.metrics.filter(function (M) { return M.id !== u.metric && !M.noMini && c.has(M.id) && lastIdx(c.vals(M.id)) >= 0; }).map(function (M) { return M.id; });
     var sig = ids.join(',');
     if (E.minis.dataset.sig !== sig) { this._dropCharts('mini:'); E.minis.dataset.sig = sig;
-      E.minis.innerHTML = ids.map(function (id) { return '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div></div>'; }).join('');
+      var lastG = null;
+      E.minis.innerHTML = '<div class="dk-gh dk-gtop"><span>More in this section</span><em>Click a chart to bring it to the main view</em></div>' + ids.map(function (id) { var G = c.M(id).group || '', hd = (G && G !== lastG) ? '<div class="dk-gh"><span>' + esc(G) + '</span></div>' : ''; lastG = G || lastG;
+        return hd + '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div></div>'; }).join('');
       ids.forEach(function (id) { self._bindHover(E.minis.querySelector('#dk-mini-' + id), 'mini:' + id); });
     }
     var labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; });
     ids.forEach(function (id) { var M = c.M(id), box = E.minis.querySelector('[data-k="' + id + '"]'); box.querySelector('.chart-title').textContent = self._lbl(M);
-      self._chart('mini:' + id, box.querySelector('canvas'), 'line', labels, [lineSet(c.vals(id).slice(c.i0, c.i1 + 1), t.ink, { label: self._lbl(M), w: 1.5 })], { mini: true, dec: M.dec }); });
+      self._chart('mini:' + id, box.querySelector('canvas'), 'line', labels, [lineSet(c.vals(id).slice(c.i0, c.i1 + 1), t.ink, { label: self._lbl(M), w: 1.5, partialAt: c.partialAt() })], { mini: true, dec: M.dec }); });
     this._miniIds = ids; this._miniHeads();
   };
   Desk.prototype._miniHeads = function () { var c = this.ctx, i = this._ref(), E = this.el; (this._miniIds || []).forEach(function (id) { var M = c.M(id), e = E.minis.querySelector('[data-k="' + id + '"] .dk-mv'); if (e) e.textContent = fmt(c.vals(id)[i], M.dec) + ' ' + M.unit; }); };
