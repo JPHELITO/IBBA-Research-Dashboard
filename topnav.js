@@ -891,17 +891,18 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var p = _path(url || '');
     if(p.indexOf('/steel and mining/steel_sm_dashboard.html') !== -1 || /\/steel\.html$/.test(p)) return 'steel';
     if(p.indexOf('/pulp and paper/pp_dashboard.html') !== -1 || /\/pp\.html$/.test(p)) return 'pp';
+    if(/\/stock-guide\.html$/.test(p)) return 'sg';   // ambiente novo (nov/2026): o Stock Guide também tem faixa
     return '';
   }
   function _nameSector(sec, on){
-    var card = sec ? document.querySelector('.sc-card[data-flag="sector_' + sec + '"]') : null;
+    var card = sec ? document.querySelector('.sc-card[data-flag="' + (sec === 'sg' ? 'stock_guide' : 'sector_' + sec) + '"]') : null;
     if(!card) return false;
     var t = card.querySelector('.sector-card-title');
     card.style.viewTransitionName = on ? 'ibba-sector' : '';
     if(t) t.style.viewTransitionName = on ? 'ibba-sector-title' : '';
     return !!on && card.getClientRects().length > 0;
   }
-  function _clearSector(){ _nameSector('steel', false); _nameSector('pp', false); }
+  function _clearSector(){ _nameSector('steel', false); _nameSector('pp', false); _nameSector('sg', false); }
   window.addEventListener('pageswap', function(e){
     if(!e.viewTransition) return;
     var to = _lastNav; try{ if(e.activation && e.activation.entry && e.activation.entry.url) to = e.activation.entry.url; }catch(err){}
@@ -912,6 +913,9 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     var from = '';
     try{ from = (window.navigation && navigation.activation && navigation.activation.from && navigation.activation.from.url) || document.referrer || ''; }catch(err){}
     if(_nameSector(_sectorOf(from), true)) e.viewTransition.finished.then(_clearSector, _clearSector);
+    // ENTRADA NO AMBIENTE (nov/2026): veio da home para uma página com faixa → o conteúdo sobe de mais fundo, atrás da faixa
+    try{ var _pf = _home(_path(from)); if(_pf === '/index.html' && _sectorOf(location.href)){ var _h = document.documentElement; _h.classList.add('ibba-chega');
+      var _tira = function(){ _h.classList.remove('ibba-chega'); }; e.viewTransition.finished.then(_tira, _tira); } }catch(err){}
   });
   // voltou pelo "Voltar" com a página guardada na memória (bfcache): desfaz o que o clique de saída mexeu
   window.addEventListener('pageshow', function(e){

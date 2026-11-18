@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-pg="market">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -7,6 +7,9 @@
 <title>Market</title>
 <!-- night mode: Market é ESCURA por padrão; segue o toggle GLOBAL (localStorage ibba_theme + classe html.dark) -->
 <script>try{if(localStorage.getItem('ibba_theme')!=='light')document.documentElement.classList.add('dark')}catch(e){}</script>
+<!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
+<link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -643,6 +646,8 @@ body.theme-light .seg:not(.ibba-slide-on) button.active{background:#111}
 body.theme-light .seg>.ibba-slide,body.theme-light .seg.rng>.ibba-slide,body.theme-light .seg.mode>.ibba-slide{background:#111}
 body.theme-light .ct-chip.on,body.theme-light .mdl-tile.on{background:#111;border-color:#111;color:#fff}
 </style>
+<!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
+<link rel="stylesheet" href="/ibba-design.css"/>
 </head>
 <body class="market-dark">
 
@@ -1359,7 +1364,16 @@ function _renderChart(hostId, lines, mode, emptyMsg, opts){
   const paths=lines.map((l,i)=>{ const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
     return `<path data-i="${i}" d="${d}" fill="none" stroke="${l.color}" stroke-width="1.9" stroke-linejoin="round"></path>`; }).join('');
   const rt=RT?_rtOverlaySVG(RT,X,tMin,tMax,W,H,P):(RM?_rtLinesSVG(RM,lines,X,Y,tMin,tMax,W,H,P):'');
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}
+  // ACABAMENTO (nov/2026, só aparência): com UMA série em preço, a área sob a linha ganha um degradê na cor da
+  // série que se desfaz rumo ao eixo. Não há ponto novo: é o MESMO traçado, fechado na base. Fica de fora em
+  // % (a base seria o zero), em ratio (bandas) e com Ratings ligado (a faixa de recomendações já ocupa o fundo).
+  let area='';
+  if(lines.length===1 && mode==='price' && !RT && !RM){ const l=lines[0], yb=(H-P.b).toFixed(1), gid='cg-'+hostId;
+    const d=l.pts.map(([t,v],j)=>`${j?'L':'M'}${X(t).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+    area=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${l.color};stop-opacity:.20"/>`
+        +`<stop offset=".72" style="stop-color:${l.color};stop-opacity:.035"/><stop offset="1" style="stop-color:${l.color};stop-opacity:0"/></linearGradient></defs>`
+        +`<path class="c-area" d="${d} L${X(l.pts[l.pts.length-1][0]).toFixed(1)} ${yb} L${X(l.pts[0][0]).toFixed(1)} ${yb} Z" fill="url(#${gid})" stroke="none" pointer-events="none"></path>`; }
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}${area}
     <rect class="c-sel" x="0" y="${P.t}" width="0" height="${(H-P.t-P.b).toFixed(1)}" style="display:none"></rect>
     <line class="c-seledge c-se0" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
     <line class="c-seledge c-se1" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" style="display:none"></line>
