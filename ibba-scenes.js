@@ -13,13 +13,13 @@
                            e vira uma LINHA DE DESEMPENHO; depois volta.
      pp  Pulp & Paper    → uma fileira de ÁRVORES (copas altas, como eucalipto) que se penteia numa
                            linha suave — a mesma ideia, com a mão da floresta.
-     sg  Stock Guide     → o MURAL das empresas cobertas (todas, lado a lado) que se desdobra na CURVA
-                           DO DIA: da que mais sobe à que mais cai, cruzando a linha do zero. Fichas
-                           QUADRADAS de canto arredondado (lingote) para mineração e aço, REDONDAS
-                           (bobina/tora) para papel e celulose; aro verde/vermelho = o dia. Onde há
-                           espaço (a faixa do topo do Stock Guide) as fichas seguem inteiras na curva;
-                           no cartão da Home, apertado, elas viram pontos. Logo da empresa quando houver
-                           arquivo (window.IBBA_LOGOS = {VALE:'/assets/logos/VALE.svg', …}); sem ele, o código.
+     sg  Stock Guide     → o MURAL das empresas cobertas — o LOGO de cada uma (só o símbolo, sem fundo;
+                           /assets/logos/logos.js), todas lado a lado, da que mais sobe à que mais cai —
+                           que se desdobra na CURVA DO DIA: cada empresa vira um ponto na altura da sua
+                           variação, e a curva leva as cores do heatmap (verde acima do zero, vermelho
+                           abaixo). Onde há espaço (a faixa do topo do Stock Guide) os logos seguem ao
+                           lado dos seus pontos; no cartão da Home, apertado, ficam só os pontos e os
+                           logos voltam no mural. Sem arquivo de logo: uma ficha com o código.
 
    Uma LUZ percorre a linha de ponta a ponta (a "linha contornando a silhueta"); no mural, o contorno
    das fichas acende em sequência. O desempenho é REAL quando a página informa
@@ -76,7 +76,7 @@
 .sc-tag b,.sc-ptag b{font-weight:800;margin-left:6px;letter-spacing:.02em;}\
 .sc-tag b.up,.sc-ptag b.up{color:#2fbf71;}.sc-tag b.dn,.sc-ptag b.dn{color:#ff5d5d;}\
 .sc-last{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(255,255,255,.16);}\
-/* Stock Guide: o MURAL das empresas cobertas, que se desdobra na curva do dia */\
+/* Stock Guide: o MURAL das empresas cobertas (o LOGO de cada uma, só o símbolo, sem fundo), que se desdobra na curva do dia */\
 .sc-perf{position:absolute;inset:0;container-type:size;}\
 .sc-prof,.sc-wall{position:absolute;inset:0;}\
 .sc-perf:not(.on) .sc-prof{display:none;}\
@@ -84,33 +84,39 @@
 .sc-zero::after{content:"0%";position:absolute;right:6px;top:-11px;font:700 7.5px/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:.06em;color:rgba(255,255,255,.36);}\
 .sc-ptag{right:10px;top:5px;}\
 .sc-perf.dots .sc-ptag{display:none;}\
+/* a curva do dia nas cores do heatmap: verde acima do zero, vermelho abaixo (a luz que percorre é branca) */\
+.sc-ln.sc-up{stroke:#2fbf71;}.sc-ln.sc-dn{stroke:#ff5d5d;}\
+.sc-hotw{fill:none;stroke:#fff;stroke-width:2.2px;stroke-linejoin:round;stroke-linecap:round;}\
+.sc-hotw1{fill:none;stroke:#fff;stroke-opacity:.2;stroke-width:6.5px;stroke-linejoin:round;stroke-linecap:round;}\
 .sc-tk{position:absolute;left:0;top:0;width:0;height:0;transform:translate3d(var(--ax,50cqw),var(--ay,50cqh),0);will-change:transform;}\
-.sc.is-b .sc-perf.on .sc-tk{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}\
-/* o voo do mural para a curva (e a volta) é uma animação de UMA vez, disparada na virada; depois a ficha fica no lugar */\
+.sc-tk.up{--c:#2fbf71;}.sc-tk.dn{--c:#ff5d5d;}\
+.sc.is-b .sc-perf.on .sc-tk{transform:translate3d(var(--bx),var(--by),0);}\
+/* o voo do mural para a curva (e a volta) é uma animação de UMA vez, disparada na virada; depois cada um fica no lugar */\
 .sc.to-b .sc-perf.on .sc-tk{animation:sc-fly-b 2.2s cubic-bezier(.65,0,.35,1) both;animation-delay:calc(var(--j,0) * 22ms);}\
 .sc.to-a .sc-perf.on .sc-tk{animation:sc-fly-a 2.2s cubic-bezier(.65,0,.35,1) both;animation-delay:calc(var(--j,0) * 22ms);}\
-@keyframes sc-fly-b{from{transform:translate3d(var(--ax),var(--ay),0) scale(1);}to{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}}\
-@keyframes sc-fly-a{from{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}to{transform:translate3d(var(--ax),var(--ay),0) scale(1);}}\
-/* o contorno de cada ficha acende em sequência (a mesma luz que percorre as linhas) */\
-.sc-tk::before{content:"";position:absolute;left:calc(var(--s,24px) / -2 - 2.5px);top:calc(var(--s,24px) / -2 - 2.5px);width:calc(var(--s,24px) + 5px);height:calc(var(--s,24px) + 5px);\
-  box-sizing:border-box;border:1.5px solid #FFC08A;border-radius:50%;box-shadow:0 0 9px 1px rgba(255,105,20,.7),inset 0 0 6px rgba(255,105,20,.45);opacity:0;\
-  animation:sc-glint ' + CYCLE + 's linear infinite both;animation-delay:calc(var(--sc-t,0s) + var(--j,0) * 62ms);}\
-.sc-tk.sq::before{border-radius:30%;}\
-.sc.is-b .sc-tk::before{visibility:hidden;}\
-@keyframes sc-glint{0%,3%{opacity:0;}5.5%{opacity:1;}10%,16.5%{opacity:0;}19%{opacity:1;}23.5%,100%{opacity:0;}}\
-.sc-chip{position:absolute;left:calc(var(--s,24px) / -2);top:calc(var(--s,24px) / -2);width:var(--s,24px);height:var(--s,24px);box-sizing:border-box;\
-  display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0C0C0E;border:1.5px solid rgba(255,255,255,.38);border-radius:50%;\
-  font:800 calc(var(--s,24px) * .262)/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:-.015em;color:#fff;\
-  animation:sc-bob 5.6s ease-in-out infinite;animation-delay:calc(var(--i,0) * -0.43s);will-change:transform;}\
-.sc-tk.sq .sc-chip{border-radius:27%;}\
-.sc-tk.up{--c:#2fbf71;}.sc-tk.dn{--c:#ff5d5d;}\
-.sc-tk.up .sc-chip,.sc-tk.dn .sc-chip{border-color:var(--c);}\
-.sc-chip.logo{background:#fff;}\
-.sc-chip img{width:76%;height:76%;object-fit:contain;display:block;}\
-/* cartão apertado: na curva do dia a ficha vira um PONTO da cor do dia (o logo volta no mural) */\
-.sc-chip::after{content:"";position:absolute;inset:0;background:var(--c,#8c8c88);opacity:0;transition:opacity .8s ease 1.3s;}\
-.sc.is-b .sc-perf.on.dots .sc-chip::after{opacity:1;transition:opacity 1s ease .85s;}\
+@keyframes sc-fly-b{from{transform:translate3d(var(--ax),var(--ay),0);}to{transform:translate3d(var(--bx),var(--by),0);}}\
+@keyframes sc-fly-a{from{transform:translate3d(var(--bx),var(--by),0);}to{transform:translate3d(var(--ax),var(--ay),0);}}\
+/* o LOGO. Três camadas: a de fora muda com o tempo da cena, a do meio balança de leve, a de dentro "acende" em sequência */\
+.sc-chip{position:absolute;left:calc(var(--lw,32px) / -2);top:calc(var(--s,24px) / -2);width:var(--lw,32px);height:var(--s,24px);\
+  transition:opacity .6s ease .45s,transform 1.4s cubic-bezier(.65,0,.35,1) .2s;will-change:transform,opacity;}\
+.sc-chip>i{display:block;width:100%;height:100%;animation:sc-bob 5.6s ease-in-out infinite;animation-delay:calc(var(--i,0) * -0.43s);will-change:transform;}\
+.sc-chip>i>b{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-weight:inherit;opacity:.9;\
+  animation:sc-wave ' + CYCLE + 's linear infinite both;animation-delay:calc(var(--sc-t,0s) + var(--j,0) * 62ms);will-change:transform,opacity;}\
+.sc-chip img{display:block;width:100%;height:100%;object-fit:contain;}\
+@keyframes sc-wave{0%,3%{transform:scale(1);opacity:.9;}5.5%{transform:scale(1.16);opacity:1;}10%,16.5%{transform:scale(1);opacity:.9;}19%{transform:scale(1.16);opacity:1;}23.5%,100%{transform:scale(1);opacity:.9;}}\
 @keyframes sc-bob{0%,100%{transform:translateY(-1.2px);}50%{transform:translateY(1.2px);}}\
+/* sem arquivo de logo: uma ficha com o código (quadrada = mineração e aço, redonda = papel e celulose) */\
+.sc-chip.txt>i>b{box-sizing:border-box;width:var(--s,24px);margin:0 auto;border:1.5px solid rgba(255,255,255,.4);border-radius:50%;background:#0C0C0E;\
+  font:800 calc(var(--s,24px) * .262)/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:-.015em;color:#fff;}\
+.sc-tk.sq .sc-chip.txt>i>b{border-radius:27%;}\
+/* o PONTO da empresa na curva (da cor do dia) */\
+.sc-pt{position:absolute;left:calc(var(--d,7px) / -2);top:calc(var(--d,7px) / -2);width:var(--d,7px);height:var(--d,7px);border-radius:50%;background:var(--c,#9a9a96);\
+  opacity:0;transform:scale(.3);transition:opacity .5s ease .55s,transform .5s ease .55s;will-change:transform,opacity;}\
+.sc.is-b .sc-perf.on .sc-pt{opacity:1;transform:none;transition:opacity .5s ease .9s,transform .7s cubic-bezier(.2,.9,.3,1.25) .9s;}\
+/* quadro largo (faixa do Stock Guide): na curva o logo fica ao lado do seu ponto — acima de quem sobe, abaixo de quem cai */\
+.sc.is-b .sc-perf.on:not(.dots) .sc-chip{transform:translateY(var(--oy,0px)) scale(.82);}\
+/* quadro apertado (cartão da Home): na curva ficam só os pontos; os logos voltam no mural */\
+.sc.is-b .sc-perf.on.dots .sc-chip{opacity:0;transform:scale(.25);transition:opacity .5s ease 1s,transform 1.5s cubic-bezier(.65,0,.35,1) .1s;}\
 .sc.sc-off *,.sc.sc-off *::before,.sc.sc-off *::after{animation-play-state:paused!important;}\
 @media (prefers-reduced-motion:reduce){.sc *,.sc *::before,.sc *::after{animation:none!important;transition:none!important;}.sc-win{display:none;}.sc-st-c{opacity:0;}}';
 
@@ -215,29 +221,37 @@
   var SG = [['VALE', 'm'], ['CMIN3', 'm'], ['CSNA3', 'm'], ['GGBR4', 'm'], ['USIM5', 'm'], ['TX', 'm'], ['AUGO', 'm'], ['SCCO', 'm'], ['GMEXICOB', 'm'], ['CS', 'm'], ['ERO', 'm'],
             ['HBM', 'm'], ['LUN', 'm'], ['ARA', 'm'], ['VMM', 'm'], ['SUZB3', 'p'], ['KLBN11', 'p'], ['RANI3', 'p'], ['CMPC', 'p'], ['COPEC', 'p']];
   var _moves = null, _sg = [];
-  function logos() { return window.IBBA_LOGOS || {}; }
+  /* o logo de cada empresa: /assets/logos/logos.js (window.IBBA_LOGOS). A cena é sempre preta → a versão para fundo escuro, só o símbolo */
+  function logoSrc(code) { var L = (window.IBBA_LOGOS || {})[code]; if (!L) return null; return typeof L === 'string' ? L : (L.markDark || L.mark || null); }
   function mono(t) { return t.replace(/\d+$/, '').slice(0, 4); }
   function known() { var k = 0; if (_moves) SG.forEach(function (c) { var v = _moves[c[0]]; if (v != null && isFinite(v)) k++; }); return k; }
   function token(c, i) {
-    var t = el('sc-tk' + (c[1] === 'm' ? ' sq' : ''), '--i:' + i + ';--j:' + i + ';'), chip = el('sc-chip');
-    var src = logos()[c[0]];
+    var t = el('sc-tk' + (c[1] === 'm' ? ' sq' : ''), '--i:' + i + ';--j:' + i + ';'), chip = el('sc-chip'), a = document.createElement('i'), b = document.createElement('b'), src = logoSrc(c[0]);
+    function txt() { chip.classList.add('txt'); b.textContent = mono(c[0]); }
     if (src) {
-      chip.className += ' logo'; var im = document.createElement('img'); im.alt = ''; im.decoding = 'async';
-      im.onerror = function () { chip.classList.remove('logo'); chip.textContent = mono(c[0]); };      // arquivo do logo faltando → o código
-      im.src = src; chip.appendChild(im);
-    } else chip.textContent = mono(c[0]);
-    t.appendChild(chip);
+      var im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.draggable = false;
+      im.onerror = function () { if (im.parentNode) im.parentNode.removeChild(im); txt(); };      // arquivo do logo faltando → a ficha com o código
+      im.src = src; b.appendChild(im);
+    } else txt();
+    a.appendChild(b); chip.appendChild(a); t.appendChild(el('sc-pt')); t.appendChild(chip);
     return { t: t };
   }
   function buildSG(sc) {
     var st = sc.__st || (sc.__st = {}), id = 'scp' + (++_uid);
     var box = el('sc-perf'), wall = el('sc-wall');
     var prof = el('sc-st-c sc-prof', '', '<i class="sc-zero"></i>'
-      + '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><path id="' + id + '" vector-effect="non-scaling-stroke" d="M0 50 L100 50"/></defs><use href="#' + id + '" class="sc-ln" stroke-opacity=".46" style="stroke-width:1.2px"/></svg>'
-      + '<div class="sc-win"><div><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hot2"/><use href="#' + id + '" class="sc-hot1"/><use href="#' + id + '" class="sc-hot"/></svg></div></div>'
+      + '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><path id="' + id + '" vector-effect="non-scaling-stroke" d="M0 50 L100 50"/>'
+      + '<clipPath id="' + id + 'u"><rect x="-5" y="-5" width="110" height="55"/></clipPath><clipPath id="' + id + 'd"><rect x="-5" y="50" width="110" height="55"/></clipPath>'
+      + '<linearGradient id="' + id + 'gu" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="50"><stop offset="0" stop-color="#16a34a" stop-opacity=".5"/><stop offset="1" stop-color="#16a34a" stop-opacity=".03"/></linearGradient>'
+      + '<linearGradient id="' + id + 'gd" gradientUnits="userSpaceOnUse" x1="0" y1="50" x2="0" y2="100"><stop offset="0" stop-color="#c0392b" stop-opacity=".03"/><stop offset="1" stop-color="#c0392b" stop-opacity=".6"/></linearGradient></defs>'
+      + '<path class="sc-ar" fill="url(#' + id + 'gu)" clip-path="url(#' + id + 'u)"/><path class="sc-ar" fill="url(#' + id + 'gd)" clip-path="url(#' + id + 'd)"/>'
+      + '<use href="#' + id + '" class="sc-ln sc-up" clip-path="url(#' + id + 'u)"/><use href="#' + id + '" class="sc-ln sc-dn" clip-path="url(#' + id + 'd)"/></svg>'
+      + '<div class="sc-win"><div><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hotw1"/><use href="#' + id + '" class="sc-hotw"/></svg></div></div>'
       + '<span class="sc-ptag"></span>');
     st.path = prof.querySelector('path'); st.zero = prof.querySelector('.sc-zero'); st.tag = prof.querySelector('.sc-ptag');
-    st.tk = {}; st.box = box;
+    st.ar = prof.querySelectorAll('.sc-ar'); st.cu = prof.querySelector('#' + id + 'u rect'); st.cd = prof.querySelector('#' + id + 'd rect');
+    st.gu = prof.querySelector('#' + id + 'gu'); st.gd = prof.querySelector('#' + id + 'gd');
+    st.tk = {}; st.box = box; st.W = 0;
     SG.forEach(function (c, i) { var o = token(c, i); wall.appendChild(o.t); st.tk[c[0]] = o; });
     box.appendChild(prof); box.appendChild(wall);
     st.on = known() >= 3 && !REDUCED;            // com dado: o mural vira curva; sem dado, fica o mural
@@ -251,7 +265,7 @@
   function layoutSG(sc) {
     var st = sc.__st; if (!st || !st.tk) return;
     var has = known() >= 3;
-    if ((has && !REDUCED) !== st.on) { buildSG(sc); return; }          // chegou (ou sumiu) o dado: remonta para os relógios partirem juntos
+    if ((has && !REDUCED) !== st.on) { buildSG(sc); return; }          // chegou (ou sumiu) o dado: remonta
     var W = sc.clientWidth || 300, Hh = sc.clientHeight || 120, n = SG.length, on = st.on;
     /* mudança pequena de tamanho (o cartão que cresce sob o mouse) NÃO refaz a conta: o mural é um bloco de medida fixa e a
        curva está em fração do quadro — os dois acompanham sozinhos, sem pulo */
@@ -259,40 +273,45 @@
     var rows = SG.map(function (c, i) { var v = _moves ? _moves[c[0]] : null; return { k: c[0], v: (v != null && isFinite(v)) ? +v : null, i: i }; });
     var order = rows.slice();
     if (has) order.sort(function (a, b) { return ((b.v == null ? 0 : b.v) - (a.v == null ? 0 : a.v)) || (a.i - b.i); });   // da que mais sobe à que mais cai
-    /* MURAL: a grade que dá a maior ficha (até 30px); empate → menos fileiras; grade completa leva vantagem */
+    /* MURAL: a grade que dá o maior logo (até 30px de altura; a caixa do logo é 1,36× mais larga que alta, porque muitos
+       símbolos são deitados); empate → menos fileiras; grade completa leva vantagem */
     var g = null, r;
     for (r = 1; r <= 5; r++) {
-      var c = Math.ceil(n / r), cell = Math.min((W - 10) / c, (Hh - 8) / r), sr = Math.min(30, Math.floor(cell * 0.8)), score = sr + (n % c === 0 ? 0.6 : 0);
+      var c = Math.ceil(n / r), sr = Math.min(30, Math.floor(Math.min((W - 10) / c / 1.5, (Hh - 8) / r / 1.3))), score = sr + (n % c === 0 ? 0.6 : 0);
       if (!g || score > g.score + 0.001) g = { r: r, c: c, s: sr, score: score };
     }
-    var s = Math.max(12, g.s), row1 = g.r === 1;
-    var px = row1 ? Math.min((W - s - 22) / (n - 1), s * 2) : Math.min((W - 10) / g.c, s * 1.5), py = Math.min((Hh - 8) / g.r, s * 1.34);
-    var x0 = row1 ? W - s / 2 - 12 - (n - 1) * px : (W - (g.c - 1) * px) / 2, y0 = (Hh - (g.r - 1) * py) / 2;
-    /* CURVA DO DIA: uma escala só para altas e baixas (o zero cai onde cair); fileira única → as fichas só sobem/descem */
-    var pitchB = row1 ? px : (W - 16) / (n - 1), dots = !row1;
-    var d = dots ? Math.max(4.5, Math.min(9, pitchB * 0.62)) : s, kb = d / s;
+    var s = Math.max(12, g.s), lw = s * 1.36, row1 = g.r === 1;
+    var px = row1 ? Math.min((W - lw - 22) / (n - 1), s * 2) : Math.min((W - 10) / g.c, s * 1.62), py = Math.min((Hh - 8) / g.r, s * 1.36);
+    var x0 = row1 ? W - lw / 2 - 12 - (n - 1) * px : (W - (g.c - 1) * px) / 2, y0 = (Hh - (g.r - 1) * py) / 2;
+    /* CURVA DO DIA: uma escala só para altas e baixas (o zero cai onde cair) */
+    var dots = !row1, d = dots ? Math.max(4.5, Math.min(8, (W - 16) / (n - 1) * 0.6)) : 6.5, sb = s * 0.82;
     var mx = 0.6, mn = -0.6; order.forEach(function (o) { if (o.v != null) { mx = Math.max(mx, o.v); mn = Math.min(mn, o.v); } });
-    var yT = d / 2 + 9, yB = Hh - d / 2 - 8, Y = function (v) { return yT + (mx - v) / (mx - mn) * (yB - yT); };
-    sc.style.setProperty('--s', s + 'px');
+    var yT = dots ? d / 2 + 9 : sb + 13, yB = dots ? Hh - d / 2 - 8 : Hh - sb - 12, Y = function (v) { return yT + (mx - v) / (mx - mn) * (yB - yT); };
+    sc.style.setProperty('--s', s + 'px'); sc.style.setProperty('--lw', lw.toFixed(1) + 'px'); sc.style.setProperty('--d', d.toFixed(1) + 'px');
     st.box.classList.toggle('dots', dots);
     var pts = [], up = 0, dn = 0;
     order.forEach(function (o, j) {
-      var ax = x0 + (j % g.c) * px, ay = y0 + Math.floor(j / g.c) * py;
-      var bx = row1 ? ax : 8 + d / 2 + j * (W - 16 - d) / (n - 1), by = Y(o.v == null ? 0 : o.v);
-      var t = st.tk[o.k].t, z = t.style;
-      z.setProperty('--j', j); z.setProperty('--kb', kb.toFixed(3));
+      var ax = x0 + (j % g.c) * px, ay = y0 + Math.floor(j / g.c) * py, v = o.v == null ? 0 : o.v;
+      var bx = row1 ? ax : 8 + d / 2 + j * (W - 16 - d) / (n - 1), by = Y(v);
+      var t = st.tk[o.k].t, z = t.style, isUp = o.v != null && o.v > 0.0001, isDn = o.v != null && o.v < -0.0001;
       /* o MURAL é um bloco de medida fixa (preso ao centro do quadro; a fileira única, à direita): se o quadro alarga —
          mouse em cima, entrada no ambiente — ele vai junto, sem se espalhar. A CURVA, essa sim, ocupa a largura toda. */
       var axv = row1 ? 'calc(100cqw - ' + (W - ax).toFixed(1) + 'px)' : 'calc(50cqw + ' + (ax - W / 2).toFixed(1) + 'px)';
-      z.setProperty('--ax', axv); z.setProperty('--ay', pc(ay / Hh) + 'cqh');
+      z.setProperty('--j', j); z.setProperty('--ax', axv); z.setProperty('--ay', pc(ay / Hh) + 'cqh');
       z.setProperty('--bx', row1 ? axv : pc(bx / W) + 'cqw'); z.setProperty('--by', pc(by / Hh) + 'cqh');
-      var isUp = o.v != null && o.v > 0.0001, isDn = o.v != null && o.v < -0.0001;
+      z.setProperty('--oy', ((isDn ? 1 : -1) * (sb / 2 + 8)).toFixed(1) + 'px');      // o logo ao lado do ponto: acima de quem sobe, abaixo de quem cai
       t.classList.toggle('up', isUp); t.classList.toggle('dn', isDn); if (isUp) up++; if (isDn) dn++;
       pts.push([bx / W * 100, by / Hh * 100]);
     });
     if (on) {
-      st.path.setAttribute('d', smoothP(pts, f2)); st.zero.style.top = pc(Y(0) / Hh) + '%';
-      st.tag.innerHTML = 'Coverage · today<b class="up">' + up + ' ▲</b><b class="dn">' + dn + ' ▼</b>';
+      var dd = smoothP(pts, f2), Z = Y(0) / Hh * 100, top = 100, bot = 0;
+      pts.forEach(function (q) { top = Math.min(top, q[1]); bot = Math.max(bot, q[1]); });
+      st.path.setAttribute('d', dd); st.zero.style.top = Z.toFixed(2) + '%';
+      var area = dd + ' L' + f2(pts[pts.length - 1][0]) + ' ' + f2(Z) + ' L' + f2(pts[0][0]) + ' ' + f2(Z) + ' Z';
+      st.ar[0].setAttribute('d', area); st.ar[1].setAttribute('d', area);
+      st.cu.setAttribute('height', f2(Z + 5)); st.cd.setAttribute('y', f2(Z)); st.cd.setAttribute('height', f2(105 - Z));
+      st.gu.setAttribute('y1', f2(Math.min(top, Z - 1))); st.gu.setAttribute('y2', f2(Z)); st.gd.setAttribute('y1', f2(Z)); st.gd.setAttribute('y2', f2(Math.max(bot, Z + 1)));
+      st.tag.innerHTML = 'Coverage \u00b7 today<b class="up">' + up + ' \u25b2</b><b class="dn">' + dn + ' \u25bc</b>';
     }
   }
 

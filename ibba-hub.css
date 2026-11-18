@@ -46,7 +46,8 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{
     padding:0 14px 12px;gap:12px;
     grid-template-columns:repeat(12,minmax(0,1fr));
-    grid-template-rows:clamp(196px,27.5%,288px) clamp(148px,18.6%,188px) minmax(0,1fr);
+    /* palco: generoso em tela normal (≈27,5% a 995 de altura) e no mínimo (180 = o da produção) em janela baixa */
+    grid-template-rows:clamp(180px,calc(63.5% - 358px),288px) clamp(192px,20.5%,216px) minmax(0,1fr);
     grid-template-areas:
       "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
       "news news news news news news news news comm comm comm comm"
@@ -131,6 +132,33 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
     html[data-pg="home"] .sector-tabs{height:36px;}
     html[data-pg="home"] .sector-card.has-bg .sector-bg{bottom:98px;}
   }
+  @container (max-height:196px){
+    html[data-pg="home"] .sector-card .sector-card-title{font-size:19px;}
+    html[data-pg="home"] .sector-card.has-bg .sector-card-title::after{margin-top:7px;}
+    html[data-pg="home"] .sc-kpis{height:54px;}
+    html[data-pg="home"] .sc-k{gap:3px;}
+    html[data-pg="home"] .sector-tabs{height:34px;}
+    html[data-pg="home"] .sector-card.has-bg .sector-bg{top:6px;bottom:92px;}
+  }
+
+  /* COMMODITIES (feedback de 18/11: "gosto muito dos gráficos" + "não estão bem centralizadas"):
+     · a faixa nunca fica mais baixa que a da produção (190) — antes do conserto ela encolhia a 148 em janela baixa e o
+       gráfico, que é quem cede (flex:1), ia a ZERO; em tela normal ele estava com metade da altura da produção;
+     · as abas começam e terminam na MESMA linha do conteúdo dos cartões (12 do quadro + 9 do cartão = 21). */
+  html[data-pg="home"] .area-comm .sec-head{padding:9px 21px 3px;}
+  html[data-pg="home"] .area-comm .kv-list{padding:6px 12px 8px;}
+  html[data-pg="home"] .area-comm .cm-hero{min-height:24px;}
+}
+/* JANELA BAIXA (painel de prévia, notebook com a janela encolhida): o cabeçalho do heatmap aperta para caberem as mesmas
+   cinco fileiras da produção */
+@media (min-width:1025px) and (max-height:700px){
+  html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{gap:8px;padding-bottom:8px;}
+  html[data-pg="home"] .area-heat .sec-head{padding:5px 14px 3px;}
+  html[data-pg="home"] .area-heat .hm-range button,html[data-pg="home"] .area-heat .hm-filter-btn{padding:3.5px 9px;}
+  html[data-pg="home"] .area-heat .hm-card.hm-bk{padding:2px 9px;}
+  html[data-pg="home"] .area-heat #hm-baskets{margin-top:0;margin-bottom:3px;}
+}
+@media (min-width:1025px){
 
   /* AGENDA e RELATÓRIOS: vidro escuro dentro da laje (escuros nos dois temas) */
   html[data-pg="home"] .page .area-reports,html[data-pg="home"] .page .area-events{
@@ -227,7 +255,7 @@ html[data-pg="home"] .ndg-text{font-weight:600;}
 html[data-pg="home"] .ndg-src{font-weight:700;color:var(--orange);}
 
 /* ── COMMODITIES ── */
-html[data-pg="home"] .comm-tab{border-radius:999px;font:700 8.5px/1 var(--font);letter-spacing:.07em;padding:5px 9px;background:var(--hub-well);box-shadow:none;}
+html[data-pg="home"] .comm-tab{border-radius:999px;font:700 8.5px/1 var(--font);letter-spacing:.07em;padding:4.5px 9px;background:var(--hub-well);box-shadow:none;}
 html[data-pg="home"] .comm-tab.on{background:rgba(255,85,0,.14);color:var(--black);}
 html[data-pg="home"] .cm-name{font-weight:700;color:var(--gray-mid);letter-spacing:.01em;}
 html[data-pg="home"] .cm-val{font:300 17px/1.2 var(--display);letter-spacing:-.04em;}
@@ -292,15 +320,13 @@ html[data-pg="home"] .hm-pop-chip.on,html[data-pg="home"] .modal-ranges button.a
   html[data-pg="home"] .sector-card.has-bg .sector-bg::before,html[data-pg="home"] .sector-card.has-bg .sector-bg::after{display:none;}
   html[data-pg="home"] .sector-card.has-bg::after{content:"";display:block;position:absolute;inset:0;z-index:0;pointer-events:none;
     background:linear-gradient(90deg,rgba(0,0,0,.9) 0,rgba(0,0,0,.74) 46%,rgba(0,0,0,.28) 78%,rgba(0,0,0,.05) 100%);}
-  /* atrás do texto só cabe TRAÇO: sem rótulo na linha e, nas empresas, só a curva de pontos do dia (o mural de fichas,
-     com os códigos escritos, embolava com os números) */
+  /* atrás do texto só cabe TRAÇO: sem rótulo na linha e, nas empresas, só a curva de pontos do dia (o mural de logos embolava com os números) */
   html[data-pg="home"] .sector-bg .sc-tag{display:none;}
   html[data-pg="home"] .sector-bg .sc-perf:not(.on) .sc-wall{display:none;}
-  html[data-pg="home"] .sector-bg .sc-perf.on .sc-tk{animation:none!important;transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}
-  html[data-pg="home"] .sector-bg .sc-perf.on .sc-chip{font-size:0;animation:none;}
-  html[data-pg="home"] .sector-bg .sc-perf.on .sc-chip::after{opacity:1;transition:none;}
+  html[data-pg="home"] .sector-bg .sc-perf.on .sc-tk{animation:none!important;transform:translate3d(var(--bx),var(--by),0);}
+  html[data-pg="home"] .sector-bg .sc-perf.on .sc-chip{display:none;}
+  html[data-pg="home"] .sector-bg .sc-perf.on .sc-pt{opacity:1;transform:none;transition:none;}
   html[data-pg="home"] .sector-bg .sc-perf.on .sc-prof{opacity:1;visibility:visible;transition:none;}
-  html[data-pg="home"] .sector-bg .sc-tk::before{display:none;}
   html[data-pg="home"] .sector-card .sector-card-title{font-family:var(--display);font-weight:500;letter-spacing:-.03em;}
   html[data-pg="home"] .sc-k .v{font-family:var(--display);font-weight:300;letter-spacing:-.03em;}
   html[data-pg="home"] .sc-k .l{font-weight:700;}
