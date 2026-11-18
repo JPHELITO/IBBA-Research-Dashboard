@@ -281,6 +281,8 @@
             var b0 = M.calc(aggregators([{ a: P[i].a - 12, b: P[i].b - 12 }], PER).level, c, { gran: st.gran, prod: st.prod })[0];
             return change([b0, lv[i]], 1, 1, M); }); } }
         return (memo[key] = v); },
+      monthly: function (id) { var key = id + '|m'; if (memo[key]) return memo[key]; var M = this.M(id), PM = buildPeriods(base.ax, 'monthly');
+        return (memo[key] = { P: PM, v: M.calc(aggregators(PM, 12).level, base.comp[id], { gran: 'monthly', prod: st.prod }) }); },
       lastFull: function (v) { for (var i = v.length - 1; i >= 0; i--) if (v[i] != null && !P[i].partial) return i; return -1; },
       partialAt: function () { var n = P.length - 1; return (n >= 0 && P[n].partial && n >= pw[0] && n <= pw[1]) ? n - pw[0] : null; },
       label: function (i) { return P[i] ? P[i].label : ''; }
@@ -394,8 +396,15 @@
 
   Desk.prototype._tiles = function () {
     var c = this.ctx, u = this._u(), prev = { monthly: 'MoM', quarterly: 'QoQ', annual: 'YoY' }[c.st.gran];
-    this.el.tiles.innerHTML = c.sec.tiles.map(function (id) {
-      var M = c.M(id); if (!M || M.multi) return '';
+    this.el.tiles.innerHTML = c.sec.tiles.map(function (tid) {
+      var id = tid.split(':')[0], kind = tid.split(':')[1], M = c.M(id); if (!M || M.multi) return '';
+      if (kind === 'ytd') { if (!c.has(id)) return ''; var mm = c.monthly(id), li = lastIdx(mm.v); if (li < 0) return '';
+        var yr = mm.P[li].y, mN = mm.P[li].k + 1, a = 0, b = 0, okb = true, q;
+        for (q = 0; q < mN; q++) { a += mm.v[li - q] || 0; if (mm.v[li - q - 12] == null) okb = false; else b += mm.v[li - q - 12]; }
+        var dy = (okb && b) ? (a / b - 1) * 100 : null, lb0 = typeof M.label === 'function' ? M.label({ prod: c.st.prod }) : M.label;
+        return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="false"><div class="dk-tl"><span>YTD · ' + esc(M.ytdLabel || lb0) + '</span><span>' + yr + '</span></div>' +
+          '<div class="dk-tv">' + fmt(a, M.dec) + '<small>' + esc(M.unit) + '</small></div><div class="dk-td"><span>vs ' + (yr - 1) + ' <span class="' + cls(dy) + '">' + pct(dy) + '</span></span></div>' +
+          '<div class="dk-td">' + MON[0] + '–' + MON[mN - 1] + ', same months of ' + (yr - 1) + '</div></button>'; }
       if (!c.has(id) && M.hideNA) return '';
       if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(M.label) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
       var v = c.vals(id), i = c.lastFull(v); if (i < 0) return '';
@@ -463,6 +472,8 @@
       if (u.mode === 'level' && c.st.gran === 'monthly' && !M.noAvg) { var ma = c.vals(u.metric, 'ltm').map(function (x) { return x == null ? null : (M.flow ? x / 12 : x); });
         var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
       if (M.ref === 'windowAvg' && u.mode === 'level') { var s3b = winAvg(sl(si.v)); s3b.order = 3; sets.push(s3b); }
+      if (M.ma3 && u.mode === 'level' && c.st.gran === 'monthly') { var fv = si.v, m3 = fv.map(function (_, i) { return (i >= 2 && fv[i] != null && fv[i - 1] != null && fv[i - 2] != null) ? (fv[i] + fv[i - 1] + fv[i - 2]) / 3 : null; });
+        var s4 = lineSet(sl(m3), 'rgba(' + t.band + ',.6)', { label: '3-month moving average', w: 1.5, dash: [5, 3], noDot: true }); s4.order = 2; sets.push(s4); }
     }
     this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
     title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
@@ -537,21 +548,28 @@
     var pills = dim.pills ? dim.pills({ prod: c.st.prod }) : null, top = pills ? (pills.filter(function (p) { return p.k === w.pill; })[0] || pills[0]) : null;
     var subs = top && top.sub ? top.sub : null, sub = subs ? (subs.filter(function (p) { return p.k === w.sub; })[0] || null) : null, pill = sub || top;   // pill = o recorte que vale
     var ck = this.cur + '|' + dim.id + '|' + c.st.prod + '|' + (pill ? pill.k : ''), base = (this._who_cache = this._who_cache || {})[ck];
-    if (!base) { var raw = dim.entities({ prod: c.st.prod }, pill);   // {names:[], maps:[ {AAAA-MM: v} ]} já em ordem de relevância
-      base = this._who_cache[ck] = { names: raw.names, series: raw.maps.map(function (m) { return align(m, c.ax).map(function (x) { return x == null ? 0 : x; }); }) }; }
-    var gk = ck + '|' + c.st.gran, agg = (this._whoAgg = this._whoAgg || {})[gk];
-    if (!agg || agg.n !== c.P.length) agg = this._whoAgg[gk] = { n: c.P.length, v: base.series.map(function (s) { return c.A.level.sum(s); }) };
-    var names = base.names, def;
+    var z = function (m) { return align(m, c.ax).map(function (x) { return x == null ? 0 : x; }); };
+    if (!base) { var raw = dim.entities({ prod: c.st.prod }, pill);   // {names, maps (medida 1), maps2 (medida 2, ex.: receita), total/total2 (quando a fonte publica o total)}
+      base = this._who_cache[ck] = { names: raw.names, series: raw.maps.map(z), series2: raw.maps2 ? raw.maps2.map(z) : null, tot: raw.total ? z(raw.total) : null, tot2: raw.total2 ? z(raw.total2) : null }; }
+    var gk = ck + '|' + c.st.gran, agg = (this._whoAgg = this._whoAgg || {})[gk], S = c.A.level.sum;
+    var sumAll = function (arrs) { return c.P.map(function (_, i) { var t0 = 0; for (var k = 0; k < arrs.length; k++) t0 += arrs[k][i] || 0; return t0; }); };
+    if (!agg || agg.n !== c.P.length) { var v0 = base.series.map(S), r0 = base.series2 ? base.series2.map(S) : null;
+      agg = this._whoAgg[gk] = { n: c.P.length, v: v0, r: r0, tv: base.tot ? S(base.tot) : sumAll(v0), tr: r0 ? (base.tot2 ? S(base.tot2) : sumAll(r0)) : null }; }
+    var modes = typeof dim.modes === 'function' ? dim.modes({ prod: c.st.prod }) : (dim.modes || [['volume', 'Volume (kt)'], ['share', 'Share (%)']]);
+    if (!modes.some(function (m) { return m[0] === w.mode; })) w.mode = modes[0][0];
+    var names = base.names, def, rs = (w.mode === 'revenue' && dim.rankByMode && base.series2) ? base.series2 : base.series;
     if (dim.defaultSel) def = dim.defaultSel(names);
-    else { var sc = names.map(function (n, k) { var t = 0, ms = base.series[k]; for (var i = c.m0; i <= c.m1; i++) t += ms[i] || 0; return [n, t]; }).sort(function (a, b) { return b[1] - a[1]; }); def = sc.slice(0, dim.top || 5).map(function (x) { return x[0]; }); }
-    var sel = w.sel || def.concat(dim.noOthers ? [] : ['Others']);
-    return { dim: dim, dims: dims, pills: pills, top: top, subs: subs, sub: sub, pill: pill, names: names, agg: agg.v, ser: base.series, sel: sel };
+    else { var sc = names.map(function (n, k) { var t = 0, ms = rs[k]; for (var i = c.m0; i <= c.m1; i++) t += ms[i] || 0; return [n, t]; }).filter(function (x) { return x[1] > 0; }).sort(function (a, b) { return b[1] - a[1]; }); def = sc.slice(0, dim.top || 5).map(function (x) { return x[0]; }); }
+    var sel = w.sel || def.concat(dim.noOthers ? [] : ['Others']); this._whoLead = names[0];
+    return { dim: dim, dims: dims, pills: pills, top: top, subs: subs, sub: sub, pill: pill, names: names, agg: agg.v, agg2: agg.r, tot: agg.tv, tot2: agg.tr,
+      ser: base.series, ser2: base.series2, serTot: base.tot, serTot2: base.tot2, sel: sel, modes: modes };
   };
   Desk.prototype._slot = function (name, sel) {   // cor por ENTIDADE; dois marcados nunca dividem a cor enquanto houver cor livre
     if (name === 'Others') return 'others'; var S = this._slots, dim = this._whoDim || {};
-    if (dim.lead && name === dim.lead) return 'lead';
+    var lead = dim.lead || (dim.noLead ? null : this._whoLead);   // sem líder declarado, o laranja vai para a entidade mais relevante da quebra
+    if (lead && name === lead) return 'lead';
     if (S[name] == null) S[name] = this._slotN++ % PAL_L.length;
-    var used = {}, i; for (i = 0; i < sel.length; i++) { var o = sel[i]; if (o === name || o === 'Others' || (dim.lead && o === dim.lead) || S[o] == null) continue; used[S[o]] = 1; }
+    var used = {}, i; for (i = 0; i < sel.length; i++) { var o = sel[i]; if (o === name || o === 'Others' || (lead && o === lead) || S[o] == null) continue; used[S[o]] = 1; }
     if (used[S[name]]) { for (i = 0; i < PAL_L.length; i++) if (!used[i]) { S[name] = i; break; } }
     return S[name];
   };
@@ -560,21 +578,31 @@
     var dg = E.who.querySelector('.dk-dims'); dg.hidden = d.dims.length < 2;
     dg.innerHTML = d.dims.map(function (x, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === w.dim) + '">' + esc(x.tab || x.label) + '</button>'; }).join('');
     E.who.querySelector('.dk-pop').hidden = !!d.dim.noSelect;
-    E.who.querySelector('.dk-pills').innerHTML = d.pills ? '<span class="dk-plbl">Product</span>' + d.pills.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (p.k === d.top.k) + '">' + esc(p.l) + (p.sub ? ' ▾' : '') + '</button>'; }).join('') : '';
+    E.who.querySelector('.dk-pills').innerHTML = d.pills ? '<span class="dk-plbl">' + esc(d.dim.pillLabel || 'Product') + '</span>' + d.pills.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (p.k === d.top.k) + '">' + esc(p.l) + (p.sub ? ' ▾' : '') + '</button>'; }).join('') : '';
     var sp = E.who.querySelector('.dk-subpills'); sp.hidden = !d.subs;
     sp.innerHTML = d.subs ? '<span class="dk-plbl">Within ' + esc(d.top.l) + '</span><button type="button" class="dk-pill" data-k="" aria-pressed="' + (!d.sub) + '">All ' + esc(d.top.l.toLowerCase()) + '</button>' +
       d.subs.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (!!d.sub && p.k === d.sub.k) + '">' + esc(p.l) + '</button>'; }).join('') : '';
-    var modes = d.dim.modes || [['volume', 'Volume (kt)'], ['share', 'Share (%)']];
-    E.who.querySelector('.dk-whomodes').innerHTML = modes.map(function (m) { return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (w.mode === m[0]) + '">' + m[1] + '</button>'; }).join('');
+    E.who.querySelector('.dk-whomodes').innerHTML = d.modes.map(function (m) { return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (w.mode === m[0]) + '">' + m[1] + '</button>'; }).join('');
+    E.who.querySelector('.dk-whomodes').hidden = d.modes.length < 2;
     E.who.querySelector('.dk-popbtn').innerHTML = esc(d.dim.label) + ' ▾';
-    var sl = function (a) { return a.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), t = theme(false), share = w.mode === 'share';
-    var tot = c.P.map(function (_, i) { var s = 0; for (var k = 0; k < d.agg.length; k++) s += d.agg[k][i] || 0; return s; });
-    var stack = [], selNamed = d.names.filter(function (n) { return d.sel.indexOf(n) >= 0; });
-    selNamed.forEach(function (n) { stack.push({ name: n, v: d.agg[d.names.indexOf(n)] }); });
-    if (d.sel.indexOf('Others') >= 0) stack.push({ name: 'Others', v: c.P.map(function (_, i) { var s = tot[i]; selNamed.forEach(function (n) { s -= d.agg[d.names.indexOf(n)][i] || 0; }); return Math.max(0, s); }) });
-    var sets = stack.map(function (s) { var col = slotColor(self._slot(s.name, d.sel)), data = sl(s.v).map(function (x, k) { var T = tot[c.i0 + k]; return share ? (T ? +(x / T * 100).toFixed(2) : 0) : +(+x || 0).toFixed(1); });
-      var b = barSet(data, (w.hi && w.hi !== s.name) ? hexA(col, .16) : col, { label: s.name, stacked: true, gap: true, surf: t.surf, partialAt: c.partialAt() }); return b; });
-    this._chart('who', E.who.querySelector('canvas'), 'bar', labels, sets, { bar: true, stack: true, share: share, dec: 0, tip: true });
+    E.who.querySelector('h3').textContent = d.dim.heading || 'Who is behind the number';
+    var sl = function (a) { return a.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), t = theme(), mode = w.mode, share = mode === 'share', pa = c.partialAt();
+    var idx = function (n) { return d.names.indexOf(n); }, selNamed = d.names.filter(function (n) { return d.sel.indexOf(n) >= 0; }), hasO = d.sel.indexOf('Others') >= 0;
+    var rest = function (T, A) { return c.P.map(function (_, i) { var s0 = T[i] || 0; selNamed.forEach(function (n) { s0 -= A[idx(n)][i] || 0; }); return Math.max(0, s0); }); };
+    var dec = d.dim.dec || 0, cv = E.who.querySelector('canvas');
+    if (mode === 'price') {   // preço de cada entidade = medida 2 ÷ medida 1 (ex.: receita ÷ volume) + a linha de todos + o resto
+      var K = d.dim.priceK || 1, mx = d.dim.priceMax || Infinity, pr = function (R, V) { return c.P.map(function (_, i) { var x = (V[i] > 0 && R[i] != null) ? R[i] / V[i] * K : null; return (x != null && x <= mx) ? x : null; }); };
+      var sets = [lineSet(sl(pr(d.tot2, d.tot)), 'rgba(' + t.band + ',.85)', { label: d.dim.allLabel || 'All', w: 2, dash: [6, 4], surf: t.surf, partialAt: pa })];
+      selNamed.forEach(function (n) { sets.push(lineSet(sl(pr(d.agg2[idx(n)], d.agg[idx(n)])), slotColor(self._slot(n, d.sel)), { label: n, w: 2, surf: t.surf, partialAt: pa })); });
+      if (hasO && !d.dim.noOthers) sets.push(lineSet(sl(pr(rest(d.tot2, d.agg2), rest(d.tot, d.agg))), slotColor('others'), { label: 'Others', w: 1.5, dash: [4, 3], surf: t.surf, partialAt: pa }));
+      this._chart('who', cv, 'line', labels, sets, { dec: d.dim.priceDec || 0, tip: true, unitTip: d.dim.priceUnit || '' });
+    } else {
+      var A = mode === 'revenue' ? d.agg2 : d.agg, T = mode === 'revenue' ? d.tot2 : d.tot, stack = selNamed.map(function (n) { return { name: n, v: A[idx(n)] }; });
+      if (hasO && !d.dim.noOthers) stack.push({ name: 'Others', v: rest(T, A) });
+      var bsets = stack.map(function (s0) { var col = slotColor(self._slot(s0.name, d.sel)), data = sl(s0.v).map(function (x, k) { var TT = T[c.i0 + k]; return share ? (TT ? +(x / TT * 100).toFixed(2) : 0) : +(+x || 0).toFixed(dec + 2); });
+        return barSet(data, (w.hi && w.hi !== s0.name) ? hexA(col, .16) : col, { label: s0.name, stacked: true, gap: true, surf: t.surf, partialAt: pa }); });
+      this._chart('who', cv, 'bar', labels, bsets, { bar: true, stack: true, share: share, dec: mode === 'revenue' ? (d.dim.dec2 || 0) : dec, tip: true });
+    }
     this._whoTitle = d.dim.title || 'Breakdown';
     if (!E.who.querySelector('.dk-popp').hidden) this._fillPop();
   };
@@ -595,22 +623,30 @@
   };
   Desk.prototype._rank = function () {
     var c = this.ctx, d = this._whoData(), E = this.el, w = this._u().who, self = this; if (!d) return;
-    var i = this._ref(), PER = c.PER, unit = d.dim.unit || 'kt', tot = 0, pp = c.P[i];
-    var prevOf = function (k) { if (!pp.partial) return d.agg[k][i - PER] || 0; var s0 = 0; for (var m = pp.a - 12; m <= pp.b - 12; m++) if (m >= 0) s0 += d.ser[k][m] || 0; return s0; };   // parcial: mesmos meses do ano anterior
-    var all = d.names.map(function (n, k) { var v = d.agg[k][i] || 0; tot += v; return { n: n, v: v, p: prevOf(k) }; });
+    var i = this._ref(), PER = c.PER, pp = c.P[i], mode = w.mode, price = mode === 'price', rev = mode === 'revenue';
+    var A = rev ? d.agg2 : d.agg, SR = rev ? d.ser2 : d.ser, T = rev ? d.tot2 : d.tot, ST = rev ? d.serTot2 : d.serTot;
+    var unit = price ? (d.dim.priceUnit || '') : rev ? (d.dim.unit2 || 'US$ mn') : (d.dim.unit || 'kt'), dec = price ? (d.dim.priceDec || 0) : rev ? (d.dim.dec2 || 0) : (d.dim.dec || 0), K = d.dim.priceK || 1;
+    var lfl = function (ser, k) { var s0 = 0; for (var m = pp.a - 12; m <= pp.b - 12; m++) if (m >= 0) s0 += ser[k][m] || 0; return s0; };   // parcial: mesmos meses do ano anterior
+    var prevOf = function (arr, ser, k) { return pp.partial ? lfl(ser, k) : (arr[k][i - PER] || 0); };
+    var totNow = T[i] || 0, totPrev = pp.partial ? (ST ? (function () { var s0 = 0; for (var m = pp.a - 12; m <= pp.b - 12; m++) if (m >= 0) s0 += ST[m] || 0; return s0; })() : d.names.reduce(function (a, _, k) { return a + lfl(SR, k); }, 0)) : (T[i - PER] || 0);
     E.who.querySelector('.dk-when').textContent = c.label(i);
-    var rest = all.filter(function (r) { return d.sel.indexOf(r.n) < 0; }).sort(function (a, b) { return b.v - a.v; }), nSel = d.sel.filter(function (n) { return n !== 'Others'; }).length;
-    var rows = all.filter(function (r) { return d.sel.indexOf(r.n) >= 0; }).concat(rest.slice(0, Math.max(0, 10 - nSel))).sort(function (a, b) { return b.v - a.v; });
-    if (!d.dim.noOthers) rows.push({ n: 'Others', lab: 'Others (' + rest.length + ' ' + (d.dim.noun || 'items') + ')', v: rest.reduce(function (a, r) { return a + r.v; }, 0), p: rest.reduce(function (a, r) { return a + r.p; }, 0) });
-    E.who.querySelector('.dk-rank').innerHTML = rows.map(function (r) { var yy = r.p ? (r.v / r.p - 1) * 100 : null, on = d.sel.indexOf(r.n) >= 0;
-      return '<button type="button" class="dk-rk' + (w.hi === r.n ? ' dk-on' : '') + (on ? '' : ' dk-out') + '" data-n="' + esc(r.n) + '" title="Click to show or hide"><i style="background:' + (on ? slotColor(self._slot(r.n, d.sel)) : 'transparent') + '"></i><span class="dk-nm">' + esc(r.lab || r.n) + '</span><span class="dk-shr">' + fmt(r.v, 0) + ' ' + unit + ' · ' + (tot ? fmt(r.v / tot * 100, 0) : '—') + '%</span><span class="dk-yy ' + cls(yy) + '">' + (yy != null && yy > 999 ? '>999%' : pct(yy, 0)) + '</span></button>'; }).join('') +
+    var all = d.names.map(function (n, k) { var v = A[k][i] || 0, p0 = prevOf(A, SR, k), o = { n: n, v: v, p: p0, k: k };
+      if (price) { var V = d.agg[k][i] || 0, R = d.agg2[k][i] || 0, Vp = prevOf(d.agg, d.ser, k), Rp = prevOf(d.agg2, d.ser2, k); o.sortV = V; o.v = V > 0 ? R / V * K : null; o.p = Vp > 0 ? Rp / Vp * K : null; }
+      return o; });
+    var by = function (a, b) { return (price ? b.sortV - a.sortV : b.v - a.v); };
+    var rest = all.filter(function (r) { return d.sel.indexOf(r.n) < 0; }).sort(by), nSel = d.sel.filter(function (n) { return n !== 'Others'; }).length;
+    var rows = all.filter(function (r) { return d.sel.indexOf(r.n) >= 0; }).concat(rest.slice(0, Math.max(0, 10 - nSel))).sort(by);
+    if (!d.dim.noOthers && !price) { var selV = 0, selP = 0; all.forEach(function (r) { if (d.sel.indexOf(r.n) >= 0) { selV += r.v; selP += r.p; } });
+      rows.push({ n: 'Others', lab: 'Others (' + rest.length + ' ' + (d.dim.noun || 'items') + ')', v: Math.max(0, totNow - selV), p: Math.max(0, totPrev - selP) }); }
+    E.who.querySelector('.dk-rank').innerHTML = rows.map(function (r) { var yy = (r.p && r.v != null) ? (r.v / r.p - 1) * 100 : null, on = d.sel.indexOf(r.n) >= 0;
+      return '<button type="button" class="dk-rk' + (w.hi === r.n ? ' dk-on' : '') + (on ? '' : ' dk-out') + '" data-n="' + esc(r.n) + '" title="Click to show or hide"><i style="background:' + (on ? slotColor(self._slot(r.n, d.sel)) : 'transparent') + '"></i><span class="dk-nm">' + esc(r.lab || r.n) + '</span><span class="dk-shr">' + fmt(r.v, dec) + ' ' + esc(unit) + (price ? '' : ' · ' + (totNow ? fmt(r.v / totNow * 100, 0) : '—') + '%') + '</span><span class="dk-yy ' + cls(yy) + '">' + (yy != null && yy > 999 ? '>999%' : pct(yy, 0)) + '</span></button>'; }).join('') +
       (d.dim.noSelect ? '' : '<button type="button" class="dk-lnk dk-more">+ Add any of the ' + d.names.length + ' ' + esc(d.dim.noun || 'items') + '</button>');
-    var R = E.who.querySelector('.dk-rank'), mark = function () { R.querySelectorAll('.dk-rk').forEach(function (b) { b.classList.toggle('dk-on', b.getAttribute('data-n') === w.hi); }); };
-    R.querySelectorAll('.dk-rk').forEach(function (b) { var n = b.getAttribute('data-n');
-      b.onmouseenter = function () { if (d.sel.indexOf(n) >= 0 && w.hi !== n) { w.hi = n; self._who(); self._paintMarks(); mark(); } };
-      b.onclick = function () { var s = d.sel.slice(); s = s.indexOf(n) >= 0 ? s.filter(function (x) { return x !== n; }) : s.concat([n]); w.sel = s.length ? s : null; w.hi = null; self._who(); self._paintMarks(); self._rank(); }; });
-    R.onmouseleave = function () { if (w.hi) { w.hi = null; self._who(); self._paintMarks(); mark(); } };
-    var mb = R.querySelector('.dk-more'); if (mb) mb.onclick = function (e) { e.stopPropagation(); self._openPop(true); };
+    var R0 = E.who.querySelector('.dk-rank'), mark = function () { R0.querySelectorAll('.dk-rk').forEach(function (b) { b.classList.toggle('dk-on', b.getAttribute('data-n') === w.hi); }); };
+    R0.querySelectorAll('.dk-rk').forEach(function (b) { var n = b.getAttribute('data-n');
+      b.onmouseenter = function () { if (d.sel.indexOf(n) >= 0 && w.hi !== n && !price) { w.hi = n; self._who(); self._paintMarks(); mark(); } };
+      b.onclick = function () { var s0 = d.sel.slice(); s0 = s0.indexOf(n) >= 0 ? s0.filter(function (x) { return x !== n; }) : s0.concat([n]); w.sel = s0.length ? s0 : null; w.hi = null; self._who(); self._paintMarks(); self._rank(); }; });
+    R0.onmouseleave = function () { if (w.hi) { w.hi = null; self._who(); self._paintMarks(); mark(); } };
+    var mb = R0.querySelector('.dk-more'); if (mb) mb.onclick = function (e) { e.stopPropagation(); self._openPop(true); };
   };
 
   Desk.prototype._minis = function () {
@@ -673,7 +709,7 @@
     var cols = [], head = ['Period'];
     if (id === 'stage') { var md = u.mode === 'seasonal' ? 'level' : u.mode, un = u.mode === 'yoy' ? this._stageInfo().unit : null;
       c.subs(u.metric).forEach(function (S2) { cols.push(c.vals(S2.id, md)); head.push(self._lbl(S2) + (md === 'level' ? '' : ' — ' + md.toUpperCase()) + ' (' + (un || S2.unit) + ')'); }); }
-    else if (id === 'who') { var d = this._whoData(); if (!d) return null; d.names.forEach(function (n, k) { cols.push(d.agg[k]); head.push(n); }); }
+    else if (id === 'who') { var d = this._whoData(); if (!d) return null; var Ax = (this._u().who.mode === 'revenue' && d.agg2) ? d.agg2 : d.agg; d.names.forEach(function (n, k) { cols.push(Ax[k]); head.push(n); }); }
     else if (id.indexOf('mini:') === 0) { c.subs(id.slice(5)).forEach(function (M2) { cols.push(c.vals(M2.id)); head.push(self._lbl(M2) + ' (' + M2.unit + ')'); }); }
     else return null;
     var out = [head], i, first = -1; for (i = 0; i < c.P.length && first < 0; i++) if (cols.some(function (v) { return v[i] != null && v[i] !== 0; })) first = i;
@@ -695,9 +731,11 @@
   Desk.prototype.debugWho = function (secId, st, dimIdx, pillKey, full) {
     var keepCur = this.cur, keepState = this.cfg.state, keepCtx = this.ctx, out;
     this.cur = secId; this.cfg.state = function () { return st; }; this._dbg = true;
-    try { var u = this._u(), kw = u.who; u.who = { dim: dimIdx || 0, pill: pillKey || null, sel: null, mode: 'volume', hi: null };
+    try { var u = this._u(), kw = u.who; u.who = { dim: dimIdx || 0, pill: pillKey || null, sel: null, mode: (st && st.whoMode) || 'volume', hi: null };
       var c = this.ctx = this._ctx(), d = this._whoData(); out = { names: d.names.length, sel: d.sel, keys: c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.key; }) };
-      if (full) { out.all = {}; d.names.forEach(function (n, k) { var o = {}; c.P.forEach(function (p, i) { if (d.agg[k][i]) o[p.key] = d.agg[k][i]; }); out.all[n] = o; }); }
+      if (full) { var pack = function (arrs) { var o = {}; d.names.forEach(function (n, k) { var m = {}; c.P.forEach(function (p, i) { if (arrs[k][i]) m[p.key] = arrs[k][i]; }); o[n] = m; }); return o; };
+        var one = function (a) { var m = {}; c.P.forEach(function (p, i) { m[p.key] = a[i]; }); return m; };
+        out.all = pack(d.agg); out.tot = one(d.tot); if (d.agg2) { out.all2 = pack(d.agg2); out.tot2 = one(d.tot2); } }
       u.who = kw; }
     finally { this.cur = keepCur; this.cfg.state = keepState; this.ctx = keepCtx; this._dbg = false; }
     return out;
