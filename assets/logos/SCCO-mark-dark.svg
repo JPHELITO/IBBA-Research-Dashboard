@@ -12,7 +12,7 @@
    version="1.1"
    id="svg1193"
    inkscape:version="0.92.0 r15299"
-   sodipodi:docname="southern copper.svg" fill="#F4F4F2" viewBox="0 0 12.694 12.741" width="12.694" height="12.741">
+   sodipodi:docname="southern copper.svg" fill="#F4F4F2" viewBox="0 0 12.694 12.741" width="12.694" height="12.741"><clipPath id="ibba-mk"><rect x="0" y="0" width="12.694" height="12.741"/></clipPath><g transform="translate(6.347 0) scale(0.8) translate(-6.347 -0)"><g clip-path="url(#ibba-mk)">
   <defs
      id="defs1187">
     <clipPath
@@ -237,4 +237,4 @@
          inkscape:connector-curvature="0" />
     </g>
   </g>
-</svg>
+</g></g><text x="6.347" y="12.454" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="2.867" textLength="7.568" lengthAdjust="spacingAndGlyphs" fill="#F4F4F2" fill-opacity=".8" stroke="#000000" stroke-opacity=".85" stroke-width="0.573" paint-order="stroke" stroke-linejoin="round">SCCO</text></svg>

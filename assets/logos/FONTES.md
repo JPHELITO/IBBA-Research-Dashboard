@@ -24,7 +24,8 @@ Tratamento aplicado: recorte (símbolo / símbolo + nome), fundo transparente e 
 | Lundin Mining (LUN) | símbolo e logo completo | `lun_header_logo.svg` | https://lundinmining.com/ (SVG embutido no cabeçalho da página inicial) | 6354 bytes |
 | Aclara Resources (ARA) | símbolo | `65bc531432a98553cc63c4fa_aclara-favicon256.png` | https://cdn.prod.website-files.com/65bc531432a98553cc63c46b/65bc531432a98553cc63c4fa_aclara-favicon256.png | 18454 bytes |
 | Aclara Resources (ARA) | logo completo | `67dd91385eb1525a285d68f3_aclara_logo_png_400px.png` | https://cdn.prod.website-files.com/67b9c5dc15db73b34fcf2bce/67dd91385eb1525a285d68f3_aclara%20logo%20png%20400px.png | 38769 bytes |
-| Viridis Mining & Minerals (VMM) | símbolo e logo completo | `viridis_header_logo.svg` | https://viridismining.com.au/ (SVG embutido no cabeçalho; lido pela cópia de 18/07/2026 do Internet Archive, porque o site recusa a conexão daqui) | 6286 bytes |
+| Viridis Mining & Minerals (VMM) | símbolo | `viridis_icone_enviado_pelo_usuario.png` | enviado pelo usuário em 18/11/2026 (192×192 px; é o ícone do site oficial viridismining.com.au) | 23242 bytes |
+| Viridis Mining & Minerals (VMM) | logo completo | `viridis_header_logo.svg` | https://viridismining.com.au/ (SVG embutido no cabeçalho; lido pela cópia de 18/07/2026 do Internet Archive, porque o site recusa a conexão daqui) | 6286 bytes |
 | Suzano (SUZB3) | símbolo e logo completo | `suzb_header_logo.svg` | https://www.suzano.com.br/ (SVG embutido no cabeçalho da página inicial) | 3601 bytes |
 | Klabin (KLBN11) | símbolo e logo completo | `klbn_header_logo.svg` | https://klabin.com.br/ (SVG embutido no cabeçalho da página inicial) | 2990 bytes |
 | Irani (RANI3) | símbolo e logo completo | `Irani_marca_principal.png` | https://upload.wikimedia.org/wikipedia/commons/4/49/Irani_marca_principal.png | 14556 bytes |
@@ -34,14 +35,15 @@ Tratamento aplicado: recorte (símbolo / símbolo + nome), fundo transparente e 
 
 ## Observações
 
-- **CSN Mineração (CMIN3):** Símbolo = o da CSN (é a mesma marca). O logo completo oficial só existe em 170 px de largura (versão branca); a versão para fundo claro foi recolorida a partir dela.
+- **CSN Mineração (CMIN3):** Símbolo = o da CSN (é a mesma marca), com um "MIN." discreto embaixo para diferenciar (pedido do usuário; o ícone não cresce: o símbolo ocupa 80% da caixa). O logo completo oficial só existe em 170 px de largura (versão branca); a versão para fundo claro foi recolorida a partir dela.
 - **Gerdau (GGBR4):** Versão para fundo escuro = o negativo oficial (quadro branco, GG azul), obtido trocando as duas cores.
 - **Usiminas (USIM5):** Logo atual (verde, só o nome). O símbolo pequeno é a letra U recortada do próprio logo. O logo antigo (nome preto + U laranja) saiu de uso.
 - **Hudbay Minerals (HBM):** A marca é só o nome; o símbolo pequeno é a letra H recortada do logo (é o que o site usa como ícone).
 - **Aura Minerals (AUGO):** O site só publica o logo completo em branco (para fundo escuro); a versão para fundo claro foi recolorida (azul-marinho).
 - **Lundin Mining (LUN):** O site publica o logo em branco (cabeçalho escuro); a versão para fundo claro foi recolorida com o verde-petróleo do ícone do site.
-- **Viridis Mining & Minerals (VMM):** O site oficial recusa a conexão desta rede; o SVG do cabeçalho foi lido na cópia de 18/07/2026 do Internet Archive. A marca é o selo com o nome; o símbolo pequeno é o canto do selo com o V.
+- **Viridis Mining & Minerals (VMM):** Símbolo pequeno = o ícone enviado pelo usuário (o do site oficial), com o fundo branco de fora do selo removido. Logo completo: o site oficial recusa a conexão desta rede; o SVG do cabeçalho foi lido na cópia de 18/07/2026 do Internet Archive.
 - **Empresas Copec (COPEC):** Empresas Copec (a holding), não a marca dos postos. Versão para fundo escuro = o arquivo branco oficial do site.
-- **Southern Copper (SCCO):** Mesmo símbolo do Grupo México (controlador), em cor própria.
+- **Southern Copper (SCCO):** Mesmo símbolo do Grupo México (controlador), em cor própria; por isso o símbolo pequeno leva um "SCCO" discreto embaixo.
+- **Grupo México (GMEXICOB):** O símbolo pequeno leva um "GMEX" discreto embaixo (é o mesmo desenho da Southern Copper).
 - **Irani (RANI3):** Arquivo PNG de 800 px (não há vetor público).
 - **Aclara Resources (ARA):** Arquivos PNG do site (400 px e 256 px).

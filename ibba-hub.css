@@ -44,10 +44,15 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
 /* ══ 2. GRADE DO HUB (só computador; no celular a lista de sempre, com a pele nova) ═══════════════ */
 @media (min-width:1025px){
   html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{
-    padding:0 14px 12px;gap:12px;
+    padding:0 14px 12px;gap:12px;row-gap:10px;
     grid-template-columns:repeat(12,minmax(0,1fr));
-    /* palco: generoso em tela normal (≈27,5% a 995 de altura) e no mínimo (180 = o da produção) em janela baixa */
-    grid-template-rows:clamp(180px,calc(63.5% - 358px),288px) clamp(192px,20.5%,216px) minmax(0,1fr);
+    /* ALTURAS, por prioridade (feedback de 18/11: "em telas menores a prioridade é o gráfico do heatmap, não o das
+       commodities; em telas normais/maiores, todos os gráficos"):
+         1º o heatmap precisa de ~428 para o risquinho de cada cartão ter ~20 px (5 fileiras);
+         2º as commodities, de 192 para o gráfico delas ter ~30 px;
+         3º o palco fica com o que sobra — de 176 (o mínimo, ≈ a produção) a 288.
+       Quando a tela não dá para os três, entram os degraus de "TELAS MENORES" mais abaixo (@container hubstage). */
+    grid-template-rows:clamp(176px,calc(100% - 660px),288px) clamp(186px,20.5%,216px) minmax(0,1fr);
     grid-template-areas:
       "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
       "news news news news news news news news comm comm comm comm"
@@ -140,6 +145,30 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
     html[data-pg="home"] .sector-tabs{height:34px;}
     html[data-pg="home"] .sector-card.has-bg .sector-bg{top:6px;bottom:92px;}
   }
+  @container (max-height:166px){
+    html[data-pg="home"] .sector-card .sector-card-title{font-size:17px;}
+    html[data-pg="home"] .sector-card.has-bg .sector-card-title::after{margin-top:5px;}
+    html[data-pg="home"] .sc-kpis{height:50px;}
+    html[data-pg="home"] .sc-k{gap:2px;}
+    html[data-pg="home"] .sc-k .v{font-size:14px;}
+    html[data-pg="home"] .sector-tabs{height:32px;}
+    html[data-pg="home"] .sector-card.has-bg .sector-tab{padding:5px 10px;}
+    html[data-pg="home"] .sector-card.has-bg .sector-bg{top:4px;bottom:84px;}
+  }
+
+  /* a tela inteira da Home (o #stage, de altura definida) vira um contêiner: os degraus de "TELAS MENORES" medem a altura
+     DELA, já na escala do projeto — a altura da janela em px não serve, porque a Home é escalada pela largura */
+  html[data-pg="home"] #stage{container:hubstage / size;}
+
+  /* HEATMAP: o cabeçalho e as linhas de texto do cartão com a altura da produção. A Manrope tem a linha "normal" mais alta
+     que a Inter: sem altura de linha explícita cada cartão perdia 5 px e o cabeçalho 13 — exatamente o espaço do risquinho
+     (medido a 1536×730: 11 px contra 21 na produção). */
+  html[data-pg="home"] .area-heat .sec-head{padding:6px 14px 5px;}
+  html[data-pg="home"] .area-heat .hm-range button,html[data-pg="home"] .area-heat .hm-filter-btn{padding:4px 10px;}
+  html[data-pg="home"] .area-heat .hm-card.hm-bk{padding:2.5px 10px;}
+  html[data-pg="home"] .area-heat .hm-card:not(.hm-bk) .hm-card-top{line-height:12px;}
+  html[data-pg="home"] .area-heat .hm-card:not(.hm-bk) .hm-name{line-height:9px;}
+  html[data-pg="home"] .area-heat .hm-card:not(.hm-bk) .hm-foot{line-height:11px;}
 
   /* COMMODITIES (feedback de 18/11: "gosto muito dos gráficos" + "não estão bem centralizadas"):
      · a faixa nunca fica mais baixa que a da produção (190) — antes do conserto ela encolhia a 148 em janela baixa e o
@@ -149,10 +178,17 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .area-comm .kv-list{padding:6px 12px 8px;}
   html[data-pg="home"] .area-comm .cm-hero{min-height:24px;}
 }
-/* JANELA BAIXA (painel de prévia, notebook com a janela encolhida): o cabeçalho do heatmap aperta para caberem as mesmas
-   cinco fileiras da produção */
-@media (min-width:1025px) and (max-height:700px){
-  html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{gap:8px;padding-bottom:8px;}
+/* TELAS MENORES — quem cede primeiro é o gráfico das COMMODITIES; o risquinho do HEATMAP fica (pedido do usuário).
+   Altura da tela da Home em px de projeto (não é a da janela): 1536×730 e 1280×620 ≈ 828 · 1366×640 ≈ 804 · painel de prévia ≈ 718. */
+@container hubstage (max-height:821px){
+  /* notebook pequeno (1366×640…): as commodities ficam sem o gráfico (nome, preço, variação e a tabelinha continuam) e o
+     heatmap ganha essa altura */
+  html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{grid-template-rows:176px 150px minmax(0,1fr);}
+  html[data-pg="home"] .area-comm .cm-hero{display:none;}
+}
+@container hubstage (max-height:760px){
+  /* janela bem baixa (painel de prévia, janela encolhida): o palco também aperta, e os vãos entre os painéis */
+  html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{grid-template-rows:150px 150px minmax(0,1fr);gap:8px;padding-bottom:8px;}
   html[data-pg="home"] .area-heat .sec-head{padding:5px 14px 3px;}
   html[data-pg="home"] .area-heat .hm-range button,html[data-pg="home"] .area-heat .hm-filter-btn{padding:3.5px 9px;}
   html[data-pg="home"] .area-heat .hm-card.hm-bk{padding:2px 9px;}

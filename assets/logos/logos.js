@@ -137,9 +137,9 @@
     },
     "VMM": {
       "name": "Viridis Mining & Minerals",
-      "mark": "VMM-mark.svg",
-      "markDark": "VMM-mark-dark.svg",
-      "markRatio": 0.848,
+      "mark": "VMM-mark.png",
+      "markDark": "VMM-mark-dark.png",
+      "markRatio": 1.0,
       "full": "VMM-full.svg",
       "fullDark": "VMM-full-dark.svg",
       "fullRatio": 3.341
