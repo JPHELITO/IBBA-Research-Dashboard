@@ -252,7 +252,7 @@
     var ck = this.cur + '|' + st.prod, base = this._cache[ck];
     if (!base) {   // componentes mensais alinhados a um eixo único da seção (por produto)
       var maps = {}, lo = null, hi = null;
-      sec.metrics.forEach(function (M) { var c = M.comp({ prod: st.prod }) || {}; maps[M.id] = c;
+      sec.metrics.forEach(function (M) { var c = (M.comp && (!M.available || M.available({ prod: st.prod }))) ? (M.comp({ prod: st.prod }) || {}) : {}; maps[M.id] = c;
         Object.keys(c).forEach(function (k) { var m = c[k]; if (!m) return; for (var p in m) { if (m[p] == null) continue; if (lo == null || p < lo) lo = p; if (hi == null || p > hi) hi = p; } }); });
       if (lo == null) { lo = hi = '2000-01'; }
       var ax = axis(lo, hi), comp = {};
@@ -263,9 +263,11 @@
     var mw = monthWindow(base.ax, base.ax.length - 1, st), pw = periodWindow(P, mw[0], mw[1]), memo = {};
     var ctx = { sec: sec, st: st, u: u, ax: base.ax, P: P, PER: PER, A: A, i0: pw[0], i1: pw[1], m0: mw[0], m1: mw[1],
       M: function (id) { for (var i = 0; i < sec.metrics.length; i++) if (sec.metrics[i].id === id) return sec.metrics[i]; return null; },
-      has: function (id) { var M = this.M(id); return !!M && (!M.available || M.available({ prod: st.prod })); },
+      has: function (id) { var M = this.M(id), self2 = this; if (!M) return false; if (M.multi) return M.multi.every(function (x) { return self2.has(x); }); return !M.available || M.available({ prod: st.prod }); },
+      subs: function (id) { var M = this.M(id), self2 = this; return M.multi ? M.multi.map(function (x) { return self2.M(x); }) : [M]; },
       vals: function (id, mode) { mode = mode || 'level'; var key = id + '|' + mode; if (memo[key]) return memo[key];
         var M = this.M(id), c = base.comp[id], v;
+        if (M.multi) return (memo[key] = this.vals(M.multi[0], mode));   // composto: o 1º indicador responde pelos números de referência
         if (mode === 'ltm') v = M.calc(A.ltm, c, { gran: st.gran, prod: st.prod });
         else { v = M.calc(A.level, c, { gran: st.gran, prod: st.prod });
           if (mode === 'yoy') { var lv = v; v = lv.map(function (_, i) {
@@ -289,7 +291,7 @@
     var E = this.el;
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
-      '<div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
+      '<div class="dk-nt" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
       '<div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>');
     E.who = h('div', 'dk-card dk-who chart-card',
       '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div>' +
@@ -381,7 +383,8 @@
   Desk.prototype._tiles = function () {
     var c = this.ctx, u = this._u(), prev = { monthly: 'MoM', quarterly: 'QoQ', annual: 'YoY' }[c.st.gran];
     this.el.tiles.innerHTML = c.sec.tiles.map(function (id) {
-      var M = c.M(id); if (!M) return '';
+      var M = c.M(id); if (!M || M.multi) return '';
+      if (!c.has(id) && M.hideNA) return '';
       if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(M.label) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
       var v = c.vals(id), i = c.lastFull(v); if (i < 0) return '';
       var r = rangeN(v, i, 5 * c.PER), mo = change(v, i, 1, M), yy = change(v, i, c.PER, M), sp = v.slice(Math.max(0, i - 2 * c.PER + 1), i + 1), lbl = typeof M.label === 'function' ? M.label({ prod: c.st.prod }) : M.label;
@@ -393,52 +396,66 @@
     }).join('');
   };
   Desk.prototype._lbl = function (M) { return typeof M.label === 'function' ? M.label({ prod: this.ctx.st.prod }) : M.label; };
+  Desk.prototype._short = function (M) { return typeof M.short === 'function' ? M.short({ prod: this.ctx.st.prod }) : (M.short || this._lbl(M)); };
   Desk.prototype._stageInfo = function () {
-    var c = this.ctx, u = this._u(), M = c.M(u.metric);
+    var c = this.ctx, u = this._u(), M = c.subs(u.metric)[0];
     if (u.mode === 'yoy') return { M: M, v: c.vals(u.metric, 'yoy'), unit: M.pp ? 'pp' : M.diff ? M.unit : '%', dec: 1, bars: true, name: 'YoY' };
     if (u.mode === 'ltm') return { M: M, v: c.vals(u.metric, 'ltm'), unit: M.unit, dec: M.dec, name: c.st.gran === 'quarterly' ? 'last 4 quarters' : 'last 12 months' };
     return { M: M, v: c.vals(u.metric), unit: M.unit, dec: M.dec, name: '' };
   };
   Desk.prototype._stage = function () {
-    var c = this.ctx, u = this._u(), M = c.M(u.metric), E = this.el, cv = E.stage.querySelector('canvas'), t = theme(true), ann = c.st.gran === 'annual';
-    E.stage.querySelector('.dk-modes').innerHTML = [['level', 'Level'], ['yoy', 'YoY'], ['ltm', 'LTM', ann], ['seasonal', 'Seasonal', ann]].map(function (m) {
-      return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (m[2] ? ' disabled title="Not available in annual view"' : '') + '>' + m[1] + '</button>'; }).join('');
+    var c = this.ctx, u = this._u(), M = c.M(u.metric), E = this.el, cv = E.stage.querySelector('canvas'), t = theme(), ann = c.st.gran === 'annual', self = this;
+    var subs = c.subs(u.metric), multi = subs.length > 1;
+    E.stage.querySelector('.dk-modes').innerHTML = [['level', 'Level'], ['yoy', 'YoY'], ['ltm', 'LTM', ann], ['seasonal', 'Seasonal', ann || multi]].map(function (m) {
+      return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (m[2] ? ' disabled title="Not available here"' : '') + '>' + m[1] + '</button>'; }).join('');
+    if (multi && u.mode === 'seasonal') u.mode = 'level';
     var title = E.stage.querySelector('.dk-st'), brush = E.stage.querySelector('.dk-brush');
+    var nt = E.stage.querySelector('.dk-nt'), note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''); nt.hidden = !note; nt.textContent = note;   // a legenda explicativa do gráfico de sempre
+    var colOf = function (k) { var name = (M.multiColors || ['orange', 'ink'])[k]; return name === 'ink' ? t.ink : name === 'orange' ? ORANGE : name == null ? slotColor(k) : name; };
+    this._refAvg = null;
     if (u.mode === 'seasonal') {
+      /* sazonalidade: UMA LINHA POR ANO (os 4 anteriores + o atual), como na tela de sempre; a dica lista todos os anos */
       var v = c.vals(u.metric), li = c.lastFull(v), yL = c.P[li].y, byY = {}, PER = c.PER;
       v.forEach(function (x, i) { var p = c.P[i]; if (p.partial) return; (byY[p.y] = byY[p.y] || new Array(PER).fill(null))[p.k] = x; });
-      var lo = [], hi = [], m, y; for (m = 0; m < PER; m++) { var a = []; for (y = yL - 5; y < yL; y++) if (byY[y] && byY[y][m] != null) a.push(byY[y][m]); lo.push(a.length ? Math.min.apply(null, a) : null); hi.push(a.length ? Math.max.apply(null, a) : null); }
-      var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], bandC = 'rgba(' + t.band + ',.07)';
-      var ds = [
-        { type: 'line', label: (yL - 5) + '–' + (yL - 1) + ' low', data: lo, borderWidth: 0, pointRadius: 0, fill: false, $noDot: true, tension: 0 },
-        { type: 'line', label: (yL - 5) + '–' + (yL - 1) + ' high', data: hi, borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: bandC, $noDot: true, tension: 0 },
-        lineSet(byY[yL - 1] || [], t.ink, { label: String(yL - 1), w: 1.6, dash: [4, 3], surf: t.surf }),
-        lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf })];
-      ds[2].borderColor = 'rgba(' + t.band + ',.6)';
-      this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true });
-      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: 'Orange ' + yL + ' · dashed ' + (yL - 1) + ' · band = ' + (yL - 5) + '–' + (yL - 1) + ' range' };
+      var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], ds = [], yrs = [], y;
+      for (y = yL - 4; y < yL; y++) if (byY[y]) yrs.push(y);
+      yrs.forEach(function (yy, k) { var recent = yy === yL - 1, op = recent ? .8 : .22 + .14 * k;
+        var d0 = lineSet(byY[yy], 'rgba(' + t.band + ',' + op + ')', { label: String(yy), w: recent ? 1.9 : 1.3, dash: recent ? [] : [4, 3], surf: t.surf }); d0.order = 5 - k; ds.push(d0); });
+      var cur = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); cur.order = 0; ds.push(cur);
+      this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true, tip: true, unitTip: M.unit });
+      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: 'Orange = ' + yL + ' · solid grey = ' + (yL - 1) + ' · dashed = earlier years (hover to read every year)' };
       title.textContent = this._lbl(M) + ' · seasonality';
       E.stage.querySelector('.dk-sv').innerHTML = fmt(v[li], M.dec) + '<small>' + esc(M.unit) + ' · ' + c.label(li) + '</small>';
       E.stage.querySelector('.dk-sd').textContent = this._seas.base; brush.style.visibility = 'hidden';
-    } else {
-      brush.style.visibility = 'visible';
-      var si = this._stageInfo(), sl = function (arr) { return arr.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), sets;
-      var pa = c.partialAt();
-      if (si.bars) sets = [barSet(sl(si.v), sl(si.v).map(function (x) { return x == null ? 'transparent' : x >= 0 ? UP() : DOWN(); }), { label: 'YoY', partialAt: pa })];
-      else {
-        sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf, partialAt: pa })];
-        if (u.mode === 'level' && c.st.gran === 'monthly') { var ma = c.vals(u.metric, 'ltm').map(function (x) { return x == null ? null : (M.flow ? x / 12 : x); });
-          var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
-        if (M.ref === 'windowAvg') { var w = sl(si.v).filter(function (x) { return x != null; }), avg = w.length ? w.reduce(function (p, q) { return p + q; }, 0) / w.length : null;
-          var s3 = lineSet(labels.map(function () { return avg; }), 'rgba(' + t.band + ',.5)', { label: 'Window average', w: 1.2, dash: [5, 3], noDot: true }); s3.order = 3; sets.push(s3); this._refAvg = avg; } else this._refAvg = null;
-      }
-      this._chart('stage', cv, si.bars ? 'bar' : 'line', labels, sets, { stage: true, dec: si.dec, bar: !!si.bars, tip: !!si.bars, pins: !si.bars, unitTip: si.bars ? si.unit : '' });
-      title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
+      return;
     }
+    brush.style.visibility = 'visible';
+    var si = this._stageInfo(), sl = function (arr) { return arr.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), sets, pa = c.partialAt();
+    var sign = function (arr) { return arr.map(function (x) { return x == null ? 'transparent' : x >= 0 ? UP() : DOWN(); }); };
+    var winAvg = function (arr, label) { var w = arr.filter(function (x) { return x != null; }), avg = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : null;
+      var s3 = lineSet(labels.map(function () { return avg; }), 'rgba(' + t.band + ',.5)', { label: label || 'Window average', w: 1.2, dash: [5, 3], noDot: true }); s3.order = 0; self._refAvg = avg; return s3; };
+    var kind = 'line', tip = false;
+    if (!multi && u.mode === 'yoy') { kind = 'bar'; tip = true; sets = [barSet(sl(si.v), sign(sl(si.v)), { label: this._lbl(M) + ' — YoY', partialAt: pa })]; }
+    else if (!multi && u.mode === 'level' && M.signBars) {   // prêmio: barras verdes/vermelhas + média da janela (como na tela de sempre)
+      kind = 'bar'; tip = true; var d1 = sl(si.v); sets = [barSet(d1, sign(d1), { label: this._lbl(M), partialAt: pa }), winAvg(d1, 'Window average')];
+    } else if (multi && u.mode === 'level' && M.multiBars) {   // duas séries lado a lado (ex.: compras × vendas)
+      kind = 'bar'; tip = true; sets = subs.map(function (S2, k) { return barSet(sl(c.vals(S2.id)), k ? hexA(t.dark ? '#e8eaed' : '#111111', .78) : ORANGE, { label: self._lbl(S2), partialAt: pa }); });
+    } else if (multi) {   // duas linhas no mesmo eixo (mesma unidade) — a dica mostra as duas
+      tip = true; sets = subs.map(function (S2, k) { var col = colOf(k);
+        return lineSet(sl(c.vals(S2.id, u.mode)), col, { label: self._lbl(S2), w: 2.2, end: true, surf: t.surf, partialAt: pa }); });
+    } else {
+      sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf, partialAt: pa })];
+      if (u.mode === 'level' && c.st.gran === 'monthly' && !M.noAvg) { var ma = c.vals(u.metric, 'ltm').map(function (x) { return x == null ? null : (M.flow ? x / 12 : x); });
+        var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
+      if (M.ref === 'windowAvg' && u.mode === 'level') { var s3b = winAvg(sl(si.v)); s3b.order = 3; sets.push(s3b); }
+    }
+    this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
+    title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
   };
   Desk.prototype._localHover = function (id, i) {   // sazonalidade: lê o mês do ano, sem mexer nos outros gráficos
-    var ch = this.charts[id], s = this._seas; if (!ch || !s) return; ch.$dk = { hover: i }; ch.draw();
+    var ch = this.charts[id], s = this._seas; if (!ch || !s) return;
     this.el.stage.querySelector('.dk-sd').textContent = i == null ? s.base : s.labs[i] + ': ' + s.yL + ' ' + fmt((s.byY[s.yL] || [])[i], s.M.dec) + ' · ' + (s.yL - 1) + ' ' + fmt((s.byY[s.yL - 1] || [])[i], s.M.dec) + ' ' + s.M.unit;
+    return;
   };
 
   /* faixa de período: a série inteira em miniatura; arrastar o miolo desloca, as alças redimensionam */
@@ -470,7 +487,8 @@
   };
 
   Desk.prototype._read = function () {
-    var c = this.ctx, u = this._u(), M = c.M(u.metric), v = c.vals(u.metric), i = this._ref(), x = v[i], r = rangeN(v, i, 5 * c.PER), E = this.el.read, PER = c.PER, self = this;
+    var c = this.ctx, u = this._u(), M0 = c.M(u.metric), M = c.subs(u.metric)[0], v = c.vals(u.metric), i = this._ref(), x = v[i], r = rangeN(v, i, 5 * c.PER), E = this.el.read, PER = c.PER, self = this;
+    M = Object.assign({}, M, { multi: M0.multi });
     var sm = [], k; for (k = 1; k <= 5; k++) if (v[i - PER * k] != null) sm.push(v[i - PER * k]);
     var avg = sm.length ? sm.reduce(function (a, b) { return a + b; }, 0) / sm.length : null, vsAvg = (x == null || avg == null) ? null : ((M.pp || M.diff) ? x - avg : (avg ? (x / avg - 1) * 100 : null));
     var part = !!c.P[i].partial, unitW = { monthly: 'month', quarterly: 'quarter', annual: 'year' }[c.st.gran], mo = part ? null : change(v, i, 1, M), yy = part ? c.vals(u.metric, 'yoy')[i] : change(v, i, PER, M);
@@ -480,14 +498,17 @@
       : '<span>vs previous ' + unitW + '</span><b class="' + cls(mo) + '">' + chgTxt(M, mo) + '</b>';
     if (c.st.gran !== 'annual' && !part) kv += '<span>vs same ' + unitW + ' last year</span><b class="' + cls(yy) + '">' + chgTxt(M, yy) + '</b><span>vs 5-year average for ' + (PER === 12 ? MON[c.P[i].k] : 'Q' + (c.P[i].k + 1)) + '</span><b class="' + cls(vsAvg) + '">' + chgTxt(M, vsAvg) + '</b>';
     if (!part) kv += '<span>Rank in the last ' + (r ? r.n : 5 * PER) + ' ' + unitW + 's</span><b>' + (r ? '#' + r.rank : '—') + '</b>';
-    c.sec.metrics.forEach(function (m2) { if (m2.id === u.metric || !c.has(m2.id) || m2.hideInReading) return; var v2 = c.vals(m2.id); if (lastIdx(v2) < 0) return; kv += '<span>' + esc(self._lbl(m2)) + '</span><b>' + fmt(v2[i], m2.dec) + ' ' + esc(m2.unit) + '</b>'; });
+    c.sec.metrics.forEach(function (m2) { if (m2.id === u.metric || m2.id === M.id || m2.multi || !c.has(m2.id) || m2.hideInReading) return; var v2 = c.vals(m2.id); if (lastIdx(v2) < 0) return; kv += '<span>' + esc(self._lbl(m2)) + '</span><b>' + fmt(v2[i], m2.dec) + ' ' + esc(m2.unit) + '</b>'; });
     E.querySelector('.dk-kv').innerHTML = kv;
     var p = '';
     if (u.pinA != null) p += '<span class="dk-pin"><i></i>A ' + c.label(u.pinA) + '</span>';
     if (u.pinB != null) { var a = v[u.pinA], b = v[u.pinB], dd = (a == null || b == null) ? null : ((M.pp || M.diff) ? b - a : (a ? (b / a - 1) * 100 : null)); p += '<span class="dk-pin dk-b"><i></i>B ' + c.label(u.pinB) + '</span><span>A→B <b class="' + cls(dd) + '">' + chgTxt(M, dd) + '</b></span>'; }
     p += u.pinA != null ? '<button type="button" class="dk-lnk dk-clr">Clear</button>' : '<span>To compare two periods, click one on the main chart, then another.</span>';
     var pe = E.querySelector('.dk-pins'); pe.innerHTML = p; var cl = pe.querySelector('.dk-clr'); if (cl) cl.onclick = function () { u.pinA = u.pinB = null; self._paintMarks(); self._read(); self._rank(); };
-    if (u.mode !== 'seasonal') { var si = this._stageInfo(), S = this.el.stage;
+    if (u.mode !== 'seasonal' && M.multi) { var si0 = this._stageInfo(), S0 = this.el.stage, md = u.mode;
+      S0.querySelector('.dk-sv').innerHTML = fmt(si0.v[i], si0.dec) + '<small>' + esc(si0.unit) + ' · ' + c.label(i) + '</small>';
+      S0.querySelector('.dk-sd').textContent = c.subs(u.metric).map(function (S2) { return self._short(S2) + ' ' + fmt(c.vals(S2.id, md)[i], md === 'yoy' ? 1 : S2.dec); }).join(' · ') + ' ' + si0.unit; }
+    else if (u.mode !== 'seasonal') { var si = this._stageInfo(), S = this.el.stage;
       S.querySelector('.dk-sv').innerHTML = fmt(si.v[i], si.dec) + '<small>' + esc(si.unit) + ' · ' + c.label(i) + '</small>';
       S.querySelector('.dk-sd').textContent = u.mode === 'level' ? ((c.st.gran === 'monthly' ? 'Dashed = 12-month average · YoY ' + chgTxt(M, yy) : { quarterly: 'QoQ ', annual: 'YoY ' }[c.st.gran] + chgTxt(M, mo)) + (this._refAvg != null ? ' · window avg ' + fmt(this._refAvg, M.dec) : ''))
         : u.mode === 'yoy' ? 'Change vs the same period a year earlier' : 'Rolling ' + si.name; }
@@ -578,7 +599,9 @@
 
   Desk.prototype._minis = function () {
     var c = this.ctx, u = this._u(), E = this.el, self = this, t = theme(false);
-    var ids = c.sec.metrics.filter(function (M) { return M.id !== u.metric && !M.noMini && c.has(M.id) && lastIdx(c.vals(M.id)) >= 0; }).map(function (M) { return M.id; });
+    var gl = []; c.sec.metrics.forEach(function (M) { var G = M.group || ''; if (gl.indexOf(G) < 0) gl.push(G); });
+    var ids = c.sec.metrics.filter(function (M) { return M.id !== u.metric && !M.noMini && c.has(M.id) && lastIdx(c.vals(M.id)) >= 0; })
+      .sort(function (a, b) { return gl.indexOf(a.group || '') - gl.indexOf(b.group || ''); }).map(function (M) { return M.id; });
     var sig = ids.join(',');
     if (E.minis.dataset.sig !== sig) { this._dropCharts('mini:'); E.minis.dataset.sig = sig;
       var lastG = null;
@@ -588,18 +611,20 @@
     }
     var labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; });
     ids.forEach(function (id) { var M = c.M(id), box = E.minis.querySelector('[data-k="' + id + '"]'); box.querySelector('.chart-title').textContent = self._lbl(M);
-      self._chart('mini:' + id, box.querySelector('canvas'), 'line', labels, [lineSet(c.vals(id).slice(c.i0, c.i1 + 1), t.ink, { label: self._lbl(M), w: 1.5, partialAt: c.partialAt() })], { mini: true, dec: M.dec }); });
+      var sb = c.subs(id), dsm = sb.map(function (S2, k) { return lineSet(c.vals(S2.id).slice(c.i0, c.i1 + 1), sb.length > 1 && k === 0 ? ORANGE : t.ink, { label: self._lbl(S2), w: 1.5, partialAt: c.partialAt() }); });
+      self._chart('mini:' + id, box.querySelector('canvas'), 'line', labels, dsm, { mini: true, dec: sb[0].dec }); });
     this._miniIds = ids; this._miniHeads();
   };
-  Desk.prototype._miniHeads = function () { var c = this.ctx, i = this._ref(), E = this.el; (this._miniIds || []).forEach(function (id) { var M = c.M(id), e = E.minis.querySelector('[data-k="' + id + '"] .dk-mv'); if (e) e.textContent = fmt(c.vals(id)[i], M.dec) + ' ' + M.unit; }); };
+  Desk.prototype._miniHeads = function () { var c = this.ctx, i = this._ref(), E = this.el; (this._miniIds || []).forEach(function (id) { var M = c.subs(id)[0], e = E.minis.querySelector('[data-k="' + id + '"] .dk-mv'); if (e) e.textContent = fmt(c.vals(id)[i], M.dec) + ' ' + M.unit; }); };
 
   /* matriz com o histórico INTEIRO (na granularidade escolhida) para o XLS de um gráfico da mesa */
   Desk.prototype.fullAOA = function (id) {
     var c = this.ctx, u = this._u(), self = this; if (!c) return null;
     var cols = [], head = ['Period'];
-    if (id === 'stage') { var M = c.M(u.metric); if (u.mode === 'seasonal') return null; cols.push(this._stageInfo().v); head.push(this._lbl(M) + (u.mode === 'level' ? '' : ' — ' + u.mode.toUpperCase()) + ' (' + this._stageInfo().unit + ')'); }
+    if (id === 'stage') { var md = u.mode === 'seasonal' ? 'level' : u.mode, un = u.mode === 'yoy' ? this._stageInfo().unit : null;
+      c.subs(u.metric).forEach(function (S2) { cols.push(c.vals(S2.id, md)); head.push(self._lbl(S2) + (md === 'level' ? '' : ' — ' + md.toUpperCase()) + ' (' + (un || S2.unit) + ')'); }); }
     else if (id === 'who') { var d = this._whoData(); if (!d) return null; d.names.forEach(function (n, k) { cols.push(d.agg[k]); head.push(n); }); }
-    else if (id.indexOf('mini:') === 0) { var M2 = c.M(id.slice(5)); cols.push(c.vals(M2.id)); head.push(self._lbl(M2) + ' (' + M2.unit + ')'); }
+    else if (id.indexOf('mini:') === 0) { c.subs(id.slice(5)).forEach(function (M2) { cols.push(c.vals(M2.id)); head.push(self._lbl(M2) + ' (' + M2.unit + ')'); }); }
     else return null;
     var out = [head], i, first = -1; for (i = 0; i < c.P.length && first < 0; i++) if (cols.some(function (v) { return v[i] != null && v[i] !== 0; })) first = i;
     for (i = Math.max(0, first); i < c.P.length; i++) out.push([c.P[i].label].concat(cols.map(function (v) { return v[i]; })));

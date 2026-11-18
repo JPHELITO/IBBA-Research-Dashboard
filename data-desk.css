@@ -19,6 +19,7 @@ html.dark{
 
 html.desk-on #desk-root.section{padding:14px 22px 30px;}
 #desk-root:not(.active){display:none;}
+#desk-root [hidden]{display:none!important;}   /* .chart-card da página tem display:flex e ganharia do atributo hidden */
 
 .dk-body{display:grid;gap:14px;font-family:var(--dk-text);}
 .dk-grow{flex:1;}
@@ -62,6 +63,7 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 .dk-sv{font-family:var(--dk-disp);font-size:30px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--black);}
 .dk-sv small{font:500 11px var(--dk-text);color:var(--gray-mid);margin-left:6px;letter-spacing:0;}
 .dk-sd{font-size:11.5px;color:var(--gray-mid);margin:0;}
+.dk-nt{font-size:11px;color:var(--gray-mid);margin-top:6px;line-height:1.45;max-width:110ch;}
 .dk-hint{font-size:10.5px;color:var(--gray-mid);margin-top:4px;}
 .dk-chart{position:relative;width:100%;margin-top:8px;touch-action:pan-y;}
 .dk-chart canvas{display:block;}
