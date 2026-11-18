@@ -66,7 +66,7 @@ html:not(.isl-away) .isl-notch::before,html:not(.isl-away) .isl-tab,html:not(.is
   color:#EDEDEA;background:rgba(16,16,18,.92);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 10px;box-shadow:0 8px 20px -10px #000;\
   transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);}\
 .isl-notch.hint .isl-hint{opacity:1;transform:translate(-50%,0);}\
-html.isl-noanim .isl,html.isl-noanim .isl-util,html.isl-noanim .isl-notch{transition:none!important;}\
+html.isl-noanim .isl,html.isl-noanim .isl-util,html.isl-noanim .isl-notch,html.isl-noanim #stage{transition:none!important;}\
 .isl-now,.isl-q{display:flex;align-items:center;gap:7px;height:28px;border-radius:999px;background:none;border:0;color:#EDEDEA;cursor:pointer;font:600 12px/1 "Manrope","Inter",sans-serif;\
   overflow:hidden;transition:background .15s;padding:0 12px 0 10px;}\
 .isl-now:hover,.isl-q:hover{background:rgba(255,255,255,.07);}\
@@ -143,6 +143,14 @@ html.isl-on.isl-home .isl-util .gnt-pop{left:0;right:auto;}\
 html.isl-on.isl-home .isl-bg,html.isl-on.isl-home .isl-util{border-color:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 30px -10px rgba(0,0,0,.85);}\
 /* Home: sem faixa nenhuma — o palco começa a 12px do topo (a lingueta mora nesse respiro) */\
 html.isl-on.isl-home[data-pg="home"] #stage{height:calc((100vh - 12px) / var(--app-scale,1));margin-top:12px;}\
+/* o painel ABRE ESPAÇO em vez de ficar por cima (pedido 18/11): com a barra à vista o palco desce 34px (a barra mora em\
+   0–44px) e, recolhida, ele sobe de volta. Só translate (placa de vídeo, nenhum quadro é redesenhado nem muda de degrau);\
+   enquanto a barra está à vista, os 34px de baixo do palco ficam fora da tela */\
+html.isl-on.isl-home[data-pg="home"] #stage{translate:0 34px;transition:translate .32s cubic-bezier(.16,1,.3,1);will-change:translate;}\
+html.isl-on.isl-home.isl-away[data-pg="home"] #stage{translate:0 0;}\
+/* aquecimento (2 quadros, invisível): monta a barra uma vez depois que a Home carrega — sem isso a 1ª descida travava */\
+html.isl-home.isl-away.isl-warm .isl{transform:translateX(-50%)!important;opacity:.01!important;transition:none!important;}\
+html.isl-home.isl-away.isl-warm .isl-util{transform:none!important;opacity:.01!important;transition:none!important;}\
 html.isl-on.isl-home[data-pg="home"] body{display:flow-root;}\
 /* os 56px de tela que a faixa devolveu vão para a MESA (notícias, commodities, heatmap), não para o palco das cenas:\
    a reserva da 1ª linha do hub cresce exatamente 56px de tela (em px de projeto = 56 / escala) */\
@@ -256,7 +264,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     isl.addEventListener('pointerenter', function (e) {
       if (e.pointerType === 'touch') return;                 // no toque, quem abre é o clique
       cancelClose(); clearTimeout(tOpen);
-      if (!isl.classList.contains('open')) tOpen = setTimeout(function () { open(true); }, 90);
+      if (!isl.classList.contains('open')) tOpen = setTimeout(function () { open(true); }, Math.max(90, 400 - (Date.now() - shownAt)));
     });
     isl.addEventListener('pointerleave', function () { clearTimeout(tOpen); });
     document.addEventListener('pointermove', onMove, { passive: true });
@@ -325,7 +333,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     notch.title = 'Menu & search (or press ' + kk + ')'; notch.setAttribute('aria-label', 'Show the menu');
     notch.innerHTML = '<i class="isl-tab"></i><span class="isl-hint">Menu · ' + kk + '</span>';
     document.body.appendChild(notch);
-    var ticking = false, lastY = window.scrollY || 0, tAway = 0, tHint = 0, hinted = false, tHome = 0, nearRaf = 0, lastNear = -1, mx = -999, my = 9999;
+    var ticking = false, lastY = window.scrollY || 0, tAway = 0, tHint = 0, hinted = false, tHome = 0, tReveal = 0, nearRaf = 0, lastNear = -1, mx = -999, my = 9999;
     function hint() {   // as 3 primeiras vezes (por navegador) a lingueta diz o que é
       if (hinted) return; hinted = true;
       var n = 0; try { n = +localStorage.getItem('ibba_isl_hint') || 0; } catch (e) {}
@@ -336,6 +344,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     function away(on) {
       clearTimeout(tAway);
       if (on && !root.classList.contains('isl-away')) hint();
+      if (!on && root.classList.contains('isl-away')) shownAt = Date.now();   // a barra começa a descer agora
       root.classList.toggle('isl-away', !!on);
       if (on) { lastNear = -1; notch.style.setProperty('--near', '0'); }
       if (!on && !homeMode() && root.classList.contains('isl-float')) tAway = setTimeout(function () {
@@ -357,15 +366,16 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     }
     function homeZone(x, y) {
       var r = isl.getBoundingClientRect();
-      if (y < 72 && Math.abs(x - window.innerWidth / 2) < r.width / 2 + 90) return true;
+      if (y < 86) return true;                              // a faixa da barra inteira (vai do centro ao canto do time sem recolher)
       if (inRect(r, x, y, 40) || inRect(util.getBoundingClientRect(), x, y, 40)) return true;
       var p = document.getElementById('gnt-pop'); if (p && p.classList.contains('open') && inRect(p.getBoundingClientRect(), x, y, 30)) return true;
       return !!(ddGroup && inRect(ddGroup.querySelector('.gn-drop').getBoundingClientRect(), x, y, 30));
     }
+    function homeHit() { return nearOf(mx, my) >= 0.86 || my < 10; }   // perto da lingueta, ou encostado no topo (com 0,11 s parado)
     function homeCheck() {
       if (!homeMode() || root.classList.contains('isl-away')) return;
       if (homeLocked() || homeZone(mx, my)) { clearTimeout(tHome); tHome = 0; return; }
-      if (!tHome) tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); }, 800);
+      if (!tHome) tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); }, 80);
     }
     afterClose = function () { setTimeout(homeCheck, 60); };
     document.addEventListener('mousemove', function (e) {
@@ -375,8 +385,12 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
         nearRaf = 0;
         var aw = root.classList.contains('isl-away'), n = aw ? nearOf(mx, my) : 0;
         if (Math.abs(n - lastNear) > 0.01) { lastNear = n; notch.style.setProperty('--near', n.toFixed(3)); }
-        if (aw && (n >= 0.67 || my < 8)) away(false);      // ~70px da lingueta (ou encostou no topo): o painel desce
-        else if (!aw) homeCheck();
+        if (!aw) { clearTimeout(tReveal); tReveal = 0; homeCheck(); return; }
+        if (!homeMode()) { if (n >= 0.67 || my < 8) away(false); return; }   // páginas roladas: ~70px da lingueta, ou o topo
+        // Home: o painel EMPURRA a dashboard → gatilho mais justo (~30px da lingueta, ou o topo perto do centro) e 0,11 s
+        // ali, para a Home não se mexer quando o mouse só passa (ex.: a caminho das abas do navegador)
+        if (!homeHit()) { clearTimeout(tReveal); tReveal = 0; }
+        else if (!tReveal) tReveal = setTimeout(function () { tReveal = 0; if (root.classList.contains('isl-away') && homeHit()) away(false); }, 110);
       });
     }, { passive: true });
     document.documentElement.addEventListener('mouseleave', function () { mx = -999; my = 9999; homeCheck(); });
@@ -385,13 +399,17 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     document.addEventListener('click', function () { setTimeout(homeCheck, 60); });   // fechou o cartão do time etc.
     if (HOME) {
       root.classList.add('isl-home');
-      var intro = 0; try { intro = +localStorage.getItem('ibba_isl_home_intro') || 0; } catch (e) {}
-      if (!homeMode()) { /* Home estreita (lista que rola): barra como nas outras páginas */ }
-      else if (intro < 3) {     // as 3 primeiras visitas: o painel aparece e, em 1,8 s, se recolhe na lingueta (mostra onde ele mora)
-        try { localStorage.setItem('ibba_isl_home_intro', String(intro + 1)); } catch (e) {}
-        tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); else homeCheck(); }, 1800);
-      } else away(true);
+      if (homeMode()) away(true);   // nasce recolhida (sem 'apresentação': ela faria a Home pular ao abrir); o aviso "Menu · Ctrl K" mostra onde ela mora
     }
+    // aquece a 1ª descida: as fotos do time e o vidro desfocado da barra eram montados na hora e a 1ª vez travava ~0,3 s
+    if (HOME) window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (!homeMode() || !root.classList.contains('isl-away')) return;
+        try { [].slice.call(util.querySelectorAll('img')).forEach(function (im) { if (im.decode) im.decode().catch(function () {}); }); } catch (e) {}
+        root.classList.add('isl-warm');
+        requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove('isl-warm'); }); });
+      }, 900);
+    });
     window.addEventListener('scroll', function () {
       if (homeMode() || ticking) return; ticking = true;
       requestAnimationFrame(function () {
@@ -406,7 +424,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     }, { passive: true });
   }
   // estado da ilha aberta
-  var bg, qb, tOpen = 0, tClose = 0, tDrop = 0, tDd = 0, tSw = 0, ddGroup = null, px = -1, py = -1, hist = [], anim = [], openedAt = 0, openedXY = [-9, -9];
+  var bg, qb, tOpen = 0, tClose = 0, tDrop = 0, tDd = 0, tSw = 0, ddGroup = null, px = -1, py = -1, hist = [], anim = [], openedAt = 0, openedXY = [-9, -9], shownAt = 0;
   function motion() { try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return true; } }
   function stopAnims() { anim.forEach(function (a) { try { a.cancel(); } catch (e) {} }); anim = []; }
   function ani(el, kf, op) { try { if (el && el.animate) anim.push(el.animate(kf, op)); } catch (e) {} }
@@ -470,8 +488,9 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     return false;
   }
   function scheduleClose() {
-    if (!tDrop) tDrop = setTimeout(function () { tDrop = 0; setDrop(null); }, 260);
-    if (!tClose) tClose = setTimeout(function () { tClose = 0; open(false); }, 600);
+    var hm = homeMode();                                   // na Home a barra empurra a dashboard: fecha mais depressa
+    if (!tDrop) tDrop = setTimeout(function () { tDrop = 0; setDrop(null); }, hm ? 200 : 260);
+    if (!tClose) tClose = setTimeout(function () { tClose = 0; open(false); }, hm ? 340 : 600);
   }
   function cancelClose() { clearTimeout(tClose); tClose = 0; clearTimeout(tDrop); tDrop = 0; }
   // o mouse está descendo em direção à lista aberta? (triângulo entre onde ele estava e os cantos de cima da lista)
