@@ -15,6 +15,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/topnav.js"></script>
+<script src="/ibba-island.js"></script>
 <script>
 const SUPA_URL = 'https://mmhkqkpjrvyxovpihnio.supabase.co'
 const SUPA_KEY = 'sb_publishable__0hsX4N8rRLNl-3DmGwCKw_p9mOkuxA'
@@ -1006,6 +1007,8 @@ _searchInput.addEventListener('input',e=>{
   clearTimeout(_searchTimer);
   _searchTimer=setTimeout(()=>{ _setDraft(e.target.value); _displayLimit=PAGE_SIZE; renderAll(); },180);
 });
+// ?q= (a busca da ilha manda "ver todas as notícias" para cá): o termo entra como chip, igual a digitar e dar Enter
+{ let _q0=''; try{ _q0=(new URLSearchParams(location.search).get('q')||'').trim(); }catch(e){} if(_q0){ _addSearchTerm(_q0); _displayLimit=PAGE_SIZE; } }
 _searchInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){                       // fixa o termo como chip (soma ao filtro, em E)
     e.preventDefault(); clearTimeout(_searchTimer);
