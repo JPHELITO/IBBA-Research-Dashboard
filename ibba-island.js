@@ -135,11 +135,8 @@ html.isl-on.isl-home .gnav{position:fixed!important;top:0;left:0;right:0;height:
 html.isl-on.isl-home .gnav .isl,html.isl-on.isl-home .gnav .isl-util{pointer-events:auto;}\
 html.isl-on.isl-home .gnav-brand{visibility:hidden;}\
 html.isl-on.isl-home .isl,html.isl-on.isl-home .isl-util{transition:transform .42s cubic-bezier(.16,1,.3,1),opacity .25s ease;}\
-html.isl-on.isl-home.isl-away .isl:not(.open):not(.pin){transform:translate(-50%,-64px);opacity:0;pointer-events:none;}\
+html.isl-on.isl-home.isl-away .isl:not(.pin){transform:translate(-50%,-64px);opacity:0;pointer-events:none;}\
 html.isl-on.isl-home.isl-away .isl-util{transform:translateY(-64px);opacity:0;pointer-events:none;}\
-/* na Home a pílula do time/tutorial/tema/sair desce no canto ESQUERDO (o logo some): à direita ela taparia o "All 10" dos relatórios */\
-html.isl-on.isl-home .isl-util{position:absolute;left:16px;top:5px;margin:0;}\
-html.isl-on.isl-home .isl-util .gnt-pop{left:0;right:auto;}\
 html.isl-on.isl-home .isl-bg,html.isl-on.isl-home .isl-util{border-color:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 30px -10px rgba(0,0,0,.85);}\
 /* Home: sem faixa nenhuma — o palco começa a 12px do topo (a lingueta mora nesse respiro) */\
 html.isl-on.isl-home[data-pg="home"] #stage{height:calc((100vh - 12px) / var(--app-scale,1));margin-top:12px;}\
@@ -221,7 +218,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
 
   /* ═══ 1. A ILHA ════════════════════════════════════════════════════════════════════════════ */
   var isl, menu, key, now, util;
-  var HOME = root.getAttribute('data-pg') === 'home', afterClose = null;   // Home: a barra mora escondida na lingueta
+  var HOME = root.getAttribute('data-pg') === 'home', afterClose = null, homeAway = null;   // Home: a barra mora escondida na lingueta
   function build(g) {
     if (g.querySelector('.isl')) return;
     menu = g.querySelector('.gnav-menu'); if (!menu) return;
@@ -270,7 +267,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     document.addEventListener('pointermove', onMove, { passive: true });
     document.documentElement.addEventListener('mouseleave', function () { if (isl.classList.contains('open')) scheduleClose(); });
     document.addEventListener('pointerdown', function (e) {   // clicou fora: fecha na hora
-      if (isl.classList.contains('open') && e.target && !isl.contains(e.target)) open(false);
+      if (isl.classList.contains('open') && e.target && !isl.contains(e.target)) { setDrop(null); open(false); }
     }, true);
     // teclado: as cabeças de lista (M&M ▾, P&P ▾…) viram focáveis; Tab até a ilha abre e leva o foco para a página atual
     [].slice.call(menu.querySelectorAll('.gn-group > span.gn-item')).forEach(function (h) { h.setAttribute('tabindex', '0'); h.setAttribute('role', 'button'); h.setAttribute('aria-haspopup', 'true'); });
@@ -299,7 +296,8 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     });
     // clique LOGO depois de abrir pelo mouse (sem mexer) = era para abrir, não para entrar no item que apareceu sob o cursor
     menu.addEventListener('click', function (e) {
-      if (Date.now() - openedAt < 350 && Math.abs(px - openedXY[0]) < 4 && Math.abs(py - openedXY[1]) < 4) { e.preventDefault(); e.stopPropagation(); }
+      var t0 = Math.max(openedAt, shownAt), xy = t0 === shownAt ? shownXY : openedXY;
+      if (Date.now() - t0 < 380 && Math.abs(px - xy[0]) < 6 && Math.abs(py - xy[1]) < 6) { e.preventDefault(); e.stopPropagation(); }
     }, true);
     isl.addEventListener('focusout', function () { setTimeout(function () { if (!isl.contains(document.activeElement) && !inZone(px, py)) open(false); }, 80); });
     now.addEventListener('click', function () { open(!isl.classList.contains('open')); });
@@ -313,7 +311,11 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
       var head = t.closest('.gn-group > span.gn-item');       // cabeça de lista (não é link): clique abre/fecha
       if (head && menu.contains(head)) { setDrop(head.parentNode); place(head); }   // só ABRE (o mouse já pode ter aberto: clicar não pode fechar)
     });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isl.classList.contains('open')) open(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (homeMode()) { if (!root.classList.contains('isl-away') && !isl.classList.contains('pin') && homeAway) { setDrop(null); homeAway(); } return; }
+      if (isl.classList.contains('open')) open(false);
+    });
     label();
     var mk = window.__gnavMarkCurrent; window.__gnavMarkCurrent = function () { if (mk) mk(); label(); place(null); };
     window.addEventListener('hashchange', function () { setTimeout(function () { label(); place(null); }, 0); });
@@ -344,7 +346,10 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     function away(on) {
       clearTimeout(tAway);
       if (on && !root.classList.contains('isl-away')) hint();
-      if (!on && root.classList.contains('isl-away')) shownAt = Date.now();   // a barra começa a descer agora
+      if (!on && root.classList.contains('isl-away')) {     // a barra começa a descer agora
+        shownAt = Date.now(); shownXY = [px, py];
+        if (homeMode()) { open(true, true); place(null, true); fitHome(); }
+      }
       root.classList.toggle('isl-away', !!on);
       if (on) { lastNear = -1; notch.style.setProperty('--near', '0'); }
       if (!on && !homeMode() && root.classList.contains('isl-float')) tAway = setTimeout(function () {
@@ -361,7 +366,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     // Home: a barra fica enquanto o mouse estiver perto dela (ou de uma lista/cartão aberto), com foco nela, menu aberto…
     function inRect(r, x, y, m) { return !!(r && r.width && x >= r.left - m && x <= r.right + m && y >= r.top - m && y <= r.bottom + m); }
     function homeLocked() {
-      return isl.classList.contains('open') || isl.classList.contains('pin') || g.contains(document.activeElement) ||
+      return isl.classList.contains('pin') || g.contains(document.activeElement) ||
         !!document.querySelector('#gnt-pop.open') || !!document.querySelector('.isp.open');
     }
     function homeZone(x, y) {
@@ -378,6 +383,8 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
       if (!tHome) tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); }, 80);
     }
     afterClose = function () { setTimeout(homeCheck, 60); };
+    homeAway = function () { away(true); };
+    window.addEventListener('resize', function () { fitHome(); if (homeMode() && !isl.classList.contains('open')) open(true, true); });
     document.addEventListener('mousemove', function (e) {
       mx = e.clientX; my = e.clientY;
       if (nearRaf || !desktop()) return;
@@ -399,7 +406,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     document.addEventListener('click', function () { setTimeout(homeCheck, 60); });   // fechou o cartão do time etc.
     if (HOME) {
       root.classList.add('isl-home');
-      if (homeMode()) away(true);   // nasce recolhida (sem 'apresentação': ela faria a Home pular ao abrir); o aviso "Menu · Ctrl K" mostra onde ela mora
+      if (homeMode()) { away(true); open(true, true); fitHome(); }   // nasce recolhida (e já completa por dentro) (sem 'apresentação': ela faria a Home pular ao abrir); o aviso "Menu · Ctrl K" mostra onde ela mora
     }
     // aquece a 1ª descida: as fotos do time e o vidro desfocado da barra eram montados na hora e a 1ª vez travava ~0,3 s
     if (HOME) window.addEventListener('load', function () {
@@ -424,12 +431,13 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     }, { passive: true });
   }
   // estado da ilha aberta
-  var bg, qb, tOpen = 0, tClose = 0, tDrop = 0, tDd = 0, tSw = 0, ddGroup = null, px = -1, py = -1, hist = [], anim = [], openedAt = 0, openedXY = [-9, -9], shownAt = 0;
+  var bg, qb, tOpen = 0, tClose = 0, tDrop = 0, tDd = 0, tSw = 0, ddGroup = null, px = -1, py = -1, hist = [], anim = [], openedAt = 0, openedXY = [-9, -9], shownAt = 0, shownXY = [-9, -9];
   function motion() { try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return true; } }
   function stopAnims() { anim.forEach(function (a) { try { a.cancel(); } catch (e) {} }); anim = []; }
   function ani(el, kf, op) { try { if (el && el.animate) anim.push(el.animate(kf, op)); } catch (e) {} }
-  function open(on) {
+  function open(on, instant) {
     if (!isl || (!on && isl.classList.contains('pin'))) return;
+    if (!on && homeMode()) { setDrop(null); if (afterClose) afterClose(); return; }   // Home: a ilha fica sempre completa; quem recolhe é a barra inteira
     clearTimeout(tOpen);
     var was = isl.classList.contains('open');
     if (!!on === was) return;
@@ -441,7 +449,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
       var w1 = isl.getBoundingClientRect().width;
       var el = px >= 0 ? document.elementFromPoint(px, py) : null;
       place(el && isl.contains(el) ? itemOf(el) : null, true);   // a tecla nasce sob o cursor (ou na página atual)
-      if (motion()) {
+      if (motion() && !instant) {
         var d = Math.max(0, (w1 - w0) / 2);
         ani(bg, [{ clipPath: 'inset(0 ' + d + 'px 0 ' + d + 'px round 999px)' }, { clipPath: 'inset(0 0px 0 0px round 999px)' }], { duration: 300, easing: 'cubic-bezier(.16,1,.3,1)' });
         ani(menu, [{ opacity: 0 }, { opacity: 1 }], { duration: 190, easing: 'ease-out' });
@@ -462,6 +470,15 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
         ani(qb, [{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 70, easing: 'ease-out', fill: 'backwards' });
       }
     }
+  }
+  // Home: a ilha completa não pode encostar na pílula do time (telas de 1025–1100px) → desliza para a esquerda o necessário
+  function fitHome() {
+    if (!isl || !util) return;
+    isl.style.marginLeft = '';
+    if (!homeMode()) return;
+    var ir = isl.getBoundingClientRect(), ur = util.getBoundingClientRect();
+    var over = ir.right + 12 - ur.left;
+    if (over > 0) isl.style.marginLeft = (-Math.min(over, Math.max(0, ir.left - 12))) + 'px';
   }
   function setDrop(g) {
     clearTimeout(tDd);
@@ -490,7 +507,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
   function scheduleClose() {
     var hm = homeMode();                                   // na Home a barra empurra a dashboard: fecha mais depressa
     if (!tDrop) tDrop = setTimeout(function () { tDrop = 0; setDrop(null); }, hm ? 200 : 260);
-    if (!tClose) tClose = setTimeout(function () { tClose = 0; open(false); }, hm ? 340 : 600);
+    if (!tClose && !hm) tClose = setTimeout(function () { tClose = 0; open(false); }, 600);
   }
   function cancelClose() { clearTimeout(tClose); tClose = 0; clearTimeout(tDrop); tDrop = 0; }
   // o mouse está descendo em direção à lista aberta? (triângulo entre onde ele estava e os cantos de cima da lista)
@@ -528,6 +545,9 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     clearTimeout(tSw); clearTimeout(tDd);
     var g = groupOf(it);
     place(it);
+    // Home: a ilha desce e chega EMBAIXO do mouse parado — enquanto o mouse não sair do lugar em que estava quando a barra
+    // desceu, a tecla acompanha mas nenhuma lista ▾ abre sozinha (o navegador manda "movimentos" falsos quando algo chega sob o cursor)
+    if (homeMode() && Math.abs(px - shownXY[0]) < 6 && Math.abs(py - shownXY[1]) < 6) { setDrop(null); return; }
     if (!g) { setDrop(null); return; }
     if (g === ddGroup) return;
     if (ddGroup) { setDrop(g); return; }                     // já havia uma lista aberta: troca na hora
