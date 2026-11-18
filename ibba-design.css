@@ -392,16 +392,17 @@ html[data-pg="quarterly"] .btn.ghost{box-shadow:inset 0 1px 0 var(--dz-hi),0 1px
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    FAIXA DO AMBIENTE (M&M · P&P · Stock Guide) — a cena viva do hub continua no topo da página
    ───────────────────────────────────────────────────────────────────────────────────────────────
-   A faixa de 64px com foto virou um cabeçalho de 132px com a MESMA cena do ambiente (ibba-scenes.js),
+   A faixa de 64px com foto virou um cabeçalho de 132px com a MESMA cena minimalista do ambiente (ibba-scenes.js:
+   uma linha — montanha ↔ desempenho, floresta ↔ desempenho, empresas pela variação do dia), à direita do título,
    título em Unbounded e o número vazado. Na viagem hub → página, a laje do hub encolhe até esta faixa
    (View Transition, nomes ibba-sector / ibba-sector-title do topnav.js) e o conteúdo sobe de mais
    fundo (classe ibba-chega no <html>, só durante a viagem). Só computador (≥901px), como antes.
    ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 @media (min-width:901px){
   html .ibba-band{height:132px;background:#000;box-shadow:inset 0 -1px 0 rgba(255,85,0,.5);}
-  html .ibba-band-photo.ibba-band-scene{left:0;right:0;width:auto;background:none;-webkit-mask-image:none;mask-image:none;isolation:auto;}
+  html .ibba-band-photo.ibba-band-scene{left:clamp(360px,31%,560px);right:0;top:10px;bottom:1px;width:auto;background:none;-webkit-mask-image:none;mask-image:none;isolation:auto;}
   html .ibba-band-photo.ibba-band-scene::before{display:none;}
-  html .ibba-band-in{padding:0 28px;background:linear-gradient(90deg,#000 0,#000 210px,rgba(0,0,0,.72) 390px,rgba(0,0,0,0) 640px);}
+  html .ibba-band-in{padding:0 28px;}
   html .ibba-band-title{font:500 30px/1.05 "Unbounded","Manrope",sans-serif;letter-spacing:-.03em;}
   html .ibba-band-title[data-n]::before{content:attr(data-n);display:block;margin-bottom:9px;font:300 14px/1 "Unbounded",sans-serif;letter-spacing:.02em;
     color:#000;-webkit-text-stroke:.9px #FF5500;paint-order:stroke fill;}

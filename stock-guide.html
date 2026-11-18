@@ -320,7 +320,7 @@ html.dark .sec-sub{color:var(--g-mid)}
 
 <!-- FAIXA DO AMBIENTE (nov/2026): a cena viva do hub continua no topo da página; o cartão do Stock Guide na home
      cresce até virar esta faixa (CSS e viagem no topnav.js / ibba-design.css). Só computador. -->
-<div class="ibba-band"><div class="ibba-band-photo ibba-band-scene" data-scene="sg" data-scene-k="0.54"></div>
+<div class="ibba-band"><div class="ibba-band-photo ibba-band-scene" data-scene="sg"></div>
   <div class="ibba-band-in"><div class="ibba-band-title" role="heading" aria-level="1" data-n="03">Stock Guide</div></div></div>
 
 <div id="gate" class="splash"><div class="spin"></div><div class="muted">Loading the Stock Guide…</div></div>
@@ -409,7 +409,9 @@ async function sgFetchLive(comps,extraSyms){
     comps.forEach(c=>{ const s=c.yahoo_symbol||(c.is_visible?c.ticker:null); if(!s)return; cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); });
     (extraSyms||[]).forEach(s=>{ if(s){ cand.add(s); if(!/\./.test(s))cand.add(s+'.SA'); } });   // peers
     const syms=[...cand];
-    if(syms.length){ const q=await restGet('quotes?select=ticker,price,updated_at&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
+    if(syms.length){ const q=await restGet('quotes?select=ticker,price,change_pct,updated_at&ticker=in.('+syms.map(s=>'"'+s+'"').join(',')+')');
+      // faixa do topo (ibba-scenes.js): variação do dia das empresas — só apresentação, nenhum cálculo da tabela usa isto
+      try{ if(window.IBBAScenes){ const mv={}; q.forEach(r=>{ if(r.change_pct!=null&&isFinite(r.change_pct)) mv[r.ticker]=+r.change_pct; }); IBBAScenes.setMoves(mv); } }catch(e){}
       q.forEach(r=>{ const p=n(r.price); priceByKey[r.ticker]=p; priceByKey[_short(r.ticker)]=p;   // chaveia bruto + sem-sufixo
         if(r.updated_at){ const t=Date.parse(r.updated_at); if(!isNaN(t)&&(pricesUpdatedAt==null||t>pricesUpdatedAt))pricesUpdatedAt=t; } }); }
   }catch(e){console.warn('quotes',e)} })();

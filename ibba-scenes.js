@@ -1,337 +1,387 @@
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
-   IBBA · CENAS VIVAS (nov/2026) — os três "ambientes" da dashboard, desenhados em traço fino
+   IBBA · CENAS DOS AMBIENTES (nov/2026, 2ª versão — MINIMALISTA)
    ───────────────────────────────────────────────────────────────────────────────────────────────
-     mm  Metals & Mining  → mina a céu aberto (bancadas), torre de poço com polias girando, correia
-                            levando minério à pilha, caminhões fora-de-estrada e a panela vazando aço.
-     pp  Pulp & Paper     → floresta de eucalipto em camadas, fábrica com vapor, bobina jumbo girando,
-                            folha correndo nos rolos e o caminhão de toras.
-     sg  Stock Guide      → fita de velas correndo e as empresas cobertas em órbita (fichas com o
-                            código; quando a página informa a variação do dia, o aro pinta de verde
-                            ou vermelho — IBBAScenes.setMoves({VALE3:+1.2,...})).
-   COMO É FEITO (para não travar): cada peça que se move é um elemento próprio animado SÓ com
-   transform/opacity (quem move é a placa de vídeo, não o JavaScript). Nenhum laço de script, nenhum
-   canvas. A cena pausa sozinha quando sai da tela, e fica parada com "reduzir movimento" no sistema.
-   A cena é sempre desenhada sobre PRETO (palco), nos dois temas.
-   Uso: <div data-scene="mm"></div>  →  IBBAScenes.auto()  (ou IBBAScenes.mount(el,'mm')).
-   A cena é desenhada numa prancha de 292px de altura e escalada para a altura do contêiner.
+   Pedido do usuário (17/11, depois de ver a 1ª versão cheia de caminhões, faíscas e órbitas):
+   "muito pouco profissionais… muito cheio de informação… algo mais minimalista… a silhueta de uma
+   montanha se transformando em uma linha de ações… a linha da silhueta ficando mais clara como se
+   fosse passando uma linha contornando ela". E, para as empresas: "algo mais minimalista, que misture
+   as ideias do universo das nossas commodities, mais próximo de performance das ações… seria muito
+   legal se tivéssemos os logos de cada ação coberta". Então cada ambiente é UMA ideia, em dois tempos
+   (o que ele É  →  como ele ESTÁ), e os três trocam de tempo juntos:
+
+     mm  Metals & Mining → a crista de uma MONTANHA (com as curvas de nível por dentro) que se assenta
+                           e vira uma LINHA DE DESEMPENHO; depois volta.
+     pp  Pulp & Paper    → uma fileira de ÁRVORES (copas altas, como eucalipto) que se penteia numa
+                           linha suave — a mesma ideia, com a mão da floresta.
+     sg  Stock Guide     → o MURAL das empresas cobertas (todas, lado a lado) que se desdobra na CURVA
+                           DO DIA: da que mais sobe à que mais cai, cruzando a linha do zero. Fichas
+                           QUADRADAS de canto arredondado (lingote) para mineração e aço, REDONDAS
+                           (bobina/tora) para papel e celulose; aro verde/vermelho = o dia. Onde há
+                           espaço (a faixa do topo do Stock Guide) as fichas seguem inteiras na curva;
+                           no cartão da Home, apertado, elas viram pontos. Logo da empresa quando houver
+                           arquivo (window.IBBA_LOGOS = {VALE:'/assets/logos/VALE.svg', …}); sem ele, o código.
+
+   Uma LUZ percorre a linha de ponta a ponta (a "linha contornando a silhueta"); no mural, o contorno
+   das fichas acende em sequência. O desempenho é REAL quando a página informa
+   (IBBAScenes.setLine('mm', valores, {label,pct}) e IBBAScenes.setMoves({VALE:+1.2,…}));
+   sem dado, a linha é ilustrativa e NÃO leva rótulo nem número, e o mural simplesmente não vira curva.
+
+   COMO É FEITO (para não travar): o que se move sem parar é só transform/opacity (a luz é uma janela
+   que corre sobre uma cópia clara da linha — o brilho são três traços sobrepostos, sem filtro de
+   desfoque; as fichas balançam de leve). A troca de tempo é disparada por um RELÓGIO, duas vezes por
+   ciclo: a montanha vira linha com uma animação do próprio traçado (SMIL) que só trabalha nos ~2 s da
+   troca, e as fichas voam com translate/scale. Entre uma troca e outra nada roda na thread principal.
+   Nada de laço de JavaScript, nada de canvas. Todos os relógios partem do mesmo instante da página,
+   então as três cenas trocam juntas.
+   Pausa fora da tela; com "reduzir movimento" fica o primeiro tempo, parado. Sempre sobre PRETO.
+   Uso: <div data-scene="mm"></div> (IBBAScenes.auto() monta sozinho).
    ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
   if (window.IBBAScenes) return;
-  var H = 292;                       // altura da prancha (px de desenho)
-  var OR = '#FF5500', W = '#FFFFFF';
+  var OR = '#FF5500', VB_W = 1000, VB_H = 300, CYCLE = 16, MORPH = 2.2;   // ciclo (o que é → como está → o que é) e duração da troca, em segundos
+  var REDUCED = false; try { REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var T0 = (window.performance && performance.now) ? performance.now() : 0;
 
-  /* ── estilo (uma vez) ─────────────────────────────────────────────────────────────────────── */
   var CSS = '\
-.sc{position:absolute;inset:0;overflow:hidden;background:#000;contain:strict;pointer-events:none;isolation:isolate;}\
-/* atmosfera: um clarão quente no horizonte de cada ambiente (parado; quem se move são as peças) */\n.sc::before{content:"";position:absolute;inset:0;pointer-events:none;}\n.sc-mm::before{background:radial-gradient(58% 92% at 90% 100%,rgba(255,85,0,.26),rgba(255,85,0,.07) 46%,rgba(255,85,0,0) 72%);}\n.sc-pp::before{background:radial-gradient(52% 84% at 84% 100%,rgba(255,110,30,.17),rgba(255,110,30,0) 70%),radial-gradient(46% 70% at 34% 100%,rgba(64,170,96,.10),rgba(64,170,96,0) 72%);}\n.sc-sg::before{background:radial-gradient(44% 70% at 74% 44%,rgba(255,85,0,.16),rgba(255,85,0,0) 72%);}\n.sc-board{position:absolute;left:0;bottom:0;height:' + H + 'px;transform-origin:left bottom;transform:scale(var(--sc-k,1));}\
-.sc-strip{position:absolute;left:0;bottom:0;height:' + H + 'px;background-repeat:repeat-x;background-position:left bottom;will-change:transform;}\
-.sc-obj{position:absolute;right:0;bottom:0;width:560px;height:' + H + 'px;}\
-.sc-obj>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}\
-.sc-ln{fill:none;stroke:' + W + ';stroke-width:calc(1.15px / var(--sc-k,1));stroke-linejoin:round;stroke-linecap:round;}\
-.sc-ln.o{stroke:' + OR + ';}\
-.sc-ln.d{stroke-opacity:.55;}\
-.sc-fl{fill:#060606;}\
-.sc-mv{position:absolute;left:0;top:0;will-change:transform;}\
-.sc-mv>svg{display:block;overflow:visible;}\
-.sc-rw{position:absolute;animation:sc-spin var(--t,2.4s) linear infinite;will-change:transform;}\
-.sc-rw.r{animation-direction:reverse;}\
-.sc-rw>svg{display:block;width:100%;height:100%;overflow:visible;}\
-.sc-whl{position:absolute;width:18px;height:18px;border-radius:50%;border:calc(1.15px / var(--sc-k,1)) solid ' + OR + ';background:#060606;animation:sc-spin 1.1s linear infinite;}\
-.sc-whl::before,.sc-whl::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:calc(1.15px / var(--sc-k,1));margin:-.6px 0 0 -7px;background:' + OR + ';}\
-.sc-whl::after{transform:rotate(90deg);}\
-.sc-glow{position:absolute;border-radius:50%;background:radial-gradient(closest-side,rgba(255,120,20,.55),rgba(255,85,0,.16) 45%,rgba(255,85,0,0) 72%);animation:sc-pulse 2.6s ease-in-out infinite;will-change:opacity,transform;}\
-.sc-spk{position:absolute;width:0;height:0;animation:sc-spx var(--t,1.1s) linear var(--d,0s) infinite;will-change:transform;}\
-.sc-spk>i{position:absolute;left:-1.5px;top:-1.5px;width:3px;height:3px;border-radius:50%;background:#FFB060;box-shadow:0 0 6px 1px rgba(255,120,20,.9);animation:sc-spy var(--t,1.1s) cubic-bezier(.35,0,.85,.55) var(--d,0s) infinite;will-change:transform,opacity;}\
-.sc-emb{position:absolute;width:2px;height:2px;border-radius:50%;background:#FF7A2A;opacity:0;animation:sc-emb var(--t,7s) linear var(--d,0s) infinite;will-change:transform,opacity;}\
-.sc-ore{position:absolute;width:5px;height:5px;border-radius:1.5px;background:' + OR + ';animation:sc-ore 3.6s linear var(--d,0s) infinite;will-change:transform,opacity;}\
-.sc-steam{position:absolute;width:44px;height:44px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.34),rgba(255,255,255,.08) 55%,rgba(255,255,255,0) 75%);opacity:0;animation:sc-steam var(--t,6s) ease-out var(--d,0s) infinite;will-change:transform,opacity;}\
-.sc-leaf{position:absolute;width:7px;height:3.4px;border-radius:50%;border:1px solid rgba(255,255,255,.55);opacity:0;animation:sc-leaf var(--t,9s) linear var(--d,0s) infinite;will-change:transform,opacity;}\
-.sc-leaf.o{border-color:' + OR + ';}\
-.sc-flick{position:absolute;animation:sc-flick .9s steps(5,end) infinite;will-change:opacity;}\
-.sc-flick>svg{display:block;overflow:visible;}\
-.sc-dash{stroke-dasharray:6 8;}\
-.sc-veil{position:absolute;inset:0;pointer-events:none;}\
-/* órbita das empresas */\
-.sc-orbit{position:absolute;left:0;top:0;width:0;height:0;}\
-.sc-rot{position:absolute;left:0;top:0;width:0;height:0;animation:sc-spin var(--t,40s) linear var(--d,0s) infinite;will-change:transform;}\
-.sc-arm{position:absolute;left:0;top:0;width:0;height:0;}\
-.sc-unrot{position:absolute;left:0;top:0;width:0;height:0;animation:sc-spin var(--t,40s) linear var(--d,0s) infinite reverse;will-change:transform;}\
-.sc-unsq{position:absolute;left:0;top:0;width:0;height:0;}\
-.sc-tok{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;background:#070707;border:1.15px solid rgba(255,255,255,.5);\
-  display:flex;align-items:center;justify-content:center;font:600 6.6px/1 "Unbounded","Manrope",system-ui,sans-serif;letter-spacing:.01em;color:#fff;\
-  animation:sc-depth var(--t,40s) linear var(--d,0s) infinite;will-change:transform,opacity;box-shadow:0 6px 14px -6px #000;}\
-.sc-tok.o{border-color:' + OR + ';}\
-.sc-tok.up{border-color:#2fbf71;box-shadow:0 0 0 2px rgba(47,191,113,.16),0 6px 14px -6px #000;}\
-.sc-tok.dn{border-color:#ff5d5d;box-shadow:0 0 0 2px rgba(255,93,93,.16),0 6px 14px -6px #000;}\
-.sc-tok img{width:70%;height:70%;object-fit:contain;border-radius:50%;}\
-.sc-core{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:' + OR + ';box-shadow:0 0 18px 4px rgba(255,85,0,.55);}\
-.sc-core::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px solid ' + OR + ';animation:sc-ring 2.8s ease-out infinite;}\
+/* cada cena na SUA camada (will-change): a troca de forma redesenha só este quadro. Sem isso o redesenho levava junto um\
+   pedaço dos painéis vizinhos, com as sombras grandes do tema claro — medido: 56 quadros/s em 1920×1080; com a camada, 60 */\
+.sc{position:absolute;inset:0;overflow:hidden;background:#000;pointer-events:none;contain:strict;will-change:transform;}\
+.sc-art{position:absolute;left:0;top:0;bottom:0;right:11px;}\
+.sc-art svg,.sc-prof svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block;overflow:visible;}\
+.sc-ln{fill:none;stroke:#fff;stroke-width:1.5px;stroke-linejoin:round;stroke-linecap:round;}\
+.sc-eco{fill:none;stroke:#fff;stroke-width:1px;stroke-linejoin:round;}\
+.sc-hot{fill:none;stroke:#FFC08A;stroke-width:2.2px;stroke-linejoin:round;stroke-linecap:round;}\
+.sc-hot1,.sc-hot2{fill:none;stroke:#FF6410;stroke-linejoin:round;stroke-linecap:round;}.sc-hot1{stroke-width:5.5px;stroke-opacity:.30;}.sc-hot2{stroke-width:11px;stroke-opacity:.13;}\
+/* a LUZ que contorna a linha: uma janela que corre (transform) sobre a cópia clara, parada no lugar */\
+.sc-win{position:absolute;top:-12px;bottom:-12px;left:0;width:26%;overflow:hidden;will-change:transform;\
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 62%,#000 78%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 62%,#000 78%,transparent 100%);\
+  animation:sc-win 8s cubic-bezier(.45,.05,.4,1) infinite;animation-delay:var(--sc-t,0s);}\
+.sc-win>div{position:absolute;top:12px;bottom:12px;left:0;width:384.615%;will-change:transform;animation:sc-win-in 8s cubic-bezier(.45,.05,.4,1) infinite;animation-delay:var(--sc-t,0s);}\
+@keyframes sc-win{0%{transform:translateX(-100%);}62%,100%{transform:translateX(384.615%);}}\
+@keyframes sc-win-in{0%{transform:translateX(26%);}62%,100%{transform:translateX(-100%);}}\
+/* o que só existe num dos dois tempos */\
+/* (a classe is-b = "como está"; quem troca é o relógio lá embaixo. Transições, não animações contínuas: fora da virada, nada roda) */\
+.sc-st-m{opacity:1;transition:opacity .6s ease 1.85s,visibility 0s linear 1.85s;}\
+.sc.is-b .sc-st-m{opacity:0;visibility:hidden;transition:opacity .3s ease,visibility 0s linear .3s;}\
+.sc-st-c{opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s;}\
+.sc.is-b .sc-st-c{opacity:1;visibility:visible;transition:opacity .8s ease 1.45s,visibility 0s linear 1.45s;}\
+/* durante a troca de forma a luz descansa (ela já está fora do quadro nesse trecho do seu ciclo): menos o que redesenhar */\
+.sc.sc-morph .sc-win{visibility:hidden;}\
+.sc-dot{position:absolute;right:7px;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:' + OR + ';box-shadow:0 0 10px 2px rgba(255,85,0,.7);}\
+.sc-dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid ' + OR + ';animation:sc-ring 2.6s ease-out infinite;}\
+@keyframes sc-ring{0%{transform:scale(.5);opacity:.9;}100%{transform:scale(2.4);opacity:0;}}\
+.sc-tag,.sc-ptag{position:absolute;white-space:nowrap;font:700 8.5px/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.62);}\
+.sc-tag{right:22px;transform:translateY(-150%);}\
+.sc-tag b,.sc-ptag b{font-weight:800;margin-left:6px;letter-spacing:.02em;}\
+.sc-tag b.up,.sc-ptag b.up{color:#2fbf71;}.sc-tag b.dn,.sc-ptag b.dn{color:#ff5d5d;}\
+.sc-last{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(255,255,255,.16);}\
+/* Stock Guide: o MURAL das empresas cobertas, que se desdobra na curva do dia */\
+.sc-perf{position:absolute;inset:0;container-type:size;}\
+.sc-prof,.sc-wall{position:absolute;inset:0;}\
+.sc-perf:not(.on) .sc-prof{display:none;}\
+.sc-zero{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(255,255,255,.22);}\
+.sc-zero::after{content:"0%";position:absolute;right:6px;top:-11px;font:700 7.5px/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:.06em;color:rgba(255,255,255,.36);}\
+.sc-ptag{right:10px;top:5px;}\
+.sc-perf.dots .sc-ptag{display:none;}\
+.sc-tk{position:absolute;left:0;top:0;width:0;height:0;transform:translate3d(var(--ax,50cqw),var(--ay,50cqh),0);will-change:transform;}\
+.sc.is-b .sc-perf.on .sc-tk{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}\
+/* o voo do mural para a curva (e a volta) é uma animação de UMA vez, disparada na virada; depois a ficha fica no lugar */\
+.sc.to-b .sc-perf.on .sc-tk{animation:sc-fly-b 2.2s cubic-bezier(.65,0,.35,1) both;animation-delay:calc(var(--j,0) * 22ms);}\
+.sc.to-a .sc-perf.on .sc-tk{animation:sc-fly-a 2.2s cubic-bezier(.65,0,.35,1) both;animation-delay:calc(var(--j,0) * 22ms);}\
+@keyframes sc-fly-b{from{transform:translate3d(var(--ax),var(--ay),0) scale(1);}to{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}}\
+@keyframes sc-fly-a{from{transform:translate3d(var(--bx),var(--by),0) scale(var(--kb,1));}to{transform:translate3d(var(--ax),var(--ay),0) scale(1);}}\
+/* o contorno de cada ficha acende em sequência (a mesma luz que percorre as linhas) */\
+.sc-tk::before{content:"";position:absolute;left:calc(var(--s,24px) / -2 - 2.5px);top:calc(var(--s,24px) / -2 - 2.5px);width:calc(var(--s,24px) + 5px);height:calc(var(--s,24px) + 5px);\
+  box-sizing:border-box;border:1.5px solid #FFC08A;border-radius:50%;box-shadow:0 0 9px 1px rgba(255,105,20,.7),inset 0 0 6px rgba(255,105,20,.45);opacity:0;\
+  animation:sc-glint ' + CYCLE + 's linear infinite both;animation-delay:calc(var(--sc-t,0s) + var(--j,0) * 62ms);}\
+.sc-tk.sq::before{border-radius:30%;}\
+.sc.is-b .sc-tk::before{visibility:hidden;}\
+@keyframes sc-glint{0%,3%{opacity:0;}5.5%{opacity:1;}10%,16.5%{opacity:0;}19%{opacity:1;}23.5%,100%{opacity:0;}}\
+.sc-chip{position:absolute;left:calc(var(--s,24px) / -2);top:calc(var(--s,24px) / -2);width:var(--s,24px);height:var(--s,24px);box-sizing:border-box;\
+  display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0C0C0E;border:1.5px solid rgba(255,255,255,.38);border-radius:50%;\
+  font:800 calc(var(--s,24px) * .262)/1 "Manrope","Inter",system-ui,sans-serif;letter-spacing:-.015em;color:#fff;\
+  animation:sc-bob 5.6s ease-in-out infinite;animation-delay:calc(var(--i,0) * -0.43s);will-change:transform;}\
+.sc-tk.sq .sc-chip{border-radius:27%;}\
+.sc-tk.up{--c:#2fbf71;}.sc-tk.dn{--c:#ff5d5d;}\
+.sc-tk.up .sc-chip,.sc-tk.dn .sc-chip{border-color:var(--c);}\
+.sc-chip.logo{background:#fff;}\
+.sc-chip img{width:76%;height:76%;object-fit:contain;display:block;}\
+/* cartão apertado: na curva do dia a ficha vira um PONTO da cor do dia (o logo volta no mural) */\
+.sc-chip::after{content:"";position:absolute;inset:0;background:var(--c,#8c8c88);opacity:0;transition:opacity .8s ease 1.3s;}\
+.sc.is-b .sc-perf.on.dots .sc-chip::after{opacity:1;transition:opacity 1s ease .85s;}\
+@keyframes sc-bob{0%,100%{transform:translateY(-1.2px);}50%{transform:translateY(1.2px);}}\
 .sc.sc-off *,.sc.sc-off *::before,.sc.sc-off *::after{animation-play-state:paused!important;}\
-@keyframes sc-spin{to{transform:rotate(360deg);}}\
-@keyframes sc-drift{to{transform:translate3d(calc(var(--w)*-1),0,0);}}\
-@keyframes sc-run{from{transform:translate3d(var(--x0),var(--y,0),0) scale(var(--s,1));}to{transform:translate3d(var(--x1),var(--y,0),0) scale(var(--s,1));}}\
-@keyframes sc-pulse{0%,100%{opacity:.75;transform:scale(1);}50%{opacity:1;transform:scale(1.12);}}\
-@keyframes sc-spx{from{transform:translate3d(0,0,0);}to{transform:translate3d(var(--dx,30px),0,0);}}\
-@keyframes sc-spy{0%{transform:translate3d(0,0,0) scale(1);opacity:1;}35%{transform:translate3d(0,var(--up,-26px),0) scale(.95);opacity:1;}100%{transform:translate3d(0,var(--dn,22px),0) scale(.4);opacity:0;}}\
-@keyframes sc-emb{0%{transform:translate3d(0,0,0);opacity:0;}12%{opacity:.9;}100%{transform:translate3d(var(--dx,24px),var(--dy,-150px),0);opacity:0;}}\
-@keyframes sc-ore{0%{transform:translate3d(0,0,0);opacity:0;}8%{opacity:1;}72%{transform:translate3d(72px,-58px,0);opacity:1;}100%{transform:translate3d(90px,-28px,0);opacity:0;}}\
-@keyframes sc-steam{0%{transform:translate3d(0,0,0) scale(.35);opacity:0;}15%{opacity:.9;}100%{transform:translate3d(var(--dx,46px),-120px,0) scale(1.9);opacity:0;}}\
-@keyframes sc-leaf{0%{transform:translate3d(0,0,0) rotate(0deg);opacity:0;}10%{opacity:.9;}100%{transform:translate3d(var(--dx,-160px),var(--dy,170px),0) rotate(540deg);opacity:0;}}\
-@keyframes sc-flick{0%{opacity:.82;}20%{opacity:1;}40%{opacity:.9;}60%{opacity:1;}80%{opacity:.86;}100%{opacity:.97;}}\
-@keyframes sc-depth{0%{transform:scale(.96);opacity:.9;}25%{transform:scale(1.14);opacity:1;}50%{transform:scale(.96);opacity:.9;}75%{transform:scale(.74);opacity:.5;}100%{transform:scale(.96);opacity:.9;}}\
-@keyframes sc-ring{0%{transform:scale(.5);opacity:.9;}100%{transform:scale(2.6);opacity:0;}}\
-@media (prefers-reduced-motion:reduce){.sc *,.sc *::before,.sc *::after{animation:none!important;}.sc-steam,.sc-leaf,.sc-emb{opacity:.5;}}';
+@media (prefers-reduced-motion:reduce){.sc *,.sc *::before,.sc *::after{animation:none!important;transition:none!important;}.sc-win{display:none;}.sc-st-c{opacity:0;}}';
 
   function injectCSS() {
     if (document.getElementById('ibba-scenes-css')) return;
     var st = document.createElement('style'); st.id = 'ibba-scenes-css'; st.textContent = CSS;
     (document.head || document.documentElement).appendChild(st);
   }
-
-  /* ── utilidades ───────────────────────────────────────────────────────────────────────────── */
-  function rng(seed) { var s = seed >>> 0; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-  function uri(svg) { return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")'; }
-  var _sw = 1;                       // multiplicador de espessura das telhas (1/escala), definido na montagem
-  function svgTile(w, body) { body = body.replace(/stroke-width="([\d.]+)"/g, function (m, v) { return 'stroke-width="' + (parseFloat(v) * _sw).toFixed(2) + '"'; }); return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + H + '" viewBox="0 0 ' + w + ' ' + H + '" fill="none" stroke-linejoin="round" stroke-linecap="round">' + body + '</svg>'; }
   function el(cls, style, html) { var d = document.createElement('div'); if (cls) d.className = cls; if (style) d.style.cssText = style; if (html) d.innerHTML = html; return d; }
-  /* faixa que se repete e desliza (paralaxe): anda exatamente uma telha por ciclo → emenda invisível */
-  function strip(board, tileW, body, secs, extra) {
-    var d = el('sc-strip', 'width:calc(100% + ' + tileW + 'px);background-image:' + uri(svgTile(tileW, body)) + ';background-size:' + tileW + 'px ' + H + 'px;--w:' + tileW + 'px;animation:sc-drift ' + secs + 's linear infinite;' + (extra || ''));
-    board.appendChild(d); return d;
-  }
-  function svgObj(board, body) {
-    var o = el('sc-obj', '', '<svg viewBox="0 0 560 ' + H + '" fill="none">' + body + '</svg>');
-    board.appendChild(o); return o;
-  }
-  /* peça que atravessa a cena (caminhão): x0 → x1 em px da prancha, para sempre */
-  function runner(parent, html, x0, x1, y, secs, delay, scale, z) {
-    var d = el('sc-mv', '--x0:' + x0 + ';--x1:' + x1 + ';--y:' + y + 'px;--s:' + (scale || 1) + ';transform-origin:left bottom;animation:sc-run ' + secs + 's linear ' + (delay || 0) + 's infinite;' + (z != null ? 'z-index:' + z + ';' : ''), html);
-    parent.appendChild(d); return d;
+  var _uid = 0;
+  /* todos os relógios da cena partem do mesmo instante da página → as três cenas trocam de tempo juntas,
+     mesmo quando uma delas é remontada depois (dado novo) */
+  function phase(sc) {
+    var ph = 0; try { ph = (((performance.now() - T0) / 1000) % CYCLE + CYCLE) % CYCLE; } catch (e) {}
+    sc.style.setProperty('--sc-t', '-' + ph.toFixed(2) + 's');
+    return ph;
   }
 
-  /* roda/polia/bobina que gira: um elemento só seu (a placa de vídeo gira; o desenho grande não é repintado) */
-  function wheel(parent, cx, cy, r, secs, inner, rev) {
-    var d = el('sc-rw' + (rev ? ' r' : ''), 'left:' + (cx - r) + 'px;top:' + (cy - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;--t:' + secs + 's;',
-      '<svg viewBox="' + (-r) + ' ' + (-r) + ' ' + (2 * r) + ' ' + (2 * r) + '" fill="none">' + inner + '</svg>');
-    parent.appendChild(d); return d;
+  /* ── as duas silhuetas e as linhas ilustrativas (alturas em unidades de 0 a 300, do chão para cima) ── */
+  var RIDGE = [14, 20, 15, 26, 21, 34, 27, 46, 38, 62, 52, 84, 70, 112, 92, 80, 118, 150, 134, 182, 210, 194, 244, 268, 232, 242, 190, 156, 168, 134, 152, 182, 148, 116, 124, 90, 76];
+  var LINE_MM = [70, 78, 72, 84, 80, 92, 88, 97, 90, 104, 112, 106, 118, 126, 117, 110, 124, 133, 128, 142, 150, 141, 156, 149, 162, 174, 166, 158, 172, 186, 178, 194, 188, 204, 216, 208, 232];
+  var LINE_PP = [84, 92, 86, 98, 108, 100, 114, 124, 116, 132, 126, 140, 152, 144, 160, 172, 186];   // linha ilustrativa (reamostrada para o nº de árvores)
+  var N_MM = RIDGE.length, N_STORE = 37;                                                             // a série real é guardada com 37 pontos
+  /* nº de árvores conforme o formato do quadro (faixa larga pede mais árvores, senão viram morros) */
+  function treeCount(sc) { var w = sc.clientWidth || 400, h = sc.clientHeight || 150; return Math.max(10, Math.min(46, Math.round(w / Math.max(18, h * 0.19)))); }
+  function treeTops(n) {   // alturas das copas: aleatório com semente fixa, crescendo da esquerda para a direita
+    var s = 20261117, out = [], i;
+    for (i = 0; i < n; i++) { s = (s * 1664525 + 1013904223) >>> 0; var t = n > 1 ? i / (n - 1) : 0, e = t * t * (3 - 2 * t); out.push(Math.round(250 * (0.40 + 0.56 * e) * (0.80 + 0.40 * (s / 4294967296)))); }
+    return out;
   }
+  function resample(h, n) { var out = [], i; for (i = 0; i < n; i++) { var p = i * (h.length - 1) / (n - 1), a = Math.floor(p), b = Math.min(h.length - 1, a + 1); out.push(h[a] + (h[b] - h[a]) * (p - a)); } return out; }
 
-  /* ═══ MM · mina + aciaria ══════════════════════════════════════════════════════════════════ */
-  var TRUCK = '<svg width="96" height="50" viewBox="0 0 96 50" fill="none">'
-    + '<path class="sc-ln o sc-fl" d="M26 6 L88 6 L94 12 L84 30 L30 30 Z"/>'            /* caçamba */
-    + '<path class="sc-ln o" d="M34 6 L44 -2 L60 -4 L74 0 L84 6" stroke-opacity=".7"/>' /* carga */
-    + '<path class="sc-ln o sc-fl" d="M6 14 L22 14 L26 20 L26 34 L4 34 L4 22 Z"/>'      /* cabine */
-    + '<path class="sc-ln o" d="M9 18 L19 18 L19 25 L9 25 Z"/>'                         /* janela */
-    + '<path class="sc-ln o" d="M2 34 L90 34 M26 30 L26 34"/>'                          /* chassi */
-    + '</svg><i class="sc-whl" style="left:10px;top:30px"></i><i class="sc-whl" style="left:60px;top:30px"></i>';
-
-  function sceneMM(board) {
-    // bancadas ao fundo (duas linhas de degraus) — a mina a céu aberto
-    strip(board, 640,
-      '<path stroke="#fff" stroke-opacity=".10" stroke-width="1.1" d="M0 138 L46 138 L60 122 L132 122 L146 104 L226 104 L240 88 L318 88 L332 104 L398 104 L412 122 L486 122 L500 138 L566 138 L580 150 L640 150"/>'
-      + '<path stroke="#fff" stroke-opacity=".10" stroke-width="1.1" d="M0 150 L640 150 M60 122 L60 150 M146 104 L146 122 M240 88 L240 104 M412 122 L412 150 M332 104 L332 122"/>'
-      + '<path stroke="#fff" stroke-opacity=".17" stroke-width="1.1" d="M0 196 L70 196 L84 180 L190 180 L204 164 L330 164 L344 180 L452 180 L466 196 L560 196 L574 208 L640 208"/>'
-      + '<path stroke="#fff" stroke-opacity=".17" stroke-width="1.1" d="M0 208 L640 208 M84 180 L84 208 M204 164 L204 180 M344 180 L344 208"/>'
-      + '<path stroke="#FF5500" stroke-opacity=".30" stroke-width="1.1" stroke-dasharray="2 7" d="M0 222 L640 222"/>', 90);
-    // chão próximo com pilhas de estéril
-    strip(board, 460,
-      '<path stroke="#fff" stroke-opacity=".34" stroke-width="1.15" d="M0 250 L460 250"/>'
-      + '<path stroke="#fff" stroke-opacity=".30" stroke-width="1.15" fill="#050505" d="M30 250 L52 228 L66 238 L78 226 L104 250 Z M286 250 L300 238 L316 244 L330 250 Z"/>'
-      + '<path stroke="#fff" stroke-opacity=".22" stroke-width="1.1" d="M0 262 L24 262 M60 268 L140 268 M210 262 L300 262 M350 270 L440 270"/>', 46);
-
-    var o = svgObj(board,
-      /* torre do poço (headframe) */
-      '<g transform="translate(84 0)"><path class="sc-ln sc-fl" d="M150 250 L176 92 L206 92 L232 250 Z" stroke-opacity=".85"/>'
-      + '<path class="sc-ln d" d="M158 202 L224 202 M165 158 L217 158 M171 122 L211 122 M158 202 L217 158 M224 202 L165 158 M165 158 L211 122 M217 158 L171 122"/>'
-      + '<path class="sc-ln" d="M206 92 L296 250" stroke-opacity=".7"/><path class="sc-ln d" d="M232 250 L270 204"/>'
-      + '<path class="sc-ln sc-fl" d="M166 92 L216 92 L216 82 L166 82 Z"/>'
-      + '<path class="sc-ln o" d="M196 54 L288 250" stroke-opacity=".65"/><path class="sc-ln o sc-dash" d="M184 83 L184 250" stroke-opacity=".7"/></g>'
-      /* correia transportadora + pilha */
-      + '<g transform="translate(118 50) scale(.8)"><path class="sc-ln" d="M326 244 L420 168 M332 250 L426 174" stroke-opacity=".8"/>'
-      + '<path class="sc-ln d" d="M356 226 L356 250 M388 200 L388 250 M356 250 L388 226 M388 250 L356 226"/>'
-      + '<circle class="sc-ln" cx="329" cy="247" r="4"/><circle class="sc-ln" cx="423" cy="171" r="4"/>'
-      + '<path class="sc-ln o sc-fl" d="M404 250 L440 190 L476 250 Z"/><path class="sc-ln o d" d="M428 210 L436 222 M444 204 L454 228 M432 232 L440 240"/></g>'
-      /* ponte rolante + panela vazando */
-      + '<g transform="translate(-10 0)"><path class="sc-ln" d="M452 34 L570 34 M452 40 L570 40" stroke-opacity=".75"/><path class="sc-ln d" d="M468 34 L474 40 L480 34 L486 40 L492 34 L498 40 L504 34 L510 40 L516 34 L522 40 L528 34 L534 40 L540 34 L546 40"/>'
-      + '<path class="sc-ln sc-fl" d="M486 40 L522 40 L522 52 L486 52 Z"/><path class="sc-ln" d="M494 52 L494 92 M514 52 L514 92"/>'
-      + '<g transform="rotate(24 504 104)"><path class="sc-ln o sc-fl" d="M478 92 L530 92 L522 138 L486 138 Z"/><path class="sc-ln o" d="M478 98 L530 98 M474 92 L534 92"/><circle class="sc-ln o sc-fl" cx="504" cy="112" r="4.5"/></g>'
-      + '<path class="sc-ln sc-fl" d="M522 234 L568 234 L562 250 L528 250 Z"/><path class="sc-ln o" d="M528 238 L562 238"/></g>');
-    wheel(o, 268, 66, 17, 3.2, '<circle class="sc-ln o sc-fl" r="17"/><path class="sc-ln o" d="M-17 0 L17 0 M0 -17 L0 17 M-12 -12 L12 12 M12 -12 L-12 12"/>');
-    wheel(o, 298, 74, 10, 2.3, '<circle class="sc-ln sc-fl" r="10"/><path class="sc-ln" d="M-10 0 L10 0 M0 -10 L0 10"/>', 1);
-    // o veio de aço líquido: peça própria, que tremula
-    o.appendChild(el('sc-flick', 'left:514px;top:100px;', '<svg width="30" height="140" viewBox="524 100 30 140" fill="none"><defs><linearGradient id="scMolten" x1="0" y1="104" x2="0" y2="232" gradientUnits="userSpaceOnUse">'
-      + '<stop offset="0" stop-color="#FFD9A0"/><stop offset=".35" stop-color="#FF8A1F"/><stop offset="1" stop-color="#FF5500"/></linearGradient></defs>'
-      + '<path d="M530 104 C541 110 545 138 545 232" stroke="url(#scMolten)" stroke-width="4.4" stroke-linecap="round"/></svg>'));
-
-    // brilho no ponto do vazamento + faíscas + brasas
-    o.appendChild(el('sc-glow', 'left:475px;top:176px;width:120px;height:120px;'));
-    o.appendChild(el('sc-glow', 'left:490px;top:74px;width:64px;height:64px;animation-duration:3.4s;opacity:.7;'));
-    var r = rng(7), i;
-    for (i = 0; i < 12; i++) {
-      var dx = Math.round((r() - .5) * 110), up = -Math.round(14 + r() * 40), dn = Math.round(6 + r() * 26), t = (0.7 + r() * 0.9).toFixed(2);
-      o.appendChild(el('sc-spk', 'left:535px;top:232px;--dx:' + dx + 'px;--up:' + up + 'px;--dn:' + dn + 'px;--t:' + t + 's;--d:-' + (r() * 1.6).toFixed(2) + 's;', '<i></i>'));
-    }
-    for (i = 0; i < 9; i++) {
-      o.appendChild(el('sc-emb', 'left:' + Math.round(430 + r() * 110) + 'px;top:' + Math.round(150 + r() * 90) + 'px;--dx:' + Math.round((r() - .5) * 70) + 'px;--dy:-' + Math.round(90 + r() * 130) + 'px;--t:' + (5 + r() * 6).toFixed(1) + 's;--d:-' + (r() * 9).toFixed(1) + 's;'));
-    }
-    // minério subindo a correia
-    for (i = 0; i < 5; i++) o.appendChild(el('sc-ore', 'left:382px;top:240px;--d:-' + (i * 0.72).toFixed(2) + 's;'));
-
-    // caminhões: um perto (da direita para a esquerda), um longe na bancada (no outro sentido, menor)
-    runner(board, TRUCK, 'calc(var(--bw) + 40px)', '-140px', 206, 30, -6, 1, 3);
-    runner(board, TRUCK, 'calc(var(--bw) + 40px)', '-140px', 206, 30, -21, 1, 3);
-    var far = runner(board, TRUCK, '-90px', 'calc(var(--bw) + 60px)', 185, 54, -12, 0.46, 1);
-    far.style.opacity = '.5'; far.firstChild.style.transform = 'scaleX(-1)'; far.firstChild.style.transformOrigin = '48px 0';
+  function f1(v) { return (Math.round(v * 10) / 10).toString(); }
+  function f2(v) { return (Math.round(v * 100) / 100).toString(); }
+  /* valores reais → N alturas entre 64 e 240 (a forma da série; a escala não aparece) */
+  function shape(vals, n) {
+    var v = (vals || []).map(Number).filter(function (x) { return isFinite(x); });
+    if (v.length < 8) return null;
+    var out = [], i, mn = Infinity, mx = -Infinity;
+    for (i = 0; i < n; i++) { var p = i * (v.length - 1) / (n - 1), a = Math.floor(p), b = Math.min(v.length - 1, a + 1), y = v[a] + (v[b] - v[a]) * (p - a); out.push(y); mn = Math.min(mn, y); mx = Math.max(mx, y); }
+    if (!(mx > mn)) return null;
+    return out.map(function (y) { return 64 + (y - mn) / (mx - mn) * 176; });
   }
-
-  /* ═══ PP · floresta + fábrica + bobina ═════════════════════════════════════════════════════ */
-  var LOGTRUCK = '<svg width="120" height="50" viewBox="0 0 120 50" fill="none">'
-    + '<path class="sc-ln o sc-fl" d="M94 12 L112 12 L116 20 L116 34 L92 34 L92 14 Z"/><path class="sc-ln o" d="M98 16 L109 16 L111 24 L98 24 Z"/>'
-    + '<path class="sc-ln o" d="M2 34 L118 34 M8 8 L8 34 M84 8 L84 34"/>'
-    + '<g class="sc-ln" stroke-opacity=".9"><circle class="sc-fl" cx="20" cy="27" r="6.5"/><circle class="sc-fl" cx="34" cy="27" r="6.5"/><circle class="sc-fl" cx="48" cy="27" r="6.5"/><circle class="sc-fl" cx="62" cy="27" r="6.5"/><circle class="sc-fl" cx="76" cy="27" r="6.5"/>'
-    + '<circle class="sc-fl" cx="27" cy="15.5" r="6.5"/><circle class="sc-fl" cx="41" cy="15.5" r="6.5"/><circle class="sc-fl" cx="55" cy="15.5" r="6.5"/><circle class="sc-fl" cx="69" cy="15.5" r="6.5"/>'
-    + '<circle cx="20" cy="27" r="2.4"/><circle cx="48" cy="27" r="2.4"/><circle cx="76" cy="27" r="2.4"/><circle cx="41" cy="15.5" r="2.4"/><circle cx="69" cy="15.5" r="2.4"/></g>'
-    + '</svg><i class="sc-whl" style="left:12px;top:30px"></i><i class="sc-whl" style="left:34px;top:30px"></i><i class="sc-whl" style="left:92px;top:30px"></i>';
-
-  function trees(n, tileW, seed, hMin, hMax, op, fill, sw) {
-    var r = rng(seed), s = '', i, step = tileW / n;
-    for (i = 0; i < n; i++) {
-      var x = Math.round(step * i + step * (0.2 + r() * 0.6)), h = Math.round(hMin + r() * (hMax - hMin)), rx = Math.round(7 + r() * 6), ry = Math.round(h * (0.26 + r() * 0.12));
-      var top = 250 - h;
-      s += '<path stroke="#fff" stroke-opacity="' + op + '" stroke-width="' + sw + '" d="M' + x + ' 250 L' + x + ' ' + (top + ry) + '"/>'
-        + '<ellipse cx="' + x + '" cy="' + (top + ry) + '" rx="' + rx + '" ry="' + ry + '" stroke="#fff" stroke-opacity="' + op + '" stroke-width="' + sw + '" fill="' + (fill || 'none') + '"/>'
-        + '<path stroke="#fff" stroke-opacity="' + (op * 0.7).toFixed(2) + '" stroke-width="' + sw + '" d="M' + x + ' ' + (top + ry * 1.5) + ' L' + (x - rx * 0.6).toFixed(1) + ' ' + (top + ry * 1.1).toFixed(1) + ' M' + x + ' ' + (top + ry * 1.2).toFixed(1) + ' L' + (x + rx * 0.6).toFixed(1) + ' ' + (top + ry * 0.8).toFixed(1) + '"/>';
+  /* montanha/linha angulosa: N pontos igualmente espaçados */
+  function polyD(h) { var s = '', i, n = h.length; for (i = 0; i < n; i++) s += (i ? ' L' : 'M') + f1(i * VB_W / (n - 1)) + ' ' + f1(VB_H - h[i]); return s; }
+  /* floresta: cada copa é uma folha alta e pontuda (cipreste/eucalipto) entre dois pontos do chão */
+  function treesD(tops) {
+    var n = tops.length, w = VB_W / n, s = 'M0 ' + f1(VB_H - 4), i;
+    for (i = 0; i < n; i++) { var x0 = i * w, x1 = x0 + w, cy = VB_H - 4 - (tops[i] - 4) * 1.333; s += ' C' + f1(x0 + w * 0.40) + ' ' + f1(cy) + ' ' + f1(x1 - w * 0.40) + ' ' + f1(cy) + ' ' + f1(x1) + ' ' + f1(VB_H - 4); }
+    return s;
+  }
+  /* linha suave por uma lista de pontos (mesma estrutura de comandos da floresta → uma vira a outra) */
+  function smoothP(P, f) {
+    var n = P.length, s = 'M' + f(P[0][0]) + ' ' + f(P[0][1]), i;
+    for (i = 0; i < n - 1; i++) {
+      var p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];
+      s += ' C' + f(p1[0] + (p2[0] - p0[0]) / 6) + ' ' + f(p1[1] + (p2[1] - p0[1]) / 6) + ' ' + f(p2[0] - (p3[0] - p1[0]) / 6) + ' ' + f(p2[1] - (p3[1] - p1[1]) / 6) + ' ' + f(p2[0]) + ' ' + f(p2[1]);
     }
     return s;
   }
-
-  function scenePP(board) {
-    strip(board, 520, trees(15, 520, 11, 96, 150, 0.11, 'none', 1.05), 110);
-    strip(board, 600, trees(11, 600, 29, 130, 196, 0.2, '#040404', 1.1)
-      + '<path stroke="#FF5500" stroke-opacity=".28" stroke-width="1.1" stroke-dasharray="2 7" d="M0 236 L600 236"/>', 64);
-    strip(board, 460, '<path stroke="#fff" stroke-opacity=".34" stroke-width="1.15" d="M0 250 L460 250"/>'
-      + '<path stroke="#fff" stroke-opacity=".22" stroke-width="1.1" d="M10 262 L70 262 M120 268 L230 268 M270 262 L330 262 M360 270 L450 270"/>'
-      + '<g stroke="#fff" stroke-opacity=".3" stroke-width="1.1" fill="#050505"><circle cx="40" cy="244" r="6"/><circle cx="53" cy="244" r="6"/><circle cx="46.5" cy="233" r="6"/></g>', 40);
-
-    var o = svgObj(board,
-      /* fábrica: digestor, torre, galpão dente-de-serra, chaminé */
-      '<path class="sc-ln sc-fl" d="M330 250 L330 128 Q330 108 346 108 Q362 108 362 128 L362 250 Z" stroke-opacity=".85"/>'
-      + '<path class="sc-ln d" d="M330 150 L362 150 M330 186 L362 186 M330 222 L362 222 M338 108 L338 96 L354 96 L354 108"/>'
-      + '<path class="sc-ln sc-fl" d="M372 250 L372 150 L396 150 L396 250 Z" stroke-opacity=".8"/><path class="sc-ln d" d="M372 176 L396 176 M372 206 L396 206"/>'
-      + '<path class="sc-ln o" d="M362 136 L384 136 L384 150" stroke-opacity=".8"/>'
-      + '<path class="sc-ln sc-fl" d="M402 250 L402 196 L422 180 L422 196 L442 180 L442 196 L462 180 L462 196 L482 180 L482 196 L506 196 L506 250 Z" stroke-opacity=".85"/>'
-      + '<path class="sc-ln d" d="M412 216 L428 216 L428 232 L412 232 Z M440 216 L456 216 L456 232 L440 232 Z M468 216 L484 216 L484 232 L468 232 Z"/>'
-      + '<path class="sc-ln sc-fl" d="M518 250 L521 104 L535 104 L538 250 Z" stroke-opacity=".85"/><path class="sc-ln o" d="M520 116 L536 116 M520 124 L536 124"/>'
-      /* máquina de papel: bobina jumbo, rolos e a folha */
-      + '<path class="sc-ln o" d="M226 180 L150 197 L124 226 L96 197 L64 226 L20 226" stroke-opacity=".9"/>'
-      + '<path class="sc-ln d" d="M150 213 L150 250 M124 226 L124 250 M96 213 L96 250 M64 226 L64 250 M52 250 L162 250"/>'
-      + '<path class="sc-ln" d="M196 250 L214 228 M256 250 L238 228 M186 250 L266 250"/>');
-    wheel(o, 226, 216, 36, 7, '<circle class="sc-ln sc-fl" r="36"/><circle class="sc-ln d" r="27"/><circle class="sc-ln d" r="18"/><path class="sc-ln d" d="M0 -36 L0 36 M-36 0 L36 0 M-25.5 -25.5 L25.5 25.5 M25.5 -25.5 L-25.5 25.5"/><circle class="sc-ln o sc-fl" r="7"/><path class="sc-ln o" d="M0 -7 L0 7"/>');
-    [[150, 205, 1], [124, 218, 0], [96, 205, 1], [64, 218, 0]].forEach(function (w) { wheel(o, w[0], w[1], 8, 1.5, '<circle class="sc-ln sc-fl" r="8"/><path class="sc-ln" d="M-8 0 L8 0"/>', w[2]); });
-
-    var r = rng(5), i;
-    for (i = 0; i < 4; i++) o.appendChild(el('sc-steam', 'left:506px;top:62px;--dx:' + Math.round(30 + r() * 40) + 'px;--t:' + (5.5 + r() * 2).toFixed(1) + 's;--d:-' + (i * 1.6).toFixed(1) + 's;'));
-    for (i = 0; i < 3; i++) o.appendChild(el('sc-steam', 'left:324px;top:58px;width:32px;height:32px;--dx:' + Math.round(20 + r() * 30) + 'px;--t:' + (6.5 + r() * 2).toFixed(1) + 's;--d:-' + (i * 2.2).toFixed(1) + 's;'));
-    for (i = 0; i < 8; i++) {
-      board.appendChild(el('sc-leaf' + (i % 3 === 0 ? ' o' : ''), 'right:' + Math.round(r() * 520) + 'px;top:' + Math.round(40 + r() * 70) + 'px;--dx:-' + Math.round(80 + r() * 150) + 'px;--dy:' + Math.round(120 + r() * 90) + 'px;--t:' + (8 + r() * 7).toFixed(1) + 's;--d:-' + (r() * 14).toFixed(1) + 's;'));
-    }
-    runner(board, LOGTRUCK, '-150px', 'calc(var(--bw) + 40px)', 206, 34, -9, 1, 3);
-    var far = runner(board, LOGTRUCK, 'calc(var(--bw) + 40px)', '-150px', 213, 60, -30, 0.5, 1);
-    far.style.opacity = '.45'; far.firstChild.style.transform = 'scaleX(-1)'; far.firstChild.style.transformOrigin = '60px 0';
+  function smoothD(h) { var w = VB_W / (h.length - 1); return smoothP(h.map(function (v, i) { return [i * w, VB_H - v]; }), f1); }
+  /* a troca de forma: um <animate> PARADO, que o relógio dispara (beginElement) nas duas viradas do ciclo e que congela no
+     fim. Antes era um <animate> infinito: mesmo "parado" entre as trocas ele acordava o navegador a cada quadro — medido com
+     a máquina cheia: 30 quadros/s com ele, 56 sem. Agora só há trabalho durante os ~2 s da troca. */
+  function animEl(d) {
+    if (REDUCED) return '';
+    return '<animate attributeName="d" begin="indefinite" dur="' + MORPH + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.65 0 0.35 1" values="' + d + ';' + d + '"/>';
   }
 
-  /* ═══ SG · fita de velas + empresas em órbita ══════════════════════════════════════════════ */
-  var SG_NAMES = ['VALE3', 'GGBR4', 'CSNA3', 'USIM5', 'CMIN3', 'SUZB3', 'KLBN11', 'RANI3', 'SCCO', 'AUGO', 'TX', 'CMPC', 'COPEC', 'GMEXICOB'];
-  var _toks = {};          // código → elementos (para pintar o aro com a variação do dia)
-  var LOGOS = {};          // opcional: {VALE3:'/assets/logos/VALE3.svg'} → a ficha mostra a marca
-
-  function candles(tileW, seed) {
-    var r = rng(seed), s = '', n = Math.floor(tileW / 22), y = 170, i, ma = '';
-    s += '<path stroke="#fff" stroke-opacity=".07" stroke-width="1" stroke-dasharray="2 8" d="M0 96 L' + tileW + ' 96 M0 148 L' + tileW + ' 148 M0 200 L' + tileW + ' 200"/>';
-    var y0 = y;
-    for (i = 0; i < n; i++) {
-      var x = 11 + i * 22, tgt = 170 + Math.sin((i / n) * Math.PI * 2) * 42 + Math.sin((i / n) * Math.PI * 6) * 14;   // fecha o ciclo: a fita emenda
-      var open = y, close = tgt + (r() - .5) * 16, hi = Math.min(open, close) - 5 - r() * 12, lo = Math.max(open, close) + 5 + r() * 12;
-      var up = close < open, top = Math.min(open, close), hgt = Math.max(3, Math.abs(close - open));
-      s += '<path stroke="' + (up ? '#FF5500' : '#fff') + '" stroke-opacity="' + (up ? '.55' : '.26') + '" stroke-width="1.1" d="M' + x + ' ' + hi.toFixed(1) + ' L' + x + ' ' + lo.toFixed(1) + '"/>'
-        + '<rect x="' + (x - 5) + '" y="' + top.toFixed(1) + '" width="10" height="' + hgt.toFixed(1) + '" rx="1.2" stroke="' + (up ? '#FF5500' : '#fff') + '" stroke-opacity="' + (up ? '.6' : '.26') + '" stroke-width="1.1" fill="' + (up ? 'rgba(255,85,0,.22)' : '#050505') + '"/>';
-      ma += (i ? ' L' : 'M') + x + ' ' + (tgt - 26).toFixed(1);
-      y = close;
-    }
-    s += '<path stroke="#fff" stroke-opacity=".22" stroke-width="1.1" d="' + ma + '"/>';
-    return s;
+  /* ═══ MM e PP: silhueta ↔ linha ═════════════════════════════════════════════════════════════ */
+  function buildLine(sc, kind) {
+    var st = sc.__st || (sc.__st = {});
+    var line = st.line, real = !!(line && line.h);
+    var dA, dB, lastH;
+    var nT = 0;
+    if (kind === 'mm') { var hB = real ? resample(line.h, N_MM) : LINE_MM; dA = polyD(RIDGE); dB = polyD(hB); lastH = hB[hB.length - 1]; }
+    else { nT = treeCount(sc); st.nT = nT; var hP = resample(real ? line.h : LINE_PP, nT + 1); dA = treesD(treeTops(nT)); dB = smoothD(hP); lastH = hP[hP.length - 1]; }
+    var id = 'scl' + (++_uid), close = ' L' + VB_W + ' ' + VB_H + ' L0 ' + VB_H + ' Z';
+    var b = wantB(), d0 = b ? dB : dA;              // nasce já no tempo certo do ciclo
+    phase(sc); sc.__b = b; sc.classList.toggle('is-b', b); sc.classList.remove('to-a', 'to-b', 'sc-morph');
+    var eco = kind === 'mm'
+      ? '<use href="#' + id + '" class="sc-eco" stroke-opacity=".20" transform="translate(0 20)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".11" transform="translate(0 44)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".06" transform="translate(0 72)"/>'
+      : '<use href="#' + id + '" class="sc-eco" stroke-opacity=".17" transform="translate(' + f1(VB_W / nT / 2) + ' 78) scale(1 .74)"/>';
+    var art = el('sc-art', '',
+      '<svg viewBox="0 0 ' + VB_W + ' ' + VB_H + '" preserveAspectRatio="none" aria-hidden="true">'
+      + '<defs><path id="' + id + '" vector-effect="non-scaling-stroke" d="' + d0 + '">' + animEl(d0) + '</path>'
+      + '<linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".105"/><stop offset=".75" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
+      + '<path fill="url(#' + id + 'g)" d="' + d0 + close + '">' + animEl(d0 + close) + '</path>'
+      + '<g class="sc-st-m">' + eco + '</g>'
+      + '<use href="#' + id + '" class="sc-ln" stroke-opacity=".86"/></svg>'
+      + '<div class="sc-win"><div><svg viewBox="0 0 ' + VB_W + ' ' + VB_H + '" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hot2"/><use href="#' + id + '" class="sc-hot1"/><use href="#' + id + '" class="sc-hot"/></svg></div></div>');
+    // tempo "linha": o último ponto pulsa; com dado real, o rótulo e a variação
+    var top = (100 - lastH / VB_H * 100).toFixed(2) + '%';
+    var live = el('sc-st-c', 'position:absolute;inset:0;', '<i class="sc-last" style="top:' + top + '"></i><i class="sc-dot" style="top:' + top + '"></i>'
+      + (real && line.label ? '<span class="sc-tag" style="top:' + top + '">' + String(line.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + (line.pct != null && isFinite(line.pct) ? '<b class="' + (line.pct > 0 ? 'up' : line.pct < 0 ? 'dn' : '') + '">' + (line.pct > 0 ? '+' : '') + (+line.pct).toFixed(1) + '%</b>' : '') + '</span>' : ''));
+    sc.innerHTML = ''; sc.appendChild(art); sc.appendChild(live);
+    var an = art.querySelectorAll('animate');
+    st.an = an.length === 2 ? [{ el: an[0], a: dA, b: dB }, { el: an[1], a: dA + close, b: dB + close }] : null;
   }
 
-  function sceneSG(board) {
-    strip(board, 528, candles(528, 3), 52);
-    strip(board, 460, '<path stroke="#fff" stroke-opacity=".3" stroke-width="1.15" d="M0 250 L460 250"/><path stroke="#fff" stroke-opacity=".3" stroke-width="1.1" d="M20 250 L20 256 M112 250 L112 256 M204 250 L204 256 M296 250 L296 256 M388 250 L388 256"/>', 70);
-    var CX = 404, CY = 132;
-    var ORB = [{ rx: 148, ry: 56, rot: -17, t: 46, n: 5, o: true }, { rx: 122, ry: 48, rot: 24, t: 38, n: 5, o: false }, { rx: 92, ry: 33, rot: -5, t: 30, n: 4, o: true }];
-    var svg = '';
-    ORB.forEach(function (b) { svg += '<ellipse class="sc-ln' + (b.o ? ' o' : '') + '" stroke-opacity="' + (b.o ? '.85' : '.5') + '" cx="' + CX + '" cy="' + CY + '" rx="' + b.rx + '" ry="' + b.ry + '" transform="rotate(' + b.rot + ' ' + CX + ' ' + CY + ')"/>'; });
-    var o = svgObj(board, svg);
-    o.appendChild(el('sc-glow', 'left:' + (CX - 60) + 'px;top:' + (CY - 60) + 'px;width:120px;height:120px;opacity:.5;animation-duration:4s;'));
-    var core = el('sc-core', 'left:' + CX + 'px;top:' + CY + 'px;'); o.appendChild(core);
-    var k = 0;
-    ORB.forEach(function (b, bi) {
-      var sq = b.ry / b.rx;
-      var orbit = el('sc-orbit', 'left:' + CX + 'px;top:' + CY + 'px;transform:rotate(' + b.rot + 'deg) scaleY(' + sq.toFixed(4) + ');');
-      for (var j = 0; j < b.n; j++) {
-        var name = SG_NAMES[k % SG_NAMES.length]; k++;
-        var d = '-' + (b.t * j / b.n + bi * 2.3).toFixed(2) + 's', v = '--t:' + b.t + 's;--d:' + d + ';';
-        var rot = el('sc-rot', v), arm = el('sc-arm', 'transform:translateX(' + b.rx + 'px);'), un = el('sc-unrot', v);
-        var unsq = el('sc-unsq', 'transform:scaleY(' + (1 / sq).toFixed(4) + ') rotate(' + (-b.rot) + 'deg);');
-        var tok = el('sc-tok' + (b.o ? ' o' : ''), v);
-        tok.setAttribute('data-tk', name);
-        if (LOGOS[name]) { var im = document.createElement('img'); im.alt = name; im.src = LOGOS[name]; tok.appendChild(im); }
-        else tok.textContent = name.replace(/\d+$/, '').slice(0, 4);
-        (_toks[name] = _toks[name] || []).push(tok);
-        unsq.appendChild(tok); un.appendChild(unsq); arm.appendChild(un); rot.appendChild(arm); orbit.appendChild(rot);
-      }
-      o.appendChild(orbit);
+  /* ═══ SG: o mural das empresas cobertas ↔ a curva do dia ════════════════════════════════════ */
+  var SG = [['VALE', 'm'], ['CMIN3', 'm'], ['CSNA3', 'm'], ['GGBR4', 'm'], ['USIM5', 'm'], ['TX', 'm'], ['AUGO', 'm'], ['SCCO', 'm'], ['GMEXICOB', 'm'], ['CS', 'm'], ['ERO', 'm'],
+            ['HBM', 'm'], ['LUN', 'm'], ['ARA', 'm'], ['VMM', 'm'], ['SUZB3', 'p'], ['KLBN11', 'p'], ['RANI3', 'p'], ['CMPC', 'p'], ['COPEC', 'p']];
+  var _moves = null, _sg = [];
+  function logos() { return window.IBBA_LOGOS || {}; }
+  function mono(t) { return t.replace(/\d+$/, '').slice(0, 4); }
+  function known() { var k = 0; if (_moves) SG.forEach(function (c) { var v = _moves[c[0]]; if (v != null && isFinite(v)) k++; }); return k; }
+  function token(c, i) {
+    var t = el('sc-tk' + (c[1] === 'm' ? ' sq' : ''), '--i:' + i + ';--j:' + i + ';'), chip = el('sc-chip');
+    var src = logos()[c[0]];
+    if (src) {
+      chip.className += ' logo'; var im = document.createElement('img'); im.alt = ''; im.decoding = 'async';
+      im.onerror = function () { chip.classList.remove('logo'); chip.textContent = mono(c[0]); };      // arquivo do logo faltando → o código
+      im.src = src; chip.appendChild(im);
+    } else chip.textContent = mono(c[0]);
+    t.appendChild(chip);
+    return { t: t };
+  }
+  function buildSG(sc) {
+    var st = sc.__st || (sc.__st = {}), id = 'scp' + (++_uid);
+    var box = el('sc-perf'), wall = el('sc-wall');
+    var prof = el('sc-st-c sc-prof', '', '<i class="sc-zero"></i>'
+      + '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><path id="' + id + '" vector-effect="non-scaling-stroke" d="M0 50 L100 50"/></defs><use href="#' + id + '" class="sc-ln" stroke-opacity=".46" style="stroke-width:1.2px"/></svg>'
+      + '<div class="sc-win"><div><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hot2"/><use href="#' + id + '" class="sc-hot1"/><use href="#' + id + '" class="sc-hot"/></svg></div></div>'
+      + '<span class="sc-ptag"></span>');
+    st.path = prof.querySelector('path'); st.zero = prof.querySelector('.sc-zero'); st.tag = prof.querySelector('.sc-ptag');
+    st.tk = {}; st.box = box;
+    SG.forEach(function (c, i) { var o = token(c, i); wall.appendChild(o.t); st.tk[c[0]] = o; });
+    box.appendChild(prof); box.appendChild(wall);
+    st.on = known() >= 3 && !REDUCED;            // com dado: o mural vira curva; sem dado, fica o mural
+    box.classList.toggle('on', st.on);
+    phase(sc); sc.__b = wantB(); sc.classList.toggle('is-b', sc.__b); sc.classList.remove('to-a', 'to-b');
+    sc.innerHTML = ''; sc.appendChild(box);
+    if (_sg.indexOf(sc) < 0) _sg.push(sc);
+    layoutSG(sc);
+  }
+  function pc(x) { return (x * 100).toFixed(2); }
+  function layoutSG(sc) {
+    var st = sc.__st; if (!st || !st.tk) return;
+    var has = known() >= 3;
+    if ((has && !REDUCED) !== st.on) { buildSG(sc); return; }          // chegou (ou sumiu) o dado: remonta para os relógios partirem juntos
+    var W = sc.clientWidth || 300, Hh = sc.clientHeight || 120, n = SG.length, on = st.on;
+    /* mudança pequena de tamanho (o cartão que cresce sob o mouse) NÃO refaz a conta: o mural é um bloco de medida fixa e a
+       curva está em fração do quadro — os dois acompanham sozinhos, sem pulo */
+    if (st.W && Math.abs(W - st.W) / st.W < 0.3 && Math.abs(Hh - st.H) < 12) { W = st.W; Hh = st.H; } else { st.W = W; st.H = Hh; }
+    var rows = SG.map(function (c, i) { var v = _moves ? _moves[c[0]] : null; return { k: c[0], v: (v != null && isFinite(v)) ? +v : null, i: i }; });
+    var order = rows.slice();
+    if (has) order.sort(function (a, b) { return ((b.v == null ? 0 : b.v) - (a.v == null ? 0 : a.v)) || (a.i - b.i); });   // da que mais sobe à que mais cai
+    /* MURAL: a grade que dá a maior ficha (até 30px); empate → menos fileiras; grade completa leva vantagem */
+    var g = null, r;
+    for (r = 1; r <= 5; r++) {
+      var c = Math.ceil(n / r), cell = Math.min((W - 10) / c, (Hh - 8) / r), sr = Math.min(30, Math.floor(cell * 0.8)), score = sr + (n % c === 0 ? 0.6 : 0);
+      if (!g || score > g.score + 0.001) g = { r: r, c: c, s: sr, score: score };
+    }
+    var s = Math.max(12, g.s), row1 = g.r === 1;
+    var px = row1 ? Math.min((W - s - 22) / (n - 1), s * 2) : Math.min((W - 10) / g.c, s * 1.5), py = Math.min((Hh - 8) / g.r, s * 1.34);
+    var x0 = row1 ? W - s / 2 - 12 - (n - 1) * px : (W - (g.c - 1) * px) / 2, y0 = (Hh - (g.r - 1) * py) / 2;
+    /* CURVA DO DIA: uma escala só para altas e baixas (o zero cai onde cair); fileira única → as fichas só sobem/descem */
+    var pitchB = row1 ? px : (W - 16) / (n - 1), dots = !row1;
+    var d = dots ? Math.max(4.5, Math.min(9, pitchB * 0.62)) : s, kb = d / s;
+    var mx = 0.6, mn = -0.6; order.forEach(function (o) { if (o.v != null) { mx = Math.max(mx, o.v); mn = Math.min(mn, o.v); } });
+    var yT = d / 2 + 9, yB = Hh - d / 2 - 8, Y = function (v) { return yT + (mx - v) / (mx - mn) * (yB - yT); };
+    sc.style.setProperty('--s', s + 'px');
+    st.box.classList.toggle('dots', dots);
+    var pts = [], up = 0, dn = 0;
+    order.forEach(function (o, j) {
+      var ax = x0 + (j % g.c) * px, ay = y0 + Math.floor(j / g.c) * py;
+      var bx = row1 ? ax : 8 + d / 2 + j * (W - 16 - d) / (n - 1), by = Y(o.v == null ? 0 : o.v);
+      var t = st.tk[o.k].t, z = t.style;
+      z.setProperty('--j', j); z.setProperty('--kb', kb.toFixed(3));
+      /* o MURAL é um bloco de medida fixa (preso ao centro do quadro; a fileira única, à direita): se o quadro alarga —
+         mouse em cima, entrada no ambiente — ele vai junto, sem se espalhar. A CURVA, essa sim, ocupa a largura toda. */
+      var axv = row1 ? 'calc(100cqw - ' + (W - ax).toFixed(1) + 'px)' : 'calc(50cqw + ' + (ax - W / 2).toFixed(1) + 'px)';
+      z.setProperty('--ax', axv); z.setProperty('--ay', pc(ay / Hh) + 'cqh');
+      z.setProperty('--bx', row1 ? axv : pc(bx / W) + 'cqw'); z.setProperty('--by', pc(by / Hh) + 'cqh');
+      var isUp = o.v != null && o.v > 0.0001, isDn = o.v != null && o.v < -0.0001;
+      t.classList.toggle('up', isUp); t.classList.toggle('dn', isDn); if (isUp) up++; if (isDn) dn++;
+      pts.push([bx / W * 100, by / Hh * 100]);
+    });
+    if (on) {
+      st.path.setAttribute('d', smoothP(pts, f2)); st.zero.style.top = pc(Y(0) / Hh) + '%';
+      st.tag.innerHTML = 'Coverage · today<b class="up">' + up + ' ▲</b><b class="dn">' + dn + ' ▼</b>';
+    }
+  }
+
+  /* ── o RELÓGIO: duas viradas por ciclo (→ "como está" aos 5 s, → "o que é" aos 13,8 s), contadas a partir do mesmo
+        instante da página, para as cenas trocarem JUNTAS. É um setTimeout por virada, não um laço. Chegou atrasado (aba
+        em segundo plano), a troca encurta; muito atrasado, só assenta no tempo certo. ─────────────────────────────── */
+  var T_B = 5, T_A = 13.8, _timer = 0;
+  function phaseNow() { try { return (((performance.now() - T0) / 1000) % CYCLE + CYCLE) % CYCLE; } catch (e) { return 0; } }
+  function wantB() { if (REDUCED) return false; var ph = phaseNow(); return ph >= T_B && ph < T_A; }
+  function setState(sc, b, dur) {
+    sc.__b = b;
+    sc.classList.toggle('is-b', b);
+    sc.classList.toggle('to-b', b && dur > 0); sc.classList.toggle('to-a', !b && dur > 0);
+    var st = sc.__st; if (!st || !st.an) return;
+    clearTimeout(st.mt);
+    if (dur > 0) { sc.classList.add('sc-morph'); st.mt = setTimeout(function () { sc.classList.remove('sc-morph'); }, dur * 1000 + 90); } else sc.classList.remove('sc-morph');
+    st.an.forEach(function (o) {
+      try { o.el.setAttribute('dur', Math.max(0.02, dur).toFixed(2) + 's'); o.el.setAttribute('values', b ? o.a + ';' + o.b : o.b + ';' + o.a); o.el.beginElement(); } catch (e) {}
     });
   }
+  function tick() {
+    clearTimeout(_timer); _timer = 0;
+    if (REDUCED || !_all.length) return;
+    var ph = phaseNow(), b = ph >= T_B && ph < T_A;
+    var since = b ? ph - T_B : (ph >= T_A ? ph - T_A : ph + CYCLE - T_A), dur = since < MORPH - 0.35 ? MORPH - since : 0;
+    var hidden = false; try { hidden = document.hidden; } catch (e) {}
+    _all.forEach(function (sc) { if (sc.__b !== b) setState(sc, b, (hidden || sc.classList.contains('sc-off')) ? 0 : dur); });
+    var next = b ? T_A - ph : (ph < T_B ? T_B - ph : CYCLE - ph + T_B);
+    _timer = setTimeout(tick, Math.max(60, next * 1000 + 20));
+  }
+  try { document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); }); } catch (e) {}
 
   /* ── montagem ─────────────────────────────────────────────────────────────────────────────── */
-  var BUILD = { mm: sceneMM, pp: scenePP, sg: sceneSG };
-  var _io = null, _ro = null;
-  function fit(sc) {
-    var h = sc.clientHeight || H, fx = parseFloat(sc.getAttribute('data-k')), k = fx > 0 ? fx : h / H, b = sc.firstChild;
-    sc.style.setProperty('--sc-k', k.toFixed(4));
-    if (b) { var bw = Math.ceil((sc.clientWidth || 600) / k); b.style.width = bw + 'px'; b.style.setProperty('--bw', bw + 'px'); }
-  }
+  var _io = null, _all = [];
+  function stored(kind) { try { var j = JSON.parse(sessionStorage.getItem('ibba_scene_' + kind) || 'null'); if (j && j.h && j.h.length === N_STORE) return j; } catch (e) {} return null; }
   function mount(host, kind) {
-    if (!host || !BUILD[kind] || host.__scene) return null;
+    if (!host || host.__scene || ['mm', 'pp', 'sg'].indexOf(kind) < 0) return null;
     injectCSS();
-    var sc = el('sc sc-' + kind), board = el('sc-board');
-    sc.appendChild(board);
-    if (host.getAttribute('data-scene-k')) sc.setAttribute('data-k', host.getAttribute('data-scene-k'));
-    host.appendChild(sc); host.__scene = sc;
-    fit(sc);
-    _sw = 1 / (parseFloat(sc.style.getPropertyValue('--sc-k')) || 1);
-    BUILD[kind](board);
-    _sw = 1;
+    var sc = el('sc sc-' + kind); sc.__kind = kind; sc.__st = {};
+    host.appendChild(sc); host.__scene = sc; _all.push(sc);
+    if (kind === 'sg') buildSG(sc); else { sc.__st.line = stored(kind); buildLine(sc, kind); }
+    if (!_timer) tick();
+    try { if (_ro) _ro.observe(sc); } catch (e) {}
     try {
-      if (!_ro && window.ResizeObserver) _ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
-      if (_ro) _ro.observe(sc);
-      if (!_io && window.IntersectionObserver) _io = new IntersectionObserver(function (es) { es.forEach(function (e) { e.target.classList.toggle('sc-off', !e.isIntersecting); }); }, { rootMargin: '80px' });
+      if (!_io && window.IntersectionObserver) _io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          e.target.classList.toggle('sc-off', !e.isIntersecting);
+        });
+      }, { rootMargin: '80px' });
       if (_io) _io.observe(sc);
     } catch (e) {}
     return sc;
   }
-  function auto(root) {
-    (root || document).querySelectorAll('[data-scene]').forEach(function (h) { mount(h, h.getAttribute('data-scene')); });
-  }
-  /* a página informa a variação do dia de cada código → o aro da ficha pinta (verde sobe, vermelho cai) */
+  function auto(root) { (root || document).querySelectorAll('[data-scene]').forEach(function (h) { mount(h, h.getAttribute('data-scene')); }); }
+
+  /* a página informa a variação do dia de cada código → o mural ordena, pinta os aros e passa a virar a curva do dia */
   function setMoves(map) {
     try {
-      Object.keys(_toks).forEach(function (tk) {
-        var v = map && (map[tk] != null ? map[tk] : map[tk + '.SA']);
-        _toks[tk].forEach(function (t) { t.classList.toggle('up', v > 0.0001); t.classList.toggle('dn', v < -0.0001); if (v != null && isFinite(v)) t.title = tk + ' ' + (v > 0 ? '+' : '') + (+v).toFixed(2) + '%'; });
-      });
+      var m = {}; Object.keys(map || {}).forEach(function (k) { var v = +map[k]; if (map[k] != null && isFinite(v)) m[String(k).split('.')[0].toUpperCase()] = v; });
+      _moves = m; _sg.forEach(layoutSG);
+      try { sessionStorage.setItem('ibba_scene_moves', JSON.stringify(m)); } catch (e) {}
     } catch (e) {}
   }
+  /* a página informa a série REAL (ex.: 12 meses das empresas cobertas do setor) → a silhueta passa a virar ESSA linha */
+  function setLine(kind, values, opts) {
+    try {
+      var h = (kind === 'mm' || kind === 'pp') ? shape(values, N_STORE) : null; if (!h) return false;
+      var line = { h: h.map(function (v) { return Math.round(v * 10) / 10; }), label: (opts && opts.label) || '', pct: opts && opts.pct != null ? +opts.pct : null };
+      var key = JSON.stringify(line);
+      try { sessionStorage.setItem('ibba_scene_' + kind, key); } catch (e) {}
+      _all.forEach(function (sc) { if (sc.__kind !== kind) return; if (sc.__st.key === key) return; sc.__st.key = key; sc.__st.line = line; buildLine(sc, kind); });
+      return true;
+    } catch (e) { return false; }
+  }
+  /* o quadro mudou de tamanho: o mural se reacomoda; a floresta refaz a conta de árvores se o formato mudou muito */
+  var _rt = 0, _hold = false;
+  /* a página pede para segurar o rearranjo enquanto faz uma transição grande (entrar no ambiente): nada pula no meio */
+  function hold(v) { _hold = !!v; if (!_hold) refit(); }
+  function refit() {
+    clearTimeout(_rt);
+    _rt = setTimeout(function () {
+      if (_hold) return;
+      _sg.forEach(layoutSG);
+      _all.forEach(function (sc) { if (sc.__kind === 'pp' && sc.__st && sc.__st.nT && Math.abs(treeCount(sc) - sc.__st.nT) > 3) buildLine(sc, 'pp'); });
+    }, 180);
+  }
+  window.addEventListener('resize', refit);
+  var _ro = null; try { if (window.ResizeObserver) _ro = new ResizeObserver(refit); } catch (e) {}
+
   /* FAIXA DO AMBIENTE: mostra a aba em que você está (Prices, Imports, Comp Table…) e o nome entra a cada troca.
      Só lê a classe da aba ativa que a página já mantém — nenhuma função da página muda. */
   function bandSync() {
@@ -349,7 +399,10 @@
       set();
     } catch (e) {}
   }
-  window.IBBAScenes = { mount: mount, auto: auto, setMoves: setMoves, logos: LOGOS, names: SG_NAMES };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { auto(); bandSync(); });
-  else { auto(); bandSync(); }
+  function boot() {
+    try { var m = JSON.parse(sessionStorage.getItem('ibba_scene_moves') || 'null'); if (m && typeof m === 'object') _moves = m; } catch (e) {}
+    auto(); bandSync();
+  }
+  window.IBBAScenes = { mount: mount, auto: auto, setMoves: setMoves, setLine: setLine, hold: hold, phase: phaseNow, names: SG.map(function (c) { return c[0]; }) };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
