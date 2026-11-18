@@ -236,6 +236,16 @@
     return '<svg viewBox="0 0 ' + w + ' ' + hh + '" preserveAspectRatio="none" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/><circle cx="' + X(lp[0]).toFixed(1) + '" cy="' + Y(lp[1]).toFixed(1) + '" r="2.2" fill="' + ORANGE + '"/></svg>';
   }
 
+  /* mini-gráfico com DUAS (ou mais) séries na mesma escala — quadro de indicador composto */
+  function sparkMulti(list, w, hh) {
+    var all = [], n = 0; list.forEach(function (s) { n = Math.max(n, s.v.length - 1); s.v.forEach(function (x) { if (x != null) all.push(x); }); }); if (all.length < 2 || n < 1) return '';
+    var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+    var X = function (i) { return 2 + i / n * (w - 4); }, Y = function (y) { return hh - 2 - (mx > mn ? (y - mn) / (mx - mn) : .5) * (hh - 4); };
+    return '<svg viewBox="0 0 ' + w + ' ' + hh + '" preserveAspectRatio="none" aria-hidden="true">' + list.map(function (s) { var d = '', on = false;
+      s.v.forEach(function (x, i) { if (x == null) { on = false; return; } d += (on ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x).toFixed(1); on = true; });
+      return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'; }).join('') + '</svg>';
+  }
+
   function Desk(cfg) {
     this.cfg = cfg; this.sections = cfg.sections || {}; this.cur = null; this.charts = {}; this.ui = {};   // ui[secId] = {metric, mode, hover, pinA, pinB, who:{...}}
     this.root = typeof cfg.root === 'string' ? document.querySelector(cfg.root) : cfg.root;
@@ -243,7 +253,7 @@
     ensurePlugin();
     var self = this;
     window.addEventListener('ibba:theme', function () { if (self.cur) self.refresh(); });
-    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.builder && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
   }
   Desk.prototype.has = function (id) { return !!this.sections[id]; };
   Desk.prototype._u = function () { var id = this.cur; return this.ui[id] || (this.ui[id] = { metric: this.sections[id].stage, mode: 'level', hover: null, pinA: null, pinB: null, who: { dim: 0, pill: null, sel: null, mode: 'volume', hi: null } }); };
@@ -299,7 +309,8 @@
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
       '<div class="dk-nt" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
-      '<div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>');
+      '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
+      '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
       '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div>' +
       '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
@@ -330,6 +341,8 @@
     pb.addEventListener('click', function (e) { e.stopPropagation(); self._openPop(pp.hidden); });
     document.addEventListener('click', function (e) { if (!e.target.closest('.dk-pop')) self._openPop(false); });
     this._bindHover(E.stage.querySelector('canvas'), 'stage'); this._bindHover(E.who.querySelector('canvas'), 'who');
+    var tob = E.stage.querySelector('.dk-tob'); tob.hidden = !(this.sections.builder && this._builder && this.builderFrom && !sec0.fixed);
+    tob.addEventListener('click', function () { self.builderFrom(); });
     this._built = this.cur;
   };
   Desk.prototype._openPop = function (open) { var E = this.el; if (!E) return; var pp = E.who.querySelector('.dk-popp'), pb = E.who.querySelector('.dk-popbtn'); pp.hidden = !open; pb.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { this._fillPop(); var q = pp.querySelector('input[type=search]'); if (q) q.focus(); } };
@@ -376,10 +389,11 @@
   };
   Desk.prototype.hide = function () { this.cur = null; this._destroyAll(); };
   Desk.prototype._destroyAll = function () { for (var k in this.charts) { try { this.charts[k].destroy(); } catch (e) {} } this.charts = {}; };
-  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; };
+  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; };
   Desk.prototype.refresh = function (light) {
     if (!this.cur) return;
     if (this.sections[this.cur].overview) return this._overview();
+    if (this.sections[this.cur].builder) return this._builder ? this._builder() : null;   // a bancada (data-desk-builder.js)
     if (this._built !== this.cur) this._build();
     var st = this.cfg.state(), u = this._u();
     if (!this.sections[this.cur].prods && (this._lastProd !== st.prod || this._lastGran !== st.gran)) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
@@ -394,26 +408,31 @@
     if (!light && this.cfg.afterRender) { try { this.cfg.afterRender(this); } catch (e) { console.warn('desk afterRender', e); } }
   };
 
+  /* os indicadores que têm quadro no topo (o sufixo antigo ":ytd" é ignorado: o acumulado do ano mora no painel Reading) */
+  Desk.prototype._tileIds = function () { var c = this.ctx, seen = {}; return (c.sec.tiles || []).filter(function (t) { return t.indexOf(':') < 0; }).filter(function (id) { if (seen[id] || !c.M(id)) return false; seen[id] = 1; return true; }); };
   Desk.prototype._tiles = function () {
-    var c = this.ctx, u = this._u(), prev = { monthly: 'MoM', quarterly: 'QoQ', annual: 'YoY' }[c.st.gran];
-    this.el.tiles.innerHTML = c.sec.tiles.map(function (tid) {
-      var id = tid.split(':')[0], kind = tid.split(':')[1], M = c.M(id); if (!M || M.multi) return '';
-      if (kind === 'ytd') { if (!c.has(id)) return ''; var mm = c.monthly(id), li = lastIdx(mm.v); if (li < 0) return '';
-        var yr = mm.P[li].y, mN = mm.P[li].k + 1, a = 0, b = 0, okb = true, q;
-        for (q = 0; q < mN; q++) { a += mm.v[li - q] || 0; if (mm.v[li - q - 12] == null) okb = false; else b += mm.v[li - q - 12]; }
-        var dy = (okb && b) ? (a / b - 1) * 100 : null, lb0 = typeof M.label === 'function' ? M.label({ prod: c.st.prod }) : M.label;
-        return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="false"><div class="dk-tl"><span>YTD · ' + esc(M.ytdLabel || lb0) + '</span><span>' + yr + '</span></div>' +
-          '<div class="dk-tv">' + fmt(a, M.dec) + '<small>' + esc(M.unit) + '</small></div><div class="dk-td"><span>vs ' + (yr - 1) + ' <span class="' + cls(dy) + '">' + pct(dy) + '</span></span></div>' +
-          '<div class="dk-td">' + MON[0] + '–' + MON[mN - 1] + ', same months of ' + (yr - 1) + '</div></button>'; }
+    var c = this.ctx, u = this._u(), self = this, t = theme(), prev = { monthly: 'MoM', quarterly: 'QoQ', annual: 'YoY' }[c.st.gran];
+    /* rodapé de cada quadro: deixa escrito que ele é um BOTÃO que troca o gráfico principal */
+    var act = '<div class="dk-ta"><i></i><span class="dk-ta0">Show on chart</span><span class="dk-ta1">On the main chart</span></div>';
+    this.el.tiles.innerHTML = this._tileIds().map(function (id) {
+      var M = c.M(id), lbl = self._lbl(M);
       if (!c.has(id) && M.hideNA) return '';
-      if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(M.label) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
+      if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(lbl) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
+      if (M.multi) {   // composto (ex.: preço de importação × referência doméstica): as duas séries no mesmo quadro
+        var subs = c.subs(id), i0 = c.lastFull(c.vals(subs[0].id)); if (i0 < 0) return '';
+        var cols = subs.map(function (_, k) { var nm = (M.multiColors || ['orange', 'ink'])[k]; return nm === 'ink' ? t.ink : nm === 'orange' ? ORANGE : nm == null ? slotColor(k) : nm; }), from = Math.max(0, i0 - 2 * c.PER + 1);
+        return '<button type="button" class="dk-tile dk-tmulti" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i0) + '</span></div>' +
+          subs.map(function (S2, k) { var v2 = c.vals(S2.id), y2 = change(v2, i0, c.PER, S2);
+            return '<div class="dk-tm"><i style="background:' + cols[k] + '"></i><span>' + esc(self._short(S2)) + '</span><b>' + fmt(v2[i0], S2.dec) + '<small>' + esc(S2.unit) + '</small></b><span class="' + cls(y2) + '">' + chgTxt(S2, y2) + '</span></div>'; }).join('') +
+          '<div class="dk-sp">' + sparkMulti(subs.map(function (S2, k) { return { v: c.vals(S2.id).slice(from, i0 + 1), color: cols[k] }; }), 160, 30) + '</div>' + act + '</button>';
+      }
       var v = c.vals(id), i = c.lastFull(v); if (i < 0) return '';
-      var r = rangeN(v, i, 5 * c.PER), mo = change(v, i, 1, M), yy = change(v, i, c.PER, M), sp = v.slice(Math.max(0, i - 2 * c.PER + 1), i + 1), lbl = typeof M.label === 'function' ? M.label({ prod: c.st.prod }) : M.label;
-      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i) + '</span></div>' +
+      var r = rangeN(v, i, 5 * c.PER), mo = change(v, i, 1, M), yy = change(v, i, c.PER, M), sp = v.slice(Math.max(0, i - 2 * c.PER + 1), i + 1);
+      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i) + '</span></div>' +
         '<div class="dk-tv">' + fmt(v[i], M.dec) + '<small>' + esc(M.unit) + '</small></div>' +
         '<div class="dk-td"><span>' + prev + ' <span class="' + cls(mo) + '">' + chgTxt(M, mo) + '</span></span>' + (c.st.gran === 'annual' ? '' : '<span>YoY <span class="' + cls(yy) + '">' + chgTxt(M, yy) + '</span></span>') + '</div>' +
         '<div class="dk-sp">' + sparkSVG(sp, 160, 30) + '</div>' +
-        '<div class="dk-rng"><i style="left:' + (r.pos * 100).toFixed(0) + '%"></i></div><div class="dk-rngl"><span>5y low ' + fmt(r.mn, M.dec) + '</span><span>high ' + fmt(r.mx, M.dec) + '</span></div></button>';
+        '<div class="dk-rng"><i style="left:' + (r.pos * 100).toFixed(0) + '%"></i></div><div class="dk-rngl"><span>5y low ' + fmt(r.mn, M.dec) + '</span><span>high ' + fmt(r.mx, M.dec) + '</span></div>' + act + '</button>';
     }).join('');
     this.el.tiles.hidden = !this.el.tiles.innerHTML;
   };
@@ -525,6 +544,12 @@
       : '<span>vs previous ' + unitW + '</span><b class="' + cls(mo) + '">' + chgTxt(M, mo) + '</b>';
     if (c.st.gran !== 'annual' && !part) kv += '<span>vs same ' + unitW + ' last year</span><b class="' + cls(yy) + '">' + chgTxt(M, yy) + '</b><span>vs 5-year average for ' + (PER === 12 ? MON[c.P[i].k] : 'Q' + (c.P[i].k + 1)) + '</span><b class="' + cls(vsAvg) + '">' + chgTxt(M, vsAvg) + '</b>';
     if (!part) kv += '<span>Rank in the last ' + (r ? r.n : 5 * PER) + ' ' + unitW + 's</span><b>' + (r ? '#' + r.rank : '—') + '</b>';
+    if (M.flow && !M.multi && !part && c.st.gran !== 'annual') {   // acumulado do ano até o período lido, contra os mesmos meses do ano anterior
+      var mmY = c.monthly(M.id).v, eY = c.P[i].b, mN = +c.ax[eY].slice(5, 7), yN = +c.ax[eY].slice(0, 4), aY = 0, bY = 0, okA = true, okB = true, qY;
+      for (qY = 0; qY < mN; qY++) { if (mmY[eY - qY] == null) okA = false; else aY += mmY[eY - qY]; if (eY - qY - 12 < 0 || mmY[eY - qY - 12] == null) okB = false; else bY += mmY[eY - qY - 12]; }
+      var span = mN > 1 ? 'Jan–' + MON[mN - 1] : 'Jan', dY = (okA && okB && bY) ? (aY / bY - 1) * 100 : null;
+      if (okA) kv += '<span>' + yN + ' year to date (' + span + ')</span><b>' + fmt(aY, M.dec) + ' ' + esc(M.unit) + '</b><span>vs ' + span + ' ' + (yN - 1) + '</span><b class="' + cls(dY) + '">' + pct(dY) + '</b>';
+    }
     c.sec.metrics.forEach(function (m2) { if (m2.id === u.metric || m2.id === M.id || m2.multi || !c.has(m2.id) || m2.hideInReading) return; var v2 = c.vals(m2.id); if (lastIdx(v2) < 0) return; kv += '<span>' + esc(self._lbl(m2)) + '</span><b>' + fmt(v2[i], m2.dec) + ' ' + esc(m2.unit) + '</b>'; });
     E.querySelector('.dk-kv').innerHTML = kv;
     var p = '';
@@ -652,13 +677,15 @@
   Desk.prototype._minis = function () {
     var c = this.ctx, u = this._u(), E = this.el, self = this, t = theme(false);
     var gl = []; c.sec.metrics.forEach(function (M) { var G = M.group || ''; if (gl.indexOf(G) < 0) gl.push(G); });
-    var ids = c.sec.metrics.filter(function (M) { return M.id !== u.metric && !M.noMini && c.has(M.id) && lastIdx(c.vals(M.id)) >= 0; })
+    var top = this._tileIds();   // o que já tem quadro (botão) no topo não se repete aqui
+    var ids = c.sec.metrics.filter(function (M) { return M.id !== u.metric && top.indexOf(M.id) < 0 && !M.noMini && c.has(M.id) && lastIdx(c.vals(M.id)) >= 0; })
       .sort(function (a, b) { return gl.indexOf(a.group || '') - gl.indexOf(b.group || ''); }).map(function (M) { return M.id; });
     var sig = ids.join(',');
+    E.minis.hidden = !ids.length;
     if (E.minis.dataset.sig !== sig) { this._dropCharts('mini:'); E.minis.dataset.sig = sig;
       var lastG = null;
-      E.minis.innerHTML = '<div class="dk-gh dk-gtop"><span>More in this section</span><em>Click a chart to bring it to the main view</em></div>' + ids.map(function (id) { var G = c.M(id).group || '', hd = (G && G !== lastG) ? '<div class="dk-gh"><span>' + esc(G) + '</span></div>' : ''; lastG = G || lastG;
-        return hd + '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div></div>'; }).join('');
+      E.minis.innerHTML = '<div class="dk-gh dk-gtop"><span>' + (top.length ? 'More indicators' : 'More in this section') + '</span><em>' + (top.length ? 'Not in the cards above · click one to show it on the main chart' : 'Click a chart to show it on the main chart') + '</em></div>' + ids.map(function (id) { var G = c.M(id).group || '', hd = (G && G !== lastG) ? '<div class="dk-gh"><span>' + esc(G) + '</span></div>' : ''; lastG = G || lastG;
+        return hd + '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div><div class="dk-ta"><i></i><span>Show on chart</span></div></div>'; }).join('');
       ids.forEach(function (id) { self._bindHover(E.minis.querySelector('#dk-mini-' + id), 'mini:' + id); });
     }
     var labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; });
@@ -687,14 +714,14 @@
       var ytd = !ok ? null : (M.pp || M.diff) ? (a - b) / mN : (M.flow ? (b ? (a / b - 1) * 100 : null) : (b ? (a / b - 1) * 100 : null));
       var label = it.label || (typeof M.label === 'function' ? M.label({ prod: prod }) : M.label), id = it.sec + '.' + it.metric + '.' + prod; now[id] = keys[i];
       var isNew = seen[id] && seen[id] < keys[i], G = S.label;
-      if (G !== lastG) { rows += '<tr class="dk-og"><td colspan="8">' + esc(G) + '</td></tr>'; lastG = G; }
+      if (G !== lastG) { rows += '<tr class="dk-og"><td colspan="9">' + esc(G) + '</td></tr>'; lastG = G; }
       var pl = P1(keys[i]);
       rows += '<tr tabindex="0" data-ix="' + ix + '"><td><b>' + esc(label) + '</b><span class="dk-src">' + esc(it.src || S.src || '') + '</span>' + (it.isNew ? '<span class="dk-new">NEW SECTION</span>' : '') + (isNew ? '<span class="dk-new">NEW DATA</span>' : '') + '</td><td>' + pl + '</td><td><b>' + fmt(v[i], M.dec) + '</b> <span class="dk-src">' + esc(M.unit) + '</span></td>' +
         '<td class="' + cls(mo) + '">' + chgTxt(M, mo) + '</td><td class="' + cls(yy) + '">' + chgTxt(M, yy) + '</td><td class="' + cls(ytd) + '">' + chgTxt(M, ytd) + '</td>' +
-        '<td class="dk-osp">' + sparkSVG(v.slice(Math.max(0, i - 23), i + 1), 92, 22) + '</td><td><div class="dk-rng"><i style="left:' + (rg ? (rg.pos * 100).toFixed(0) : 50) + '%"></i></div></td></tr>';
+        '<td class="dk-osp">' + sparkSVG(v.slice(Math.max(0, i - 23), i + 1), 92, 22) + '</td><td><div class="dk-rng"><i style="left:' + (rg ? (rg.pos * 100).toFixed(0) : 50) + '%"></i></div></td><td class="dk-go" aria-hidden="true">Open ›</td></tr>';
     });
     function P1(k) { return MON[+k.slice(5, 7) - 1] + '-' + k.slice(2, 4); }
-    r.innerHTML = '<div class="dk-body"><div class="dk-card dk-ovw"><div class="dk-tblw"><table class="dk-ov"><thead><tr><th>Indicator</th><th>Period</th><th>Last</th><th>MoM</th><th>YoY</th><th>YTD YoY</th><th>24 months</th><th>5-year range</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+    r.innerHTML = '<div class="dk-body"><div class="dk-card dk-ovw"><div class="dk-tblw"><table class="dk-ov"><thead><tr><th>Indicator</th><th>Period</th><th>Last</th><th>MoM</th><th>YoY</th><th>YTD YoY</th><th>24 months</th><th>5-year range</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
       '<p class="dk-note">Monthly figures, latest month available in each source. Click a row to open that indicator in its section.</p></div>';
     var open = function (tr) { var it = sec.overview[+tr.getAttribute('data-ix')]; if (it && self.cfg.goto) self.cfg.goto(it); };
     var tb = r.querySelector('tbody');
@@ -741,7 +768,36 @@
     return out;
   };
 
+  /* Builder: a série INTEIRA de um indicador (ref.metric) ou de uma entidade de uma quebra (ref.dim + ref.name) de uma seção,
+     num produto e numa granularidade — pelo MESMO caminho do palco: mesmo eixo da seção, mesmas regras de soma/razão/último
+     e de período em andamento. Devolve vetores por período (level, yoy, ltm) e quais períodos são parciais. */
+  Desk.prototype.seriesAll = function (secId, ref, prod, gran) {
+    var sec = this.sections[secId]; if (!sec || sec.overview || sec.builder) return null;
+    var keep = { cur: this.cur, state: this.cfg.state, ovr: this._ovr, dbg: this._dbg, ctx: this.ctx }, out = null;
+    this.cur = secId; this._ovr = null; this._dbg = true; this.cfg.state = function () { return { prod: prod, gran: gran, win: 'all', from: null, to: null }; };
+    try {
+      var c = this._ctx(), P = c.P, PER = c.PER, X0 = { prod: prod };
+      var o = { keys: P.map(function (p) { return p.key; }), labels: P.map(function (p) { return p.label; }), partial: P.map(function (p) { return !!p.partial; }),
+        starts: P.map(function (p) { return c.ax[p.a]; }), ends: P.map(function (p) { return c.ax[p.b]; }) };
+      if (ref.metric) {
+        var M = c.M(ref.metric); if (M && !M.multi && c.has(M.id)) {
+          o.level = c.vals(M.id); o.yoy = c.vals(M.id, 'yoy'); o.ltm = gran === 'annual' ? null : c.vals(M.id, 'ltm');
+          o.label = typeof M.label === 'function' ? M.label(X0) : M.label; o.unit = M.unit; o.dec = M.dec || 0; o.pp = !!M.pp; o.diff = !!M.diff; o.flow = !!M.flow; out = o; }
+      } else {
+        var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === ref.dim) dim = d0; });
+        if (dim && (!dim.available || dim.available(X0))) { var raw = dim.entities(X0, null), k = raw.names.indexOf(ref.name);
+          if (k >= 0) { var arr = align(raw.maps[k], c.ax).map(function (x) { return x == null ? 0 : x; }), lv = c.A.level.sum(arr);
+            o.level = lv; o.ltm = gran === 'annual' ? null : c.A.ltm.sum(arr);
+            o.yoy = lv.map(function (_, i) { if (!P[i].partial) return change(lv, i, PER); var a = P[i].a - 12, s0 = 0, m; if (a < 0) return null; for (m = a; m <= P[i].b - 12; m++) s0 += arr[m]; return s0 ? (lv[i] / s0 - 1) * 100 : null; });
+            o.label = ref.name; o.unit = dim.unit || 'kt'; o.dec = dim.dec || 0; o.pp = false; o.diff = false; o.flow = true; out = o; } }
+      }
+    } finally { this.cur = keep.cur; this.cfg.state = keep.state; this._ovr = keep.ovr; this._dbg = keep.dbg; this.ctx = keep.ctx; }
+    return out;
+  };
+
   window.IBBADesk = {
+    /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
+    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };

@@ -1,0 +1,310 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   IBBA · DATA DESK — BUILDER (a bancada): cruzar até 4 séries das seções da mesa
+   ────────────────────────────────────────────────────────────────────────────
+   Plano: IBBA-Dashboard/data-desk/PLANO.md (5.11). Carrega DEPOIS do data-desk.js e estende o motor.
+
+   · O catálogo do Builder NÃO é uma lista à parte: sai do catálogo das seções (todo indicador de toda
+     seção, em cada produto) + as entidades das quebras (países, portos, destinos, fornecedores).
+     Indicador novo numa seção aparece aqui sozinho.
+   · Os números vêm de Desk.seriesAll — o MESMO caminho do palco da seção (mesmo eixo, mesma regra de
+     soma/razão/último). O teste data-desk/ferramentas/comparar_builder.py confere isso.
+   · Um eixo por painel: séries da mesma unidade dividem um painel; outra unidade abre outro painel
+     embaixo, no mesmo eixo do tempo e com o mouse sincronizado. Nunca dois eixos no mesmo painel.
+   · Trimestre/ano: só períodos COMPLETOS (séries de fontes diferentes fecham em meses diferentes).
+   ════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var D = window.IBBADesk; if (!D || !D.x || D.x.Desk.prototype._builder) return;
+  var X = D.x, Desk = X.Desk, core = D.core, esc = X.esc, fmt = X.fmt, h = X.h;
+  var MAX = 4, MAXU = 2, MAXV = 12;
+  var CALCS = [['level', 'Level', 'The figures as published'], ['yoy', 'YoY', 'Change vs the same period a year earlier'],
+    ['ltm', 'LTM', 'Last 12 months: sum for volumes, average or ratio for prices and shares'], ['index', 'Index = 100', 'Every series rebased to 100 at the start of the window — compares different units']];
+  var GR = { monthly: 'm', quarterly: 'q', annual: 'a' }, GRB = { m: 'monthly', q: 'quarterly', a: 'annual' };
+  function palette() { return X.isDark() ? ['#FF5000', '#e8eaed', '#5b8fd6', '#3fb8a8'] : ['#FF5000', '#111111', '#3f72b5', '#2a9d8f']; }
+  function parseKey(key) {
+    if (typeof key !== 'string') return null;
+    if (key.indexOf('~') >= 0) { var p = key.split('~'); return p.length < 4 ? null : { type: 'e', sec: p[0], dim: p[1], prod: p[2], name: p.slice(3).join('~') }; }
+    var q = key.split('.'); return q.length === 3 ? { type: 'm', sec: q[0], metric: q[1], prod: q[2] } : null;
+  }
+  function secProds(sec) { return sec.prods || sec.bprods || [{ k: 'total', l: '' }]; }
+  function prodLabel(sec, k) { var l = ''; secProds(sec).forEach(function (p) { if (p.k === k) l = p.l || ''; }); return l; }
+  /* a visão num texto curto: séries;séries!conta!granularidade!janela!de!até  ("!" dentro de um nome vira %21, senão partiria o texto) */
+  function encodeView(v) { return [v.s.map(function (k) { return encodeURIComponent(k).replace(/!/g, '%21'); }).join(';'), v.v || 'level', GR[v.g] || '', v.w || '', v.from || '', v.to || ''].join('!'); }
+  function decodeView(str) { var a = String(str || '').split('!'); if (!a[0]) return null;
+    return { s: a[0].split(';').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return ''; } }).filter(Boolean), v: a[1] || 'level', g: GRB[a[2]] || null, w: a[3] || null, from: a[4] || null, to: a[5] || null }; }
+  function numTxt(v, dec, signed) { if (v == null || !isFinite(v)) return '—'; return (signed && v > 0 ? '+' : '') + fmt(v, dec).replace(/^-/, '−'); }
+
+  Desk.prototype._bKey = function (what) { return (what === 'last' ? 'ibba_desk_builder_' : 'ibba_desk_views_') + (this.cfg.sector || 'x'); };
+  Desk.prototype._bSaved = function () { try { var a = JSON.parse(localStorage.getItem(this._bKey('views')) || '[]'); return Array.isArray(a) ? a.filter(function (v) { return v && v.n && Array.isArray(v.s); }) : []; } catch (e) { return []; } };
+  Desk.prototype._bStore = function () { var b = this.bui; try { localStorage.setItem(this._bKey('last'), JSON.stringify({ s: b.s.map(function (x) { return x.key; }), v: b.calc })); } catch (e) {} };
+
+  /* ficha de uma série (sem calcular números): nome, unidade, seção. null = não existe / não vale para esse produto */
+  Desk.prototype._bItem = function (key) {
+    var C = this._bItems = this._bItems || {}; if (key in C) return C[key];
+    var p = parseKey(key), sec = p && this.sections[p.sec], it = null, X0;
+    if (sec && !sec.overview && !sec.builder && !sec.fixed) { X0 = { prod: p.prod }; var pl = prodLabel(sec, p.prod), first = secProds(sec)[0].k;
+      var suf = function (lab) { return (pl && p.prod !== first && lab.toLowerCase().indexOf(pl.toLowerCase()) < 0) ? lab + ' · ' + pl : lab; };
+      try {
+        if (p.type === 'm') { var M = null; sec.metrics.forEach(function (m) { if (m.id === p.metric) M = m; });
+          /* M.bprods: indicador que só existe em alguns produtos (ex.: consumo aparente de papel = só o total) */
+          if (M && !M.multi && (!M.available || M.available(X0)) && (!M.bprods || M.bprods.indexOf(p.prod) >= 0)) { var lab = typeof M.label === 'function' ? M.label(X0) : M.label;
+            it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '' }; } }
+        else { var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === p.dim) dim = d0; });
+          if (dim && !dim.noSelect && (!dim.available || dim.available(X0)) && this._bEntNames(p.sec, dim, p.prod).indexOf(p.name) >= 0)
+            it = { key: key, type: 'e', sec: p.sec, dim: dim.id, prod: p.prod, short: p.name, name: suf(p.name + ' — ' + (dim.title || sec.label)), unit: dim.unit || 'kt', diff: false, where: (dim.title || sec.label) + (sec.src ? ' · ' + sec.src : '') }; }
+      } catch (e) { it = null; }
+    }
+    return (C[key] = it);
+  };
+  Desk.prototype._bEntNames = function (secId, dim, prod) { var C = this._bEnt = this._bEnt || {}, k = secId + '|' + dim.id + '|' + prod; if (!C[k]) { try { C[k] = (dim.entities({ prod: prod }, null) || {}).names || []; } catch (e) { C[k] = []; } } return C[k]; };
+  Desk.prototype._bSeries = function (key, gran) {
+    var C = this._bData = this._bData || {}, k = key + '|' + gran; if (k in C) return C[k];
+    var p = parseKey(key), d = null; try { d = this.seriesAll(p.sec, p.type === 'm' ? { metric: p.metric } : { dim: p.dim, name: p.name }, p.prod, gran); } catch (e) { d = null; }
+    return (C[k] = d);
+  };
+  Desk.prototype._bGroups = function () { var S = this.sections, ord = (S.builder && S.builder.order) || Object.keys(S);
+    return ord.filter(function (id) { return S[id] && !S[id].overview && !S[id].builder && !S[id].fixed; }).map(function (id) { return { id: id, sec: S[id], prods: secProds(S[id]) }; }); };
+
+  /* estado: 1º a visão que veio no link (?bv=), 2º a última em que a pessoa trabalhou, 3º a 1ª visão pronta — nunca tela vazia */
+  Desk.prototype._bState = function () {
+    if (this.bui) return this.bui;
+    var b = this.bui = { s: [], calc: 'level', hover: null, q: '', prod: {}, open: {}, saving: false, sheet: false, msg: '' }, sec = this.sections.builder, v = null, link = false;
+    try { var qs = new URLSearchParams(location.search), bv = qs.get('bv'); if (bv) { v = decodeView(bv); link = !!v; qs.delete('bv'); var rest = qs.toString(); history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } } catch (e) {}
+    if (!v) { try { v = JSON.parse(localStorage.getItem(this._bKey('last')) || 'null'); } catch (e) { v = null; } }
+    if (!v || !Array.isArray(v.s) || !v.s.length) v = (sec.presets || [])[0] || { s: [] };
+    this._bApply(v, link);
+    if (!b.s.length && (sec.presets || [])[0]) this._bApply(sec.presets[0], false);
+    return b;
+  };
+  Desk.prototype._bApply = function (v, withFilters) {
+    var b = this.bui, self = this; b.s = []; b.hover = null; b.msg = '';
+    (v.s || []).forEach(function (key) { if (b.s.length < MAX && !b.s.some(function (x) { return x.key === key; }) && self._bItem(key)) b.s.push({ key: key, col: self._bFree() }); });
+    b.calc = CALCS.some(function (c0) { return c0[0] === v.v; }) ? v.v : 'level';
+    if (withFilters && this.cfg.setFilters && (v.g || v.w)) { this._bBusy = true; try { this.cfg.setFilters({ gran: v.g || null, win: v.w || null, from: v.from || null, to: v.to || null }); } catch (e) {} this._bBusy = false; }
+    this._bStore();
+  };
+  Desk.prototype._bFree = function () { var used = {}, i; this.bui.s.forEach(function (x) { used[x.col] = 1; }); for (i = 0; i < MAX; i++) if (!used[i]) return i; return 0; };
+  Desk.prototype._bUnits = function () { var self = this, u = []; this.bui.s.forEach(function (x) { var it = self._bItem(x.key); if (it && u.indexOf(it.unit) < 0) u.push(it.unit); }); return u; };
+  /* por que este item não pode entrar agora (null = pode) */
+  Desk.prototype._bWhy = function (key) { var b = this.bui, it = this._bItem(key); if (!it) return 'Not available';
+    if (b.s.some(function (x) { return x.key === key; })) return null;
+    if (b.s.length >= MAX) return 'Up to ' + MAX + ' series at a time: remove one first';
+    var u = this._bUnits(); if (b.calc !== 'index' && u.indexOf(it.unit) < 0 && u.length >= MAXU) return 'Two units at most (' + u.join(', ') + '): remove one, or switch to Index = 100';
+    return null; };
+  Desk.prototype._bToggle = function (key) { var b = this.bui, i = -1; b.s.forEach(function (x, k) { if (x.key === key) i = k; }); b.msg = '';
+    if (i >= 0) b.s.splice(i, 1); else { var why = this._bWhy(key); if (why) { b.msg = why; this._bStage(); return; } b.s.push({ key: key, col: this._bFree() }); }
+    b.hover = null; this._bStore(); this._bViews(); this._bCat(); this._bStage(); };
+  Desk.prototype._bCurrent = function () { var st = this.cfg.state(), b = this.bui; return { s: b.s.map(function (x) { return x.key; }), v: b.calc, g: st.gran, w: st.win, from: st.win === 'custom' ? st.from : null, to: st.win === 'custom' ? st.to : null }; };
+  function sameView(a, b) { return a.v === (b.v || 'level') && a.s.length === (b.s || []).length && a.s.every(function (k) { return b.s.indexOf(k) >= 0; }); }
+
+  /* do palco de uma seção para o Builder: uma visão nova só com o que está no palco */
+  Desk.prototype.builderFrom = function () { var c = this.ctx, u = this._u(), sid = this.cur; if (!c || !this.sections.builder) return;
+    var keys = c.subs(u.metric).map(function (M) { return sid + '.' + M.id + '.' + c.st.prod; }); this._bState();
+    this._bApply({ s: keys, v: (u.mode === 'yoy' || u.mode === 'ltm') ? u.mode : 'level' }, false);
+    if (!this.bui.s.length && (this.sections.builder.presets || [])[0]) this._bApply(this.sections.builder.presets[0], false);
+    if (this.cfg.gotoBuilder) this.cfg.gotoBuilder(); };
+
+  /* ── a conta da visão: eixo comum, janela da barra de filtros, valores na conta escolhida, painéis por unidade ── */
+  Desk.prototype._bView = function () {
+    var st = this.cfg.state(), gran = st.gran, b = this.bui, self = this, pal = palette();
+    if (gran === 'annual' && b.calc === 'ltm') b.calc = 'level';
+    var rows = []; b.s.forEach(function (s0) { var it = self._bItem(s0.key), d = it && self._bSeries(s0.key, gran); if (it && d) rows.push({ key: s0.key, col: pal[s0.col % pal.length], it: it, d: d }); });
+    var out = { rows: rows, P: [], i0: 0, i1: -1, panels: [], gran: gran, calc: b.calc }; if (!rows.length) return out;
+    var lo = null, hi = null; rows.forEach(function (r) { var f = -1, l = -1; r.d.level.forEach(function (x, i) { if (x != null) { if (f < 0) f = i; l = i; } }); if (f < 0) return;
+      if (lo == null || r.d.starts[f] < lo) lo = r.d.starts[f]; if (hi == null || r.d.ends[l] > hi) hi = r.d.ends[l]; });
+    if (lo == null) return out;
+    var ax = core.axis(lo, hi), P = core.buildPeriods(ax, gran, false); if (!P.length) return out;
+    var mw = core.monthWindow(ax, ax.length - 1, st), pw = core.periodWindow(P, mw[0], mw[1]); out.P = P; out.i0 = pw[0]; out.i1 = pw[1];
+    rows.forEach(function (r) { var src = b.calc === 'yoy' ? r.d.yoy : b.calc === 'ltm' ? r.d.ltm : r.d.level, map = {}, lm = {}, i;
+      r.d.keys.forEach(function (k, j) { if (r.d.partial[j]) return; map[k] = src ? src[j] : null; lm[k] = r.d.level[j]; });   // período em andamento fica de fora
+      r.unit = b.calc === 'index' ? 'Index' : b.calc === 'yoy' ? (r.d.pp ? 'pp' : r.d.diff ? r.d.unit : '%') : r.d.unit; r.dec = (b.calc === 'index' || b.calc === 'yoy') ? 1 : r.d.dec; r.note = '';
+      if (b.calc === 'index') { var base = null, bi = -1; for (i = pw[0]; i <= pw[1]; i++) { var x0 = lm[P[i].key]; if (x0 != null && x0 > 0) { base = x0; bi = i; break; } }
+        var ok = base != null && !r.d.diff; r.v = P.map(function (p) { var x = lm[p.key]; return (ok && x != null) ? x / base * 100 : null; });
+        r.note = !ok ? 'cannot be indexed (it can be zero or negative)' : (bi > pw[0] ? '100 = ' + P[bi].label : ''); }
+      else r.v = P.map(function (p) { var x = map[p.key]; return x == null ? null : x; }); });
+    rows.forEach(function (r) { var pn = null; out.panels.forEach(function (q) { if (q.unit === r.unit) pn = q; }); if (!pn) out.panels.push(pn = { unit: r.unit, rows: [], dec: 0 }); pn.rows.push(r); pn.dec = Math.max(pn.dec, r.dec); });
+    return out;
+  };
+
+  /* ── esqueleto (uma vez) ── */
+  Desk.prototype._bBuild = function () {
+    var r = this.root, self = this, b = this.bui; r.innerHTML = '';
+    var body = h('div', 'dk-body dk-bld',
+      '<div class="dk-bviews"><span class="dk-plbl">Views</span><div class="dk-bvlist"></div><span class="dk-grow"></span><div class="dk-bsave"></div><button type="button" class="dk-pill dk-blink" title="Copy a link that reopens exactly this view (series, calculation, granularity and window)">Copy link</button></div>' +
+      '<div class="dk-bgrid"><aside class="dk-card dk-bcat"><div class="dk-ch"><h3>Series</h3><em class="dk-bcount"></em></div>' +
+        '<p class="dk-bhelp">Click a series to add it to the chart; click again to remove it.</p>' +
+        '<input type="search" class="dk-bq" placeholder="Search any series, country or port…" aria-label="Search series"><div class="dk-blist"></div>' +
+        '<button type="button" class="dk-pill dk-bdone">Done</button></aside>' +
+      '<div class="dk-bmain"><div class="dk-card dk-stage dk-bstage">' +
+        '<div class="dk-bhead"><div class="dk-btitle"><span class="dk-st">Builder</span><em class="dk-when dk-bwhen"></em></div><span class="dk-grow"></span>' +
+          '<div class="dk-seg dk-bcalc" role="group" aria-label="Calculation"></div><div class="dk-bdl"><button type="button" data-dl="png" title="Download the chart as an image">PNG</button><button type="button" data-dl="xls" title="Download the data (Excel) — full history">XLS</button></div></div>' +
+        '<div class="dk-bchips"></div><button type="button" class="dk-pill dk-badd">+ Add series</button>' +
+        '<div class="dk-bpanels"></div><div class="dk-bmsg" hidden></div><div class="dk-hint dk-bhint"></div></div>' +
+      '<div class="dk-card dk-bvals"><div class="dk-ch"><h3>Values</h3><em class="dk-when dk-bvw"></em><span class="dk-grow"></span><button type="button" class="dk-lnk dk-bcopy" title="Copy every period of the window, ready to paste into Excel">Copy table</button></div><div class="dk-tblw"><table class="dk-ov dk-bt"></table></div></div>' +
+      '</div></div>');
+    r.appendChild(body); var E = this.bel = { body: body }; ['bvlist', 'bsave', 'blink', 'bcat', 'bcount', 'bq', 'blist', 'bcalc', 'bchips', 'bpanels', 'bmsg', 'bhint', 'bwhen', 'bvw', 'bt', 'bcopy', 'bdl', 'badd', 'bdone'].forEach(function (k) { E[k] = body.querySelector('.dk-' + k); });
+    E.bq.value = b.q;
+    /* visões */
+    E.bvlist.addEventListener('click', function (e) { var del = e.target.closest('[data-del]'), bt = e.target.closest('[data-view]'); if (del) { e.stopPropagation(); var a = self._bSaved(); a.splice(+del.dataset.del, 1); try { localStorage.setItem(self._bKey('views'), JSON.stringify(a)); } catch (er) {} self._bViews(); return; }
+      if (!bt) return; var kind = bt.dataset.view.charAt(0), ix = +bt.dataset.view.slice(1), v = kind === 'p' ? (self.sections.builder.presets || [])[ix] : self._bSaved()[ix]; if (!v) return;
+      self._bApply(v, true); self._builder(); });
+    E.bsave.addEventListener('click', function (e) { var a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'open') { b.saving = true; self._bViews(); var inp = E.bsave.querySelector('input'); if (inp) inp.focus(); } else if (a.dataset.a === 'cancel') { b.saving = false; self._bViews(); } else if (a.dataset.a === 'ok') self._bSaveView(); });
+    E.bsave.addEventListener('keydown', function (e) { if (e.target.tagName !== 'INPUT') return; if (e.key === 'Enter') self._bSaveView(); if (e.key === 'Escape') { b.saving = false; self._bViews(); } });
+    E.blink.addEventListener('click', function () { var url = location.origin + location.pathname + '?bv=' + encodeURIComponent(encodeView(self._bCurrent())) + '#builder';
+      copyText(url, function (ok) { E.blink.textContent = ok ? 'Link copied ✓' : 'Could not copy'; setTimeout(function () { E.blink.textContent = 'Copy link'; }, 1800); }); });
+    /* catálogo */
+    E.bq.addEventListener('input', function () { b.q = E.bq.value; self._bCat(); });
+    E.blist.addEventListener('click', function (e) { var row = e.target.closest('.dk-brow'), pp = e.target.closest('[data-bprod]'), en = e.target.closest('[data-bent]');
+      if (row) { self._bToggle(row.dataset.key); return; }
+      if (pp) { b.prod[pp.dataset.g] = pp.dataset.bprod; self._bCat(); return; }
+      if (en) { b.open[en.dataset.bent] = !b.open[en.dataset.bent]; self._bCat(); } });
+    E.badd.addEventListener('click', function () { b.sheet = true; body.classList.add('dk-sheet'); });
+    E.bdone.addEventListener('click', function () { b.sheet = false; body.classList.remove('dk-sheet'); });
+    /* palco */
+    E.bcalc.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt || bt.disabled) return; b.calc = bt.dataset.k; b.msg = ''; b.hover = null; self._bStore(); self._bViews(); self._bCat(); self._bStage(); });
+    E.bchips.addEventListener('click', function (e) { var x = e.target.closest('[data-x]'), go = e.target.closest('[data-go]');
+      if (x) { self._bToggle(x.dataset.x); return; }
+      if (go) { var it = self._bItem(go.dataset.go); if (it && self.cfg.goto) self.cfg.goto({ sec: it.sec, metric: it.type === 'm' ? it.metric : self.sections[it.sec].stage, prod: it.prod }); } });
+    E.bdl.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt) return; if (bt.dataset.dl === 'png') self._bPNG(); else self._bXLS(); });
+    E.bcopy.addEventListener('click', function () { var t = self._bTable(true); copyText(t, function (ok) { E.bcopy.textContent = ok ? 'Copied ✓' : 'Could not copy'; setTimeout(function () { E.bcopy.textContent = 'Copy table'; }, 1800); }); });
+    E.bpanels.addEventListener('pointermove', function (e) { var cv = e.target.closest('canvas'); if (!cv) return; var ch = self.charts['b:' + cv.dataset.p]; if (!ch || !ch.chartArea) return;
+      var rc = cv.getBoundingClientRect(), n = ch.data.labels.length, i = Math.max(0, Math.min(n - 1, Math.round(ch.scales.x.getValueForPixel(e.clientX - rc.left)))); self._bHover(i); });
+    E.bpanels.addEventListener('pointerleave', function () { self._bHover(null); });
+    if (b.sheet) body.classList.add('dk-sheet');
+  };
+  function copyText(t, cb) { var done = function (ok) { try { cb(ok); } catch (e) {} };
+    var fallback = function () { try { var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); ta.remove(); done(ok); } catch (e) { done(false); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done(true); }, fallback); else fallback(); }
+
+  Desk.prototype._bSaveView = function () { var b = this.bui, inp = this.bel.bsave.querySelector('input'), n = inp ? inp.value.trim().slice(0, 40) : ''; if (!n) { if (inp) inp.focus(); return; }
+    var a = this._bSaved().filter(function (v) { return v.n !== n; }), cur = this._bCurrent(); cur.n = n; a.push(cur); while (a.length > MAXV) a.shift();
+    try { localStorage.setItem(this._bKey('views'), JSON.stringify(a)); } catch (e) {} b.saving = false; this._bViews(); };
+
+  Desk.prototype._bViews = function () {
+    var E = this.bel, b = this.bui, cur = this._bCurrent(), pre = this.sections.builder.presets || [], sv = this._bSaved();
+    E.bvlist.innerHTML = pre.map(function (v, i) { return '<button type="button" class="dk-pill" data-view="p' + i + '" aria-pressed="' + sameView(cur, v) + '"' + (v.tip ? ' title="' + esc(v.tip) + '"' : '') + '>' + esc(v.n) + '</button>'; }).join('') +
+      (sv.length ? '<span class="dk-bsep" aria-hidden="true"></span>' : '') +
+      sv.map(function (v, i) { return '<span class="dk-bsaved"><button type="button" class="dk-pill" data-view="s' + i + '" aria-pressed="' + sameView(cur, v) + '" title="Saved in this browser">' + esc(v.n) + '</button><button type="button" class="dk-bdel" data-del="' + i + '" aria-label="Delete the saved view ' + esc(v.n) + '" title="Delete this saved view">×</button></span>'; }).join('');
+    E.bsave.innerHTML = b.saving ? '<input type="text" maxlength="40" placeholder="Name this view" aria-label="Name of the view"><button type="button" class="dk-pill dk-bok" data-a="ok">Save</button><button type="button" class="dk-lnk" data-a="cancel">Cancel</button><span class="dk-bnote">Saved in this browser only</span>'
+      : '<button type="button" class="dk-pill" data-a="open" title="Keep this combination under a name — it stays in this browser"' + (b.s.length ? '' : ' disabled') + '>+ Save this view</button>';
+  };
+
+  /* linha do catálogo */
+  Desk.prototype._bRow = function (key, label, sub) { var b = this.bui, it = this._bItem(key); if (!it) return '';
+    var on = null; b.s.forEach(function (x) { if (x.key === key) on = x; }); var why = on ? null : this._bWhy(key), pal = palette();
+    return '<button type="button" class="dk-brow' + (on ? ' dk-on' : '') + (why ? ' dk-dis' : '') + '" data-key="' + esc(key) + '" aria-pressed="' + !!on + '" title="' + esc(why || (on ? 'On the chart — click to remove' : 'Click to add to the chart')) + '">' +
+      '<i' + (on ? ' style="background:' + pal[on.col % pal.length] + ';border-color:' + pal[on.col % pal.length] + '"' : '') + '></i><span class="dk-bn">' + esc(label || it.short) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="dk-bu">' + esc(it.unit) + '</span></button>'; };
+  Desk.prototype._bCat = function () {
+    var E = this.bel, b = this.bui, self = this, q = (b.q || '').trim().toLowerCase(), groups = this._bGroups(), html = '', top = E.blist.scrollTop;
+    E.bcount.textContent = b.s.length + ' of ' + MAX + ' on the chart';
+    if (q.length >= 2) {   // busca: todas as seções × todos os produtos × todas as entidades
+      var hits = [], seen = {}, add = function (key, sub) { if (seen[key] || hits.length >= 60) return; var it = self._bItem(key); if (it && it.name.toLowerCase().indexOf(q) >= 0) { seen[key] = 1; hits.push([key, sub]); } };
+      groups.forEach(function (g) { g.prods.forEach(function (p) { g.sec.metrics.forEach(function (M) { add(g.id + '.' + M.id + '.' + p.k, g.sec.label + (p.l && g.prods.length > 1 ? ' · ' + p.l : '')); }); }); });
+      groups.forEach(function (g) { g.prods.forEach(function (p) { (g.sec.who || []).forEach(function (dim) { if (dim.noSelect || (dim.available && !dim.available({ prod: p.k }))) return;
+        self._bEntNames(g.id, dim, p.k).forEach(function (n) { if (n.toLowerCase().indexOf(q) >= 0) add(g.id + '~' + dim.id + '~' + p.k + '~' + n, (dim.title || g.sec.label) + (p.l && g.prods.length > 1 ? ' · ' + p.l : '')); }); }); }); });
+      html = hits.length ? hits.map(function (x) { var it = self._bItem(x[0]); return self._bRow(x[0], it.type === 'e' ? it.short : it.name, x[1]); }).join('') + (hits.length >= 60 ? '<p class="dk-note">Showing the first 60 matches — type more to narrow it down.</p>' : '')
+        : '<p class="dk-note">No series matches “' + esc(b.q) + '”.</p>';
+    } else groups.forEach(function (g) {
+      var prod = b.prod[g.id]; if (!g.prods.some(function (p) { return p.k === prod; })) prod = b.prod[g.id] = g.prods[0].k;
+      html += '<div class="dk-bg"><span>' + esc(g.sec.label) + '</span>' + (g.sec.src ? '<em>' + esc(g.sec.src) + '</em>' : '') + '</div>';
+      if (g.prods.length > 1) html += '<div class="dk-bprods" role="group" aria-label="Product">' + g.prods.map(function (p) { return '<button type="button" class="dk-pill" data-g="' + esc(g.id) + '" data-bprod="' + esc(p.k) + '" aria-pressed="' + (p.k === prod) + '">' + esc(p.l || p.k) + '</button>'; }).join('') + '</div>';
+      var lastG = '';
+      g.sec.metrics.forEach(function (M) { var row = self._bRow(g.id + '.' + M.id + '.' + prod); if (!row) return; var G = M.group || ''; if (G && G !== lastG) { html += '<div class="dk-bsub">' + esc(G) + '</div>'; } lastG = G || lastG; html += row; });
+      (g.sec.who || []).forEach(function (dim) { if (dim.noSelect || (dim.available && !dim.available({ prod: prod }))) return;
+        var id = g.id + '|' + dim.id, names = self._bEntNames(g.id, dim, prod), open = !!b.open[id]; if (!names.length) return;
+        var picked = names.filter(function (n) { return b.s.some(function (x) { return x.key === g.id + '~' + dim.id + '~' + prod + '~' + n; }); });
+        html += '<button type="button" class="dk-bent" data-bent="' + esc(id) + '" aria-expanded="' + open + '">' + esc(dim.tab || dim.label) + ' <em>' + names.length + ' ' + esc(dim.noun || 'items') + '</em><span>' + (open ? '−' : '+') + '</span></button>';
+        var show = open ? names.slice(0, 10) : []; picked.forEach(function (n) { if (show.indexOf(n) < 0) show.push(n); });
+        html += show.map(function (n) { return self._bRow(g.id + '~' + dim.id + '~' + prod + '~' + n); }).join('');
+        if (open && names.length > 10) html += '<p class="dk-note dk-bmore">The 10 largest. Use the search box to find any of the ' + names.length + ' ' + esc(dim.noun || 'items') + '.</p>'; });
+    });
+    E.blist.innerHTML = html; E.blist.scrollTop = q.length >= 2 ? 0 : top;
+  };
+
+  /* ── palco: fichas, painéis (um eixo cada), dica, tabela ── */
+  Desk.prototype._bStage = function () {
+    var E = this.bel, b = this.bui, self = this, v = this._bv = this._bView(), t = D.theme(), n = v.i1 - v.i0 + 1;
+    E.bcalc.innerHTML = CALCS.map(function (c0) { var off = c0[0] === 'ltm' && v.gran === 'annual'; return '<button type="button" data-k="' + c0[0] + '" aria-pressed="' + (b.calc === c0[0]) + '" title="' + esc(off ? 'Not available in the annual view' : c0[2]) + '"' + (off ? ' disabled' : '') + '>' + c0[1] + '</button>'; }).join('');
+    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0);
+    if (E.bpanels.dataset.sig !== sig) { this._dropCharts('b:'); E.bpanels.dataset.sig = sig;
+      E.bpanels.innerHTML = (v.panels.length && n > 0) ? v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu">' + esc(p.unit === 'Index' ? 'Index — start of the window = 100' : p.unit) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
+        : '<div class="dk-bempty"><b>' + (b.s.length ? 'No complete period in this window yet.' : 'Nothing on the chart yet.') + '</b><span>' + (b.s.length ? 'Pick a longer window or a finer granularity in the bar above.' : 'Pick a series on the left, or one of the ready-made views above.') + '</span></div>'; }
+    if (v.panels.length && n > 0) { var labels = v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; });
+      v.panels.forEach(function (p, k) { var cv = E.bpanels.querySelector('canvas[data-p="' + k + '"]');
+        var sets = p.rows.map(function (r) { return X.lineSet(r.v.slice(v.i0, v.i1 + 1), r.col, { label: r.it.name, w: 2.2, end: true, surf: t.surf }); });
+        var ch = self._chart('b:' + k, cv, 'line', labels, sets, { stage: true, dec: p.dec });
+        /* painéis com o MESMO recuo à esquerda e à direita: o tempo alinha de cima a baixo (com ou sem os rótulos do eixo) */
+        ch.options.scales.y.afterFit = function (s) { s.width = 58; };
+        ch.options.scales.x.afterFit = function (s) { s.paddingLeft = 16; s.paddingRight = 20; };
+        if (k < v.panels.length - 1) ch.options.scales.x.ticks.display = false;
+        ch.update('none'); }); }
+    var msgs = []; if (b.msg) msgs.push(b.msg);
+    E.bmsg.hidden = !msgs.length; E.bmsg.textContent = msgs.join(' · ');
+    var hint = v.panels.length > 1 ? 'Series with the same unit share a panel; each other unit gets its own panel, on the same time axis.' : 'Hover to read every series at the same period.';
+    if (v.gran !== 'monthly') hint += ' Complete ' + (v.gran === 'quarterly' ? 'quarters' : 'years') + ' only.';
+    if (b.calc === 'ltm') hint += ' LTM = last 12 months: sum for volumes, average or ratio for prices and shares.';
+    E.bhint.textContent = hint;
+    this._bPaint();
+  };
+  Desk.prototype._bHover = function (i) { var b = this.bui, self = this; if (b.hover === i) return; b.hover = i; if (this._braf) return; this._braf = requestAnimationFrame(function () { self._braf = 0; self._bPaint(); }); };
+  /* o que muda com o mouse: marca nos painéis, valores das fichas, linha da tabela */
+  Desk.prototype._bPaint = function () {
+    var E = this.bel, b = this.bui, v = this._bv, k; if (!v) return;
+    for (k in this.charts) if (k.indexOf('b:') === 0) { this.charts[k].$dk = { hover: b.hover, pinA: null, pinB: null }; this.charts[k].draw(); }
+    var ref = b.hover != null ? v.i0 + b.hover : -1;
+    if (ref < 0) { for (var i = v.i1; i >= v.i0 && ref < 0; i--) if (v.rows.some(function (r) { return r.v[i] != null; })) ref = i; }
+    E.bwhen.textContent = ref >= 0 && v.P[ref] ? v.P[ref].label + (b.hover != null ? '' : ' · latest') : '';
+    E.bchips.innerHTML = v.rows.map(function (r) { var j = ref, own = ''; if (b.hover == null && ref >= 0 && r.v[ref] == null) { for (j = ref; j >= v.i0 && r.v[j] == null; j--); if (j >= v.i0) own = ' (' + v.P[j].label + ')'; }
+      var val = (j >= v.i0 && j >= 0) ? r.v[j] : null;
+      return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(r.it.where) + ' — click to open it in its section">' + esc(r.it.name) + '</button>' +
+        '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? '' : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
+        '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
+    this._bTable(false, ref);
+  };
+  /* tabela Values: os 12 períodos mais recentes da janela (mais novo em cima). asText = a janela INTEIRA, para colar no Excel */
+  Desk.prototype._bTable = function (asText, ref) {
+    var E = this.bel, v = this._bv, lines = [], i, loc = (navigator.language || 'en-US');
+    if (asText) { lines.push(['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); })).join('\t'));
+      for (i = v.i1; i >= v.i0; i--) lines.push([v.P[i].label].concat(v.rows.map(function (r) { var x = r.v[i]; return x == null ? '' : x.toLocaleString(loc, { useGrouping: false, maximumFractionDigits: r.dec + 2 }); })).join('\t'));
+      return lines.join('\n'); }
+    var from = Math.max(v.i0, v.i1 - 11);
+    E.bvw.textContent = v.rows.length && v.i1 >= v.i0 ? (v.i1 - from + 1) + ' most recent periods · ' + CALCS.filter(function (c0) { return c0[0] === v.calc; })[0][1] : '';
+    if (!v.rows.length || v.i1 < v.i0) { E.bt.innerHTML = ''; E.bt.closest('.dk-bvals').hidden = true; return; } E.bt.closest('.dk-bvals').hidden = false;
+    var html = '<thead><tr><th>Period</th>' + v.rows.map(function (r) { return '<th><i class="dk-bdot" style="background:' + r.col + '"></i>' + esc(r.it.name) + ' <span class="dk-src">' + esc(r.unit) + '</span></th>'; }).join('') + '</tr></thead><tbody>';
+    for (i = v.i1; i >= from; i--) html += '<tr' + (i === ref && this.bui.hover != null ? ' class="dk-bhi"' : '') + '><td>' + v.P[i].label + '</td>' + v.rows.map(function (r) { var x = r.v[i]; return '<td' + (v.calc === 'yoy' && x != null ? ' class="' + X.cls(x) + '"' : '') + '>' + numTxt(x, r.dec, v.calc === 'yoy') + '</td>'; }).join('') + '</tr>';
+    E.bt.innerHTML = html + '</tbody>';
+  };
+  function colName(r, calc) { return r.it.name + (calc === 'yoy' ? ' — YoY' : calc === 'ltm' ? ' — LTM' : calc === 'index' ? ' — Index' : '') + (r.unit === 'Index' ? '' : ' (' + r.unit + ')'); }   // cabeçalho de coluna no Excel
+  Desk.prototype._bAOA = function () { var v = this._bv, out = [['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); }))], i, first = -1;
+    for (i = 0; i < v.P.length && first < 0; i++) if (v.rows.some(function (r) { return r.v[i] != null; })) first = i;
+    for (i = Math.max(0, first); i < v.P.length; i++) out.push([v.P[i].label].concat(v.rows.map(function (r) { return r.v[i]; }))); return out; };
+  Desk.prototype._bName = function () { var v = this._bv, c0 = CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]; return 'Builder — ' + v.rows.map(function (r) { return r.it.name; }).join(' vs ') + (v.calc === 'level' ? '' : ' (' + c0 + ')'); };
+  Desk.prototype._bXLS = function () { var v = this._bv; if (!v || !v.rows.length || !window.IBBAExport) return; var nm = IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp());
+    IBBAExport.xlsxFromAOA([{ name: 'Builder', aoa: this._bAOA() }], nm).catch(function () { alert('Could not build the Excel file.'); }); };
+  /* PNG: título + legenda + os painéis empilhados, na cor do tema */
+  Desk.prototype._bPNG = function () {
+    var v = this._bv, E = this.bel, cvs = [].slice.call(E.bpanels.querySelectorAll('canvas')); if (!v || !v.rows.length || !cvs.length) return;
+    var t = D.theme(), s = cvs[0].width / cvs[0].clientWidth, W = cvs[0].width, pad = 18 * s, lh = 18 * s, head = pad + 22 * s + v.rows.length * lh + 8 * s, H = head, k;
+    cvs.forEach(function (c) { H += 20 * s + c.height; }); H += pad;
+    var out = document.createElement('canvas'); out.width = W + 2 * pad; out.height = H; var g = out.getContext('2d');
+    g.fillStyle = t.surf; g.fillRect(0, 0, out.width, out.height); g.textBaseline = 'top';
+    g.fillStyle = t.ink; g.font = '700 ' + (14 * s) + 'px ' + X.FONT; g.fillText('Builder' + (v.calc === 'level' ? '' : ' · ' + CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]) + ' · ' + v.P[v.i0].label + ' – ' + v.P[v.i1].label, pad, pad);
+    v.rows.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.col; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.it.name + '  (' + r.unit + ')', pad + 16 * s, y); });
+    var y0 = head; cvs.forEach(function (c, i) { g.fillStyle = t.mut; g.font = '700 ' + (10 * s) + 'px ' + X.FONT; g.fillText(String(v.panels[i].unit).toUpperCase(), pad, y0 + 3 * s); y0 += 20 * s; g.drawImage(c, pad, y0); y0 += c.height; });
+    out.toBlob(function (bl) { if (!bl) return; var a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = ((window.IBBAExport && IBBAExport.safeName) ? IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp()) : 'builder') + '.png';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); }.bind(this), 'image/png');
+  };
+
+  Desk.prototype._builder = function () {
+    if (this._bBusy) return;
+    this._bState();
+    if (this._built !== 'builder' || !this.bel || !this.root.contains(this.bel.body)) { this._destroyAll(); this._bBuild(); this._built = 'builder'; }
+    this.bel.bpanels.dataset.sig = '';   // tema/filtros podem ter mudado: os painéis são refeitos
+    this._bViews(); this._bCat(); this._bStage();
+  };
+
+  /* só para os testes: a visão calculada (períodos da janela e os valores de cada série) */
+  Desk.prototype.builderDebug = function () { var v = this._bView(); return { calc: v.calc, gran: v.gran, keys: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.key; }), labels: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; }),
+    panels: v.panels.map(function (p) { return p.unit; }), series: v.rows.map(function (r) { return { key: r.key, name: r.it.name, unit: r.unit, vals: r.v.slice(v.i0, v.i1 + 1) }; }) }; };
+  D.builder = { encodeView: encodeView, decodeView: decodeView, parseKey: parseKey, MAX: MAX, MAXU: MAXU };
+})();

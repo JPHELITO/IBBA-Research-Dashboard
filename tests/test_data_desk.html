@@ -6,6 +6,7 @@
 <style>body{font:13px/1.5 system-ui;margin:24px;max-width:900px} .ok{color:#1c7c45} .no{color:#b83227;font-weight:700} h1{font-size:16px}</style>
 <h1>Data Desk — núcleo</h1><pre id="out"></pre>
 <script src="../data-desk.js"></script>
+<script src="../data-desk-builder.js"></script>
 <script>
 const C = IBBADesk.core, R = { pass: 0, fail: 0, falhas: [] }, lines = [];
 function eq(nome, a, b) { const ok = JSON.stringify(a) === JSON.stringify(b); ok ? R.pass++ : (R.fail++, R.falhas.push(nome)); lines.push((ok ? '✓ ' : '✗ ') + nome + (ok ? '' : '\n     obtido:   ' + JSON.stringify(a) + '\n     esperado: ' + JSON.stringify(b))); }
@@ -71,6 +72,67 @@ eq('faixa ignora buracos', C.rangeN([null, 2, null, 6], 3, 60).n, 2);
 eq('último índice com dado', [C.lastIdx([1, 2, null]), C.lastIdx([null, null])], [1, -1]);
 eq('milhar com vírgula (en-US) e traço no vazio', [C.fmt(1234567.8, 0), C.fmt(12.345, 1), C.fmt(null, 0)], ['1,234,568', '12.3', '—']);
 eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ pp: true }, -1.26), C.chgTxt({ diff: true, dec: 0 }, 79.4), C.chgTxt({}, null)], ['+12.3%', '−1.3 pp', '+79', '—']);
+
+// ── BUILDER (data-desk-builder.js): catálogo de mentira, sem tela — as contas e os limites ──
+(function () {
+  const B = IBBADesk.builder, mo = [];   // jan/2024 → out/2026 (34 meses)
+  for (let y = 2024; y <= 2026; y++) for (let m = 1; m <= (y === 2026 ? 10 : 12); m++) mo.push(y + '-' + String(m).padStart(2, '0'));
+  const mk = f => { const o = {}; mo.forEach((k, i) => { o[k] = f(i); }); return o; };
+  const MA = mk(i => 100 + i), MB = mk(i => 10 + i), MR = mk(i => (100 + i) * 5), MS = mk(i => i - 5), MW = mk(i => 20 + i / 10), MC = mk(i => 40 + i), MK = mk(i => 7);
+  let ST = { prod: 'total', gran: 'monthly', win: 'ytd', from: null, to: null };
+  try { localStorage.removeItem('ibba_desk_builder_t'); localStorage.removeItem('ibba_desk_views_t'); } catch (e) {}
+  const D2 = IBBADesk.mount({ sector: 't', root: null, state: () => ST, sections: {
+    a: { label: 'A', src: 'SRC', stage: 'v', tiles: ['v'], bprods: [{ k: 'total', l: 'Total' }, { k: 'x', l: 'Flat' }], metrics: [
+      { id: 'v', label: 'Volume', unit: 'kt', dec: 0, flow: true, comp: x => ({ v: x.prod === 'total' ? MA : MB }), calc: (A, c) => A.sum(c.v) },
+      { id: 'p', label: 'Price', unit: 'US$/t', dec: 0, comp: () => ({ r: MR, v: MA }), calc: (A, c) => F.div(A.sum(c.r), A.sum(c.v)) },
+      { id: 's', label: 'Spread', unit: 'US$/t', dec: 0, diff: true, comp: () => ({ v: MS }), calc: (A, c) => A.last(c.v) },
+      { id: 'w', label: 'Share', unit: '%', dec: 1, pp: true, comp: () => ({ v: MW }), calc: (A, c) => A.last(c.v) },
+      { id: 'two', label: 'Both', multi: ['v', 'p'] },
+      { id: 'only', label: 'Only total', unit: 'kt', bprods: ['total'], comp: () => ({ v: MA }), calc: (A, c) => A.sum(c.v) }],
+      who: [{ id: 'c', label: 'Countries', title: 'A by country', unit: 'kt', entities: () => ({ names: ['China', 'Korea~South'], maps: [MC, MK] }) }] },
+    fx: { label: 'Fixed', fixed: { gran: 'monthly' }, stage: 'v', tiles: [], metrics: [{ id: 'v', label: 'V', unit: 'kt', comp: () => ({ v: MA }), calc: (A, c) => A.sum(c.v) }] },
+    builder: { label: 'Builder', builder: true, order: ['a', 'fx'], presets: [{ n: 'P', s: ['a.v.total', 'a.p.total'], v: 'level' }] } } });
+  eq('Builder · chave de indicador', B.parseKey('a.v.total'), { type: 'm', sec: 'a', metric: 'v', prod: 'total' });
+  eq('Builder · chave de entidade (nome com ~)', B.parseKey('a~c~total~Korea~South'), { type: 'e', sec: 'a', dim: 'c', prod: 'total', name: 'Korea~South' });
+  const V0 = { s: ['a.v.total', 'a~c~total~Côte d\'Ivoire; (x)!'], v: 'ltm', g: 'quarterly', w: 'custom', from: '2024-03', to: '2026-06' };
+  eq('Builder · a visão vai e volta pelo link sem perder nada', B.decodeView(B.encodeView(V0)), V0);
+  eq('Builder · link vazio = nada', B.decodeView(''), null);
+  const b0 = D2._bState();
+  eq('Builder · abre com a 1ª visão pronta', [b0.s.map(x => x.key), b0.calc], [['a.v.total', 'a.p.total'], 'level']);
+  eq('Builder · nome ganha o produto só fora do 1º produto', [D2._bItem('a.v.total').name, D2._bItem('a.v.x').name, D2._bItem('a~c~total~China').name], ['Volume', 'Volume · Flat', 'China — A by country']);
+  eq('Builder · composto, seção fixa, produto que não vale e chave torta ficam fora do catálogo', [D2._bItem('a.two.total'), D2._bItem('fx.v.total'), D2._bItem('a.only.x'), D2._bItem('a.nope.total'), D2._bItem('zzz')], [null, null, null, null, null]);
+  eq('Builder · catálogo sai das seções (a fixa não entra)', D2._bGroups().map(g => g.id), ['a']);
+  let v = D2._bView();
+  eq('Builder · unidades diferentes = painéis diferentes', v.panels.map(p => [p.unit, p.rows.length]), [['kt', 1], ['US$/t', 1]]);
+  eq('Builder · janela YTD mensal = jan a out do último ano', [v.P[v.i0].key, v.P[v.i1].key, v.i1 - v.i0 + 1], ['2026-01', '2026-10', 10]);
+  eq('Builder · nível = o número do indicador', [v.rows[0].v[v.i1], v.rows[1].v[v.i1]], [133, 5]);
+  eq('Builder · limite de 2 unidades, com o motivo', /Two units at most/.test(D2._bWhy('a.w.total')), true);
+  eq('Builder · mesma unidade ainda cabe', D2._bWhy('a.s.total'), null);
+  D2._bApply({ s: ['a.v.total', 'a.v.x', 'a~c~total~China', 'a.only.total'], v: 'level' }, false);
+  eq('Builder · limite de 4 séries, com o motivo', [D2.bui.s.length, /Up to 4 series/.test(D2._bWhy('a.p.total'))], [4, true]);
+  eq('Builder · cada série com a sua cor', D2.bui.s.map(x => x.col), [0, 1, 2, 3]);
+  D2.bui.s.splice(1, 1); D2.bui.s.push({ key: 'a.p.total', col: D2._bFree() });
+  eq('Builder · a série que entra pega a cor que ficou livre (as outras não mudam)', D2.bui.s.map(x => x.col), [0, 2, 3, 1]);
+  D2._bApply({ s: ['a.v.total', 'a.s.total', 'a.w.total'], v: 'yoy' }, false); v = D2._bView();
+  eq('Builder · YoY: % para volume, a própria unidade para spread, pp para percentual', v.rows.map(r => r.unit), ['%', 'US$/t', 'pp']);
+  near('Builder · YoY do volume', v.rows[0].v[v.i1], (133 / 121 - 1) * 100);
+  D2._bApply({ s: ['a.v.total', 'a.p.total', 'a.s.total', 'a.w.total'], v: 'index' }, false); ST = Object.assign({}, ST, { win: '1y' }); v = D2._bView();
+  eq('Builder · Index: um painel só, mesmo com 3 unidades', v.panels.map(p => p.unit), ['Index']);
+  eq('Builder · Index começa em 100', [v.rows[0].v[v.i0], v.rows[1].v[v.i0]], [100, 100]);
+  near('Builder · Index segue nível ÷ base × 100', v.rows[0].v[v.i1], 133 / 121 * 100);
+  eq('Builder · spread (pode ser negativo) não entra no Index, com aviso', [v.rows[2].v.every(x => x == null), /cannot be indexed/.test(v.rows[2].note)], [true, true]);
+  eq('Builder · no Index o limite de unidades não vale', D2._bWhy('a.w.total'), null);
+  ST = { prod: 'total', gran: 'quarterly', win: 'all', from: null, to: null }; D2._bApply({ s: ['a.v.total'], v: 'level' }, false); v = D2._bView();
+  eq('Builder · trimestre: só os completos (4T26 em andamento fica de fora)', [v.P[v.i1].key, v.P.length], ['2026-Q3', 11]);
+  eq('Builder · soma do trimestre', v.rows[0].v[v.i1], 130 + 131 + 132);
+  const sa = D2.seriesAll('a', { metric: 'v' }, 'total', 'quarterly');
+  eq('seriesAll · mesmo caminho do palco: o último trimestre vem marcado como parcial', [sa.keys[sa.keys.length - 1], sa.partial[sa.partial.length - 1], sa.level[sa.level.length - 1]], ['2026-Q4', true, 133]);
+  const se = D2.seriesAll('a', { dim: 'c', name: 'China' }, 'total', 'annual');
+  eq('seriesAll · entidade: soma do ano e YoY', [se.level[0], se.level[1], +se.yoy[1].toFixed(4)], [12 * 40 + 66, 12 * 52 + 66, +(((12 * 52 + 66) / (12 * 40 + 66) - 1) * 100).toFixed(4)]);
+  ST = { prod: 'total', gran: 'annual', win: 'all', from: null, to: null }; D2._bApply({ s: ['a.v.total'], v: 'ltm' }, false); v = D2._bView();
+  eq('Builder · LTM não existe no anual: volta para Level', [D2.bui.calc, v.P.map(p => p.key)], ['level', ['2024', '2025']]);
+  eq('Builder · a última visão fica guardada neste navegador', JSON.parse(localStorage.getItem('ibba_desk_builder_t')).s, ['a.v.total']);
+})();
 
 document.getElementById('out').innerHTML = lines.map(l => '<span class="' + (l[0] === '✓' ? 'ok' : 'no') + '">' + l.replace(/</g, '&lt;') + '</span>').join('\n') + '\n\n' + R.pass + ' passaram · ' + R.fail + ' falharam';
 window.__RESULT = R;
