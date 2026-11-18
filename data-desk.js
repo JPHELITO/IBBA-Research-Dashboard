@@ -253,7 +253,7 @@
     ensurePlugin();
     var self = this;
     window.addEventListener('ibba:theme', function () { if (self.cur) self.refresh(); });
-    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.builder && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
   }
   Desk.prototype.has = function (id) { return !!this.sections[id]; };
   Desk.prototype._u = function () { var id = this.cur; return this.ui[id] || (this.ui[id] = { metric: this.sections[id].stage, mode: 'level', hover: null, pinA: null, pinB: null, who: { dim: 0, pill: null, sel: null, mode: 'volume', hi: null } }); };
@@ -309,7 +309,8 @@
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
       '<div class="dk-nt" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
-      '<div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>');
+      '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
+      '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
       '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div>' +
       '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
@@ -340,6 +341,8 @@
     pb.addEventListener('click', function (e) { e.stopPropagation(); self._openPop(pp.hidden); });
     document.addEventListener('click', function (e) { if (!e.target.closest('.dk-pop')) self._openPop(false); });
     this._bindHover(E.stage.querySelector('canvas'), 'stage'); this._bindHover(E.who.querySelector('canvas'), 'who');
+    var tob = E.stage.querySelector('.dk-tob'); tob.hidden = !(this.sections.builder && this._builder && this.builderFrom && !sec0.fixed);
+    tob.addEventListener('click', function () { self.builderFrom(); });
     this._built = this.cur;
   };
   Desk.prototype._openPop = function (open) { var E = this.el; if (!E) return; var pp = E.who.querySelector('.dk-popp'), pb = E.who.querySelector('.dk-popbtn'); pp.hidden = !open; pb.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { this._fillPop(); var q = pp.querySelector('input[type=search]'); if (q) q.focus(); } };
@@ -386,10 +389,11 @@
   };
   Desk.prototype.hide = function () { this.cur = null; this._destroyAll(); };
   Desk.prototype._destroyAll = function () { for (var k in this.charts) { try { this.charts[k].destroy(); } catch (e) {} } this.charts = {}; };
-  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; };
+  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; };
   Desk.prototype.refresh = function (light) {
     if (!this.cur) return;
     if (this.sections[this.cur].overview) return this._overview();
+    if (this.sections[this.cur].builder) return this._builder ? this._builder() : null;   // a bancada (data-desk-builder.js)
     if (this._built !== this.cur) this._build();
     var st = this.cfg.state(), u = this._u();
     if (!this.sections[this.cur].prods && (this._lastProd !== st.prod || this._lastGran !== st.gran)) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
@@ -764,7 +768,36 @@
     return out;
   };
 
+  /* Builder: a série INTEIRA de um indicador (ref.metric) ou de uma entidade de uma quebra (ref.dim + ref.name) de uma seção,
+     num produto e numa granularidade — pelo MESMO caminho do palco: mesmo eixo da seção, mesmas regras de soma/razão/último
+     e de período em andamento. Devolve vetores por período (level, yoy, ltm) e quais períodos são parciais. */
+  Desk.prototype.seriesAll = function (secId, ref, prod, gran) {
+    var sec = this.sections[secId]; if (!sec || sec.overview || sec.builder) return null;
+    var keep = { cur: this.cur, state: this.cfg.state, ovr: this._ovr, dbg: this._dbg, ctx: this.ctx }, out = null;
+    this.cur = secId; this._ovr = null; this._dbg = true; this.cfg.state = function () { return { prod: prod, gran: gran, win: 'all', from: null, to: null }; };
+    try {
+      var c = this._ctx(), P = c.P, PER = c.PER, X0 = { prod: prod };
+      var o = { keys: P.map(function (p) { return p.key; }), labels: P.map(function (p) { return p.label; }), partial: P.map(function (p) { return !!p.partial; }),
+        starts: P.map(function (p) { return c.ax[p.a]; }), ends: P.map(function (p) { return c.ax[p.b]; }) };
+      if (ref.metric) {
+        var M = c.M(ref.metric); if (M && !M.multi && c.has(M.id)) {
+          o.level = c.vals(M.id); o.yoy = c.vals(M.id, 'yoy'); o.ltm = gran === 'annual' ? null : c.vals(M.id, 'ltm');
+          o.label = typeof M.label === 'function' ? M.label(X0) : M.label; o.unit = M.unit; o.dec = M.dec || 0; o.pp = !!M.pp; o.diff = !!M.diff; o.flow = !!M.flow; out = o; }
+      } else {
+        var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === ref.dim) dim = d0; });
+        if (dim && (!dim.available || dim.available(X0))) { var raw = dim.entities(X0, null), k = raw.names.indexOf(ref.name);
+          if (k >= 0) { var arr = align(raw.maps[k], c.ax).map(function (x) { return x == null ? 0 : x; }), lv = c.A.level.sum(arr);
+            o.level = lv; o.ltm = gran === 'annual' ? null : c.A.ltm.sum(arr);
+            o.yoy = lv.map(function (_, i) { if (!P[i].partial) return change(lv, i, PER); var a = P[i].a - 12, s0 = 0, m; if (a < 0) return null; for (m = a; m <= P[i].b - 12; m++) s0 += arr[m]; return s0 ? (lv[i] / s0 - 1) * 100 : null; });
+            o.label = ref.name; o.unit = dim.unit || 'kt'; o.dec = dim.dec || 0; o.pp = false; o.diff = false; o.flow = true; out = o; } }
+      }
+    } finally { this.cur = keep.cur; this.cfg.state = keep.state; this._ovr = keep.ovr; this._dbg = keep.dbg; this.ctx = keep.ctx; }
+    return out;
+  };
+
   window.IBBADesk = {
+    /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
+    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };
