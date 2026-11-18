@@ -11,8 +11,9 @@
 
      mm  Metals & Mining → a crista de uma MONTANHA (com as curvas de nível por dentro) que se assenta
                            e vira uma LINHA DE DESEMPENHO; depois volta.
-     pp  Pulp & Paper    → uma fileira de ÁRVORES (copas altas, como eucalipto) que se penteia numa
-                           linha suave — a mesma ideia, com a mão da floresta.
+     pp  Pulp & Paper    → uma FOLHA, com as nervuras (escolha do usuário entre cinco opções de folha):
+                           o contorno de cima vira a LINHA DE DESEMPENHO, o de baixo se fecha sobre
+                           ela e as nervuras se recolhem; depois a folha volta.
      sg  Stock Guide     → o MURAL das empresas cobertas — o LOGO de cada uma (só o símbolo, sem fundo;
                            /assets/logos/logos.js), todas lado a lado, da que mais sobe à que mais cai —
                            que se desdobra na CURVA DO DIA: cada empresa vira um ponto na altura da sua
@@ -68,6 +69,11 @@
 .sc.is-b .sc-st-c{opacity:1;visibility:visible;transition:opacity .8s ease 1.45s,visibility 0s linear 1.45s;}\
 /* durante a troca de forma a luz descansa (ela já está fora do quadro nesse trecho do seu ciclo): menos o que redesenhar */\
 .sc.sc-morph .sc-win{visibility:hidden;}\
+/* a FOLHA (Pulp & Paper): o contorno de baixo some quando encosta na linha; as nervuras se recolhem no meio da troca */\
+.sc-lf-l{transition:opacity .25s ease;}\
+.sc.is-b .sc-lf-l{opacity:0;transition:opacity .4s ease 1.9s;}\
+.sc-lf-v{transition:opacity .9s ease 1.1s;}\
+.sc.is-b .sc-lf-v{opacity:0;transition:opacity 1s ease .45s;}\
 .sc-dot{position:absolute;right:7px;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:' + OR + ';box-shadow:0 0 10px 2px rgba(255,85,0,.7);}\
 .sc-dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid ' + OR + ';animation:sc-ring 2.6s ease-out infinite;}\
 @keyframes sc-ring{0%{transform:scale(.5);opacity:.9;}100%{transform:scale(2.4);opacity:0;}}\
@@ -138,15 +144,8 @@
   /* ── as duas silhuetas e as linhas ilustrativas (alturas em unidades de 0 a 300, do chão para cima) ── */
   var RIDGE = [14, 20, 15, 26, 21, 34, 27, 46, 38, 62, 52, 84, 70, 112, 92, 80, 118, 150, 134, 182, 210, 194, 244, 268, 232, 242, 190, 156, 168, 134, 152, 182, 148, 116, 124, 90, 76];
   var LINE_MM = [70, 78, 72, 84, 80, 92, 88, 97, 90, 104, 112, 106, 118, 126, 117, 110, 124, 133, 128, 142, 150, 141, 156, 149, 162, 174, 166, 158, 172, 186, 178, 194, 188, 204, 216, 208, 232];
-  var LINE_PP = [84, 92, 86, 98, 108, 100, 114, 124, 116, 132, 126, 140, 152, 144, 160, 172, 186];   // linha ilustrativa (reamostrada para o nº de árvores)
+  var LINE_PP = [84, 92, 86, 98, 108, 100, 114, 124, 116, 132, 126, 140, 152, 144, 160, 172, 186];   // linha ilustrativa de P&P
   var N_MM = RIDGE.length, N_STORE = 37;                                                             // a série real é guardada com 37 pontos
-  /* nº de árvores conforme o formato do quadro (faixa larga pede mais árvores, senão viram morros) */
-  function treeCount(sc) { var w = sc.clientWidth || 400, h = sc.clientHeight || 150; return Math.max(10, Math.min(46, Math.round(w / Math.max(18, h * 0.19)))); }
-  function treeTops(n) {   // alturas das copas: aleatório com semente fixa, crescendo da esquerda para a direita
-    var s = 20261117, out = [], i;
-    for (i = 0; i < n; i++) { s = (s * 1664525 + 1013904223) >>> 0; var t = n > 1 ? i / (n - 1) : 0, e = t * t * (3 - 2 * t); out.push(Math.round(250 * (0.40 + 0.56 * e) * (0.80 + 0.40 * (s / 4294967296)))); }
-    return out;
-  }
   function resample(h, n) { var out = [], i; for (i = 0; i < n; i++) { var p = i * (h.length - 1) / (n - 1), a = Math.floor(p), b = Math.min(h.length - 1, a + 1); out.push(h[a] + (h[b] - h[a]) * (p - a)); } return out; }
 
   function f1(v) { return (Math.round(v * 10) / 10).toString(); }
@@ -162,13 +161,7 @@
   }
   /* montanha/linha angulosa: N pontos igualmente espaçados */
   function polyD(h) { var s = '', i, n = h.length; for (i = 0; i < n; i++) s += (i ? ' L' : 'M') + f1(i * VB_W / (n - 1)) + ' ' + f1(VB_H - h[i]); return s; }
-  /* floresta: cada copa é uma folha alta e pontuda (cipreste/eucalipto) entre dois pontos do chão */
-  function treesD(tops) {
-    var n = tops.length, w = VB_W / n, s = 'M0 ' + f1(VB_H - 4), i;
-    for (i = 0; i < n; i++) { var x0 = i * w, x1 = x0 + w, cy = VB_H - 4 - (tops[i] - 4) * 1.333; s += ' C' + f1(x0 + w * 0.40) + ' ' + f1(cy) + ' ' + f1(x1 - w * 0.40) + ' ' + f1(cy) + ' ' + f1(x1) + ' ' + f1(VB_H - 4); }
-    return s;
-  }
-  /* linha suave por uma lista de pontos (mesma estrutura de comandos da floresta → uma vira a outra) */
+  /* linha suave por uma lista de pontos (a curva do dia do Stock Guide) */
   function smoothP(P, f) {
     var n = P.length, s = 'M' + f(P[0][0]) + ' ' + f(P[0][1]), i;
     for (i = 0; i < n - 1; i++) {
@@ -177,7 +170,6 @@
     }
     return s;
   }
-  function smoothD(h) { var w = VB_W / (h.length - 1); return smoothP(h.map(function (v, i) { return [i * w, VB_H - v]; }), f1); }
   /* a troca de forma: um <animate> PARADO, que o relógio dispara (beginElement) nas duas viradas do ciclo e que congela no
      fim. Antes era um <animate> infinito: mesmo "parado" entre as trocas ele acordava o navegador a cada quadro — medido com
      a máquina cheia: 30 quadros/s com ele, 56 sem. Agora só há trabalho durante os ~2 s da troca. */
@@ -186,36 +178,94 @@
     return '<animate attributeName="d" begin="indefinite" dur="' + MORPH + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.65 0 0.35 1" values="' + d + ';' + d + '"/>';
   }
 
-  /* ═══ MM e PP: silhueta ↔ linha ═════════════════════════════════════════════════════════════ */
-  function buildLine(sc, kind) {
+  /* ═══ MM: a montanha ↔ linha ════════════════════════════════════════════════════════════════ */
+  function liveLayer(line, real, lastH) {   // tempo "linha": o último ponto pulsa; com dado real, o rótulo e a variação
+    var top = (100 - lastH / VB_H * 100).toFixed(2) + '%';
+    return el('sc-st-c', 'position:absolute;inset:0;', '<i class="sc-last" style="top:' + top + '"></i><i class="sc-dot" style="top:' + top + '"></i>'
+      + (real && line.label ? '<span class="sc-tag" style="top:' + top + '">' + String(line.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + (line.pct != null && isFinite(line.pct) ? '<b class="' + (line.pct > 0 ? 'up' : line.pct < 0 ? 'dn' : '') + '">' + (line.pct > 0 ? '+' : '') + (+line.pct).toFixed(1) + '%</b>' : '') + '</span>' : ''));
+  }
+  function buildLine(sc) {
     var st = sc.__st || (sc.__st = {});
     var line = st.line, real = !!(line && line.h);
-    var dA, dB, lastH;
-    var nT = 0;
-    if (kind === 'mm') { var hB = real ? resample(line.h, N_MM) : LINE_MM; dA = polyD(RIDGE); dB = polyD(hB); lastH = hB[hB.length - 1]; }
-    else { nT = treeCount(sc); st.nT = nT; var hP = resample(real ? line.h : LINE_PP, nT + 1); dA = treesD(treeTops(nT)); dB = smoothD(hP); lastH = hP[hP.length - 1]; }
+    var hB = real ? resample(line.h, N_MM) : LINE_MM, dA = polyD(RIDGE), dB = polyD(hB);
     var id = 'scl' + (++_uid), close = ' L' + VB_W + ' ' + VB_H + ' L0 ' + VB_H + ' Z';
     var b = wantB(), d0 = b ? dB : dA;              // nasce já no tempo certo do ciclo
     phase(sc); sc.__b = b; sc.classList.toggle('is-b', b); sc.classList.remove('to-a', 'to-b', 'sc-morph');
-    var eco = kind === 'mm'
-      ? '<use href="#' + id + '" class="sc-eco" stroke-opacity=".20" transform="translate(0 20)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".11" transform="translate(0 44)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".06" transform="translate(0 72)"/>'
-      : '<use href="#' + id + '" class="sc-eco" stroke-opacity=".17" transform="translate(' + f1(VB_W / nT / 2) + ' 78) scale(1 .74)"/>';
     var art = el('sc-art', '',
       '<svg viewBox="0 0 ' + VB_W + ' ' + VB_H + '" preserveAspectRatio="none" aria-hidden="true">'
       + '<defs><path id="' + id + '" vector-effect="non-scaling-stroke" d="' + d0 + '">' + animEl(d0) + '</path>'
       + '<linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".105"/><stop offset=".75" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
       + '<path fill="url(#' + id + 'g)" d="' + d0 + close + '">' + animEl(d0 + close) + '</path>'
-      + '<g class="sc-st-m">' + eco + '</g>'
+      + '<g class="sc-st-m"><use href="#' + id + '" class="sc-eco" stroke-opacity=".20" transform="translate(0 20)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".11" transform="translate(0 44)"/><use href="#' + id + '" class="sc-eco" stroke-opacity=".06" transform="translate(0 72)"/></g>'
       + '<use href="#' + id + '" class="sc-ln" stroke-opacity=".86"/></svg>'
       + '<div class="sc-win"><div><svg viewBox="0 0 ' + VB_W + ' ' + VB_H + '" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hot2"/><use href="#' + id + '" class="sc-hot1"/><use href="#' + id + '" class="sc-hot"/></svg></div></div>');
-    // tempo "linha": o último ponto pulsa; com dado real, o rótulo e a variação
-    var top = (100 - lastH / VB_H * 100).toFixed(2) + '%';
-    var live = el('sc-st-c', 'position:absolute;inset:0;', '<i class="sc-last" style="top:' + top + '"></i><i class="sc-dot" style="top:' + top + '"></i>'
-      + (real && line.label ? '<span class="sc-tag" style="top:' + top + '">' + String(line.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + (line.pct != null && isFinite(line.pct) ? '<b class="' + (line.pct > 0 ? 'up' : line.pct < 0 ? 'dn' : '') + '">' + (line.pct > 0 ? '+' : '') + (+line.pct).toFixed(1) + '%</b>' : '') + '</span>' : ''));
-    sc.innerHTML = ''; sc.appendChild(art); sc.appendChild(live);
+    sc.innerHTML = ''; sc.appendChild(art); sc.appendChild(liveLayer(line, real, hB[hB.length - 1]));
     var an = art.querySelectorAll('animate');
     st.an = an.length === 2 ? [{ el: an[0], a: dA, b: dB }, { el: an[1], a: dA + close, b: dB + close }] : null;
   }
+
+  /* ═══ PP: a FOLHA com nervuras ↔ linha ══════════════════════════════════════════════════════
+     Desenhada num quadro de 360×160 e encaixada SEM deformar no centro do quadro da cena (no cartão da Home ela ocupa quase
+     toda a largura; na faixa larga do topo da página fica no meio). Cada parte é uma lista de pontos com a MESMA contagem
+     nos dois tempos — o pecíolo e o contorno de cima viram a linha; o contorno de baixo se fecha sobre ela e some; a
+     nervura central também; cada nervura lateral se recolhe no seu ponto. `a` = a fração da largura onde o ponto cai na linha. */
+  function qb(P0, P1, P2, t) { var u = 1 - t; return [u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0], u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1]]; }
+  function qn(P0, P1, P2, t) { var dx = 2 * (1 - t) * (P1[0] - P0[0]) + 2 * t * (P2[0] - P1[0]), dy = 2 * (1 - t) * (P1[1] - P0[1]) + 2 * t * (P2[1] - P1[1]), l = Math.sqrt(dx * dx + dy * dy) || 1; return [-dy / l, dx / l]; }
+  var LEAF = (function () {
+    var N = 44, P0 = [86, 130], P1 = [200, 100], P2 = [324, 32], WM = 38, SK = 0.84, A0 = 0.14, up = [], dn = [], mid = [], i, k, s, j;
+    for (i = 0; i <= N; i++) {
+      var t = i / N, c = qb(P0, P1, P2, t), n = qn(P0, P1, P2, t), w = WM * Math.pow(Math.sin(Math.PI * Math.pow(t, SK)), 0.92);
+      up.push([c[0] - n[0] * w, c[1] - n[1] * w]); dn.push([c[0] + n[0] * w, c[1] + n[1] * w]); mid.push(c);
+    }
+    var a = function (q) { return A0 + (1 - A0) * q / N; }, mk = function () { return { P: [], a: [] }; };
+    var main = mk(), low = mk(), rib = mk(), face = mk(), veins = [];
+    for (i = 0; i <= 4; i++) { main.P.push([52 + (P0[0] - 52) * i / 4, 142 + (P0[1] - 142) * i / 4]); main.a.push(A0 * i / 4); }      // o pecíolo
+    for (i = 1; i <= N; i++) { main.P.push(up[i]); main.a.push(a(i)); }
+    for (i = 0; i <= N; i++) { low.P.push(dn[i]); low.a.push(a(i)); rib.P.push(mid[i]); rib.a.push(a(i)); face.P.push(up[i]); face.a.push(a(i)); }
+    for (i = N; i >= 0; i--) { face.P.push(dn[i]); face.a.push(a(i)); }
+    for (k = 0; k < 6; k++) {
+      var tv = 0.13 + 0.118 * k, i0 = Math.round(tv * N), i1 = Math.min(N - 1, Math.round((tv + 0.17) * N));
+      for (s = 0; s < 2; s++) {
+        var e = (s ? dn : up)[i1], c0 = mid[i0], m = [(c0[0] + e[0]) / 2 + (s ? -2 : 2), (c0[1] + e[1]) / 2 - 4 * (s ? -1 : 1)], V = mk();
+        for (j = 0; j <= 6; j++) { V.P.push(qb(c0, m, e, j / 6 * 0.9)); V.a.push(a(i0)); }
+        veins.push(V);
+      }
+    }
+    return { main: main, low: low, rib: rib, face: face, veins: veins };
+  })();
+  /* altura da linha (0 a 300) na fração `a` da largura, suavizada entre os pontos da série */
+  function hAt(h, a) {
+    var n = h.length - 1, p = Math.max(0, Math.min(1, a)) * n, i = Math.min(n, Math.floor(p)), u = p - i;
+    var y0 = h[Math.max(0, i - 1)], y1 = h[i], y2 = h[Math.min(n, i + 1)], y3 = h[Math.min(n, i + 2)];
+    return 0.5 * (2 * y1 + (y2 - y0) * u + (2 * y0 - 5 * y1 + 4 * y2 - y3) * u * u + (3 * y1 - y0 - 3 * y2 + y3) * u * u * u);
+  }
+  function buildLeaf(sc) {
+    var st = sc.__st || (sc.__st = {}), line = st.line, real = !!(line && line.h);
+    var cw = sc.clientWidth || 300, H = Math.max(40, sc.clientHeight || 130), W = Math.max(60, cw - 11);
+    st.W = cw; st.H = H;
+    var hs = real ? line.h : resample(LINE_PP, N_STORE), k = Math.min(W / 360, H / 160), ox = (W - 360 * k) / 2, oy = (H - 160 * k) / 2;
+    function A(o) { var s = '', i; for (i = 0; i < o.P.length; i++) s += (i ? ' L' : 'M') + f1(ox + o.P[i][0] * k) + ' ' + f1(oy + o.P[i][1] * k); return s; }
+    function B(o) { var s = '', i; for (i = 0; i < o.P.length; i++) s += (i ? ' L' : 'M') + f1(o.a[i] * W) + ' ' + f1(H * (1 - hAt(hs, o.a[i]) / 300)); return s; }
+    var id = 'scf' + (++_uid), b = wantB(), list = [], vb = '0 0 ' + f1(W) + ' ' + f1(H);
+    phase(sc); sc.__b = b; sc.classList.toggle('is-b', b); sc.classList.remove('to-a', 'to-b', 'sc-morph');
+    function part(o, tail) { var q = { a: A(o) + (tail || ''), b: B(o) + (tail || '') }; list.push(q); return 'd="' + (b ? q.b : q.a) + '">' + animEl(b ? q.b : q.a); }
+    var under = '', i; for (i = 0; i <= 60; i++) under += (i ? ' L' : 'M') + f1(W * i / 60) + ' ' + f1(H * (1 - hAt(hs, i / 60) / 300));
+    var html = '<svg viewBox="' + vb + '" preserveAspectRatio="none" aria-hidden="true">'
+      + '<defs><path id="' + id + '" vector-effect="non-scaling-stroke" ' + part(LEAF.main) + '</path>'
+      + '<linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".105"/><stop offset=".75" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
+      + '<g class="sc-st-c"><path fill="url(#' + id + 'g)" d="' + under + ' L' + f1(W) + ' ' + f1(H) + ' L0 ' + f1(H) + ' Z"/></g>'
+      + '<path fill="#fff" fill-opacity=".06" ' + part(LEAF.face, ' Z') + '</path>'
+      + '<path class="sc-eco sc-lf-v" vector-effect="non-scaling-stroke" stroke-opacity=".5" ' + part(LEAF.rib) + '</path>';
+    LEAF.veins.forEach(function (v) { html += '<path class="sc-eco sc-lf-v" vector-effect="non-scaling-stroke" stroke-opacity=".42" stroke-linecap="round" ' + part(v) + '</path>'; });
+    html += '<path class="sc-ln sc-lf-l" vector-effect="non-scaling-stroke" stroke-opacity=".86" ' + part(LEAF.low) + '</path>'
+      + '<use href="#' + id + '" class="sc-ln" stroke-opacity=".86"/></svg>'
+      + '<div class="sc-win"><div><svg viewBox="' + vb + '" preserveAspectRatio="none" aria-hidden="true"><use href="#' + id + '" class="sc-hot2"/><use href="#' + id + '" class="sc-hot1"/><use href="#' + id + '" class="sc-hot"/></svg></div></div>';
+    var art = el('sc-art', '', html); sc.__lock = false;
+    sc.innerHTML = ''; sc.appendChild(art); sc.appendChild(liveLayer(line, real, hAt(hs, 1)));
+    var an = art.querySelectorAll('animate');
+    st.an = an.length === list.length ? list.map(function (q, n) { return { el: an[n], a: q.a, b: q.b }; }) : null;
+  }
+  function build(sc, kind) { if (kind === 'sg') buildSG(sc); else if (kind === 'pp') buildLeaf(sc); else buildLine(sc); }
 
   /* ═══ SG: o mural das empresas cobertas ↔ a curva do dia ════════════════════════════════════ */
   var SG = [['VALE', 'm'], ['CMIN3', 'm'], ['CSNA3', 'm'], ['GGBR4', 'm'], ['USIM5', 'm'], ['TX', 'm'], ['AUGO', 'm'], ['SCCO', 'm'], ['GMEXICOB', 'm'], ['CS', 'm'], ['ERO', 'm'],
@@ -322,7 +372,7 @@
   function phaseNow() { try { return (((performance.now() - T0) / 1000) % CYCLE + CYCLE) % CYCLE; } catch (e) { return 0; } }
   function wantB() { if (REDUCED) return false; var ph = phaseNow(); return ph >= T_B && ph < T_A; }
   function setState(sc, b, dur) {
-    sc.__b = b;
+    sc.__b = b; unlock(sc);
     sc.classList.toggle('is-b', b);
     sc.classList.toggle('to-b', b && dur > 0); sc.classList.toggle('to-a', !b && dur > 0);
     var st = sc.__st; if (!st || !st.an) return;
@@ -352,7 +402,8 @@
     injectCSS();
     var sc = el('sc sc-' + kind); sc.__kind = kind; sc.__st = {};
     host.appendChild(sc); host.__scene = sc; _all.push(sc);
-    if (kind === 'sg') buildSG(sc); else { sc.__st.line = stored(kind); buildLine(sc, kind); }
+    if (kind !== 'sg') sc.__st.line = stored(kind);
+    build(sc, kind);
     if (!_timer) tick();
     try { if (_ro) _ro.observe(sc); } catch (e) {}
     try {
@@ -382,20 +433,39 @@
       var line = { h: h.map(function (v) { return Math.round(v * 10) / 10; }), label: (opts && opts.label) || '', pct: opts && opts.pct != null ? +opts.pct : null };
       var key = JSON.stringify(line);
       try { sessionStorage.setItem('ibba_scene_' + kind, key); } catch (e) {}
-      _all.forEach(function (sc) { if (sc.__kind !== kind) return; if (sc.__st.key === key) return; sc.__st.key = key; sc.__st.line = line; buildLine(sc, kind); });
+      _all.forEach(function (sc) { if (sc.__kind !== kind) return; if (sc.__st.key === key) return; sc.__st.key = key; sc.__st.line = line; build(sc, kind); });
       return true;
     } catch (e) { return false; }
   }
-  /* o quadro mudou de tamanho: o mural se reacomoda; a floresta refaz a conta de árvores se o formato mudou muito */
+  /* o quadro mudou de tamanho: o mural se reacomoda; a folha é redesenhada só se o formato mudou muito (até 30% ela estica junto) */
   var _rt = 0, _hold = false;
   /* a página pede para segurar o rearranjo enquanto faz uma transição grande (entrar no ambiente): nada pula no meio */
-  function hold(v) { _hold = !!v; if (!_hold) refit(); }
+  function hold(v) {
+    _hold = !!v;
+    /* a FOLHA não estica: enquanto o ambiente se abre (o quadro chega a ficar 3,6× mais largo), o desenho fica preso à
+       largura que tinha, no centro do quadro. Só no tempo "o que é" — a linha, essa pode esticar. */
+    _all.forEach(function (sc) {
+      if (sc.__kind !== 'pp') return;
+      var art = sc.querySelector('.sc-art'); if (!art) return;
+      if (_hold && !sc.__b) { var w = art.clientWidth; if (w) { art.style.left = '50%'; art.style.right = 'auto'; art.style.width = w + 'px'; art.style.marginLeft = (-w / 2) + 'px'; sc.__lock = true; } }
+      else if (!_hold) unlock(sc);
+    });
+    if (!_hold) refit();
+  }
+  function unlock(sc) {
+    if (!sc.__lock) return; sc.__lock = false;
+    var art = sc.querySelector('.sc-art'); if (art) { art.style.left = ''; art.style.right = ''; art.style.width = ''; art.style.marginLeft = ''; }
+  }
   function refit() {
     clearTimeout(_rt);
     _rt = setTimeout(function () {
       if (_hold) return;
       _sg.forEach(layoutSG);
-      _all.forEach(function (sc) { if (sc.__kind === 'pp' && sc.__st && sc.__st.nT && Math.abs(treeCount(sc) - sc.__st.nT) > 3) buildLine(sc, 'pp'); });
+      _all.forEach(function (sc) {
+        var st = sc.__st; if (sc.__kind !== 'pp' || !st || !st.W) return;
+        var w = sc.clientWidth || st.W, h = sc.clientHeight || st.H;
+        if (Math.abs(w - st.W) / st.W > 0.3 || Math.abs(h - st.H) > 12) buildLeaf(sc);
+      });
     }, 180);
   }
   window.addEventListener('resize', refit);
