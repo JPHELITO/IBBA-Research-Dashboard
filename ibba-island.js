@@ -38,8 +38,11 @@ html.isl-on .gnav-brand b{font:600 11.5px/1 "Unbounded","Manrope",sans-serif!imp
 html.isl-on.dark .gnav-brand b,html.isl-on[data-pg="market"] body:not(.theme-light) .gnav-brand b{color:#F4F4F2!important;}\
 /* a ILHA */\
 .isl{position:absolute;left:50%;top:5px;transform:translateX(-50%);height:34px;display:flex;align-items:center;padding:3px;border-radius:999px;z-index:3;\
-  background:rgba(16,16,18,.94);border:1px solid rgba(255,255,255,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 26px -12px rgba(0,0,0,.65);\
-  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);font-family:"Manrope","Inter",system-ui,sans-serif;white-space:nowrap;}\
+  font-family:"Manrope","Inter",system-ui,sans-serif;white-space:nowrap;}\
+/* o FUNDO é peça própria: ao abrir/fechar só ele muda de largura — os itens já nascem no lugar (nada desliza sob o mouse) */\
+.isl-bg{position:absolute;left:0;right:0;top:0;bottom:0;z-index:-1;pointer-events:none;border-radius:999px;background:rgba(16,16,18,.94);\
+  border:1px solid rgba(255,255,255,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 26px -12px rgba(0,0,0,.65);\
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}\
 html.isl-float .isl{position:fixed;top:8px;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .25s ease;}\
 html.isl-float.isl-away .isl:not(.open):not(.pin){transform:translate(-50%,-64px);opacity:0;pointer-events:none;}\
 /* descendo a página a ilha sai da frente do conteúdo; fica só esta LINGUETA laranja no topo, no centro */\
@@ -53,7 +56,7 @@ html.isl-float.isl-away .isl-notch{transform:translate(-50%,0);opacity:1;}\
   color:#EDEDEA;background:rgba(16,16,18,.92);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 10px;box-shadow:0 8px 20px -10px #000;transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);}\
 .isl-notch.hint span{opacity:1;transform:translate(-50%,0);}\
 .isl-now,.isl-q{display:flex;align-items:center;gap:7px;height:28px;border-radius:999px;background:none;border:0;color:#EDEDEA;cursor:pointer;font:600 12px/1 "Manrope","Inter",sans-serif;\
-  overflow:hidden;max-width:340px;transition:max-width .42s cubic-bezier(.16,1,.3,1),opacity .2s ease,padding .42s cubic-bezier(.16,1,.3,1),background .15s;padding:0 12px 0 10px;}\
+  overflow:hidden;transition:background .15s;padding:0 12px 0 10px;}\
 .isl-now:hover,.isl-q:hover{background:rgba(255,255,255,.07);}\
 .isl-now i{width:7px;height:7px;border-radius:50%;background:#FF5500;flex:none;box-shadow:0 0 0 0 rgba(255,85,0,.55);animation:isl-pulso 2.8s ease-out infinite;}\
 @keyframes isl-pulso{0%{box-shadow:0 0 0 0 rgba(255,85,0,.55);}70%,100%{box-shadow:0 0 0 7px rgba(255,85,0,0);}}\
@@ -63,12 +66,10 @@ html.isl-float.isl-away .isl-notch{transform:translate(-50%,0);opacity:1;}\
 .isl-q{color:rgba(255,255,255,.62);font-weight:500;}\
 .isl-q svg{width:14px;height:14px;flex:none;}\
 .isl-q kbd{font:600 9.5px/1 "Manrope",sans-serif;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:3px 5px;margin-left:4px;}\
-/* o menu de sempre, DENTRO da ilha: fechado ele tem largura zero */\
-html.isl-on .isl .gnav-menu{margin:0;max-width:0;opacity:0;overflow:hidden;gap:1px;transition:max-width .45s cubic-bezier(.16,1,.3,1),opacity .22s ease;}\
-html.isl-on .isl.open .gnav-menu{max-width:1200px;opacity:1;}\
-html.isl-on .isl.full .gnav-menu{overflow:visible;}\
-.isl.open .isl-now{max-width:0;opacity:0;padding:0;}\
-.isl.open .isl-sep{opacity:0;}\
+/* o menu de sempre, DENTRO da ilha: recolhida ele não existe; aberta ele aparece INTEIRO, já no lugar */\
+html.isl-on .isl .gnav-menu{display:none;margin:0;gap:1px;}\
+html.isl-on .isl.open .gnav-menu{display:flex;}\
+.isl.open .isl-now,.isl.open .isl-sep{display:none;}\
 .isl.open .isl-q{padding:0 9px;}\
 .isl.open .isl-q .isl-ql,.isl.open .isl-q kbd{display:none;}\
 html.isl-on .isl .gn-item{position:relative;z-index:1;height:28px;padding:0 13px!important;border-radius:999px;font:600 12px/1 "Manrope","Inter",sans-serif!important;\
@@ -79,12 +80,21 @@ html.isl-on .isl .gn-item.k{color:#0A0A0B!important;}\
 html.isl-on .isl .gn-admin{color:#FF7A33!important;margin-left:0;}\
 html.isl-on .isl .gn-admin.k{color:#C2410C!important;}\
 .isl-key{position:absolute;top:0;height:28px;border-radius:999px;background:#F4F4F2;box-shadow:0 2px 8px -2px rgba(0,0,0,.5);z-index:0;opacity:0;\
-  transition:left .42s cubic-bezier(.16,1,.3,1),width .42s cubic-bezier(.16,1,.3,1),opacity .2s;}\
-.isl.full .isl-key{opacity:1;}\
+  transition:left .28s cubic-bezier(.2,.9,.3,1),width .28s cubic-bezier(.2,.9,.3,1),opacity .15s;}\
+.isl.open .isl-key{opacity:1;}\
 /* os menus: escuros e sólidos, embaixo da ilha */\
 html.isl-on .isl .gn-drop{top:calc(100% + 9px);min-width:230px;padding:7px;background:#141416!important;border:1px solid #29292D!important;border-radius:16px;\
   box-shadow:0 26px 50px -18px #000,0 0 0 1px rgba(0,0,0,.35)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}\
 html.isl-on .isl .gn-drop::before{top:-12px;height:12px;}\
+/* as listas ▾ da ilha abrem pelo JavaScript (classe .dd), não pelo :hover — com tolerância para a diagonal e para escorregar */\
+html.isl-on .isl .gn-group .gn-drop,html.isl-on .isl .gn-group:hover .gn-drop{display:none;animation:none;}\
+html.isl-on .isl .gn-group:hover .gn-drop>*{animation:none;}\
+html.isl-on .isl .gnav-menu .gn-group.dd .gn-drop{display:block;animation:ibba-painel .22s cubic-bezier(.16,1,.3,1) both;}\
+html.isl-on .isl .gnav-menu .gn-group.dd .gn-drop>*{animation:ibba-item .22s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(15ms + var(--i,0) * 14ms);}\
+html.isl-on .isl .gnav-menu .gn-group.gn-solo .gn-drop{display:none!important;}\
+/* Internal ▾: a barra de hoje põe as páginas de admin LADO A LADO (inline-flex no style) → aqui, uma por linha */\
+html.isl-on .isl .gn-drop a.gn-admin{display:flex!important;align-items:center;}\
+html.isl-on .isl .gn-drop a.gn-admin[style*="none"]{display:none!important;}\
 html.isl-on .isl .gn-cat{font:500 8.5px/1 "Unbounded","Manrope",sans-serif!important;letter-spacing:.12em;text-transform:uppercase;color:#FF7A33!important;padding:8px 11px 7px!important;}\
 html.isl-on .isl .gn-drop a{display:block;color:#EDEDEA!important;font:600 12px/1.2 "Manrope",sans-serif!important;padding:9px 11px!important;border-radius:10px;background:none!important;}\
 html.isl-on .isl .gn-drop a:hover{background:rgba(255,255,255,.06)!important;color:#FF8A4D!important;}\
@@ -199,20 +209,70 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
     ['#gnav-team', '#gnav-tutorial', '#gnav-theme', '.gnav-out'].forEach(function (s) { var el = g.querySelector(s); if (el) util.appendChild(el); });
     var burger = g.querySelector('#gnav-burger'); g.insertBefore(util, burger || null);
     var out = util.querySelector('.gnav-out'); if (out) { out.innerHTML = SVG_OUT + '<span class="isl-sr">Sign out</span>'; out.title = 'Sign out'; out.setAttribute('aria-label', 'Sign out'); }
-    // abrir/fechar
-    var tOpen = 0, tClose = 0;
-    isl.addEventListener('mouseenter', function () { clearTimeout(tClose); tOpen = setTimeout(function () { open(true); }, 70); });
-    isl.addEventListener('mouseleave', function () { clearTimeout(tOpen); tClose = setTimeout(function () { if (!isl.contains(document.activeElement)) open(false); }, 420); });
-    isl.addEventListener('focusin', function () { clearTimeout(tClose); open(true); });
-    isl.addEventListener('focusout', function () { setTimeout(function () { if (!isl.contains(document.activeElement) && !isl.matches(':hover')) open(false); }, 60); });
+    // ── ABRIR / FECHAR / LISTAS ▾ (refeito em 18/11 depois do teste do usuário: "muito sensível… qualquer coisa ela
+    //    some… ao abrir a seleção volta para a aba atual… na Home os ▾ não abrem"). Agora:
+    //    · ao abrir, o menu nasce INTEIRO no lugar (só o fundo cresce) → nada desliza sob o mouse, e a tecla branca
+    //      nasce no item que está sob o cursor;
+    //    · as listas ▾ são abertas por aqui (classe .dd), não pelo :hover: com uma aberta, passar para a aba vizinha
+    //      troca na hora; descendo em DIAGONAL até a lista, a troca espera (o mouse está indo para a lista);
+    //    · ZONA DE FOLGA em volta da ilha e da lista aberta: escorregar um pouco para fora não fecha nada; fora da
+    //      folga, a lista fecha em 0,26 s e a ilha em 0,6 s (voltar antes cancela).
+    bg = document.createElement('span'); bg.className = 'isl-bg'; isl.insertBefore(bg, isl.firstChild);
+    qb = q;
+    [].slice.call(menu.querySelectorAll('.gn-drop')).forEach(function (d) { [].slice.call(d.children).forEach(function (c, i) { c.style.setProperty('--i', i); }); });
+    isl.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'touch') return;                 // no toque, quem abre é o clique
+      cancelClose(); clearTimeout(tOpen);
+      if (!isl.classList.contains('open')) tOpen = setTimeout(function () { open(true); }, 90);
+    });
+    isl.addEventListener('pointerleave', function () { clearTimeout(tOpen); });
+    document.addEventListener('pointermove', onMove, { passive: true });
+    document.documentElement.addEventListener('mouseleave', function () { if (isl.classList.contains('open')) scheduleClose(); });
+    document.addEventListener('pointerdown', function (e) {   // clicou fora: fecha na hora
+      if (isl.classList.contains('open') && e.target && !isl.contains(e.target)) open(false);
+    }, true);
+    // teclado: as cabeças de lista (M&M ▾, P&P ▾…) viram focáveis; Tab até a ilha abre e leva o foco para a página atual
+    [].slice.call(menu.querySelectorAll('.gn-group > span.gn-item')).forEach(function (h) { h.setAttribute('tabindex', '0'); h.setAttribute('role', 'button'); h.setAttribute('aria-haspopup', 'true'); });
+    isl.addEventListener('focusin', function (e) {
+      cancelClose(); open(true);
+      if (e.target === now) {                                 // o botão recolhido some ao abrir: o foco vai para o menu
+        var f = cur() || menu.querySelector('a.gn-item, .gn-item[tabindex]');
+        if (f && f.focus) setTimeout(function () { f.focus(); }, 0);
+      }
+    });
+    menu.addEventListener('focusin', function (e) {
+      var t = e.target, dd = t.closest ? t.closest('.gn-drop') : null;
+      if (dd) { var g = dd.parentNode; if (g !== ddGroup) setDrop(g); place(g.querySelector('.gn-item')); return; }
+      var it = itemOf(t); if (!it) return;
+      place(it); setDrop(groupOf(it));
+    });
+    menu.addEventListener('mousedown', function (e) {        // o mouse não dá foco às cabeças (só o teclado)
+      if (e.target && e.target.closest && e.target.closest('.gn-group > span.gn-item')) e.preventDefault();
+    });
+    menu.addEventListener('keydown', function (e) {
+      var head = e.target && e.target.closest ? e.target.closest('.gn-group > span.gn-item') : null;
+      if (!head) return;
+      var g = head.parentNode;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDrop(ddGroup === g ? null : g); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); setDrop(g); var a = [].slice.call(g.querySelectorAll('.gn-drop a')).filter(function (x) { return x.offsetParent; })[0]; if (a) a.focus(); }
+    });
+    // clique LOGO depois de abrir pelo mouse (sem mexer) = era para abrir, não para entrar no item que apareceu sob o cursor
+    menu.addEventListener('click', function (e) {
+      if (Date.now() - openedAt < 350 && Math.abs(px - openedXY[0]) < 4 && Math.abs(py - openedXY[1]) < 4) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+    isl.addEventListener('focusout', function () { setTimeout(function () { if (!isl.contains(document.activeElement) && !inZone(px, py)) open(false); }, 80); });
     now.addEventListener('click', function () { open(!isl.classList.contains('open')); });
     q.addEventListener('click', function (e) { e.preventDefault(); palette(true); });
-    // a "tecla" branca corre até o item sob o mouse e volta para a página atual
-    [].slice.call(menu.children).forEach(function (c) {
-      var it = c.classList && c.classList.contains('gn-item') ? c : (c.querySelector && c.querySelector(':scope > .gn-item'));
-      if (it) c.addEventListener('mouseenter', function () { place(it); });
+    menu.addEventListener('click', function (e) {
+      var t = e.target; if (!t || !t.closest) return;
+      if (t.closest('.gn-drop a')) {                          // escolheu um destino: a lista e a ilha fecham
+        if (!(e.ctrlKey || e.metaKey || e.shiftKey)) { setDrop(null); setTimeout(function () { open(false); }, 0); }
+        return;
+      }
+      var head = t.closest('.gn-group > span.gn-item');       // cabeça de lista (não é link): clique abre/fecha
+      if (head && menu.contains(head)) { setDrop(head.parentNode); place(head); }   // só ABRE (o mouse já pode ter aberto: clicar não pode fechar)
     });
-    menu.addEventListener('mouseleave', function () { place(null); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isl.classList.contains('open')) open(false); });
     label();
     var mk = window.__gnavMarkCurrent; window.__gnavMarkCurrent = function () { if (mk) mk(); label(); place(null); };
     window.addEventListener('hashchange', function () { setTimeout(function () { label(); place(null); }, 0); });
@@ -266,28 +326,125 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
       });
     }, { passive: true });
   }
-  var tFull = 0;
+  // estado da ilha aberta
+  var bg, qb, tOpen = 0, tClose = 0, tDrop = 0, tDd = 0, tSw = 0, ddGroup = null, px = -1, py = -1, hist = [], anim = [], openedAt = 0, openedXY = [-9, -9];
+  function motion() { try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return true; } }
+  function stopAnims() { anim.forEach(function (a) { try { a.cancel(); } catch (e) {} }); anim = []; }
+  function ani(el, kf, op) { try { if (el && el.animate) anim.push(el.animate(kf, op)); } catch (e) {} }
   function open(on) {
     if (!isl || (!on && isl.classList.contains('pin'))) return;
-    clearTimeout(tFull);
+    clearTimeout(tOpen);
+    var was = isl.classList.contains('open');
+    if (!!on === was) return;
+    var w0 = isl.getBoundingClientRect().width;
+    stopAnims();
     if (on) {
-      if (isl.classList.contains('open')) return;
+      openedAt = Date.now(); openedXY = [px, py];
       isl.classList.add('open'); now.setAttribute('aria-expanded', 'true');
-      tFull = setTimeout(function () { isl.classList.add('full'); place(null); }, 300);   // o menu terminou de abrir: os ▾ podem descer
+      var w1 = isl.getBoundingClientRect().width;
+      var el = px >= 0 ? document.elementFromPoint(px, py) : null;
+      place(el && isl.contains(el) ? itemOf(el) : null, true);   // a tecla nasce sob o cursor (ou na página atual)
+      if (motion()) {
+        var d = Math.max(0, (w1 - w0) / 2);
+        ani(bg, [{ clipPath: 'inset(0 ' + d + 'px 0 ' + d + 'px round 999px)' }, { clipPath: 'inset(0 0px 0 0px round 999px)' }], { duration: 300, easing: 'cubic-bezier(.16,1,.3,1)' });
+        ani(menu, [{ opacity: 0 }, { opacity: 1 }], { duration: 190, easing: 'ease-out' });
+        ani(qb, [{ opacity: 0 }, { opacity: 1 }], { duration: 190, easing: 'ease-out' });
+      }
     } else {
-      isl.classList.remove('full', 'open'); now.setAttribute('aria-expanded', 'false');
+      setDrop(null); cancelClose(); clearTimeout(tSw);
+      isl.classList.remove('open'); now.setAttribute('aria-expanded', 'false');
       [].slice.call(isl.querySelectorAll('.gn-item.k')).forEach(function (x) { x.classList.remove('k'); });
+      var w2 = isl.getBoundingClientRect().width;
+      if (motion() && w0 > w2) {
+        var e2 = (w0 - w2) / 2;
+        ani(bg, [{ left: -e2 + 'px', right: -e2 + 'px', clipPath: 'inset(0 0px 0 0px round 999px)' },
+                 { left: -e2 + 'px', right: -e2 + 'px', clipPath: 'inset(0 ' + e2 + 'px 0 ' + e2 + 'px round 999px)' }], { duration: 240, easing: 'cubic-bezier(.16,1,.3,1)' });
+        ani(now, [{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 70, easing: 'ease-out', fill: 'backwards' });
+        ani(isl.querySelector('.isl-sep'), [{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 70, easing: 'ease-out', fill: 'backwards' });
+        ani(qb, [{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 70, easing: 'ease-out', fill: 'backwards' });
+      }
     }
   }
+  function setDrop(g) {
+    clearTimeout(tDd);
+    if (g === ddGroup) return;
+    if (ddGroup) ddGroup.classList.remove('dd');
+    ddGroup = g || null;
+    if (ddGroup) { ddGroup.classList.remove('gn-shut'); ddGroup.classList.add('dd'); }
+  }
+  function itemOf(t) {
+    var it = t && t.closest ? t.closest('.gn-item') : null;
+    if (!it || !menu.contains(it) || it.closest('.gn-drop')) return null;
+    return it;
+  }
+  function groupOf(it) { var g = it && it.parentNode; return g && g.classList && g.classList.contains('gn-group') && !g.classList.contains('gn-solo') ? g : null; }
+  // folga: um pouco em volta da ilha (e até 24px abaixo dela) e em volta da lista aberta
+  function inZone(x, y) {
+    if (x < 0 || !isl) return false;
+    var r = isl.getBoundingClientRect();
+    if (x >= r.left - 18 && x <= r.right + 18 && y <= r.bottom + 24) return true;
+    if (ddGroup) {
+      var d = ddGroup.querySelector('.gn-drop').getBoundingClientRect();
+      if (d.width && x >= d.left - 22 && x <= d.right + 22 && y >= d.top - 22 && y <= d.bottom + 22) return true;
+    }
+    return false;
+  }
+  function scheduleClose() {
+    if (!tDrop) tDrop = setTimeout(function () { tDrop = 0; setDrop(null); }, 260);
+    if (!tClose) tClose = setTimeout(function () { tClose = 0; open(false); }, 600);
+  }
+  function cancelClose() { clearTimeout(tClose); tClose = 0; clearTimeout(tDrop); tDrop = 0; }
+  // o mouse está descendo em direção à lista aberta? (triângulo entre onde ele estava e os cantos de cima da lista)
+  function aiming() {
+    if (!ddGroup || hist.length < 3) return false;
+    var dr = ddGroup.querySelector('.gn-drop').getBoundingClientRect(); if (!dr.width) return false;
+    var a = hist[0], p = hist[hist.length - 1];
+    if (p[1] <= a[1]) return false;
+    var b = [dr.left - 14, dr.top + 6], c = [dr.right + 14, dr.top + 6];
+    function s(p1, p2, p3) { return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]); }
+    var d1 = s(p, a, b), d2 = s(p, b, c), d3 = s(p, c, a);
+    return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+  }
+  function onMove(e) {
+    px = e.clientX; py = e.clientY;
+    hist.push([px, py]); if (hist.length > 6) hist.shift();
+    if (!isl || !isl.classList.contains('open')) return;
+    var t = e.target, inside = !!(t && t.nodeType === 1 && isl.contains(t));
+    if (!inside) { if (inZone(px, py)) cancelClose(); else scheduleClose(); return; }
+    cancelClose();
+    var dd = t.closest('.gn-drop');
+    if (dd) { clearTimeout(tSw); var g = dd.parentNode; if (g !== ddGroup) setDrop(g); place(g.querySelector('.gn-item')); return; }
+    var it = itemOf(t);
+    if (!it) return;                                        // vão entre itens ou a busca: fica como está
+    var g2 = groupOf(it);
+    if (g2 && g2 === ddGroup) { clearTimeout(tSw); place(it); return; }
+    if (ddGroup && aiming()) {                              // indo em diagonal para a lista aberta: espera
+      clearTimeout(tSw);
+      tSw = setTimeout(function () { var el = document.elementFromPoint(px, py); var it2 = el && isl.contains(el) && !el.closest('.gn-drop') ? itemOf(el) : null; if (it2) goTo(it2); }, 170);
+      return;
+    }
+    goTo(it);
+  }
+  function goTo(it) {
+    clearTimeout(tSw); clearTimeout(tDd);
+    var g = groupOf(it);
+    place(it);
+    if (!g) { setDrop(null); return; }
+    if (g === ddGroup) return;
+    if (ddGroup) { setDrop(g); return; }                     // já havia uma lista aberta: troca na hora
+    tDd = setTimeout(function () { var el = document.elementFromPoint(px, py); if (el && g.contains(el)) setDrop(g); }, 70);
+  }
   function cur() { return menu.querySelector('.gn-group > .gn-item.on') || menu.querySelector('a.gn-item.on'); }
-  function place(it) {
-    if (!key || !isl.classList.contains('full')) return;
+  function place(it, instant) {
+    if (!key || !isl.classList.contains('open')) return;
     it = it || cur();
     [].slice.call(menu.querySelectorAll('.gn-item.k')).forEach(function (x) { if (x !== it) x.classList.remove('k'); });
     if (!it) { key.style.opacity = '0'; return; }
     key.style.opacity = '';
+    if (instant) key.style.transition = 'none';
     var m = menu.getBoundingClientRect(), r = it.getBoundingClientRect();
     key.style.left = (r.left - m.left + menu.scrollLeft) + 'px'; key.style.width = r.width + 'px';
+    if (instant) { void key.offsetWidth; key.style.transition = ''; }
     it.classList.add('k');
   }
   // "● Metals & Mining · Imports ▾": onde você está, dito na ilha recolhida
