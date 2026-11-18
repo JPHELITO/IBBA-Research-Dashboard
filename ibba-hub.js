@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    IBBA · O HUB — comportamento de APRESENTAÇÃO da Home nova (nov/2026). Nada aqui lê ou grava dado.
-     1. luz que acompanha o mouse dentro de cada painel (escreve --mx/--my; quem pinta é o CSS);
+     1. (havia uma luz que acompanhava o mouse dentro de cada painel — removida em 18/11);
      2. ENTRAR NO AMBIENTE: o clique num ambiente (ou num atalho dele) faz o ambiente tomar a laje
         inteira e a mesa descer; só então a página troca — e a View Transition do topnav.js leva
         essa laje até a faixa do topo da página de destino. Ctrl/Shift/clique do meio, celular e
@@ -14,19 +14,7 @@
   var root = document.documentElement;
   function reduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
 
-  /* 1 ── luz do mouse (um cálculo por quadro, no máximo) */
-  var raf = 0, last = null;
-  document.addEventListener('pointermove', function (e) {
-    last = e; if (raf) return;
-    raf = requestAnimationFrame(function () {
-      raf = 0;
-      var t = last && last.target && last.target.closest ? last.target.closest('.sec') : null;
-      if (!t) return;
-      var r = t.getBoundingClientRect(); if (!r.width || !r.height) return;
-      t.style.setProperty('--mx', ((last.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      t.style.setProperty('--my', ((last.clientY - r.top) / r.height * 100).toFixed(1) + '%');
-    });
-  }, { passive: true });
+  /* 1 ── (a luz que acompanhava o mouse dentro dos painéis saiu em 18/11, a pedido do usuário) */
 
   /* 2 ── entrar no ambiente */
   var ENTRA_MS = 440, going = false;

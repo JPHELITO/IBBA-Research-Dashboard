@@ -212,11 +212,14 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .rep-all,html[data-pg="home"] .ev-open{font:600 10px/1 var(--font);color:#FF7A33;}
   html[data-pg="home"] .rep-body{padding:2px 18px 12px;}
   html[data-pg="home"] .ev-body{padding:2px 18px 12px;}
-  html[data-pg="home"] .rep-item{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.085);transition:padding-left .3s var(--ibba-expo,ease);}
-  html[data-pg="home"] .rep-item:hover{padding-left:5px;}
-  html[data-pg="home"] .rep-t{color:#EDEDEA;font-size:11px;font-weight:500;}
-  html[data-pg="home"] .rep-w{color:#8E8E8A;font-size:9px;}
-  html[data-pg="home"] .rep-s{color:#77777A;}
+  /* cores dos relatórios SÓ dentro do quadro escuro do palco: a janela "All N" vive no <body>, com fundo claro no tema claro
+     (antes ela herdava este texto quase branco e o nome do relatório mal se lia) */
+  html[data-pg="home"] .page .area-reports .rep-item{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.085);transition:padding-left .3s var(--ibba-expo,ease);}
+  html[data-pg="home"] .page .area-reports .rep-item:hover{padding-left:5px;}
+  html[data-pg="home"] .page .area-reports .rep-t{color:#EDEDEA;font-size:11px;font-weight:500;}
+  html[data-pg="home"] .page .area-reports .rep-item:hover .rep-t{color:#FF7A33;}
+  html[data-pg="home"] .page .area-reports .rep-w{color:#8E8E8A;font-size:9px;}
+  html[data-pg="home"] .page .area-reports .rep-s{color:#77777A;}
   html[data-pg="home"] .rep-none,html[data-pg="home"] .ev-none,html[data-pg="home"] .ev-loading{color:#8E8E8A;font-size:11px;}
   html[data-pg="home"] .ev-sub{font:700 8px/1.2 var(--font);letter-spacing:.1em;color:#77777A;margin:9px 0 3px;}
   html[data-pg="home"] .ev-item{padding:5.5px 0;border-bottom:1px solid rgba(255,255,255,.085);transition:padding-left .3s var(--ibba-expo,ease);}
@@ -225,18 +228,20 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .ev-when{color:#8E8E8A;font-size:9.5px;}
   html[data-pg="home"] .ev-item.ev-today .ev-when{color:#FF7A33;}
   html[data-pg="home"] .ev-tod{background:rgba(255,255,255,.09);color:#B5B5B1;}
-  html[data-pg="home"] .news-co.rep-co{background:rgba(255,85,0,.18);color:#FF8A4D;}
+  html[data-pg="home"] .page .area-reports .news-co.rep-co{background:rgba(255,85,0,.18);color:#FF8A4D;}
 }
+/* a janela "All N" dos relatórios: nome do relatório em preto no tema claro (pedido do usuário, 18/11) */
+html[data-pg="home"] .rep-pop .rep-t{color:#111111;font-weight:600;}
+html.dark[data-pg="home"] .rep-pop .rep-t{color:#EDEDEA;}
+html[data-pg="home"] .rep-pop .rep-item:hover .rep-t{color:var(--orange);}
+html[data-pg="home"] .rep-pop .rep-w{color:#55534F;}
+html.dark[data-pg="home"] .rep-pop .rep-w{color:#A3A3A0;}
 
 /* ══ 3. A MESA: painéis ══════════════════════════════════════════════════════════════════════ */
 html[data-pg="home"] .sec{border-radius:18px;border:1px solid var(--border);background:var(--white);box-shadow:var(--shadow);isolation:isolate;}
 html.dark[data-pg="home"] .sec{border-color:rgba(255,255,255,.085);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),var(--shadow);}
-/* luz que acompanha o mouse dentro do painel (ibba-hub.js escreve --mx/--my) */
-html[data-pg="home"] .sec::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;opacity:0;
-  background:radial-gradient(520px circle at var(--mx,50%) var(--my,0%),rgba(255,85,0,.085),rgba(255,85,0,0) 62%);transition:opacity .45s ease;}
-html[data-pg="home"] .sec:hover::after{opacity:1;}
+/* (a luz laranja que acompanhava o mouse dentro dos painéis saiu em 18/11, a pedido do usuário) */
 html[data-pg="home"] .sec{position:relative;}
-@media (min-width:1025px){ html[data-pg="home"] .area-reports::after,html[data-pg="home"] .area-events::after{border-radius:0;} }
 html[data-pg="home"] .sec-head{padding:9px 14px 8px;}
 html[data-pg="home"] .sec-meta{font-size:9.5px;color:var(--gray-mid);}
 html[data-pg="home"] .sec-link{font:700 10px/1 var(--font);color:var(--orange);letter-spacing:.01em;}
