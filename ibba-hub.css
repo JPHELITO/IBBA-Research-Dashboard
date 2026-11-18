@@ -52,7 +52,7 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
          2º as commodities, de 192 para o gráfico delas ter ~30 px;
          3º o palco fica com o que sobra — de 176 (o mínimo, ≈ a produção) a 288.
        Quando a tela não dá para os três, entram os degraus de "TELAS MENORES" mais abaixo (@container hubstage). */
-    grid-template-rows:clamp(176px,calc(100% - 660px),288px) clamp(186px,20.5%,216px) minmax(0,1fr);
+    grid-template-rows:clamp(176px,calc(100% - var(--hub-palco-reserva,660px)),288px) clamp(186px,20.5%,216px) minmax(0,1fr);
     grid-template-areas:
       "secrow secrow secrow secrow secrow secrow secrow secrow pulse pulse pulse pulse"
       "news news news news news news news news comm comm comm comm"
@@ -179,8 +179,10 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .area-comm .cm-hero{min-height:24px;}
 }
 /* TELAS MENORES — quem cede primeiro é o gráfico das COMMODITIES; o risquinho do HEATMAP fica (pedido do usuário).
-   Altura da tela da Home em px de projeto (não é a da janela): 1536×730 e 1280×620 ≈ 828 · 1366×640 ≈ 804 · painel de prévia ≈ 718. */
-@container hubstage (max-height:821px){
+   Altura da tela da Home em px de projeto (não é a da janela). Com a Home SEM FAIXA (barra na lingueta, 18/11): 1536×730 ≈ 897 ·
+   1280×620 ≈ 912 · 1366×640 ≈ 883 (os dois gráficos, heatmap 21,5 px de tela contra 15,4 da produção) · painel de prévia ≈ 797.
+   O degrau de 840 sobrou para janelas baixas (prévia, janela encolhida): ali o heatmap continua com a prioridade. */
+@container hubstage (max-height:840px){
   /* notebook pequeno (1366×640…): as commodities ficam sem o gráfico (nome, preço, variação e a tabelinha continuam) e o
      heatmap ganha essa altura */
   html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{grid-template-rows:176px 150px minmax(0,1fr);}
