@@ -364,8 +364,10 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         <input id="clip-url" type="url" placeholder="Colar uma URL avulsa…"/>
         <button class="btn" id="clip-add">Adicionar</button>
       </div>
-      <!-- ordem de uso: a data vale para as duas etapas; 1) blast (grava os 3 destaques do dia)
-           2) clipping (o HTML do WhatsApp pega os destaques gravados na etapa 1) -->
+      <!-- ORDEM DE USO (a data vale para as três etapas):
+           1) clipping -> Word + e-mail; raspa/traduz e GUARDA o texto das matérias
+           2) blast    -> lê esse texto e grava os 3 destaques do dia (sem o Word fica sem texto)
+           3) HTML     -> o arquivo do WhatsApp, com os destaques da etapa 2 (job próprio, sem raspar) -->
       <div class="gen gen-date">
         <div class="bar" style="margin:0">
           <label for="cfg-ref-date" style="font-size:11px;color:var(--gray-mid)">Data do clipping:</label>
@@ -373,13 +375,27 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         </div>
       </div>
 
+      <div class="gen">
+        <div class="bar step-h">
+          <span class="step-n">1</span><b>Gerar clipping</b>
+          <span class="step-sub">primeira etapa — Word e e-mail</span>
+        </div>
+        <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
+        <div class="gen-status" id="clip-status"></div>
+        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
+             polling escreve em #clip-status moram só na tela; este bloco relê o último job
+             pronto do banco no boot, então o Word já feito nunca mais "some". -->
+        <div id="clip-last" class="last-clip" hidden></div>
+        <div id="clip-fails" class="fails" hidden></div>
+      </div>
+
       <!-- BLAST DO WHATSAPP - monta aqui, no navegador, o texto pronto p/ colar.
            Precos e manchetes saem do banco (zero IA); so os 3 destaques sao
            escritos por IA, num job separado e leve. Ver clipping/blast.py. -->
       <div class="gen blast">
         <div class="bar step-h">
-          <span class="step-n">1</span><b>Blast do WhatsApp</b>
-          <span class="step-sub">primeira etapa — os 3 destaques entram no HTML</span>
+          <span class="step-n">2</span><b>Blast do WhatsApp</b>
+          <span class="step-sub">depois do Word — lê o texto das matérias que ele guardou</span>
         </div>
         <div style="margin-bottom:8px"><span class="bl-selo" id="bl-selo" title=""></span></div>
         <div class="bar" style="gap:6px;margin-bottom:8px">
@@ -393,19 +409,18 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         <div class="bl-warn" id="bl-warn" hidden></div>
       </div>
 
-      <div class="gen">
+      <!-- HTML DO WHATSAPP (etapa 3): job próprio no robô (config.whatsapp.only) — usa os corpos
+           e traduções que o Word guardou e os destaques que o blast gravou; o link volta em
+           config.whatsapp. Não mexe no "Último clipping gerado" (o job não tem Word). -->
+      <div class="gen wa-step">
         <div class="bar step-h">
-          <span class="step-n">2</span><b>Gerar clipping</b>
-          <span class="step-sub">Word · e-mail · HTML do WhatsApp</span>
+          <span class="step-n">3</span><b>HTML do WhatsApp</b>
+          <span class="step-sub">por último — leva os destaques do blast</span>
         </div>
-        <div class="step-hint" id="clip-step-hint"></div>
-        <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
-        <div class="gen-status" id="clip-status"></div>
-        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
-             polling escreve em #clip-status moram só na tela; este bloco relê o último job
-             pronto do banco no boot, então o Word já feito nunca mais "some". -->
-        <div id="clip-last" class="last-clip" hidden></div>
-        <div id="clip-fails" class="fails" hidden></div>
+        <div class="step-hint" id="wa-step-hint"></div>
+        <button class="btn primary" id="wa-gen" disabled>Gerar HTML</button>
+        <div class="gen-status" id="wa-status"></div>
+        <div id="wa-last" class="last-clip" hidden></div>
       </div>
 
     </div>
@@ -696,6 +711,8 @@ function renderSel(){
   const host=document.getElementById('clip-sel'); const cnt=document.getElementById('clip-count');
   if(cnt) cnt.innerHTML='<b>'+S.order.length+'</b> selecionadas';
   const gb=document.getElementById('clip-gen'); if(gb) gb.disabled=!S.order.length;
+  const wb=document.getElementById('wa-gen'), ws=document.getElementById('wa-status');
+  if(wb && !(ws && ws.querySelector('.spin2'))) wb.disabled=!S.order.length;   // não destrava no meio da geração
   const bb=document.getElementById('bl-gen'); if(bb) bb.disabled=!S.order.length;
   if(!host) return;
   if(!S.order.length){ host.innerHTML='<div class="empty">Marque notícias à esquerda para montar o clipping.</div>'; return; }
@@ -1272,10 +1289,10 @@ function blRenderPin(){
 function blRenderSelo(){
   const el=document.getElementById('bl-selo'); if(!el) return;
   const data=blDataRef(), r=blOficialDoDia(data);
-  const hint=document.getElementById('clip-step-hint'), dd=data.split('-').reverse().join('/');
+  const hint=document.getElementById('wa-step-hint'), dd=data.split('-').reverse().join('/');
   if(hint){
     hint.textContent = r ? '✓ o HTML vai com os '+r.destaques.length+' destaques do blast de '+dd
-                         : '⚠ etapa 1 ainda não feita para '+dd+' — o HTML sai sem os destaques (Word e e-mail não mudam)';
+                         : '⚠ blast (etapa 2) ainda não feito para '+dd+' — o HTML sai sem os destaques';
     hint.className='step-hint '+(r?'ok':'warn');
   }
   if(!r){ el.textContent='sem destaques marcados para '+dd; el.className='bl-selo'; return; }
@@ -1329,14 +1346,49 @@ function renderLastJob(job){
       ? '<span class="lc-old">o link expirou (vale '+SIGN_TTL_D+' dias) — gere de novo</span>'
       : '<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
         +(job.eml_path?'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>':'')
-        +waLink(job)
         +(job.preview_path?'<a class="dl ghost" href="'+esc(job.preview_path)+'" target="_blank" rel="noopener">Ver prévia</a>':''));
 }
 async function loadLastJob(){
   try{
     const jobs=(await rpc('admin_get_clipping_jobs',{p_limit:20}))||[];   // já vem em created_at desc
     renderLastJob(jobs.find(j=>j && j.status==='done' && j.docx_path) || null);
+    renderLastWA(jobs.find(j=>j && j.status==='done' && ((j.config||{}).whatsapp||{}).url) || null);
   }catch(e){ console.warn('último clipping', e); }
+}
+
+// ── Etapa 3: HTML do WhatsApp (job só do HTML, depois do Word e do blast) ───────────
+function renderLastWA(job){
+  const host=document.getElementById('wa-last'); if(!host) return;
+  const w=((job&&job.config)||{}).whatsapp||{};
+  if(!job || !w.url){ host.hidden=true; host.innerHTML=''; return; }
+  const quando=job.finished_at||job.updated_at||job.created_at;
+  const venceu=(Date.now()-new Date(quando).getTime())/86400000>SIGN_TTL_D;
+  const dd=(job.ref_date||'').split('-').reverse().join('/');
+  host.hidden=false;
+  host.innerHTML='<span>Último HTML gerado'+(dd?' ('+esc(dd)+')':'')+':</span>'
+    +'<span class="lc-when">'+esc(_fmtBRT(quando))+'</span>'
+    +(venceu ? '<span class="lc-old">o link expirou — gere de novo</span>' : waLink(job));
+}
+async function generateWA(){
+  if(!S.order.length) return;
+  const btn=document.getElementById('wa-gen'), st=document.getElementById('wa-status');
+  btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Enfileirando…';
+  try{
+    const _rd=document.getElementById('cfg-ref-date');
+    const cfg=Object.assign({}, S.config, {whatsapp:{only:true}});
+    const jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:cfg, p_ref_date:(_rd&&_rd.value)||null});
+    st.innerHTML='<span class="spin2"></span> Montando o HTML… (usa o texto que o Word já guardou — ~1 min)';
+    const t0=Date.now();
+    while(Date.now()-t0 < 6*60*1000){
+      await new Promise(r=>setTimeout(r,4000));
+      let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:jobId}))||[])[0]; }catch(e){ continue; }
+      if(!job) continue;
+      if(job.status==='done'){ st.className='gen-status ok'; st.innerHTML='✓ Pronto! '+waLink(job); renderLastWA(job); btn.disabled=false; return; }
+      if(job.status==='error'){ st.className='gen-status err'; st.textContent='O HTML não saiu: '+(job.error||'erro desconhecido'); btn.disabled=false; return; }
+    }
+    st.className='gen-status err'; st.textContent='Demorou demais. O robô (Actions) pode estar iniciando — tente de novo em 1 min.';
+  }catch(e){ st.className='gen-status err'; st.textContent='Erro ao enfileirar: '+(e.message||e); }
+  btn.disabled=false;
 }
 
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
@@ -1366,8 +1418,7 @@ async function pollJob(jobId, st, btn){
       st.className='gen-status ok';
       st.innerHTML='✓ Pronto! '
         +'<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
-        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>'
-        +waLink(job);
+        +'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>';
       btn.disabled=false; renderFailures(job.errors);           // corpos que falharam → colar e regerar
       renderLastJob(job);                                       // substitui o "último gerado"
       return;
@@ -1926,6 +1977,7 @@ function wire(){
   document.getElementById('clip-add').onclick=addManual;
   document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
   document.getElementById('clip-gen').onclick=generate;
+  document.getElementById('wa-gen').onclick=generateWA;
   const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
   const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
   const _rd2=document.getElementById('cfg-ref-date'); if(_rd2) _rd2.addEventListener('change', blRenderSelo);
@@ -1953,7 +2005,7 @@ window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestT
               cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
               blEhMinerioPreco, blSgxFrase, blComSgx, blBuild,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl,
-              renderLastJob, waLink };
+              renderLastJob, waLink, renderLastWA, generateWA, generate };
 
 ;(async()=>{
   wire();
