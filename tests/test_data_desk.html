@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Data Desk — testes do núcleo (data-desk.js)</title>
+<!-- Abrir pelo servidor de testes (ex.: http://127.0.0.1:8791/tests/test_data_desk.html). Sem Node: roda no navegador.
+     O resultado fica em window.__RESULT = {pass, fail, falhas[]} e na tela. Só exercita IBBADesk.core (não toca na tela). -->
+<style>body{font:13px/1.5 system-ui;margin:24px;max-width:900px} .ok{color:#1c7c45} .no{color:#b83227;font-weight:700} h1{font-size:16px}</style>
+<h1>Data Desk — núcleo</h1><pre id="out"></pre>
+<script src="../data-desk.js"></script>
+<script>
+const C = IBBADesk.core, R = { pass: 0, fail: 0, falhas: [] }, lines = [];
+function eq(nome, a, b) { const ok = JSON.stringify(a) === JSON.stringify(b); ok ? R.pass++ : (R.fail++, R.falhas.push(nome)); lines.push((ok ? '✓ ' : '✗ ') + nome + (ok ? '' : '\n     obtido:   ' + JSON.stringify(a) + '\n     esperado: ' + JSON.stringify(b))); }
+function near(nome, a, b, tol) { const ok = a != null && Math.abs(a - b) <= (tol || 1e-9); ok ? R.pass++ : (R.fail++, R.falhas.push(nome)); lines.push((ok ? '✓ ' : '✗ ') + nome + (ok ? '' : '  obtido ' + a + ' · esperado ' + b)); }
+
+// ── eixo e alinhamento ──
+const ax = C.axis('2023-11', '2026-10');
+eq('eixo: 36 meses contínuos', [ax.length, ax[0], ax[2], ax[35]], [36, '2023-11', '2024-01', '2026-10']);
+eq('alinhar: buraco vira null', C.align({ '2023-11': 1, '2024-01': 3 }, C.axis('2023-11', '2024-01')), [1, null, 3]);
+
+// ── períodos: só os completos ──
+const PM = C.buildPeriods(ax, 'monthly'), PQ = C.buildPeriods(ax, 'quarterly'), PA = C.buildPeriods(ax, 'annual');
+eq('mensal: rótulo Oct-26 e chave 2026-10', [PM[35].label, PM[35].key], ['Oct-26', '2026-10']);
+eq('trimestral: 4T23 (2 meses) e 4T26 (1 mês) ficam de fora', [PQ.length, PQ[0].label, PQ[PQ.length - 1].label], [11, '1Q24', '3Q26']);
+eq('trimestral: rótulo em inglês e chave canônica', [PQ[3].label, PQ[3].key, PQ[3].a, PQ[3].b], ['4Q24', '2024-Q4', 11, 13]);
+eq('anual: só 2024 e 2025 (2023 e 2026 incompletos)', PA.map(p => p.label), ['2024', '2025']);
+const PQp = C.buildPeriods(ax, 'quarterly', true), PAp = C.buildPeriods(ax, 'annual', true);
+eq('parcial (a pedido): o trimestre em andamento entra no fim, marcado', [PQp.length, PQp[PQp.length - 1].label, PQp[PQp.length - 1].partial, PQp[PQp.length - 1].months, PQp[0].label], [12, '4Q26 QTD', true, 1, '1Q24']);
+eq('parcial anual: 2026 YTD com 10 meses; 2023 (início incompleto) continua de fora', [PAp.map(p => p.label), PAp[2].months, PAp[2].a, PAp[2].b], [['2024', '2025', '2026 YTD'], 10, 26, 35]);
+eq('LTM não existe no período parcial (o trimestre cheio anterior soma 4 × 3 meses)', C.aggregators(PQp, 4).ltm.sum(ax.map(() => 1)).slice(-2), [12, null]);
+eq('mensal nunca tem parcial', C.buildPeriods(ax, 'monthly', true).length, 36);
+eq('períodos por ano', [C.perYear('monthly'), C.perYear('quarterly'), C.perYear('annual')], [12, 4, 1]);
+
+// ── janelas (mesmas regras da tela antiga, exceto o YTD) ──
+const last = ax.length - 1;
+eq('3M = do último mês para trás, com o mês de corte (4 pontos)', C.monthWindow(ax, last, { win: '3m' }), [32, 35]);
+eq('1Y = 13 pontos (mesmo mês do ano anterior incluído)', C.monthWindow(ax, last, { win: '1y' }), [23, 35]);
+eq('5Y maior que a série = série inteira', C.monthWindow(ax, last, { win: '5y' }), [0, 35]);
+eq('All', C.monthWindow(ax, last, { win: 'all' }), [0, 35]);
+eq('YTD = ano do ÚLTIMO DADO (não do relógio)', C.monthWindow(ax, last, { win: 'ytd' }), [26, 35]);
+eq('YTD com o último dado em dezembro = o ano inteiro daquele dado', C.monthWindow(C.axis('2023-01', '2025-12'), 35, { win: 'ytd' }), [24, 35]);
+eq('intervalo livre: de/até', C.monthWindow(ax, last, { win: 'custom', from: '2024-03', to: '2025-02' }), [4, 15]);
+eq('intervalo livre: só "de"', C.monthWindow(ax, last, { win: 'custom', from: '2026-01', to: null }), [26, 35]);
+eq('intervalo livre: fora da série não quebra', C.monthWindow(ax, last, { win: 'custom', from: '2030-01', to: '2031-01' }), [35, 35]);
+eq('trimestres mostrados = os que TERMINAM na janela', C.periodWindow(PQ, 23, 35).map(i => PQ[i].label), ['4Q25', '3Q26']);
+eq('anos mostrados na janela inteira', C.periodWindow(PA, 0, 35).map(i => PA[i].label), ['2024', '2025']);
+eq('janela sem período completo cai no último período disponível', C.periodWindow(PA, 33, 35), [1, 1]);
+
+// ── agregadores ──
+const v = ax.map((_, i) => i + 1);                    // 1..36
+const AQ = C.aggregators(PQ, 4), AM = C.aggregators(PM, 12), AA = C.aggregators(PA, 1);
+eq('soma trimestral', AQ.level.sum(v).slice(0, 2), [3 + 4 + 5, 6 + 7 + 8]);
+eq('último do trimestre', AQ.level.last(v).slice(0, 2), [5, 8]);
+eq('soma anual', AA.level.sum(v), [(3 + 14) * 12 / 2, (15 + 26) * 12 / 2]);
+const vn = v.slice(); vn[4] = null;
+eq('mês faltando zera o trimestre (não soma pela metade)', AQ.level.sum(vn)[0], null);
+eq('LTM mensal: soma de 12 meses, null antes', [AM.ltm.sum(v)[10], AM.ltm.sum(v)[11], AM.ltm.sum(v)[12]], [null, 78, 90]);
+eq('LTM trimestral: 4 trimestres', AQ.ltm.sum(v)[3], 12 + 21 + 30 + 39);
+near('LTM de série "último": média dos 12 meses', AM.ltm.last(v)[11], 6.5);
+const F = C.F;
+eq('razão: receita ÷ volume do período', F.div(AQ.level.sum(v.map(x => x * 2)), AQ.level.sum(v), 1000)[0], 2000);
+eq('divisão por zero ou null = null', F.div([1, 2, null], [0, 4, 5]), [null, 0.5, null]);
+eq('diferença com null', F.sub([5, null, 3], [1, 2, null]), [4, null, null]);
+
+// ── variações, faixa e formatação ──
+near('variação % entre períodos', C.change([100, 110], 1, 1), 10);
+eq('variação em pp para percentuais', C.change([20.5, 23], 1, 1, { pp: true }), 2.5);
+eq('variação sem base = null', C.change([0, 5], 1, 1), null);
+eq('variação com buraco = null', C.change([null, 5], 1, 1), null);
+const rg = C.rangeN([5, 1, 9, 4, 7], 4, 5);
+eq('faixa de 5 anos: mínimo, máximo, posição e ranking', [rg.mn, rg.mx, rg.pos, rg.rank, rg.n], [1, 9, 0.75, 2, 5]);
+eq('faixa ignora buracos', C.rangeN([null, 2, null, 6], 3, 60).n, 2);
+eq('último índice com dado', [C.lastIdx([1, 2, null]), C.lastIdx([null, null])], [1, -1]);
+eq('milhar com vírgula (en-US) e traço no vazio', [C.fmt(1234567.8, 0), C.fmt(12.345, 1), C.fmt(null, 0)], ['1,234,568', '12.3', '—']);
+eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ pp: true }, -1.26), C.chgTxt({ diff: true, dec: 0 }, 79.4), C.chgTxt({}, null)], ['+12.3%', '−1.3 pp', '+79', '—']);
+
+document.getElementById('out').innerHTML = lines.map(l => '<span class="' + (l[0] === '✓' ? 'ok' : 'no') + '">' + l.replace(/</g, '&lt;') + '</span>').join('\n') + '\n\n' + R.pass + ' passaram · ' + R.fail + ' falharam';
+window.__RESULT = R;
+</script>

@@ -33,6 +33,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <!-- Acabamento dos gráficos (nov/2026): só aparência; depois do Chart.js e antes do script da página. -->
 <script src="/ibba-charts.js"></script>
+<!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
+<script src="/data-desk.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -445,6 +447,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
 <link rel="stylesheet" href="/ibba-design.css"/>
+<!-- Data Desk (nov/2026): estilo da mesa de leitura; só vale com a chave data_desk (html.desk-on). -->
+<link rel="stylesheet" href="/data-desk.css"/>
 </head>
 <body>
 
@@ -480,6 +484,7 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
 <!-- SECONDARY NAV -->
 <div class="secondary-nav" id="pp-subnav">
+  <button class="snav-btn dk-only" data-sub="overview" onclick="setSub('overview',{anim:1})">Overview</button>
   <button class="snav-btn active" data-sub="pulp"      onclick="setSub('pulp',{anim:1})">Pulp</button>
   <button class="snav-btn"        data-sub="paper"     onclick="setSub('paper',{anim:1})">Paper &amp; Packaging</button>
   <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
@@ -796,6 +801,9 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </div>
 
 
+<!-- ══ DATA DESK: a mesa de leitura (chave data_desk). Vazia e oculta enquanto a chave estiver desligada. ══ -->
+<div id="desk-root" class="section"></div>
+
 <div class="note-bar">
   Sources: <em>IBÁ</em> (pulp &amp; paper production, sales, trade, apparent consumption) ·
   <em>SECEX/MDIC</em> (pulp export volumes &amp; FOB value by customs port) ·
@@ -819,7 +827,7 @@ try{
 }catch(e){ console.warn('IBBASlide:',e); }
 // A página IGNORAVA a #âncora: "P&P ▾ → Paper & Packaging" (ou o cartão da home) abria sempre em Pulp.
 // Agora a seção da âncora vale na abertura (_presetSection + loadDB) e na troca estando já aqui.
-function _hashSub(){ const s=(location.hash||'').slice(1); return ['pulp','paper'].includes(s)?s:''; }
+function _hashSub(){ const s=(location.hash||'').slice(1); return ['pulp','paper'].concat(document.documentElement.classList.contains('desk-on')?['overview']:[]).includes(s)?s:''; }
 function _presetSection(){
   try{
     const s=_hashSub();
@@ -849,6 +857,7 @@ window.addEventListener('hashchange',()=>{
   // (baseOpts manda datalabels:{display:false}) e ele pesava ~8% em cada atualização de gráfico.
   // O display:false fica no baseOpts de propósito: se alguém voltar com o complemento, nada aparece sozinho.
   loadDB()
+  applyDeskFlag()   // chave data_desk: admin vê a mesa; cliente só com a chave ligada
   initDownloads()   // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
@@ -1217,7 +1226,7 @@ async function loadDB(){
     } else if(window.innerWidth<=768){
       showMobPicker();
     } else {
-      setSub(_hashSub()||'pulp');   // a #âncora agora vale (antes: render() sempre em Pulp)
+      setSub(_hashSub()||(_deskOn?'overview':'pulp'));   // com a mesa, a aba abre no Overview   // a #âncora agora vale (antes: render() sempre em Pulp)
     }
   }catch(e){
     el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
@@ -1577,6 +1586,7 @@ document.addEventListener('click',e=>{
 //  RENDER — PULP
 // ═══════════════════════════════════════════════════════════════════════════
 function renderPulp(){
+  if(_deskRender()) return;   // Data Desk: a mesa cuida desta seção (chave data_desk)
   if(pulpTab==='gacc') renderGacc();
   else                 renderPulpSecex();   // IBÁ removido (dado descontinuado) → default SECEX
 }
@@ -1808,7 +1818,7 @@ function paperField(base){
   const suf=currentProd==='total'?'total':currentProd;
   return`${base}_${suf}`;
 }
-function renderPaper(){ if(paperTab==='corrugated') renderEmpapel(); else renderPaperIba(); }
+function renderPaper(){ if(_deskRender()) return; if(paperTab==='corrugated') renderEmpapel(); else renderPaperIba(); }
 function renderPaperIba(){
   const gradeLbl=currentProd==='total'?'':PAPER_GRADE_LBL[currentProd];
   document.getElementById('pa-prod-sub').textContent=currentProd==='total'
@@ -2035,8 +2045,186 @@ function renderCompanies(){
   ],{...LEG,...YINT});
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DATA DESK — a "mesa de leitura" (chave data_desk · plano em IBBA-Dashboard/data-desk/PLANO.md)
+//  Igual ao M&M: com a chave DESLIGADA nada daqui muda a tela. Com ela ligada (ou admin), cada seção é
+//  desenhada pelo motor data-desk.js. Os filtros são os mesmos botões e funções de sempre (setProd,
+//  setGran, setWin, setCustomRange, setPulpTab, setPaperTab): a mesa só lê o estado e redesenha.
+//  Conferência: ?desk=0 força a tela antiga · ?desk=1 força a mesa (só admin ou máquina local).
+// ═══════════════════════════════════════════════════════════════════════════
+let _deskOn=false, DESK=null, _frP=null;
+function _flagsRole(){ return _frP||(_frP=Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])); }
+const _deskLocal=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function _deskParam(){ try{ return new URLSearchParams(location.search).get('desk'); }catch(e){ return null; } }
+function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('desk-on',_deskOn); }
+(function(){ const q=_deskParam(); let on=false; try{ on=localStorage.getItem('ibba_desk')==='1'; }catch(e){}
+  if(q==='0') on=false; else if(q==='1'&&_deskLocal) on=true; _deskSet(on); })();
+async function applyDeskFlag(){
+  try{
+    const [fl, role] = await _flagsRole()
+    const isAdmin = !!(role && !role.error && role.data === 'admin')
+    const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='data_desk') : null
+    const q = _deskParam()
+    const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
+    try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
+    if(on!==_deskOn){ _deskSet(on); if(_dbReady) render(); }
+  }catch(e){}
+}
+function _deskKey(){ return currentSub==='pulp' ? (pulpTab==='gacc'?'pulp-gacc':'pulp-secex') : currentSub==='paper' ? (paperTab==='corrugated'?'paper-corr':'paper-iba') : currentSub; }
+/* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
+function _deskRender(){
+  const root=document.getElementById('desk-root'); if(!root) return false;
+  const picker=document.body.classList.contains('mob-picker-active'), key=_deskKey();
+  const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(key);
+  const legacy=document.getElementById('sec-'+currentSub), fb=document.querySelector('.filter-bar');
+  if(fb) fb.style.display=(use&&key==='overview')?'none':'';   // o Overview não usa filtros
+  if(!use){
+    if(root.classList.contains('active')){ root.classList.remove('active'); if(legacy&&!picker) legacy.classList.add('active'); }
+    if(DESK&&DESK.cur) DESK.hide();
+    return false;
+  }
+  document.querySelectorAll('.section.active').forEach(d=>{ if(d!==root) d.classList.remove('active'); });
+  root.classList.add('active');
+  DESK.show(key);
+  return true;
+}
+const _ppC={};
+function _ppMap(arr,f,scale){ const o={}; (arr||[]).forEach(r=>{ const v=r[f]; if(v!=null) o[r.period]=(o[r.period]||0)+(scale?v*scale:v); }); return o; }
+function _ppSum(maps){ const o={}; maps.forEach(m=>{ for(const k in m) o[k]=(o[k]||0)+m[k]; }); return o; }
+/* entidades (porto, destino…) com DUAS medidas — volume e receita —, todas as da base, por relevância (últimos 36 meses de volume) */
+function _ppEnt(key,rows,field,keep){
+  if(_ppC[key]) return _ppC[key];
+  const v={}, r={}; let last='';
+  rows.forEach(x=>{ if(keep&&!keep(x)) return; const n=x[field]||'—'; (v[n]=v[n]||{})[x.period]=(v[n][x.period]||0)+(x.volume_ktons||0);
+    (r[n]=r[n]||{})[x.period]=(r[n][x.period]||0)+(x.revenue_usd_mn||0); if(x.period>last) last=x.period; });
+  const d=new Date(+last.slice(0,4),+last.slice(5,7)-1-35,1), cut=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const sc=Object.keys(v).map(n=>{ let rec=0,tot=0; for(const p in v[n]){ tot+=v[n][p]; if(p>=cut) rec+=v[n][p]; } return [n,rec,tot]; }).sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
+  return (_ppC[key]={names:sc.map(x=>x[0]), maps:sc.map(x=>v[x[0]]), maps2:sc.map(x=>r[x[0]])});
+}
+/* woodchips (GACC): o Total vem da FONTE (linha 'Total'); os fornecedores nomeados são os 10 da base */
+function _ppGacc(prod){
+  const fib=(prod==='hw'||prod==='sw')?prod:'total', key='gacc|'+fib; if(_ppC[key]) return _ppC[key];
+  const tv={}, tr={}, v={}, r={}; GACC_COUNTRIES.forEach(c=>{ v[c]={}; r[c]={}; });
+  GACC.forEach(x=>{ if(!gaccMatch(x,fib)) return;
+    if(x.country==='Total'){ tv[x.period]=(tv[x.period]||0)+(x.volume_bdmt||0); tr[x.period]=(tr[x.period]||0)+(x.revenue_usd_mn||0); }
+    else if(v[x.country]){ v[x.country][x.period]=(v[x.country][x.period]||0)+(x.volume_bdmt||0); r[x.country][x.period]=(r[x.country][x.period]||0)+(x.revenue_usd_mn||0); } });
+  return (_ppC[key]={names:GACC_COUNTRIES.slice(), maps:GACC_COUNTRIES.map(c=>v[c]), maps2:GACC_COUNTRIES.map(c=>r[c]), total:tv, total2:tr});
+}
+function _desk(){
+  if(DESK) return DESK; if(!window.IBBADesk||!window.Chart) return null;
+  const F=IBBADesk.core.F;
+  const cid2key=cid=>cid==='dk-stage-cv'?'stage':cid==='dk-who-cv'?'who':'mini:'+String(cid).replace('dk-mini-','');
+  const WHERE={'pulp-secex':['pulp','secex'],'pulp-gacc':['pulp','gacc'],'paper-iba':['paper','iba'],'paper-corr':['paper','corrugated']};
+  const tabs=(sub,cur)=>sub==='pulp'
+    ? [{label:'Exports — SECEX', current:cur==='secex', onPick:()=>setPulpTab('secex',{anim:1})},{label:'Woodchips — GACC', current:cur==='gacc', onPick:()=>setPulpTab('gacc',{anim:1})}]
+    : [{label:'Fundamentals — IBÁ', current:cur==='iba', onPick:()=>setPaperTab('iba',{anim:1})},{label:'Corrugated — Empapel', current:cur==='corrugated', onPick:()=>setPaperTab('corrugated',{anim:1})}];
+  const gl=x=>x.prod==='total'?'':' — '+PAPER_GRADE_LBL[x.prod];
+  const pmap=(base,x)=>_ppMap(PAPER,base+'_'+x.prod);
+  const fibL=x=>x.prod==='hw'?' — Hardwood':x.prod==='sw'?' — Softwood':'';
+  DESK=IBBADesk.mount({
+    sector:'pp', root:'#desk-root',
+    state:()=>({prod:currentProd, gran:currentGran, win:currentWin, from:customRange.from, to:customRange.to}),
+    setRange:(f,t)=>{ document.getElementById('win-from').value=f; document.getElementById('win-to').value=t; setCustomRange(); },
+    goto:it=>{ const m=WHERE[it.sec]; DESK.select(it.sec,it.metric); currentProd=it.prod||'total';
+      if(m[0]==='pulp'){ pulpTab=m[1]; document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===m[1]));
+        ['secex','gacc'].forEach(t=>document.getElementById('pl-tab-'+t).classList.toggle('active',t===m[1])); }
+      else { paperTab=m[1]; document.querySelectorAll('[data-patab]').forEach(b=>b.classList.toggle('active',b.dataset.patab===m[1]));
+        ['iba','corrugated'].forEach(t=>document.getElementById('pa-tab-'+t).classList.toggle('active',t===m[1])); }
+      setSub(m[0],{anim:1}); },
+    afterRender:d=>{ if(!window.IBBAExport) return;
+      IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
+        prefix:'pp', fullAOA:cid=>d.fullAOA(cid2key(cid)), titleOf:cid=>d.titleOf(cid2key(cid)), alwaysVisible:true}); },
+    sections:{
+      /* PULP › EXPORTS (SECEX): pl-vol, pl-yoy, pl-rev, pl-price, pl-vwd, pl-port, pl-dest, pl-seas + os 4 KPIs */
+      'pulp-secex':{
+        label:'Pulp exports', src:'SECEX', stage:'vol', tiles:['vol','rev','price','vol:ytd','china'], views:tabs('pulp','secex'),
+        metrics:[
+          {id:'vol', label:'Pulp export volume', ytdLabel:'export volume', unit:'kt', dec:0, flow:true, note:'SECEX · all ports',
+            comp:()=>({v:_ppMap(SECEX,'volume_ktons')}), calc:(A,c)=>A.sum(c.v)},
+          {id:'rev', label:'Pulp export revenue', unit:'US$ mn', dec:0, flow:true, note:'SECEX · FOB value',
+            comp:()=>({r:_ppMap(SECEX,'revenue_usd_mn')}), calc:(A,c)=>A.sum(c.r)},
+          {id:'price', label:'Average export price', unit:'US$/t', dec:0, note:'SECEX · revenue ÷ volume',
+            comp:()=>({r:_ppMap(SECEX,'revenue_usd_mn'), v:_ppMap(SECEX,'volume_ktons')}), calc:(A,c)=>F.div(A.sum(c.r),A.sum(c.v),1000)},
+          {id:'vwd', label:'Volume per working day', unit:'kt/day', dec:1, noAvg:true, note:'SECEX · volume ÷ Brazilian working days · normalises month length',
+            comp:()=>{ const v=_ppMap(SECEX,'volume_ktons'), w={}; for(const p in v) if(CAL[p]) w[p]=CAL[p]; return {v, w}; }, calc:(A,c)=>F.div(A.sum(c.v),A.sum(c.w))},
+          {id:'china', label:'China share of volume', unit:'%', dec:1, pp:true, available:()=>DEST.length>0,
+            comp:()=>{ const e=_ppEnt('dest|total',DEST,'country'), k=e.names.indexOf('China'); return {l:k>=0?e.maps[k]:{}, t:_ppSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+        ],
+        who:[
+          {id:'port', label:'Ports', tab:'By port', noun:'ports', unit:'kt', unit2:'US$ mn', title:'Pulp exports by port', rankByMode:true,
+            modes:[['volume','Volume (kton)'],['revenue','Revenue (US$ mn)'],['share','Share (%)']], entities:()=>_ppEnt('port',SECEX,'port')},
+          {id:'dest', label:'Countries', tab:'By destination', noun:'destinations', lead:'China', unit:'kt', unit2:'US$ mn', title:'Pulp exports by destination', available:()=>DEST.length>0,
+            modes:[['volume','Volume (kton)'],['revenue','Revenue (US$ mn)'],['share','Share (%)'],['price','Avg price (US$/t)']], priceK:1000, priceUnit:'US$/t', allLabel:'All destinations',
+            pills:()=>DEST_PRODUCTS.map(d=>({k:d.k,l:d.l})), entities:(x,pill)=>{ const pr=pill?pill.k:'total'; return _ppEnt('dest|'+pr,DEST,'country',pr==='total'?null:r=>r.product===pr); }},
+        ],
+      },
+      /* PULP › WOODCHIPS (GACC): gc-ctry, gc-yoy, gc-price, gc-seas + os 4 KPIs */
+      'pulp-gacc':{
+        label:'Woodchips — China imports', src:'GACC', stage:'vol', tiles:['vol','price','vol:ytd','vn'], views:tabs('pulp','gacc'),
+        metrics:[
+          {id:'vol', label:x=>'Woodchip import volume'+fibL(x), ytdLabel:'import volume', unit:'M BDMT', dec:2, flow:true, note:'GACC (China customs) · total of all suppliers',
+            comp:x=>({v:_ppGacc(x.prod).total}), calc:(A,c)=>A.sum(c.v)},
+          {id:'price', label:x=>'Woodchip import price'+fibL(x), unit:'US$/BDMT', dec:0, note:'GACC · revenue ÷ volume',
+            comp:x=>({r:_ppGacc(x.prod).total2, v:_ppGacc(x.prod).total}), calc:(A,c)=>F.div(A.sum(c.r),A.sum(c.v))},
+          {id:'vn', label:'Vietnam share of volume', unit:'%', dec:0, pp:true,
+            comp:x=>{ const g=_ppGacc(x.prod); return {l:g.maps[g.names.indexOf('Vietnam')], t:g.total}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+        ],
+        who:[
+          {id:'supplier', label:'Suppliers', tab:'By supplier', noun:'suppliers', unit:'M BDMT', dec:2, title:'Woodchip imports by supplier', heading:'Import volume by supplier',
+            modes:x=>x.prod==='sw'?[['volume','Volume (M BDMT)'],['share','Share (%)']]:[['volume','Volume (M BDMT)'],['share','Share (%)'],['price','Import price (US$/BDMT)']],
+            priceK:1, priceMax:1000, priceUnit:'US$/BDMT', allLabel:'Total', defaultSel:()=>GACC_DEFAULT.slice(), entities:x=>_ppGacc(x.prod)},
+        ],
+      },
+      /* PAPER › IBÁ: pa-prod, pa-yoy, pa-dom, pa-cons, pa-exp, pa-imp, pa-pen e as 4 sazonalidades + os KPIs */
+      'paper-iba':{
+        label:'Paper', src:'Ibá', stage:'prod', tiles:['prod','dom','cons','pen','prod:ytd'], views:tabs('paper','iba'),
+        metrics:[
+          {id:'prod', label:x=>'Paper production'+gl(x), ytdLabel:'production', unit:'kt', dec:0, flow:true, note:x=>x.prod==='total'?'IBÁ · the split by grade is in "By grade" below':'IBÁ · '+PAPER_GRADE_LBL[x.prod],
+            comp:x=>({v:pmap('prod',x)}), calc:(A,c)=>A.sum(c.v)},
+          {id:'dom', label:x=>'Domestic sales'+gl(x), unit:'kt', dec:0, flow:true, note:'IBÁ', comp:x=>({v:pmap('dom',x)}), calc:(A,c)=>A.sum(c.v)},
+          {id:'cons', label:'Apparent consumption (all grades)', unit:'kt', dec:0, flow:true, note:'IBÁ · production + imports − exports · published for the total of paper only',
+            comp:()=>({v:_ppMap(PAPER,'app_cons')}), calc:(A,c)=>A.sum(c.v)},
+          {id:'pen', label:'Import penetration', unit:'%', dec:1, pp:true, note:x=>'IBÁ · imports'+gl(x)+' ÷ apparent consumption of all paper',
+            comp:x=>({i:pmap('imp',x), c:_ppMap(PAPER,'app_cons')}), calc:(A,c)=>F.div(A.sum(c.i),A.sum(c.c),100)},
+          {id:'exp', label:x=>'Exports'+gl(x), unit:'kt', dec:0, flow:true, note:'IBÁ', comp:x=>({v:pmap('exp',x)}), calc:(A,c)=>A.sum(c.v)},
+          {id:'imp', label:x=>'Imports'+gl(x), unit:'kt', dec:0, flow:true, note:'IBÁ', comp:x=>({v:pmap('imp',x)}), calc:(A,c)=>A.sum(c.v)},
+        ],
+        who:[
+          {id:'grade', label:'Grades', tab:'By grade', noun:'grades', unit:'kt', title:'Paper by grade', heading:'Split by grade', noSelect:true, noOthers:true, top:9, available:x=>x.prod==='total',
+            pillLabel:'Measure', pills:()=>[{k:'prod',l:'Production'},{k:'dom',l:'Domestic sales'},{k:'exp',l:'Exports'},{k:'imp',l:'Imports'}],
+            entities:(x,pill)=>({names:PAPER_GRADES.map(g=>PAPER_GRADE_LBL[g]), maps:PAPER_GRADES.map(g=>_ppMap(PAPER,(pill?pill.k:'prod')+'_'+g))})},
+        ],
+      },
+      /* PAPER › CORRUGATED (Empapel): em-ship, em-yoy, em-expday (+ média 3M), em-ltm, em-seas + os 3 KPIs */
+      'paper-corr':{
+        label:'Corrugated', src:'Empapel', stage:'ship', tiles:['ship','expday','ltm','wd'], views:tabs('paper','corrugated'),
+        metrics:[
+          {id:'ship', label:'Corrugated shipments', unit:'kt', dec:0, flow:true, note:'Empapel', comp:()=>({v:_ppMap(EMPAPEL,'shipments_kton')}), calc:(A,c)=>A.sum(c.v)},
+          {id:'expday', label:'Shipments per working day', unit:'kt/day', dec:2, noAvg:true, ma3:true, note:'Empapel · dashed = 3-month moving average (monthly view)',
+            comp:()=>({v:_ppMap(EMPAPEL,'exp_per_day')}), calc:(A,c)=>A.last(c.v)},
+          {id:'ltm', label:'LTM shipments', unit:'kt', dec:0, noAvg:true, note:'Empapel · trailing 12 months', comp:()=>({v:_ppMap(EMPAPEL,'ltm_shipments')}), calc:(A,c)=>A.last(c.v)},
+          {id:'wd', label:'Working days', unit:'days', dec:0, noAvg:true, pp:true, comp:()=>({v:_ppMap(EMPAPEL,'working_days')}), calc:(A,c)=>A.last(c.v)},
+        ],
+      },
+      /* OVERVIEW — uma linha por indicador do setor */
+      overview:{
+        label:'Overview',
+        overview:[
+          {sec:'pulp-secex',metric:'vol'},{sec:'pulp-secex',metric:'price'},{sec:'pulp-secex',metric:'rev'},{sec:'pulp-secex',metric:'china'},
+          {sec:'pulp-gacc',metric:'vol'},{sec:'pulp-gacc',metric:'price'},{sec:'pulp-gacc',metric:'vn'},
+          {sec:'paper-iba',metric:'prod'},{sec:'paper-iba',metric:'dom'},{sec:'paper-iba',metric:'cons'},{sec:'paper-iba',metric:'pen'},
+          {sec:'paper-corr',metric:'ship'},{sec:'paper-corr',metric:'expday'},
+        ],
+      },
+    },
+  });
+  return DESK;
+}
+
 // ─── RENDER DISPATCH ─────────────────────────────────────────────────────────
 function render(){
+  if(_deskRender()) return;   // Data Desk: a mesa cuida desta seção (chave data_desk)
   if(currentSub==='pulp')      renderPulp();
   if(currentSub==='paper')     renderPaper();
 }
@@ -2091,7 +2279,7 @@ function updateGranVisibility(){
    Packaging o bloco laranja corre NA HORA até a aba; a seção atual sai para o lado oposto (0,2 s) e
    a nova entra pelo lado do clique (0,6 s, curva expo). Só computador e só com {anim:1} (o clique);
    carga, celular e tutorial seguem instantâneos. Com "reduzir movimento", instantâneo também. */
-const SUB_ORDER=['pulp','paper'];
+const SUB_ORDER=['overview','pulp','paper'];   // overview só existe com a mesa (data_desk)
 let _subTok=0;
 function setSub(s,o){
   const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
@@ -2119,6 +2307,7 @@ function setSub(s,o){
   });
 }
 function _setSubNow(s){
+  if(!_deskOn&&s==='overview') s='pulp';   // seção que só existe na mesa
   currentSub=s;
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));

@@ -34,6 +34,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <!-- Acabamento dos gráficos (nov/2026): só aparência; depois do Chart.js e antes do script da página. -->
 <script src="/ibba-charts.js"></script>
+<!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
+<script src="/data-desk.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -595,6 +597,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
 <link rel="stylesheet" href="/ibba-design.css"/>
+<!-- Data Desk (nov/2026): estilo da mesa de leitura; só vale com a chave data_desk (html.desk-on). -->
+<link rel="stylesheet" href="/data-desk.css"/>
 </head>
 <body>
 
@@ -640,10 +644,12 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
+  <button class="snav-btn dk-only" data-sub="overview" onclick="setSub('overview',{anim:1})">Overview</button>
   <button class="snav-btn active" data-sub="prices"   onclick="setSub('prices',{anim:1})">Prices</button>
   <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic',{anim:1})">Domestic Market</button>
   <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports',{anim:1})">Imports</button>
   <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports',{anim:1})">Exports</button>
+  <button class="snav-btn dk-only" data-sub="ore"      onclick="setSub('ore',{anim:1})">Iron Ore</button>
   <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
@@ -1008,6 +1014,9 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 </div>
 
 
+<!-- ══ DATA DESK: a mesa de leitura (chave data_desk). Vazia e oculta enquanto a chave estiver desligada. ══ -->
+<div id="desk-root" class="section"></div>
+
 <div class="note-bar">
   Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
   <em>SECEX/MDIC</em> (foreign trade by NCM/category) · <em>INDA</em> (flat distributors) ·
@@ -1053,16 +1062,18 @@ window.addEventListener('hashchange',()=>{
   // O display:false fica no baseOpts de propósito: se alguém voltar com o complemento, nada aparece sozinho.
   loadDB()
   applyPredFlag()
+  applyDeskFlag()      // chave data_desk: admin vê a mesa; cliente só com a chave ligada
   initDownloads()      // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
 // flag 'pred_model' (admin → Funcionalidades): off + cliente → esconde a sub-aba Predictive Model. Admin sempre vê.
 async function applyPredFlag(){
   try{
-    const [fl, role] = await Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])
+    const [fl, role] = await _flagsRole()   // a mesma resposta serve à chave data_desk (uma busca só)
     const isAdmin = !!(role && !role.error && role.data === 'admin')
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='pred_model') : null
     const on = f ? !!f.enabled : true
+    _predHidden = !(on || isAdmin)
     if(on || isAdmin) return
     const btn = document.querySelector('.itab[data-itab="prediction"]'); if(btn) btn.style.display='none'
     const content = document.getElementById('im-tab-prediction'); if(content) content.style.display='none'
@@ -1085,6 +1096,7 @@ let predProduct   = 'HRC';          // 'HRC'|'CRC'|'Coated'
 let PROD=[], CONS=[], EXPI=[], IMPI=[], DOM=[];
 let SEEXP={}, SEIMP={};
 let INDA=[];
+let ORE=[], OREP=[];      // minério de ferro (Data Desk): exportação por destino e por porto — já vinham no banco web
 let PRED={};
 let PRED_EXP={};
 let SCTY={exp:{},imp:{}};   // secex_country: todas as categorias por direção
@@ -1556,6 +1568,8 @@ async function loadDB(){
       r.long_incl=(r.long_prod==null&&r.billets==null)?null:((r.long_prod||0)+(r.billets||0));
     }
     INDA=toObj(db.exec(`SELECT period,year,month,inventories,inv_months,purchases,sales,inv_yoy,hist_avg,sales_ltm,sales_ma3 FROM inda_distribution ORDER BY period`)[0]);
+    try{ ORE =toObj(db.exec(`SELECT period,product,country,volume_ktons,revenue_usd_mn FROM secex_iron_ore WHERE direction='exp' ORDER BY period`)[0]);
+         OREP=toObj(db.exec(`SELECT period,product,port,volume_ktons,revenue_usd_mn FROM secex_iron_ore_port ORDER BY period`)[0]); }catch(e){ ORE=[]; OREP=[]; }
     // "Data through …" na barra: até quando vai cada base (o mesmo MAX(period) que o painel de admin lê)
     try{
       const _last=t=>{ try{ const r=db.exec(`SELECT MAX(period) FROM ${t}`); return (r[0]&&r[0].values[0][0])||null; }catch(e){ return null; } };
@@ -1589,10 +1603,10 @@ async function loadDB(){
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
     _dbReady=true;         // a partir daqui a #âncora pode trocar de seção (hashchange)
     // Seção inicial: ?s= (legado) OU hash (#prices vindo da home) OU 'prices'.
-    const _valid=['exports','imports','domestic','prices'];
+    const _valid=['exports','imports','domestic','prices'].concat(_deskOn?['overview','ore']:[]);
     const urlSec=new URLSearchParams(window.location.search).get('s');
     const hashSec=(location.hash||'').replace('#','');
-    const initSub=_valid.includes(urlSec)?urlSec:(_valid.includes(hashSec)?hashSec:'prices');
+    const initSub=_valid.includes(urlSec)?urlSec:(_valid.includes(hashSec)?hashSec:(_deskOn?'overview':'prices'));   // com a mesa, a aba abre no Overview
     if(window.innerWidth<=768){
       showMobPicker();
     } else {
@@ -2109,6 +2123,7 @@ function renderImportsSECEX(){
 }
 
 function renderPrediction(){
+  if(_deskRender()) return;   // Data Desk: o modelo preditivo também tem a sua mesa (mesmos controles de produto e lag)
   const pp=predProduct;
   const PRED_MIN='2022-01';  // recorta o eixo: a linha preta (export) so tem acumulados (3M/12M) cheios a partir de 2022
 
@@ -2512,8 +2527,275 @@ function renderPrices(){
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)+'%'}}}});
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DATA DESK — a "mesa de leitura" (chave data_desk · plano em IBBA-Dashboard/data-desk/PLANO.md)
+//  Com a chave DESLIGADA nada daqui muda a tela: o cliente vê as seções de sempre. Com ela ligada
+//  (ou admin), a seção que já tem catálogo abaixo passa a ser desenhada pelo motor data-desk.js;
+//  as demais continuam nas telas antigas. Os FILTROS são os mesmos botões e as mesmas funções
+//  (setProd, setGran, setWin, setCustomRange): a mesa só lê o estado e redesenha.
+//  Conferência: ?desk=0 força a tela antiga · ?desk=1 força a mesa (só admin ou máquina local).
+// ═══════════════════════════════════════════════════════════════════════════
+let _deskOn=false, DESK=null, _predHidden=false, _frP=null;
+function _flagsRole(){ return _frP||(_frP=Promise.all([sbAuth.rpc('get_dashboard_flags'), sbAuth.rpc('get_my_role')])); }
+const _deskLocal=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function _deskParam(){ try{ return new URLSearchParams(location.search).get('desk'); }catch(e){ return null; } }
+function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('desk-on',_deskOn); }
+// palpite antes do 1º desenho (evita piscar a tela antiga): o que valeu na última visita
+(function(){ const q=_deskParam(); let on=false; try{ on=localStorage.getItem('ibba_desk')==='1'; }catch(e){}
+  if(q==='0') on=false; else if(q==='1'&&_deskLocal) on=true; _deskSet(on); })();
+async function applyDeskFlag(){
+  try{
+    const [fl, role] = await _flagsRole()
+    const isAdmin = !!(role && !role.error && role.data === 'admin')
+    const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='data_desk') : null
+    const q = _deskParam()
+    const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
+    try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
+    if(on!==_deskOn){ _deskSet(on); if(_dbReady) render(); }
+  }catch(e){}
+}
+/* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
+function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ? 'prediction' : currentSub; }
+function _deskRender(){
+  const root=document.getElementById('desk-root'); if(!root) return false;
+  const picker=document.body.classList.contains('mob-picker-active'), key=_deskKey();
+  const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(key);
+  const legacy=document.getElementById('sec-'+currentSub);
+  // o filtro de produto do AÇO não vale em seções com produto próprio (minério) nem no modelo preditivo; o Overview não usa filtros
+  const fb=document.querySelector('.filter-bar'), pb=document.getElementById('prod-btns');
+  const ownProd=use&&(key==='ore'), noBar=use&&key==='overview';
+  if(pb){ [pb.previousElementSibling,pb,pb.nextElementSibling].forEach(e=>{ if(e) e.style.display=ownProd?'none':''; }); }
+  if(fb&&noBar) fb.style.display='none'; else if(fb&&fb.style.display==='none'&&key!=='prediction') fb.style.display='';
+  if(!use){
+    if(root.classList.contains('active')){ root.classList.remove('active'); if(legacy&&!picker) legacy.classList.add('active'); }
+    if(DESK&&DESK.cur) DESK.hide();
+    return false;
+  }
+  document.querySelectorAll('.section.active').forEach(d=>{ if(d!==root) d.classList.remove('active'); });
+  root.classList.add('active');
+  DESK.show(key);
+  return true;
+}
+/* Preço do trimestre/ano = receita ÷ volume do período (decisão do usuário em 18/11/2026; a tela antiga usa o preço do
+   ÚLTIMO mês do período, e o P&P já usava receita ÷ volume). 'last' devolve a regra antiga. Mensal = a coluna da fonte. */
+const DESK_PRICE_AGG='ratio';
+function _dkMap(arr,f,scale){ const o={}; (arr||[]).forEach(r=>{ const v=r[f]; if(v!=null) o[r.period]=scale?v*scale:v; }); return o; }
+function _dkSum(maps){ const o={}; maps.forEach(m=>{ for(const k in m) o[k]=(o[k]||0)+m[k]; }); return o; }
+const _dkCats=p=>p==='total'?['flat','long','semi']:[p];
+/* preço do período: mensal = a coluna da fonte; trimestre/ano conforme DESK_PRICE_AGG; LTM = receita ÷ volume dos 12 meses */
+function _dkPrice(A,c,o){ const F=IBBADesk.core.F;
+  if(A.ltm || (o.gran!=='monthly' && DESK_PRICE_AGG==='ratio')) return F.div(A.sum(c.r),A.sum(c.v),1000);
+  return A.last(c.p); }
+const _dkPriceComp=(SRC,p)=>({p:_dkMap(SRC[p],'price_usd_ton'), r:_dkMap(SRC[p],'revenue_usd_mn'), v:_dkMap(SRC[p],'volume_ktons')});
+/* países de um recorte (direção + categorias), TODOS os da base, em ordem de relevância (últimos 36 meses) */
+const _dkEnt={};
+function _dkCountries(dir,cats){
+  const key=dir+'|'+cats.join('+'); if(_dkEnt[key]) return _dkEnt[key];
+  _ensureSCTY();
+  const by={}; let last='';
+  cats.forEach(cat=>(SCTY[dir]?.[cat]||[]).forEach(r=>{ const n=IBBADesk.core.country(trCountry(r.country||'—')), m=by[n]||(by[n]={});   // inglês para TODOS os países (o mapa da página só cobre os principais)
+    m[r.period]=(m[r.period]||0)+(r.volume_ktons||0); if(r.period>last) last=r.period; }));
+  const cut=shiftPeriod(last,-35);
+  const sc=Object.entries(by).map(([n,m])=>{ let rec=0,tot=0; for(const p in m){ tot+=m[p]; if(p>=cut) rec+=m[p]; } return [n,rec,tot]; })
+    .sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
+  return (_dkEnt[key]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
+}
+/* modelo preditivo: os acumulados de N meses como a tela de sempre calcula (rollingN sobre as linhas da base) */
+const _dkPredC={};
+function _dkPred(origin,n,key){
+  const ck=origin+'|'+n+'|'+key; if(_dkPredC[ck]) return _dkPredC[ck];
+  const [pp,dl]=key.split('|'), d=+dl, sx={}, ex={};
+  (origin==='both'?['Korea','China']:[origin]).forEach(o=>{
+    const S=PRED?.[pp]?.[o]||[], X=PRED_EXP?.[pp]?.[o]||[], a=rollingN(S,'volume_kg',n), b=rollingN(X,'volume_kg',n);
+    S.forEach((r,i)=>{ if(a[i]!=null) sx[r.period]=(sx[r.period]||0)+kg2kt(a[i]); });
+    X.forEach((r,i)=>{ if(b[i]!=null){ const p=shiftPeriod(r.period,d); ex[p]=(ex[p]||0)+kg2kt(b[i]); } });
+  });
+  return (_dkPredC[ck]={sx,ex});
+}
+/* minério: mapa mensal de um campo (produto 'total' = Fines + Pellets) e as entidades (destinos ou portos) por relevância */
+function _dkOreMap(prod,f,scale){ const o={}; ORE.forEach(r=>{ if(prod!=='total'&&r.product!==prod) return; const v=r[f]; if(v!=null) o[r.period]=(o[r.period]||0)+(scale?v*scale:v); }); return o; }
+const _dkOreC={};
+function _dkOreEnt(rows,field,prod){
+  const ck=field+'|'+prod; if(_dkOreC[ck]) return _dkOreC[ck];
+  const by={}; let last='';
+  rows.forEach(r=>{ if(prod!=='total'&&r.product!==prod) return; const raw=r[field]||'—', n=field==='country'?IBBADesk.core.country(trCountry(raw)):raw, m=by[n]||(by[n]={});
+    m[r.period]=(m[r.period]||0)+(r.volume_ktons||0); if(r.period>last) last=r.period; });
+  const cut=shiftPeriod(last,-35);
+  const sc=Object.entries(by).map(([n,m])=>{ let rec=0,tot=0; for(const p in m){ tot+=m[p]; if(p>=cut) rec+=m[p]; } return [n,rec,tot]; }).sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
+  return (_dkOreC[ck]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
+}
+function _desk(){
+  if(DESK) return DESK; if(!window.IBBADesk||!window.Chart) return null;
+  const F=IBBADesk.core.F;
+  /* Penetração = (consumo − vendas domésticas) ÷ consumo, as DUAS pontas com placas/tarugos (flat_incl / long_incl).
+     Decisão do usuário em 18/11/2026: a tela antiga subtraía a venda SEM placas/tarugos (DOM.flat / DOM.long_prod) e
+     inflava a penetração de Flat/Long em 0,6 a 2 pp — a mesa usa a conta corrigida (Total não muda). */
+  const consF={total:'total',flat:'flat',long:'long_prod'}, domF={total:'total',flat:'flat_incl',long:'long_incl'};
+  /* subprodutos de cada família (os mesmos de getPillDefs), para chegar a eles direto do Total */
+  const SUBS={flat:[['HRC','hrc'],['CRC','crc'],['Coated','coated'],['Heavy Plate','heavy_plate'],['Others','flat_others']],
+              long:[['Rebar','rebar'],['Bar','bar'],['Wire Rod','wire_rod'],['Shapes','shapes'],['Others','long_others']],
+              semi:[['Ingot/Billet','ingot_billet'],['Slab','placa']]};
+  const subOf=f=>SUBS[f].map(x=>({k:x[0],l:x[0],cats:[x[1]]}));
+  const pillsOf=prod=>prod==='total'
+    ? [{k:'Total',l:'Total',cats:['flat','long','semi']},{k:'Flat',l:'Flat',cats:['flat'],sub:subOf('flat')},{k:'Long',l:'Long',cats:['long'],sub:subOf('long')},{k:'Semi',l:'Semi',cats:['semi'],sub:subOf('semi')}]
+    : getPillDefs().map(d=>({k:d.label,l:d.label,cats:d.cats}));
+  const mixOf=(SRC,prod)=>{ const defs=prod==='total'?[['Flat','flat'],['Long','long'],['Semi','semi']]:SUBS[prod]; return {names:defs.map(x=>x[0]), maps:defs.map(x=>_dkMap(SRC[x[1]],'volume_ktons'))}; };
+  const cid2key=cid=>cid==='dk-stage-cv'?'stage':cid==='dk-who-cv'?'who':'mini:'+String(cid).replace('dk-mini-','');
+  DESK=IBBADesk.mount({
+    sector:'mm', root:'#desk-root',
+    goto:it=>{ const S=DESK.sections[it.sec]; DESK.select(it.sec,it.metric,it.prod);
+      if(!S.prods){ currentProd=it.prod||'total'; updateProdButtons(); originState.exp.pillCat=null; originState.exp.countries=null; originState.imp.pillCat=null; originState.imp.countries=null; }
+      setSub(it.sec,{anim:1}); },
+    state:()=>({prod:currentProd, gran:currentGran, win:currentWin, from:customRange.from, to:customRange.to}),
+    setRange:(f,t)=>{ document.getElementById('win-from').value=f; document.getElementById('win-to').value=t; setCustomRange(); },
+    afterRender:d=>{ if(!window.IBBAExport) return;
+      IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
+        prefix:'steel', fullAOA:cid=>d.fullAOA(cid2key(cid)), titleOf:cid=>d.titleOf(cid2key(cid)), alwaysVisible:true}); },
+    sections:{
+      /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
+         na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
+      prediction:{
+        label:'Imports', stage:'k3', tiles:[], modes:['level'], noBrush:true, fixed:{gran:'monthly', win:'custom', from:'2022-01', to:null},
+        prodKey:()=>predProduct+'|'+predDelay,
+        views:[{label:'SECEX analysis', onPick:()=>setImportTab('secex',{anim:1})},{label:'Predictive model', current:true}],
+        metrics:[].concat(...[['k','Korea','Korea'],['c','China','China'],['b','both','Korea + China']].map(([id,origin,nm])=>[3,12].map(n=>[
+          {id:id+n, label:x=>n+'M cumulative — '+nm+' · '+x.prod.split('|')[0], multi:[id+n+'s',id+n+'e'], multiColors:['orange','ink'],
+            note:x=>'Orange = SECEX imports from '+nm+' · black = '+nm+' exports at origin, shifted +'+x.prod.split('|')[1]+'M. Exports are recorded when shipments depart; SECEX records arrivals about 3 months later. Where the black line runs past the last SECEX reading is the projection zone.'},
+          {id:id+n+'s', label:'SECEX '+nm+' ('+n+'M)', short:'SECEX', unit:'kt', dec:1, noMini:true, noAvg:true, hideInReading:true,
+            comp:x=>({v:_dkPred(origin,n,x.prod).sx}), calc:(A,c)=>A.last(c.v)},
+          {id:id+n+'e', label:x=>nm+' export +'+x.prod.split('|')[1]+'M ('+n+'M)', short:'Export at origin', unit:'kt', dec:1, noMini:true, noAvg:true, hideInReading:true,
+            comp:x=>({v:_dkPred(origin,n,x.prod).ex}), calc:(A,c)=>A.last(c.v)},
+        ]).flat())),
+      },
+      /* IRON ORE — seção nova: exportação brasileira por produto, destino e porto (secex_iron_ore / secex_iron_ore_port) */
+      ore:{
+        label:'Iron Ore', src:'SECEX', stage:'vol', tiles:['vol','price','rev','china','pel'], prods:[{k:'total',l:'Total'},{k:'Fines',l:'Fines'},{k:'Pellets',l:'Pellets'}],
+        metrics:[
+          {id:'vol', label:'Iron ore export volume', unit:'Mt', dec:1, flow:true, note:'SECEX/MDIC · Brazilian exports of iron ore fines and pellets',
+            comp:x=>({v:_dkOreMap(x.prod,'volume_ktons',1/1000)}), calc:(A,c)=>A.sum(c.v)},
+          {id:'price', label:'Export price — implied FOB', unit:'US$/t', dec:1, note:'Derived: SECEX export revenue ÷ export volume of the period. It is not a market quote.',
+            comp:x=>({r:_dkOreMap(x.prod,'revenue_usd_mn'), v:_dkOreMap(x.prod,'volume_ktons')}), calc:(A,c)=>F.div(A.sum(c.r),A.sum(c.v),1000)},
+          {id:'rev', label:'Iron ore export revenue', unit:'US$ bn', dec:2, flow:true, comp:x=>({r:_dkOreMap(x.prod,'revenue_usd_mn',1/1000)}), calc:(A,c)=>A.sum(c.r)},
+          {id:'china', label:'China share of volume', unit:'%', dec:1, pp:true,
+            comp:x=>{ const e=_dkOreEnt(ORE,'country',x.prod), k=e.names.indexOf('China'); return {l:k>=0?e.maps[k]:{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+          {id:'pel', label:'Pellet share of volume', unit:'%', dec:1, pp:true, hideNA:true, available:x=>x.prod==='total',
+            comp:()=>({l:_dkOreMap('Pellets','volume_ktons'), t:_dkOreMap('total','volume_ktons')}), calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+        ],
+        who:[
+          {id:'dest', label:'Destinations', tab:'By destination', noun:'destinations', lead:'China', unit:'kt', title:'Iron ore exports by destination', entities:x=>_dkOreEnt(ORE,'country',x.prod)},
+          {id:'port', label:'Ports', tab:'By port', noun:'ports', unit:'kt', title:'Iron ore exports by port', entities:x=>_dkOreEnt(OREP,'port',x.prod)},
+        ],
+      },
+      /* OVERVIEW — uma linha por indicador do setor; clicar abre a seção com ele no gráfico principal */
+      overview:{
+        label:'Overview',
+        overview:[
+          {sec:'domestic',metric:'prod',src:'IABr'},{sec:'domestic',metric:'sales',src:'IABr'},{sec:'domestic',metric:'cons',src:'IABr'},{sec:'domestic',metric:'pen',src:'IABr'},
+          {sec:'domestic',metric:'invm',prod:'flat',label:'Flat distributors — months of inventory',src:'INDA'},{sec:'domestic',metric:'isales',prod:'flat',label:'Flat distributors — sales',src:'INDA'},
+          {sec:'imports',metric:'vol',src:'SECEX'},{sec:'imports',metric:'price',src:'SECEX'},{sec:'imports',metric:'prem',src:'SECEX'},{sec:'imports',metric:'lead',src:'SECEX'},
+          {sec:'exports',metric:'vol',src:'SECEX'},{sec:'exports',metric:'price',src:'SECEX'},
+          {sec:'ore',metric:'vol',src:'SECEX',isNew:true},{sec:'ore',metric:'price',src:'SECEX',isNew:true},{sec:'ore',metric:'china',src:'SECEX',isNew:true},
+        ],
+      },
+      /* EXPORTS — espelho de Imports (ex-vol, ex-yoy, ex-ctry-a); em Total a composição Flat/Long/Semi mora em "By product" */
+      exports:{
+        label:'Exports', stage:'vol', tiles:['vol','price','rev','lead'],
+        metrics:[
+          {id:'vol', label:'Export volume', unit:'kt', dec:0, flow:true, legacy:['ex-vol','ex-yoy'], note:'SECEX/MDIC · the split by family or product is in "By product" below',
+            comp:x=>({v:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEEXP[c],'volume_ktons')))}), calc:(A,c)=>A.sum(c.v)},
+          {id:'price', label:'Export price (domestic ref.)', unit:'US$/t', dec:0, comp:x=>_dkPriceComp(SEEXP,x.prod), calc:_dkPrice},
+          {id:'rev', label:'Export revenue', unit:'US$ mn', dec:0, flow:true,
+            comp:x=>({r:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEEXP[c],'revenue_usd_mn')))}), calc:(A,c)=>A.sum(c.r)},
+          {id:'lead', label:x=>_dkCountries('exp',_dkCats(x.prod)).names[0]+' share', unit:'%', dec:1, pp:true,
+            comp:x=>{ const e=_dkCountries('exp',_dkCats(x.prod)); return {l:e.maps[0]||{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+        ],
+        who:[
+          {id:'country', label:'Countries', tab:'By country', noun:'countries', unit:'kt', title:'Exports by country',
+            pills:x=>pillsOf(x.prod), entities:(x,pill)=>_dkCountries('exp',pill?pill.cats:_dkCats(x.prod))},
+          {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Exports by product', noSelect:true, noOthers:true, top:9,
+            entities:x=>mixOf(SEEXP,x.prod)},
+        ],
+      },
+      /* PRICES — px-compare (as duas linhas juntas), px-spread (barras verde/vermelho + média), px-imp, px-exp, px-yoy, px-yoy2 */
+      prices:{
+        label:'Prices', stage:'cmp', tiles:['impp','expp','prem'],
+        metrics:[
+          {id:'cmp', label:'Import price vs. domestic reference', multi:['impp','expp'], multiColors:['ink','orange'],
+            note:'SECEX · black = import · orange = export (domestic proxy) · companies benefit when import > domestic'},
+          {id:'impp', label:'Import price', short:'Import', unit:'US$/t', dec:0, note:'SECEX/MDIC · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEIMP,x.prod), calc:_dkPrice},
+          {id:'expp', label:'Domestic reference — export price', short:'Export', unit:'US$/t', dec:0, note:'SECEX/MDIC · export price used as a proxy for the domestic price · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEEXP,x.prod), calc:_dkPrice},
+          {id:'prem', label:'Import premium (import − domestic ref.)', unit:'US$/t', dec:0, diff:true, signBars:true,
+            note:'SECEX · green = imports more expensive than domestic (favorable to companies) · red = imports cheaper (competitive risk) · dashed = average of the window',
+            comp:x=>{ const i=_dkPriceComp(SEIMP,x.prod), e=_dkPriceComp(SEEXP,x.prod); return {p:i.p,r:i.r,v:i.v, ep:e.p,er:e.r,ev:e.v}; },
+            calc:(A,c,o)=>F.sub(_dkPrice(A,c,o), _dkPrice(A,{p:c.ep,r:c.er,v:c.ev},o))},
+        ],
+      },
+      /* DOMESTIC MARKET — IABr (dom-sales, dom-crude, dom-cons, sazonalidades) + INDA só em Flat (di-stock, di-purcsales, di-ltm, di-ma3) */
+      domestic:{
+        label:'Domestic Market', stage:'sales', tiles:['sales','prod','cons','pen','invm','isales'],
+        metrics:[
+          {id:'sales', group:'IABr', label:x=>'Domestic sales — '+IABR_SCOPE[x.prod].tag, short:'Sales', unit:'kt', dec:0, flow:true, note:x=>'IABr · '+IABR_SCOPE[x.prod].sales,
+            comp:x=>({v:_dkMap(DOM,{total:'total',flat:'flat_incl',long:'long_incl',semi:'semi'}[x.prod])}), calc:(A,c)=>A.sum(c.v)},
+          {id:'prod', group:'IABr', label:x=>IABR_SCOPE[x.prod].prodTitle.replace(' (kton)','').replace('IABr ',''), unit:'kt', dec:0, flow:true, note:x=>IABR_SCOPE[x.prod].prodSub,
+            comp:x=>({v:_dkMap(PROD,{total:'crude_steel',flat:'flat',long:'long_prod',semi:'semi'}[x.prod])}), calc:(A,c)=>A.sum(c.v)},
+          {id:'cons', group:'IABr', label:x=>'Apparent consumption — '+IABR_SCOPE[x.prod].fam, unit:'kt', dec:0, flow:true, available:x=>x.prod!=='semi', naText:'IABr has no apparent consumption for semi-finished',
+            comp:x=>({v:_dkMap(CONS,consF[x.prod])}), calc:(A,c)=>A.sum(c.v)},
+          {id:'pen', group:'IABr', label:'Import penetration', unit:'%', dec:1, pp:true, ref:'windowAvg', available:x=>x.prod!=='semi', naText:'IABr has no apparent consumption for semi-finished',
+            note:x=>'IABr · imports ÷ apparent consumption = (apparent consumption − domestic sales) ÷ apparent consumption, '+IABR_SCOPE[x.prod].fam.toLowerCase()+' on both sides · dashed = average of the window',
+            comp:x=>({c:_dkMap(CONS,consF[x.prod]), d:_dkMap(DOM,domF[x.prod])}), calc:(A,c)=>F.div(F.sub(A.sum(c.c),A.sum(c.d)),A.sum(c.c),100)},
+          {id:'invm', group:'INDA — flat steel distributors', label:'Months of inventory', unit:'months', dec:1, pp:true, ref:'windowAvg', noAvg:true, hideNA:true, available:x=>x.prod==='flat', note:'INDA · flat steel distributors · dashed = average of the window',
+            comp:()=>({v:_dkMap(INDA,'inv_months')}), calc:(A,c)=>A.last(c.v)},
+          {id:'inv', group:'INDA — flat steel distributors', label:'Distributor inventory', unit:'kt', dec:0, noAvg:true, hideNA:true, available:x=>x.prod==='flat',
+            comp:()=>({v:_dkMap(INDA,'inventories')}), calc:(A,c)=>A.last(c.v)},
+          {id:'pvs', group:'INDA — flat steel distributors', label:'Distributor purchases vs. sales', multi:['purch','isales'], multiBars:true, hideNA:true, available:x=>x.prod==='flat', note:'INDA · orange = purchases · dark = sales'},
+          {id:'purch', group:'INDA — flat steel distributors', label:'Distributor purchases', short:'Purchases', unit:'kt', dec:0, flow:true, hideNA:true, available:x=>x.prod==='flat',
+            comp:()=>({v:_dkMap(INDA,'purchases')}), calc:(A,c)=>A.sum(c.v)},
+          {id:'isales', group:'INDA — flat steel distributors', label:'Distributor sales', short:'Sales', unit:'kt', dec:0, flow:true, hideNA:true, available:x=>x.prod==='flat',
+            comp:()=>({v:_dkMap(INDA,'sales')}), calc:(A,c)=>A.sum(c.v)},
+          {id:'iltm', group:'INDA — flat steel distributors', label:'Distributor sales — LTM', unit:'kt', dec:0, noAvg:true, hideNA:true, available:x=>x.prod==='flat',
+            comp:()=>({v:_dkMap(INDA,'sales_ltm')}), calc:(A,c)=>A.last(c.v)},
+          {id:'ima3', group:'INDA — flat steel distributors', label:'Distributor sales — 3M average', unit:'kt', dec:0, noAvg:true, hideNA:true, available:x=>x.prod==='flat',
+            comp:()=>({v:_dkMap(INDA,'sales_ma3')}), calc:(A,c)=>A.last(c.v)},
+        ],
+        who:[
+          {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Domestic sales by product', noSelect:true, noOthers:true, top:9, available:x=>x.prod==='total',
+            entities:()=>({names:['Flat (incl. slabs)','Long (incl. billets)'], maps:[_dkMap(DOM,'flat_incl'),_dkMap(DOM,'long_incl')]})},
+        ],
+      },
+      imports:{
+        label:'Imports', stage:'vol', tiles:['vol','price','prem','lead','pen'],
+        views:[{label:'SECEX analysis', current:true},{label:'Predictive model', visible:()=>!_predHidden, onPick:()=>setImportTab('prediction',{anim:1})}],
+        metrics:[
+          {id:'vol', label:'Import volume', unit:'kt', dec:0, flow:true, legacy:['im-vol','im-yoy'], note:'SECEX/MDIC · the split by family or product is in "By product" below',
+            comp:x=>({v:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'volume_ktons')))}), calc:(A,c)=>A.sum(c.v)},
+          {id:'price', label:'Import price', unit:'US$/t', dec:0, comp:x=>_dkPriceComp(SEIMP,x.prod), calc:_dkPrice},
+          {id:'prem', label:'Import premium', unit:'US$/t', dec:0, diff:true, signBars:true,
+            comp:x=>{ const i=_dkPriceComp(SEIMP,x.prod), e=_dkPriceComp(SEEXP,x.prod); return {p:i.p,r:i.r,v:i.v, ep:e.p,er:e.r,ev:e.v}; },
+            calc:(A,c,o)=>F.sub(_dkPrice(A,c,o), _dkPrice(A,{p:c.ep,r:c.er,v:c.ev},o))},
+          {id:'lead', label:x=>_dkCountries('imp',_dkCats(x.prod)).names[0]+' share', unit:'%', dec:1, pp:true,
+            comp:x=>{ const e=_dkCountries('imp',_dkCats(x.prod)); return {l:e.maps[0]||{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
+          {id:'pen', label:'Import penetration', unit:'%', dec:1, pp:true, ref:'windowAvg', available:x=>x.prod!=='semi', naText:'IABr has no apparent consumption for semi-finished',
+            comp:x=>x.prod==='semi'?{}:({c:_dkMap(CONS,consF[x.prod]), d:_dkMap(DOM,domF[x.prod])}), calc:(A,c)=>c.c?F.div(F.sub(A.sum(c.c),A.sum(c.d)),A.sum(c.c),100):[]},
+          {id:'rev', label:'Import revenue', unit:'US$ mn', dec:0, flow:true,
+            comp:x=>({r:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'revenue_usd_mn')))}), calc:(A,c)=>A.sum(c.r)},
+        ],
+        who:[
+          {id:'country', label:'Countries', tab:'By country', noun:'countries', lead:'China', unit:'kt', title:'Imports by country',
+            pills:x=>pillsOf(x.prod),
+            entities:(x,pill)=>_dkCountries('imp',pill?pill.cats:_dkCats(x.prod))},
+          {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Imports by product', noSelect:true, noOthers:true, top:9,
+            entities:x=>mixOf(SEIMP,x.prod)},
+        ],
+      },
+    },
+  });
+  return DESK;
+}
+
 // ─── RENDER DISPATCH ─────────────────────────────────────────────────────────
 function render(){
+  if(_deskRender()) return;   // Data Desk: a mesa cuida desta seção (chave data_desk)
   if(currentSub==='exports')  renderExports();
   if(currentSub==='imports')  renderImports();
   if(currentSub==='domestic') renderDomestic();
@@ -2533,7 +2815,7 @@ function updateGlobalFilters(){
    (0,2 s) e a nova entra pelo lado do clique (0,6 s, curva expo) — o olho entende a direção. Só
    computador e só com {anim:1} (o clique); chamadas do código (carga, celular, tutorial) seguem
    instantâneas. Com "reduzir movimento" ligado, também instantâneo. */
-const SUB_ORDER=['prices','domestic','imports','exports'];
+const SUB_ORDER=['overview','prices','domestic','imports','exports','ore'];   // overview e ore só existem com a mesa (data_desk)
 let _subTok=0;
 function setSub(s,o){
   const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
@@ -2561,6 +2843,7 @@ function setSub(s,o){
   });
 }
 function _setSubNow(s){
+  if(!_deskOn&&(s==='overview'||s==='ore')) s='prices';   // seções que só existem na mesa
   currentSub=s;
   document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
@@ -2601,6 +2884,7 @@ function setImportTab(t,o){
   // Global filter-bar visibility
   updateGlobalFilters();
   renderImports();
+  _deskRender();   // Data Desk: SECEX Analysis volta para a mesa; Predictive Model fica na tela de sempre
   // aba interna: o conteúdo novo entra pelo lado da aba (SECEX à esquerda, Predictive à direita)
   if(anim){
     const c=document.getElementById(t==='secex'?'im-tab-secex':'im-tab-prediction');
