@@ -29,6 +29,23 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 #desk-root button:focus-visible,#desk-root input:focus-visible,#desk-root [tabindex]:focus-visible{outline:2px solid var(--orange);outline-offset:2px;}
 .dk-viewbar{display:flex;align-items:center;gap:10px;}
 
+/* botões de seção que só existem na mesa (Overview, Iron Ore…) */
+.snav-btn.dk-only{display:none;} html.desk-on .snav-btn.dk-only{display:inline-block;}
+.dk-viewbar .dk-plbl{margin-left:6px;}
+/* Overview: uma linha por indicador */
+.dk-ovw{padding:4px 6px;} .dk-tblw{overflow-x:auto;}
+.dk-ov{border-collapse:collapse;width:100%;min-width:780px;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--black);}
+.dk-ov th{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-mid);text-align:right;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.dk-ov th:first-child,.dk-ov td:first-child{text-align:left;}
+.dk-ov td{padding:8px 12px;border-bottom:1px solid var(--dk-grid);text-align:right;white-space:nowrap;}
+.dk-ov tbody tr:last-child td{border-bottom:0;}
+.dk-ov tr[data-ix]{cursor:pointer;} .dk-ov tr[data-ix]:hover{background:var(--dk-panel2);}
+.dk-ov tr.dk-og td{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-dark);padding:14px 12px 6px;border-bottom:1px solid var(--border);}
+.dk-ov tr.dk-og td::before{content:"";display:inline-block;width:16px;height:2px;border-radius:1px;background:var(--orange);vertical-align:middle;margin-right:8px;}
+.dk-src{color:var(--gray-mid);font-size:10.5px;margin-left:6px;font-weight:400;}
+.dk-new{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:0 4px;margin-left:6px;}
+.dk-osp{color:var(--black);} .dk-osp svg{display:block;width:92px;height:22px;margin-left:auto;}
+.dk-ov .dk-rng{width:84px;margin:0 0 0 auto;}
 /* ── números do topo ── */
 .dk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;}
 .dk-tile{position:relative;text-align:left;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:11px 12px 10px;

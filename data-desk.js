@@ -109,7 +109,9 @@
   function cls(v) { return (v == null || !isFinite(v) || v === 0) ? '' : v > 0 ? 'dk-up' : 'dk-dn'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
-  var core = { MON: MON, ymIndex: ymIndex, ymOf: ymOf, axis: axis, align: align, buildPeriods: buildPeriods, perYear: perYear,
+  var COUNTRY_EN = {"Aland, Ilhas": "Åland Islands", "Albânia": "Albania", "Alemanha": "Germany", "Andorra": "Andorra", "Antígua e Barbuda": "Antigua and Barbuda", "Argentina": "Argentina", "Argélia": "Algeria", "Armênia": "Armenia", "Aruba": "Aruba", "Arábia Saudita": "Saudi Arabia", "Austrália": "Australia", "Azerbaijão": "Azerbaijan", "Bahamas": "Bahamas", "Bahrein": "Bahrain", "Bangladesh": "Bangladesh", "Barbados": "Barbados", "Barein": "Bahrain", "Belarus": "Belarus", "Bermudas": "Bermuda", "Bielorrússia": "Belarus", "Bolívia": "Bolivia", "Brasil": "Brazil", "Brunei": "Brunei", "Bulgária": "Bulgaria", "Butão": "Bhutan", "Bélgica": "Belgium", "Bósnia-Herzegovina": "Bosnia and Herzegovina", "Cabo Verde": "Cabo Verde", "Camarões": "Cameroon", "Camboja": "Cambodia", "Canadá": "Canada", "Catar": "Qatar", "Cazaquistão": "Kazakhstan", "Chile": "Chile", "China": "China", "Chipre": "Cyprus", "Christmas (Navidad), Ilha": "Christmas Island", "Cingapura": "Singapore", "Colômbia": "Colombia", "Congo, República Democrática": "DR Congo", "Coreia do Norte": "North Korea", "Coreia do Sul": "South Korea", "Costa Rica": "Costa Rica", "Costa do Marfim": "Côte d'Ivoire", "Coveite": "Kuwait", "Coveite (Kuweit)": "Kuwait", "Croácia": "Croatia", "Cuba": "Cuba", "Curaçao": "Curaçao", "Dinamarca": "Denmark", "Egito": "Egypt", "El Salvador": "El Salvador", "Emirados Árabes Unidos": "UAE", "Equador": "Ecuador", "Eslováquia": "Slovakia", "Eslovênia": "Slovenia", "Espanha": "Spain", "Estados Unidos": "United States", "Estônia": "Estonia", "Etiópia": "Ethiopia", "Filipinas": "Philippines", "Finlândia": "Finland", "França": "France", "Gabão": "Gabon", "Gana": "Ghana", "Geórgia": "Georgia", "Grécia": "Greece", "Guatemala": "Guatemala", "Guiana": "Guyana", "Guiné": "Guinea", "Haiti": "Haiti", "Honduras": "Honduras", "Hong Kong": "Hong Kong", "Hungria": "Hungary", "Ilha de Man": "Isle of Man", "Indonésia": "Indonesia", "Iraque": "Iraq", "Irlanda": "Ireland", "Irã": "Iran", "Islândia": "Iceland", "Itália": "Italy", "Iêmen": "Yemen", "Jamaica": "Jamaica", "Japão": "Japan", "Jordânia": "Jordan", "Laos": "Laos", "Letônia": "Latvia", "Liechtenstein": "Liechtenstein", "Lituânia": "Lithuania", "Luxemburgo": "Luxembourg", "Líbano": "Lebanon", "Líbia": "Libya", "Macau": "Macau", "Macedônia": "North Macedonia", "Malta": "Malta", "Malásia": "Malaysia", "Marrocos": "Morocco", "Marshall, Ilhas": "Marshall Islands", "Mauritânia": "Mauritania", "Maurício": "Mauritius", "Mianmar (Birmânia)": "Myanmar", "Moldávia": "Moldova", "Mongólia": "Mongolia", "Moçambique": "Mozambique", "México": "Mexico", "Mônaco": "Monaco", "Namíbia": "Namibia", "Nepal": "Nepal", "Nicarágua": "Nicaragua", "Nigéria": "Nigeria", "Noruega": "Norway", "Nova Zelândia": "New Zealand", "Não Definido": "Not declared", "Omã": "Oman", "Outros": "Others", "Panamá": "Panama", "Paquistão": "Pakistan", "Paraguai": "Paraguay", "Países Baixos (Holanda)": "Netherlands", "Peru": "Peru", "Polônia": "Poland", "Porto Rico": "Puerto Rico", "Portugal": "Portugal", "Quirguistão": "Kyrgyzstan", "Quênia": "Kenya", "Reino Unido": "United Kingdom", "República Dominicana": "Dominican Republic", "República Tcheca": "Czech Republic", "Reunião": "Réunion", "Romênia": "Romania", "Rússia": "Russia", "Rússia, Federação da": "Russia", "San Marino": "San Marino", "Seicheles": "Seychelles", "Senegal": "Senegal", "Serra Leoa": "Sierra Leone", "Singapura": "Singapore", "Sri Lanka": "Sri Lanka", "Suazilândia": "Eswatini", "Suriname": "Suriname", "Suécia": "Sweden", "Suíça": "Switzerland", "Sérvia": "Serbia", "Síria": "Syria", "Tailândia": "Thailand", "Taiwan (Formosa)": "Taiwan", "Tanzânia": "Tanzania", "Tcheca, República": "Czech Republic", "Trinidad e Tobago": "Trinidad & Tobago", "Tunísia": "Tunisia", "Turcas e Caicos, Ilhas": "Turks and Caicos", "Turquia": "Turkey", "Ucrânia": "Ukraine", "Uruguai": "Uruguay", "Uzbequistão": "Uzbekistan", "Venezuela": "Venezuela", "Vietnã": "Vietnam", "Virgens, Ilhas (Britânicas)": "British Virgin Islands", "Zimbábue": "Zimbabwe", "África do Sul": "South Africa", "Áustria": "Austria", "Índia": "India"};
+  function country(n) { return COUNTRY_EN[n] || n; }
+  var core = { country: country, MON: MON, ymIndex: ymIndex, ymOf: ymOf, axis: axis, align: align, buildPeriods: buildPeriods, perYear: perYear,
     monthWindow: monthWindow, periodWindow: periodWindow, aggregators: aggregators, F: F, lastIdx: lastIdx, change: change,
     rangeN: rangeN, fmt: fmt, pct: pct, chgTxt: chgTxt };
 
@@ -241,7 +243,7 @@
     ensurePlugin();
     var self = this;
     window.addEventListener('ibba:theme', function () { if (self.cur) self.refresh(); });
-    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (self.cur) self._brush(); }, 200); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
   }
   Desk.prototype.has = function (id) { return !!this.sections[id]; };
   Desk.prototype._u = function () { var id = this.cur; return this.ui[id] || (this.ui[id] = { metric: this.sections[id].stage, mode: 'level', hover: null, pinA: null, pinB: null, who: { dim: 0, pill: null, sel: null, mode: 'volume', hi: null } }); };
@@ -249,6 +251,9 @@
   /* monta o contexto da seção para o estado atual dos filtros */
   Desk.prototype._ctx = function () {
     var sec = this.sections[this.cur], st = Object.assign({}, this.cfg.state(), this._ovr || {}), u = this._u(), self = this;
+    if (!this._dbg) { if (sec.prods) st.prod = u.prod || sec.prods[0].k;        // filtro de produto próprio da seção (ex.: minério)
+      if (sec.prodKey) st.prod = sec.prodKey(); }                              // estado que mora na página (ex.: produto + lag do modelo preditivo)
+    if (sec.fixed) st = Object.assign(st, sec.fixed);                         // seção com granularidade/janela fixas
     var ck = this.cur + '|' + st.prod, base = this._cache[ck];
     if (!base) {   // componentes mensais alinhados a um eixo único da seção (por produto)
       var maps = {}, lo = null, hi = null;
@@ -301,11 +306,15 @@
     E.minis = h('div', 'dk-minis');
     E.read = h('div', 'dk-card dk-read', '<div class="dk-ch"><h3>Reading</h3><em class="dk-when"></em></div><div class="dk-big"></div><div class="dk-kv"></div><div class="dk-pins"></div>');
     E.cols.appendChild(E.stage); E.cols.appendChild(E.read);
-    var sec0 = this.sections[this.cur], vs = (sec0.views || []).filter(function (v) { return !v.visible || v.visible(); });
-    if (vs.length > 1) { E.views = h('div', 'dk-seg dk-views', vs.map(function (v, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === 0) + '">' + esc(v.label) + '</button>'; }).join(''));
+    var sec0 = this.sections[this.cur], vs = (sec0.views || []).filter(function (v) { return !v.visible || v.visible(); }), vb = h('div', 'dk-viewbar'), anyCur = vs.some(function (v) { return v.current; });
+    if (vs.length > 1) { E.views = h('div', 'dk-seg dk-views', vs.map(function (v, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (anyCur ? !!v.current : k === 0) + '">' + esc(v.label) + '</button>'; }).join(''));
       E.views.setAttribute('role', 'group'); E.views.setAttribute('aria-label', 'View');
       E.views.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var v = vs[+b.dataset.k]; if (v && v.onPick) v.onPick(); });
-      var vb = h('div', 'dk-viewbar'); vb.appendChild(E.views); body.appendChild(vb); }
+      vb.appendChild(E.views); }
+    if (sec0.prods) { vb.appendChild(h('span', 'dk-plbl', 'Product')); E.prods = h('div', 'dk-seg dk-prods'); E.prods.setAttribute('role', 'group'); E.prods.setAttribute('aria-label', 'Product');
+      E.prods.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var u = self._u(); u.prod = b.dataset.k; u.hover = u.pinA = u.pinB = null; u.who.pill = u.who.sub = u.who.sel = u.who.hi = null; self.refresh(); });
+      vb.appendChild(E.prods); }
+    if (vb.childNodes.length) body.appendChild(vb);
     body.appendChild(E.tiles); body.appendChild(E.cols); body.appendChild(E.who); body.appendChild(E.minis); r.appendChild(body);
     // eventos fixos
     E.tiles.addEventListener('click', function (e) { var b = e.target.closest('.dk-tile[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
@@ -368,14 +377,17 @@
   Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; };
   Desk.prototype.refresh = function (light) {
     if (!this.cur) return;
+    if (this.sections[this.cur].overview) return this._overview();
     if (this._built !== this.cur) this._build();
     var st = this.cfg.state(), u = this._u();
-    if (this._lastProd !== st.prod || this._lastGran !== st.gran) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
-    var c = this.ctx = this._ctx();
+    if (!this.sections[this.cur].prods && (this._lastProd !== st.prod || this._lastGran !== st.gran)) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
+    var c = this.ctx = this._ctx(), sec = c.sec;
+    if (this.el.prods) this.el.prods.innerHTML = sec.prods.map(function (p0) { return '<button type="button" data-k="' + esc(p0.k) + '" aria-pressed="' + (p0.k === c.st.prod) + '">' + esc(p0.l) + '</button>'; }).join('');
+    if (sec.modes && sec.modes.indexOf(u.mode) < 0) u.mode = sec.modes[0];
     if (!c.has(u.metric)) u.metric = this.sections[this.cur].stage;
     if (st.gran === 'annual' && (u.mode === 'ltm' || u.mode === 'seasonal')) u.mode = 'level';
     if (!light) this._tiles();
-    this._stage(); if (!light) this._brush();
+    this._stage(); if (!light && !sec.noBrush) this._brush(); this.el.stage.querySelector('.dk-brush').hidden = !!sec.noBrush;
     this._who(); this._minis(); this._paintMarks(); this._read(); this._rank();
     if (!light && this.cfg.afterRender) { try { this.cfg.afterRender(this); } catch (e) { console.warn('desk afterRender', e); } }
   };
@@ -394,6 +406,7 @@
         '<div class="dk-sp">' + sparkSVG(sp, 160, 30) + '</div>' +
         '<div class="dk-rng"><i style="left:' + (r.pos * 100).toFixed(0) + '%"></i></div><div class="dk-rngl"><span>5y low ' + fmt(r.mn, M.dec) + '</span><span>high ' + fmt(r.mx, M.dec) + '</span></div></button>';
     }).join('');
+    this.el.tiles.hidden = !this.el.tiles.innerHTML;
   };
   Desk.prototype._lbl = function (M) { return typeof M.label === 'function' ? M.label({ prod: this.ctx.st.prod }) : M.label; };
   Desk.prototype._short = function (M) { return typeof M.short === 'function' ? M.short({ prod: this.ctx.st.prod }) : (M.short || this._lbl(M)); };
@@ -407,7 +420,8 @@
     var c = this.ctx, u = this._u(), M = c.M(u.metric), E = this.el, cv = E.stage.querySelector('canvas'), t = theme(), ann = c.st.gran === 'annual', self = this;
     var subs = c.subs(u.metric), multi = subs.length > 1;
     E.stage.querySelector('.dk-modes').innerHTML = [['level', 'Level'], ['yoy', 'YoY'], ['ltm', 'LTM', ann], ['seasonal', 'Seasonal', ann || multi]].map(function (m) {
-      return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (m[2] ? ' disabled title="Not available here"' : '') + '>' + m[1] + '</button>'; }).join('');
+      var off = m[2] || (c.sec.modes && c.sec.modes.indexOf(m[0]) < 0); return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (off ? ' disabled title="Not available here"' : '') + '>' + m[1] + '</button>'; }).join('');
+    E.stage.querySelector('.dk-modes').hidden = !!(c.sec.modes && c.sec.modes.length < 2);
     if (multi && u.mode === 'seasonal') u.mode = 'level';
     var title = E.stage.querySelector('.dk-st'), brush = E.stage.querySelector('.dk-brush');
     var nt = E.stage.querySelector('.dk-nt'), note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''); nt.hidden = !note; nt.textContent = note;   // a legenda explicativa do gráfico de sempre
@@ -427,6 +441,7 @@
       title.textContent = this._lbl(M) + ' · seasonality';
       E.stage.querySelector('.dk-sv').innerHTML = fmt(v[li], M.dec) + '<small>' + esc(M.unit) + ' · ' + c.label(li) + '</small>';
       E.stage.querySelector('.dk-sd').textContent = this._seas.base; brush.style.visibility = 'hidden';
+      E.stage.querySelector('.dk-hint').textContent = 'Hover to read every year';
       return;
     }
     brush.style.visibility = 'visible';
@@ -451,6 +466,7 @@
     }
     this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
     title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
+    E.stage.querySelector('.dk-hint').textContent = (tip ? 'Hover to read the values' : 'Hover to read · Click two periods to compare them (A → B)') + (c.sec.noBrush ? '' : ' · Drag the strip to change the period');
   };
   Desk.prototype._localHover = function (id, i) {   // sazonalidade: lê o mês do ano, sem mexer nos outros gráficos
     var ch = this.charts[id], s = this._seas; if (!ch || !s) return;
@@ -617,6 +633,40 @@
   };
   Desk.prototype._miniHeads = function () { var c = this.ctx, i = this._ref(), E = this.el; (this._miniIds || []).forEach(function (id) { var M = c.subs(id)[0], e = E.minis.querySelector('[data-k="' + id + '"] .dk-mv'); if (e) e.textContent = fmt(c.vals(id)[i], M.dec) + ' ' + M.unit; }); };
 
+  Desk.prototype.select = function (secId, metricId, prod) {   // deixa um indicador (e o produto da seção, se ela tiver o seu) pronto para quando a seção abrir
+    var keep = this.cur; this.cur = secId; var u = this._u(); this.cur = keep; u.metric = metricId; u.mode = 'level'; u.hover = u.pinA = u.pinB = null;
+    if (this.sections[secId].prods && prod) u.prod = prod;
+  };
+  Desk.prototype._overview = function () {
+    var self = this, sec = this.sections[this.cur], r = this.root, rows = '', lastG = null, seenKey = 'ibba_desk_seen_' + (this.cfg.sector || 'x'), seen = {}, now = {};
+    this._destroyAll(); this._built = null;
+    try { seen = JSON.parse(localStorage.getItem(seenKey) || '{}') || {}; } catch (e) {}
+    sec.overview.forEach(function (it, ix) {
+      var S = self.sections[it.sec], M = null; S.metrics.forEach(function (m) { if (m.id === it.metric) M = m; }); if (!M) return;
+      var prod = it.prod || (S.prods ? S.prods[0].k : 'total'), all;
+      try { all = self.debugSeries(it.sec, it.metric, { prod: prod, gran: 'monthly', win: 'all', from: null, to: null }, 'level').__all; } catch (e) { return; }
+      var keys = Object.keys(all).sort(), v = keys.map(function (k) { return all[k]; }), i = lastIdx(v); if (i < 0) return;
+      var mo = change(v, i, 1, M), yy = change(v, i, 12, M), rg = rangeN(v, i, 60), mN = +keys[i].slice(5, 7), a = 0, b = 0, ok = true, k;
+      for (k = 0; k < mN; k++) { var x = v[i - k], y = v[i - k - 12]; if (x == null || y == null) { ok = false; break; } a += x; b += y; }
+      var ytd = !ok ? null : (M.pp || M.diff) ? (a - b) / mN : (M.flow ? (b ? (a / b - 1) * 100 : null) : (b ? (a / b - 1) * 100 : null));
+      var label = it.label || (typeof M.label === 'function' ? M.label({ prod: prod }) : M.label), id = it.sec + '.' + it.metric + '.' + prod; now[id] = keys[i];
+      var isNew = seen[id] && seen[id] < keys[i], G = S.label;
+      if (G !== lastG) { rows += '<tr class="dk-og"><td colspan="8">' + esc(G) + '</td></tr>'; lastG = G; }
+      var pl = P1(keys[i]);
+      rows += '<tr tabindex="0" data-ix="' + ix + '"><td><b>' + esc(label) + '</b><span class="dk-src">' + esc(it.src || S.src || '') + '</span>' + (it.isNew ? '<span class="dk-new">NEW SECTION</span>' : '') + (isNew ? '<span class="dk-new">NEW DATA</span>' : '') + '</td><td>' + pl + '</td><td><b>' + fmt(v[i], M.dec) + '</b> <span class="dk-src">' + esc(M.unit) + '</span></td>' +
+        '<td class="' + cls(mo) + '">' + chgTxt(M, mo) + '</td><td class="' + cls(yy) + '">' + chgTxt(M, yy) + '</td><td class="' + cls(ytd) + '">' + chgTxt(M, ytd) + '</td>' +
+        '<td class="dk-osp">' + sparkSVG(v.slice(Math.max(0, i - 23), i + 1), 92, 22) + '</td><td><div class="dk-rng"><i style="left:' + (rg ? (rg.pos * 100).toFixed(0) : 50) + '%"></i></div></td></tr>';
+    });
+    function P1(k) { return MON[+k.slice(5, 7) - 1] + '-' + k.slice(2, 4); }
+    r.innerHTML = '<div class="dk-body"><div class="dk-card dk-ovw"><div class="dk-tblw"><table class="dk-ov"><thead><tr><th>Indicator</th><th>Period</th><th>Last</th><th>MoM</th><th>YoY</th><th>YTD YoY</th><th>24 months</th><th>5-year range</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+      '<p class="dk-note">Monthly figures, latest month available in each source. Click a row to open that indicator in its section.</p></div>';
+    var open = function (tr) { var it = sec.overview[+tr.getAttribute('data-ix')]; if (it && self.cfg.goto) self.cfg.goto(it); };
+    var tb = r.querySelector('tbody');
+    tb.addEventListener('click', function (e) { var tr = e.target.closest('tr[data-ix]'); if (tr) open(tr); });
+    tb.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-ix]'); if (tr) open(tr); } });
+    try { localStorage.setItem(seenKey, JSON.stringify(now)); } catch (e) {}
+  };
+
   /* matriz com o histórico INTEIRO (na granularidade escolhida) para o XLS de um gráfico da mesa */
   Desk.prototype.fullAOA = function (id) {
     var c = this.ctx, u = this._u(), self = this; if (!c) return null;
@@ -635,21 +685,21 @@
   /* só para os testes: os números de um indicador no estado pedido, por chave de período */
   Desk.prototype.debugSeries = function (secId, metricId, st, mode) {
     var keepCur = this.cur, keepState = this.cfg.state, self = this, out = {};
-    this.cur = secId; this.cfg.state = function () { return st; };
+    this.cur = secId; this.cfg.state = function () { return st; }; this._dbg = true;
     try { var c = this._ctx(), v = c.vals(metricId, mode || 'level'); for (var i = c.i0; i <= c.i1; i++) out[c.P[i].key] = v[i]; out.__all = {}; c.P.forEach(function (p, i2) { out.__all[p.key] = v[i2]; }); }
-    finally { this.cur = keepCur; this.cfg.state = keepState; }
+    finally { this.cur = keepCur; this.cfg.state = keepState; this._dbg = false; }
     return out;
   };
 
   /* só para os testes: as entidades do bloco "quem" (todas, por período) e a seleção padrão da janela */
   Desk.prototype.debugWho = function (secId, st, dimIdx, pillKey, full) {
     var keepCur = this.cur, keepState = this.cfg.state, keepCtx = this.ctx, out;
-    this.cur = secId; this.cfg.state = function () { return st; };
+    this.cur = secId; this.cfg.state = function () { return st; }; this._dbg = true;
     try { var u = this._u(), kw = u.who; u.who = { dim: dimIdx || 0, pill: pillKey || null, sel: null, mode: 'volume', hi: null };
       var c = this.ctx = this._ctx(), d = this._whoData(); out = { names: d.names.length, sel: d.sel, keys: c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.key; }) };
       if (full) { out.all = {}; d.names.forEach(function (n, k) { var o = {}; c.P.forEach(function (p, i) { if (d.agg[k][i]) o[p.key] = d.agg[k][i]; }); out.all[n] = o; }); }
       u.who = kw; }
-    finally { this.cur = keepCur; this.cfg.state = keepState; this.ctx = keepCtx; }
+    finally { this.cur = keepCur; this.cfg.state = keepState; this.ctx = keepCtx; this._dbg = false; }
     return out;
   };
 
