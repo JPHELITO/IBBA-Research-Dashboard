@@ -179,8 +179,10 @@ html[data-pg="home"] button,html[data-pg="home"] input,html[data-pg="home"] sele
   html[data-pg="home"] .area-comm .cm-hero{min-height:24px;}
 }
 /* TELAS MENORES — quem cede primeiro é o gráfico das COMMODITIES; o risquinho do HEATMAP fica (pedido do usuário).
-   Altura da tela da Home em px de projeto (não é a da janela): 1536×730 e 1280×620 ≈ 828 · 1366×640 ≈ 804 · painel de prévia ≈ 718. */
-@container hubstage (max-height:821px){
+   Altura da tela da Home em px de projeto (não é a da janela). Com a barra-ILHA (faixa de 44px): 1536×730 ≈ 850 · 1280×620 ≈ 855 ·
+   1366×640 ≈ 830 · painel de prévia ≈ 744. O degrau fica em 840 para que o 1366×640 continue dando a altura ao HEATMAP (com 821
+   o gráfico das commodities voltava ali e o risquinho do heatmap encolhia de 15,4 para 13,9 px de tela). */
+@container hubstage (max-height:840px){
   /* notebook pequeno (1366×640…): as commodities ficam sem o gráfico (nome, preço, variação e a tabelinha continuam) e o
      heatmap ganha essa altura */
   html[data-pg="home"] .page,html[data-pg="home"] .page.has-events{grid-template-rows:176px 150px minmax(0,1fr);}
