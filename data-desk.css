@@ -46,6 +46,8 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 .dk-new{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:0 4px;margin-left:6px;}
 .dk-osp{color:var(--black);} .dk-osp svg{display:block;width:92px;height:22px;margin-left:auto;}
 .dk-ov .dk-rng{width:84px;margin:0 0 0 auto;}
+.dk-ov td.dk-go{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);padding-left:4px;}
+.dk-ov tr[data-ix]:hover td.dk-go,.dk-ov tr[data-ix]:focus-visible td.dk-go{color:var(--orange);}
 /* ── números do topo ── */
 .dk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;}
 .dk-tile{position:relative;text-align:left;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:11px 12px 10px;
@@ -54,6 +56,30 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 .dk-tile[aria-pressed="true"]{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange),var(--dk-sh1);}
 .dk-tile[aria-pressed="true"]::after{content:"";position:absolute;left:50%;bottom:-11px;width:2px;height:10px;background:var(--orange);}
 .dk-tile.dk-off{opacity:.5;cursor:default;} .dk-tile.dk-off:hover{transform:none;box-shadow:none;}
+/* cada quadro é um BOTÃO que troca o gráfico principal: o rodapé diz isso (pedido do usuário, 18/11/2026) */
+.dk-tile{display:flex;flex-direction:column;}
+.dk-tile:hover{border-color:var(--orange);}
+.dk-tile[aria-pressed="true"]{background:linear-gradient(180deg,rgba(255,80,0,.055),rgba(255,80,0,0) 60%),var(--white);}
+.dk-ta{display:flex;align-items:center;align-self:end;gap:6px;margin-top:auto;padding-top:8px;font:700 9.5px var(--dk-text);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:var(--gray-mid);transition:color .15s;}
+/* as linhas de todos os quadros alinham entre si (rótulo de 2 linhas num quadro não desalinha os números dos outros) */
+@supports (grid-template-rows:subgrid){
+  .dk-tiles{row-gap:0;margin-bottom:-10px;}
+  .dk-tile{display:grid;grid-template-rows:subgrid;grid-row:span 7;row-gap:0;margin-bottom:10px;}
+  .dk-tmulti .dk-ta,.dk-off .dk-ta{grid-row:7;}
+}
+.dk-ta i{flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid currentColor;}
+.dk-ta1{display:none;}
+.dk-tile:hover .dk-ta,.dk-mini:hover .dk-ta{color:var(--orange);}
+.dk-tile[aria-pressed="true"] .dk-ta{color:var(--orange);}
+.dk-tile[aria-pressed="true"] .dk-ta i{background:var(--orange);border-color:var(--orange);box-shadow:inset 0 0 0 2px var(--white);}
+.dk-tile[aria-pressed="true"] .dk-ta0{display:none;} .dk-tile[aria-pressed="true"] .dk-ta1{display:inline;}
+/* quadro de indicador composto: uma linha por série */
+.dk-tm{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;align-items:baseline;gap:7px;font-size:11px;color:var(--gray-mid);margin-top:5px;font-variant-numeric:tabular-nums;}
+.dk-tm:first-of-type{margin-top:7px;}
+.dk-tm i{width:8px;height:8px;border-radius:2px;align-self:center;}
+.dk-tm b{font-family:var(--dk-disp);font-weight:400;font-size:14px;letter-spacing:-.02em;color:var(--black);}
+.dk-tm b small{font:500 10px var(--dk-text);color:var(--gray-mid);margin-left:3px;letter-spacing:0;}
+.dk-tmulti .dk-sp svg{height:34px;}
 .dk-tl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid);display:flex;justify-content:space-between;gap:6px;}
 .dk-tl span:last-child{white-space:nowrap;}
 .dk-tv{font-family:var(--dk-disp);font-size:21px;letter-spacing:-.03em;line-height:1.15;margin-top:5px;font-variant-numeric:tabular-nums;}
@@ -148,6 +174,7 @@ html.dark .dk-pill[aria-pressed="true"]{background:#343941;border-color:#343941;
 .dk-mh .chart-title{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);margin:0;}
 .dk-mv{font-family:var(--dk-disp);font-size:14px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--black);}
 .dk-mini .dk-chart{height:92px;margin-top:2px;}
+.dk-mini .dk-ta{padding:4px 0 3px;}
 /* nas miniaturas os botões PNG/XLS aparecem ao passar o mouse (no palco e no "quem" ficam sempre à vista) */
 .dk-mini .ibba-dl.show{opacity:0;top:auto;bottom:6px;} .dk-mini:hover .ibba-dl.show,.dk-mini .ibba-dl.show:focus-within{opacity:1;}
 @media (hover:none){.dk-mini .ibba-dl.show{opacity:1;}}

@@ -2719,9 +2719,9 @@ function _desk(){
       },
       /* PRICES — px-compare (as duas linhas juntas), px-spread (barras verde/vermelho + média), px-imp, px-exp, px-yoy, px-yoy2 */
       prices:{
-        label:'Prices', stage:'cmp', tiles:['impp','expp','prem'],
+        label:'Prices', stage:'cmp', tiles:['cmp','impp','expp','prem'],
         metrics:[
-          {id:'cmp', label:'Import price vs. domestic reference', multi:['impp','expp'], multiColors:['ink','orange'],
+          {id:'cmp', label:'Import vs. domestic reference', multi:['impp','expp'], multiColors:['ink','orange'],
             note:'SECEX · black = import · orange = export (domestic proxy) · companies benefit when import > domestic'},
           {id:'impp', label:'Import price', short:'Import', unit:'US$/t', dec:0, note:'SECEX/MDIC · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEIMP,x.prod), calc:_dkPrice},
           {id:'expp', label:'Domestic reference — export price', short:'Export', unit:'US$/t', dec:0, note:'SECEX/MDIC · export price used as a proxy for the domestic price · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEEXP,x.prod), calc:_dkPrice},
@@ -2764,7 +2764,7 @@ function _desk(){
         ],
       },
       imports:{
-        label:'Imports', stage:'vol', tiles:['vol','price','prem','lead','pen'],
+        label:'Imports', stage:'vol', tiles:['vol','price','rev','prem','lead','pen'],
         views:[{label:'SECEX analysis', current:true},{label:'Predictive model', visible:()=>!_predHidden, onPick:()=>setImportTab('prediction',{anim:1})}],
         metrics:[
           {id:'vol', label:'Import volume', unit:'kt', dec:0, flow:true, legacy:['im-vol','im-yoy'], note:'SECEX/MDIC · the split by family or product is in "By product" below',

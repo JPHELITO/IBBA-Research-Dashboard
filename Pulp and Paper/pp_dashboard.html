@@ -2138,9 +2138,9 @@ function _desk(){
     sections:{
       /* PULP › EXPORTS (SECEX): pl-vol, pl-yoy, pl-rev, pl-price, pl-vwd, pl-port, pl-dest, pl-seas + os 4 KPIs */
       'pulp-secex':{
-        label:'Pulp exports', src:'SECEX', stage:'vol', tiles:['vol','rev','price','vol:ytd','china'], views:tabs('pulp','secex'),
+        label:'Pulp exports', src:'SECEX', stage:'vol', tiles:['vol','rev','price','vwd','china'], views:tabs('pulp','secex'),
         metrics:[
-          {id:'vol', label:'Pulp export volume', ytdLabel:'export volume', unit:'kt', dec:0, flow:true, note:'SECEX · all ports',
+          {id:'vol', label:'Pulp export volume', unit:'kt', dec:0, flow:true, note:'SECEX · all ports',
             comp:()=>({v:_ppMap(SECEX,'volume_ktons')}), calc:(A,c)=>A.sum(c.v)},
           {id:'rev', label:'Pulp export revenue', unit:'US$ mn', dec:0, flow:true, note:'SECEX · FOB value',
             comp:()=>({r:_ppMap(SECEX,'revenue_usd_mn')}), calc:(A,c)=>A.sum(c.r)},
@@ -2161,9 +2161,9 @@ function _desk(){
       },
       /* PULP › WOODCHIPS (GACC): gc-ctry, gc-yoy, gc-price, gc-seas + os 4 KPIs */
       'pulp-gacc':{
-        label:'Woodchips — China imports', src:'GACC', stage:'vol', tiles:['vol','price','vol:ytd','vn'], views:tabs('pulp','gacc'),
+        label:'Woodchips — China imports', src:'GACC', stage:'vol', tiles:['vol','price','vn'], views:tabs('pulp','gacc'),
         metrics:[
-          {id:'vol', label:x=>'Woodchip import volume'+fibL(x), ytdLabel:'import volume', unit:'M BDMT', dec:2, flow:true, note:'GACC (China customs) · total of all suppliers',
+          {id:'vol', label:x=>'Woodchip import volume'+fibL(x), unit:'M BDMT', dec:2, flow:true, note:'GACC (China customs) · total of all suppliers',
             comp:x=>({v:_ppGacc(x.prod).total}), calc:(A,c)=>A.sum(c.v)},
           {id:'price', label:x=>'Woodchip import price'+fibL(x), unit:'US$/BDMT', dec:0, note:'GACC · revenue ÷ volume',
             comp:x=>({r:_ppGacc(x.prod).total2, v:_ppGacc(x.prod).total}), calc:(A,c)=>F.div(A.sum(c.r),A.sum(c.v))},
@@ -2178,9 +2178,9 @@ function _desk(){
       },
       /* PAPER › IBÁ: pa-prod, pa-yoy, pa-dom, pa-cons, pa-exp, pa-imp, pa-pen e as 4 sazonalidades + os KPIs */
       'paper-iba':{
-        label:'Paper', src:'Ibá', stage:'prod', tiles:['prod','dom','cons','pen','prod:ytd'], views:tabs('paper','iba'),
+        label:'Paper', src:'Ibá', stage:'prod', tiles:['prod','dom','cons','pen','exp','imp'], views:tabs('paper','iba'),
         metrics:[
-          {id:'prod', label:x=>'Paper production'+gl(x), ytdLabel:'production', unit:'kt', dec:0, flow:true, note:x=>x.prod==='total'?'IBÁ · the split by grade is in "By grade" below':'IBÁ · '+PAPER_GRADE_LBL[x.prod],
+          {id:'prod', label:x=>'Paper production'+gl(x), unit:'kt', dec:0, flow:true, note:x=>x.prod==='total'?'IBÁ · the split by grade is in "By grade" below':'IBÁ · '+PAPER_GRADE_LBL[x.prod],
             comp:x=>({v:pmap('prod',x)}), calc:(A,c)=>A.sum(c.v)},
           {id:'dom', label:x=>'Domestic sales'+gl(x), unit:'kt', dec:0, flow:true, note:'IBÁ', comp:x=>({v:pmap('dom',x)}), calc:(A,c)=>A.sum(c.v)},
           {id:'cons', label:'Apparent consumption (all grades)', unit:'kt', dec:0, flow:true, note:'IBÁ · production + imports − exports · published for the total of paper only',
