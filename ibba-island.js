@@ -45,16 +45,28 @@ html.isl-on.dark .gnav-brand b,html.isl-on[data-pg="market"] body:not(.theme-lig
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}\
 html.isl-float .isl{position:fixed;top:8px;transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .25s ease;}\
 html.isl-float.isl-away .isl:not(.open):not(.pin){transform:translate(-50%,-64px);opacity:0;pointer-events:none;}\
-/* descendo a página a ilha sai da frente do conteúdo; fica só esta LINGUETA laranja no topo, no centro */\
-.isl-notch{display:block;position:fixed;left:50%;top:0;z-index:899;width:150px;height:18px;transform:translate(-50%,-100%);opacity:0;cursor:pointer;border:0;padding:0;background:none;\
-  transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .2s ease;}\
-.isl-notch::before{content:"";position:absolute;left:50%;top:0;width:58px;height:5px;transform:translateX(-50%);border-radius:0 0 6px 6px;background:#FF5500;\
-  box-shadow:0 2px 12px rgba(255,85,0,.55);transition:width .25s cubic-bezier(.16,1,.3,1),height .25s;}\
-.isl-notch:hover::before{width:84px;height:7px;}\
+/* rolando a página (e SEMPRE na Home) a ilha sai da frente; fica esta LINGUETA laranja no centro do topo. Ela "carrega"\
+   devagar (uma luz percorre e o brilho pulsa a cada 3,6 s) e reage ao mouse: quanto mais perto, maior e mais acesa (--near) */\
+.isl-notch{display:block;position:fixed;left:50%;top:0;z-index:899;width:240px;height:16px;transform:translate(-50%,-140%);opacity:0;cursor:pointer;border:0;padding:0;\
+  background:none;--near:0;transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .2s ease;}\
 html.isl-float.isl-away .isl-notch{transform:translate(-50%,0);opacity:1;}\
-.isl-notch span{position:absolute;left:50%;top:11px;transform:translate(-50%,-4px);opacity:0;white-space:nowrap;pointer-events:none;font:600 10.5px/1 "Manrope","Inter",sans-serif;\
-  color:#EDEDEA;background:rgba(16,16,18,.92);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 10px;box-shadow:0 8px 20px -10px #000;transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);}\
-.isl-notch.hint span{opacity:1;transform:translate(-50%,0);}\
+.isl-tab{position:absolute;left:50%;top:0;width:calc(72px + 64px * var(--near));height:calc(6px + 4px * var(--near));transform:translateX(-50%);\
+  border-radius:0 0 9px 9px;overflow:hidden;background:linear-gradient(180deg,#FF7A2E,#FF5500);\
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.22),0 2px calc(10px + 18px * var(--near)) rgba(255,85,0,calc(.42 + .48 * var(--near)));\
+  transition:width .16s ease-out,height .16s ease-out;animation:isl-respira 3.6s ease-in-out infinite;}\
+.isl-tab::after{content:"";position:absolute;top:0;bottom:0;left:0;width:42%;transform:translateX(-120%);\
+  background:linear-gradient(90deg,rgba(255,240,228,0),rgba(255,244,236,.95),rgba(255,240,228,0));animation:isl-varre 3.6s cubic-bezier(.45,0,.2,1) infinite;}\
+.isl-notch::before{content:"";position:absolute;left:50%;top:-8px;width:calc(76px + 64px * var(--near));height:18px;transform:translateX(-50%);border-radius:50%;\
+  background:#FF5500;filter:blur(9px);opacity:.3;pointer-events:none;animation:isl-pulsa 3.6s ease-in-out infinite;}\
+@keyframes isl-varre{0%,10%{transform:translateX(-120%);}46%,100%{transform:translateX(340%);}}\
+@keyframes isl-pulsa{0%,30%,100%{opacity:.26;}48%{opacity:.9;}72%{opacity:.34;}}\
+@keyframes isl-respira{0%,32%,100%{scale:1 1;}48%{scale:1.08 1.18;}66%{scale:1 1;}}\
+html:not(.isl-away) .isl-notch::before,html:not(.isl-away) .isl-tab,html:not(.isl-away) .isl-tab::after{animation-play-state:paused;}\
+.isl-hint{position:absolute;left:50%;top:16px;transform:translate(-50%,-4px);opacity:0;white-space:nowrap;pointer-events:none;font:600 10.5px/1 "Manrope","Inter",sans-serif;\
+  color:#EDEDEA;background:rgba(16,16,18,.92);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 10px;box-shadow:0 8px 20px -10px #000;\
+  transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);}\
+.isl-notch.hint .isl-hint{opacity:1;transform:translate(-50%,0);}\
+html.isl-noanim .isl,html.isl-noanim .isl-util,html.isl-noanim .isl-notch{transition:none!important;}\
 .isl-now,.isl-q{display:flex;align-items:center;gap:7px;height:28px;border-radius:999px;background:none;border:0;color:#EDEDEA;cursor:pointer;font:600 12px/1 "Manrope","Inter",sans-serif;\
   overflow:hidden;transition:background .15s;padding:0 12px 0 10px;}\
 .isl-now:hover,.isl-q:hover{background:rgba(255,255,255,.07);}\
@@ -114,8 +126,27 @@ html.isl-on .isl-util .gnav-tut-l{display:none!important;}\
 html.isl-on .isl-util .gnav-tut svg,html.isl-on .isl-util .gnav-out svg{width:15px;height:15px;display:block;}\
 html.isl-on .isl-util .gnav-tut[style*="none"]{display:none!important;}\
 .isl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}\
-/* Home: a tela ganha os pixels que a faixa devolveu */\
-html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,1));margin-top:6px;}\
+}\
+/* ═══ HOME de 1025px para cima (abaixo disso ela vira lista que rola e a barra se comporta como nas outras páginas) ═══ */\
+@media (min-width:1025px){\
+html.isl-home.isl-away .isl-notch{transform:translate(-50%,0);opacity:1;}\
+/* HOME sem faixa: a barra inteira (ilha + pílula do time/tutorial/tema/sair) mora escondida na lingueta e desce por cima do palco */\
+html.isl-on.isl-home .gnav{position:fixed!important;top:0;left:0;right:0;height:46px;background:none!important;pointer-events:none;}\
+html.isl-on.isl-home .gnav .isl,html.isl-on.isl-home .gnav .isl-util{pointer-events:auto;}\
+html.isl-on.isl-home .gnav-brand{visibility:hidden;}\
+html.isl-on.isl-home .isl,html.isl-on.isl-home .isl-util{transition:transform .42s cubic-bezier(.16,1,.3,1),opacity .25s ease;}\
+html.isl-on.isl-home.isl-away .isl:not(.open):not(.pin){transform:translate(-50%,-64px);opacity:0;pointer-events:none;}\
+html.isl-on.isl-home.isl-away .isl-util{transform:translateY(-64px);opacity:0;pointer-events:none;}\
+/* na Home a pílula do time/tutorial/tema/sair desce no canto ESQUERDO (o logo some): à direita ela taparia o "All 10" dos relatórios */\
+html.isl-on.isl-home .isl-util{position:absolute;left:16px;top:5px;margin:0;}\
+html.isl-on.isl-home .isl-util .gnt-pop{left:0;right:auto;}\
+html.isl-on.isl-home .isl-bg,html.isl-on.isl-home .isl-util{border-color:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 30px -10px rgba(0,0,0,.85);}\
+/* Home: sem faixa nenhuma — o palco começa a 12px do topo (a lingueta mora nesse respiro) */\
+html.isl-on.isl-home[data-pg="home"] #stage{height:calc((100vh - 12px) / var(--app-scale,1));margin-top:12px;}\
+html.isl-on.isl-home[data-pg="home"] body{display:flow-root;}\
+/* os 56px de tela que a faixa devolveu vão para a MESA (notícias, commodities, heatmap), não para o palco das cenas:\
+   a reserva da 1ª linha do hub cresce exatamente 56px de tela (em px de projeto = 56 / escala) */\
+html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1));}\
 }\
 @media (max-width:900px){ .isl{display:contents;} .isl-now,.isl-q,.isl-sep,.isl-key,.isl-notch{display:none!important;} .isl-util{display:contents;} }\
 /* ═══ a BUSCA ═══ */\
@@ -165,7 +196,7 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
 .isp-e{padding:22px 12px;color:#7c7c78;font-size:12.5px;text-align:center;}\
 .isp-ft{display:flex;gap:16px;flex-wrap:wrap;padding:9px 16px;border-top:1px solid #26262a;font-size:10.5px;color:#7c7c78;}\
 .isp-ft b{color:#a5a5a2;font-weight:700;}\
-@media (prefers-reduced-motion:reduce){.isl,.isl *,.isp,.isp *{animation:none!important;transition:none!important;}}';
+@media (prefers-reduced-motion:reduce){.isl,.isl *,.isp,.isp *,.isl-notch,.isl-notch *,.isl-notch::before,.isl-tab::after{animation:none!important;transition:none!important;}}';
   (function () { var s = document.createElement('style'); s.id = 'ibba-island-css'; s.textContent = CSS; (document.head || root).appendChild(s); })();
 
   var SVG_Q = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
@@ -178,9 +209,11 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function txt(el) { return el ? String(el.textContent || '').replace(/▾/g, '').replace(/\s+/g, ' ').trim() : ''; }
   function desktop() { return window.innerWidth > 900; }
+  function homeMode() { return HOME && window.innerWidth >= 1025; }   // Home como palco fixo (abaixo disso ela vira lista que rola)
 
   /* ═══ 1. A ILHA ════════════════════════════════════════════════════════════════════════════ */
   var isl, menu, key, now, util;
+  var HOME = root.getAttribute('data-pg') === 'home', afterClose = null;   // Home: a barra mora escondida na lingueta
   function build(g) {
     if (g.querySelector('.isl')) return;
     menu = g.querySelector('.gnav-menu'); if (!menu) return;
@@ -278,18 +311,21 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
     window.addEventListener('hashchange', function () { setTimeout(function () { label(); place(null); }, 0); });
     // o tutorial aponta para os itens do menu: enquanto ele roda, a ilha fica aberta
     try {
-      new MutationObserver(function () { var on = !!document.querySelector('.ibt-root'); isl.classList.toggle('pin', on); if (on) open(true); else if (!isl.matches(':hover')) open(false); })
+      new MutationObserver(function () { var on = !!document.querySelector('.ibt-root'); isl.classList.toggle('pin', on); if (on) { open(true); if (HOME) root.classList.remove('isl-away'); } else if (!isl.matches(':hover')) open(false); })
         .observe(document.body, { childList: true });
     } catch (e) {}
-    // Rolando a página: a ilha recolhida fica presa no topo, mas SAI DA FRENTE enquanto se desce (lendo) e
-    // VOLTA ao subir, ao levar o mouse à lingueta laranja do topo, com Tab ou Ctrl K. Parada, ela some de
-    // novo em 2,5 s (sem o mouse em cima) — assim não tapa tabela, manchete nem barra presa da página.
+    // LINGUETA + PAINEL ESCONDIDO. Rolando a página (e SEMPRE na Home, que não rola) a ilha sai da frente e fica a
+    // lingueta laranja no centro do topo, que "carrega" devagar (uma luz percorre, o brilho pulsa a cada 3,6 s). Ela
+    // reage ao mouse: quanto mais perto, maior e mais acesa (--near 0→1); a ~70px o painel desce sozinho ("só de pensar
+    // em passar o mouse ali"). Também volta com Tab, Ctrl K, clique na lingueta ou subindo a página.
+    // Na Home desce a barra INTEIRA (ilha + time/tutorial/tema/sair) e ela sobe de novo 0,8 s depois que o mouse vai
+    // embora; nas outras páginas, parada, a ilha sai da frente de novo em 2,5 s.
     var notch = document.createElement('button'); notch.type = 'button'; notch.className = 'isl-notch';
     var kk = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘K' : 'Ctrl K';
     notch.title = 'Menu & search (or press ' + kk + ')'; notch.setAttribute('aria-label', 'Show the menu');
-    notch.innerHTML = '<span>Menu · ' + kk + '</span>';
+    notch.innerHTML = '<i class="isl-tab"></i><span class="isl-hint">Menu · ' + kk + '</span>';
     document.body.appendChild(notch);
-    var ticking = false, lastY = window.scrollY || 0, tAway = 0, tHint = 0, hinted = false;
+    var ticking = false, lastY = window.scrollY || 0, tAway = 0, tHint = 0, hinted = false, tHome = 0, nearRaf = 0, lastNear = -1, mx = -999, my = 9999;
     function hint() {   // as 3 primeiras vezes (por navegador) a lingueta diz o que é
       if (hinted) return; hinted = true;
       var n = 0; try { n = +localStorage.getItem('ibba_isl_hint') || 0; } catch (e) {}
@@ -301,7 +337,8 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
       clearTimeout(tAway);
       if (on && !root.classList.contains('isl-away')) hint();
       root.classList.toggle('isl-away', !!on);
-      if (!on && root.classList.contains('isl-float')) tAway = setTimeout(function () {
+      if (on) { lastNear = -1; notch.style.setProperty('--near', '0'); }
+      if (!on && !homeMode() && root.classList.contains('isl-float')) tAway = setTimeout(function () {
         if (!isl.matches(':hover') && !isl.contains(document.activeElement) && !isl.classList.contains('open')) root.classList.add('isl-away');
       }, 2500);
     }
@@ -309,12 +346,54 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
     notch.addEventListener('mouseenter', show);
     notch.addEventListener('click', function () { away(false); open(true); });
     isl.addEventListener('focusin', show);
-    isl.addEventListener('mouseleave', function () { if (root.classList.contains('isl-float')) away(false); });
-    document.addEventListener('mousemove', function (e) {   // mouse encostado no topo, perto do centro
-      if (e.clientY < 14 && Math.abs(e.clientX - window.innerWidth / 2) < 240 && root.classList.contains('isl-away')) away(false);
+    isl.addEventListener('mouseleave', function () { if (!homeMode() && root.classList.contains('isl-float')) away(false); });
+    // proximidade da lingueta: elipse mais larga que alta, 0 a 210px
+    function nearOf(x, y) { var dx = (x - window.innerWidth / 2) / 2.2, d = Math.sqrt(dx * dx + y * y); return Math.max(0, Math.min(1, 1 - d / 210)); }
+    // Home: a barra fica enquanto o mouse estiver perto dela (ou de uma lista/cartão aberto), com foco nela, menu aberto…
+    function inRect(r, x, y, m) { return !!(r && r.width && x >= r.left - m && x <= r.right + m && y >= r.top - m && y <= r.bottom + m); }
+    function homeLocked() {
+      return isl.classList.contains('open') || isl.classList.contains('pin') || g.contains(document.activeElement) ||
+        !!document.querySelector('#gnt-pop.open') || !!document.querySelector('.isp.open');
+    }
+    function homeZone(x, y) {
+      var r = isl.getBoundingClientRect();
+      if (y < 72 && Math.abs(x - window.innerWidth / 2) < r.width / 2 + 90) return true;
+      if (inRect(r, x, y, 40) || inRect(util.getBoundingClientRect(), x, y, 40)) return true;
+      var p = document.getElementById('gnt-pop'); if (p && p.classList.contains('open') && inRect(p.getBoundingClientRect(), x, y, 30)) return true;
+      return !!(ddGroup && inRect(ddGroup.querySelector('.gn-drop').getBoundingClientRect(), x, y, 30));
+    }
+    function homeCheck() {
+      if (!homeMode() || root.classList.contains('isl-away')) return;
+      if (homeLocked() || homeZone(mx, my)) { clearTimeout(tHome); tHome = 0; return; }
+      if (!tHome) tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); }, 800);
+    }
+    afterClose = function () { setTimeout(homeCheck, 60); };
+    document.addEventListener('mousemove', function (e) {
+      mx = e.clientX; my = e.clientY;
+      if (nearRaf || !desktop()) return;
+      nearRaf = requestAnimationFrame(function () {
+        nearRaf = 0;
+        var aw = root.classList.contains('isl-away'), n = aw ? nearOf(mx, my) : 0;
+        if (Math.abs(n - lastNear) > 0.01) { lastNear = n; notch.style.setProperty('--near', n.toFixed(3)); }
+        if (aw && (n >= 0.67 || my < 8)) away(false);      // ~70px da lingueta (ou encostou no topo): o painel desce
+        else if (!aw) homeCheck();
+      });
     }, { passive: true });
+    document.documentElement.addEventListener('mouseleave', function () { mx = -999; my = 9999; homeCheck(); });
+    g.addEventListener('focusin', function () { if (homeMode()) away(false); });
+    g.addEventListener('focusout', function () { setTimeout(homeCheck, 120); });
+    document.addEventListener('click', function () { setTimeout(homeCheck, 60); });   // fechou o cartão do time etc.
+    if (HOME) {
+      root.classList.add('isl-home');
+      var intro = 0; try { intro = +localStorage.getItem('ibba_isl_home_intro') || 0; } catch (e) {}
+      if (!homeMode()) { /* Home estreita (lista que rola): barra como nas outras páginas */ }
+      else if (intro < 3) {     // as 3 primeiras visitas: o painel aparece e, em 1,8 s, se recolhe na lingueta (mostra onde ele mora)
+        try { localStorage.setItem('ibba_isl_home_intro', String(intro + 1)); } catch (e) {}
+        tHome = setTimeout(function () { tHome = 0; if (!homeLocked() && !homeZone(mx, my)) away(true); else homeCheck(); }, 1800);
+      } else away(true);
+    }
     window.addEventListener('scroll', function () {
-      if (ticking) return; ticking = true;
+      if (homeMode() || ticking) return; ticking = true;
       requestAnimationFrame(function () {
         ticking = false;
         var y = window.scrollY || 0, dy = y - lastY, fl = desktop() && y > 70;
@@ -355,6 +434,7 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
       isl.classList.remove('open'); now.setAttribute('aria-expanded', 'false');
       [].slice.call(isl.querySelectorAll('.gn-item.k')).forEach(function (x) { x.classList.remove('k'); });
       var w2 = isl.getBoundingClientRect().width;
+      if (afterClose) afterClose();
       if (motion() && w0 > w2) {
         var e2 = (w0 - w2) / 2;
         ani(bg, [{ left: -e2 + 'px', right: -e2 + 'px', clipPath: 'inset(0 0px 0 0px round 999px)' },
@@ -698,6 +778,8 @@ html.isl-on[data-pg="home"] #stage{height:calc((100vh - 50px) / var(--app-scale,
   });
 
   /* ═══ 3. QUANDO ENTRAR: assim que o topnav.js puser a barra (antes do 1º desenho) ════════════ */
+  root.classList.add('isl-noanim');
+  window.addEventListener('load', function () { setTimeout(function () { root.classList.remove('isl-noanim'); }, 60); });
   function tryBuild() { var g = document.querySelector('.gnav'); if (g) { build(g); return true; } return false; }
   if (!tryBuild()) {
     try {
