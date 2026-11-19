@@ -160,6 +160,7 @@
       if (en) { b.open[en.dataset.bent] = !b.open[en.dataset.bent]; self._bCat(); } });
     E.badd.addEventListener('click', function () { b.sheet = true; body.classList.add('dk-sheet'); });
     E.bdone.addEventListener('click', function () { b.sheet = false; body.classList.remove('dk-sheet'); });
+    body.addEventListener('click', function (e) { if (e.target === body && b.sheet) { b.sheet = false; body.classList.remove('dk-sheet'); } });   // celular: tocar fora da folha fecha
     /* palco */
     E.bcalc.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt || bt.disabled) return; b.calc = bt.dataset.k; b.msg = ''; b.hover = null; self._bStore(); self._bViews(); self._bCat(); self._bStage(); });
     E.bchips.addEventListener('click', function (e) { var x = e.target.closest('[data-x]'), go = e.target.closest('[data-go]');

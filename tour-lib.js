@@ -117,7 +117,13 @@
     return true;
   }
   function mediaOk(step) { return !step.media || step.media === (isMobile() ? 'mobile' : 'desktop'); }
-  function stepOk(step, F, preview) { return mediaOk(step) && flagOk(step, F, preview); }
+  // onlyIf / notIf: seletor que tem (ou não pode ter) algo na página AGORA — ex.: 'html.desk-on' separa os passos da mesa de
+  // dados dos passos das abas antigas, sem esperar por um alvo que nunca vai aparecer (admin vê a mesa com a flag desligada)
+  function domOk(step) {
+    try { if (step.onlyIf && !document.querySelector(step.onlyIf)) return false; if (step.notIf && document.querySelector(step.notIf)) return false; } catch (e) {}
+    return true;
+  }
+  function stepOk(step, F, preview) { return mediaOk(step) && flagOk(step, F, preview) && domOk(step); }
   function eligible(s, F, preview) { return (s.steps || []).filter(function (st) { return stepOk(st, F, preview); }); }
   function fullQueue(F) {
     return (content().order || []).filter(function (id) {

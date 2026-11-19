@@ -46,7 +46,9 @@ window.__RUN__ = async function () {
       const where = s.page ? [].concat(s.page)[0] : null;
       let page = '';
       if (where) { try { page = await src(where); ok(s.id + ': página ' + where + ' existe', page.length > 1000); } catch (e) { ok(s.id + ': página existe', false, e.message); } }
-      const hay = topnav + '\n' + exportlib + '\n' + page;   // export-lib injeta os botões PNG/XLS dos gráficos
+      // a mesa de dados (Data Desk) desenha os blocos dela por JavaScript: as classes dk-* moram nos arquivos data-desk*.js
+      let desk = ''; if (/data-desk\.js/.test(page)) for (const f of ['/data-desk.js', '/data-desk-builder.js', '/data-desk-context.js']) { try { desk += '\n' + await src(f); } catch (e) { ok(s.id + ': ' + f + ' existe', false, e.message); } }
+      const hay = topnav + '\n' + exportlib + '\n' + page + desk;   // export-lib injeta os botões PNG/XLS dos gráficos
       flagsOf(s).forEach(f => ok(s.id + ': flag do segmento conhecida (' + f + ')', known.has(f)));
       const checkActs = (a, tag) => actionsOf(a).forEach(x => {
         if (x.bad) return ok(tag + ': ação em formato conhecido', false, x.bad);
@@ -76,6 +78,8 @@ window.__RUN__ = async function () {
           ok(tag + ': só {click}/{Click} como marcador', !/\{(?!click\}|Click\})/.test(v.title + v.body));
         }
         ok(tag + ': media válida', !st.media || st.media === 'desktop' || st.media === 'mobile', st.media || '');
+        [st.onlyIf, st.notIf].filter(Boolean).forEach(sel => { let bad = null; try { document.querySelector(sel); } catch (e) { bad = e.message; }
+          ok(tag + ': condição válida ' + sel, !bad, bad || ''); tokens(sel).forEach(tk => ok(tag + ': ' + tk.k + ' "' + tk.v + '" (condição) existe no fonte', tk.re.test(hay))); });
         flagsOf(st).forEach(f => ok(tag + ': flag conhecida (' + f + ')', known.has(f)));
       }
     }

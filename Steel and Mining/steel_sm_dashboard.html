@@ -723,6 +723,13 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
       <div class="mob-picker-title">Steel</div>
     </div>
     <div class="mob-sections-list">
+      <button class="mob-sec-item dk-only" onclick="mobSelect('overview')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Overview</div>
+          <div class="mob-sec-desc">Every indicator at a glance, with the latest figure and trend</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
       <button class="mob-sec-item" onclick="mobSelect('exports')">
         <div class="mob-sec-info">
           <div class="mob-sec-title">Exports</div>
@@ -748,6 +755,20 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
         <div class="mob-sec-info">
           <div class="mob-sec-title">Prices</div>
           <div class="mob-sec-desc">Imports vs. domestic reference</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item dk-only" onclick="mobSelect('ore')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Iron Ore</div>
+          <div class="mob-sec-desc">Brazilian iron ore exports by product, destination and port</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <button class="mob-sec-item dk-only" onclick="mobSelect('builder')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Builder</div>
+          <div class="mob-sec-desc">Put up to 4 series from any section side by side</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
@@ -2559,6 +2580,7 @@ async function applyDeskFlag(){
     const q = _deskParam()
     const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
     try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
+    try{ if(window.__gnavDesk) window.__gnavDesk(on); }catch(e){}   // menus do topo: Overview / Iron Ore / Builder
     if(on!==_deskOn){ _deskSet(on); if(_dbReady) render(); }
   }catch(e){}
 }

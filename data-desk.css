@@ -304,3 +304,47 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
   .dk-ctx.dk-cxn3,.dk-ctx.dk-cxn2{grid-template-columns:minmax(0,1fr);}
   .dk-cx+.dk-cx{border-left:0;padding-left:0;border-top:1px solid var(--dk-grid);padding-top:12px;}
 }
+
+/* ════ CELULAR (≤ 768 px) — Fase 7 ════ */
+.mob-sec-item.dk-only{display:none;} html.desk-on .mob-sec-item.dk-only{display:flex;}   /* seções que só existem com a mesa */
+@media (max-width:768px){
+  /* quadros do topo: uma fileira que desliza com encaixe (2 à vista + a ponta do 3º, para mostrar que há mais) */
+  .dk-tiles{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px;padding:2px 12px 4px;scroll-padding-left:12px;}
+  .dk-tiles::-webkit-scrollbar{display:none;}
+  .dk-tile,.dk-tile.dk-off{flex:0 0 calc(46% - 5px);display:flex;flex-direction:column;margin-bottom:0;grid-row:auto;scroll-snap-align:start;}
+  .dk-tile:hover{transform:none;} .dk-tile[aria-pressed="true"]::after{display:none;}
+  .dk-ta{margin-top:auto;}
+  /* alvos de toque ≥ 32 px */
+  .dk-seg button{min-height:32px;padding:6px 13px;}
+  .dk-pill{min-height:32px;padding:6px 12px;}
+  .dk-rk{min-height:34px;padding:7px 6px;}
+  .dk-lnk{min-height:32px;display:inline-flex;align-items:center;}
+  #desk-root .ibba-dl button,.dk-bdl button{min-height:32px;padding:6px 10px;}
+  html.desk-on .filter-bar .fbtn{min-height:32px;}
+  .dk-plist label{min-height:34px;}
+  .dk-brow,.dk-bent{min-height:36px;} .dk-bcn{min-height:32px;} .dk-bx{width:32px;height:32px;} .dk-bdel{min-height:32px;padding:0 11px 1px 8px;}
+  .dk-bq,.dk-popp input[type=search]{min-height:36px;font-size:16px;}   /* 16 px: o iPhone não dá zoom ao focar */
+  .dk-cxname{min-height:34px;} .dk-cxnews{min-height:36px;} .dk-cxh a{min-height:32px;display:inline-flex;align-items:center;}
+  .dk-cxb{min-height:34px;}
+  /* o que cerca o número fica no fim, depois dos dados da seção */
+  .dk-ctx,.dk-ctx0{order:5;}
+  .dk-who .dk-ch{padding-right:0;flex-wrap:wrap;} .dk-whotop{gap:8px 6px;}
+  .dk-hintrow{flex-direction:column;gap:2px;}
+  /* Overview: lista enxuta (indicador · último · YoY); o resto está a um toque, dentro da seção */
+  .dk-ov{min-width:0;font-size:12px;}
+  .dk-ov th:nth-child(2),.dk-ov td:nth-child(2),.dk-ov th:nth-child(4),.dk-ov td:nth-child(4),.dk-ov th:nth-child(6),.dk-ov td:nth-child(6),
+  .dk-ov th:nth-child(7),.dk-ov td:nth-child(7),.dk-ov th:nth-child(8),.dk-ov td:nth-child(8){display:none;}
+  .dk-ov td{padding:11px 8px;} .dk-ov th{padding:9px 8px;}
+  .dk-ov td:first-child{white-space:normal;line-height:1.3;} .dk-ov td:first-child .dk-src{display:block;margin-left:0;}
+  .dk-ov td.dk-go{font-size:0;padding-left:0;} .dk-ov td.dk-go::after{content:"›";font-size:17px;color:var(--orange);}
+  /* Builder: visões numa fileira que desliza; o catálogo vira folha de baixo */
+  .dk-bviews{gap:6px;min-width:0;} .dk-bvlist{flex:1 1 100%;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;} .dk-bvlist::-webkit-scrollbar{display:none;}
+  .dk-bviews .dk-plbl{flex:1 1 100%;} .dk-bviews .dk-grow{display:none;}
+  .dk-bvlist .dk-pill{flex:none;}
+  .dk-bld.dk-sheet::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:205;}
+  .dk-sheet .dk-bcat{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:78vh;z-index:210;border-radius:16px 16px 0 0;border-bottom:0;box-shadow:0 -14px 44px rgba(0,0,0,.3);padding-bottom:14px;}
+  .dk-bdone{position:sticky;bottom:0;align-self:stretch;justify-content:center;background:var(--black);border-color:var(--black);color:var(--white);margin-top:8px;}
+  html.dark .dk-bdone{background:#343941;border-color:#343941;color:#fff;}
+  .dk-badd{min-height:36px;}
+  .dk-ov.dk-bt th,.dk-ov.dk-bt td{display:table-cell;}   /* a tabela Values do Builder não é a lista do Overview: todas as colunas */
+}

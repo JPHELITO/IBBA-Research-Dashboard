@@ -380,13 +380,18 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   <nav class="gnav-menu">\
     <a class="gn-item" href="/index.html">Home</a>\
     <div class="gn-group" id="gnav-mm"><span class="gn-item">M&amp;M ▾</span><div class="gn-drop"><div class="gn-cat">Steel &amp; Mining</div>\
+      <a class="gn-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#overview">Overview</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
-      <a href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a></div></div>\
+      <a href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
+      <a class="gn-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#ore">Iron Ore</a>\
+      <a class="gn-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#builder">Builder</a></div></div>\
     <div class="gn-group" id="gnav-pp"><span class="gn-item">P&amp;P ▾</span><div class="gn-drop"><div class="gn-cat">Pulp &amp; Paper</div>\
+      <a class="gn-desk" style="display:none" href="/Pulp and Paper/pp_dashboard.html#overview">Overview</a>\
       <a href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
-      <a href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a></div></div>\
+      <a href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>\
+      <a class="gn-desk" style="display:none" href="/Pulp and Paper/pp_dashboard.html#builder">Builder</a></div></div>\
     <a class="gn-item" id="gnav-news" href="/news.html">News Hunter</a>\
     <div class="gn-group" id="gnav-sg"><span class="gn-item">Stock Guide ▾</span><div class="gn-drop"><div class="gn-cat">Stock Guide</div>\
       <a href="/stock-guide.html#comp">Comp Table</a>\
@@ -420,13 +425,18 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   <div class="gnav-sheet">\
     <a class="gnm-a" href="/index.html">Home</a>\
     <div class="gnm-cat" data-tour="m-sectors">Metals &amp; Mining</div>\
+    <a class="gnm-a sub gnm-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#overview">Overview</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
+    <a class="gnm-a sub gnm-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#ore">Iron Ore</a>\
+    <a class="gnm-a sub gnm-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#builder">Builder</a>\
     <div class="gnm-cat" data-tour="m-sectors">Pulp &amp; Paper</div>\
+    <a class="gnm-a sub gnm-desk" style="display:none" href="/Pulp and Paper/pp_dashboard.html#overview">Overview</a>\
     <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#pulp">Pulp</a>\
     <a class="gnm-a sub" href="/Pulp and Paper/pp_dashboard.html#paper">Paper &amp; Packaging</a>\
+    <a class="gnm-a sub gnm-desk" style="display:none" href="/Pulp and Paper/pp_dashboard.html#builder">Builder</a>\
     <div class="gnm-cat" data-tour="m-sg">Stock Guide</div>\
     <a class="gnm-a sub" href="/stock-guide.html#comp">Comp Table</a>\
     <a class="gnm-a sub" href="/stock-guide.html#sens">Sensitivity</a>\
@@ -613,11 +623,16 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     _fitTeam();   // a ▾ muda a largura da barra → re-avalia se os nomes do time cabem
   }
   window.__gnavMarketTabs = function(on){ _setMarketTabs(!!on); };   // a home e o Market chamam ao ler as flags
+  // Seções que só existem com o Data Desk (Overview, Iron Ore, Builder nas abas de M&M / P&P): o menu só as oferece a quem
+  // vê a mesa — admin sempre; cliente com a flag data_desk (recado em ibba_desk, que as páginas de dados gravam ao ler as flags).
+  function _setDeskLinks(on){ [].slice.call(document.querySelectorAll('.gn-desk,.gnm-desk')).forEach(function(a){ a.style.display = on ? '' : 'none'; }); }
+  window.__gnavDesk = function(on){ _setDeskLinks(!!on); };
   function revealAdmin(tries){
     tries = tries || 0;
     try{ _setDataLink(localStorage.getItem('ibba_data_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setQuarterlyLink(localStorage.getItem('ibba_quarterly_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setMarketTabs(localStorage.getItem('ibba_mw_on')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
+    try{ _setDeskLinks(localStorage.getItem('ibba_desk')==='1' || localStorage.getItem('ibba_is_admin')==='1'); }catch(e){}
     try{ _setTourBtn(_tourOn()); }catch(e){}
     // Cache: aplica o estado admin NA HORA (sem esperar o RPC) → os botões Admin/Clipinator não
     // "pipocam" depois dos demais. Roda ainda dentro do inject(), antes do 1º paint.
@@ -627,7 +642,7 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       var isAdmin = !!(r && r.data === 'admin');
       try{ localStorage.setItem('ibba_is_admin', isAdmin?'1':'0'); }catch(e){}
       _setAdminLinks(isAdmin);   // reconcilia com a verdade do servidor (mostra p/ admin, esconde se o cache errou)
-      if(isAdmin){ _setDataLink(true); _setQuarterlyLink(true); }
+      if(isAdmin){ _setDataLink(true); _setQuarterlyLink(true); _setDeskLinks(true); }
       try{ _setTourBtn(isAdmin || localStorage.getItem('ibba_tour_on')==='1'); }catch(e){}
       try{ _setMarketTabs(isAdmin || localStorage.getItem('ibba_mw_on')==='1'); }catch(e){}   // cache de admin velho não deixa a ▾ p/ cliente
     }).catch(function(){}); return; }
