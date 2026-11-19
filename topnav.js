@@ -777,9 +777,14 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
       }
       // classe dos ITENS (não da caixa: a própria caixa ganha .ibba-slide-on e entraria em laço)
       var mo = new MutationObserver(function(){ place(true); });
+      // um item que APARECE, some ou muda de largura (aba que só existe com uma flag e entra depois que a resposta
+      // do banco chega; fonte que termina de carregar) empurra os vizinhos: o bloco tem de acompanhar. Sem isto ele
+      // ficava parado em cima da aba errada e o nome da aba ativa sumia (letra branca sem fundo) — 19/11/2026.
+      var ro = null; try{ ro = new ResizeObserver(function(){ place(false); }); }catch(e){}
       function hook(){
-        mo.disconnect();
-        [].slice.call(box.querySelectorAll(itemSel)).forEach(function(b){ mo.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+        mo.disconnect(); if(ro) ro.disconnect();
+        [].slice.call(box.querySelectorAll(itemSel)).forEach(function(b){ mo.observe(b, { attributes: true, attributeFilter: ['class'] }); if(ro) ro.observe(b); });
+        if(ro) ro.observe(box);
       }
       // grupo que a página RECRIA (innerHTML — ex.: os produtos do P&P a cada seção): o bloco volta para a
       // caixa e passa a vigiar os itens novos; sem animação, porque não houve troca de opção
@@ -788,7 +793,6 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
         hook(); cur = null; place(false);
       }).observe(box, { childList: true }); }catch(e){}
       hook();
-      try{ new ResizeObserver(function(){ place(false); }).observe(box); }catch(e){}
       window.addEventListener('resize', function(){ place(false); });
       if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ place(false); });
       place(false);

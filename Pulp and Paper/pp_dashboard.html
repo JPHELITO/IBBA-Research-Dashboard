@@ -2067,6 +2067,9 @@ function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('
 async function applyDeskFlag(){
   try{
     const [fl, role] = await _flagsRole()
+    // resposta com erro (sessão renovando, rede) NÃO é um "não": mantém o que estava, em vez de rebaixar o admin para a
+    // tela antiga e gravar isso — era o que fazia a mesa "entrar depois" na visita seguinte (19/11/2026)
+    if((role && role.error) || (fl && fl.error)) return
     const isAdmin = !!(role && !role.error && role.data === 'admin')
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='data_desk') : null
     const q = _deskParam()
