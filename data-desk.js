@@ -212,7 +212,14 @@
       filter: function (it) { return it.parsed && it.parsed.y != null && it.parsed.y !== 0; },
       itemSort: function (a, b) { return b.datasetIndex - a.datasetIndex; },
       callbacks: Object.assign({}, cb, {
-        labelColor: function (c) { var b = c.dataset.backgroundColor; b = Array.isArray(b) ? b[c.dataIndex] : b; return { borderColor: b, backgroundColor: b, borderWidth: 0, borderRadius: 2 }; },
+        /* a bolinha da dica leva a cor DA SÉRIE: nas barras é o preenchimento; nas LINHAS é o traço (o preenchimento
+           de uma linha é transparente ou um degradê — era o que deixava a bolinha em branco) */
+        labelColor: function (c) { var ds = c.dataset || {}, pick = function (v) { v = Array.isArray(v) ? v[c.dataIndex] : v; return (typeof v === 'string' && v !== 'transparent') ? v : null; };
+          var b = ((ds.type || c.chart.config.type) === 'line' ? pick(ds.borderColor) || pick(ds.$ring) : pick(ds.backgroundColor)) || pick(ds.borderColor) || pick(ds.$ring) || pick(ds.backgroundColor) || ORANGE;
+          /* série quase preta (ou cinza translúcido) sumiria na tinta escura da dica: ganha um aro claro, a cor de dentro continua a da série */
+          var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(b) || /^rgba?\((\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/.exec(b), dim = false;
+          if (m) { var hx = b.charAt(0) === '#', a0 = (!hx && m[4] != null) ? +m[4] : 1; dim = (0.2126 * parseInt(m[1], hx ? 16 : 10) + 0.7152 * parseInt(m[2], hx ? 16 : 10) + 0.0722 * parseInt(m[3], hx ? 16 : 10)) * a0 < 90; }
+          return { borderColor: dim ? 'rgba(255,255,255,.78)' : b, backgroundColor: b, borderWidth: dim ? 1.5 : 0, borderRadius: 2 }; },
         label: function (c) { return ' ' + (c.dataset.label || '') + ': ' + fmt(c.parsed.y, o.share ? 1 : (o.dec || 0)) + (o.unitTip ? ' ' + o.unitTip : o.share ? '%' : ''); },
         footer: function (items) { if (!o.stack || o.share || items.length < 2) return ''; var t = 0; items.forEach(function (i) { t += i.parsed.y || 0; }); return 'Total: ' + fmt(t, o.dec || 0); } }) });
   }
