@@ -37,6 +37,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
 <script src="/data-desk.js"></script>
 <script src="/data-desk-builder.js"></script>
+<script src="/assets/logos/logos.js"></script>
+<script src="/data-desk-context.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -2645,6 +2647,14 @@ function _desk(){
   const mixOf=(SRC,prod)=>{ const defs=prod==='total'?[['Flat','flat'],['Long','long'],['Semi','semi']]:SUBS[prod]; return {names:defs.map(x=>x[0]), maps:defs.map(x=>_dkMap(SRC[x[1]],'volume_ktons'))}; };
   const cid2key=cid=>cid==='dk-stage-cv'?'stage':cid==='dk-who-cv'?'who':'mini:'+String(cid).replace('dk-mini-','');
   const STEEL_P=[{k:'total',l:'Total'},{k:'flat',l:'Flat'},{k:'long',l:'Long'},{k:'semi',l:'Semi'}];   // produtos de cada seção no catálogo do Builder
+  /* o que cerca cada seção: empresas cobertas mais expostas, preços de referência (commodities.code), fonte no calendário e temas das notícias */
+  const _CX_STEEL=['GGBR4.SA','CSNA3.SA','USIM5.SA'], _CX_IMP={tickers:_CX_STEEL, bench:['HRC_CHINA','HRC_BRAZIL','REBAR_BRAZIL'], cal:['secex_steel'], news:{sector:'steel', topics:['imports','hrc','crc','flat_steel','tariffs'], q:'imports'}};
+  const _DESK_CTX={
+    imports:_CX_IMP, prediction:_CX_IMP, prices:_CX_IMP,
+    domestic:{tickers:_CX_STEEL, bench:['HRC_BRAZIL','REBAR_BRAZIL'], cal:['iabr','inda'], news:{sector:'steel', topics:['demand','production','inventories','steel_industry'], q:'steel'}},
+    exports:{tickers:['GGBR4.SA','CSNA3.SA','TX'], bench:['HRC_CHINA','REBAR_TURKEY'], cal:['secex_steel'], news:{sector:'steel', topics:['exports','tariffs','slab','billet'], q:'exports'}},
+    ore:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], bench:['IRON_ORE','IOPRM00','IOFBC00'], cal:['secex_steel'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
+  };
   DESK=IBBADesk.mount({
     sector:'mm', root:'#desk-root',
     goto:it=>{ const S=DESK.sections[it.sec]; DESK.select(it.sec,it.metric,it.prod);
@@ -2657,6 +2667,14 @@ function _desk(){
       if(f.win==='custom'&&(f.from||f.to)){ document.getElementById('win-from').value=f.from||''; document.getElementById('win-to').value=f.to||''; setCustomRange(); }
       else if(f.win&&f.win!=='custom'&&f.win!==currentWin) setWin(f.win); },
     gotoBuilder:()=>setSub('builder',{anim:1}),
+    /* Context (data-desk-context.js): empresas expostas, benchmarks, manchetes e próxima divulgação de cada seção.
+       Consultas pequenas, só quando a faixa chega perto da tela, 10 min de cache. Sem rede o bloco some e a mesa segue igual. */
+    context:{
+      get:async path=>{ const {data:{session}}=await sbAuth.auth.getSession(); if(!session) return null;
+        const r=await fetch(SUPA_URL+'/rest/v1/'+path,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}); if(!r.ok) throw new Error('context '+r.status); return r.json(); },
+      rpc:async name=>{ const r=await sbAuth.rpc(name); if(r.error) throw r.error; return r.data; },
+      sections:_DESK_CTX,
+    },
     afterRender:d=>{ if(!window.IBBAExport) return;
       IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
         prefix:'steel', fullAOA:cid=>d.fullAOA(cid2key(cid)), titleOf:cid=>d.titleOf(cid2key(cid)), alwaysVisible:true}); },

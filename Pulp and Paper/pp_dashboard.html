@@ -36,6 +36,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
 <script src="/data-desk.js"></script>
 <script src="/data-desk-builder.js"></script>
+<script src="/assets/logos/logos.js"></script>
+<script src="/data-desk-context.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -2124,6 +2126,14 @@ function _desk(){
   const gl=x=>x.prod==='total'?'':' — '+PAPER_GRADE_LBL[x.prod];
   const pmap=(base,x)=>_ppMap(PAPER,base+'_'+x.prod);
   const fibL=x=>x.prod==='hw'?' — Hardwood':x.prod==='sw'?' — Softwood':'';
+  /* o que cerca cada seção: empresas cobertas mais expostas, preços de referência (commodities.code), fonte no calendário e temas das notícias */
+  const _CX_PULP=['PULP_BHKP_CHINA','PULP_NBSK_CHINA','PULP_BHKP_EUROPE'];
+  const _DESK_CTX={
+    'pulp-secex':{tickers:['SUZB3.SA','KLBN11.SA','CMPC.SN','COPEC.SN'], bench:_CX_PULP, cal:['secex_pulp'], news:{sector:'pp', topics:['pulp'], q:'pulp'}},
+    'pulp-gacc':{tickers:['SUZB3.SA','CMPC.SN','COPEC.SN'], bench:_CX_PULP, cal:['gacc'], news:{sector:'pp', topics:['pulp'], q:'pulp'}},
+    'paper-iba':{tickers:['KLBN11.SA','SUZB3.SA','RANI3.SA'], cal:['iba_paper'], news:{sector:'pp', topics:['paper','containerboard','tissue','occ'], q:'paper'}},
+    'paper-corr':{tickers:['KLBN11.SA','RANI3.SA'], cal:['empapel'], news:{sector:'pp', topics:['containerboard','occ','paper'], q:'packaging'}},
+  };
   DESK=IBBADesk.mount({
     sector:'pp', root:'#desk-root',
     state:()=>({prod:currentProd, gran:currentGran, win:currentWin, from:customRange.from, to:customRange.to}),
@@ -2133,6 +2143,14 @@ function _desk(){
       if(f.win==='custom'&&(f.from||f.to)){ document.getElementById('win-from').value=f.from||''; document.getElementById('win-to').value=f.to||''; setCustomRange(); }
       else if(f.win&&f.win!=='custom'&&f.win!==currentWin) setWin(f.win); },
     gotoBuilder:()=>setSub('builder',{anim:1}),
+    /* Context (data-desk-context.js): empresas expostas, benchmarks, manchetes e próxima divulgação de cada seção.
+       Consultas pequenas, só quando a faixa chega perto da tela, 10 min de cache. Sem rede o bloco some e a mesa segue igual. */
+    context:{
+      get:async path=>{ const {data:{session}}=await sbAuth.auth.getSession(); if(!session) return null;
+        const r=await fetch(SUPA_URL+'/rest/v1/'+path,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}); if(!r.ok) throw new Error('context '+r.status); return r.json(); },
+      rpc:async name=>{ const r=await sbAuth.rpc(name); if(r.error) throw r.error; return r.data; },
+      sections:_DESK_CTX,
+    },
     goto:it=>{ const m=WHERE[it.sec]; DESK.select(it.sec,it.metric); currentProd=it.prod||'total';
       if(m[0]==='pulp'){ pulpTab=m[1]; document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===m[1]));
         ['secex','gacc'].forEach(t=>document.getElementById('pl-tab-'+t).classList.toggle('active',t===m[1])); }

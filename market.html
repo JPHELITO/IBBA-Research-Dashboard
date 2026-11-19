@@ -1140,6 +1140,16 @@ const RT_RANK={OP:3,MP:2,UP:1};
 const RT_ALIAS={VALE:['VALE3.SA','VALE'],AUGO:['AURA33.SA','AUGO'],GGBR4:['GGBR4.SA','GGB'],ARA:['ARA.TO'],VMM:['VMM.AX']};
 const RT_CCY={BRL:'R$',USD:'US$',CLP:'CLP$',MXN:'MX$',CAD:'C$',AUD:'A$',GBP:'£',EUR:'€'};
 let _rt={on:false, ready:false, byKey:{}, keyOf:{}};   // on = esta conta pode ver (admin ou flag)
+/* Data Desk → atalho do cabeçalho da ação para a seção de DADOS mais ligada a ela (só com a mesa: admin ou flag data_desk) */
+let _deskFlag=false;
+const _SD_MM='/Steel and Mining/steel_sm_dashboard.html', _SD_PP='/Pulp and Paper/pp_dashboard.html';
+const _SECTOR_DATA=(()=>{ const o={}, put=(list,v)=>list.forEach(t=>o[t]=v);
+  put(['GGBR4.SA','GGB','GOAU4.SA','CSNA3.SA','SID','USIM5.SA'],[_SD_MM+'#imports','Steel imports','Metals & Mining']);
+  put(['TX'],[_SD_MM+'#prices','Steel prices','Metals & Mining']);
+  put(['VALE3.SA','VALE','CMIN3.SA','BRAP3.SA'],[_SD_MM+'#ore','Iron ore exports','Metals & Mining']);
+  put(['SUZB3.SA','SUZ','CMPC.SN','COPEC.SN'],[_SD_PP+'#pulp','Pulp exports','Pulp & Paper']);
+  put(['KLBN11.SA','RANI3.SA'],[_SD_PP+'#paper','Paper & packaging','Pulp & Paper']);
+  return o; })();
 let _rtFlag=false;
 let _rtOverlay=false; try{ _rtOverlay=localStorage.getItem('mkt_ratings_on')==='1'; }catch(e){}
 async function loadRatings(){
@@ -2184,8 +2194,11 @@ function renderHeaderFacts(){
   if(re) facts.push(`<span class="ah-fact rt-fact${_range==='UPD'?' on':''}" data-upd="1" title="${esc(_rtTipText(re))} — click for the performance since that update"><span class="k">Our rating</span><span class="rt-pill ${re.r||'NR'}">${re.r||'NR'}</span>${re.tp!=null?`<span class="k">TP</span><b>${esc(_fmtTP(re.tp,re.ccy))}</b>`:''}</span>`);
   const co=_anchor?_mwCompanyOf(_anchor):null, d=co&&_mw.data[co];
   if(co&&d&&_mwEnabled()) _mwFacts(co,d).forEach(f=>facts.push(f));
+  // atalho para os DADOS do setor (abas de M&M / P&P): link de verdade, abre a seção mais ligada à empresa
+  const sd=(_isAdmin||_deskFlag)&&_anchor?_SECTOR_DATA[String(_anchor).toUpperCase()]:null;
+  if(sd) facts.push(`<a class="ah-fact ah-go" href="${esc(encodeURI(sd[0]))}" style="text-decoration:none" title="Open the ${esc(sd[1].toLowerCase())} data in ${esc(sd[2])}"><span class="k">Sector data</span><b>${esc(sd[1])} →</b></a>`);
   host.innerHTML=facts.join('');
-  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>{ if(el.dataset.upd) setRange('UPD'); else setMTab(el.dataset.t,{anim:1}); });
+  host.querySelectorAll('.ah-fact').forEach(el=>el.onclick=()=>{ if(el.classList.contains('ah-go')) return; if(el.dataset.upd) setRange('UPD'); else setMTab(el.dataset.t,{anim:1}); });
 }
 function _mwFacts(co,d){
   const c=_mw.companies[co]||{}, lat=_mw.latest[co]||[], cur=lat.find(r=>r.ticker===c.ticker)||lat[0];
@@ -3169,6 +3182,7 @@ async function boot(){
       enabled=fl.some(f=>(f.key==='market'||f.flag==='market'||f.name==='market')&&(f.enabled||f.value||f.is_enabled));
       _mwFlag=fl.some(f=>f.key==='market_watch'&&!!f.enabled);   // linha Company (Market Watch) p/ o cliente
       _rtFlag=fl.some(f=>f.key==='market_ratings'&&!!f.enabled);  // recomendações da casa p/ o cliente
+      _deskFlag=fl.some(f=>f.key==='data_desk'&&!!f.enabled);     // atalho "Sector data" no cabeçalho (admin vê sempre)
       // recado p/ o menu do topo (o topnav.js não lê flags): grava só a flag — admin ele reconhece pelo ibba_is_admin
       try{ localStorage.setItem('ibba_mw_on',_mwFlag?'1':'0'); }catch(e){}
     } }catch(e){}

@@ -317,6 +317,7 @@
       '<div class="dk-pop"><button type="button" class="dk-pill dk-popbtn" aria-expanded="false"></button><div class="dk-popp" hidden></div></div></div>' +
       '<div class="dk-pills dk-subpills" role="group" aria-label="Sub-product" hidden></div><div class="dk-whogrid"><div class="dk-rank"></div><div class="dk-chart dk-whochart"><canvas id="dk-who-cv"></canvas></div></div>');
     E.minis = h('div', 'dk-minis');
+    E.ctx = h('div', 'dk-ctx0');   // Context: o que está em volta do número (data-desk-context.js)
     E.read = h('div', 'dk-card dk-read', '<div class="dk-ch"><h3>Reading</h3><em class="dk-when"></em></div><div class="dk-big"></div><div class="dk-kv"></div><div class="dk-pins"></div>');
     E.cols.appendChild(E.stage); E.cols.appendChild(E.read);
     var sec0 = this.sections[this.cur], vs = (sec0.views || []).filter(function (v) { return !v.visible || v.visible(); }), vb = h('div', 'dk-viewbar'), anyCur = vs.some(function (v) { return v.current; });
@@ -328,7 +329,7 @@
       E.prods.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var u = self._u(); u.prod = b.dataset.k; u.hover = u.pinA = u.pinB = null; u.who.pill = u.who.sub = u.who.sel = u.who.hi = null; self.refresh(); });
       vb.appendChild(E.prods); }
     if (vb.childNodes.length) body.appendChild(vb);
-    body.appendChild(E.tiles); body.appendChild(E.cols); body.appendChild(E.who); body.appendChild(E.minis); r.appendChild(body);
+    body.appendChild(E.tiles); body.appendChild(E.cols); body.appendChild(E.ctx); body.appendChild(E.who); body.appendChild(E.minis); r.appendChild(body);
     // eventos fixos
     E.tiles.addEventListener('click', function (e) { var b = e.target.closest('.dk-tile[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
     E.minis.addEventListener('click', function (e) { if (e.target.closest('.ibba-dl')) return; var b = e.target.closest('.dk-mini[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
@@ -405,6 +406,7 @@
     if (!light) this._tiles();
     this._stage(); if (!light && !sec.noBrush) this._brush(); this.el.stage.querySelector('.dk-brush').hidden = !!sec.noBrush;
     this._who(); this._minis(); this._paintMarks(); this._read(); this._rank();
+    if (!light && this._context) { try { this._context(); } catch (e) { console.warn('desk context', e); } }
     if (!light && this.cfg.afterRender) { try { this.cfg.afterRender(this); } catch (e) { console.warn('desk afterRender', e); } }
   };
 
