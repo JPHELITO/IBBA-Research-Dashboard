@@ -7,7 +7,8 @@
  *            requires?, unlessOff?, cleanup?, steps:[…]}
  * Passo:    {id, title, body, target? (seletor ou lista; sem alvo = cartão no meio), all?,
  *            media?: 'desktop'|'mobile', mobile?: {os mesmos campos, só no celular},
- *            requires?, unlessOff?, call?: ['funcaoGlobal', args…], placement?, pad?, radius?, wait?}
+ *            requires?, unlessOff?, onlyIf?, notIf?, call?: ['funcaoGlobal', args…], placement?, pad?, radius?, wait?}
+ *   onlyIf:'seletor' / notIf:'seletor' → só com (ou sem) algo na página AGORA (ex.: 'html.desk-on' = mesa de dados ligada)
  *   requires:'flag'  → só com a flag LIGADA (áreas que nascem fechadas: market, exec_calendar…)
  *   unlessOff:'flag' → só some com a flag DESLIGADA (painéis da home, que nascem abertos)
  *   all:true         → destaca TODOS os elementos visíveis do seletor juntos
@@ -219,22 +220,41 @@ window.IBBA_TOURS = {
       id: 'mm', title: 'Steel & Mining', blurb: 'Prices, domestic market and trade flows, with downloadable charts',
       page: '/Steel and Mining/steel_sm_dashboard.html', url: '/Steel and Mining/steel_sm_dashboard.html',
       waitGone: '#loading',   // o banco ainda descendo: a tela "Loading data…" fica na frente de tudo
+      // Dois roteiros no mesmo segmento: `notIf: html.desk-on` = abas de sempre · `onlyIf: html.desk-on` = a mesa de dados
+      // (Data Desk, flag data_desk; admin vê sempre). Passo sem condição serve aos dois.
       steps: [
-        { id: 'sections', target: ['#steel-subnav', '.mob-sections-list'], title: 'Sections',
+        { id: 'sections', notIf: 'html.desk-on', target: ['#steel-subnav', '.mob-sections-list'], title: 'Sections',
           body: 'Prices, Domestic Market, Imports and Exports: each section is a set of charts you can filter and download.',
           mobile: { body: 'Pick a section to open its charts. **← Sections** brings this list back anytime.' } },
+        { id: 'd-sections', onlyIf: 'html.desk-on', target: ['#steel-subnav', '.mob-sections-list'], title: 'Sections',
+          body: '**Overview** lists every indicator with its latest figure. Each section then goes deep on one subject, and **Builder** puts series side by side.',
+          mobile: { body: 'Start at **Overview**, or pick a section. **← Sections** brings this list back anytime.' } },
         { id: 'm-back', media: 'mobile', call: ['mobSelect', 'prices'], target: '#mob-back-btn', title: 'Back to sections',
           body: 'Tap **← Sections** anytime to switch to another section.' },
         { id: 'filters', call: ['mobSelect', 'prices'], target: '.filter-bar', title: 'Filters',
           body: 'Choose the product, the granularity (monthly, quarterly, annual) and the window. The charts follow.' },
+        { id: 'd-tiles', onlyIf: 'html.desk-on', call: ['mobSelect', 'imports'], target: '#desk-root .dk-tiles', title: 'The numbers on top are buttons',
+          body: 'Each card shows the latest figure, how it moved and where it sits in its 5-year range. {Click} a card to put that indicator on the main chart.',
+          mobile: { body: 'Each card shows the latest figure and how it moved. Swipe sideways for more, and tap a card to put it on the main chart.' } },
+        { id: 'd-stage', onlyIf: 'html.desk-on', call: ['mobSelect', 'imports'], target: '#desk-root .dk-stage', clip: 420, title: 'The main chart',
+          body: 'Switch between **Level**, **YoY**, **LTM** and **Seasonal**. Drag the strip under the chart to change the period, or use the window buttons above.' },
+        { id: 'd-reading', onlyIf: 'html.desk-on', call: ['mobSelect', 'imports'], target: '#desk-root .dk-read', clip: 360, title: 'Reading',
+          body: 'The comparisons, ready: versus last month, last year, the 5-year average and the year to date. {Click} two points on the chart to compare them.' },
+        { id: 'd-who', onlyIf: 'html.desk-on', call: ['mobSelect', 'imports'], target: '#desk-root .dk-who', clip: 380, title: 'Who is behind the number',
+          body: 'The same figure split by country or by product. {Click} a name to show or hide it; **Countries ▾** lists every country in the database.' },
         { id: 'download', call: ['mobSelect', 'prices'], target: '.section.active .chart-card .ibba-dl', title: 'Download any chart',
           body: '**PNG** saves the chart as you see it; **XLS** downloads its full history, not just the window on screen.' },
         { id: 'raw', target: '.dl-data-btn', title: 'All the data',
           body: 'Download the complete underlying tables, in Excel or CSV.' },
-        { id: 'asof', target: '#snav-asof', title: 'Data through',
+        { id: 'asof', media: 'desktop', target: '#snav-asof', title: 'Data through',   // no celular a faixa fica escondida: sem isto o passo esperava 6 s e era pulado
           body: 'The latest month available in each source, so you know how current the charts are.' },
-        { id: 'prediction', unlessOff: 'pred_model', call: [['mobSelect', 'imports'], ['setImportTab', 'prediction']], target: '#im-tab-prediction', clip: 360, title: 'Predictive model',
-          body: 'Uses Korea’s and China’s export records to anticipate Brazil’s flat-steel imports about three months ahead.' }
+        { id: 'd-builder', onlyIf: 'html.desk-on', call: ['mobSelect', 'builder'], target: '#desk-root .dk-bstage', clip: 420, title: 'Builder',
+          body: 'Put up to 4 series from any section on one chart. Different units get their own panel; **Index = 100** compares them on one scale. **Copy link** reopens the same view.',
+          mobile: { body: 'Put up to 4 series on one chart: tap **+ Add series** to pick them. Different units get their own panel; **Index = 100** compares them on one scale.' } },
+        { id: 'prediction', notIf: 'html.desk-on', unlessOff: 'pred_model', call: [['mobSelect', 'imports'], ['setImportTab', 'prediction']], target: '#im-tab-prediction', clip: 360, title: 'Predictive model',
+          body: 'Uses Korea’s and China’s export records to anticipate Brazil’s flat-steel imports about three months ahead.' },
+        { id: 'd-prediction', onlyIf: 'html.desk-on', unlessOff: 'pred_model', call: [['mobSelect', 'imports'], ['setImportTab', 'prediction']], target: '#desk-root .dk-stage', clip: 420, title: 'Predictive model',
+          body: 'In Imports, **Predictive model** uses Korea’s and China’s export records to anticipate Brazil’s flat-steel imports about three months ahead.' }
       ]
     },
     {
@@ -242,19 +262,38 @@ window.IBBA_TOURS = {
       page: '/Pulp and Paper/pp_dashboard.html', url: '/Pulp and Paper/pp_dashboard.html',
       waitGone: '#loading',
       steps: [
-        { id: 'sections', target: ['#pp-subnav', '.mob-sections-list'], title: 'Sections',
+        { id: 'sections', notIf: 'html.desk-on', target: ['#pp-subnav', '.mob-sections-list'], title: 'Sections',
           body: '**Pulp** covers Brazil’s pulp exports by port and China’s woodchip imports; **Paper & Packaging** covers Ibá and corrugated box data.',
           mobile: { body: 'Pick **Pulp** or **Paper & Packaging**. **← Sections** brings this list back anytime.' } },
+        { id: 'd-sections', onlyIf: 'html.desk-on', target: ['#pp-subnav', '.mob-sections-list'], title: 'Sections',
+          body: '**Overview** lists every indicator. **Pulp** covers exports and China’s woodchips; **Paper & Packaging** covers Ibá and corrugated boxes; **Builder** puts series side by side.',
+          mobile: { body: 'Start at **Overview**, or pick **Pulp** or **Paper & Packaging**. **← Sections** brings this list back anytime.' } },
         { id: 'filters', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '.filter-bar', title: 'Filters',
           body: 'Choose the granularity and the window, and the product where it applies. The charts follow.' },
-        { id: 'suppliers', call: [['mobSelect', 'pulp'], ['setPulpTab', 'gacc']], target: '#gc-cs-toggle', title: 'Woodchips by supplier',
+        { id: 'd-tiles', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-tiles', title: 'The numbers on top are buttons',
+          body: 'Each card shows the latest figure, how it moved and where it sits in its 5-year range. {Click} a card to put that indicator on the main chart.',
+          mobile: { body: 'Each card shows the latest figure and how it moved. Swipe sideways for more, and tap a card to put it on the main chart.' } },
+        { id: 'd-stage', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-stage', clip: 420, title: 'The main chart',
+          body: 'Switch between **Level**, **YoY**, **LTM** and **Seasonal**. Drag the strip under the chart to change the period, or use the window buttons above.' },
+        { id: 'd-reading', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-read', clip: 360, title: 'Reading',
+          body: 'The comparisons, ready: versus last month, last year, the 5-year average and the year to date. {Click} two points on the chart to compare them.' },
+        { id: 'd-who', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-who', clip: 380, title: 'Who is behind the number',
+          body: 'Pulp exports split by port or by destination, in volume, revenue, share or price. {Click} a name to show or hide it.' },
+        { id: 'suppliers', notIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'gacc']], target: '#gc-cs-toggle', title: 'Woodchips by supplier',
           body: 'Pick which supplier countries appear in this chart — Vietnam and Australia by default.' },
-        { id: 'download', target: '.section.active .chart-card .ibba-dl', title: 'Download any chart',
+        { id: 'd-suppliers', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'gacc']], target: '#desk-root .dk-who', clip: 380, title: 'Woodchips by supplier',
+          body: '**Woodchips — GACC** shows China’s imports by supplier. {Click} a country to show or hide it — Vietnam and Australia by default.' },
+        { id: 'download', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '.section.active .chart-card .ibba-dl', title: 'Download any chart',
           body: '**PNG** saves the chart as you see it; **XLS** downloads its full history, not just the window on screen.' },
         { id: 'raw', target: '.dl-data-btn', title: 'All the data',
           body: 'Download the complete underlying tables, in Excel or CSV.' },
-        { id: 'corrugated', call: [['mobSelect', 'paper'], ['setPaperTab', 'corrugated']], target: '.itab[data-patab="corrugated"]', title: 'Corrugated boxes',
-          body: 'In Paper & Packaging, **Corrugated** tracks Empapel’s box shipments, a timely read on domestic demand.' }
+        { id: 'd-builder', onlyIf: 'html.desk-on', call: ['mobSelect', 'builder'], target: '#desk-root .dk-bstage', clip: 420, title: 'Builder',
+          body: 'Put up to 4 series from any section on one chart. Different units get their own panel; **Index = 100** compares them on one scale. **Copy link** reopens the same view.',
+          mobile: { body: 'Put up to 4 series on one chart: tap **+ Add series** to pick them. Different units get their own panel; **Index = 100** compares them on one scale.' } },
+        { id: 'corrugated', notIf: 'html.desk-on', call: [['mobSelect', 'paper'], ['setPaperTab', 'corrugated']], target: '.itab[data-patab="corrugated"]', title: 'Corrugated boxes',
+          body: 'In Paper & Packaging, **Corrugated** tracks Empapel’s box shipments, a timely read on domestic demand.' },
+        { id: 'd-corrugated', onlyIf: 'html.desk-on', call: [['mobSelect', 'paper'], ['setPaperTab', 'corrugated']], target: '#desk-root .dk-views', title: 'Corrugated boxes',
+          body: 'In Paper & Packaging, **Corrugated — Empapel** tracks box shipments, a timely read on domestic demand.' }
       ]
     },
     {
