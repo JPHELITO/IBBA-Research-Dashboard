@@ -254,6 +254,9 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .dk-bempty{display:grid;place-content:center;gap:4px;text-align:center;min-height:240px;color:var(--gray-mid);font-size:12.5px;}
 .dk-bempty b{color:var(--black);font-size:14px;font-weight:600;}
 .dk-bmsg{margin-top:8px;font-size:11.5px;font-weight:600;color:var(--orange);}
+/* aviso de que a visão foi para a base 100 (unidades diferentes) */
+.dk-binfo{margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--gray-dark);background:var(--dk-panel2);border-left:2px solid var(--orange);border-radius:0 8px 8px 0;padding:7px 11px;}
+.dk-binfo b{color:var(--black);font-weight:700;}
 .dk-bvals .dk-ch{align-items:center;}
 .dk-ov.dk-bt{min-width:0;} .dk-bt th{white-space:normal;vertical-align:bottom;}
 .dk-bdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}

@@ -8,8 +8,10 @@
      Indicador novo numa seção aparece aqui sozinho.
    · Os números vêm de Desk.seriesAll — o MESMO caminho do palco da seção (mesmo eixo, mesma regra de
      soma/razão/último). O teste data-desk/ferramentas/comparar_builder.py confere isso.
-   · Um eixo por painel: séries da mesma unidade dividem um painel; outra unidade abre outro painel
-     embaixo, no mesmo eixo do tempo e com o mouse sincronizado. Nunca dois eixos no mesmo painel.
+   · UM gráfico, um eixo: séries da mesma unidade aparecem como são; em unidades diferentes (kt × %, kt × US$/t…)
+     a visão vai sozinha para a BASE 100 — cada série começa em 100 no início da janela. Nunca dois eixos, nunca
+     um painel por unidade (pedido do usuário, 19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100:
+     só entra junto de séries da mesma unidade.
    · Trimestre/ano: só períodos COMPLETOS (séries de fontes diferentes fecham em meses diferentes).
    ════════════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -89,7 +91,11 @@
   Desk.prototype._bWhy = function (key) { var b = this.bui, it = this._bItem(key); if (!it) return 'Not available';
     if (b.s.some(function (x) { return x.key === key; })) return null;
     if (b.s.length >= MAX) return 'Up to ' + MAX + ' series at a time: remove one first';
-    var u = this._bUnits(); if (b.calc !== 'index' && u.indexOf(it.unit) < 0 && u.length >= MAXU) return 'Two units at most (' + u.join(', ') + '): remove one, or switch to Index = 100';
+    /* unidades diferentes vão para a base 100. Série que pode ser zero ou negativa (um spread) não tem base 100: só entra com a MESMA unidade */
+    var self = this, u = this._bUnits(), mixed = u.length && (u.length > 1 || u.indexOf(it.unit) < 0);
+    if (mixed) { if (it.diff) return it.short + ' can be zero or negative, so it cannot go on base 100 next to other units — compare it with series in ' + it.unit;
+      var d0 = null; b.s.forEach(function (x) { var i2 = self._bItem(x.key); if (i2 && i2.diff) d0 = i2; });
+      if (d0) return d0.short + ' is on the chart and cannot go on base 100 — remove it to mix units'; }
     return null; };
   Desk.prototype._bToggle = function (key) { var b = this.bui, i = -1; b.s.forEach(function (x, k) { if (x.key === key) i = k; }); b.msg = '';
     if (i >= 0) b.s.splice(i, 1); else { var why = this._bWhy(key); if (why) { b.msg = why; this._bStage(); return; } b.s.push({ key: key, col: this._bFree() }); }
@@ -109,16 +115,23 @@
     var st = this.cfg.state(), gran = st.gran, b = this.bui, self = this, pal = palette();
     if (gran === 'annual' && b.calc === 'ltm') b.calc = 'level';
     var rows = []; b.s.forEach(function (s0) { var it = self._bItem(s0.key), d = it && self._bSeries(s0.key, gran); if (it && d) rows.push({ key: s0.key, col: pal[s0.col % pal.length], it: it, d: d }); });
-    var out = { rows: rows, P: [], i0: 0, i1: -1, panels: [], gran: gran, calc: b.calc }; if (!rows.length) return out;
+    /* contas em unidades diferentes não se comparam num eixo: a visão vai para a BASE 100 (um gráfico só).
+       want = a conta que a pessoa escolheu · calc = a que vale · mixed[conta] = essa conta daria mais de uma unidade */
+    var unitIn = function (d, k) { return k === 'index' ? 'Index' : k === 'yoy' ? (d.pp ? 'pp' : d.diff ? d.unit : '%') : d.unit; };
+    var unitsOf = function (k) { var us = []; rows.forEach(function (r) { var u0 = unitIn(r.d, k); if (us.indexOf(u0) < 0) us.push(u0); }); return us; };
+    var us0 = unitsOf(b.calc), auto = b.calc !== 'index' && us0.length > 1, calc = auto ? 'index' : b.calc;
+    var out = { rows: rows, P: [], i0: 0, i1: -1, panels: [], gran: gran, calc: calc, want: b.calc, auto: auto, units: us0,
+      mixed: { level: unitsOf('level').length > 1, yoy: unitsOf('yoy').length > 1, ltm: unitsOf('ltm').length > 1 } }; if (!rows.length) return out;
     var lo = null, hi = null; rows.forEach(function (r) { var f = -1, l = -1; r.d.level.forEach(function (x, i) { if (x != null) { if (f < 0) f = i; l = i; } }); if (f < 0) return;
       if (lo == null || r.d.starts[f] < lo) lo = r.d.starts[f]; if (hi == null || r.d.ends[l] > hi) hi = r.d.ends[l]; });
     if (lo == null) return out;
     var ax = core.axis(lo, hi), P = core.buildPeriods(ax, gran, false); if (!P.length) return out;
     var mw = core.monthWindow(ax, ax.length - 1, st), pw = core.periodWindow(P, mw[0], mw[1]); out.P = P; out.i0 = pw[0]; out.i1 = pw[1];
-    rows.forEach(function (r) { var src = b.calc === 'yoy' ? r.d.yoy : b.calc === 'ltm' ? r.d.ltm : r.d.level, map = {}, lm = {}, i;
+    rows.forEach(function (r) { var src = calc === 'yoy' ? r.d.yoy : calc === 'ltm' ? r.d.ltm : r.d.level, map = {}, lm = {}, i;
       r.d.keys.forEach(function (k, j) { if (r.d.partial[j]) return; map[k] = src ? src[j] : null; lm[k] = r.d.level[j]; });   // período em andamento fica de fora
-      r.unit = b.calc === 'index' ? 'Index' : b.calc === 'yoy' ? (r.d.pp ? 'pp' : r.d.diff ? r.d.unit : '%') : r.d.unit; r.dec = (b.calc === 'index' || b.calc === 'yoy') ? 1 : r.d.dec; r.note = '';
-      if (b.calc === 'index') { var base = null, bi = -1; for (i = pw[0]; i <= pw[1]; i++) { var x0 = lm[P[i].key]; if (x0 != null && x0 > 0) { base = x0; bi = i; break; } }
+      r.unit = unitIn(r.d, calc); r.dec = (calc === 'index' || calc === 'yoy') ? 1 : r.d.dec; r.note = '';
+      r.lev = P.map(function (p) { var x = lm[p.key]; return x == null ? null : x; });   // o nível de verdade (a ficha mostra ao lado do índice)
+      if (calc === 'index') { var base = null, bi = -1; for (i = pw[0]; i <= pw[1]; i++) { var x0 = lm[P[i].key]; if (x0 != null && x0 > 0) { base = x0; bi = i; break; } }
         var ok = base != null && !r.d.diff; r.v = P.map(function (p) { var x = lm[p.key]; return (ok && x != null) ? x / base * 100 : null; });
         r.note = !ok ? 'cannot be indexed (it can be zero or negative)' : (bi > pw[0] ? '100 = ' + P[bi].label : ''); }
       else r.v = P.map(function (p) { var x = map[p.key]; return x == null ? null : x; }); });
@@ -225,10 +238,14 @@
   /* ── palco: fichas, painéis (um eixo cada), dica, tabela ── */
   Desk.prototype._bStage = function () {
     var E = this.bel, b = this.bui, self = this, v = this._bv = this._bView(), t = D.theme(), n = v.i1 - v.i0 + 1;
-    E.bcalc.innerHTML = CALCS.map(function (c0) { var off = c0[0] === 'ltm' && v.gran === 'annual'; return '<button type="button" data-k="' + c0[0] + '" aria-pressed="' + (b.calc === c0[0]) + '" title="' + esc(off ? 'Not available in the annual view' : c0[2]) + '"' + (off ? ' disabled' : '') + '>' + c0[1] + '</button>'; }).join('');
-    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0);
+    /* a conta que vale fica marcada; a que daria unidades diferentes fica apagada, com o motivo */
+    var mixTip = 'Needs series in the same unit. These are in different units, so they are shown on base 100';
+    E.bcalc.innerHTML = CALCS.map(function (c0) { var offA = c0[0] === 'ltm' && v.gran === 'annual', offM = !!(v.mixed && v.mixed[c0[0]]), off = offA || offM;
+      return '<button type="button" data-k="' + c0[0] + '" aria-pressed="' + (v.calc === c0[0]) + '" title="' + esc(offM ? mixTip : offA ? 'Not available in the annual view' : c0[2]) + '"' + (off ? ' disabled' : '') + '>' + c0[1] + '</button>'; }).join('');
+    var info = v.auto ? '<div class="dk-binfo"><b>Shown on base 100.</b> These series are in different units (' + esc(v.units.join(' · ')) + '), so each one starts at 100 at the beginning of the window and you compare how they moved. The cards above and the table below keep the real figures.</div>' : '';
+    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0) + '#' + (v.auto ? v.units.join(',') : '');
     if (E.bpanels.dataset.sig !== sig) { this._dropCharts('b:'); E.bpanels.dataset.sig = sig;
-      E.bpanels.innerHTML = (v.panels.length && n > 0) ? v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu">' + esc(p.unit === 'Index' ? 'Index — start of the window = 100' : p.unit) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
+      E.bpanels.innerHTML = (v.panels.length && n > 0) ? info + v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu">' + esc(p.unit === 'Index' ? 'Index — start of the window = 100' : p.unit) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
         : '<div class="dk-bempty"><b>' + (b.s.length ? 'No complete period in this window yet.' : 'Nothing on the chart yet.') + '</b><span>' + (b.s.length ? 'Pick a longer window or a finer granularity in the bar above.' : 'Pick a series on the left, or one of the ready-made views above.') + '</span></div>'; }
     if (v.panels.length && n > 0) { var labels = v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; });
       v.panels.forEach(function (p, k) { var cv = E.bpanels.querySelector('canvas[data-p="' + k + '"]');
@@ -243,7 +260,7 @@
     E.bmsg.hidden = !msgs.length; E.bmsg.textContent = msgs.join(' · ');
     var hint = v.panels.length > 1 ? 'Series with the same unit share a panel; each other unit gets its own panel, on the same time axis.' : 'Hover to read every series at the same period.';
     if (v.gran !== 'monthly') hint += ' Complete ' + (v.gran === 'quarterly' ? 'quarters' : 'years') + ' only.';
-    if (b.calc === 'ltm') hint += ' LTM = last 12 months: sum for volumes, average or ratio for prices and shares.';
+    if (v.calc === 'ltm') hint += ' LTM = last 12 months: sum for volumes, average or ratio for prices and shares.';
     E.bhint.textContent = hint;
     this._bPaint();
   };
@@ -257,28 +274,33 @@
     E.bwhen.textContent = ref >= 0 && v.P[ref] ? v.P[ref].label + (b.hover != null ? '' : ' · latest') : '';
     E.bchips.innerHTML = v.rows.map(function (r) { var j = ref, own = ''; if (b.hover == null && ref >= 0 && r.v[ref] == null) { for (j = ref; j >= v.i0 && r.v[j] == null; j--); if (j >= v.i0) own = ' (' + v.P[j].label + ')'; }
       var val = (j >= v.i0 && j >= 0) ? r.v[j] : null;
+      /* na base 100 a ficha mostra o índice E o número de verdade (senão a unidade real sumiria da tela) */
+      var real = (v.calc === 'index' && j >= v.i0 && j >= 0 && r.lev && r.lev[j] != null) ? fmt(r.lev[j], r.d.dec) + ' ' + r.d.unit : '';
       return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(r.it.where) + ' — click to open it in its section">' + esc(r.it.name) + '</button>' +
-        '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? '' : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
+        '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? (real ? '· ' + real : '') : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
         '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
     this._bTable(false, ref);
   };
   /* tabela Values: os 12 períodos mais recentes da janela (mais novo em cima). asText = a janela INTEIRA, para colar no Excel */
   Desk.prototype._bTable = function (asText, ref) {
     var E = this.bel, v = this._bv, lines = [], i, loc = (navigator.language || 'en-US');
-    if (asText) { lines.push(['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); })).join('\t'));
-      for (i = v.i1; i >= v.i0; i--) lines.push([v.P[i].label].concat(v.rows.map(function (r) { var x = r.v[i]; return x == null ? '' : x.toLocaleString(loc, { useGrouping: false, maximumFractionDigits: r.dec + 2 }); })).join('\t'));
+    /* na base 100 a tabela leva também o número de verdade de cada série (o índice sozinho esconderia a unidade real) */
+    var idx = v.calc === 'index', num = function (x, d) { return x == null ? '' : x.toLocaleString(loc, { useGrouping: false, maximumFractionDigits: d + 2 }); };
+    if (asText) { lines.push(['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); }), idx ? v.rows.map(realName) : []).join('\t'));
+      for (i = v.i1; i >= v.i0; i--) lines.push([v.P[i].label].concat(v.rows.map(function (r) { return num(r.v[i], r.dec); }), idx ? v.rows.map(function (r) { return num(r.lev[i], r.d.dec); }) : []).join('\t'));
       return lines.join('\n'); }
     var from = Math.max(v.i0, v.i1 - 11);
     E.bvw.textContent = v.rows.length && v.i1 >= v.i0 ? (v.i1 - from + 1) + ' most recent periods · ' + CALCS.filter(function (c0) { return c0[0] === v.calc; })[0][1] : '';
     if (!v.rows.length || v.i1 < v.i0) { E.bt.innerHTML = ''; E.bt.closest('.dk-bvals').hidden = true; return; } E.bt.closest('.dk-bvals').hidden = false;
-    var html = '<thead><tr><th>Period</th>' + v.rows.map(function (r) { return '<th><i class="dk-bdot" style="background:' + r.col + '"></i>' + esc(r.it.name) + ' <span class="dk-src">' + esc(r.unit) + '</span></th>'; }).join('') + '</tr></thead><tbody>';
-    for (i = v.i1; i >= from; i--) html += '<tr' + (i === ref && this.bui.hover != null ? ' class="dk-bhi"' : '') + '><td>' + v.P[i].label + '</td>' + v.rows.map(function (r) { var x = r.v[i]; return '<td' + (v.calc === 'yoy' && x != null ? ' class="' + X.cls(x) + '"' : '') + '>' + numTxt(x, r.dec, v.calc === 'yoy') + '</td>'; }).join('') + '</tr>';
+    var html = '<thead><tr><th>Period</th>' + v.rows.map(function (r) { return '<th><i class="dk-bdot" style="background:' + r.col + '"></i>' + esc(r.it.name) + ' <span class="dk-src">' + esc(idx ? 'Index · ' + r.d.unit : r.unit) + '</span></th>'; }).join('') + '</tr></thead><tbody>';
+    for (i = v.i1; i >= from; i--) html += '<tr' + (i === ref && this.bui.hover != null ? ' class="dk-bhi"' : '') + '><td>' + v.P[i].label + '</td>' + v.rows.map(function (r) { var x = r.v[i]; return '<td' + (v.calc === 'yoy' && x != null ? ' class="' + X.cls(x) + '"' : '') + '>' + numTxt(x, r.dec, v.calc === 'yoy') + ((idx && r.lev[i] != null) ? ' <span class="dk-src">' + fmt(r.lev[i], r.d.dec) + ' ' + esc(r.d.unit) + '</span>' : '') + '</td>'; }).join('') + '</tr>';
     E.bt.innerHTML = html + '</tbody>';
   };
   function colName(r, calc) { return r.it.name + (calc === 'yoy' ? ' — YoY' : calc === 'ltm' ? ' — LTM' : calc === 'index' ? ' — Index' : '') + (r.unit === 'Index' ? '' : ' (' + r.unit + ')'); }   // cabeçalho de coluna no Excel
-  Desk.prototype._bAOA = function () { var v = this._bv, out = [['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); }))], i, first = -1;
+  function realName(r) { return r.it.name + ' (' + r.d.unit + ')'; }   // coluna do número de verdade, ao lado do índice
+  Desk.prototype._bAOA = function () { var v = this._bv, idx = v.calc === 'index', out = [['Period'].concat(v.rows.map(function (r) { return colName(r, v.calc); }), idx ? v.rows.map(realName) : [])], i, first = -1;
     for (i = 0; i < v.P.length && first < 0; i++) if (v.rows.some(function (r) { return r.v[i] != null; })) first = i;
-    for (i = Math.max(0, first); i < v.P.length; i++) out.push([v.P[i].label].concat(v.rows.map(function (r) { return r.v[i]; }))); return out; };
+    for (i = Math.max(0, first); i < v.P.length; i++) out.push([v.P[i].label].concat(v.rows.map(function (r) { return r.v[i]; }), idx ? v.rows.map(function (r) { return r.lev[i]; }) : [])); return out; };
   Desk.prototype._bName = function () { var v = this._bv, c0 = CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]; return 'Builder — ' + v.rows.map(function (r) { return r.it.name; }).join(' vs ') + (v.calc === 'level' ? '' : ' (' + c0 + ')'); };
   Desk.prototype._bXLS = function () { var v = this._bv; if (!v || !v.rows.length || !window.IBBAExport) return; var nm = IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp());
     IBBAExport.xlsxFromAOA([{ name: 'Builder', aoa: this._bAOA() }], nm).catch(function () { alert('Could not build the Excel file.'); }); };
@@ -305,7 +327,7 @@
   };
 
   /* só para os testes: a visão calculada (períodos da janela e os valores de cada série) */
-  Desk.prototype.builderDebug = function () { var v = this._bView(); return { calc: v.calc, gran: v.gran, keys: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.key; }), labels: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; }),
+  Desk.prototype.builderDebug = function () { var v = this._bView(); return { calc: v.calc, want: v.want, auto: v.auto, gran: v.gran, keys: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.key; }), labels: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; }),
     panels: v.panels.map(function (p) { return p.unit; }), series: v.rows.map(function (r) { return { key: r.key, name: r.it.name, unit: r.unit, vals: r.v.slice(v.i0, v.i1 + 1) }; }) }; };
   D.builder = { encodeView: encodeView, decodeView: decodeView, parseKey: parseKey, MAX: MAX, MAXU: MAXU };
 })();
