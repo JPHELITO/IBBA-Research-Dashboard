@@ -1818,6 +1818,11 @@ function applyFlags(flags, isAdmin){
   // Tutorial (botão "Tutorial" da barra + convite da 1ª visita): mesmo recado, só a flag (admin o menu já reconhece)
   try{ localStorage.setItem('ibba_tour_on', on['tutorial']===true?'1':'0'); }catch(e){}
   if(window.__gnavTourOn) window.__gnavTourOn(on['tutorial']===true||isAdmin);
+  // Data Desk (mesa de dados de M&M/P&P): o menu só oferece Overview / preços / Iron Ore / Builder a quem vê a mesa, pelo
+  // recado ibba_desk que as páginas de dados gravam — sem ele aqui, o cliente só via o menu novo depois de abrir M&M ou P&P.
+  // Chave desligada: só apaga o recado do CLIENTE (o do admin quem decide é a página de dados, que conhece o ?desk=0).
+  try{ if(on['data_desk']===true) localStorage.setItem('ibba_desk','1'); else if(on['data_desk']===false&&!isAdmin) localStorage.setItem('ibba_desk','0'); }catch(e){}
+  if(window.__gnavDesk&&typeof on['data_desk']==='boolean') window.__gnavDesk(on['data_desk']===true||isAdmin);
   for(const key in FLAG_SEL){
     document.querySelectorAll(FLAG_SEL[key]).forEach(el => {
       el.classList.remove('admin-off');

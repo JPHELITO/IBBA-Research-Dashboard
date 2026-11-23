@@ -369,7 +369,6 @@ body.mob-picker-active .dk-subnav{display:none!important;}
 .mob-sec-group{display:none;} html.desk-on .mob-sec-group.dk-only{display:block;padding:12px 20px 6px;font:700 10px var(--dk-text);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);background:var(--dk-panel2);border-bottom:1px solid var(--border);}
 /* lista do celular na ordem das commodities (a ordem do HTML é a da tela antiga) */
 html.desk-on .mob-sections-list{display:flex;flex-direction:column;}
-html.desk-on .mob-sec-item.dk-nodesk{display:none;}   /* item só da tela antiga (Prices da SECEX) */
 
 /* seções de preço */
 .dk-hfstage{display:flex;flex-direction:column;}

@@ -61,9 +61,6 @@
     mm: {
       imports: {
         vol: 'How much steel Brazil imported in each period, in thousand tonnes (SECEX customs data). More imports mean more competition for Brazilian mills.',
-        price: 'The average price of the steel Brazil imported: the import bill divided by the tonnes that arrived, in US$ per tonne (SECEX). A customs average that also moves with the mix of products — not a market quote.',
-        prem: { what: 'Import price minus Brazil\'s export price, which serves as a reference for the domestic price, in US$ per tonne (both customs averages, SECEX).',
-          how: 'Green = imported steel costs more than the local reference, which helps Brazilian mills; red = imports are cheaper, a competitive risk. The dashed line is the average of the window.' },
         lead: function (o) { return 'Share of Brazil\'s steel import volume that comes from ' + lead(o.label, 'the largest supplier') + ', the largest supplier (SECEX).'; },
         pen: 'Share of the steel used in Brazil that came from abroad: (apparent consumption − domestic sales) ÷ apparent consumption (IABr). Higher = imports taking more of the market.',
         rev: 'What Brazil paid for imported steel in each period, in US$ million (SECEX customs value).',
@@ -72,7 +69,6 @@
       },
       exports: {
         vol: 'How much steel Brazil exported in each period, in thousand tonnes (SECEX customs data).',
-        price: 'The average price of Brazil\'s steel exports: export revenue divided by the tonnes shipped, in US$ per tonne (SECEX). It is also used as a rough reference for the domestic price. A customs average — not a market quote.',
         rev: 'Brazil\'s revenue from steel exports in each period, in US$ million (SECEX, FOB value).',
         lead: function (o) { return 'Share of Brazil\'s steel export volume that goes to ' + lead(o.label, 'the largest destination') + ', the largest destination (SECEX).'; },
         $who: { country: 'Where Brazil\'s steel exports go, by country of destination (SECEX).',
@@ -94,7 +90,6 @@
       },
       ore: {
         vol: 'Brazil\'s iron ore exports — fines plus pellets — in million tonnes (SECEX customs data).',
-        price: 'The average price of Brazil\'s iron ore exports: revenue ÷ volume, in US$ per tonne FOB (SECEX). A customs average that lags the market and moves with the fines/pellets mix — not a market quote.',
         rev: 'Brazil\'s revenue from iron ore exports, in US$ billion (SECEX, FOB value).',
         china: 'Share of Brazil\'s iron ore export volume that goes to China (SECEX).',
         pel: 'Share of pellets in Brazil\'s iron ore export volume — the rest is fines (SECEX).',
