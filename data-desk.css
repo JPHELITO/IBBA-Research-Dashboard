@@ -351,3 +351,62 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
   .dk-badd{min-height:36px;}
   .dk-ov.dk-bt th,.dk-ov.dk-bt td{display:table-cell;}   /* a tabela Values do Builder não é a lista do Overview: todas as colunas */
 }
+
+/* ════════ POR COMMODITY + PREÇOS (data-desk-prices.js) — rodada 11, 23/11/2026 ════════ */
+/* barra de seções: com a mesa os botões são as commodities; os temas de sempre ficam para a tela antiga */
+html.desk-on .snav-btn.dk-legacy{display:none;}
+.dk-subnav{display:none;}
+html.desk-on .dk-subnav:not([hidden]){display:flex;align-items:center;gap:12px;background:var(--white);border-bottom:1px solid var(--border);padding:6px 22px;overflow-x:auto;scrollbar-width:none;}
+html.desk-on .dk-subnav::-webkit-scrollbar{display:none;}
+.dk-sublbl{font:700 9.5px var(--dk-text);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);white-space:nowrap;flex:none;}
+.dk-sublbl::after{content:"›";margin-left:8px;color:var(--gray-mid);font-weight:400;}
+.dk-subtabs{display:inline-flex;gap:4px;flex:none;}
+.dk-subtab{font:600 11.5px var(--dk-text);color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s;}
+.dk-subtab:hover{border-color:var(--orange);color:var(--orange);}
+.dk-subtab.active{background:var(--black);border-color:var(--black);color:var(--white);}
+html.dark .dk-subtab.active{background:#343941;border-color:#343941;color:#fff;}
+body.mob-picker-active .dk-subnav{display:none!important;}
+.mob-sec-group{display:none;} html.desk-on .mob-sec-group.dk-only{display:block;padding:12px 20px 6px;font:700 10px var(--dk-text);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);background:var(--dk-panel2);border-bottom:1px solid var(--border);}
+/* lista do celular na ordem das commodities (a ordem do HTML é a da tela antiga) */
+html.desk-on .mob-sections-list{display:flex;flex-direction:column;}
+.dk-only-t{display:none;} html.desk-on .dk-only-t{display:inline;} html.desk-on .dk-legacy-t{display:none;}
+
+/* seções de preço */
+.dk-hfstage{display:flex;flex-direction:column;}
+.dk-hfstage .dk-stagechart{flex:1 1 auto;min-height:250px;}
+.dk-hfdl{position:absolute;top:12px;right:14px;}
+.dk-hfdl button{font:700 9.5px var(--dk-text);letter-spacing:.06em;color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;}
+.dk-hfdl button:hover{border-color:var(--orange);color:var(--orange);}
+.dk-hfleg{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:11.5px;color:var(--gray-dark);}
+.dk-hfleg:empty{display:none;}
+.dk-hfleg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.dk-hfleg i{flex:none;width:9px;height:9px;border-radius:50%;}
+.dk-hfleg b{font-family:var(--dk-disp);font-weight:400;font-size:12.5px;letter-spacing:-.02em;color:var(--black);font-variant-numeric:tabular-nums;}
+.dk-hfleg i.dk-lg-band{width:14px;height:9px;border-radius:2px;background:rgba(17,17,17,.12);}
+html.dark .dk-hfleg i.dk-lg-band{background:rgba(255,255,255,.18);}
+.dk-hfleg i.dk-lg-dash{width:16px;height:0;border-radius:0;border-top:1.5px dashed var(--gray-mid);}
+.dk-hfsrc{text-align:right;}
+.dk-hfread .dk-kv i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+.dk-kvh{grid-column:1/-1;margin-top:4px;padding-top:9px;border-top:1px solid var(--dk-grid);font:700 9.5px var(--dk-text);letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid)!important;}
+.dk-hfmsg{display:grid;place-content:center;justify-items:center;gap:6px;text-align:center;min-height:220px;color:var(--gray-mid);font-size:12.5px;}
+.dk-hfmsg[hidden]{display:none;}
+.dk-hfmsg b{color:var(--black);font-size:14px;font-weight:600;}
+.dk-tvs{font-size:17px;}
+@media (min-width:769px){.dk-hf .dk-tiles{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}}
+.dk-tu{font:500 9.5px var(--dk-text);letter-spacing:0;text-transform:none;color:var(--gray-mid);white-space:nowrap;}
+.dk-hf .dk-tm span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* a conta aberta, parcela por parcela */
+.dk-eq{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px 6px;}
+.dk-eqi{display:flex;flex-direction:column;justify-content:space-between;gap:3px;min-width:74px;padding:7px 10px;border-radius:9px;background:var(--dk-panel2);}
+.dk-eqi small{font:600 9.5px var(--dk-text);letter-spacing:.02em;color:var(--gray-mid);line-height:1.25;max-width:17ch;}
+.dk-eqi b{font-family:var(--dk-disp);font-weight:400;font-size:15px;letter-spacing:-.02em;color:var(--black);font-variant-numeric:tabular-nums;}
+.dk-eqi.dk-eqs{background:none;box-shadow:inset 0 0 0 1px var(--border);}
+.dk-eqi.dk-eqs small{color:var(--black);}
+.dk-eqbr{flex-basis:100%;height:0;}
+.dk-eqo{align-self:center;font:500 14px var(--dk-text);font-style:normal;color:var(--gray-mid);}
+@media (max-width:768px){
+  html.desk-on .dk-subnav:not([hidden]){padding:6px 12px;}
+  .dk-subtab{min-height:32px;}
+  .dk-hfdl button{min-height:32px;padding:6px 10px;}
+  .dk-hfsrc{text-align:left;}
+}

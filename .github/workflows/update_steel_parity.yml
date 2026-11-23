@@ -1,0 +1,41 @@
+name: ⚖️ Paridade do aço — semana que fechou
+
+# Acrescenta na tabela steel_parity (Supabase) a sexta-feira que fechou: FOB China/Turquia e preço doméstico
+# (tabela commodities), câmbio (PTAX) e os parâmetros da última semana. Detalhes em _shared/update_steel_parity.py.
+# A página de M&M (mesa de dados › Steel › Prices) refaz a conta a partir desses insumos.
+#
+# POR QUE TRÊS CRONS: o agendador do GitHub atrasa horas neste repo. Os três são despertadores do MESMO
+# trabalho — o primeiro que rodar grava; os outros acham a semana gravada e saem em segundos.
+on:
+  schedule:
+    - cron: "23 10 * * 6"   # sábado 07:23 BRT
+    - cron: "23 10 * * 0"   # domingo 07:23 BRT
+    - cron: "23 10 * * 1"   # segunda 07:23 BRT
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "Só simular (não grava)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: update-steel-parity
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Gravar a semana que fechou
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PYTHONUTF8: "1"
+        run: python _shared/update_steel_parity.py ${{ inputs.dry && '--dry' || '' }}

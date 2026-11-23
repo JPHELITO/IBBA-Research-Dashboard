@@ -7,6 +7,7 @@
 <h1>Data Desk — núcleo</h1><pre id="out"></pre>
 <script src="../data-desk.js"></script>
 <script src="../data-desk-builder.js"></script>
+<script src="../data-desk-prices.js"></script>
 <script>
 const C = IBBADesk.core, R = { pass: 0, fail: 0, falhas: [] }, lines = [];
 function eq(nome, a, b) { const ok = JSON.stringify(a) === JSON.stringify(b); ok ? R.pass++ : (R.fail++, R.falhas.push(nome)); lines.push((ok ? '✓ ' : '✗ ') + nome + (ok ? '' : '\n     obtido:   ' + JSON.stringify(a) + '\n     esperado: ' + JSON.stringify(b))); }
@@ -139,6 +140,51 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   ST = { prod: 'total', gran: 'annual', win: 'all', from: null, to: null }; D2._bApply({ s: ['a.v.total'], v: 'ltm' }, false); v = D2._bView();
   eq('Builder · LTM não existe no anual: volta para Level', [D2.bui.calc, v.P.map(p => p.key)], ['level', ['2024', '2025']]);
   eq('Builder · a última visão fica guardada neste navegador', JSON.parse(localStorage.getItem('ibba_desk_builder_t')).s, ['a.v.total']);
+})();
+
+/* ── PREÇOS (data-desk-prices.js): as contas puras das seções de preço. Números FICTÍCIOS (o repositório é público). ── */
+(function () {
+  const X = IBBADesk.prices;
+  const r = X.parity({ week: '2030-01-04', fob: 500, freight: 100, insurance: 0.01, tariff: 0.10, afrmm: 0.20, port: 30, dom_brl: 4000, fx: 5 });
+  near('Paridade · CIF = (FOB + frete) × (1 + seguro)', r.cif, 606, 1e-9);
+  near('Paridade · importado = CIF + tarifa + AFRMM + porto', r.imported, 716.6, 1e-9);
+  near('Paridade · doméstico em US$ = R$/t ÷ câmbio', r.domUsd, 800, 1e-9);
+  near('Paridade · prêmio = doméstico ÷ importado − 1, em %', r.premium, (800 / 716.6 - 1) * 100, 1e-9);
+  near('Paridade · prêmio sem a tarifa de importação', r.premiumZero, (800 / 656 - 1) * 100, 1e-9);
+  eq('Paridade · sem câmbio não há prêmio (e a conta do importado continua)', [X.parity({ fob: 500, freight: 100, insurance: 0, tariff: 0, afrmm: 0, port: 0, dom_brl: 4000, fx: null }).premium, X.parity({ fob: 500, freight: 100, insurance: 0, tariff: 0, afrmm: 0, port: 0, dom_brl: null, fx: 5 }).imported], [null, 600]);
+  eq('fromDaily · um ponto por dia (o último da lista), em ordem, sem vazios', X.fromDaily([[1893456000 + 86400, 12], [1893456000, 10], [1893456000 + 3600, 11], [1893456000 + 2 * 86400, null]]), [['2030-01-01', 11], ['2030-01-02', 12]]);
+  eq('combine · conta só nos dias em que as duas séries têm valor', X.combine([['a', 10], ['b', 20], ['c', 30]], [['b', 5], ['c', 6], ['d', 7]], (x, y) => x - y), [['b', 15], ['c', 24]]);
+  eq('at · último ponto em ou antes da data', [X.at([['2030-01-01', 1], ['2030-01-05', 2]], '2030-01-04'), X.at([['2030-01-01', 1]], '2029-12-31')], [['2030-01-01', 1], null]);
+  eq('shift · meses para trás e para a frente, com fim de mês', [X.shift('2030-03-31', -1), X.shift('2030-01-15', -12), X.shift('2030-11-30', 3)], ['2030-02-28', '2029-01-15', '2031-02-28']);
+  const dates = ['2029-06-01', '2029-12-28', '2030-01-04', '2030-02-01', '2030-03-01'];
+  eq('janela · YTD, 3M, All e datas livres (os mesmos botões da página)', [X.win(dates, { win: 'ytd' }), X.win(dates, { win: '3m' }), X.win(dates, { win: 'all' }), X.win(dates, { win: 'custom', from: '2029-12', to: '2030-01' })], [[2, 4], [1, 4], [0, 4], [1, 2]]);
+  const al = X.align([[['a', 1], ['c', 3]], [['b', 20], ['c', 30]]]);
+  eq('align · um eixo com a união das datas; vazio onde a série não tem valor', [al.dates, al.vals], [['a', 'b', 'c'], [[1, null, 3], [null, 20, 30]]]);
+  const last = { week: '2030-01-04', fob: 500, freight: 100, insurance: 0.01, tariff: 0.1, afrmm: 0.2, port: 30, dom_brl: 4000, fx: 5 };
+  eq('ao vivo · só existe com preço DEPOIS da última semana gravada e com câmbio', [X.liveRow(last, [['2030-01-04', 500]], [], 5.2), X.liveRow(last, [['2030-01-08', 510]], [['2030-01-07', 4100]], 0)], [null, null]);
+  const lv = X.liveRow(last, [['2030-01-04', 500], ['2030-01-08', 510]], [['2030-01-07', 4100]], 5.2);
+  eq('ao vivo · preço e câmbio de hoje; frete, tarifa, AFRMM e porto da última semana', [lv.week, lv.fob, lv.dom_brl, lv.fx, lv.freight, lv.tariff, lv.live], ['2030-01-08', 510, 4100, 5.2, 100, 0.1, true]);
+  const S = { daily: { F: { pts: [['2030-01-04', 500], ['2030-01-08', 510]] }, DM: { pts: [['2030-01-07', 4100]] } }, fx: 5.2, v: 1, parCodes: { hrc: { fob: 'F', dom: 'DM' } },
+    parity: { hrc: [['2029-12-28', 480, 100, 0.01, 0.1, 0.2, 30, 3900, 5], ['2030-01-04', 500, 100, 0.01, 0.1, 0.2, 30, 4000, 5]] } };
+  const rows = X.P.par(S, 'hrc');
+  eq('P.par · semanas gravadas + o ponto ao vivo no fim', [rows.length, rows[1].live, rows[2].live, rows[2].week], [3, false, true, '2030-01-08']);
+  near('P.par · a conta do ponto ao vivo', rows[2].premium, ((4100 / 5.2) / ((510 + 100) * 1.01 * 1.1 + 20 + 30) - 1) * 100, 1e-9);
+  eq('P.col / P.rowAt', [X.P.col(rows, 'fob'), X.P.rowAt(rows, '2030-01-06').week, X.P.rowAt(rows, '2029-01-01')], [[['2029-12-28', 480], ['2030-01-04', 500], ['2030-01-08', 510]], '2030-01-04', null]);
+  eq('P.par · produto sem tabela (SQL ainda não rodado) = lista vazia, sem erro', X.P.par({ daily: {}, parity: {}, fx: 5, v: 1 }, 'rebar'), []);
+  eq('P.sub · margem = preço − frete nos dias em comum', X.P.sub([['d1', 90], ['d2', 91]], [['d2', 35], ['d3', 36]]), [['d2', 56]]);
+  /* histórico longo (tabela price_history, formato curto da get_price_history) emendado com o que o robô guarda */
+  eq('decodeHist · s = 1º dia, d = dias desde o anterior, v = valores (vazio fica de fora)', X.decodeHist({ s: '2030-01-30', d: [0, 1, 3, 1], v: [10, 11, null, 12.5] }), [['2030-01-30', 10], ['2030-01-31', 11], ['2030-02-04', 12.5]]);
+  eq('decodeHist · resposta vazia ou sem o 1º dia = nada', [X.decodeHist(null), X.decodeHist({ d: [0], v: [1] })], [[], []]);
+  eq('mergeHist · união dos dias; no mesmo dia vale o robô', X.mergeHist([['2030-01-01', 1], ['2030-01-02', 2]], [['2030-01-02', 20], ['2030-01-03', 30]]), [['2030-01-01', 1], ['2030-01-02', 20], ['2030-01-03', 30]]);
+  const SH = { daily: { A: { pts: [['2030-01-02', 20], ['2030-01-03', 30]] }, B: { pts: [['2030-01-03', 7]] } }, hist: { A: [['2030-01-01', 1], ['2030-01-02', 2]], C: [['2029-12-31', 5]], B: [] }, v: 1 };
+  eq('P.d · histórico + robô; só histórico; só robô; histórico vazio', [X.P.d(SH, 'A'), X.P.d(SH, 'C'), X.P.d(SH, 'B'), X.P.d(SH, 'Z')], [[['2030-01-01', 1], ['2030-01-02', 20], ['2030-01-03', 30]], [['2029-12-31', 5]], [['2030-01-03', 7]], []]);
+  SH.daily.A.pts.push(['2030-01-04', 40]); SH.v = 2;
+  eq('P.d · dado novo do robô (versão nova) entra na emenda', X.P.d(SH, 'A').length, 4);
+  const q = X.qInfo('2030-11-23');
+  eq('qInfo · trimestre como nas planilhas (4Q30), 1º e último dia', [q.label, q.start, q.end, X.qInfo('2030-02-10').end, X.qInfo('2032-02-10').end], ['4Q30', '2030-10-01', '2030-12-31', '2030-03-31', '2032-03-31']);
+  eq('qBack · o anterior e o mesmo de um ano antes (virando o ano)', [X.qBack(X.qInfo('2030-02-10'), 1).label, X.qBack(X.qInfo('2030-02-10'), 4).label, X.qBack(q, 1).start], ['4Q29', '1Q29', '2030-07-01']);
+  near('avgIn · média simples entre duas datas, inclusive', X.avgIn([['2030-09-30', 100], ['2030-10-01', 10], ['2030-10-15', 20], ['2030-12-31', 30], ['2031-01-01', 999]], '2030-10-01', '2030-12-31'), 20);
+  eq('avgIn · sem ponto no intervalo = sem média', X.avgIn([['2030-01-01', 1]], '2031-01-01', '2031-03-31'), null);
 })();
 
 document.getElementById('out').innerHTML = lines.map(l => '<span class="' + (l[0] === '✓' ? 'ok' : 'no') + '">' + l.replace(/</g, '&lt;') + '</span>').join('\n') + '\n\n' + R.pass + ' passaram · ' + R.fail + ' falharam';

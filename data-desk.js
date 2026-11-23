@@ -260,7 +260,7 @@
     ensurePlugin();
     var self = this;
     window.addEventListener('ibba:theme', function () { if (self.cur) self.refresh(); });
-    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.builder && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.builder && !S0.hf && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
   }
   Desk.prototype.has = function (id) { return !!this.sections[id]; };
   Desk.prototype._u = function () { var id = this.cur; return this.ui[id] || (this.ui[id] = { metric: this.sections[id].stage, mode: 'level', hover: null, pinA: null, pinB: null, who: { dim: 0, pill: null, sel: null, mode: 'volume', hi: null } }); };
@@ -353,7 +353,7 @@
     tob.addEventListener('click', function () { self.builderFrom(); });
     this._built = this.cur;
   };
-  Desk.prototype._openPop = function (open) { var E = this.el; if (!E) return; var pp = E.who.querySelector('.dk-popp'), pb = E.who.querySelector('.dk-popbtn'); pp.hidden = !open; pb.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { this._fillPop(); var q = pp.querySelector('input[type=search]'); if (q) q.focus(); } };
+  Desk.prototype._openPop = function (open) { if (!this.el || !this.el.who) return;   /* seções sem o bloco 'Who' (preços, Builder): o clique fora não tem janela para fechar */ var E = this.el; if (!E) return; var pp = E.who.querySelector('.dk-popp'), pb = E.who.querySelector('.dk-popbtn'); pp.hidden = !open; pb.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { this._fillPop(); var q = pp.querySelector('input[type=search]'); if (q) q.focus(); } };
 
   /* mouse → índice do período; um quadro por movimento */
   Desk.prototype._bindHover = function (cv, id) {
@@ -397,11 +397,12 @@
   };
   Desk.prototype.hide = function () { this.cur = null; this._destroyAll(); };
   Desk.prototype._destroyAll = function () { for (var k in this.charts) { try { this.charts[k].destroy(); } catch (e) {} } this.charts = {}; };
-  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; };
+  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; this._hfC = {}; };
   Desk.prototype.refresh = function (light) {
     if (!this.cur) return;
     if (this.sections[this.cur].overview) return this._overview();
     if (this.sections[this.cur].builder) return this._builder ? this._builder() : null;   // a bancada (data-desk-builder.js)
+    if (this.sections[this.cur].hf) return this._hf ? this._hf() : null;   // preços em frequência diária/semanal (data-desk-prices.js)
     if (this._built !== this.cur) this._build();
     var st = this.cfg.state(), u = this._u();
     if (!this.sections[this.cur].prods && (this._lastProd !== st.prod || this._lastGran !== st.gran)) { if (this._lastProd !== st.prod) { u.who.pill = null; u.who.sub = null; u.who.sel = null; u.who.hi = null; } u.hover = u.pinA = u.pinB = null; this._lastProd = st.prod; this._lastGran = st.gran; }
@@ -781,7 +782,7 @@
      num produto e numa granularidade — pelo MESMO caminho do palco: mesmo eixo da seção, mesmas regras de soma/razão/último
      e de período em andamento. Devolve vetores por período (level, yoy, ltm) e quais períodos são parciais. */
   Desk.prototype.seriesAll = function (secId, ref, prod, gran) {
-    var sec = this.sections[secId]; if (!sec || sec.overview || sec.builder) return null;
+    var sec = this.sections[secId]; if (!sec || sec.overview || sec.builder || sec.hf) return null;
     var keep = { cur: this.cur, state: this.cfg.state, ovr: this._ovr, dbg: this._dbg, ctx: this.ctx }, out = null;
     this.cur = secId; this._ovr = null; this._dbg = true; this.cfg.state = function () { return { prod: prod, gran: gran, win: 'all', from: null, to: null }; };
     try {

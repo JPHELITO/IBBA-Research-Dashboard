@@ -37,6 +37,7 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
 <script src="/data-desk.js"></script>
 <script src="/data-desk-builder.js"></script>
+<script src="/data-desk-prices.js"></script>
 <script src="/assets/logos/logos.js"></script>
 <script src="/data-desk-context.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
@@ -648,17 +649,22 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 <!-- SECONDARY NAV (Steel) -->
 <div class="secondary-nav" id="steel-subnav">
   <button class="snav-btn dk-only" data-sub="overview" onclick="setSub('overview',{anim:1})">Overview</button>
-  <button class="snav-btn active" data-sub="prices"   onclick="setSub('prices',{anim:1})">Prices</button>
-  <button class="snav-btn"        data-sub="domestic" onclick="setSub('domestic',{anim:1})">Domestic Market</button>
-  <button class="snav-btn"        data-sub="imports"  onclick="setSub('imports',{anim:1})">Imports</button>
-  <button class="snav-btn"        data-sub="exports"  onclick="setSub('exports',{anim:1})">Exports</button>
-  <button class="snav-btn dk-only" data-sub="ore"      onclick="setSub('ore',{anim:1})">Iron Ore</button>
+  <!-- Data Desk: por commodity (23/11/2026). As seções de cada uma ficam na linha de baixo (#dk-subnav). -->
+  <button class="snav-btn dk-only" data-com="steel" onclick="setCom('steel')" title="Steel: prices and import parity, domestic market, imports, exports">Steel</button>
+  <button class="snav-btn dk-only" data-com="ore"   onclick="setCom('ore')" title="Iron ore: prices and producer margin, exports">Iron Ore</button>
+  <button class="snav-btn dk-legacy active" data-sub="prices"   onclick="setSub('prices',{anim:1})">Prices</button>
+  <button class="snav-btn dk-legacy"        data-sub="domestic" onclick="setSub('domestic',{anim:1})">Domestic Market</button>
+  <button class="snav-btn dk-legacy"        data-sub="imports"  onclick="setSub('imports',{anim:1})">Imports</button>
+  <button class="snav-btn dk-legacy"        data-sub="exports"  onclick="setSub('exports',{anim:1})">Exports</button>
   <button class="snav-btn dk-only" data-sub="builder"  onclick="setSub('builder',{anim:1})" title="Put up to 4 series side by side">Builder</button>
   <span class="snav-asof" id="snav-asof" title="Most recent month in each database — updated by the data robots"></span>
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
           title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
 </div>
+
+<!-- Data Desk: seções da commodity escolhida (só com a mesa; vazia = some) -->
+<div class="dk-subnav" id="dk-subnav" hidden></div>
 
 <!-- FILTER BAR -->
 <div class="filter-bar">
@@ -671,7 +677,7 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
   </div>
   <div class="filter-sep"></div>
   <span class="filter-label">Granularity:</span>
-  <div class="filter-btns">
+  <div class="filter-btns" id="gran-btns">
     <button class="fbtn active" data-gran="monthly"   onclick="setGran('monthly')">Monthly</button>
     <button class="fbtn"        data-gran="quarterly" onclick="setGran('quarterly')">Quarterly</button>
     <button class="fbtn"        data-gran="annual"    onclick="setGran('annual')">Annual</button>
@@ -730,6 +736,14 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
+      <div class="mob-sec-group dk-only">Steel</div>
+      <button class="mob-sec-item dk-only" onclick="mobSelect('parity')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Prices &amp; import parity</div>
+          <div class="mob-sec-desc">Domestic premium over imported HRC and rebar, benchmarks, coking coal</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
       <button class="mob-sec-item" onclick="mobSelect('exports')">
         <div class="mob-sec-info">
           <div class="mob-sec-title">Exports</div>
@@ -753,18 +767,27 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
       </button>
       <button class="mob-sec-item" onclick="mobSelect('prices')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Prices</div>
+          <div class="mob-sec-title"><span class="dk-legacy-t">Prices</span><span class="dk-only-t">Realized trade prices</span></div>
           <div class="mob-sec-desc">Imports vs. domestic reference</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
+      <div class="mob-sec-group dk-only">Iron Ore</div>
+      <button class="mob-sec-item dk-only" onclick="mobSelect('oreprices')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">Prices &amp; producer margin</div>
+          <div class="mob-sec-desc">61% Fe minus Brazil–China freight, grades, freight, pellet premium</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
       <button class="mob-sec-item dk-only" onclick="mobSelect('ore')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title">Iron Ore</div>
+          <div class="mob-sec-title">Iron ore exports</div>
           <div class="mob-sec-desc">Brazilian iron ore exports by product, destination and port</div>
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
+      <div class="mob-sec-group dk-only">Across commodities</div>
       <button class="mob-sec-item dk-only" onclick="mobSelect('builder')">
         <div class="mob-sec-info">
           <div class="mob-sec-title">Builder</div>
@@ -1628,7 +1651,7 @@ async function loadDB(){
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
     _dbReady=true;         // a partir daqui a #âncora pode trocar de seção (hashchange)
     // Seção inicial: ?s= (legado) OU hash (#prices vindo da home) OU 'prices'.
-    const _valid=['exports','imports','domestic','prices'].concat(_deskOn?['overview','ore','builder']:[]);
+    const _valid=['exports','imports','domestic','prices'].concat(_deskOn?['overview','parity','oreprices','ore','builder']:[]);
     const urlSec=new URLSearchParams(window.location.search).get('s');
     const hashSec=(location.hash||'').replace('#','');
     const initSub=_valid.includes(urlSec)?urlSec:(_valid.includes(hashSec)?hashSec:(_deskOn?'overview':'prices'));   // com a mesa, a aba abre no Overview
@@ -2581,7 +2604,7 @@ async function applyDeskFlag(){
     const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
     try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
     try{ if(window.__gnavDesk) window.__gnavDesk(on); }catch(e){}   // menus do topo: Overview / Iron Ore / Builder
-    if(on!==_deskOn){ _deskSet(on); if(_dbReady) render(); }
+    if(on!==_deskOn){ _deskSet(on); _navMark(currentSub); if(_dbReady) render(); }
   }catch(e){}
 }
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
@@ -2593,8 +2616,10 @@ function _deskRender(){
   const legacy=document.getElementById('sec-'+currentSub);
   // o filtro de produto do AÇO não vale em seções com produto próprio (minério) nem no modelo preditivo; o Overview não usa filtros
   const fb=document.querySelector('.filter-bar'), pb=document.getElementById('prod-btns');
-  const ownProd=use&&(key==='ore'||key==='builder'), noBar=use&&key==='overview';   // no Builder o produto faz parte de cada série
+  const hf=use&&!!DESK.sections[key].hf;   // preços diários/semanais: sem produto e sem granularidade (o dado vem na frequência em que é publicado)
+  const ownProd=use&&(key==='ore'||key==='builder'||hf), noBar=use&&key==='overview';   // no Builder o produto faz parte de cada série
   if(pb){ [pb.previousElementSibling,pb,pb.nextElementSibling].forEach(e=>{ if(e) e.style.display=ownProd?'none':''; }); }
+  const gb=document.getElementById('gran-btns'); if(gb){ [gb.previousElementSibling,gb,gb.nextElementSibling].forEach(e=>{ if(e) e.style.display=hf?'none':''; }); }
   if(fb&&noBar) fb.style.display='none'; else if(fb&&fb.style.display==='none'&&key!=='prediction') fb.style.display='';
   if(!use){
     if(root.classList.contains('active')){ root.classList.remove('active'); if(legacy&&!picker) legacy.classList.add('active'); }
@@ -2654,6 +2679,28 @@ function _dkOreEnt(rows,field,prod){
   const sc=Object.entries(by).map(([n,m])=>{ let rec=0,tot=0; for(const p in m){ tot+=m[p]; if(p>=cut) rec+=m[p]; } return [n,rec,tot]; }).sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
   return (_dkOreC[ck]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
 }
+/* PARIDADE DE IMPORTAÇÃO (aço) — o catálogo das seções de preço. A conta mora em data-desk-prices.js (IBBADesk.prices.parity). */
+const _PAR={hrc:{n:'HRC',o:'China HRC FOB',d:'Domestic HRC'}, rebar:{n:'Rebar',o:'Turkey rebar FOB',d:'Domestic rebar'}};
+const _sg=(v,d)=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d==null?1:d);
+const _parLive=k=>(S,P)=>{ const R=P.par(S,k), l=R[R.length-1]; return l&&l.live?l.week:null; };
+const _parBuild=k=>(S,P,iso)=>{ const r=P.rowAt(P.par(S,k),iso); if(!r||r.domUsd==null) return null;
+  const f=(v,d)=>P.fmt(v,d==null?1:d), pc=v=>(v*100).toFixed(1).replace(/\.0$/,'')+'%';
+  return {title:'How the '+_PAR[k].n+' parity is built (US$/t)', when:(r.live?'Live · ':'Week of ')+P.dLabel(r.week), items:[
+    {k:_PAR[k].o,v:f(r.fob)},{op:'+',k:'Ocean freight',v:f(r.freight)},{op:'+',k:'Insurance ('+pc(r.insurance)+')',v:f(r.insV)},{op:'=',k:'CIF Brazil',v:f(r.cif),sum:1},
+    {op:'+',k:'Import tariff ('+pc(r.tariff)+')',v:f(r.tariffV)},{op:'+',k:'AFRMM ('+pc(r.afrmm)+' of freight)',v:f(r.afrmmV)},{op:'+',k:'Port expenses',v:f(r.port)},{op:'=',k:'Imported in Brazil',v:f(r.imported),sum:1},
+    {brk:1,k:_PAR[k].d+' (R$/t)',v:f(r.dom_brl,0)},{op:'÷',k:'FX (R$/US$)',v:f(r.fx,2)},{op:'=',k:'Domestic (US$/t)',v:f(r.domUsd),sum:1},
+    {op:'→',k:'Premium / (discount)',v:_sg(r.premium)+'%',sum:1,c:r.premium>0?'dk-up':r.premium<0?'dk-dn':''}]}; };
+const _parPrem=k=>({id:k+'_prem', label:_PAR[k].n+' — domestic premium / (discount) over import parity', short:_PAR[k].n+' premium', unit:'%', dec:1, pp:true, single:true, naText:'Parity history not loaded yet', liveOf:_parLive(k),
+  series:(S,P)=>{ const R=P.par(S,k); return [{name:'Premium / (discount)', short:'Premium', pts:P.col(R,'premium')}].concat(k==='rebar'?[{name:'With zero import tariff', short:'Zero tariff', pts:P.col(R,'premiumZero')}]:[]); },
+  refs:(S,P)=>{ const R=P.par(S,k).filter(r=>!r.live&&r.premium!=null); if(!R.length) return null;
+    const a=P.mean(P.col(R,'premium')), cur=R[R.length-1].premium, below=R.filter(r=>r.premium<cur).length;
+    return {zero:true, band:{lo:10,hi:15}, lines:[{value:a}], legend:[{kind:'band',name:'Fair range 10–15%'},{kind:'dash',name:'Historical average '+_sg(a)+'%'}],
+      read:[{head:'Since '+P.mLabel(R[0].week)+' · '+R.length+' weeks'},{k:'Historical average',v:_sg(a)+'%'},{k:'Lowest / highest',v:_sg(Math.min(...R.map(r=>r.premium)))+'% / '+_sg(Math.max(...R.map(r=>r.premium)))+'%'},{k:'Weeks below the latest level',v:Math.round(below/R.length*100)+'%'}]}; },
+  build:_parBuild(k),
+  note:'How much more (or less) the domestic '+_PAR[k].n+' costs than the same product brought from '+(k==='hrc'?'China':'Turkey')+': domestic price ÷ FX against FOB + freight + insurance + import tariff + AFRMM + port expenses. Weekly, Fridays.'+(k==='rebar'?' The second line removes the import tariff.':'')});
+const _parUsd=k=>({id:k+'_usd', label:_PAR[k].n+' — domestic price against the imported product landed in Brazil', short:_PAR[k].n+': domestic vs imported', unit:'US$/t', dec:0, tileN:2, naText:'Parity history not loaded yet', liveOf:_parLive(k),
+  series:(S,P)=>{ const R=P.par(S,k); return [{name:'Domestic (R$/t ÷ FX)', short:'Domestic', pts:P.col(R,'domUsd')},{name:'Imported in Brazil', short:'Imported', pts:P.col(R,'imported')},{name:_PAR[k].o, short:'FOB', pts:P.col(R,'fob')}]; },
+  build:_parBuild(k), note:'The two sides of the parity in dollars per tonne. The gap between the first two lines is the premium; the third is the international price before freight and taxes.'});
 function _desk(){
   if(DESK) return DESK; if(!window.IBBADesk||!window.Chart) return null;
   const F=IBBADesk.core.F;
@@ -2679,6 +2726,8 @@ function _desk(){
     domestic:{tickers:_CX_STEEL, bench:['HRC_BRAZIL','REBAR_BRAZIL'], cal:['iabr','inda'], news:{sector:'steel', topics:['demand','production','inventories','steel_industry'], q:'steel'}},
     exports:{tickers:['GGBR4.SA','CSNA3.SA','TX'], bench:['HRC_CHINA','REBAR_TURKEY'], cal:['secex_steel'], news:{sector:'steel', topics:['exports','tariffs','slab','billet'], q:'exports'}},
     ore:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], bench:['IRON_ORE','IOPRM00','IOFBC00'], cal:['secex_steel'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
+    parity:{tickers:_CX_STEEL, news:{sector:'steel', topics:['hrc','rebar','flat_steel','imports','tariffs'], q:'steel prices'}},
+    oreprices:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
   };
   DESK=IBBADesk.mount({
     sector:'mm', root:'#desk-root',
@@ -2715,6 +2764,56 @@ function _desk(){
           {n:'Iron ore: volume vs price', s:['ore.vol.total','ore.price.total'], v:'level', g:'monthly', w:'3y'},
         ],
       },
+      /* ── PREÇOS DE MERCADO (data-desk-prices.js): diário/semanal, direto da tabela commodities e da paridade semanal ── */
+      parity:{
+        label:'Prices & import parity', stage:'hrc_prem',
+        views:[{label:'Market prices & import parity', current:true},{label:'Realized trade prices (SECEX)', onPick:()=>setSub('prices',{anim:1})}],
+        hf:{ codes:['HRC_CHINA','REBAR_TURKEY','HRC_BRAZIL','REBAR_BRAZIL','MET_COAL','HCCAU00'], parity:true, history:true,
+          parityCodes:{hrc:{fob:'HRC_CHINA',dom:'HRC_BRAZIL'}, rebar:{fob:'REBAR_TURKEY',dom:'REBAR_BRAZIL'}},
+          src:'Prices: S&P Global Platts · Parity build-up and history: Itaú BBA',
+          tiles:['hrc_prem','rebar_prem','hrc_usd','rebar_usd','dom','coal'],
+          metrics:[_parPrem('hrc'),_parPrem('rebar'),_parUsd('hrc'),_parUsd('rebar'),
+            {id:'dom', label:'Brazil domestic prices — HRC and rebar', short:'Brazil domestic', unit:'R$/t', dec:0, tileN:2,
+              series:(S,P)=>[{name:'HRC Brazil', short:'HRC', pts:P.d(S,'HRC_BRAZIL')},{name:'Rebar Brazil', short:'Rebar', pts:P.d(S,'REBAR_BRAZIL')}],
+              note:'Domestic price assessments in reais per tonne (ex-works, taxes excluded), the other side of the parity. History since 2010.'},
+            {id:'coal', label:'Coking coal — FOB Australia', short:'Coking coal', unit:'US$/t', dec:0, tileN:2,
+              series:(S,P)=>[{name:'Premium hard coking coal', short:'Premium HCC', pts:P.d(S,'MET_COAL')},{name:'HCC low vol', short:'Low vol', pts:P.d(S,'HCCAU00')}],
+              note:'The main raw-material cost of blast-furnace steel besides iron ore.'},
+          ] } },
+      oreprices:{
+        label:'Prices & producer margin', stage:'margin',
+        hf:{ codes:['IRON_ORE','IOFBC00','IOFAC00','IOPRM00','IODFE00','IOBFC04','IOBBA00','IOPBQ00','IONHA00','IOMAA00','IOJBA00','TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01'], history:true,
+          src:'S&P Global Platts · history: Itaú BBA Platts database',
+          tiles:['margin','grades','spread','freight','brands','fwd','long'],
+          metrics:[
+            {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true,
+              series:(S,P)=>{ const m62=P.sub(P.d(S,'IODEX_62'),P.d(S,'IOFBC00'));
+                return [{name:'Margin proxy (61% Fe − freight)', short:'Margin', pts:P.sub(P.d(S,'IRON_ORE'),P.d(S,'IOFBC00'))},{name:'IO fines 61% Fe CFR China', short:'61% Fe', pts:P.d(S,'IRON_ORE')},{name:'Freight Brazil–China', short:'Freight', pts:P.d(S,'IOFBC00')},
+                  {name:'Same margin with 62% Fe'+(m62.length?' (to '+P.mLabel(m62[m62.length-1][0])+')':''), short:'With 62% Fe', pts:m62}]; },
+              refs:(S,P)=>{ const m=P.sub(P.d(S,'IRON_ORE'),P.d(S,'IOFBC00')); if(m.length<20) return null;
+                const a=P.mean(m), cur=m[m.length-1][1], vs=m.map(p=>p[1]), below=vs.filter(x=>x<cur).length;
+                return {lines:[{value:a}], legend:[{kind:'dash',name:'Average since '+P.mLabel(m[0][0])+' '+P.fmt(a,2)}],
+                  read:[{head:'Since '+P.mLabel(m[0][0])+' · '+m.length+' days'},{k:'Average',v:P.fmt(a,2)},{k:'Lowest / highest',v:P.fmt(Math.min(...vs),2)+' / '+P.fmt(Math.max(...vs),2)},{k:'Days below the latest level',v:Math.round(below/m.length*100)+'%'}]}; },
+              build:(S,P,iso)=>{ const a=P.at(P.d(S,'IRON_ORE'),iso), b=P.at(P.d(S,'IOFBC00'),iso); if(!a||!b) return null;
+                return {title:'How the margin proxy is built', items:[{k:'IO fines 61% Fe, CFR China (US$/dmt)',v:P.fmt(a[1],2)},{op:'−',k:'Freight Brazil–China (US$/wmt)',v:P.fmt(b[1],2)},{op:'=',k:'Margin proxy (US$/t)',v:P.fmt(a[1]-b[1],2),sum:1}]}; },
+              note:'What is left for a Brazilian producer after shipping: the 61% Fe fines price delivered in China (CFR) minus the Tubarão–Qingdao freight. It is a proxy: ore is quoted per dry tonne and freight per wet tonne, with no adjustment for moisture, quality, royalties or costs. Platts\' 61% Fe index starts in Feb 2021; the 62% Fe line takes the same margin back to 2009.'},
+            {id:'grades', label:'Iron ore fines by grade — 65%, 61% and 58% Fe (CFR China)', short:'Grades 65 / 61 / 58%', unit:'US$/dmt', dec:2,
+              series:(S,P)=>[{name:'65% Fe', pts:P.d(S,'IOPRM00')},{name:'61% Fe', pts:P.d(S,'IRON_ORE')},{name:'58% Fe', pts:P.d(S,'IODFE00')}]},
+            {id:'spread', label:'Quality premiums — 65% over 61% Fe, 61% over 58% Fe and the pellet premium', short:'Quality premiums', unit:'US$/t', dec:2, diff:true,
+              series:(S,P)=>[{name:'65% over 61% Fe', short:'65 − 61', pts:P.sub(P.d(S,'IOPRM00'),P.d(S,'IRON_ORE'))},{name:'61% over 58% Fe', short:'61 − 58', pts:P.sub(P.d(S,'IRON_ORE'),P.d(S,'IODFE00'))},{name:'Pellet premium (weekly)', short:'Pellet', pts:P.d(S,'IOBFC04')}],
+              note:'What the market pays for quality. High-grade ore (Carajás, pellet feed) earns the first premium and pellets the third; both widen when steel margins are good and mills pay up for productivity.'},
+            {id:'freight', label:'Freight to China — from Brazil and from Australia', short:'Freight to China', unit:'US$/wmt', dec:2,
+              series:(S,P)=>[{name:'Brazil–China', short:'Brazil', pts:P.d(S,'IOFBC00')},{name:'Australia–China', short:'Australia', pts:P.d(S,'IOFAC00')},{name:'Brazil minus Australia', short:'Difference', pts:P.sub(P.d(S,'IOFBC00'),P.d(S,'IOFAC00'))}],
+              note:'The difference is the freight disadvantage of Brazilian ore against Australian ore on the same destination.'},
+            {id:'brands', label:'Brands — Brazilian Blend against the Australian fines', short:'Brands', unit:'US$/dmt', dec:2, tileN:2,
+              series:(S,P)=>[{name:'Brazilian Blend fines (BRBF)', short:'BRBF', pts:P.d(S,'IOBBA00')},{name:'Pilbara Blend fines', short:'Pilbara Blend', pts:P.d(S,'IOPBQ00')},{name:'Newman high grade fines', pts:P.d(S,'IONHA00')},{name:'Mining Area C fines', pts:P.d(S,'IOMAA00')},{name:'Jimblebar fines', pts:P.d(S,'IOJBA00')}]},
+            {id:'fwd', label:'Forward curve — next quarters and one year ahead', short:'Forward curve', unit:'US$/dmt', dec:2,
+              series:(S,P)=>[{name:'+1 quarter', short:'+1Q', pts:P.d(S,'TSIPQ01')},{name:'+2 quarters', short:'+2Q', pts:P.d(S,'TSIPQ02')},{name:'+3 quarters', short:'+3Q', pts:P.d(S,'TSIPQ03')},{name:'+1 year', short:'+1Y', pts:P.d(S,'TSIPY01')}],
+              note:'Where the market prices iron ore for the coming quarters. A curve below today\'s price says the market expects prices to fall.'},
+            {id:'long', label:'Iron ore 62% Fe CFR China — 10-year history', short:'62% Fe · 10 years', unit:'US$/t', dec:1, codes:['IRON_ORE_62'], noHist:true, lazyText:'10 years', lazyNote:'Loaded when you open it', src:'Trading Economics',
+              series:(S,P)=>[{name:'Iron ore 62% Fe CFR China', pts:P.d(S,'IRON_ORE_62')}],
+              note:'A longer reference for the price level (a different source and grade from the Platts 61% used in the margin proxy). Use the Window buttons above to go back up to 10 years.'},
+          ] } },
       /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
          na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
       prediction:{
@@ -2732,7 +2831,7 @@ function _desk(){
       },
       /* IRON ORE — seção nova: exportação brasileira por produto, destino e porto (secex_iron_ore / secex_iron_ore_port) */
       ore:{
-        label:'Iron Ore', src:'SECEX', stage:'vol', tiles:['vol','price','rev','china','pel'], prods:[{k:'total',l:'Total'},{k:'Fines',l:'Fines'},{k:'Pellets',l:'Pellets'}],
+        label:'Iron ore exports', src:'SECEX', stage:'vol', tiles:['vol','price','rev','china','pel'], prods:[{k:'total',l:'Total'},{k:'Fines',l:'Fines'},{k:'Pellets',l:'Pellets'}],
         metrics:[
           {id:'vol', label:'Iron ore export volume', unit:'Mt', dec:1, flow:true, note:'SECEX/MDIC · Brazilian exports of iron ore fines and pellets',
             comp:x=>({v:_dkOreMap(x.prod,'volume_ktons',1/1000)}), calc:(A,c)=>A.sum(c.v)},
@@ -2781,7 +2880,8 @@ function _desk(){
       },
       /* PRICES — px-compare (as duas linhas juntas), px-spread (barras verde/vermelho + média), px-imp, px-exp, px-yoy, px-yoy2 */
       prices:{
-        label:'Prices', src:'SECEX', bprods:STEEL_P, stage:'cmp', tiles:['cmp','impp','expp','prem'],
+        label:'Realized prices', src:'SECEX', bprods:STEEL_P, stage:'cmp', tiles:['cmp','impp','expp','prem'],
+        views:[{label:'Market prices & import parity', onPick:()=>setSub('parity',{anim:1})},{label:'Realized trade prices (SECEX)', current:true}],
         metrics:[
           {id:'cmp', label:'Import vs. domestic reference', multi:['impp','expp'], multiColors:['ink','orange'],
             note:'SECEX · black = import · orange = export (domestic proxy) · companies benefit when import > domestic'},
@@ -2877,7 +2977,31 @@ function updateGlobalFilters(){
    (0,2 s) e a nova entra pelo lado do clique (0,6 s, curva expo) — o olho entende a direção. Só
    computador e só com {anim:1} (o clique); chamadas do código (carga, celular, tutorial) seguem
    instantâneas. Com "reduzir movimento" ligado, também instantâneo. */
-const SUB_ORDER=['overview','prices','domestic','imports','exports','ore','builder'];   // overview, ore e builder só existem com a mesa (data_desk)
+const SUB_ORDER=['overview','parity','prices','domestic','imports','exports','oreprices','ore','builder'];   // overview, parity, oreprices, ore e builder só existem com a mesa (data_desk)
+/* Com a mesa, a barra é por COMMODITY (Steel · Iron Ore); as seções de cada uma ficam na linha #dk-subnav.
+   Os valores de currentSub e as #âncoras são os de sempre (prices, domestic, imports, exports, ore) + parity e oreprices. */
+const DESK_ONLY=['overview','parity','oreprices','ore','builder'];
+const COM_OF={parity:'steel',prices:'steel',domestic:'steel',imports:'steel',exports:'steel',oreprices:'ore',ore:'ore'};
+const COM_TABS={steel:[['parity','Prices',['parity','prices']],['domestic','Domestic Market'],['imports','Imports'],['exports','Exports']],
+                ore:[['oreprices','Prices & margin'],['ore','Exports']]};
+const COM_NAME={steel:'Steel',ore:'Iron Ore'};
+const _comLast={};   // a última seção vista em cada commodity (e a última vista da aba Prices do aço)
+function setCom(c){ const t=COM_TABS[c]; if(!t) return; setSub(_comLast[c]||t[0][0],{anim:1}); }
+function setComTab(k){ const c=COM_OF[k], t=(COM_TABS[c]||[]).find(x=>x[0]===k); setSub((t&&t[2]&&_comLast['tab:'+k])||k,{anim:1}); }
+function _navMark(s){
+  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active', b.dataset.sub===s && !(_deskOn && b.classList.contains('dk-legacy'))));
+  const com=_deskOn?COM_OF[s]:null;
+  document.querySelectorAll('[data-com]').forEach(b=>b.classList.toggle('active', b.dataset.com===com));
+  const bar=document.getElementById('dk-subnav'); if(!bar) return;
+  if(!com){ bar.hidden=true; bar.innerHTML=''; bar.dataset.com=''; return; }
+  _comLast[com]=s; COM_TABS[com].forEach(t=>{ if(t[2]&&t[2].includes(s)) _comLast['tab:'+t[0]]=s; });
+  const on=t=>t[0]===s||(t[2]&&t[2].includes(s));
+  if(bar.dataset.com!==com){ bar.dataset.com=com;
+    bar.innerHTML='<span class="dk-sublbl">'+COM_NAME[com]+'</span><div class="dk-subtabs" role="group" aria-label="'+COM_NAME[com]+' sections">'+
+      COM_TABS[com].map(t=>'<button type="button" class="dk-subtab" data-st="'+t[0]+'" onclick="setComTab(\''+t[0]+'\')">'+t[1].replace('&','&amp;')+'</button>').join('')+'</div>'; }
+  bar.querySelectorAll('.dk-subtab').forEach(b=>{ const t=COM_TABS[com].find(x=>x[0]===b.dataset.st); const a=!!(t&&on(t)); b.classList.toggle('active',a); b.setAttribute('aria-pressed',String(a)); });
+  bar.hidden=false;
+}
 let _subTok=0;
 function setSub(s,o){
   const anim=!!(o&&o.anim)&&s!==currentSub&&window.innerWidth>768&&window.IBBAMotion&&!IBBAMotion.reduced();
@@ -2889,7 +3013,7 @@ function setSub(s,o){
   }
   const dir=SUB_ORDER.indexOf(s)>SUB_ORDER.indexOf(currentSub)?1:-1, tok=++_subTok;
   document.querySelectorAll('.section').forEach(d=>d.getAnimations().forEach(a=>a.cancel()));
-  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+  _navMark(s);
   document.documentElement.classList.add('ibba-swap');
   const old=document.querySelector('.section.active');
   const out=old?IBBAMotion.animate(old,[{opacity:1,transform:'none'},{opacity:0,transform:`translateX(${-32*dir}px)`}],
@@ -2905,9 +3029,9 @@ function setSub(s,o){
   });
 }
 function _setSubNow(s){
-  if(!_deskOn&&(s==='overview'||s==='ore'||s==='builder')) s='prices';   // seções que só existem na mesa
+  if(!_deskOn&&DESK_ONLY.includes(s)) s='prices';   // seções que só existem na mesa
   currentSub=s;
-  document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('active',b.dataset.sub===s));
+  _navMark(s);
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
   const secId=s==='exports'?'sec-exports':s==='imports'?'sec-imports':
                s==='domestic'?'sec-domestic':'sec-prices';
