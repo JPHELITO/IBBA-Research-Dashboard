@@ -90,7 +90,7 @@ TAKE = {"+": ("(+)", T["green"]), "-": ("(−)", T["red"]), "=": ("(=)", T["ink"
 # marcou cobertura nenhuma em `heatmap_tickers` — é o que a Home faz.
 COBERTURA_PADRAO = ["AUGO", "SUZB3.SA", "VALE", "GMEXICOB.MX", "CMIN3.SA", "SCCO", "KLBN11.SA", "TX",
                     "CSNA3.SA", "CMPC.SN", "USIM5.SA", "RANI3.SA", "GGBR4.SA", "COPEC.SN",
-                    "CS.TO", "ERO", "HBM.TO", "LUN.TO", "ARA.TO", "VMM.AX"]
+                    "CS.TO", "ERO.TO", "HBM.TO", "LUN.TO", "ARA.TO", "VMM.AX"]
 # Moeda por bolsa — a do weekly.html (MOEDA); casas pelo tamanho do número, como lá (_casasDe).
 MOEDA = {"B3": "R$ ", "NYSE": "US$ ", "NASDAQ": "US$ ", "US": "US$ ", "TSX": "C$ ", "BCS": "CLP ",
          "BMV": "MX$ ", "LSE": "GBp ", "HEL": "€ ", "ASX": "A$ "}

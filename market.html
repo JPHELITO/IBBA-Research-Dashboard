@@ -859,11 +859,11 @@ async function restGet(path){const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,{
 // A mesma cobertura de 20 do "Our coverage" da home (2026-10-15; o IBOV foi p/ o G_INDEX). Aqui
 // Vale e Aura entram pelas linhas da B3 (a home usa as de NY).
 const G_COVERAGE=['AURA33.SA','SUZB3.SA','VALE3.SA','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN',
-                  'CS.TO','ERO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
+                  'CS.TO','ERO.TO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
 const G_STEEL=['CSNA3.SA','GGBR4.SA','GGB','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];   // GGB = ADR da Gerdau em NY (mesma empresa da GGBR4; fora do G_COVERAGE p/ não contar 2×)
 const G_IRON=['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD=['AUGO','ARIS','BVN','AEM','B','HOC.L'];
-const G_COPPER=['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
+const G_COPPER=['ERO.TO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin/Ero = Toronto (CAD)
 const G_RARE=['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP=['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 // 2026-10-28: + os índices das outras bolsas (benchmarks do modo relativo do heatmap)
@@ -1120,6 +1120,9 @@ let _cmpH=0;                      // altura medida da linha "Compare" (escondida
 let _wlMode='all', _wlSort={key:'tk',dir:1};   // modos: all(default)|coverage|peers|commodities|index; default alfabético por ticker
 let _wlCustom=[]; try{ _wlCustom=JSON.parse(localStorage.getItem('mkt_wl_custom'))||[]; }catch(e){_wlCustom=[];}
 if(!Array.isArray(_wlCustom)||!_wlCustom.length) _wlCustom=G_COVERAGE.slice();
+// linhas que trocaram de bolsa (a mesma regra do HM_RENAMED da Home): a lista salva segue a empresa
+const MKT_RENAMED={'HBM':'HBM.TO','ERO':'ERO.TO'};
+_wlCustom=[...new Set(_wlCustom.map(t=>MKT_RENAMED[t]||t))];
 function _wlCustomSave(){ try{localStorage.setItem('mkt_wl_custom',JSON.stringify(_wlCustom));}catch(e){} }
 let _newsFilter='all', _news=[], _pulse={pos:0,neg:0,neu:0,tot:0};
 let _updatedAt='';
@@ -1137,7 +1140,8 @@ const RT_LABEL={OP:'Outperform',MP:'Market Perform',UP:'Underperform',NR:'Not ra
 const RT_RANK={OP:3,MP:2,UP:1};
 // a empresa por TODAS as linhas que a Market mostra: o Stock Guide guarda a Vale pela ADR (VALE) e a Aura pela
 // AUGO, mas o cabeçalho costuma estar na VALE3/AURA33; a Gerdau também negocia em NY (GGB)
-const RT_ALIAS={VALE:['VALE3.SA','VALE'],AUGO:['AURA33.SA','AUGO'],GGBR4:['GGBR4.SA','GGB'],ARA:['ARA.TO'],VMM:['VMM.AX']};
+const RT_ALIAS={VALE:['VALE3.SA','VALE'],AUGO:['AURA33.SA','AUGO'],GGBR4:['GGBR4.SA','GGB'],ARA:['ARA.TO'],VMM:['VMM.AX'],
+  HBM:['HBM.TO'],LUN:['LUN.TO'],CS:['CS.TO'],ERO:['ERO.TO']};   // cobre (cobertura desde 23/11/2026)
 const RT_CCY={BRL:'R$',USD:'US$',CLP:'CLP$',MXN:'MX$',CAD:'C$',AUD:'A$',GBP:'£',EUR:'€'};
 let _rt={on:false, ready:false, byKey:{}, keyOf:{}};   // on = esta conta pode ver (admin ou flag)
 /* Data Desk → atalho do cabeçalho da ação para a seção de DADOS mais ligada a ela (só com a mesa: admin ou flag data_desk) */
@@ -1282,7 +1286,8 @@ async function loadNews(){
 // Antes só comparava nome x ticker encurtado, que batia apenas em CMPC/COPEC (VALE != VALE3, GERDAU != GGBR4...).
 const COV_QUOTE={VALE:'VALE3.SA',CSN:'CSNA3.SA',CMIN:'CMIN3.SA',GERDAU:'GGBR4.SA',USIMINAS:'USIM5.SA',TERNIUM:'TX',
   AURA:'AURA33.SA','SOUTHERN COPPER':'SCCO','GRUPO MEXICO':'GMEXICOB.MX',SUZANO:'SUZB3.SA',KLABIN:'KLBN11.SA',
-  IRANI:'RANI3.SA',CMPC:'CMPC.SN',COPEC:'COPEC.SN',ACLARA:'ARA.TO',VIRIDIS:'VMM.AX'};
+  IRANI:'RANI3.SA',CMPC:'CMPC.SN',COPEC:'COPEC.SN',ACLARA:'ARA.TO',VIRIDIS:'VMM.AX',
+  HUDBAY:'HBM.TO','LUNDIN MINING':'LUN.TO','CAPSTONE COPPER':'CS.TO','ERO COPPER':'ERO.TO'};   // cobre desde 23/11/2026
 function _tickerInCovered(a){
   const cc=a.take_covered_companies; if(!cc||!_anchor) return false;
   const want=_short(_anchor).toUpperCase();
@@ -2736,6 +2741,8 @@ function renderCorr(){
 let _pfSched={mode:'simple',touched:false,rows:[]}, _pfId=2;
 (function(){ try{ const v2=JSON.parse(localStorage.getItem('mkt_pf2')); if(v2&&Array.isArray(v2.rows)){ _pfSched=v2; if(_pfSched.touched==null)_pfSched.touched=true; return; }
   const lg=JSON.parse(localStorage.getItem('mkt_pf'))||{}; _pfSched={mode:'simple',touched:Object.keys(lg).length>0,rows:[{id:1,start:0,end:0,label:'',w:lg}]}; }catch(e){_pfSched={mode:'simple',touched:false,rows:[{id:1,start:0,end:0,label:'',w:{}}]};} })();
+(_pfSched.rows||[]).forEach(r=>{ const w=r&&r.w; if(!w) return;
+  Object.keys(MKT_RENAMED).forEach(o=>{ if(o in w){ if(!(MKT_RENAMED[o] in w)) w[MKT_RENAMED[o]]=w[o]; delete w[o]; } }); });
 function _pfSave(){ try{localStorage.setItem('mkt_pf2',JSON.stringify(_pfSched));}catch(e){} }
 function _pfTouch(){ _pfSched.touched=true; }
 // Fim do período AO VIVO: null/≤0 = "segue o último dia" (hoje). Só vira data FIXA se o cliente escolher,

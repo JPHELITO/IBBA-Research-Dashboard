@@ -100,7 +100,7 @@ window.__RUN__=async function(){
     const HB=cut(ix,'const BASKET_SKIP = new Set(','const _bkCls = v =>');
     ok('home · nome curto para o chip estreito (Iron, REE, P&P)', /const BASKET_SHORT = \{steel:'Steel', iron_ore:'Iron', gold:'Gold', copper:'Copper', rare_earths:'REE', pp:'P&P'\}/.test(ix));
     ok('home · BASKET_SKIP igual ao da Market', /const BASKET_SKIP = new Set\(\['GGB','GOAU4\.SA','BRAP3\.SA'\]\)/.test(ix) && /const BASKET_SKIP=new Set\(\['GGB','GOAU4\.SA','BRAP3\.SA'\]\)/.test(mk));
-    const pct={'SCCO':10,'ERO':-4,'B':2,'GMEXICOB.MX':null,'CS.TO':6,'HBM.TO':0,'LUN.TO':-2,'AUGO':20,'ARIS':5,'BVN':-1,'AEM':3,'HOC.L':1};
+    const pct={'SCCO':10,'ERO.TO':-4,'B':2,'GMEXICOB.MX':null,'CS.TO':6,'HBM.TO':0,'LUN.TO':-2,'AUGO':20,'ARIS':5,'BVN':-1,'AEM':3,'HOC.L':1};
     const qs=Object.keys(pct).map(t=>({ticker:t}));
     const c2={SECTOR_GROUPS:SGi, SECTOR_LABEL:LABEL, _quotes:qs, _hmMode:'abs', _range:'W',
       _seriesFor:(q)=>({pct:pct[q.ticker]}), _relFor:(q)=>({pct:pct[q.ticker]==null?null:pct[q.ticker]-1, why:pct[q.ticker]==null?'motivo':null})};

@@ -1979,6 +1979,7 @@ let _newsSectorFilter = 'all'; // 'all' | 'sm' | 'pp' | 'nr' (resolvido por font
 const _LABEL_ALIAS = {
   'CVM':'CVM filing',   // comunicado oficial da empresa (Market Watch → hunter/cvm_filings.py)
   'ASX':'ASX filing',   // anúncio sensível a preço da Viridis e pares de terras raras (hunter/asx_announcements.py)
+  'TMX':'TSX filing',   // comunicado das 4 de cobre de Toronto pela TMX Money (hunter/tmx_news.py, 23/11/2026)
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
   'Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish',
   'Shanghai Metals Market':'SMM','World Steel Association':'World Steel',
@@ -2003,9 +2004,11 @@ const _SM_SOURCES=new Set(['S&P Platts','Platts','Notícias de Mineração','IBR
   'Mining.com','Australian Mining','SMM','GMK Center','Siderurgia Brasil','SteelRadar',
   'Instituto Aço Brasil',
   // terras raras (Aclara/Viridis, 26/10/2026) — o Financial Times entra só pelo feed de terras raras
-  'ASX filing','Aclara Resources','Fastmarkets Insights','Northern Miner','Financial Times','Poços Já']);
+  'ASX filing','Aclara Resources','Fastmarkets Insights','Northern Miner','Financial Times','Poços Já',
+  // cobre (Hudbay, Lundin, Capstone, Ero — 23/11/2026): comunicados da TSX + imprensa de mineração do Chile e do Peru
+  'TSX filing','Reporte Minero','Rumbo Minero','Energiminas','Portal Minero']);
 // Comunicado OFICIAL da empresa (CVM/B3, ASX, site da própria coberta) → selo PRIMARY ao lado da fonte.
-const _PRIMARY_SOURCES=new Set(['CVM','ASX','Aclara Resources']);
+const _PRIMARY_SOURCES=new Set(['CVM','ASX','Aclara Resources','TMX']);
 const _PP_SOURCES=new Set(['Fastmarkets','PaperAge','Portal Celulose','ABTCP',
   'China Pulp & Paper','Papnews','Ibá']);
 // NUNCA fica em branco: fonte de setor único → carimbo · fonte mista → keyword (a.sector) ·
@@ -2287,6 +2290,9 @@ const _PULSE_CO = {
   'CMPC':['CMPC','CMPC.SN','pp'],     'COPEC':['COPEC','COPEC.SN','pp'],
   // terras raras — cobertura formal desde 2026-10-23 (ticker de tela = o _short do heatmap; cotação em `quotes`)
   'ACLARA':['ARA','ARA.TO','sm'],     'VIRIDIS':['VMM','VMM.AX','sm'],
+  // cobre — cobertura formal desde 2026-11-23 (as quatro pela linha oficial de Toronto, em C$)
+  'HUDBAY':['HBM','HBM.TO','sm'],     'LUNDIN MINING':['LUN','LUN.TO','sm'],
+  'CAPSTONE COPPER':['CS','CS.TO','sm'], 'ERO COPPER':['ERO','ERO.TO','sm'],
 };
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
 // TEMAS = os tópicos que o robô grava em cada manchete (take_topics, hunter/news_take_classifier.py), agrupados
@@ -2732,11 +2738,11 @@ const HM_MAX = 20;                              // teto de cartões = a grade 4�
 // "Our coverage" = 20 empresas, sem índice (2026-10-15: saiu o IBOV, que foi p/ o grupo Index;
 // entraram Aclara, Viridis, Capstone, Ero, Hudbay e Lundin).
 const G_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN',
-                    'CS.TO','ERO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
+                    'CS.TO','ERO.TO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
 const G_STEEL    = ['CSNA3.SA','GGBR4.SA','GGB','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];   // GGB = ADR da Gerdau em NY (mesma empresa da GGBR4; fora do G_COVERAGE p/ não contar 2×)
 const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
-const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
+const G_COPPER   = ['ERO.TO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin/Ero = Toronto (CAD)
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 // 2026-10-28: + os índices das outras bolsas (benchmarks do modo relativo — ver BENCH_BY_EXCH)
@@ -2775,7 +2781,7 @@ let _hmFromDefault = false;   // true se _hmDisplayed veio do default (sem local
 // Seleção salva antes de 2026-10-15: quem guardou EXATAMENTE a cobertura antiga (15, com IBOV)
 // estava seguindo o preset → passa a ver a nova. Quem montou lista própria só tem a Hudbay
 // trocada para a linha de Toronto (sem isso o HBM sumiria calado da seleção dele).
-const HM_RENAMED = {'HBM':'HBM.TO'};
+const HM_RENAMED = {'HBM':'HBM.TO','ERO':'ERO.TO'};   // Ero NYSE → Toronto em 23/11/2026 (alvo do analista em C$)
 const HM_OLD_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
@@ -4062,13 +4068,18 @@ function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:0
 // — a Home NÃO adivinha pelo nome. Tickers de tela (VALE3, SCCO, ARA…), os mesmos do feed. Marcou um setor inteiro
 // → uma etiqueta só ("All S&M"); até 3 etiquetas; mais que isso vira "+N". Sem marcação → só o nome, como sempre.
 // ⚠️ A mesma lista vive em clipinator.html (PUB_COS): mudou a cobertura, mudar nos dois.
-const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'],
+const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM','HBM','LUN','CS','ERO'],
                       PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
-function _repCos(list){
+// Relatório publicado ANTES de o S&M crescer (cobre em 23/11/2026) e marcado com o S&M inteiro DAQUELA época continua
+// "All S&M" — sem isto os NDRs de "toda a cobertura" de 16–19/11 viravam "All P&P VALE3 CMIN3 +9".
+const REP_SM_ATE_2026_11_22 = ['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'];
+function _repCos(list, date){
   let cos = Array.isArray(list) ? [...new Set(list.map(t => String(t || '').trim().toUpperCase()).filter(Boolean))] : [];
   if(!cos.length) return '';
   const chip = t => `<span class="news-co rep-co">${_esc(t)}</span>`;
-  const allSM = REP_UNIVERSE.SM.every(t => cos.includes(t)), allPP = REP_UNIVERSE.PP.every(t => cos.includes(t));
+  const antigo = date && String(date).slice(0,10) < '2026-11-23';
+  const allSM = REP_UNIVERSE.SM.every(t => cos.includes(t)) || (antigo && REP_SM_ATE_2026_11_22.every(t => cos.includes(t)));
+  const allPP = REP_UNIVERSE.PP.every(t => cos.includes(t));
   if(allSM && allPP) return chip('All names');
   const out = [];
   if(allSM){ out.push(chip('All S&M')); cos = cos.filter(t => !REP_UNIVERSE.SM.includes(t)); }
@@ -4082,7 +4093,7 @@ function _repRow(x){
   const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
   const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
   const d = _repDate(x.date);
-  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_repCos(x.companies)}${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_repCos(x.companies, x.date)}${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
   const cosTip = Array.isArray(x.companies) && x.companies.length ? ' · ' + x.companies.join(', ') : '';
   const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec + cosTip);
   return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`

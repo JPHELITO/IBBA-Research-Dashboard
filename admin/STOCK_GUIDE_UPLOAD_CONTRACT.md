@@ -28,12 +28,22 @@
 | GRUPO MEXICO | GMEXICOB.MX | copper | MXN |
 | ACLARA *(desde 06/11/2026)* | ARA.TO (chave **ARA**) | rare_earths | CAD |
 | VIRIDIS *(desde 06/11/2026)* | VMM.AX (chave **VMM**) | rare_earths | AUD |
+| HUDBAY (ou HUDBAY MINERALS) *(cobertura desde 23/11/2026; aba ainda não existe)* | HBM.TO (chave **HBM**) | copper | CAD |
+| LUNDIN MINING (ou LUNDIN) *(idem)* | LUN.TO (chave **LUN**) | copper | CAD |
+| CAPSTONE COPPER (ou CAPSTONE) *(idem)* | CS.TO (chave **CS**) | copper | CAD |
+| ERO COPPER (ou ERO) *(idem)* | ERO.TO (chave **ERO**) | copper | CAD |
 
 **Aclara e Viridis** (terras raras): mesmo modelo de aba; o "Stock Ticker" do bloco da esquerda vem com o sufixo
 da bolsa (ARA.TO / VMM.AX) e preço/alvo em C$ / A$; as estimativas são em US$ (base USD, fx_to_base lido do modelo,
 mas a página usa o câmbio ao vivo). São **opcionais**: arquivo sem essas abas sobe com aviso. Grupo próprio
 "Rare Earths" no Stock Guide e "Terras Raras" no Weekly. A aba "Rare Earths Peers" ainda não é lida (nenhum peer
 tem cotação na Market). ⚠️ Em 06/11/2026 a aba VIRIDIS converte A$ em US$ ao contrário (A$ 3,28 → "US$ 4,77").
+
+**Hudbay, Lundin, Capstone e Ero** (cobre, cobertura formal desde 23/11/2026): **opcionais** e aceitam o nome
+alternativo da aba (`alt` em `stock-guide-lib.js`). A planilha de 06/11 ainda não tem as abas → o upload segue com 4
+avisos "aba ausente". Grupo Mining (setor copper), como SCCO/GMEX. Na 1ª subida com as abas, conferir que o bloco
+"Stock Ticker" casa com a chave (HBM/LUN/CS/ERO) e que o preço-alvo está na moeda da linha (C$ para as quatro, todas por Toronto — a Ero passou de NYSE para
+ERO.TO em 23/11/2026 porque o alvo de início é C$ 50).
 
 **CBA fica de fora** (alumínio não é cobertura). Abas de Cement, Peers, BBG* e os índices são ignoradas.
 

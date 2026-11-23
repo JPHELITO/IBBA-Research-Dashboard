@@ -208,6 +208,7 @@
 
   // ── 8. INGESTÃO do modelo de equity research (.xlsm) ──────────────────────
   // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 16 abas de empresa cobertas (14 + Aclara/Viridis desde 06/11/2026)
+  // + as 4 de cobre (Hudbay, Lundin, Capstone, Ero — cobertas desde 23/11/2026) quando a planilha tiver as abas
   // (CBA/Cement FORA) e devolve linhas prontas p/ admin_bulk_upsert_stock_guide_companies.
   // Detecção DINÂMICA (acha a coluna 2026E/2027E e os rótulos por varredura) → imune a
   // inserção de linhas/colunas. Múltiplos NÃO são lidos — são recalculados ao vivo na página.
@@ -232,7 +233,19 @@
     // `optional`: arquivo sem a aba (planilha antiga) sobe com AVISO em vez de travar o upload das outras 14.
     { tab:'ACLARA',          ticker:'ARA',      yahoo:'ARA.TO',      name:'Aclara Resources', sector:'rare_earths', group:'rare_earths', trade_ccy:'CAD', optional:true },
     { tab:'VIRIDIS',         ticker:'VMM',      yahoo:'VMM.AX',      name:'Viridis Mining',   sector:'rare_earths', group:'rare_earths', trade_ccy:'AUD', optional:true },
+    // Cobre (cobertura formal desde 23/11/2026). A planilha de 06/11 ainda NÃO tem as abas: entram sozinhas quando
+    // a planilha ganhar (optional → só aviso). `alt` = outros nomes aceitos para a aba. Linhas = as do heatmap
+    // (as quatro por Toronto, em C$ — alvos de início: CS 15, ERO 50, HBM 44, LUN 29) — conferir na 1ª subida se o
+    // preço-alvo do modelo está na mesma moeda da linha (o resumo do /admin mostra preço e alvo lado a lado).
+    { tab:'HUDBAY',          alt:['HUDBAY MINERALS'],  ticker:'HBM', yahoo:'HBM.TO', name:'Hudbay Minerals', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
+    { tab:'LUNDIN MINING',   alt:['LUNDIN'],           ticker:'LUN', yahoo:'LUN.TO', name:'Lundin Mining',   sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
+    { tab:'CAPSTONE COPPER', alt:['CAPSTONE'],         ticker:'CS',  yahoo:'CS.TO',  name:'Capstone Copper', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
+    { tab:'ERO COPPER',      alt:['ERO'],              ticker:'ERO', yahoo:'ERO.TO', name:'Ero Copper',      sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
   ];
+  function _sgFindTab(wb, meta) {
+    const want = [meta.tab].concat(meta.alt || []).map(function (t) { return t.toLowerCase(); });
+    return wb.SheetNames.find(function (s) { return want.indexOf(s.trim().toLowerCase()) >= 0; });
+  }
 
   // Ticker que mudou de linha (antigo → novo). O ticker é a CHAVE da empresa no banco: sem renomear antes,
   // gravar a planilha criaria uma 2ª Vale. O /admin renomeia sozinho (admin_rename_stock_guide_company,
@@ -435,7 +448,7 @@
     const fxRates = parseSGFXRates(wb);
     const rows = [], perCompany = [], warnings = [], errors = [];
     SG_COVERAGE.forEach(function (meta, i) {
-      const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === meta.tab.toLowerCase(); });
+      const nm = _sgFindTab(wb, meta);
       if (!nm) { (meta.optional ? warnings : errors).push('aba ausente: ' + meta.tab + ' (' + meta.ticker + ')'); return; }
       const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
       const res = _sgParseCompanyAoa(aoa, meta, fxRates);

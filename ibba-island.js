@@ -598,7 +598,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     ['USIM5', 'Usiminas', 'USIM5.SA', 'USIM5 USIM3', 'Steel'], ['TX', 'Ternium', 'TX', 'TX', 'Steel'],
     ['AUGO', 'Aura Minerals', 'AUGO', 'AUGO AURA33 ORA gold', 'Gold'], ['SCCO', 'Southern Copper', 'SCCO', 'SCCO copper', 'Copper'],
     ['GMEXICOB', 'Grupo México', 'GMEXICOB.MX', 'GMEXICOB GMEX grupo mexico copper', 'Copper'], ['CS', 'Capstone Copper', 'CS.TO', 'CS capstone copper', 'Copper'],
-    ['ERO', 'Ero Copper', 'ERO', 'ERO copper', 'Copper'], ['HBM', 'Hudbay Minerals', 'HBM.TO', 'HBM hudbay copper', 'Copper'],
+    ['ERO', 'Ero Copper', 'ERO.TO', 'ERO copper', 'Copper'], ['HBM', 'Hudbay Minerals', 'HBM.TO', 'HBM hudbay copper', 'Copper'],
     ['LUN', 'Lundin Mining', 'LUN.TO', 'LUN lundin copper', 'Copper'], ['ARA', 'Aclara Resources', 'ARA.TO', 'ARA aclara rare earths', 'Rare earths'],
     ['VMM', 'Viridis Mining & Minerals', 'VMM.AX', 'VMM viridis rare earths', 'Rare earths'], ['SUZB3', 'Suzano', 'SUZB3.SA', 'SUZB3 SUZ pulp', 'Pulp & paper'],
     ['KLBN11', 'Klabin', 'KLBN11.SA', 'KLBN11 KLBN4 packaging', 'Pulp & paper'], ['RANI3', 'Irani', 'RANI3.SA', 'RANI3 irani papel', 'Pulp & paper'],
