@@ -235,12 +235,12 @@
     { tab:'VIRIDIS',         ticker:'VMM',      yahoo:'VMM.AX',      name:'Viridis Mining',   sector:'rare_earths', group:'rare_earths', trade_ccy:'AUD', optional:true },
     // Cobre (cobertura formal desde 23/11/2026). A planilha de 06/11 ainda NÃO tem as abas: entram sozinhas quando
     // a planilha ganhar (optional → só aviso). `alt` = outros nomes aceitos para a aba. Linhas = as do heatmap
-    // (Toronto em C$; a Ero pela linha de NY, em US$) — conferir na 1ª subida se o preço-alvo do modelo está na
-    // mesma moeda da linha (o resumo do /admin mostra preço e alvo lado a lado).
+    // (as quatro por Toronto, em C$ — alvos de início: CS 15, ERO 50, HBM 44, LUN 29) — conferir na 1ª subida se o
+    // preço-alvo do modelo está na mesma moeda da linha (o resumo do /admin mostra preço e alvo lado a lado).
     { tab:'HUDBAY',          alt:['HUDBAY MINERALS'],  ticker:'HBM', yahoo:'HBM.TO', name:'Hudbay Minerals', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
     { tab:'LUNDIN MINING',   alt:['LUNDIN'],           ticker:'LUN', yahoo:'LUN.TO', name:'Lundin Mining',   sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
     { tab:'CAPSTONE COPPER', alt:['CAPSTONE'],         ticker:'CS',  yahoo:'CS.TO',  name:'Capstone Copper', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
-    { tab:'ERO COPPER',      alt:['ERO'],              ticker:'ERO', yahoo:'ERO',    name:'Ero Copper',      sector:'copper', group:'mining', trade_ccy:'USD', optional:true },
+    { tab:'ERO COPPER',      alt:['ERO'],              ticker:'ERO', yahoo:'ERO.TO', name:'Ero Copper',      sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
   ];
   function _sgFindTab(wb, meta) {
     const want = [meta.tab].concat(meta.alt || []).map(function (t) { return t.toLowerCase(); });

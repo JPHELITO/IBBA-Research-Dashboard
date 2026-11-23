@@ -854,7 +854,7 @@ const CAL_COMPANIES=[
   ['ARA.TO','Aclara Resources'],['AEM','Agnico Eagle'],['AAL.L','Anglo American'],['MT','ArcelorMittal'],
   ['ARIS','Aris Mining'],['AUGO','Aura Minerals'],['B','Barrick'],['BHP','BHP'],['BRAP3.SA','Bradespar'],
   ['BVN','Buenaventura'],['CAP.SN','CAP'],['CS.TO','Capstone Copper'],['CMPC.SN','CMPC'],['CMC','Commercial Metals'],
-  ['CSNA3.SA','CSN'],['CMIN3.SA','CSN Mineração'],['COPEC.SN','Empresas Copec'],['ERO','Ero Copper'],
+  ['CSNA3.SA','CSN'],['CMIN3.SA','CSN Mineração'],['COPEC.SN','Empresas Copec'],['ERO.TO','Ero Copper'],
   ['FMG.AX','Fortescue'],['GGBR4.SA','Gerdau'],['GMEXICOB.MX','Grupo México'],['HOC.L','Hochschild Mining'],
   ['HBM.TO','Hudbay Minerals'],['IP','International Paper'],['RANI3.SA','Irani'],['KLBN11.SA','Klabin'],
   ['LUN.TO','Lundin Mining'],
@@ -1808,11 +1808,11 @@ let _rhRows=[], _rhEditId=null, _rhPaste=null;
 const RH_EXTRA=[{ticker:'ARA',company_name:'Aclara Resources',yahoo_symbol:'ARA.TO',trade_ccy:'CAD'},
                 {ticker:'VMM',company_name:'Viridis Mining',yahoo_symbol:'VMM.AX',trade_ccy:'AUD'},
                 // cobre (cobertura formal desde 23/11/2026) — fora do Stock Guide até a planilha ganhar as abas;
-                // linhas iguais às do heatmap (Toronto em C$; a Ero pela linha de NY, em US$)
+                // linhas iguais às do heatmap (as quatro por Toronto, alvos em C$)
                 {ticker:'HBM',company_name:'Hudbay Minerals',yahoo_symbol:'HBM.TO',trade_ccy:'CAD'},
                 {ticker:'LUN',company_name:'Lundin Mining',yahoo_symbol:'LUN.TO',trade_ccy:'CAD'},
                 {ticker:'CS',company_name:'Capstone Copper',yahoo_symbol:'CS.TO',trade_ccy:'CAD'},
-                {ticker:'ERO',company_name:'Ero Copper',yahoo_symbol:'ERO',trade_ccy:'USD'}];
+                {ticker:'ERO',company_name:'Ero Copper',yahoo_symbol:'ERO.TO',trade_ccy:'CAD'}];
 // a mesma empresa escrita de outro jeito; `l`/`c` = OUTRA linha, com o preço-alvo na moeda dela (VALE3 em R$ ≠ VALE ADR em US$)
 const RH_ALT={VALE3:{k:'VALE',l:'VALE3.SA',c:'BRL'},AURA33:{k:'AUGO',l:'AURA33.SA',c:'BRL'},AURA:{k:'AUGO'},GGB:{k:'GGBR4',l:'GGB',c:'USD'},
   GERDAU:{k:'GGBR4'},USIMINAS:{k:'USIM5'},CSN:{k:'CSNA3'},'CSN MINERACAO':{k:'CMIN3'},CMIN:{k:'CMIN3'},TERNIUM:{k:'TX'},

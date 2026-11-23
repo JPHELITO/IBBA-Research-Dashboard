@@ -209,8 +209,8 @@ def test_cobertura_do_heatmap():
                 {"symbol": "SCCO", "in_coverage": True, "is_hidden": True, "sort_order": 2},
                 {"symbol": "TX", "in_coverage": False, "is_hidden": False, "sort_order": 0}]
     assert dm.cobertura(lambda path: marcados) == ["VALE"]
-    so_esconde = [{"symbol": "ERO", "in_coverage": False, "is_hidden": True, "sort_order": 0}]
-    assert "ERO" not in dm.cobertura(lambda path: so_esconde) and len(dm.cobertura(lambda path: so_esconde)) == 19
+    so_esconde = [{"symbol": "ERO.TO", "in_coverage": False, "is_hidden": True, "sort_order": 0}]
+    assert "ERO.TO" not in dm.cobertura(lambda path: so_esconde) and len(dm.cobertura(lambda path: so_esconde)) == 19
 
 
 def test_reenvio_de_dia_antigo_sai_sem_a_tabela():

@@ -2287,9 +2287,9 @@ const _PULSE_CO = {
   'CMPC':['CMPC','CMPC.SN','pp'],     'COPEC':['COPEC','COPEC.SN','pp'],
   // terras raras — cobertura formal desde 2026-10-23 (ticker de tela = o _short do heatmap; cotação em `quotes`)
   'ACLARA':['ARA','ARA.TO','sm'],     'VIRIDIS':['VMM','VMM.AX','sm'],
-  // cobre — cobertura formal desde 2026-11-23 (a Ero pela linha de NY, como no heatmap)
+  // cobre — cobertura formal desde 2026-11-23 (as quatro pela linha oficial de Toronto, em C$)
   'HUDBAY':['HBM','HBM.TO','sm'],     'LUNDIN MINING':['LUN','LUN.TO','sm'],
-  'CAPSTONE COPPER':['CS','CS.TO','sm'], 'ERO COPPER':['ERO','ERO','sm'],
+  'CAPSTONE COPPER':['CS','CS.TO','sm'], 'ERO COPPER':['ERO','ERO.TO','sm'],
 };
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
 // TEMAS = os tópicos que o robô grava em cada manchete (take_topics, hunter/news_take_classifier.py), agrupados
@@ -2735,11 +2735,11 @@ const HM_MAX = 20;                              // teto de cartões = a grade 4�
 // "Our coverage" = 20 empresas, sem índice (2026-10-15: saiu o IBOV, que foi p/ o grupo Index;
 // entraram Aclara, Viridis, Capstone, Ero, Hudbay e Lundin).
 const G_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN',
-                    'CS.TO','ERO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
+                    'CS.TO','ERO.TO','HBM.TO','LUN.TO','ARA.TO','VMM.AX'];
 const G_STEEL    = ['CSNA3.SA','GGBR4.SA','GGB','MT','NUE','TX','USIM5.SA','CMC','GOAU4.SA','STLD'];   // GGB = ADR da Gerdau em NY (mesma empresa da GGBR4; fora do G_COVERAGE p/ não contar 2×)
 const G_IRON     = ['VALE','CMIN3.SA','FMG.AX','RIO','BHP','AAL.L','CAP.SN','BRAP3.SA'];
 const G_GOLD     = ['AUGO','ARIS','BVN','AEM','B','HOC.L'];
-const G_COPPER   = ['ERO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin = Toronto (CAD)
+const G_COPPER   = ['ERO.TO','SCCO','GMEXICOB.MX','CS.TO','B','HBM.TO','LUN.TO'];   // Hudbay/Lundin/Ero = Toronto (CAD)
 const G_RARE     = ['MEI.AX','VMM.AX','ARA.TO'];
 const G_PP       = ['SW','IP','SUZB3.SA','KLBN11.SA','RANI3.SA','CMPC.SN','COPEC.SN','UPM.HE','STERV.HE'];
 // 2026-10-28: + os índices das outras bolsas (benchmarks do modo relativo — ver BENCH_BY_EXCH)
@@ -2778,7 +2778,7 @@ let _hmFromDefault = false;   // true se _hmDisplayed veio do default (sem local
 // Seleção salva antes de 2026-10-15: quem guardou EXATAMENTE a cobertura antiga (15, com IBOV)
 // estava seguindo o preset → passa a ver a nova. Quem montou lista própria só tem a Hudbay
 // trocada para a linha de Toronto (sem isso o HBM sumiria calado da seleção dele).
-const HM_RENAMED = {'HBM':'HBM.TO'};
+const HM_RENAMED = {'HBM':'HBM.TO','ERO':'ERO.TO'};   // Ero NYSE → Toronto em 23/11/2026 (alvo do analista em C$)
 const HM_OLD_COVERAGE = ['AUGO','SUZB3.SA','VALE','GMEXICOB.MX','CMIN3.SA','SCCO','KLBN11.SA','TX','CSNA3.SA','CMPC.SN','USIM5.SA','RANI3.SA','GGBR4.SA','COPEC.SN','IBOV'];
 let _hmDisplayed = _loadDisplayed();
 function _loadDisplayed(){
