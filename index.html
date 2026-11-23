@@ -4067,11 +4067,16 @@ function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:0
 // ⚠️ A mesma lista vive em clipinator.html (PUB_COS): mudou a cobertura, mudar nos dois.
 const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM','HBM','LUN','CS','ERO'],
                       PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
-function _repCos(list){
+// Relatório publicado ANTES de o S&M crescer (cobre em 23/11/2026) e marcado com o S&M inteiro DAQUELA época continua
+// "All S&M" — sem isto os NDRs de "toda a cobertura" de 16–19/11 viravam "All P&P VALE3 CMIN3 +9".
+const REP_SM_ATE_2026_11_22 = ['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'];
+function _repCos(list, date){
   let cos = Array.isArray(list) ? [...new Set(list.map(t => String(t || '').trim().toUpperCase()).filter(Boolean))] : [];
   if(!cos.length) return '';
   const chip = t => `<span class="news-co rep-co">${_esc(t)}</span>`;
-  const allSM = REP_UNIVERSE.SM.every(t => cos.includes(t)), allPP = REP_UNIVERSE.PP.every(t => cos.includes(t));
+  const antigo = date && String(date).slice(0,10) < '2026-11-23';
+  const allSM = REP_UNIVERSE.SM.every(t => cos.includes(t)) || (antigo && REP_SM_ATE_2026_11_22.every(t => cos.includes(t)));
+  const allPP = REP_UNIVERSE.PP.every(t => cos.includes(t));
   if(allSM && allPP) return chip('All names');
   const out = [];
   if(allSM){ out.push(chip('All S&M')); cos = cos.filter(t => !REP_UNIVERSE.SM.includes(t)); }
@@ -4085,7 +4090,7 @@ function _repRow(x){
   const ok = /^https?:\/\//i.test(x.link || '') ? x.link : null;
   const s = String(x.sector || '').toUpperCase(), sec = s === 'PP' ? 'P&P' : s === 'NR' ? 'NR' : 'S&M';
   const d = _repDate(x.date);
-  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_repCos(x.companies)}${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
+  const inner = `<span class="rep-w">${_esc(d)}</span><span class="rep-t">${_repCos(x.companies, x.date)}${_esc(x.name)}</span><span class="rep-s">${_esc(sec)}</span>`;
   const cosTip = Array.isArray(x.companies) && x.companies.length ? ' · ' + x.companies.join(', ') : '';
   const tip = _esc(x.name + (d ? ' · ' + d : '') + ' · ' + sec + cosTip);
   return ok ? `<a class="rep-item" href="${_esc(ok)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>`
