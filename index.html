@@ -1979,6 +1979,7 @@ let _newsSectorFilter = 'all'; // 'all' | 'sm' | 'pp' | 'nr' (resolvido por font
 const _LABEL_ALIAS = {
   'CVM':'CVM filing',   // comunicado oficial da empresa (Market Watch → hunter/cvm_filings.py)
   'ASX':'ASX filing',   // anúncio sensível a preço da Viridis e pares de terras raras (hunter/asx_announcements.py)
+  'TMX':'TSX filing',   // comunicado das 4 de cobre de Toronto pela TMX Money (hunter/tmx_news.py, 23/11/2026)
   'Bloomberg.com':'Bloomberg','Reuters Brasil':'Reuters',
   'Kallanish Commodities':'Kallanish','Kallanish Steel':'Kallanish',
   'Shanghai Metals Market':'SMM','World Steel Association':'World Steel',
@@ -2003,9 +2004,11 @@ const _SM_SOURCES=new Set(['S&P Platts','Platts','Notícias de Mineração','IBR
   'Mining.com','Australian Mining','SMM','GMK Center','Siderurgia Brasil','SteelRadar',
   'Instituto Aço Brasil',
   // terras raras (Aclara/Viridis, 26/10/2026) — o Financial Times entra só pelo feed de terras raras
-  'ASX filing','Aclara Resources','Fastmarkets Insights','Northern Miner','Financial Times','Poços Já']);
+  'ASX filing','Aclara Resources','Fastmarkets Insights','Northern Miner','Financial Times','Poços Já',
+  // cobre (Hudbay, Lundin, Capstone, Ero — 23/11/2026): comunicados da TSX + imprensa de mineração do Chile e do Peru
+  'TSX filing','Reporte Minero','Rumbo Minero','Energiminas','Portal Minero']);
 // Comunicado OFICIAL da empresa (CVM/B3, ASX, site da própria coberta) → selo PRIMARY ao lado da fonte.
-const _PRIMARY_SOURCES=new Set(['CVM','ASX','Aclara Resources']);
+const _PRIMARY_SOURCES=new Set(['CVM','ASX','Aclara Resources','TMX']);
 const _PP_SOURCES=new Set(['Fastmarkets','PaperAge','Portal Celulose','ABTCP',
   'China Pulp & Paper','Papnews','Ibá']);
 // NUNCA fica em branco: fonte de setor único → carimbo · fonte mista → keyword (a.sector) ·
