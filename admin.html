@@ -631,7 +631,7 @@ html.dark .ov-card{background:#20242b}
       <div id="sg-companies">
         <div class="card">
           <h2>📤 Subir modelo (.xlsm) <span class="muted" style="font-weight:400;font-size:13px">— fonte única dos dados</span></h2>
-          <p class="sub">Arraste o <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as <b>16 empresas cobertas</b> (as 14 + Aclara e Viridis) + os <b>global peers</b> (que têm cotação na Market), mostra um resumo e grava tudo de uma vez. Preço, câmbio e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva a visibilidade (hide-aware).</p>
+          <p class="sub">Arraste o <b>Stock Guide - Natural Resources 2026.xlsm</b>. Lê as <b>16 empresas cobertas</b> (as 14 + Aclara e Viridis; Hudbay, Lundin, Capstone e Ero entram quando a planilha tiver as abas) + os <b>global peers</b> (que têm cotação na Market), mostra um resumo e grava tudo de uma vez. Preço, câmbio e múltiplos seguem AO VIVO — não vêm do arquivo. Preserva a visibilidade (hide-aware).</p>
           <style>#sg-xlsm-preview table{border-collapse:collapse;width:100%;font-size:11px}#sg-xlsm-preview th,#sg-xlsm-preview td{border:1px solid var(--border,#E3E3E3);padding:3px 6px;text-align:right;white-space:nowrap}#sg-xlsm-preview th{background:var(--g-light,#F4F3F0)}#sg-xlsm-preview th:nth-child(-n+2),#sg-xlsm-preview td:nth-child(-n+2){text-align:left}</style>
           <div class="row"><input class="in" id="sg-xlsm-file" type="file" accept=".xlsm,.xlsx" onchange="sgModelPreview(this.files[0])"></div>
           <div id="sg-xlsm-status" class="status" style="margin-top:8px"></div>
@@ -1806,12 +1806,20 @@ function sgShowSub(s){
 let _rhRows=[], _rhEditId=null, _rhPaste=null;
 // cobertas fora do Stock Guide (terras raras, cobertura formal desde 23/10/2026)
 const RH_EXTRA=[{ticker:'ARA',company_name:'Aclara Resources',yahoo_symbol:'ARA.TO',trade_ccy:'CAD'},
-                {ticker:'VMM',company_name:'Viridis Mining',yahoo_symbol:'VMM.AX',trade_ccy:'AUD'}];
+                {ticker:'VMM',company_name:'Viridis Mining',yahoo_symbol:'VMM.AX',trade_ccy:'AUD'},
+                // cobre (cobertura formal desde 23/11/2026) — fora do Stock Guide até a planilha ganhar as abas;
+                // linhas iguais às do heatmap (Toronto em C$; a Ero pela linha de NY, em US$)
+                {ticker:'HBM',company_name:'Hudbay Minerals',yahoo_symbol:'HBM.TO',trade_ccy:'CAD'},
+                {ticker:'LUN',company_name:'Lundin Mining',yahoo_symbol:'LUN.TO',trade_ccy:'CAD'},
+                {ticker:'CS',company_name:'Capstone Copper',yahoo_symbol:'CS.TO',trade_ccy:'CAD'},
+                {ticker:'ERO',company_name:'Ero Copper',yahoo_symbol:'ERO',trade_ccy:'USD'}];
 // a mesma empresa escrita de outro jeito; `l`/`c` = OUTRA linha, com o preço-alvo na moeda dela (VALE3 em R$ ≠ VALE ADR em US$)
 const RH_ALT={VALE3:{k:'VALE',l:'VALE3.SA',c:'BRL'},AURA33:{k:'AUGO',l:'AURA33.SA',c:'BRL'},AURA:{k:'AUGO'},GGB:{k:'GGBR4',l:'GGB',c:'USD'},
   GERDAU:{k:'GGBR4'},USIMINAS:{k:'USIM5'},CSN:{k:'CSNA3'},'CSN MINERACAO':{k:'CMIN3'},CMIN:{k:'CMIN3'},TERNIUM:{k:'TX'},
   'SOUTHERN COPPER':{k:'SCCO'},'GRUPO MEXICO':{k:'GMEXICOB'},GMEXICO:{k:'GMEXICOB'},GMEX:{k:'GMEXICOB'},SUZANO:{k:'SUZB3'},
-  KLABIN:{k:'KLBN11'},IRANI:{k:'RANI3'},ACLARA:{k:'ARA'},VIRIDIS:{k:'VMM'}};
+  KLABIN:{k:'KLBN11'},IRANI:{k:'RANI3'},ACLARA:{k:'ARA'},VIRIDIS:{k:'VMM'},
+  HUDBAY:{k:'HBM'},'HUDBAY MINERALS':{k:'HBM'},LUNDIN:{k:'LUN'},'LUNDIN MINING':{k:'LUN'},
+  CAPSTONE:{k:'CS'},'CAPSTONE COPPER':{k:'CS'},'ERO COPPER':{k:'ERO'}};
 const RH_SRC={stock_guide:'upload do Stock Guide',manual:'manual',import:'colado do Excel'};
 function _rhEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _rhNorm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
@@ -2755,7 +2763,8 @@ function _s2AnaList(def){ const out=[], viu={};
 let _sgS2=null;   // {buf, name, parsed}
 const _S2_FILE_TICKER=[['mineraç','CMIN3'],['mineracao','CMIN3'],['vale','VALE'],['suzano','SUZB3'],
   ['gerdau','GGBR4'],['usiminas','USIM5'],['ternium','TX'],['aura','AUGO'],['klabin','KLBN11'],['csn','CSNA3'],
-  ['cmpc','CMPC'],['copec','COPEC'],['aclara','ARA'],['viridis','VMM']];
+  ['cmpc','CMPC'],['copec','COPEC'],['aclara','ARA'],['viridis','VMM'],
+  ['hudbay','HBM'],['lundin','LUN'],['capstone','CS'],['ero copper','ERO'],['- ero ','ERO']];   // cobre (23/11/2026)
 function _s2TickerFromFile(nm){ const s=String(nm||'').toLowerCase();
   for(let i=0;i<_S2_FILE_TICKER.length;i++) if(s.indexOf(_S2_FILE_TICKER[i][0])>=0) return _S2_FILE_TICKER[i][1];
   return ''; }

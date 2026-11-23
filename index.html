@@ -2287,6 +2287,9 @@ const _PULSE_CO = {
   'CMPC':['CMPC','CMPC.SN','pp'],     'COPEC':['COPEC','COPEC.SN','pp'],
   // terras raras — cobertura formal desde 2026-10-23 (ticker de tela = o _short do heatmap; cotação em `quotes`)
   'ACLARA':['ARA','ARA.TO','sm'],     'VIRIDIS':['VMM','VMM.AX','sm'],
+  // cobre — cobertura formal desde 2026-11-23 (a Ero pela linha de NY, como no heatmap)
+  'HUDBAY':['HBM','HBM.TO','sm'],     'LUNDIN MINING':['LUN','LUN.TO','sm'],
+  'CAPSTONE COPPER':['CS','CS.TO','sm'], 'ERO COPPER':['ERO','ERO','sm'],
 };
 // nome novo no classificador → aparece com o token cru e sem link (nunca some calado)
 // TEMAS = os tópicos que o robô grava em cada manchete (take_topics, hunter/news_take_classifier.py), agrupados
@@ -4062,7 +4065,7 @@ function _repDate(d){ try{ return d ? new Date(String(d).slice(0,10) + 'T12:00:0
 // — a Home NÃO adivinha pelo nome. Tickers de tela (VALE3, SCCO, ARA…), os mesmos do feed. Marcou um setor inteiro
 // → uma etiqueta só ("All S&M"); até 3 etiquetas; mais que isso vira "+N". Sem marcação → só o nome, como sempre.
 // ⚠️ A mesma lista vive em clipinator.html (PUB_COS): mudou a cobertura, mudar nos dois.
-const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'],
+const REP_UNIVERSE = {SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM','HBM','LUN','CS','ERO'],
                       PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
 function _repCos(list){
   let cos = Array.isArray(list) ? [...new Set(list.map(t => String(t || '').trim().toUpperCase()).filter(Boolean))] : [];

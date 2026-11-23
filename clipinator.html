@@ -495,7 +495,8 @@ const S={ cand:[], byUrl:{}, sel:new Map(), order:[], pins:[], hours:24, filter:
 const SECTORS=[['NR','NR'],['SM','S&M'],['PP','P&P']];   // ordem fixa NR → S&M → P&P (Cement removido)
 // Empresas cobertas, por setor (tickers de tela). O que o analista marca em cada publicação vai para a Home como etiqueta,
 // pela get_recent_reports_v3 (admin/supabase_recent_reports.sql). ⚠️ Mesma lista em index.html (REP_UNIVERSE).
-const PUB_COS={SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM'], PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
+// Cobre (HBM, LUN, CS, ERO) desde 23/11/2026.
+const PUB_COS={SM:['VALE3','CMIN3','CSNA3','GGBR4','USIM5','TX','SCCO','GMEXICOB','AURA33','ARA','VMM','HBM','LUN','CS','ERO'], PP:['SUZB3','KLBN11','RANI3','CMPC','COPEC']};
 function pubCosHtml(p){
   const sel=new Set(Array.isArray(p.companies)?p.companies:[]);
   const all=sec=>PUB_COS[sec].every(t=>sel.has(t));
