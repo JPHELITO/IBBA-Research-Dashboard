@@ -47,7 +47,7 @@ window.__RUN__ = async function () {
       let page = '';
       if (where) { try { page = await src(where); ok(s.id + ': página ' + where + ' existe', page.length > 1000); } catch (e) { ok(s.id + ': página existe', false, e.message); } }
       // a mesa de dados (Data Desk) desenha os blocos dela por JavaScript: as classes dk-* moram nos arquivos data-desk*.js
-      let desk = ''; if (/data-desk\.js/.test(page)) for (const f of ['/data-desk.js', '/data-desk-builder.js', '/data-desk-context.js']) { try { desk += '\n' + await src(f); } catch (e) { ok(s.id + ': ' + f + ' existe', false, e.message); } }
+      let desk = ''; if (/data-desk\.js/.test(page)) for (const f of ['/data-desk.js', '/data-desk-builder.js', '/data-desk-context.js', '/data-desk-prices.js']) { try { desk += '\n' + await src(f); } catch (e) { ok(s.id + ': ' + f + ' existe', false, e.message); } }
       const hay = topnav + '\n' + exportlib + '\n' + page + desk;   // export-lib injeta os botões PNG/XLS dos gráficos
       flagsOf(s).forEach(f => ok(s.id + ': flag do segmento conhecida (' + f + ')', known.has(f)));
       const checkActs = (a, tag) => actionsOf(a).forEach(x => {
