@@ -382,7 +382,6 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <div class="gn-group" id="gnav-mm"><span class="gn-item">M&amp;M ▾</span><div class="gn-drop"><div class="gn-cat">Steel &amp; Mining</div>\
       <a class="gn-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#overview">Overview</a>\
       <a class="gn-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#parity">Steel prices &amp; parity</a>\
-      <a class="gn-nodesk" href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
       <a href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
@@ -429,7 +428,6 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
     <div class="gnm-cat" data-tour="m-sectors">Metals &amp; Mining</div>\
     <a class="gnm-a sub gnm-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#overview">Overview</a>\
     <a class="gnm-a sub gnm-desk" style="display:none" href="/Steel and Mining/steel_sm_dashboard.html#parity">Steel prices &amp; parity</a>\
-    <a class="gnm-a sub gnm-nodesk" href="/Steel and Mining/steel_sm_dashboard.html#prices">Prices</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#domestic">Domestic Market</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#imports">Imports</a>\
     <a class="gnm-a sub" href="/Steel and Mining/steel_sm_dashboard.html#exports">Exports</a>\
@@ -628,8 +626,8 @@ html.dark .gnm-out{background:#15171b;border-color:#2b3038;color:#e8eaed;}\
   }
   window.__gnavMarketTabs = function(on){ _setMarketTabs(!!on); };   // a home e o Market chamam ao ler as flags
   // Seções que só existem com o Data Desk (Overview, preços por commodity, Builder nas abas de M&M / P&P): o menu só as oferece a
-  // quem vê a mesa — admin sempre; cliente com a flag data_desk (recado em ibba_desk, que as páginas de dados gravam ao ler as flags).
-  // .gn-nodesk = o item da tela antiga que, com a mesa, mora dentro de outro (Prices de M&M → Steel prices & parity › Realized).
+  // quem vê a mesa — admin sempre; cliente com a flag data_desk (recado em ibba_desk, que as páginas de dados e a home gravam ao ler as flags).
+  // .gn-nodesk = item só da tela antiga (hoje nenhum: o Prices da SECEX saiu de M&M em 23/11/2026; a regra fica para o próximo).
   function _setDeskLinks(on){ [].slice.call(document.querySelectorAll('.gn-desk,.gnm-desk')).forEach(function(a){ a.style.display = on ? '' : 'none'; });
     [].slice.call(document.querySelectorAll('.gn-nodesk,.gnm-nodesk')).forEach(function(a){ a.style.display = on ? 'none' : ''; }); }
   window.__gnavDesk = function(on){ _setDeskLinks(!!on); };

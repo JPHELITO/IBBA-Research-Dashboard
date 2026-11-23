@@ -224,7 +224,7 @@ window.IBBA_TOURS = {
       // (Data Desk, flag data_desk; admin vê sempre). Passo sem condição serve aos dois.
       steps: [
         { id: 'sections', notIf: 'html.desk-on', target: ['#steel-subnav', '.mob-sections-list'], title: 'Sections',
-          body: 'Prices, Domestic Market, Imports and Exports: each section is a set of charts you can filter and download.',
+          body: 'Domestic Market, Imports and Exports: each section is a set of charts you can filter and download.',
           mobile: { body: 'Pick a section to open its charts. **← Sections** brings this list back anytime.' } },
         { id: 'd-sections', onlyIf: 'html.desk-on', target: ['#steel-subnav', '.mob-sections-list'], title: 'Sections',
           body: 'The bar is organised by commodity. **Overview** lists every indicator with its latest figure; **Steel** and **Iron Ore** open their own sections on the line just below; **Builder** puts series side by side.',
@@ -232,7 +232,7 @@ window.IBBA_TOURS = {
         { id: 'd-prices', onlyIf: 'html.desk-on', call: ['mobSelect', 'parity'], target: '#desk-root .dk-hfstage', clip: 420, title: 'Market prices and import parity',
           body: 'Daily and weekly market prices. **HRC premium** and **Rebar premium** show how much more the domestic product costs than the imported one; the strip under the chart opens the calculation, step by step.',
           mobile: { body: 'Daily and weekly market prices. The premium cards show how much more the domestic product costs than the imported one; the strip under the chart opens the calculation.' } },
-        { id: 'm-back', media: 'mobile', call: ['mobSelect', 'prices'], target: '#mob-back-btn', title: 'Back to sections',
+        { id: 'm-back', media: 'mobile', call: ['mobSelect', 'domestic'], target: '#mob-back-btn', title: 'Back to sections',
           body: 'Tap **← Sections** anytime to switch to another section.' },
         { id: 'filters', call: ['mobSelect', 'imports'], target: '.filter-bar', title: 'Filters',
           body: 'Choose the product, the granularity (monthly, quarterly, annual) and the window. The charts follow.' },
