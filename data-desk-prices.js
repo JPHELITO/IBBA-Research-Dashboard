@@ -224,7 +224,7 @@
     E.stage = h('div', 'dk-stage dk-card dk-hfstage',
       '<div class="dk-sh"><div><div class="dk-st"></div><div class="dk-sv"></div></div><div class="dk-sd"></div><span class="dk-grow"></span></div>' +
       '<div class="dk-hfdl"><button type="button" title="Download the chart as an image">PNG</button></div>' +
-      '<div class="dk-hfleg"></div><div class="dk-nt" hidden></div><div class="dk-chart dk-stagechart"><canvas></canvas></div>' +
+      '<div class="dk-hfleg"></div><div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas></canvas></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read any date · Change the period with the Window buttons or the dates above</div><div class="dk-hint dk-hfsrc"></div></div>');
     E.read = h('div', 'dk-card dk-read dk-hfread', '<div class="dk-ch"><h3>Reading</h3><em class="dk-when"></em></div><div class="dk-big"></div><div class="dk-kv"></div>');
     /* a conta aberta, parcela por parcela, na data lida (paridade: FOB + frete + … = importado; margem: preço − frete) */
@@ -267,15 +267,16 @@
   Desk.prototype._hfTiles = function () {
     var sec = this.sections[this.cur], u = this._u(), self = this, pal = palette();
     var act = '<div class="dk-ta"><i></i><span class="dk-ta0">Show on chart</span><span class="dk-ta1">On the main chart</span></div>';
+    var tipOf = function (M0) { var hp = self._help(self.cur, M0.id, {}); return ((hp && hp.what) ? hp.what + '\n\n' : '') + 'Click to show it on the main chart.'; };
     this.el.tiles.innerHTML = (sec.hf.tiles || []).map(function (id) {
       var M = self._hfM(id); if (!M) return ''; var ser = self._hfSeries(M);
       var S0 = self._hfStore(), lazy = !ser.length && (M.codes || []).some(function (c) { return !S0.daily[c] && !S0.miss[c]; });
-      if (lazy) return '<button type="button" class="dk-tile dk-tlazy" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(M.short || M.label) + '</span></div><div class="dk-tv dk-tvs">' + esc(M.lazyText || 'Long history') + '</div><div class="dk-td">' + esc(M.lazyNote || 'Loaded when you open it') + '</div>' + act + '</button>';
+      if (lazy) return '<button type="button" class="dk-tile dk-tlazy" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="' + esc(tipOf(M)) + '"><div class="dk-tl"><span>' + esc(M.short || M.label) + '</span></div><div class="dk-tv dk-tvs">' + esc(M.lazyText || 'Long history') + '</div><div class="dk-td">' + esc(M.lazyNote || 'Loaded when you open it') + '</div>' + act + '</button>';
       if (!ser.length) { if (M.hideNA) return ''; return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(M.short || M.label) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available yet') + '</div></div>'; }
       var main = ser[0].pts, last = main[main.length - 1], from1y = shift(last[0], -12);
       if (ser.length > 1 && !M.single) {   // várias séries da mesma unidade: uma linha por série
         var rows = ser.slice(0, M.tileN || 3), a = align(rows.map(function (s) { return s.pts.filter(function (p) { return p[0] >= from1y; }); }));
-        return '<button type="button" class="dk-tile dk-tmulti" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(M.short || M.label) + ' <small class="dk-tu">' + esc(M.unit) + '</small></span><span>' + dLabel(last[0]) + '</span></div>' +
+        return '<button type="button" class="dk-tile dk-tmulti" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="' + esc(tipOf(M)) + '"><div class="dk-tl"><span>' + esc(M.short || M.label) + ' <small class="dk-tu">' + esc(M.unit) + '</small></span><span>' + dLabel(last[0]) + '</span></div>' +
           rows.map(function (s, k) { var l = s.pts[s.pts.length - 1], b = at(s.pts, shift(l[0], -1)), c1 = (b && days(b[0], shift(l[0], -1)) <= 10) ? chg(M, l[1], b[1]) : null;
             return '<div class="dk-tm"><i style="background:' + pal[k % pal.length] + '"></i><span>' + esc(s.short || s.name) + '</span><b>' + num(l[1], M.dec, M.pp) + '</b><span class="' + X.cls(c1) + '" title="Change in one month">' + chgTxt(M, c1) + '</span></div>'; }).join('') +
           '<div class="dk-sp">' + sparkMany(a.vals.map(function (v, k) { return { v: v, color: pal[k % pal.length] }; }), 160, 30) + '</div>' + act + '</button>';
@@ -284,7 +285,7 @@
       var c0 = prev ? chg(M, last[1], prev[1]) : null, cM = okM ? chg(M, last[1], b1[1]) : null, mn = Infinity, mx = -Infinity;
       main.forEach(function (p) { if (p[1] < mn) mn = p[1]; if (p[1] > mx) mx = p[1]; });
       var pos = mx > mn ? (last[1] - mn) / (mx - mn) : .5, sp = main.filter(function (p) { return p[0] >= from1y; }).map(function (p) { return p[1]; });
-      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(M.short || M.label) + '</span><span>' + dLabel(last[0]) + (M.liveOf && M.liveOf(self._hfStore(), P) ? ' · live' : '') + '</span></div>' +
+      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="' + esc(tipOf(M)) + '"><div class="dk-tl"><span>' + esc(M.short || M.label) + '</span><span>' + dLabel(last[0]) + (M.liveOf && M.liveOf(self._hfStore(), P) ? ' · live' : '') + '</span></div>' +
         '<div class="dk-tv">' + num(last[1], M.dec, M.pp) + '<small>' + esc(M.unit) + '</small></div>' +
         '<div class="dk-td"><span>' + (step >= 5 ? 'WoW' : 'DoD') + ' <span class="' + X.cls(c0) + '">' + chgTxt(M, c0) + '</span></span><span>1M <span class="' + X.cls(cM) + '">' + chgTxt(M, cM) + '</span></span></div>' +
         '<div class="dk-sp">' + sparkOne(sp, 160, 30) + '</div>' +
@@ -302,9 +303,10 @@
     var refs = null; try { refs = M.refs ? M.refs(S, P) : null; } catch (e) { refs = null; }
     var liveI = -1; if (M.liveOf) { var lw = M.liveOf(S, P); if (lw) liveI = a.dates.indexOf(lw) - i0; }
     this._hfV = { M: M, ser: ser, dates: a.dates, vals: a.vals, i0: i0, i1: i1, n: n, refs: refs, liveI: liveI };
-    var cv = E.stage.querySelector('canvas'), nt = E.stage.querySelector('.dk-nt'), note = typeof M.note === 'function' ? M.note(S, P) : (M.note || '');
+    var cv = E.stage.querySelector('canvas'), note = typeof M.note === 'function' ? M.note(S, P) : (M.note || ''), hpf = this._help(this.cur, M.id, {}), wy = E.stage.querySelector('.dk-why');
     E.stage.querySelector('.dk-st').textContent = M.label;
-    nt.hidden = !note; nt.textContent = note;
+    /* a explicação do gráfico (data-desk-help.js): o que mostra + como ler; sem texto lá, a nota do catálogo */
+    wy.innerHTML = X.whyHTML((hpf && hpf.what) || note, (hpf && hpf.how) || ''); wy.hidden = !wy.innerHTML;
     E.stage.querySelector('.dk-hfsrc').textContent = M.src || this.sections[this.cur].hf.src || '';
     if (n < 1 || !ser.length) { E.build.hidden = true; this._dropCharts('hf'); E.stage.querySelector('.dk-sv').textContent = '—'; E.stage.querySelector('.dk-sd').textContent = 'No data in this window'; E.stage.querySelector('.dk-hfleg').innerHTML = ''; E.read.querySelector('.dk-kv').innerHTML = ''; E.read.querySelector('.dk-big').textContent = '—'; return; }
     var labels = a.dates.slice(i0, i1 + 1).map(dLabel);

@@ -6,6 +6,7 @@
 <style>body{font:13px/1.5 system-ui;margin:24px;max-width:900px} .ok{color:#1c7c45} .no{color:#b83227;font-weight:700} h1{font-size:16px}</style>
 <h1>Data Desk — núcleo</h1><pre id="out"></pre>
 <script src="../data-desk.js"></script>
+<script src="../data-desk-help.js"></script>
 <script src="../data-desk-builder.js"></script>
 <script src="../data-desk-prices.js"></script>
 <script>
@@ -185,6 +186,25 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   eq('qBack · o anterior e o mesmo de um ano antes (virando o ano)', [X.qBack(X.qInfo('2030-02-10'), 1).label, X.qBack(X.qInfo('2030-02-10'), 4).label, X.qBack(q, 1).start], ['4Q29', '1Q29', '2030-07-01']);
   near('avgIn · média simples entre duas datas, inclusive', X.avgIn([['2030-09-30', 100], ['2030-10-01', 10], ['2030-10-15', 20], ['2030-12-31', 30], ['2031-01-01', 999]], '2030-10-01', '2030-12-31'), 20);
   eq('avgIn · sem ponto no intervalo = sem média', X.avgIn([['2030-01-01', 1]], '2031-01-01', '2031-03-31'), null);
+})();
+
+/* ── EXPLICAÇÕES (data-desk-help.js): o texto de cada gráfico, num lugar só ── */
+(function () {
+  const H = window.IBBADeskHelp, W = IBBADesk.x.whyHTML;
+  eq('IBBADeskHelp · indicador comum: texto vira {what}', typeof H.get('mm', 'imports', 'vol', {}).what, 'string');
+  eq('IBBADeskHelp · indicador com {what, how}', Object.keys(H.get('mm', 'parity', 'hrc_prem', {})).sort(), ['how', 'what']);
+  eq('IBBADeskHelp · indicador sem texto = null (o motor usa a nota antiga)', [H.get('mm', 'imports', 'nao-existe', {}), H.get('xx', 'imports', 'vol', {})], [null, null]);
+  eq('IBBADeskHelp · participação do maior: nome tirado do rótulo, com artigo quando precisa', [/from China, the largest/.test(H.get('mm', 'imports', 'lead', { label: 'China share' }).what), /goes to the United States,/.test(H.get('mm', 'exports', 'lead', { label: 'United States share' }).what)], [true, true]);
+  const pr = H.get('mm', 'prediction', 'c12', { prod: 'CRC|5' });
+  eq('IBBADeskHelp · modelo preditivo: produto, país, meses e defasagem saem do estado', [/imports of CRC from China/.test(pr.what), /summed over 12 months/.test(pr.what), /forward by 5 months/.test(pr.how)], [true, true, true]);
+  eq('IBBADeskHelp · séries do modelo preditivo (SECEX / origem)', [/as recorded by SECEX/.test(H.get('mm', 'prediction', 'k3s', { prod: 'HRC|3' }).what), /moved forward by 3 months/.test(H.get('mm', 'prediction', 'b12e', { prod: 'HRC|3' }).what)], [true, true]);
+  eq('IBBADeskHelp · quebra do Who por seção', [typeof H.who('mm', 'imports', 'country'), H.who('mm', 'imports', 'nada'), typeof H.who('pp', 'pulp-gacc', 'supplier')], ['string', null, 'string']);
+  eq('IBBADeskHelp · singular da quebra', [H.noun1('countries'), H.noun1('destinations'), H.noun1('xyz')], ['country', 'destination', 'item']);
+  eq('IBBADeskHelp · preencher {…}', H.fill('Each point is one {per}; {n}.', { per: 'month', n: 12 }), 'Each point is one month; 12.');
+  eq('whyHTML · as duas partes, com o texto escapado', W('a < b', 'c & d'), '<p><b>What it shows</b>a &lt; b</p><p><b>How to read</b>c &amp; d</p>');
+  eq('whyHTML · sem as duas partes = vazio (o quadro some)', [W('', ''), W('só o que é', '')], ['', '<p><b>What it shows</b>só o que é</p>']);
+  const all = []; ['mm', 'pp'].forEach(sec => Object.keys(H[sec]).forEach(k => { const t = H[sec][k]; if (typeof t === 'object') Object.keys(t).forEach(id => { if (id !== '$who') all.push(H.get(sec, k, id, { label: 'X share', prod: 'HRC|3' })); }); }));
+  eq('IBBADeskHelp · todo texto existe e não tem pedaço quebrado ({…}, undefined)', all.filter(h => !h || !h.what || /\{|\}|undefined/.test(h.what + (h.how || ''))).length, 0);
 })();
 
 document.getElementById('out').innerHTML = lines.map(l => '<span class="' + (l[0] === '✓' ? 'ok' : 'no') + '">' + l.replace(/</g, '&lt;') + '</span>').join('\n') + '\n\n' + R.pass + ' passaram · ' + R.fail + ' falharam';

@@ -137,13 +137,19 @@
      Lê chart.$dk = {hover, pinA, pinB} (índices LOCAIS do gráfico) — desenhar não refaz layout. */
   var syncPlugin = {
     id: 'ibbaDeskSync',
+    /* O gráfico nasce com animação e logo muda de tamanho (o painel Reading ao lado se preenche e a linha da grade cresce).
+       Com a animação desligada depois do nascimento, o Chart.js grava as posições novas por cima SEM parar a animação de
+       nascimento, que continuava e terminava nas posições do tamanho ANTIGO — as linhas ficavam fora do lugar até o próximo
+       redesenho (o "Margin proxy" na 1ª abertura, 23/11/2026). Parar a animação antes do redimensionamento resolve. Só nos
+       gráficos da mesa (o plugin é global; os gráficos da tela antiga não têm `on`). */
+    resize: function (chart, _a, o) { if (o && o.on) chart.stop(); },
     _geo: function (chart) {
       var a = chart.chartArea, xs = chart.scales.x, n = chart.data.labels.length; if (!a || !xs || !n) return null;
       var slot = n > 1 ? Math.abs(xs.getPixelForValue(1) - xs.getPixelForValue(0)) : a.width;
       return { a: a, xs: xs, n: n, slot: slot };
     },
     beforeDatasetsDraw: function (chart, _a, o) {
-      var s = chart.$dk, g; if (!o || !o.on || o.tip || !s || s.hover == null || s.hover < 0) return; g = this._geo(chart); if (!g || s.hover >= g.n) return;
+      var s = chart.$dk, g; if (!o || !o.on || (o.tip && o.bar) || !s || s.hover == null || s.hover < 0) return; g = this._geo(chart); if (!g || s.hover >= g.n) return;
       var t = theme(o.stage), x = g.xs.getPixelForValue(s.hover), w = o.bar ? Math.min(g.slot, Math.min(34, g.slot * .72) + 12) : Math.max(22, Math.min(46, g.slot));
       var c = chart.ctx, gr = c.createLinearGradient(0, g.a.top, 0, g.a.bottom);
       gr.addColorStop(0, 'rgba(' + t.band + ',' + (t.dark ? .11 : .075) + ')'); gr.addColorStop(1, 'rgba(' + t.band + ',' + (t.dark ? .02 : .015) + ')');
@@ -153,7 +159,7 @@
       var s = chart.$dk, g; if (!o || !o.on || !s) return; g = this._geo(chart); if (!g) return;
       var t = theme(o.stage), c = chart.ctx, a = g.a, hv = s.hover;
       c.save();
-      if (!o.tip && hv != null && hv >= 0 && hv < g.n) {
+      if (!(o.tip && o.bar) && hv != null && hv >= 0 && hv < g.n) {   // barras com dica = só a dica clássica; linhas = faixa + anéis (com ou sem dica)
         var x = g.xs.getPixelForValue(hv);
         if (o.bar) {   // as outras barras recuam: um véu na cor do fundo dos dois lados da coluna
           var half = Math.min(g.slot, Math.min(34, g.slot * .72) + 12) / 2;
@@ -168,8 +174,9 @@
         } else {
           chart.data.datasets.forEach(function (d, k) {
             if (d.$noDot || d.type === 'bar' || !chart.isDatasetVisible(k)) return; var v = d.data[hv]; if (v == null) return;
-            var sc = chart.scales[d.yAxisID || 'y'], y = sc.getPixelForValue(v);
-            c.beginPath(); c.arc(x, y, 4.5, 0, Math.PI * 2); c.fillStyle = t.surf; c.fill(); c.lineWidth = 2.2; c.strokeStyle = d.$ring || d.borderColor || ORANGE; c.stroke();
+            /* o anel vai no ponto DESENHADO (o elemento do gráfico): fica em cima da linha mesmo no meio de uma animação */
+            var el = (chart.getDatasetMeta(k).data || [])[hv], px = (el && isFinite(el.x)) ? el.x : x, y = (el && isFinite(el.y)) ? el.y : chart.scales[d.yAxisID || 'y'].getPixelForValue(v);
+            c.beginPath(); c.arc(px, y, 4.5, 0, Math.PI * 2); c.fillStyle = t.surf; c.fill(); c.lineWidth = 2.2; c.strokeStyle = d.$ring || d.borderColor || ORANGE; c.stroke();
           });
         }
       }
@@ -235,6 +242,8 @@
 
   /* ══ (c) INTERFACE ═════════════════════════════════════════════════════════ */
   function h(tag, cl, html) { var e = document.createElement(tag); if (cl) e.className = cl; if (html != null) e.innerHTML = html; return e; }
+  /* o quadro de explicação de um gráfico: o que ele mostra + como ler */
+  function whyHTML(what, how) { return (what ? '<p><b>What it shows</b>' + esc(what) + '</p>' : '') + (how ? '<p><b>How to read</b>' + esc(how) + '</p>' : ''); }
   function sparkSVG(v, w, hh) {
     var pts = [], i; for (i = 0; i < v.length; i++) if (v[i] != null) pts.push([i, v[i]]); if (pts.length < 2) return '';
     var mn = Math.min.apply(null, pts.map(function (p) { return p[1]; })), mx = Math.max.apply(null, pts.map(function (p) { return p[1]; })), n = v.length - 1;
@@ -315,11 +324,11 @@
     var E = this.el;
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
-      '<div class="dk-nt" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
+      '<div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
       '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
-      '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div>' +
+      '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div><div class="dk-why dk-whowhy" hidden></div>' +
       '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
       '<div class="dk-pop"><button type="button" class="dk-pill dk-popbtn" aria-expanded="false"></button><div class="dk-popp" hidden></div></div></div>' +
       '<div class="dk-pills dk-subpills" role="group" aria-label="Sub-product" hidden></div><div class="dk-whogrid"><div class="dk-rank"></div><div class="dk-chart dk-whochart"><canvas id="dk-who-cv"></canvas></div></div>');
@@ -380,7 +389,7 @@
   /* cria ou atualiza um gráfico Chart.js no canvas */
   Desk.prototype._chart = function (id, cv, type, labels, datasets, o) {
     var ch = this.charts[id], opt = chartOptions(o);
-    if (ch && ch.canvas === cv && ch.config.type === type) { ch.data.labels = labels; ch.data.datasets = datasets; ch.options = opt; ch.$local = !!o.local; ch.update('none'); return ch; }
+    if (ch && ch.canvas === cv && ch.config.type === type) { ch.stop(); ch.data.labels = labels; ch.data.datasets = datasets; ch.options = opt; ch.$local = !!o.local; ch.update('none'); return ch; }
     if (ch) ch.destroy();
     opt.animation = o.animate === false ? false : { duration: 280 };
     ch = this.charts[id] = new Chart(cv.getContext('2d'), { type: type, data: { labels: labels, datasets: datasets }, options: opt });
@@ -424,6 +433,7 @@
     var c = this.ctx, u = this._u(), self = this, t = theme(), prev = { monthly: 'MoM', quarterly: 'QoQ', annual: 'YoY' }[c.st.gran];
     /* rodapé de cada quadro: deixa escrito que ele é um BOTÃO que troca o gráfico principal */
     var act = '<div class="dk-ta"><i></i><span class="dk-ta0">Show on chart</span><span class="dk-ta1">On the main chart</span></div>';
+    var tipOf = function (M0) { var hp = self._help(self.cur, M0.id, { prod: c.st.prod, label: self._lbl(M0), gran: c.st.gran }); return ((hp && hp.what) ? hp.what + '\n\n' : '') + 'Click to show it on the main chart.'; };
     this.el.tiles.innerHTML = this._tileIds().map(function (id) {
       var M = c.M(id), lbl = self._lbl(M);
       if (!c.has(id) && M.hideNA) return '';
@@ -431,14 +441,14 @@
       if (M.multi) {   // composto (ex.: preço de importação × referência doméstica): as duas séries no mesmo quadro
         var subs = c.subs(id), i0 = c.lastFull(c.vals(subs[0].id)); if (i0 < 0) return '';
         var cols = subs.map(function (_, k) { var nm = (M.multiColors || ['orange', 'ink'])[k]; return nm === 'ink' ? t.ink : nm === 'orange' ? ORANGE : nm == null ? slotColor(k) : nm; }), from = Math.max(0, i0 - 2 * c.PER + 1);
-        return '<button type="button" class="dk-tile dk-tmulti" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i0) + '</span></div>' +
+        return '<button type="button" class="dk-tile dk-tmulti" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="' + esc(tipOf(M)) + '"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i0) + '</span></div>' +
           subs.map(function (S2, k) { var v2 = c.vals(S2.id), y2 = change(v2, i0, c.PER, S2);
             return '<div class="dk-tm"><i style="background:' + cols[k] + '"></i><span>' + esc(self._short(S2)) + '</span><b>' + fmt(v2[i0], S2.dec) + '<small>' + esc(S2.unit) + '</small></b><span class="' + cls(y2) + '">' + chgTxt(S2, y2) + '</span></div>'; }).join('') +
           '<div class="dk-sp">' + sparkMulti(subs.map(function (S2, k) { return { v: c.vals(S2.id).slice(from, i0 + 1), color: cols[k] }; }), 160, 30) + '</div>' + act + '</button>';
       }
       var v = c.vals(id), i = c.lastFull(v); if (i < 0) return '';
       var r = rangeN(v, i, 5 * c.PER), mo = change(v, i, 1, M), yy = change(v, i, c.PER, M), sp = v.slice(Math.max(0, i - 2 * c.PER + 1), i + 1);
-      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="Show on the main chart"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i) + '</span></div>' +
+      return '<button type="button" class="dk-tile" data-k="' + id + '" aria-pressed="' + (u.metric === id) + '" title="' + esc(tipOf(M)) + '"><div class="dk-tl"><span>' + esc(lbl) + '</span><span>' + c.label(i) + '</span></div>' +
         '<div class="dk-tv">' + fmt(v[i], M.dec) + '<small>' + esc(M.unit) + '</small></div>' +
         '<div class="dk-td"><span>' + prev + ' <span class="' + cls(mo) + '">' + chgTxt(M, mo) + '</span></span>' + (c.st.gran === 'annual' ? '' : '<span>YoY <span class="' + cls(yy) + '">' + chgTxt(M, yy) + '</span></span>') + '</div>' +
         '<div class="dk-sp">' + sparkSVG(sp, 160, 30) + '</div>' +
@@ -462,7 +472,8 @@
     E.stage.querySelector('.dk-modes').hidden = !!(c.sec.modes && c.sec.modes.length < 2);
     if (multi && u.mode === 'seasonal') u.mode = 'level';
     var title = E.stage.querySelector('.dk-st'), brush = E.stage.querySelector('.dk-brush');
-    var nt = E.stage.querySelector('.dk-nt'), note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''); nt.hidden = !note; nt.textContent = note;   // a legenda explicativa do gráfico de sempre
+    /* a explicação do gráfico (textos em data-desk-help.js); sem texto lá, a nota antiga do catálogo */
+    var note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''), hp = this._help(this.cur, M.id, { prod: c.st.prod, label: this._lbl(M), gran: c.st.gran });
     var colOf = function (k) { var name = (M.multiColors || ['orange', 'ink'])[k]; return name === 'ink' ? t.ink : name === 'orange' ? ORANGE : name == null ? slotColor(k) : name; };
     this._refAvg = null;
     if (u.mode === 'seasonal') {
@@ -475,11 +486,12 @@
         var d0 = lineSet(byY[yy], 'rgba(' + t.band + ',' + op + ')', { label: String(yy), w: recent ? 1.9 : 1.3, dash: recent ? [] : [4, 3], surf: t.surf }); d0.order = 5 - k; ds.push(d0); });
       var cur = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); cur.order = 0; ds.push(cur);
       this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true, tip: true, unitTip: M.unit });
-      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: 'Orange = ' + yL + ' · solid grey = ' + (yL - 1) + ' · dashed = earlier years (hover to read every year)' };
+      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: '' };   // as cores do gráfico agora estão no "How to read"
       title.textContent = this._lbl(M) + ' · seasonality';
       E.stage.querySelector('.dk-sv').innerHTML = fmt(v[li], M.dec) + '<small>' + esc(M.unit) + ' · ' + c.label(li) + '</small>';
       E.stage.querySelector('.dk-sd').textContent = this._seas.base; brush.style.visibility = 'hidden';
       E.stage.querySelector('.dk-hint').textContent = 'Hover to read every year';
+      this._whyStage(M, hp, note, { mode: 'seasonal', yL: yL, PER: PER });
       return;
     }
     brush.style.visibility = 'visible';
@@ -507,11 +519,38 @@
     this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
     title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
     E.stage.querySelector('.dk-hint').textContent = (tip ? 'Hover to read the values' : 'Hover to read · Click two periods to compare them (A → B)') + (c.sec.noBrush ? '' : ' · Drag the strip to change the period');
+    var lvl = u.mode === 'level' && !multi && kind === 'line', mon = c.st.gran === 'monthly';
+    this._whyStage(M, hp, note, { mode: u.mode, kind: kind, multi: multi, subs: subs, avg12: lvl && mon && !M.noAvg, winAvg: lvl && M.ref === 'windowAvg', ma3: lvl && mon && !!M.ma3, partial: pa != null && pa >= 0 });
   };
+  /* o quadro "What it shows / How to read" do palco: o "how" é montado a partir do que está desenhado */
+  Desk.prototype._whyStage = function (M, hp, note, o) {
+    var el = this.el && this.el.stage && this.el.stage.querySelector('.dk-why'); if (!el) return;
+    var H = window.IBBADeskHelp, V = (H && H.view) || {}, fill = (H && H.fill) || function (x) { return x || ''; }, gran = this.ctx.st.gran, self = this;
+    var per = gran === 'quarterly' ? 'quarter' : gran === 'annual' ? 'year' : 'month', how = [];
+    if (o.mode === 'seasonal') how.push(fill(V.seasonal, { pers: o.PER === 12 ? 'months' : 'quarters', y: o.yL, y1: o.yL - 1 }));
+    else if (o.mode === 'yoy' && !o.multi) how.push(fill(M.pp ? V.yoyPP : M.diff ? V.yoyDiff : V.yoy, { per: per, unit: M.unit }));
+    else if (o.mode === 'ltm' && !o.multi) how.push(fill(M.flow ? V.ltmFlow : V.ltmOther, { n: gran === 'quarterly' ? '4 quarters' : '12 months' }));
+    else {
+      if (o.multi) {   // duas séries: diz qual cor é qual
+        var nm = function (k) { var n0 = (M.multiColors || ['orange', 'ink'])[k]; return n0 === 'orange' ? 'orange' : n0 === 'ink' ? (isDark() ? 'white' : 'black') : (k ? 'second' : 'first'); }, cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+        how.push(fill(o.kind === 'bar' ? V.twoBars : V.twoLines, { c0: o.kind === 'bar' ? 'Orange' : cap(nm(0)), c1: o.kind === 'bar' ? (isDark() ? 'light' : 'dark') : nm(1), a: self._lbl(o.subs[0]), b: self._lbl(o.subs[1]) }));
+        if (o.mode === 'yoy') how.push(fill(V.yoy, { per: per }).replace(/^Bars show/, 'Each line shows').replace(/: green = higher, red = lower\.$/, '.'));
+        if (o.mode === 'ltm') how.push(fill(V.ltmOther, { n: gran === 'quarterly' ? '4 quarters' : '12 months' }));
+      } else if (M.signBars) how.push((hp && hp.how) || V.signBars);
+      else how.push(fill(V.level, { per: per }));
+      if (hp && hp.how && !M.signBars) how.push(hp.how);
+      if (o.avg12 && o.winAvg) how.push(V.avgBoth); else { if (o.avg12) how.push(V.avg12); if (o.winAvg) how.push(V.winAvg); }
+      if (o.ma3) how.push(V.ma3);
+    }
+    if (o.partial && o.mode !== 'seasonal') how.push(fill(V.partial, { per: per }));
+    el.innerHTML = whyHTML((hp && hp.what) || note || '', how.filter(Boolean).join(' ')); el.hidden = !el.innerHTML;
+  };
+  /* a entrada de explicação de um indicador (data-desk-help.js) — {what, how} ou null */
+  Desk.prototype._help = function (secId, id, o) { var H = window.IBBADeskHelp; try { return (H && H.get) ? H.get(this.cfg.sector, secId, id, o) : null; } catch (e) { return null; } };
   Desk.prototype._localHover = function (id, i) {   // sazonalidade: lê o mês do ano, sem mexer nos outros gráficos
     var ch = this.charts[id], s = this._seas; if (!ch || !s) return;
     this.el.stage.querySelector('.dk-sd').textContent = i == null ? s.base : s.labs[i] + ': ' + s.yL + ' ' + fmt((s.byY[s.yL] || [])[i], s.M.dec) + ' · ' + (s.yL - 1) + ' ' + fmt((s.byY[s.yL - 1] || [])[i], s.M.dec) + ' ' + s.M.unit;
-    return;
+    ch.$dk = { hover: i, pinA: null, pinB: null }; ch.draw();   // o cursor da mesa também aqui (antes só a dica)
   };
 
   /* faixa de período: a série inteira em miniatura; arrastar o miolo desloca, as alças redimensionam */
@@ -572,8 +611,9 @@
       S0.querySelector('.dk-sd').textContent = c.subs(u.metric).map(function (S2) { return self._short(S2) + ' ' + fmt(c.vals(S2.id, md)[i], md === 'yoy' ? 1 : S2.dec); }).join(' · ') + ' ' + si0.unit; }
     else if (u.mode !== 'seasonal') { var si = this._stageInfo(), S = this.el.stage;
       S.querySelector('.dk-sv').innerHTML = fmt(si.v[i], si.dec) + '<small>' + esc(si.unit) + ' · ' + c.label(i) + '</small>';
-      S.querySelector('.dk-sd').textContent = u.mode === 'level' ? ((c.st.gran === 'monthly' ? 'Dashed = 12-month average · YoY ' + chgTxt(M, yy) : { quarterly: 'QoQ ', annual: 'YoY ' }[c.st.gran] + chgTxt(M, mo)) + (this._refAvg != null ? ' · window avg ' + fmt(this._refAvg, M.dec) : ''))
-        : u.mode === 'yoy' ? 'Change vs the same period a year earlier' : 'Rolling ' + si.name; }
+      /* o que cada linha/barra quer dizer mora no "How to read" (quadro de explicação): aqui só os números */
+      S.querySelector('.dk-sd').textContent = u.mode === 'level' ? ((c.st.gran === 'monthly' ? 'YoY ' + chgTxt(M, yy) : { quarterly: 'QoQ ', annual: 'YoY ' }[c.st.gran] + chgTxt(M, mo)) + (this._refAvg != null ? ' · window avg ' + fmt(this._refAvg, M.dec) : ''))
+        : ''; }
   };
 
   /* ── quem: dimensão, subproduto, seleção de entidades (todas as da base) ── */
@@ -621,6 +661,11 @@
     E.who.querySelector('.dk-whomodes').hidden = d.modes.length < 2;
     E.who.querySelector('.dk-popbtn').innerHTML = esc(d.dim.label) + ' ▾';
     E.who.querySelector('h3').textContent = d.dim.heading || 'Who is behind the number';
+    var HW = window.IBBADeskHelp, wwhat = (HW && HW.who) ? HW.who(this.cfg.sector, this.cur, d.dim.id) : null, WH = (HW && HW.whoHow) || {}, wparts = [WH[w.mode] || WH.volume];
+    if (!d.dim.noOthers) wparts.push(w.mode === 'price' ? WH.othersPrice : w.mode === 'share' ? '' : WH.others);   // a quebra tem "Others"?
+    wparts.push(WH.list); if (!d.dim.noSelect) wparts.push(WH.click);   // dá para escolher quem aparece?
+    var whow = HW ? HW.fill(wparts.filter(Boolean).join(' '), { noun1: HW.noun1(d.dim.noun) }) : '', wwEl = E.who.querySelector('.dk-whowhy');
+    if (wwEl) { wwEl.innerHTML = whyHTML(wwhat, whow); wwEl.hidden = !wwEl.innerHTML; }
     var sl = function (a) { return a.slice(c.i0, c.i1 + 1); }, labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; }), t = theme(), mode = w.mode, share = mode === 'share', pa = c.partialAt();
     var idx = function (n) { return d.names.indexOf(n); }, selNamed = d.names.filter(function (n) { return d.sel.indexOf(n) >= 0; }), hasO = d.sel.indexOf('Others') >= 0;
     var rest = function (T, A) { return c.P.map(function (_, i) { var s0 = T[i] || 0; selNamed.forEach(function (n) { s0 -= A[idx(n)][i] || 0; }); return Math.max(0, s0); }); };
@@ -695,11 +740,13 @@
     if (E.minis.dataset.sig !== sig) { this._dropCharts('mini:'); E.minis.dataset.sig = sig;
       var lastG = null;
       E.minis.innerHTML = '<div class="dk-gh dk-gtop"><span>' + (top.length ? 'More indicators' : 'More in this section') + '</span><em>' + (top.length ? 'Not in the cards above · click one to show it on the main chart' : 'Click a chart to show it on the main chart') + '</em></div>' + ids.map(function (id) { var G = c.M(id).group || '', hd = (G && G !== lastG) ? '<div class="dk-gh"><span>' + esc(G) + '</span></div>' : ''; lastG = G || lastG;
-        return hd + '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div><div class="dk-ta"><i></i><span>Show on chart</span></div></div>'; }).join('');
+        return hd + '<div class="dk-mini dk-card chart-card" data-k="' + id + '" role="button" tabindex="0"><div class="dk-mh"><span class="chart-title"></span><span class="dk-mv"></span></div><p class="dk-mwhy"></p><div class="dk-chart"><canvas id="dk-mini-' + id + '"></canvas></div><div class="dk-ta"><i></i><span>Show on chart</span></div></div>'; }).join('');
       ids.forEach(function (id) { self._bindHover(E.minis.querySelector('#dk-mini-' + id), 'mini:' + id); });
     }
     var labels = c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.label; });
     ids.forEach(function (id) { var M = c.M(id), box = E.minis.querySelector('[data-k="' + id + '"]'); box.querySelector('.chart-title').textContent = self._lbl(M);
+      var hpm = self._help(self.cur, M.id, { prod: c.st.prod, label: self._lbl(M), gran: c.st.gran }), wm = (hpm && hpm.what) || (typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : M.note) || '', s1 = /^.*?[.!?](\s|$)/.exec(wm), mw = box.querySelector('.dk-mwhy');
+      if (mw) { mw.textContent = s1 ? s1[0].trim() : wm; mw.hidden = !wm; }
       var sb = c.subs(id), dsm = sb.map(function (S2, k) { return lineSet(c.vals(S2.id).slice(c.i0, c.i1 + 1), sb.length > 1 && k === 0 ? ORANGE : t.ink, { label: self._lbl(S2), w: 1.5, partialAt: c.partialAt() }); });
       self._chart('mini:' + id, box.querySelector('canvas'), 'line', labels, dsm, { mini: true, dec: sb[0].dec }); });
     this._miniIds = ids; this._miniHeads();
@@ -807,7 +854,7 @@
 
   window.IBBADesk = {
     /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
-    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT },
+    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };

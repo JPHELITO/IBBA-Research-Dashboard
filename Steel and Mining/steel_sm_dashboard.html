@@ -36,6 +36,7 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="/ibba-charts.js"></script>
 <!-- Data Desk: motor da mesa de leitura (não faz nada enquanto a página não chamar IBBADesk.mount). -->
 <script src="/data-desk.js"></script>
+<script src="/data-desk-help.js"></script>
 <script src="/data-desk-builder.js"></script>
 <script src="/data-desk-prices.js"></script>
 <script src="/assets/logos/logos.js"></script>
@@ -765,9 +766,9 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
-      <button class="mob-sec-item" onclick="mobSelect('prices')">
+      <button class="mob-sec-item dk-nodesk" onclick="mobSelect('prices')">
         <div class="mob-sec-info">
-          <div class="mob-sec-title"><span class="dk-legacy-t">Prices</span><span class="dk-only-t">Realized trade prices</span></div>
+          <div class="mob-sec-title">Prices</div>
           <div class="mob-sec-desc">Imports vs. domestic reference</div>
         </div>
         <span class="mob-sec-arrow">→</span>
@@ -2604,7 +2605,7 @@ async function applyDeskFlag(){
     const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
     try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
     try{ if(window.__gnavDesk) window.__gnavDesk(on); }catch(e){}   // menus do topo: Overview / Iron Ore / Builder
-    if(on!==_deskOn){ _deskSet(on); _navMark(currentSub); if(_dbReady) render(); }
+    if(on!==_deskOn){ _deskSet(on); if(on&&_dbReady&&currentSub==='prices') setSub('parity'); else { _navMark(currentSub); if(_dbReady) render(); } }
   }catch(e){}
 }
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
@@ -2722,7 +2723,7 @@ function _desk(){
   /* o que cerca cada seção: empresas cobertas mais expostas, preços de referência (commodities.code), fonte no calendário e temas das notícias */
   const _CX_STEEL=['GGBR4.SA','CSNA3.SA','USIM5.SA'], _CX_IMP={tickers:_CX_STEEL, bench:['HRC_CHINA','HRC_BRAZIL','REBAR_BRAZIL'], cal:['secex_steel'], news:{sector:'steel', topics:['imports','hrc','crc','flat_steel','tariffs'], q:'imports'}};
   const _DESK_CTX={
-    imports:_CX_IMP, prediction:_CX_IMP, prices:_CX_IMP,
+    imports:_CX_IMP, prediction:_CX_IMP,
     domestic:{tickers:_CX_STEEL, bench:['HRC_BRAZIL','REBAR_BRAZIL'], cal:['iabr','inda'], news:{sector:'steel', topics:['demand','production','inventories','steel_industry'], q:'steel'}},
     exports:{tickers:['GGBR4.SA','CSNA3.SA','TX'], bench:['HRC_CHINA','REBAR_TURKEY'], cal:['secex_steel'], news:{sector:'steel', topics:['exports','tariffs','slab','billet'], q:'exports'}},
     ore:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], bench:['IRON_ORE','IOPRM00','IOFBC00'], cal:['secex_steel'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
@@ -2755,19 +2756,17 @@ function _desk(){
     sections:{
       /* BUILDER — a bancada (data-desk-builder.js): o catálogo sai das seções acima; aqui só a ordem e as visões prontas */
       builder:{
-        label:'Builder', builder:true, order:['imports','exports','domestic','prices','ore'],
+        label:'Builder', builder:true, order:['imports','exports','domestic','ore'],
         presets:[
           {n:'Imports vs penetration', s:['imports.vol.total','imports.pen.total'], v:'level', g:'monthly', w:'3y', tip:'Import volume against the share of imports in apparent consumption'},
           {n:'China vs Korea (LTM)', s:['imports~country~total~China','imports~country~total~South Korea'], v:'ltm', g:'monthly', w:'5y', tip:'Imports from the two main origins, last 12 months'},
           {n:'Imports, exports and production', s:['imports.vol.total','exports.vol.total','domestic.prod.total'], v:'index', g:'monthly', w:'3y', tip:'Three volumes rebased to 100 at the start of the window'},
-          {n:'Import vs export price', s:['prices.impp.total','prices.expp.total'], v:'level', g:'monthly', w:'3y'},
           {n:'Iron ore: volume vs price', s:['ore.vol.total','ore.price.total'], v:'level', g:'monthly', w:'3y'},
         ],
       },
       /* ── PREÇOS DE MERCADO (data-desk-prices.js): diário/semanal, direto da tabela commodities e da paridade semanal ── */
       parity:{
         label:'Prices & import parity', stage:'hrc_prem',
-        views:[{label:'Market prices & import parity', current:true},{label:'Realized trade prices (SECEX)', onPick:()=>setSub('prices',{anim:1})}],
         hf:{ codes:['HRC_CHINA','REBAR_TURKEY','HRC_BRAZIL','REBAR_BRAZIL','MET_COAL','HCCAU00'], parity:true, history:true,
           parityCodes:{hrc:{fob:'HRC_CHINA',dom:'HRC_BRAZIL'}, rebar:{fob:'REBAR_TURKEY',dom:'REBAR_BRAZIL'}},
           src:'Prices: S&P Global Platts · Parity build-up and history: Itaú BBA',
@@ -2784,7 +2783,7 @@ function _desk(){
         label:'Prices & producer margin', stage:'margin',
         hf:{ codes:['IRON_ORE','IOFBC00','IOFAC00','IOPRM00','IODFE00','IOBFC04','IOBBA00','IOPBQ00','IONHA00','IOMAA00','IOJBA00','TSIPQ01','TSIPQ02','TSIPQ03','TSIPY01'], history:true,
           src:'S&P Global Platts · history: Itaú BBA Platts database',
-          tiles:['margin','grades','spread','freight','brands','fwd','long'],
+          tiles:['margin','grades','spread','freight','brands','fwd'],
           metrics:[
             {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true,
               series:(S,P)=>{ const m62=P.sub(P.d(S,'IODEX_62'),P.d(S,'IOFBC00'));
@@ -2810,9 +2809,6 @@ function _desk(){
             {id:'fwd', label:'Forward curve — next quarters and one year ahead', short:'Forward curve', unit:'US$/dmt', dec:2,
               series:(S,P)=>[{name:'+1 quarter', short:'+1Q', pts:P.d(S,'TSIPQ01')},{name:'+2 quarters', short:'+2Q', pts:P.d(S,'TSIPQ02')},{name:'+3 quarters', short:'+3Q', pts:P.d(S,'TSIPQ03')},{name:'+1 year', short:'+1Y', pts:P.d(S,'TSIPY01')}],
               note:'Where the market prices iron ore for the coming quarters. A curve below today\'s price says the market expects prices to fall.'},
-            {id:'long', label:'Iron ore 62% Fe CFR China — 10-year history', short:'62% Fe · 10 years', unit:'US$/t', dec:1, codes:['IRON_ORE_62'], noHist:true, lazyText:'10 years', lazyNote:'Loaded when you open it', src:'Trading Economics',
-              series:(S,P)=>[{name:'Iron ore 62% Fe CFR China', pts:P.d(S,'IRON_ORE_62')}],
-              note:'A longer reference for the price level (a different source and grade from the Platts 61% used in the margin proxy). Use the Window buttons above to go back up to 10 years.'},
           ] } },
       /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
          na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
@@ -2879,21 +2875,6 @@ function _desk(){
         ],
       },
       /* PRICES — px-compare (as duas linhas juntas), px-spread (barras verde/vermelho + média), px-imp, px-exp, px-yoy, px-yoy2 */
-      prices:{
-        label:'Realized prices', src:'SECEX', bprods:STEEL_P, stage:'cmp', tiles:['cmp','impp','expp','prem'],
-        views:[{label:'Market prices & import parity', onPick:()=>setSub('parity',{anim:1})},{label:'Realized trade prices (SECEX)', current:true}],
-        metrics:[
-          {id:'cmp', label:'Import vs. domestic reference', multi:['impp','expp'], multiColors:['ink','orange'],
-            note:'SECEX · black = import · orange = export (domestic proxy) · companies benefit when import > domestic'},
-          {id:'impp', label:'Import price', short:'Import', unit:'US$/t', dec:0, note:'SECEX/MDIC · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEIMP,x.prod), calc:_dkPrice},
-          {id:'expp', label:'Domestic reference — export price', short:'Export', unit:'US$/t', dec:0, note:'SECEX/MDIC · export price used as a proxy for the domestic price · quarterly and annual = revenue ÷ volume of the period', comp:x=>_dkPriceComp(SEEXP,x.prod), calc:_dkPrice},
-          {id:'prem', label:'Import premium (import − domestic ref.)', unit:'US$/t', dec:0, diff:true, signBars:true,
-            note:'SECEX · green = imports more expensive than domestic (favorable to companies) · red = imports cheaper (competitive risk) · dashed = average of the window',
-            comp:x=>{ const i=_dkPriceComp(SEIMP,x.prod), e=_dkPriceComp(SEEXP,x.prod); return {p:i.p,r:i.r,v:i.v, ep:e.p,er:e.r,ev:e.v}; },
-            calc:(A,c,o)=>F.sub(_dkPrice(A,c,o), _dkPrice(A,{p:c.ep,r:c.er,v:c.ev},o))},
-        ],
-      },
-      /* DOMESTIC MARKET — IABr (dom-sales, dom-crude, dom-cons, sazonalidades) + INDA só em Flat (di-stock, di-purcsales, di-ltm, di-ma3) */
       domestic:{
         label:'Domestic Market', src:'IABr · INDA', bprods:STEEL_P.slice(0,3), stage:'sales', tiles:['sales','prod','cons','pen','invm','isales'],
         metrics:[
@@ -2982,7 +2963,7 @@ const SUB_ORDER=['overview','parity','prices','domestic','imports','exports','or
    Os valores de currentSub e as #âncoras são os de sempre (prices, domestic, imports, exports, ore) + parity e oreprices. */
 const DESK_ONLY=['overview','parity','oreprices','ore','builder'];
 const COM_OF={parity:'steel',prices:'steel',domestic:'steel',imports:'steel',exports:'steel',oreprices:'ore',ore:'ore'};
-const COM_TABS={steel:[['parity','Prices',['parity','prices']],['domestic','Domestic Market'],['imports','Imports'],['exports','Exports']],
+const COM_TABS={steel:[['parity','Prices'],['domestic','Domestic Market'],['imports','Imports'],['exports','Exports']],
                 ore:[['oreprices','Prices & margin'],['ore','Exports']]};
 const COM_NAME={steel:'Steel',ore:'Iron Ore'};
 const _comLast={};   // a última seção vista em cada commodity (e a última vista da aba Prices do aço)
@@ -3030,6 +3011,7 @@ function setSub(s,o){
 }
 function _setSubNow(s){
   if(!_deskOn&&DESK_ONLY.includes(s)) s='prices';   // seções que só existem na mesa
+  if(_deskOn&&s==='prices') s='parity';   // com a mesa os preços da SECEX saíram (pedido do usuário, 23/11/2026): #prices leva aos preços de mercado
   currentSub=s;
   _navMark(s);
   document.querySelectorAll('.section').forEach(d=>d.classList.remove('active'));
