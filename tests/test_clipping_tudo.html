@@ -115,6 +115,20 @@ function esperar(fr){ return new Promise(res=>{
   await W.generateAll();
   const st=D.getElementById('all-status').textContent;
   ok('IA que falhou aparece no aviso', /sem destaques/.test(st), st);
+  // 24/11/2026: destaque que não saiu NUNCA é "✓ Pronto" — é vermelho, com o motivo e as 2 saídas
+  const stEl=D.getElementById('all-status');
+  ok('…em VERMELHO, não como "Pronto"', stEl.classList.contains('err') && !/Pronto/.test(st) && /NÃO saíram/.test(st), stEl.className);
+  ok('…com o motivo que o robô mandou', /todos lotados/.test(st));
+  ok('…e as duas saídas: tentar de novo e escrever eu mesmo',
+     !!D.getElementById('all-retry') && !!D.getElementById('hl-manual'));
+  D.getElementById('hl-manual').click();
+  await new Promise(r=>setTimeout(r,200));
+  const linhas=D.querySelectorAll('#hl-rows .hl-row');
+  ok('"escrever eu mesmo" abre 3 destaques em branco no editor', !D.getElementById('hl-edit').hidden && linhas.length===3);
+  const ta0=D.querySelector('#hl-rows textarea[data-l="pt"]');
+  ta0.value='Minério sobe 2% (escrito à mão)'; ta0.dispatchEvent(new Event('input'));
+  await new Promise(r=>setTimeout(r,100));
+  ok('…e escrever libera o "Atualizar HTML e e-mail"', D.getElementById('hl-apply').disabled===false);
   ok('e-mail no formato antigo aparece no aviso', /formato antigo/.test(st));
   ok('HTML que nao saiu aparece no aviso', /HTML do WhatsApp não saiu/.test(st));
 
