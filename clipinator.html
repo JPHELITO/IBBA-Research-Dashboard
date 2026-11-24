@@ -149,6 +149,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .gen .btn.primary{width:100%;padding:9px;font-size:12.5px;}
 .gen-status{margin-top:10px;font-size:12px;color:var(--gray-mid);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.4;}
 .gen-status.ok{color:var(--green);} .gen-status.err{color:var(--red);}
+/* destaques que não saíram: quadro vermelho que não dá para não ver, com as duas saídas */
+.gen-status.err:has(.all-saidas){display:block;background:rgba(217,45,45,.08);border:1px solid var(--red);border-radius:8px;padding:10px 12px;font-size:13px;}
+.all-saidas{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px;}
 /* Blast do WhatsApp */
 .gen.blast{border-top:1px solid var(--border);}
 .gen-date{padding:10px 12px;}
@@ -1273,8 +1276,13 @@ async function blGerar(){
     btn.disabled=false; return;
   }
   const t0=Date.now();
-  while(Date.now()-t0 < 4*60*1000){
+  let avisouDemora=false;
+  while(Date.now()-t0 < 12*60*1000){                 // o robô insiste até 7 min quando a IA está lotada
     await new Promise(function(r){setTimeout(r,3000);});
+    if(!avisouDemora && Date.now()-t0 > 150*1000){
+      avisouDemora=true;
+      st.innerHTML='<span class="spin2"></span> A IA está lotada agora — o robô está <b>insistindo</b> (pode levar até ~8 min).';
+    }
     let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:_blJob}))||[])[0]; }catch(e){ continue; }
     if(!job) continue;
     const b=(job.config||{}).blast||{};
@@ -1282,13 +1290,13 @@ async function blGerar(){
       _blDest=b.destaques||[]; blRender();
       const marca=blCarimbar(_blDest, b.provedor, S.order.length, b.destaques_en);   // o inglês vem na mesma chamada
       blRenderSelo();
-      st.className='gen-status ok';
+      st.className='gen-status '+(_blDest.length ? 'ok' : 'err');
       st.innerHTML = _blDest.length
         ? '✓ Pronto — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>.'
           + ' Guardados como os de <b>'+esc(marca.data.split('-').reverse().join('/'))+'</b>'
           + (marca.antes ? ' (no lugar dos das '+esc(marca.antes)+')' : '')
           + ' — é isto que o Weekly vai usar.'
-        : '✓ Pronto, mas a IA não devolveu destaque'+(b.erro?' ('+esc(b.erro)+')':'')+'. A seção fica vazia, como o formato prevê.';
+        : '✗ <b>Os destaques NÃO saíram</b>'+(b.erro?' — '+esc(b.erro):'')+'. Clique em Gerar de novo, ou escreva os destaques no quadro "Texto do blast".';
       btn.disabled=false; return;
     }
     if(job.status==='error'){
@@ -1503,8 +1511,16 @@ async function generateAll(opts){
   st.innerHTML='<span class="spin2"></span> '+(semIA
     ? 'Refazendo HTML e e-mail com os destaques editados… (~2 min)'
     : 'Gerando Word, destaques, HTML e e-mail… (~3 min)');
-  while(Date.now()-t0 < 12*60*1000){                // teto de 12 min: com a rede da nuvem lenta, o robô espera até 90 s por chamada
+  // teto de 16 min (24/11/2026): com o Google lotado o robô INSISTE nos destaques por até 7 min
+  // (antes desistia em ~30 s e o clipping saía sem eles) — a aba tem de esperar junto
+  let avisouDemora=false;
+  while(Date.now()-t0 < 16*60*1000){
     await new Promise(r=>setTimeout(r,4000));
+    if(!avisouDemora && comIA && Date.now()-t0 > 150*1000){
+      avisouDemora=true;
+      st.innerHTML='<span class="spin2"></span> Ainda gerando — a IA está lotada agora e o robô está <b>insistindo nos destaques</b>'
+        +' (pode levar até ~10 min). Pode deixar a aba aberta; ele só termina com os destaques ou avisando em vermelho.';
+    }
     let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:jobId}))||[])[0]; }catch(e){ continue; }
     if(!job) continue;
     if(job.status==='error'){
@@ -1519,18 +1535,30 @@ async function generateAll(opts){
     if(semIA && _blDest.length) S.config.blast_highlights[blDataRef()].editado=true;
     blRenderSelo();                                  // recarrega o editor com o que ficou valendo
     const av=[];
-    if(comIA && !_blDest.length) av.push('saiu sem destaques — a IA falhou'+(b.erro?' ('+esc(b.erro)+')':''));
+    const semDestaque=comIA && !_blDest.length;
     if(_blDest.length && !(b.destaques_en||[]).length) av.push('o e-mail saiu sem os destaques (não veio o inglês)');
     if(t.email_novo===false) av.push('o e-mail saiu no formato antigo ('+esc(t.email_error||'?')+')');
     if(!((c.whatsapp||{}).url)) av.push('o HTML do WhatsApp não saiu');
     if(!okPrecos) av.push('o texto do blast saiu sem os preços');
     const min=((Date.now()-t0)/60000).toFixed(1).replace('.',',');
-    st.className='gen-status '+(av.length?'warn':'ok');
-    st.innerHTML=(semIA
-      ? '✓ HTML e e-mail refeitos em '+min+' min com os destaques editados'
-      : '✓ Pronto em '+min+' min'+(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':''))
-      +'. Arquivos logo abaixo; o texto do blast está no quadro seguinte.'
-      +(av.length?'<br>⚠ '+av.join(' · '):'');
+    if(semDestaque){
+      // NUNCA um "✓ Pronto" quando faltam os destaques (24/11/2026): vermelho, o motivo e as saídas
+      st.className='gen-status err';
+      st.innerHTML='✗ <b>Os destaques NÃO saíram</b>'+(b.erro?' — '+esc(b.erro):'')+'.'
+        +'<br>O Word está pronto. O HTML e o e-mail abaixo estão <b>sem destaques: não envie assim</b>.'
+        +'<div class="all-saidas"><button class="btn" id="all-retry">Tentar os destaques de novo</button>'
+        +'<button class="btn" id="hl-manual">Escrever os destaques eu mesmo</button></div>'
+        +(av.length?'⚠ '+av.join(' · '):'');
+      document.getElementById('all-retry').onclick=function(){ generateAll(); };
+      document.getElementById('hl-manual').onclick=hlManual;
+    } else {
+      st.className='gen-status '+(av.length?'warn':'ok');
+      st.innerHTML=(semIA
+        ? '✓ HTML e e-mail refeitos em '+min+' min com os destaques editados'
+        : '✓ Pronto em '+min+' min'+(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':''))
+        +'. Arquivos logo abaixo; o texto do blast está no quadro seguinte.'
+        +(av.length?'<br>⚠ '+av.join(' · '):'');
+    }
     renderFailures(job.errors); renderLastJob(job); renderLastWA(job);
     const pvd=document.getElementById('clip-preview');
     if(pvd && !pvd.open){ pvd.open=true; } else { pvShow(); }   // abre a prévia do e-mail
@@ -1610,6 +1638,14 @@ function pvNota(){
 // Weekly lê dali) e refaz os arquivos SEM IA (job config.tudo com ia:false). Inglês vazio = o
 // robô traduz aquele item (tradutor do clipping; Google de reserva).
 const HL={data:'', pt:[], en:[], prov:'', pend:false};
+// Saída manual quando a IA não entregou: 3 linhas em branco no editor. Inglês vazio = o robô
+// traduz. "Atualizar HTML e e-mail" refaz os arquivos com o texto do analista (sem IA).
+function hlManual(){
+  HL.data=blDataRef(); HL.pt=['','','']; HL.en=['','','']; HL.prov='escrito pelo analista'; HL.pend=false;
+  hlRender();
+  const box=document.getElementById('hl-edit'); if(box) box.scrollIntoView({block:'center', behavior:'smooth'});
+  const ta=document.querySelector('#hl-rows textarea'); if(ta) ta.focus();
+}
 function hlCarregar(pt, en, prov, data){
   HL.data=data||''; HL.pt=(pt||[]).slice(); HL.en=(en||[]).slice(); HL.prov=prov||''; HL.pend=false;
   hlRender();
@@ -2294,7 +2330,7 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ PV, HL, setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
+window.CLIP={ PV, HL, hlManual, setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
               cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
               blEhMinerioPreco, blSgxFrase, blComSgx, blBuild,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl,
