@@ -1,0 +1,128 @@
+<!doctype html><meta charset="utf-8"><title>clipping — botao Gerar tudo</title>
+<body><pre id="out">rodando…</pre>
+<iframe id="fr" src="/clipinator.html?cliptest=1" style="width:1200px;height:700px;border:1px solid #ccc"></iframe>
+<script>
+/* "Gerar tudo" (24/11/2026): UMA rodada do robo faz Word + destaques do blast + HTML do
+   WhatsApp + e-mail. As 3 etapas de antes continuam na tela, em "Etapas separadas".
+
+   Roda a PAGINA DE VERDADE num iframe (?cliptest=1 pula o login). O banco e o robo sao
+   simulados trocando o `rpc` da pagina: nada sai daqui.
+
+   Rodar: servir a pasta IBBA-Research-Dashboard e abrir /tests/test_clipping_tudo.html */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+const U=i=>'https://ex.com/'+i;
+
+function esperar(fr){ return new Promise(res=>{
+  const olha=()=>{ const w=fr.contentWindow;
+    if(w && w.CLIP && w.generateAll && fr.contentDocument.getElementById('all-gen')) res(w);
+    else setTimeout(olha,60); };
+  olha(); }); }
+
+(async function(){
+  const fr=document.getElementById('fr');
+  const W=await esperar(fr), C=W.CLIP, D=fr.contentDocument;
+  const mk=(i,sec,src)=>({url:U(i),title:'Noticia '+i,source_name:src,domain:'ex.com',
+                          sector:sec,take_llm:'+',found_at:new Date().toISOString()});
+  const btn=D.getElementById('all-gen');
+
+  // ── 1) a tela: o botao novo em cima, nada das etapas de antes sumiu ────────────
+  ok('sem noticia o Gerar tudo fica travado', btn.disabled===true);
+  C.setCandidates([mk(1,'mining','Platts'),mk(2,'pulp','Fastmarkets')]);
+  C.togglePick(U(1),true); C.togglePick(U(2),true);
+  ok('com noticia ele destrava', btn.disabled===false);
+  const sep=D.getElementById('steps-sep');
+  ok('as 3 etapas de antes continuam na tela, em "Etapas separadas"',
+     !!sep && ['clip-gen','bl-gen','wa-gen'].every(id=>sep.querySelector('#'+id)));
+  ok('…fechadas por padrao (o botao principal e o Gerar tudo)', sep && !sep.open);
+  ok('o texto do blast e o Copiar ficam FORA das etapas (servem aos dois caminhos)',
+     !sep.querySelector('#bl-out') && !sep.querySelector('#bl-copy'));
+  ok('o Gerar tudo vem antes do texto do blast',
+     btn.compareDocumentPosition(D.getElementById('bl-out')) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  // ── 2) o pedido ao robo: um job so, com config.tudo e o payload de sempre ──────
+  C.togglePin && C.togglePin(U(2));
+  const chamadas=[];
+  W.blFetchPrices=async()=>({byCode:{},byTicker:{}}); W.blFetchTraducoes=async()=>({});
+  W.rpc=async(nome,args)=>{ chamadas.push([nome,JSON.parse(JSON.stringify(args||{}))]);
+    if(nome==='admin_enqueue_clipping') return 'job-tudo';
+    if(nome==='admin_get_clipping_job') return [{id:'job-tudo',status:'done',ref_date:'2026-11-24',
+      docx_path:'https://s/word',eml_path:'https://s/eml',preview_path:'https://s/prev',errors:[],
+      finished_at:new Date().toISOString(),
+      config:{blast:{destaques:['Minério sobe 3%'],destaques_en:['Iron ore up 3%'],provedor:'gemini (projeto clipping)'},
+              whatsapp:{url:'https://s/wa',name:'NEWS - 11242026.html',kb:500},tudo:{email_novo:true}}}];
+    return null; };
+  await W.generateAll();
+  const enf=chamadas.filter(c=>c[0]==='admin_enqueue_clipping');
+  ok('um clique = UM job no robo', enf.length===1, enf.length);
+  const cfg=(enf[0]||[])[1]&&enf[0][1].p_config||{};
+  ok('o job vai com config.tudo ligado', cfg.tudo&&cfg.tudo.on===true, JSON.stringify(cfg.tudo));
+  ok('…e com o "destaques por IA" da tela', cfg.tudo&&cfg.tudo.ia===true);
+  ok('o payload e o mesmo do Gerar clipping (buildPayload, com a ★)',
+     JSON.stringify(enf[0][1].p_payload)===JSON.stringify(C.buildPayload()));
+
+  // ── 3) a volta: arquivos, texto do blast e o carimbo do dia ───────────────────
+  const links=[...D.querySelectorAll('#clip-last a')].map(a=>a.getAttribute('href'));
+  ok('Word, e-mail, HTML e previa aparecem no "Ultimo clipping gerado"',
+     ['https://s/word','https://s/eml','https://s/wa','https://s/prev'].every(u=>links.indexOf(u)>=0), links.join(' '));
+  ok('o texto do blast ja vem com os destaques', D.getElementById('bl-out').value.indexOf('Minério sobe 3%')>=0);
+  ok('…e o Copiar destrava', D.getElementById('bl-copy').disabled===false);
+  const car=(C.S.config.blast_highlights||{})['2026-11-24']||{};
+  ok('o carimbo do dia (Weekly) guarda os destaques em portugues', (car.destaques||[])[0]==='Minério sobe 3%');
+  ok('…e o ingles (o do e-mail)', (car.destaques_en||[])[0]==='Iron ore up 3%');
+  ok('o botao volta a ficar livre no fim', btn.disabled===false);
+
+  // ── 4) editar os destaques antes de mandar ───────────────────────────────────
+  const ed=D.getElementById('hl-edit');
+  ok('o editor aparece com os destaques gerados', !ed.hidden && D.querySelectorAll('#hl-rows .hl-row').length===1);
+  ok('o botao de atualizar nasce travado (nada editado)', D.getElementById('hl-apply').disabled===true);
+  const tPT=D.querySelector('#hl-rows textarea[data-l="pt"]'), tEN=D.querySelector('#hl-rows textarea[data-l="en"]');
+  tPT.value='Minério sobe 4% (editado)'; tPT.dispatchEvent(new Event('input'));
+  tEN.value='Iron ore up 4% (edited)'; tEN.dispatchEvent(new Event('input'));
+  await new Promise(r=>setTimeout(r,200));
+  ok('editar o portugues muda o texto do blast NA HORA', D.getElementById('bl-out').value.indexOf('Minério sobe 4% (editado)')>=0);
+  ok('…avisa que os arquivos ainda tem o texto anterior', !D.getElementById('hl-pend').hidden);
+  ok('…e destrava o "Atualizar HTML e e-mail"', D.getElementById('hl-apply').disabled===false);
+  // a previa do e-mail troca o texto do destaque marcado (data-hl) sem baixar nada de novo
+  C.PV.mail={ref_date:'2026-11-24',preview_path:'data:text/html,<p data-hl="0">Iron ore up 3%</p>'};
+  C.PV.cache={}; D.getElementById('clip-preview').open=true; await W.pvShow('email');
+  await new Promise(r=>setTimeout(r,500));
+  const pv=D.getElementById('pv-frame').contentDocument.querySelector('[data-hl="0"]');
+  ok('a previa do e-mail mostra o ingles editado', pv && pv.textContent==='Iron ore up 4% (edited)', pv&&pv.textContent);
+  chamadas.length=0;
+  W.rpc=async(nome,args)=>{ chamadas.push([nome,JSON.parse(JSON.stringify(args||{}))]);
+    if(nome==='admin_enqueue_clipping') return 'job-ed';
+    if(nome==='admin_get_clipping_job') return [{id:'job-ed',status:'done',ref_date:'2026-11-24',
+      docx_path:'https://s/w3',eml_path:'https://s/e3',preview_path:'https://s/p3',errors:[],finished_at:new Date().toISOString(),
+      config:{blast:{destaques:['Minério sobe 4% (editado)'],destaques_en:['Iron ore up 4% (edited)'],provedor:'gemini'},
+              whatsapp:{url:'https://s/wa3'},tudo:{email_novo:true}}}];
+    return null; };
+  await W.hlAplicar();
+  const e2=chamadas.filter(c=>c[0]==='admin_enqueue_clipping');
+  const c2=(e2[0]||[])[1]&&e2[0][1].p_config||{}, h2=(c2.blast_highlights||{})['2026-11-24']||{};
+  ok('atualizar = UM job, SEM IA', e2.length===1 && c2.tudo && c2.tudo.ia===false, JSON.stringify(c2.tudo));
+  ok('…levando o texto editado nas duas linguas',
+     (h2.destaques||[])[0]==='Minério sobe 4% (editado)' && (h2.destaques_en||[])[0]==='Iron ore up 4% (edited)');
+  ok('o editado vira o oficial do dia (Weekly)', !!((C.S.config.blast_highlights||{})['2026-11-24']||{}).editado);
+  ok('no fim o aviso de "editado" some', D.getElementById('hl-pend').hidden===true);
+
+  // ── 5) falhas viram aviso, nunca silencio ────────────────────────────────────
+  W.rpc=async(nome)=>{
+    if(nome==='admin_enqueue_clipping') return 'job-2';
+    if(nome==='admin_get_clipping_job') return [{id:'job-2',status:'done',ref_date:'2026-11-24',
+      docx_path:'https://s/w2',eml_path:'https://s/e2',errors:[],finished_at:new Date().toISOString(),
+      config:{blast:{destaques:[],erro:'todos lotados'},whatsapp:{error:'x'},tudo:{email_novo:false,email_error:'y'}}}];
+    return null; };
+  await W.generateAll();
+  const st=D.getElementById('all-status').textContent;
+  ok('IA que falhou aparece no aviso', /sem destaques/.test(st), st);
+  ok('e-mail no formato antigo aparece no aviso', /formato antigo/.test(st));
+  ok('HTML que nao saiu aparece no aviso', /HTML do WhatsApp não saiu/.test(st));
+
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=
+    R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+})().catch(e=>{ document.getElementById('out').textContent='ERRO: '+(e&&e.stack||e);
+                window.__RESULT__={total:R.length,falhas:R.length||1,linhas:R.concat('ERRO '+e)}; });
+</script>
+</body>

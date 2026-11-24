@@ -52,6 +52,16 @@ try{
   ok('sanitizador: mantém o negrito', cl.indexOf('<b>Our</b>')>=0);
   ok('sanitizador: texto com & e < vira entidade', R.cleanRich('P&P <3')==='P&amp;P &lt;3', R.cleanRich('P&P <3'));
   ok('**negrito** do rascunho vira <b>', R.plainToRich('a **b** c')==='a <b>b</b> c');
+  // cor do recado do clipping (24/11/2026): só com {cores:true}; sem a opção, o sanitizador é o de sempre
+  const intro='<div><b><a href="https://x.com">Dashboard</a></b>&nbsp;<b style="color:#ff5000">Login:</b> <b>BUYSIDE</b> <span style="color:rgb(17,17,17)">preto</span> <span style="background-color:#ff0000">fundo</span> <font color="#00b050">verde</font></div>';
+  const ci=R.cleanRich(intro,{cores:true});
+  ok('cor: laranja do editor fica (no próprio <b>)', ci.indexOf('<b><span style="color:#ff5000">Login:</span></b>')>=0, ci);
+  ok('cor: quase preto sai (sumiria no tema escuro)', ci.indexOf('#111111')<0 && ci.indexOf('preto')>=0);
+  ok('cor: background-color não vira cor da letra', ci.indexOf('#ff0000')<0);
+  ok('cor: <font color> vira <span style>', ci.indexOf('<span style="color:#00b050">verde</span>')>=0, ci);
+  ok('cor: tags fecham na ordem certa', (ci.match(/<span/g)||[]).length===(ci.match(/<\/span>/g)||[]).length && ci.indexOf('<b><a ')>=0);
+  ok('cor: SEM a opção nada muda (Reports)', R.cleanRich(intro).indexOf('color')<0 && R.cleanRich(bad)===cl);
+  ok('cor: estilo malicioso não passa', R.cleanRich('<span style="color:#ff5000;background:url(javascript:x)">a</span>',{cores:true})==='<span style="color:#ff5000">a</span>');
   ok('nome de país em inglês', R.countryEN('Vietnã')==='Vietnam' && R.countryEN('Coreia do Sul')==='South Korea' && R.countryEN('Xyz')==='Xyz');
   ok('forma do Itaú sem NaN', R.itauShape(60,60,55).indexOf('NaN')<0 && /^M[\d.]+ [\d.]+C/.test(R.itauShape(60,60,55)));
 
