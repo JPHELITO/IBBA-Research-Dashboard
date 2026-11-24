@@ -2073,7 +2073,14 @@ async function sgModelPreview(file){
     const res=SG.parseStockGuideWorkbook(wb);
     if(res.errors.length){ stat.innerHTML='<b style="color:#C0392B">Bloqueado:</b> '+res.errors.map(esc).join(' · '); return; }
     _sgParsed=res;
-    try{ const pr=SG.parseStockGuidePeers(wb); _sgParsed.peers=pr.rows||[]; (pr.warnings||[]).forEach(w=>res.warnings.push(w)); }catch(e){ _sgParsed.peers=[]; res.warnings.push('peers: '+(e.message||e)); }
+    try{ const pr=SG.parseStockGuidePeers(wb,res.years); _sgParsed.peers=pr.rows||[]; (pr.warnings||[]).forEach(w=>res.warnings.push(w)); }catch(e){ _sgParsed.peers=[]; res.warnings.push('peers: '+(e.message||e)); }
+    // ANOS das estimativas (24/11/2026): saem do cabeçalho da Summary. Se mudaram em relação ao que está no ar
+    // (a planilha "2027" rolou 2026E/2027E → 2027E/2028E), o gravar troca também os rótulos da comp table/Weekly.
+    const yrs=res.years||{y1:'2026E',y2:'2027E'};
+    const yS=s=>String(s||'').replace(/^20(\d\d)E$/i,'$1E');          // '2027E' → '27E' (cabeçalho curto)
+    const cfgAntes=_sgCfg||{};
+    const anosMudam=!!(yrs.source&&(cfgAntes.y1_label!==yrs.y1||cfgAntes.y2_label!==yrs.y2));
+    _sgParsed.anosMudam=anosMudam;
     const fx=res.fxRates||{}; const fxTxt=Object.keys(fx).map(k=>k+'/USD '+(Math.round(fx[k]*100)/100)).join(' · ')||'(câmbio não lido — coluna US$ pode faltar p/ nomes locais)';
     const f=v=>v==null?'<span style="color:#C0392B">—</span>':(Math.round(v*100)/100).toLocaleString('pt-BR');
     // data da última atualização do modelo (célula E2 de cada aba): vira o evento do histórico de recomendações
@@ -2081,20 +2088,25 @@ async function sgModelPreview(file){
     const upd=v=>{ if(!v) return '<span style="color:#C0392B" title="Sem data: o histórico de recomendações não ganha este evento">—</span>';
       const age=(Date.now()-Date.parse(v+'T12:00:00Z'))/864e5;
       return _rhDay(v)+(age>365?' <span style="color:#B8860B" title="Mais de 1 ano — confira a data (célula E2 da aba)">⚠</span>':''); };
-    let h='<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Atualização</th><th>Ações(mn)</th><th>EBITDA 26E</th><th>NetDebt 26E</th><th>CashE 26E</th><th>Div 26E</th><th>fx→base</th><th>fx→US$</th><th>base</th></tr></thead><tbody>';
-    res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b></td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${upd(r.last_update)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${f(r.fx_to_base)}</td><td>${f(r.fx_to_usd)}</td><td>${esc(r.base_ccy||'')}</td></tr>`; });
+    const y1s=esc(yS(yrs.y1));
+    // empresa NOVA (não estava no banco) ganha etiqueta — é a conferência de "entrou quem devia" (ex.: as 4 de cobre)
+    const novo=t=>!(_sgCos||[]).some(c=>c.ticker===t);
+    let h=`<table><thead><tr><th>Ticker</th><th>Empresa</th><th>Rec</th><th>TP</th><th>Atualização</th><th>Ações(mn)</th><th>EBITDA ${y1s}</th><th>NetDebt ${y1s}</th><th>CashE ${y1s}</th><th>Div ${y1s}</th><th>fx→base</th><th>fx→US$</th><th>negocia/base</th></tr></thead><tbody>`;
+    res.rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.ticker)}</b>${novo(r.ticker)?' <span style="color:#1E8E4E;font-size:10px;font-weight:700">NOVA</span>':''}</td><td>${esc(r.company_name)}</td><td>${esc(r.recommendation||'—')}</td><td>${f(r.target_price)}</td><td>${upd(r.last_update)}</td><td>${f(r.shares_outstanding)}</td><td>${f(r.ebitda_y1)}</td><td>${f(r.net_debt_y1)}</td><td>${f(r.cash_earnings_y1)}</td><td>${f(r.dividends_y1)}</td><td>${r.fx_to_base!=null&&r.fx_to_base<0.01?r.fx_to_base.toPrecision(3):f(r.fx_to_base)}</td><td>${r.fx_to_usd!=null&&r.fx_to_usd<0.01?r.fx_to_usd.toPrecision(3):f(r.fx_to_usd)}</td><td>${esc((r.trade_ccy||'')+(r.base_ccy&&r.base_ccy!==r.trade_ccy?' → '+r.base_ccy:''))}</td></tr>`; });
     h+='</tbody></table>';
     const np=(_sgParsed.peers||[]).length;
     const peerNames=(_sgParsed.peers||[]).map(p=>p.company).join(', ');
     const peerLine = np
       ? `<div style="font-size:12px;margin-top:8px;color:#1E8E4E"><b>+ ${np} global peers</b> <span class="muted">(com cotação na Market): ${esc(peerNames)}</span></div>`
-      : `<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ 0 global peers lidos.</b> O arquivo tem as abas <b>Steel Peers / Mining Peers / Pulp &amp; Paper Peers / Gold Peers</b>? Sem peers válidos, a tabela de peers fica com os dados antigos.</div>`;
+      : `<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ 0 global peers lidos.</b> O arquivo tem as abas <b>Steel Peers / Iron Ore Peers (ou Mining Peers) / Gold Peers / Copper Peers / Pulp &amp; Paper Peers</b>? Sem peers válidos, a tabela de peers fica com os dados antigos.</div>`;
+    const anosLine=`<div style="font-size:12px;margin-bottom:6px">Anos das estimativas: <b>${esc(yrs.y1)} / ${esc(yrs.y2)}</b> <span class="muted">(${yrs.source?'cabeçalho da aba Summary':'padrão — Summary não lida'})</span>`+
+      (anosMudam?` · <b style="color:#B8860B">a comp table e o Weekly passam de ${esc(cfgAntes.y1_label||'?')}/${esc(cfgAntes.y2_label||'?')} para ${esc(yrs.y1)}/${esc(yrs.y2)} ao gravar</b>`:'')+`</div>`;
     // MOEDA-BASE que mudou em relação ao banco (06/11/2026): foi assim que GMEX/CMPC/Copec passaram a ser lidas em
     // MXN/CLP (planilha com vínculos da Bloomberg em #N/A) e o Stock Guide mostrou EV/EBITDA de 2.000x. Grita antes de gravar.
     const flips=res.rows.map(r=>{ const o=(_sgCos||[]).find(c=>c.ticker===r.ticker);
       return (o&&o.base_ccy&&r.base_ccy&&o.base_ccy!==r.base_ccy)?`${r.ticker}: ${o.base_ccy} → ${r.base_ccy}`:null; }).filter(Boolean);
     const flipLine=flips.length?`<div class="status" style="margin-top:8px;color:#C0392B"><b>⚠️ Moeda-base mudou em relação ao que está no ar:</b> ${flips.map(esc).join(' · ')}. Se a planilha está com vínculos da Bloomberg em #N/A, os múltiplos dessas empresas vão sair errados — atualize os vínculos e suba de novo.</div>`:'';
-    prev.innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
+    prev.innerHTML=anosLine+`<div class="muted" style="font-size:11px;margin-bottom:6px">Câmbio do modelo: ${esc(fxTxt)}</div><div style="overflow-x:auto">${h}</div>`+
       peerLine+flipLine+
       (res.warnings.length?`<div class="status" style="margin-top:8px;color:#B8860B">Avisos (não bloqueiam): ${res.warnings.map(esc).join(' · ')}</div>`:'')+
       `<div class="row" style="margin-top:10px"><button class="btn" onclick="sgModelCommit()">Confirmar e gravar ${res.rows.length} empresas + ${np} peers</button><button class="btn sec" onclick="sgModelCancel()">Cancelar</button></div>`;
@@ -2123,8 +2135,15 @@ async function sgModelCommit(){
     if(pr.error){ peerMsg=' · <b style="color:#C0392B">peers falharam ('+esc(pr.error.message)+' — rodou o supabase_stock_guide_v3_peers.sql?)</b>'; }
     else peerMsg=' + '+pr.data+' peers.';
   }
-  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+r.data+' empresas gravadas/atualizadas'+peerMsg+' Preço e múltiplos calculam ao vivo na página.';
-  _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-file').value=''; loadSGCompanies();
+  // rótulos dos anos (comp table, Weekly) seguem a planilha. Nota e rodapé ficam como estão (NULL = preserva no SQL).
+  let anoMsg='';
+  if(_sgParsed.anosMudam&&_sgParsed.years){
+    const cy=await sbAuth.rpc('admin_upsert_stock_guide_config',{p_y1:_sgParsed.years.y1,p_y2:_sgParsed.years.y2,p_note:null,p_comps_footnote:null});
+    anoMsg=cy.error?' · <b style="color:#C0392B">rótulos dos anos NÃO trocados ('+esc(cy.error.message)+') — troque em Config, abaixo</b>'
+                   :' Anos da comp table: '+esc(_sgParsed.years.y1)+' / '+esc(_sgParsed.years.y2)+'.';
+  }
+  stat.innerHTML='<b style="color:#1E8E4E">OK!</b> '+r.data+' empresas gravadas/atualizadas'+peerMsg+anoMsg+' Preço e múltiplos calculam ao vivo na página.';
+  _sgParsed=null; _v('sg-xlsm-preview').innerHTML=''; _v('sg-xlsm-file').value=''; loadSGCompanies(); loadSGConfig();
 }
 // (Model Central + editor de Drivers legado — REMOVIDOS 2026-07-02: não usados pelo cliente.
 //  A RPC get_stock_guide_drivers segue existindo p/ o cliente ler; só o editor admin saiu.

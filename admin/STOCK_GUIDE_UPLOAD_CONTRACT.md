@@ -1,5 +1,9 @@
 # Stock Guide — contrato de upload do modelo de equity research (.xlsm)
 
+> **Atualizado em 24/11/2026 para a planilha "Stock Guide - Natural Resources 2027.xlsm"** (anos 27E/28E, as 4 de
+> cobre, câmbio declarado, abas de peers novas) — ver o quadro "Planilha 2027" logo abaixo. O resto do texto é o
+> contrato original de jun/2026 e continua valendo onde o quadro não diz o contrário.
+>
 > Como a dashboard ingere o arquivo **"Stock Guide - Natural Resources 2026.xlsm"** para
 > manter um Stock Guide dinâmico: **estimativas** vêm do upload, **preço/múltiplos** são
 > recalculados AO VIVO no navegador com a cotação da aba **Market** (`quotes`).
@@ -7,6 +11,29 @@
 > Validado contra o arquivo real (jun/2026): recomputar EV/EBITDA · Net Debt/EBITDA · P/CE ·
 > Div Yield a partir dos campos abaixo **reproduz exatamente** a aba "Summary" do modelo nas
 > 14 empresas cobertas. Script de prova: ver histórico da sessão (extract+validate → ALL GREEN).
+
+## ★ Planilha 2027 (24/11/2026) — o que mudou no leitor
+
+- **Anos**: os 2 anos-estimativa da comp table saem do cabeçalho da aba **Summary** (a linha logo abaixo de
+  "EV/EBITDA (x)": `27E`/`28E` → `2027E`/`2028E`). Nada de ano fixo no código. O /admin mostra os anos lidos e, ao
+  gravar, troca também os rótulos da comp table/Weekly (`stock_guide_config.y1_label/y2_label`). Ano da Summary sem
+  coluna numa aba de empresa = ERRO (bloqueia), para nunca gravar o ano errado. Sem Summary → 2026E/2027E + aviso.
+- **EBITDA** = o denominador do EV/EBITDA da própria aba: linha **"Adjusted EBITDA"** (Vale: "Proforma EBITDA"),
+  linha 20 do bloco-série. Conferido nas fórmulas das 20 abas: `EV/EBITDA (x) = EV Adjusted ÷ linha 20` e
+  `Net Debt/EBITDA (x) = Net Debt ÷ linha 25 ("EBITDA")`. A dash usa a 20 nos dois — o EV/EBITDA bate com a Summary
+  em todas; o Net Debt/EBITDA difere menos que a casa exibida onde 20 ≠ 25 (Gerdau 0,5%, Capstone/Ero ~2%).
+- **Moeda-base DECLARADA** (`base_ccy` em cada linha do `SG_COVERAGE`), não deduzida do market cap da aba.
+  `fx_to_base` = câmbio da aba **Stock Guide** (linha 8: BRL/MXN/CLP/CAD/AUD por US$; "AUD/USD" vem como US$ por A$ e é
+  invertido). O market cap da aba vira só CONFERÊNCIA (aviso no /admin): na planilha 2027 as 4 de cobre têm o
+  "Market Capitalization (USD mn)" = preço em **C$** × ações (os múltiplos da própria Summary dessas 4 saem ~1,4×
+  inflados) e Grupo México/Aclara/Viridis vieram com o vínculo da Bloomberg em #N/A/#DIV/0!.
+- **Dividendo negativo** (aba LUNDIN: −215, sinal de saída de caixa) → valor absoluto + aviso.
+- **Peers**: "Mining Peers" virou **"Iron Ore Peers"** + **"Copper Peers"** (o nome antigo segue aceito). Ordem de
+  leitura = Steel, Iron Ore, Gold, Copper, P&P (peer repetido fica com a 1ª aba). Glencore (GLEN.L) entrou.
+  Zinc/Aluminum/Cement/Rare Earths Peers não entram (nenhum nome com cotação na Market).
+- **Ordem** do `SG_COVERAGE` = a da Summary (cobre logo depois da Southern Copper) → `display_order`.
+- Prova: `tests/test_stock_guide_upload_2027.html` (46 asserts, números fictícios) + o leitor real rodado no navegador
+  com a planilha de 24/11: 20 empresas, 0 erro, EV/EBITDA·ND/EBITDA·P/CE·Div Yield = Summary em 14 de 14 comparáveis.
 
 ## 1. Universo (14 abas → tickers da aba Market)
 
@@ -28,10 +55,12 @@
 | GRUPO MEXICO | GMEXICOB.MX | copper | MXN |
 | ACLARA *(desde 06/11/2026)* | ARA.TO (chave **ARA**) | rare_earths | CAD |
 | VIRIDIS *(desde 06/11/2026)* | VMM.AX (chave **VMM**) | rare_earths | AUD |
-| HUDBAY (ou HUDBAY MINERALS) *(cobertura desde 23/11/2026; aba ainda não existe)* | HBM.TO (chave **HBM**) | copper | CAD |
-| LUNDIN MINING (ou LUNDIN) *(idem)* | LUN.TO (chave **LUN**) | copper | CAD |
-| CAPSTONE COPPER (ou CAPSTONE) *(idem)* | CS.TO (chave **CS**) | copper | CAD |
-| ERO COPPER (ou ERO) *(idem)* | ERO.TO (chave **ERO**) | copper | CAD |
+| HUDBAY (ou HUDBAY MINERALS) *(aba desde a planilha 2027)* | HBM.TO (chave **HBM**) | copper | CAD (estimativas US$) |
+| LUNDIN (ou LUNDIN MINING) *(idem)* | LUN.TO (chave **LUN**) | copper | CAD (estimativas US$) |
+| CAPSTONE (ou CAPSTONE COPPER) *(idem)* | CS.TO (chave **CS**) | copper | CAD (estimativas US$) |
+| ERO COPPER (ou ERO) *(idem)* | ERO.TO (chave **ERO**) | copper | CAD (estimativas US$) |
+
+> ⚠️ A linha da Vale acima é de jun/2026: desde 21/10/2026 a chave é **VALE** (ADR, US$), não VALE3.
 
 **Aclara e Viridis** (terras raras): mesmo modelo de aba; o "Stock Ticker" do bloco da esquerda vem com o sufixo
 da bolsa (ARA.TO / VMM.AX) e preço/alvo em C$ / A$; as estimativas são em US$ (base USD, fx_to_base lido do modelo,
@@ -40,8 +69,8 @@ mas a página usa o câmbio ao vivo). São **opcionais**: arquivo sem essas abas
 tem cotação na Market). ⚠️ Em 06/11/2026 a aba VIRIDIS converte A$ em US$ ao contrário (A$ 3,28 → "US$ 4,77").
 
 **Hudbay, Lundin, Capstone e Ero** (cobre, cobertura formal desde 23/11/2026): **opcionais** e aceitam o nome
-alternativo da aba (`alt` em `stock-guide-lib.js`). A planilha de 06/11 ainda não tem as abas → o upload segue com 4
-avisos "aba ausente". Grupo Mining (setor copper), como SCCO/GMEX. Na 1ª subida com as abas, conferir que o bloco
+alternativo da aba (`alt` em `stock-guide-lib.js`). As abas chegaram na planilha 2027 (24/11/2026) como CAPSTONE,
+ERO COPPER, HUDBAY e LUNDIN. Grupo Mining (setor copper), como SCCO/GMEX. Na 1ª subida com as abas, conferir que o bloco
 "Stock Ticker" casa com a chave (HBM/LUN/CS/ERO) e que o preço-alvo está na moeda da linha (C$ para as quatro, todas por Toronto — a Ero passou de NYSE para
 ERO.TO em 23/11/2026 porque o alvo de início é C$ 50).
 
@@ -50,8 +79,8 @@ ERO.TO em 23/11/2026 porque o alvo de início é C$ 50).
 ## 2. Onde cada campo está em CADA aba de empresa
 
 A estrutura é **idêntica** nas 14 abas. Endereçar pelos **rótulos da coluna B** (robusto a
-inserção de linhas), com a regra de bloco abaixo. Anos: estimativas em colunas FIXAS
-**T (20) = 2026E** e **U (21) = 2027E** (mesmo no Copec, que começa em 2013 sem desalinhar).
+inserção de linhas), com a regra de bloco abaixo. Anos: as colunas dos 2 anos da Summary, achadas pelo cabeçalho
+do bloco-série (planilha 2026: T=2026E/U=2027E; planilha 2027: U=2027E/V=2028E).
 
 ### Data da última atualização do modelo (linha 2) — desde 2026-11-05
 | Campo dashboard | Onde |
@@ -92,7 +121,7 @@ inserção de linhas), com a regra de bloco abaixo. Anos: estimativas em colunas
 | dividends_y1/y2 (total, p/ Div Yield) | `Dividend` (linha 13–27 = "Dividends/Int. on Capital") |
 | ev_adjustment_y1/y2 (ponte p/ EV) | `Adjustments` |
 
-## 3. Moeda — sem hardcode: 2 fatores capturados do modelo
+## 3. Moeda — ⚠️ SUBSTITUÍDO em 24/11/2026 (moeda-base declarada; ver o quadro "Planilha 2027"). Texto original:
 
 Alguns nomes negociam em BRL/CLP/MXN mas o modelo reporta em **USD** (Vale, Copec, CMPC,
 Grupo México). Em vez de adivinhar, capturamos do próprio arquivo:
@@ -135,7 +164,8 @@ coluna US$ dos nomes BRL. CLP/MXN seguem no snapshot até o backend adicionar es
 ## 6. Fluxo do usuário (analista)
 1. Atualiza o modelo como sempre. 2. Salva o `.xlsm` (Excel recalcula no save → valores em cache).
 3. /admin → Stock Guide → **arrasta o arquivo**. 4. Pré-visualiza o diff → confirma →
-`admin_bulk_upsert_stock_guide_companies` grava as 14 de uma vez. 5. Página fica ao vivo.
+`admin_bulk_upsert_stock_guide_companies` grava as 20 de uma vez (+ peers; + rótulos dos anos se mudaram).
+5. Página fica ao vivo.
 
 ## 7. Banco
 Schema base: `admin/supabase_stock_guide.sql`. Colunas novas + RPCs de upload:

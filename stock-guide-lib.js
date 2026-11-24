@@ -207,40 +207,47 @@
   }
 
   // ── 8. INGESTÃO do modelo de equity research (.xlsm) ──────────────────────
-  // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 16 abas de empresa cobertas (14 + Aclara/Viridis desde 06/11/2026)
-  // + as 4 de cobre (Hudbay, Lundin, Capstone, Ero — cobertas desde 23/11/2026) quando a planilha tiver as abas
+  // Contrato: admin/STOCK_GUIDE_UPLOAD_CONTRACT.md. Lê as 20 abas de empresa cobertas (14 + Aclara/Viridis desde 06/11/2026
+  // + Capstone/Ero/Hudbay/Lundin — cobre, cobertas desde 23/11/2026, abas no Stock Guide desde a planilha "2027" de 24/11)
   // (CBA/Cement FORA) e devolve linhas prontas p/ admin_bulk_upsert_stock_guide_companies.
-  // Detecção DINÂMICA (acha a coluna 2026E/2027E e os rótulos por varredura) → imune a
-  // inserção de linhas/colunas. Múltiplos NÃO são lidos — são recalculados ao vivo na página.
+  // Detecção DINÂMICA (os 2 anos-estimativa saem do cabeçalho da aba Summary — 26E/27E até nov/2026, 27E/28E na
+  // planilha "2027" — e os rótulos são achados por varredura) → imune a inserção de linhas/colunas e à virada de ano.
+  // Múltiplos NÃO são lidos — são recalculados ao vivo na página.
+  //
+  // `base_ccy` = moeda das ESTIMATIVAS (EBITDA, dívida, lucro…). É DECLARADA aqui (é um fato da empresa: a Hudbay
+  // reporta em US$) e não deduzida da planilha, porque a dedução dependia da linha "Market Capitalization" da aba,
+  // que falhou de dois jeitos: vínculo da Bloomberg em #N/A/#DIV/0! (GMEX/CMPC/Copec em 05/11 → EV/EBITDA de 2.000x
+  // no ar; Grupo México/Aclara/Viridis de novo na planilha "2027") e, nas 4 de cobre, o market cap em C$ rotulado
+  // "USD" (preço em C$ × ações). A linha da aba agora só é CONFERIDA (aviso no /admin quando não bate).
+  // Ordem = a da Summary (Iron Ore · Copper · Gold …) → vira o display_order da comp table.
   const SG_COVERAGE = [
-    { tab:'VALE',            ticker:'VALE',     yahoo:'VALE',        name:'Vale',            sector:'iron_ore',   group:'mining',     trade_ccy:'USD' },  // VALE US (NYSE, US$) — NÃO a VALE3: o TP do analista é o US$/ADR do DCF; a aba traz VALE3 (R$) à esquerda e VALE (US$) à direita
-    { tab:'CSN MINERACAO',   ticker:'CMIN3',    yahoo:'CMIN3.SA',    name:'CSN Mineração',   sector:'iron_ore',   group:'mining',     trade_ccy:'BRL' },
-    { tab:'GRUPO MEXICO',    ticker:'GMEXICOB', yahoo:'GMEXICOB.MX', name:'Grupo México',    sector:'copper',     group:'mining',     trade_ccy:'MXN' },
-    { tab:'SOUTHERN COPPER', ticker:'SCCO',     yahoo:'SCCO',        name:'Southern Copper', sector:'copper',     group:'mining',     trade_ccy:'USD' },
-    { tab:'AURA',            ticker:'AUGO',     yahoo:'AUGO',        name:'Aura',            sector:'gold',       group:'mining',     trade_ccy:'USD' },  // AUGO (Nasdaq, US$) é o ticker do Stock Guide — NÃO o BDR AURA33 (negocia em R$): o modelo lista preço/mktcap na linha AUGO
-    { tab:'CSN',             ticker:'CSNA3',    yahoo:'CSNA3.SA',    name:'CSN',             sector:'steel',      group:'steel',      trade_ccy:'BRL' },
-    { tab:'GERDAU',          ticker:'GGBR4',    yahoo:'GGBR4.SA',    name:'Gerdau',          sector:'steel',      group:'steel',      trade_ccy:'BRL' },
-    { tab:'TERNIUM',         ticker:'TX',       yahoo:'TX',          name:'Ternium',         sector:'steel',      group:'steel',      trade_ccy:'USD' },
-    { tab:'USIMINAS',        ticker:'USIM5',    yahoo:'USIM5.SA',    name:'Usiminas',        sector:'steel',      group:'steel',      trade_ccy:'BRL' },
-    { tab:'SUZANO',          ticker:'SUZB3',    yahoo:'SUZB3.SA',    name:'Suzano',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
-    { tab:'KLABIN',          ticker:'KLBN11',   yahoo:'KLBN11.SA',   name:'Klabin',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
-    { tab:'IRANI',           ticker:'RANI3',    yahoo:'RANI3.SA',    name:'Irani',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL' },
-    { tab:'CMPC',            ticker:'CMPC',     yahoo:'CMPC.SN',     name:'CMPC',            sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
-    { tab:'COPEC',           ticker:'COPEC',    yahoo:'COPEC.SN',    name:'Copec',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP' },
+    { tab:'VALE',            ticker:'VALE',     yahoo:'VALE',        name:'Vale',            sector:'iron_ore',   group:'mining',     trade_ccy:'USD', base_ccy:'USD' },  // VALE US (NYSE, US$) — NÃO a VALE3: o TP do analista é o US$/ADR do DCF; a aba traz VALE3 (R$) à esquerda e VALE (US$) à direita
+    { tab:'CSN MINERACAO',   ticker:'CMIN3',    yahoo:'CMIN3.SA',    name:'CSN Mineração',   sector:'iron_ore',   group:'mining',     trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'GRUPO MEXICO',    ticker:'GMEXICOB', yahoo:'GMEXICOB.MX', name:'Grupo México',    sector:'copper',     group:'mining',     trade_ccy:'MXN', base_ccy:'USD' },
+    { tab:'SOUTHERN COPPER', ticker:'SCCO',     yahoo:'SCCO',        name:'Southern Copper', sector:'copper',     group:'mining',     trade_ccy:'USD', base_ccy:'USD' },
+    // Cobre (cobertura formal desde 23/11/2026; abas no Stock Guide desde a planilha "2027"). Linhas = as do heatmap:
+    // as quatro por Toronto, preço e alvo em C$ (alvos de início: CS 15, ERO 50, HBM 44, LUN 29); estimativas em US$
+    // (as quatro reportam em US$). `alt` = outros nomes aceitos para a aba. `optional`: planilha antiga sem as
+    // abas sobe com AVISO em vez de travar as outras.
+    { tab:'CAPSTONE COPPER', alt:['CAPSTONE'],         ticker:'CS',  yahoo:'CS.TO',  name:'Capstone Copper', sector:'copper', group:'mining', trade_ccy:'CAD', base_ccy:'USD', optional:true },
+    { tab:'ERO COPPER',      alt:['ERO'],              ticker:'ERO', yahoo:'ERO.TO', name:'Ero Copper',      sector:'copper', group:'mining', trade_ccy:'CAD', base_ccy:'USD', optional:true },
+    { tab:'HUDBAY',          alt:['HUDBAY MINERALS'],  ticker:'HBM', yahoo:'HBM.TO', name:'Hudbay Minerals', sector:'copper', group:'mining', trade_ccy:'CAD', base_ccy:'USD', optional:true },
+    { tab:'LUNDIN MINING',   alt:['LUNDIN'],           ticker:'LUN', yahoo:'LUN.TO', name:'Lundin Mining',   sector:'copper', group:'mining', trade_ccy:'CAD', base_ccy:'USD', optional:true },
+    { tab:'AURA',            ticker:'AUGO',     yahoo:'AUGO',        name:'Aura',            sector:'gold',       group:'mining',     trade_ccy:'USD', base_ccy:'USD' },  // AUGO (Nasdaq, US$) é o ticker do Stock Guide — NÃO o BDR AURA33 (negocia em R$): o modelo lista preço/mktcap na linha AUGO
+    { tab:'CSN',             ticker:'CSNA3',    yahoo:'CSNA3.SA',    name:'CSN',             sector:'steel',      group:'steel',      trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'GERDAU',          ticker:'GGBR4',    yahoo:'GGBR4.SA',    name:'Gerdau',          sector:'steel',      group:'steel',      trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'TERNIUM',         ticker:'TX',       yahoo:'TX',          name:'Ternium',         sector:'steel',      group:'steel',      trade_ccy:'USD', base_ccy:'USD' },
+    { tab:'USIMINAS',        ticker:'USIM5',    yahoo:'USIM5.SA',    name:'Usiminas',        sector:'steel',      group:'steel',      trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'SUZANO',          ticker:'SUZB3',    yahoo:'SUZB3.SA',    name:'Suzano',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'KLABIN',          ticker:'KLBN11',   yahoo:'KLBN11.SA',   name:'Klabin',          sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'IRANI',           ticker:'RANI3',    yahoo:'RANI3.SA',    name:'Irani',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'BRL', base_ccy:'BRL' },
+    { tab:'CMPC',            ticker:'CMPC',     yahoo:'CMPC.SN',     name:'CMPC',            sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP', base_ccy:'USD' },
+    { tab:'COPEC',           ticker:'COPEC',    yahoo:'COPEC.SN',    name:'Copec',           sector:'pulp_paper', group:'pulp_paper', trade_ccy:'CLP', base_ccy:'USD' },
     // Terras raras (cobertura formal desde 23/10/2026; abas novas no Stock Guide em 06/11/2026). Mesmo modelo de
     // aba das outras; o bloco da esquerda traz o ticker com o sufixo da bolsa ("ARA.TO"/"VMM.AX") e preço/alvo em
     // C$/A$, e as estimativas em US$ (base = USD). Chaves ARA/VMM = as do histórico de recomendações.
-    // `optional`: arquivo sem a aba (planilha antiga) sobe com AVISO em vez de travar o upload das outras 14.
-    { tab:'ACLARA',          ticker:'ARA',      yahoo:'ARA.TO',      name:'Aclara Resources', sector:'rare_earths', group:'rare_earths', trade_ccy:'CAD', optional:true },
-    { tab:'VIRIDIS',         ticker:'VMM',      yahoo:'VMM.AX',      name:'Viridis Mining',   sector:'rare_earths', group:'rare_earths', trade_ccy:'AUD', optional:true },
-    // Cobre (cobertura formal desde 23/11/2026). A planilha de 06/11 ainda NÃO tem as abas: entram sozinhas quando
-    // a planilha ganhar (optional → só aviso). `alt` = outros nomes aceitos para a aba. Linhas = as do heatmap
-    // (as quatro por Toronto, em C$ — alvos de início: CS 15, ERO 50, HBM 44, LUN 29) — conferir na 1ª subida se o
-    // preço-alvo do modelo está na mesma moeda da linha (o resumo do /admin mostra preço e alvo lado a lado).
-    { tab:'HUDBAY',          alt:['HUDBAY MINERALS'],  ticker:'HBM', yahoo:'HBM.TO', name:'Hudbay Minerals', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
-    { tab:'LUNDIN MINING',   alt:['LUNDIN'],           ticker:'LUN', yahoo:'LUN.TO', name:'Lundin Mining',   sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
-    { tab:'CAPSTONE COPPER', alt:['CAPSTONE'],         ticker:'CS',  yahoo:'CS.TO',  name:'Capstone Copper', sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
-    { tab:'ERO COPPER',      alt:['ERO'],              ticker:'ERO', yahoo:'ERO.TO', name:'Ero Copper',      sector:'copper', group:'mining', trade_ccy:'CAD', optional:true },
+    { tab:'ACLARA',          ticker:'ARA',      yahoo:'ARA.TO',      name:'Aclara Resources', sector:'rare_earths', group:'rare_earths', trade_ccy:'CAD', base_ccy:'USD', optional:true },
+    { tab:'VIRIDIS',         ticker:'VMM',      yahoo:'VMM.AX',      name:'Viridis Mining',   sector:'rare_earths', group:'rare_earths', trade_ccy:'AUD', base_ccy:'USD', optional:true },
   ];
   function _sgFindTab(wb, meta) {
     const want = [meta.tab].concat(meta.alt || []).map(function (t) { return t.toLowerCase(); });
@@ -306,7 +313,11 @@
     return null;
   }
 
-  // câmbio do modelo (aba "Stock Guide"): rótulos "BRL/USD"/"CLP/USD"/... → taxa (unidades por USD).
+  // câmbio do modelo (aba "Stock Guide"): rótulos "BRL/USD"/"CLP/USD"/"CAD/USD"/"AUD/USD"... → taxa (unidades por USD).
+  // ⚠️ A planilha não segue uma convenção só: "BRL/USD" 5,90 e "CAD/USD" 1,43 são unidades por US$, mas "AUD/USD"
+  // 0,66 é US$ por A$ (a cotação de mercado AUDUSD). Todas as moedas desta lista valem MENOS que o dólar, então
+  // "unidades por US$" é sempre > 1: um valor < 1 só pode estar ao contrário e é invertido. (Não incluir aqui moeda
+  // mais forte que o dólar — EUR, GBP — sem rever essa regra.)
   function parseSGFXRates(wb) {
     const X = root.XLSX; const rates = {};
     if (!X || !wb || !wb.SheetNames) return rates;
@@ -317,12 +328,12 @@
       const row = aoa[r]; if (!row) continue;
       for (let c = 0; c < row.length; c++) {
         const v = row[c];
-        const m = typeof v === 'string' ? v.trim().match(/^(BRL|CLP|MXN|PEN|COP|ARS)\s*\/\s*USD$/i) : null;
+        const m = typeof v === 'string' ? v.trim().match(/^(BRL|CLP|MXN|PEN|COP|ARS|CAD|AUD)\s*\/\s*USD$/i) : null;
         if (m) {
           const ccy = m[1].toUpperCase();
           for (let rr = r + 1; rr < aoa.length; rr++) {        // 1º numérico ABAIXO do rótulo, na mesma coluna
             const cand = aoa[rr] && aoa[rr][c];
-            if (_isNum(cand) && cand > 0) { rates[ccy] = cand; break; }
+            if (_isNum(cand) && cand > 0) { rates[ccy] = cand < 1 ? 1 / cand : cand; break; }
           }
         }
       }
@@ -330,26 +341,59 @@
     return rates;
   }
 
+  // Os 2 anos-estimativa da comp table = os que a aba Summary mostra (cabeçalho "27E"/"28E" logo abaixo de
+  // "EV/EBITDA (x)") → {y1:'2027E', y2:'2028E'}. A planilha "2027" (24/11/2026) rolou os anos de 26E/27E para
+  // 27E/28E: a dash segue o arquivo, sem ano fixo no código. Sem a Summary legível → 2026E/2027E (planilhas antigas).
+  function _sgYearLabel(v) {
+    const s = String(v == null ? '' : v).trim();
+    let m = s.match(/^(\d{2})E$/i); if (m) return '20' + m[1] + 'E';
+    m = s.match(/^(20\d{2})E$/i); if (m) return m[1] + 'E';
+    return null;
+  }
+  function detectStockGuideYears(wb) {
+    const X = root.XLSX;
+    const nm = wb && wb.SheetNames && wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === 'summary'; });
+    if (X && nm) {
+      const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
+      const f = _sgFindCell(aoa, /^ev\s*\/\s*ebitda/i);
+      if (f) {
+        const row = aoa[f.r + 1] || [];
+        const a = _sgYearLabel(row[f.c]), b = _sgYearLabel(row[f.c + 1]);
+        if (a && b && +b.slice(0, 4) === +a.slice(0, 4) + 1) return { y1: a, y2: b, source: 'Summary' };
+      }
+    }
+    return { y1: '2026E', y2: '2027E', source: null };
+  }
+  // 'US$'/'USD'/'R$'/'BRL'… no parêntese do rótulo ("EBITDA (USD m)") → código da moeda (ou null)
+  function _sgUnitCcy(label) {
+    const m = String(label || '').match(/\(\s*(US\$|USD|R\$|BRL|MXN|CLP|CAD|C\$|AUD|A\$|PEN|COP|ARS)/i);
+    if (!m) return null;
+    const u = m[1].toUpperCase();
+    return ({ 'US$': 'USD', 'R$': 'BRL', 'C$': 'CAD', 'A$': 'AUD' })[u] || u;
+  }
+
   // parse de UMA aba de empresa (aoa) + meta + fx → linha p/ o bulk RPC (ou {error}).
-  function _sgParseCompanyAoa(aoa, meta, fxRates) {
+  function _sgParseCompanyAoa(aoa, meta, fxRates, years) {
     const warnings = [];
-    // colunas dos anos-estimativa (2026E / 2027E) — mesma linha
+    years = years || { y1: '2026E', y2: '2027E' };
+    const Y1 = String(years.y1).toUpperCase(), Y2 = String(years.y2).toUpperCase();
+    // colunas dos anos-estimativa (os da Summary: 2027E / 2028E na planilha "2027") — mesma linha
     let y1 = -1, y2 = -1;
     for (let r = 0; r < aoa.length && (y1 < 0 || y2 < 0); r++) {
       const row = aoa[r] || []; let i1 = -1, i2 = -1;
       for (let c = 0; c < row.length; c++) {
-        const s = (typeof row[c] === 'string') ? row[c].trim() : '';
-        if (/^2026E$/i.test(s)) i1 = c; if (/^2027E$/i.test(s)) i2 = c;
+        const s = (typeof row[c] === 'string') ? row[c].trim().toUpperCase() : '';
+        if (s === Y1) i1 = c; if (s === Y2) i2 = c;
       }
       if (i1 >= 0 && i2 >= 0) { y1 = i1; y2 = i2; break; }
     }
-    if (y1 < 0 || y2 < 0) return { error: meta.tab + ': não encontrei as colunas 2026E/2027E' };
+    if (y1 < 0 || y2 < 0) return { error: meta.tab + ': não encontrei as colunas ' + years.y1 + '/' + years.y2 };
 
     // helpers ligados a este aoa
     const hNum = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return _sgCellNum(row[c + 1]) != null; }); return f ? _sgCellNum(aoa[f.r][f.c + 1]) : null; };  // aceita número-como-texto ("1,110")
     const hTxt = function (re) { const f = _sgFindCell(aoa, re, function (row, c) { return row[c + 1] != null && String(row[c + 1]).trim() !== ''; }); return f ? String(aoa[f.r][f.c + 1]).trim() : null; };
-    const est  = function (re) { const f = _sgFindCell(aoa, re); return f ? { y1: _sgCellNum(aoa[f.r][y1]), y2: _sgCellNum(aoa[f.r][y2]) } : { y1: null, y2: null }; };
-    // market cap na MOEDA-BASE = linha "Market Capitaliz" do bloco-série (numérica na coluna do ano)
+    const est  = function (re) { const f = _sgFindCell(aoa, re); return f ? { y1: _sgCellNum(aoa[f.r][y1]), y2: _sgCellNum(aoa[f.r][y2]), label: aoa[f.r][f.c] } : { y1: null, y2: null, label: null }; };
+    // market cap da linha "Market Capitaliz" do bloco-série (numérica na coluna do ano) — só CONFERÊNCIA da moeda
     const mcF = _sgFindCell(aoa, /^market\s+capitaliz/i, function (row) { return _isNum(row[y1]); });
     const mcBase = mcF ? _sgCellNum(aoa[mcF.r][y1]) : null;
 
@@ -392,7 +436,13 @@
     })();
     if (!lastUpdate) warnings.push(meta.tab + ': data da última atualização (Last Model Update Release) não lida');
 
-    const ebitda = est(/^ebitda\s*\(/i);
+    // EBITDA = o DENOMINADOR DO EV/EBITDA da própria aba: "Adjusted EBITDA" (Vale: "Proforma EBITDA"), linha 20 do
+    // bloco-série — o EV/EBITDA (x) da aba é EV Adjusted ÷ essa linha nas 20 abas (conferido nas fórmulas em 24/11/2026).
+    // Até a planilha "2027" lia-se a linha "EBITDA (" (25), igual na maioria mas não em Gerdau (−0,5%, minoritários),
+    // Capstone e Ero (~2%): o EV/EBITDA da dash saía uma casa decimal diferente da Summary. O Net Debt/EBITDA da aba
+    // divide pela linha 25; com a 20 ele muda menos do que a casa decimal exibida nessas três.
+    const ebAdj = est(/^(adjusted|proforma)\s+ebitda/i);
+    const ebitda = (_isNum(ebAdj.y1) || _isNum(ebAdj.y2)) ? ebAdj : est(/^ebitda\s*\(/i);
     const netDebt = est(/^net\s+debt\s*\(/i);              // exclui "Net Debt/EBITDA (x)"
     const netInc = est(/^net\s+income\s*\(/i);
     const ocf = est(/^ocf\s*\(/i);                          // exclui "OCF Yield (%)"
@@ -401,25 +451,58 @@
     const cashE = est(/^cash\s+earnings/i);
     const divs = est(/^dividend.*int/i);                    // "Dividends/Int. on Capital" (exclui "Dividend Yield")
     const adj = est(/^adjustment/i);
+    // dividendo PAGO é sempre ≥ 0 num yield; a aba LUNDIN (planilha "2027") traz o valor do fluxo de caixa com o sinal
+    // de saída (−215) e a Summary mostra yield negativo. Usa o valor absoluto e avisa (consertar a aba: "*-1", como a HUDBAY).
+    ['y1', 'y2'].forEach(function (k) {
+      if (_isNum(divs[k]) && divs[k] < 0) {
+        if (!divs.flipped) warnings.push(meta.tab + ': dividendos com sinal negativo na planilha (' + (Math.round(divs[k] * 10) / 10) + ') — usei o valor absoluto; na aba, a linha "Dividends" precisa de "*-1"');
+        divs.flipped = true; divs[k] = -divs[k];
+      }
+    });
 
-    // fx_to_base direto do modelo (validado): mktcap_base / (preço × ações). ≈1 quando base==negociação.
-    // ⚠️ 06/11/2026: sem o market cap da série (vínculo da Bloomberg em #N/A na planilha) isto caía em 1 CALADO — e
-    // empresa modelada em US$ (GMEX, CMPC, Copec…) passava a ser lida na moeda local: EV/EBITDA de 2.000x no ar.
-    // Agora avisa; e o /admin compara a moeda-base com a do banco antes de gravar.
-    const fxOk = _isNum(mcBase) && _isNum(priceLocal) && _isNum(shares) && priceLocal * shares !== 0;
-    let fxBase = fxOk ? mcBase / (priceLocal * shares) : 1;
-    if (!fxOk) warnings.push(meta.tab + ': câmbio do modelo NÃO lido (market cap da série, preço ou ações vazio/#N/A) → tratado como moeda local; atualize os vínculos da planilha');
-    else if (!Number.isFinite(fxBase) || fxBase <= 0) { fxBase = 1; warnings.push(meta.tab + ': fx_to_base indeterminado → 1'); }
-    const baseIsUsd = Math.abs(fxBase - 1) > 0.02;          // único base ≠ negociação observado = USD
-    const baseCcy = baseIsUsd ? 'USD' : meta.trade_ccy;
-    // fx_to_usd p/ a coluna "Mkt cap US$": USD-base usa fxBase; local-base usa 1/(taxa por USD)
+    // ── MOEDA (blindada em 24/11/2026) ──
+    // base = moeda das estimativas, DECLARADA no SG_COVERAGE. fx_to_base = moeda-base por unidade da moeda de
+    // negociação, do câmbio da aba "Stock Guide" (o mesmo que a Summary usa); sem ele, a razão market cap da aba ÷
+    // (preço × ações) quando ela de fato converte. A página usa o câmbio AO VIVO (macro_indicators): este número é
+    // o reserva e o que o /admin mostra. O market cap da aba vira CONFERÊNCIA: se não bate com o câmbio, avisa —
+    // foi assim que apareceram as 4 de cobre (valor de mercado em C$ com rótulo "USD", múltiplos da própria Summary
+    // inflados ~1,4×) e Grupo México/Aclara/Viridis (vínculo da Bloomberg em #N/A/#DIV/0!).
+    const baseCcy = meta.base_ccy || meta.trade_ccy;
+    const unitCcy = _sgUnitCcy(ebitda.label) || _sgUnitCcy(netDebt.label);
+    if (unitCcy && unitCcy !== baseCcy)
+      warnings.push(meta.tab + ': a aba diz que as estimativas estão em ' + unitCcy + ', o cadastro da dash diz ' + baseCcy + ' — confira antes de gravar');
+    const seriesOk = _isNum(mcBase) && _isNum(priceLocal) && _isNum(shares) && priceLocal * shares !== 0;
+    const seriesFx = seriesOk ? mcBase / (priceLocal * shares) : null;
+    const mcLabel = mcF ? String(aoa[mcF.r][mcF.c]).trim() : 'Market Capitalization';
+    let fxBase = null;
+    if (baseCcy === meta.trade_ccy) {
+      fxBase = 1;
+      if (seriesFx != null && Math.abs(seriesFx - 1) > 0.02)
+        warnings.push(meta.tab + ': o valor de mercado da aba ("' + mcLabel + '") não está na moeda do preço (razão ' + seriesFx.toFixed(4) + ') — confira a aba');
+    } else {
+      const rtTrade = meta.trade_ccy === 'USD' ? 1 : fxRates[meta.trade_ccy];   // unidades da negociação por US$
+      const rtBase = baseCcy === 'USD' ? 1 : fxRates[baseCcy];                   // unidades da base por US$
+      const sheetFx = (rtTrade > 0 && rtBase > 0) ? rtBase / rtTrade : null;
+      if (sheetFx != null) {
+        fxBase = sheetFx;
+        if (seriesFx != null && Math.abs(seriesFx / sheetFx - 1) > 0.05)
+          warnings.push(meta.tab + ': o valor de mercado da aba ("' + mcLabel + '") não bate com o câmbio ' + meta.trade_ccy + '/USD da aba Stock Guide (razão ' + seriesFx.toFixed(4) + ' × câmbio ' + sheetFx.toFixed(4) + ') — a dash usa o câmbio; os múltiplos da própria planilha para esta empresa saem distorcidos');
+        else if (seriesFx == null)
+          warnings.push(meta.tab + ': valor de mercado da aba vazio (vínculo da Bloomberg em #N/A ou #DIV/0!) — a dash usa o câmbio da aba Stock Guide; na Summary da planilha esta empresa fica sem EV/EBITDA');
+      } else if (seriesFx != null && Math.abs(seriesFx - 1) > 0.02) {
+        fxBase = seriesFx;
+      } else {
+        warnings.push(meta.tab + ': sem câmbio ' + meta.trade_ccy + '/USD na planilha — a página usa o câmbio ao vivo; a coluna US$ do /admin fica vazia');
+      }
+    }
+    // fx_to_usd p/ a coluna "Mkt cap US$": negociação em US$ = 1; base US$ = o próprio fx_to_base; base local = 1/(taxa por USD)
     let fxUsd;
     if (meta.trade_ccy === 'USD') fxUsd = 1;
-    else if (baseIsUsd) fxUsd = fxBase;
+    else if (baseCcy === 'USD') fxUsd = fxBase;
     else { const rt = fxRates[meta.trade_ccy]; fxUsd = (rt && rt > 0) ? 1 / rt : null; if (fxUsd == null) warnings.push(meta.tab + ': sem câmbio ' + meta.trade_ccy + '/USD → Mkt cap US$ indisponível'); }
 
     if (!_isNum(shares)) warnings.push(meta.tab + ': nº de ações ausente');
-    if (!_isNum(ebitda.y1)) warnings.push(meta.tab + ': EBITDA 2026E ausente');
+    if (!_isNum(ebitda.y1)) warnings.push(meta.tab + ': EBITDA ' + years.y1 + ' ausente');
 
     return {
       row: {
@@ -434,24 +517,26 @@
         cash_earnings_y1: cashE.y1, cash_earnings_y2: cashE.y2,
         dividends_y1: divs.y1, dividends_y2: divs.y2,
         ev_adjustment_y1: adj.y1, ev_adjustment_y2: adj.y2,
-        fx_to_base: Math.round(fxBase * 1e8) / 1e8, fx_to_usd: fxUsd == null ? null : Math.round(fxUsd * 1e8) / 1e8,
+        fx_to_base: fxBase == null ? null : Math.round(fxBase * 1e8) / 1e8, fx_to_usd: fxUsd == null ? null : Math.round(fxUsd * 1e8) / 1e8,
       },
       warnings: warnings, priceLocal: priceLocal, mcBase: mcBase,
     };
   }
 
-  // workbook inteiro → {rows, perCompany, warnings, errors}
+  // workbook inteiro → {rows, perCompany, warnings, errors, fxRates, years}
   function parseStockGuideWorkbook(wb) {
     const X = root.XLSX;
     if (!X) return { rows: [], perCompany: [], warnings: [], errors: ['SheetJS (XLSX) não carregado.'] };
     if (!wb || !wb.SheetNames) return { rows: [], perCompany: [], warnings: [], errors: ['Arquivo inválido.'] };
     const fxRates = parseSGFXRates(wb);
+    const years = detectStockGuideYears(wb);
     const rows = [], perCompany = [], warnings = [], errors = [];
+    if (!years.source) warnings.push('anos das estimativas não lidos na aba Summary (cabeçalho do EV/EBITDA) — usei ' + years.y1 + '/' + years.y2);
     SG_COVERAGE.forEach(function (meta, i) {
       const nm = _sgFindTab(wb, meta);
       if (!nm) { (meta.optional ? warnings : errors).push('aba ausente: ' + meta.tab + ' (' + meta.ticker + ')'); return; }
       const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
-      const res = _sgParseCompanyAoa(aoa, meta, fxRates);
+      const res = _sgParseCompanyAoa(aoa, meta, fxRates, years);
       if (res.error) { errors.push(res.error); return; }
       res.row.display_order = i + 1;
       rows.push(res.row);
@@ -459,16 +544,22 @@
       res.warnings.forEach(function (w) { warnings.push(w); });
     });
     if (!rows.length) errors.push('Nenhuma empresa lida — confira se é o arquivo "Stock Guide ... .xlsm" certo.');
-    return { rows: rows, perCompany: perCompany, warnings: warnings, errors: errors, fxRates: fxRates };
+    return { rows: rows, perCompany: perCompany, warnings: warnings, errors: errors, fxRates: fxRates, years: years };
   }
 
   // ── 9. GLOBAL PEERS das abas "*Peers" (snapshot dos múltiplos; preço fica AO VIVO na página) ──
   // Só peers que TÊM cotação na aba Market e que NÃO são cobertos (cobertos já estão no comps).
+  // Planilha "2027" (24/11/2026): a aba "Mining Peers" virou "Iron Ore Peers" + "Copper Peers" (e chegaram Zinc,
+  // Aluminum, Cement e Rare Earths Peers, que não entram: nenhum nome delas tem cotação na Market). `alt` = nome
+  // antigo aceito (planilha velha continua subindo). Ordem = prioridade quando o mesmo peer aparece em 2 abas
+  // (BHP/Rio/Anglo/Glencore estão em Iron Ore e Copper; a Barrick em Copper e Gold): fica a 1ª. Gold antes de
+  // Copper para a Barrick seguir vindo da aba do ouro, como antes. `optional`: ausente não gera aviso.
   const SG_PEER_TABS = [
     { tab: 'Steel Peers',        sector: 'steel',      group: 'steel' },
-    { tab: 'Mining Peers',       sector: 'mining',     group: 'mining' },
-    { tab: 'Pulp & Paper Peers', sector: 'pulp_paper', group: 'pulp_paper' },
+    { tab: 'Iron Ore Peers',     sector: 'mining',     group: 'mining', alt: ['Mining Peers'] },
     { tab: 'Gold Peers',         sector: 'gold',       group: 'mining' },
+    { tab: 'Copper Peers',       sector: 'mining',     group: 'mining', optional: true },
+    { tab: 'Pulp & Paper Peers', sector: 'pulp_paper', group: 'pulp_paper' },
   ];
   // nome (no arquivo) → yahoo_symbol da Market. SÓ peers não-cobertos com cotação.
   const SG_PEER_SYMBOLS = [
@@ -476,6 +567,7 @@
     { re: /arcelormittal/i, sym: 'MT' }, { re: /^cap\b/i, sym: 'CAP.SN' },
     { re: /buenaventura/i, sym: 'BVN' }, { re: /\bbhp\b/i, sym: 'BHP' }, { re: /rio tinto/i, sym: 'RIO' },
     { re: /anglo american/i, sym: 'AAL.L' }, { re: /fortescue/i, sym: 'FMG.AX' },
+    { re: /glencore/i, sym: 'GLEN.L' },                     // Iron Ore + Copper Peers (planilha "2027"); GLEN.L já cotada
     { re: /international pa/i, sym: 'IP' }, { re: /smurfit/i, sym: 'SW' }, { re: /^upm/i, sym: 'UPM.HE' }, { re: /stora enso/i, sym: 'STERV.HE' },
     { re: /aris mining/i, sym: 'ARIS' }, { re: /hochschild/i, sym: 'HOC.L' }, { re: /agnico/i, sym: 'AEM' }, { re: /barrick/i, sym: 'B' },
   ];
@@ -485,19 +577,25 @@
     return null;
   }
 
-  function parseStockGuidePeers(wb) {
+  // `years` (opcional, de detectStockGuideYears): confere se a aba de peers está nos MESMOS anos da comp table.
+  function parseStockGuidePeers(wb, years) {
     const X = root.XLSX;
     if (!X || !wb || !wb.SheetNames) return { rows: [], warnings: ['SheetJS/arquivo inválido.'] };
     const covered = new Set(SG_COVERAGE.map(function (c) { return c.yahoo; }));
     const rows = [], warnings = [], seen = new Set();
     SG_PEER_TABS.forEach(function (meta) {
-      const nm = wb.SheetNames.find(function (s) { return s.trim().toLowerCase() === meta.tab.toLowerCase(); });
-      if (!nm) { warnings.push('aba ausente: ' + meta.tab); return; }
+      const want = [meta.tab].concat(meta.alt || []).map(function (t) { return t.toLowerCase(); });
+      const nm = wb.SheetNames.find(function (s) { return want.indexOf(s.trim().toLowerCase()) >= 0; });
+      if (!nm) { if (!meta.optional) warnings.push('aba ausente: ' + meta.tab); return; }
       const aoa = X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, blankrows: true });
       // linha-cabeçalho = a que contém "EV/EBITDA"
       const hdr = _sgFindCell(aoa, /^ev\s*\/\s*ebitda/i);
       if (!hdr) { warnings.push(meta.tab + ': cabeçalho EV/EBITDA não encontrado'); return; }
-      const hr = hdr.r, yr = hr + 1;                       // rótulos em hr; 26E/27E na linha hr+1
+      const hr = hdr.r, yr = hr + 1;                       // rótulos em hr; anos (27E/28E) na linha hr+1
+      if (years && years.y1) {
+        const got = _sgYearLabel((aoa[yr] || [])[hdr.c]);
+        if (got && got !== String(years.y1).toUpperCase()) warnings.push(nm + ': peers em ' + got + ', a comp table em ' + years.y1 + ' — confira a aba');
+      }
       const colOf = function (re) { const f = _sgFindCell([aoa[hr]], re); return f ? f.c : -1; };
       const cCol = colOf(/^company/i), ctryCol = colOf(/^country/i), pxCol = colOf(/^price/i),
             shCol = colOf(/^shares\s+outstanding/i), mcCol = colOf(/^mkt\s*cap/i);
@@ -680,6 +778,7 @@
     parseStockGuideWorkbook: parseStockGuideWorkbook,
     parseStockGuidePeers: parseStockGuidePeers,
     parseSGFXRates: parseSGFXRates,
+    detectStockGuideYears: detectStockGuideYears,
     cellDate: _sgCellDate,
     MARKET_DRIVER_CATALOG: MARKET_DRIVER_CATALOG,
     MARKET_DRIVER_CATALOG_BY_KEY: MARKET_DRIVER_CATALOG_BY_KEY,
@@ -754,8 +853,11 @@
       var snapUsdPerTrade=(trade==='USD')?1:(r.fx_to_usd!=null?r.fx_to_usd:null);
       var liveRate=fxRates[trade];                                            // unidades por USD, ao vivo
       var usdPerTrade=(trade==='USD')?1:(liveRate?1/liveRate:snapUsdPerTrade);
-      // fator p/ a moeda-BASE do modelo: 1 se base==negociação; senão (base=USD) = usdPerTrade
-      var baseEqTrade=(r.fx_to_base!=null?Math.abs(r.fx_to_base-1)<=0.02:true);
+      // fator p/ a moeda-BASE do modelo: 1 se base==negociação; senão (base=USD) = usdPerTrade.
+      // "base == negociação?" pela MOEDA gravada (base_ccy/trade_ccy, que o upload grava desde 06/2026); sem ela, pelo
+      // fx_to_base ≈ 1 (regra antiga). Desde 24/11/2026: um fx_to_base vazio — o banco grava 1 no lugar — não faz
+      // mais uma empresa modelada em US$ (as de cobre, que negociam em C$) ser lida como se fosse em moeda local.
+      var baseEqTrade=(r.base_ccy&&r.trade_ccy)?(r.base_ccy===r.trade_ccy):(r.fx_to_base!=null?Math.abs(r.fx_to_base-1)<=0.02:true);
       var factorBase=baseEqTrade?1:(usdPerTrade!=null?usdPerTrade:(r.fx_to_base!=null?r.fx_to_base:1));
       var mcBase=r.shares_outstanding!=null&&live!=null?r.shares_outstanding*live*factorBase:null;
       var mcUsd=r.shares_outstanding!=null&&live!=null&&usdPerTrade!=null?r.shares_outstanding*live*usdPerTrade:null;
