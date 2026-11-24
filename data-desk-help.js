@@ -133,7 +133,6 @@
       'pulp-secex': {
         vol: 'How much pulp Brazil exported in each period, in thousand tonnes, all ports (SECEX customs data).',
         rev: 'Brazil\'s revenue from pulp exports in each period, in US$ million (SECEX, FOB value).',
-        price: 'The average price of Brazil\'s pulp exports: revenue ÷ volume, in US$ per tonne (SECEX). A customs average that lags list prices — not a market quote.',
         vwd: 'Pulp exports per Brazilian working day, in thousand tonnes per day (SECEX), so that months of different lengths compare fairly.',
         china: 'Share of Brazil\'s pulp export volume that goes to China (SECEX).',
         $who: { port: 'Which Brazilian ports ship the pulp (SECEX).', dest: 'Where Brazil\'s pulp goes, by country of destination (SECEX).' }

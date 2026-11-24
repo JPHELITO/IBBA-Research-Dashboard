@@ -281,7 +281,7 @@ window.IBBA_TOURS = {
         { id: 'd-reading', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-read', clip: 360, title: 'Reading',
           body: 'The comparisons, ready: versus last month, last year, the 5-year average and the year to date. {Click} two points on the chart to compare them.' },
         { id: 'd-who', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'secex']], target: '#desk-root .dk-who', clip: 380, title: 'Who is behind the number',
-          body: 'Pulp exports split by port or by destination, in volume, revenue, share or price. {Click} a name to show or hide it.' },
+          body: 'Pulp exports split by port or by destination, in volume, revenue or share. {Click} a name to show or hide it.' },
         { id: 'suppliers', notIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'gacc']], target: '#gc-cs-toggle', title: 'Woodchips by supplier',
           body: 'Pick which supplier countries appear in this chart — Vietnam and Australia by default.' },
         { id: 'd-suppliers', onlyIf: 'html.desk-on', call: [['mobSelect', 'pulp'], ['setPulpTab', 'gacc']], target: '#desk-root .dk-who', clip: 380, title: 'Woodchips by supplier',
