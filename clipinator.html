@@ -1503,7 +1503,7 @@ async function generateAll(opts){
   st.innerHTML='<span class="spin2"></span> '+(semIA
     ? 'Refazendo HTML e e-mail com os destaques editados… (~2 min)'
     : 'Gerando Word, destaques, HTML e e-mail… (~3 min)');
-  while(Date.now()-t0 < 8*60*1000){                 // teto de 8 min (o Word sozinho já tinha 6)
+  while(Date.now()-t0 < 12*60*1000){                // teto de 12 min: com a rede da nuvem lenta, o robô espera até 90 s por chamada
     await new Promise(r=>setTimeout(r,4000));
     let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:jobId}))||[])[0]; }catch(e){ continue; }
     if(!job) continue;
