@@ -1280,7 +1280,7 @@ async function blGerar(){
     const b=(job.config||{}).blast||{};
     if(job.status==='done'){
       _blDest=b.destaques||[]; blRender();
-      const marca=blCarimbar(_blDest, b.provedor, S.order.length);
+      const marca=blCarimbar(_blDest, b.provedor, S.order.length, b.destaques_en);   // o inglês vem na mesma chamada
       blRenderSelo();
       st.className='gen-status ok';
       st.innerHTML = _blDest.length
