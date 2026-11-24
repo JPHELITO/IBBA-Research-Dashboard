@@ -118,6 +118,23 @@ function esperar(fr){ return new Promise(res=>{
   ok('e-mail no formato antigo aparece no aviso', /formato antigo/.test(st));
   ok('HTML que nao saiu aparece no aviso', /HTML do WhatsApp não saiu/.test(st));
 
+  // ── 6) o índice do e-mail funciona DENTRO da prévia (pedido do usuário, 24/11) ─────────
+  const longe='<div style="height:3000px"></div>';
+  const doc6='<p><a id="go" href="#story3">Asian HRC prices</a></p>'+longe+
+             '<a name="story3" id="story3"></a><p>ALVO</p>'+longe+'<a id="ext" href="https://example.com/x">Open at</a>';
+  C.PV.mail={ref_date:'2026-11-25',preview_path:'data:text/html,'+encodeURIComponent(doc6)};
+  C.PV.cache={}; await W.pvShow('email');
+  await new Promise(r=>setTimeout(r,500));
+  const fr6=D.getElementById('pv-frame'), d6=fr6.contentDocument;
+  d6.getElementById('go').click();
+  await new Promise(r=>setTimeout(r,300));
+  const d6b=fr6.contentDocument;
+  ok('clicar no título do índice ROLA a prévia até a matéria', d6b.scrollingElement.scrollTop>2000, d6b.scrollingElement.scrollTop);
+  ok('…sem carregar outra página dentro do quadro', d6b===d6 && !!d6b.getElementById('story3'));
+  const abertos=[]; const op=W.open; W.open=function(u){ abertos.push(u); return null; };
+  d6b.getElementById('ext').click(); W.open=op;
+  ok('link para o site da fonte abre em aba nova', abertos[0]==='https://example.com/x' && fr6.contentDocument===d6, abertos.join());
+
   const falhas=R.filter(r=>r.startsWith('FAIL')).length;
   document.getElementById('out').textContent=
     R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');

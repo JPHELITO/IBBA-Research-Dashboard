@@ -1570,9 +1570,31 @@ async function pvShow(kind){
       html=await r.text(); PV.cache[url]=html;
     }
     if(pvUrl(PV.tab)!==url) return;                 // trocou de aba no meio do download
-    fr.onload=function(){ hlPintarPrevia(); pvNota(); };
+    fr.onload=function(){ pvLinks(); hlPintarPrevia(); pvNota(); };
     fr.srcdoc=html;
-  }catch(e){ fr.onload=null; fr.srcdoc=pvMsg('Não consegui carregar a prévia ('+(e.message||e)+').'); note.textContent=''; }
+  }catch(e){
+    if(pvUrl(PV.tab)!==url) return;                 // erro de um download VELHO não apaga a prévia nova
+    fr.onload=null; fr.srcdoc=pvMsg('Não consegui carregar a prévia ('+(e.message||e)+').'); note.textContent='';
+  }
+}
+// Links DENTRO da prévia (o quadro não roda roteiro — quem cuida é esta página):
+//  · "#story3" (o índice "Sector headlines" do e-mail, o "Back to headlines"): rola a própria prévia.
+//    Num srcdoc um "#…" é lido contra o endereço DESTA aba e carregaria a aba Clipping dentro do quadro;
+//  · site de fora ("Open at Valor", relatórios): abre em aba nova (dentro do quadro a maioria recusa abrir).
+function pvLinks(){
+  const fr=document.getElementById('pv-frame'), doc=fr && fr.contentDocument; if(!doc) return;
+  doc.addEventListener('click', function(ev){
+    const a=ev.target && ev.target.closest ? ev.target.closest('a[href]') : null; if(!a) return;
+    const h=a.getAttribute('href')||'';
+    if(h.charAt(0)==='#'){
+      ev.preventDefault();
+      const id=decodeURIComponent(h.slice(1));
+      const el=id ? (doc.getElementById(id) || doc.getElementsByName(id)[0]) : null;
+      if(el) el.scrollIntoView({block:'start'});
+    } else if(/^(https?|mailto):/i.test(h)){
+      ev.preventDefault(); window.open(a.href,'_blank','noopener');
+    }
+  });
 }
 function pvNota(){
   const note=document.getElementById('pv-note'); if(!note) return;
