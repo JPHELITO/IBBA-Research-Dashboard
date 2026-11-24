@@ -651,8 +651,10 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
 
 // ── render: global peers ────────────────────────────────────────────────────
 // Global Peers: preço AO VIVO (aba Market) + múltiplos SNAPSHOT (consenso do arquivo). Agrupado por setor.
-function sgRenderPeers(peers,priceByKey){
+function sgRenderPeers(peers,priceByKey,config){
   peers=peers||[]; priceByKey=priceByKey||{};
+  // anos = os da comp table (vêm da planilha; a aba de peers é do mesmo arquivo e dos mesmos anos — o /admin confere)
+  const y1=(config&&config.y1_label)||'26E', y2=(config&&config.y2_label)||'27E';
   const lp=(sym)=>{ if(!sym)return null; const tries=[sym,_short(sym)]; if(!/\./.test(sym))tries.push(sym+'.SA');
     for(const t of tries){ if(priceByKey[t]!=null)return priceByKey[t]; } return null; };
   const mult=(p,yr)=>{ const pe=n(p['pe_'+yr]), pce=n(p['pce_'+yr]); return pe!=null?pe:(pce!=null?pce:null); };
@@ -665,7 +667,7 @@ function sgRenderPeers(peers,priceByKey){
     <tr><th class="l" rowspan="2">Company</th><th rowspan="2">Ctry</th><th rowspan="2">Price<br><span class="muted">live</span></th>
       <th class="grp-th" colspan="2">EV/EBITDA</th><th class="grp-th" colspan="2">Net Debt/EBITDA</th>
       <th class="grp-th" colspan="2">P/E · P/CE</th><th class="grp-th" colspan="2">Div yield</th></tr>
-    <tr>${['EV','ND','PE','DY'].map(()=>`<th class="grp-th">26E</th><th>27E</th>`).join('')}</tr></thead>`;
+    <tr>${['EV','ND','PE','DY'].map(()=>`<th class="grp-th">${esc(y1)}</th><th>${esc(y2)}</th>`).join('')}</tr></thead>`;
   const pair=(a,b,f)=>`<td class="num">${f(a)}</td><td class="num">${f(b)}</td>`;
   let body='';
   GROUP_ORDER.forEach(g=>{
@@ -1609,7 +1611,7 @@ async function sgInit(data){
     sgRenderSensitivity(data.tables||[],data.drivers,data.marketValues,res.computed,data.config);
   }
   if(data.peersEnabled===false){ _sgLockPeers(); }
-  else { sgRenderPeers(data.peers||[],data.priceByKey); }
+  else { sgRenderPeers(data.peers||[],data.priceByKey,data.config); }
   _SG={comps:data.comps,config:data.config,isAdmin:data.isAdmin,peers:data.peers||[],peersEnabled:data.peersEnabled,computed:res.computed};
   sgShowTab(_sgTabFromHash());   // respeita #comp/#sens vindo do dropdown do topnav
   if(data.isAdmin && window.IBBAExport) _sgInitExport();   // botões Export (PDF/Excel) só p/ admin
@@ -1659,7 +1661,7 @@ async function sgTickLive(){
     const live=await sgFetchLive(_SG.comps,peerSyms);
     const res=sgRenderComps(_SG.comps,_SG.config,live.priceByKey,_SG.isAdmin,live.fxRates);
     _SG.computed=res.computed; if(typeof _SENS_CTX!=='undefined'&&_SENS_CTX)_SENS_CTX.comps=res.computed;
-    if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey);
+    if(_SG.peersEnabled!==false) sgRenderPeers(_SG.peers||[],live.priceByKey,_SG.config);
     // grade 6-D: recalcula os múltiplos vivos (market cap) da abinha aberta — sem rebuild/refetch
     if(typeof _G6_TABS!=='undefined'&&_G6_TABS.length){ const tab=_G6_TABS[_curG6()];
       if(tab&&tab.t&&_grid6State[tab.t.id]&&_grid6State[tab.t.id].loaded) _g6RenderBody(tab.t); }

@@ -1,0 +1,184 @@
+<!doctype html><meta charset="utf-8"><title>Stock Guide: upload da planilha "2027" (anos, moeda, peers)</title>
+<body><pre id="out">rodando…</pre>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+/* Leitor do .xlsm do Stock Guide (stock-guide-lib.js) depois da planilha "2027" (24/11/2026):
+   - os 2 anos-estimativa saem do cabeçalho da aba Summary (26E/27E → 27E/28E), não do código;
+   - EBITDA = o denominador do EV/EBITDA da aba ("Adjusted EBITDA" / "Proforma EBITDA");
+   - moeda-base DECLARADA no SG_COVERAGE (as 4 de cobre: negociam em C$, estimativas em US$); câmbio da aba
+     "Stock Guide"; o market cap da aba só é conferido (C$ rotulado "USD", #N/A → aviso);
+   - "AUD/USD" < 1 vem ao contrário e é invertido; dividendo negativo vira valor absoluto (com aviso);
+   - peers: "Iron Ore Peers" + "Copper Peers" (e "Mining Peers" das planilhas antigas), Glencore;
+   - a comp table decide "base == negociação?" pela moeda gravada (fx_to_base vazio não engana mais).
+   ⚠️ O repositório é PÚBLICO: TODOS os números daqui são fictícios.
+   Rodar: servir a pasta e abrir /tests/test_stock_guide_upload_2027.html                            */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d!==''?'  ['+d+']':''));
+const near=(a,b,t=1e-9)=>typeof a==='number'&&typeof b==='number'&&Math.abs(a-b)<=t*Math.max(1,Math.abs(b));
+
+// ── construtores de planilha fictícia ───────────────────────────────────────
+// Aba de empresa no molde do Stock Guide: cabeçalho (B2..C11, bloco da direita em D/F) + bloco-série com anos.
+function abaEmpresa(o){
+  const A=[]; const put=(r,c,v)=>{ (A[r]=A[r]||[])[c]=v; };
+  const yrs=o.yrs||['2026E','2027E','2028E'];
+  put(1,1,'Last Model Update Release (DD/MM/YEAR):'); put(1,4,'10/11/2026');
+  put(3,1,o.nome);
+  put(4,1,'Stock Ticker'); put(4,2,o.ticker); put(4,3,'Stock Ticker'); put(4,5,o.tickerDir||'#N/A');
+  put(5,1,'Share Price ('+o.moedaPreco+')'); put(5,2,o.preco);
+  put(6,1,'Target Price ('+o.moedaPreco+')'); put(6,2,o.alvo);
+  put(8,1,'Analyst Recommendation'); put(8,2,o.rec||'OP');
+  put(9,1,'Shares Outstanding (m)'); put(9,2,o.acoes);
+  // bloco-série: rótulos na col B, anos nas cols 4.. (E..)
+  put(12,1,o.nome); yrs.forEach((y,i)=>put(12,4+i,y));
+  const serie=(r,rot,vals)=>{ put(r,1,rot); (vals||[]).forEach((v,i)=>put(r,4+i,v)); };
+  const u=o.unid||'USD';
+  serie(13,'Share Price ('+u+')', yrs.map(()=>o.precoSerie!=null?o.precoSerie:o.preco));
+  serie(14,'Shares Outstanding (mn)', yrs.map(()=>o.acoes));
+  serie(15,'Market Capitalization ('+u+' mn)', yrs.map(()=>o.mcSerie));
+  serie(16,'Net Debt ('+u+' m)', o.nd);
+  serie(17,'Adjustments ('+u+' m)', o.adj);
+  if(o.ebAdj!==null) serie(19,(o.rotAdj||'Adjusted EBITDA')+' ('+u+' m)', o.ebAdj);
+  serie(20,'Cash Earnings ('+u+' m)', o.ce);
+  serie(21,'Dividends/Int. on Equity Paid ('+u+' m)', o.div);
+  serie(24,(o.rotEb||'EBITDA')+' ('+(o.unidEb||u)+' m)', o.eb);
+  serie(25,'Net Income  ('+u+' m)', o.ni);
+  serie(29,'EV/EBITDA (x)', yrs.map(()=>1));
+  serie(31,'Net Debt/EBITDA (x)', yrs.map(()=>1));
+  serie(32,'Dividend Yield (%)', yrs.map(()=>0.01));
+  serie(39,'OCF ('+u+' Million)', o.ocf||yrs.map(()=>50));
+  return XLSX.utils.aoa_to_sheet(A);
+}
+function abaSummary(y1,y2){ return XLSX.utils.aoa_to_sheet([[],[null,'Summary'],[],[null,'Company',null,null,null,null,null,null,null,null,'EV/EBITDA (x)'],
+  [null,null,null,null,null,null,null,null,null,null,y1,y2]]); }
+function abaStockGuide(fx){ const lab=[null], val=[null]; Object.keys(fx).forEach(k=>{ lab.push(k); val.push(fx[k]); });
+  return XLSX.utils.aoa_to_sheet([[],lab,[],[],[],[],[],val]); }
+function abaPeers(linhas,anos){ anos=anos||['27E','28E'];
+  const A=[[],[null,'Peers'],[],[null,'Company','Country','Price*','Shares Outstanding','Mkt Cap (USD million)',null,null,null,null,null,null,'EV/EBITDA (x)',null,'Net Debt/EBITDA (x)',null,'P/E (x)',null,'Dividend Yield (%)'],
+    [null,null,null,null,null,null,null,null,null,null,null,null,anos[0],anos[1],anos[0],anos[1],anos[0],anos[1],anos[0],anos[1]],[],[null,'America']];
+  linhas.forEach(l=>A.push([null,l[0],l[1],l[2],100,1000,null,null,null,null,null,null,l[3],l[3]+0.1,0.5,0.6,9,10,0.03,0.04]));
+  return XLSX.utils.aoa_to_sheet(A); }
+function livro(abas){ const wb=XLSX.utils.book_new(); Object.keys(abas).forEach(n=>XLSX.utils.book_append_sheet(wb,abas[n],n)); return wb; }
+
+// empresa-base "toda certa" em R$ e uma "de cobre" (negocia em C$, estimativas em US$), números inventados
+const FX={'BRL/USD':5.5,'CAD/USD':1.25,'AUD/USD':0.8,'MXN/USD':20,'CLP/USD':1000};
+const brl=()=>abaEmpresa({nome:'TESTE BR',ticker:'CSNA3',moedaPreco:'BRL',preco:10,alvo:15,acoes:100,unid:'BRL',
+  mcSerie:1000,nd:[400,500,600],adj:[10,20,30],ebAdj:[190,290,390],eb:[200,300,400],ce:[80,90,100],div:[20,30,40],ni:[50,60,70]});
+const cobre=(extra)=>abaEmpresa(Object.assign({nome:'HUDBAY MINERALS',ticker:'HBM',tickerDir:'HBM',moedaPreco:'CAD',preco:20,alvo:30,acoes:100,
+  unid:'USD',mcSerie:2000,   // = 20 × 100: preço em C$ com rótulo "USD" (o defeito real da planilha "2027")
+  nd:[100,110,120],adj:[50,50,50],ebAdj:[300,320,340],eb:[310,330,350],ce:[150,160,170],div:[-10,-12,-14],ni:[90,95,99]},extra||{}));
+
+window.__RUN__=async function(){
+  // lib fresca (o <script src> pode servir a versão do cache e o teste avaliaria código velho sem avisar)
+  new Function(await (await fetch('/stock-guide-lib.js?v='+Date.now())).text())();
+  ok('a lib expõe detectStockGuideYears', typeof SG.detectStockGuideYears==='function');
+
+  // ── 1. ANOS ──────────────────────────────────────────────────────────────
+  const y27=SG.detectStockGuideYears(livro({'Summary':abaSummary('27E','28E')}));
+  ok('anos da Summary: 27E/28E → 2027E/2028E', y27.y1==='2027E'&&y27.y2==='2028E'&&y27.source==='Summary', JSON.stringify(y27));
+  const y26=SG.detectStockGuideYears(livro({'Summary':abaSummary('26E','27E')}));
+  ok('planilha antiga (26E/27E) continua 2026E/2027E', y26.y1==='2026E'&&y26.y2==='2027E');
+  const ysem=SG.detectStockGuideYears(livro({'Outra':abaSummary('27E','28E')}));
+  ok('sem aba Summary → padrão 2026E/2027E, sem fonte', ysem.y1==='2026E'&&ysem.source===null);
+  const yruim=SG.detectStockGuideYears(livro({'Summary':abaSummary('27E','29E')}));
+  ok('anos não consecutivos não são aceitos', yruim.source===null);
+
+  // planilha "2027" mínima: Summary + Stock Guide (câmbio) + a aba CSN (R$) + a da Hudbay (cobre)
+  const wb=livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),'CSN':brl(),'HUDBAY':cobre()});
+  const res=SG.parseStockGuideWorkbook(wb);
+  ok('as únicas falhas do livro mínimo são as abas obrigatórias que ele não tem',
+     res.errors.every(e=>/aba ausente/.test(e)), res.errors.length+' erros');
+  ok('resultado traz os anos', res.years&&res.years.y1==='2027E'&&res.years.y2==='2028E');
+  const csn=res.rows.find(r=>r.ticker==='CSNA3'), hbm=res.rows.find(r=>r.ticker==='HBM');
+  ok('lê as colunas de 2027E/2028E (não 2026E)', csn&&csn.net_debt_y1===500&&csn.net_debt_y2===600, csn&&[csn.net_debt_y1,csn.net_debt_y2]);
+  const wb26=livro({'Summary':abaSummary('26E','27E'),'Stock Guide':abaStockGuide(FX),'CSN':brl()});
+  const csn26=SG.parseStockGuideWorkbook(wb26).rows.find(r=>r.ticker==='CSNA3');
+  ok('planilha antiga continua lendo 2026E/2027E', csn26&&csn26.net_debt_y1===400&&csn26.net_debt_y2===500);
+  const wbFalta=livro({'Summary':abaSummary('28E','29E'),'Stock Guide':abaStockGuide(FX),'CSN':brl()});
+  ok('ano da Summary sem coluna na aba = ERRO que bloqueia (não grava ano errado)',
+     SG.parseStockGuideWorkbook(wbFalta).errors.some(e=>/CSN: não encontrei as colunas 2028E\/2029E/.test(e)));
+
+  // ── 2. EBITDA = denominador do EV/EBITDA da aba ──────────────────────────
+  ok('EBITDA = "Adjusted EBITDA" (linha do EV/EBITDA da aba)', csn.ebitda_y1===290&&csn.ebitda_y2===390, [csn.ebitda_y1,csn.ebitda_y2]);
+  const vale=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),
+    'CSN':abaEmpresa({nome:'X',ticker:'CSNA3',moedaPreco:'BRL',preco:10,alvo:12,acoes:100,unid:'BRL',mcSerie:1000,nd:[1,2,3],adj:[0,0,0],
+      ebAdj:[7,8,9],rotAdj:'Proforma EBITDA',eb:[70,80,90],ce:[1,1,1],div:[1,1,1],ni:[1,1,1]})})).rows[0];
+  ok('"Proforma EBITDA" (molde da Vale) também vale', vale.ebitda_y1===8, vale.ebitda_y1);
+  const semAdj=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),
+    'CSN':abaEmpresa({nome:'X',ticker:'CSNA3',moedaPreco:'BRL',preco:10,alvo:12,acoes:100,unid:'BRL',mcSerie:1000,nd:[1,2,3],adj:[0,0,0],
+      ebAdj:null,eb:[70,80,90],ce:[1,1,1],div:[1,1,1],ni:[1,1,1]})})).rows[0];
+  ok('sem linha ajustada → "EBITDA (" como antes', semAdj.ebitda_y1===80, semAdj.ebitda_y1);
+
+  // ── 3. MOEDA ─────────────────────────────────────────────────────────────
+  ok('câmbio: CAD/USD lido', near(res.fxRates.CAD,1.25), res.fxRates.CAD);
+  ok('câmbio: "AUD/USD" 0,8 (US$ por A$) invertido → 1,25 A$ por US$', near(res.fxRates.AUD,1.25), res.fxRates.AUD);
+  ok('câmbio: BRL/USD 5,5 não é invertido', near(res.fxRates.BRL,5.5));
+  ok('cobre: negocia em CAD, estimativas em USD', hbm&&hbm.trade_ccy==='CAD'&&hbm.base_ccy==='USD', hbm&&(hbm.trade_ccy+'→'+hbm.base_ccy));
+  ok('cobre: fx_to_base = US$ por C$ do câmbio da aba Stock Guide (1/1,25), NÃO o 1 do market cap rotulado errado',
+     near(hbm.fx_to_base,0.8,1e-8)&&near(hbm.fx_to_usd,0.8,1e-8), hbm.fx_to_base);
+  ok('cobre: preço e alvo em C$ (bloco do ticker)', hbm.target_price===30);
+  ok('cobre: aviso do market cap em C$ rotulado US$', res.warnings.some(w=>/HUDBAY: o valor de mercado da aba .*não bate com o câmbio CAD\/USD/.test(w)));
+  ok('R$: base = negociação, fx 1, fx_to_usd = 1/5,5', csn.base_ccy==='BRL'&&csn.fx_to_base===1&&near(csn.fx_to_usd,1/5.5,1e-7));
+  ok('R$: market cap da aba coerente → sem aviso de moeda', !res.warnings.some(w=>/^CSN: o valor de mercado/.test(w)));
+  // market cap da aba em #N/A (vínculo da Bloomberg) numa empresa em US$ que negocia em C$: segue com o câmbio, avisa
+  const na=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),'HUDBAY':cobre({mcSerie:'#N/A'})}));
+  const naH=na.rows.find(r=>r.ticker==='HBM');
+  ok('#N/A no market cap da aba não derruba a moeda (era o bug do EV/EBITDA de 2.000x)', naH&&naH.base_ccy==='USD'&&near(naH.fx_to_base,0.8,1e-8));
+  ok('#N/A no market cap → aviso de "valor de mercado vazio"', na.warnings.some(w=>/HUDBAY: valor de mercado da aba vazio/.test(w)));
+  // sem câmbio na planilha e market cap da aba também inútil: não inventa; avisa
+  const semFx=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'HUDBAY':cobre({mcSerie:'#N/A'})}));
+  const sfH=semFx.rows.find(r=>r.ticker==='HBM');
+  ok('sem câmbio em lugar nenhum → fx_to_base vazio (a página usa o ao vivo), base segue USD', sfH&&sfH.fx_to_base===null&&sfH.base_ccy==='USD');
+  ok('…e avisa', semFx.warnings.some(w=>/HUDBAY: sem câmbio CAD\/USD na planilha/.test(w)));
+  // rótulo da aba diz uma moeda, o cadastro outra → aviso (não troca sozinho)
+  const rot=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),'HUDBAY':cobre({unid:'BRL',mcSerie:1600})}));
+  ok('estimativas rotuladas em BRL numa empresa cadastrada em USD → aviso', rot.warnings.some(w=>/HUDBAY: a aba diz que as estimativas estão em BRL, o cadastro da dash diz USD/.test(w)));
+
+  // ── 4. DIVIDENDO NEGATIVO ────────────────────────────────────────────────
+  ok('dividendo com sinal de saída de caixa vira valor absoluto', hbm.dividends_y1===12&&hbm.dividends_y2===14, [hbm.dividends_y1,hbm.dividends_y2]);
+  ok('…com UM aviso', res.warnings.filter(w=>/HUDBAY: dividendos com sinal negativo/.test(w)).length===1);
+  ok('dividendo positivo fica como está', csn.dividends_y1===30&&csn.dividends_y2===40);
+
+  // ── 5. ORDEM (display_order = ordem da Summary: cobre logo depois da Southern Copper) ──
+  const ord=SG.SG_COVERAGE.map(c=>c.ticker);
+  ok('ordem: SCCO → CS → ERO → HBM → LUN → AUGO', ord.indexOf('CS')===ord.indexOf('SCCO')+1&&ord.indexOf('LUN')===ord.indexOf('AUGO')-1, ord.join(','));
+  ok('toda empresa do cadastro tem base_ccy declarada', SG.SG_COVERAGE.every(c=>/^[A-Z]{3}$/.test(c.base_ccy||'')));
+  ok('as 4 de cobre: C$ → US$', ['HBM','LUN','CS','ERO'].every(t=>{ const c=SG.SG_COVERAGE.find(x=>x.ticker===t); return c.trade_ccy==='CAD'&&c.base_ccy==='USD'; }));
+  ok('empresa nova recebe display_order pela posição no cadastro', hbm.display_order===ord.indexOf('HBM')+1);
+
+  // ── 6. PEERS ─────────────────────────────────────────────────────────────
+  const wbp=livro({'Iron Ore Peers':abaPeers([['BHP Billiton PLC','AU',50,6],['Glencore','SZ',400,5]]),
+                   'Copper Peers':abaPeers([['Hudbay Minerals','CA',20,9],['BHP Billiton PLC','AU',50,7],['Barrick','CA',30,4],['First Quantum','CA',25,8]]),
+                   'Gold Peers':abaPeers([['BARRICK MINING C','CA',30,3]]),
+                   'Steel Peers':abaPeers([['Nucor Corp','US',150,7]]),'Pulp & Paper Peers':abaPeers([['UPM','FI',30,8]])});
+  const pr=SG.parseStockGuidePeers(wbp,{y1:'2027E',y2:'2028E'});
+  const sym=pr.rows.map(p=>p.yahoo_symbol);
+  ok('Iron Ore + Copper Peers lidos; Glencore entra (GLEN.L)', sym.includes('GLEN.L')&&sym.includes('BHP'), sym.join(','));
+  ok('BHP só uma vez, da 1ª aba (Iron Ore)', sym.filter(s=>s==='BHP').length===1&&pr.rows.find(p=>p.yahoo_symbol==='BHP').ev_ebitda_y1===6);
+  ok('Barrick sai da aba do OURO (Gold antes de Copper)', pr.rows.find(p=>p.yahoo_symbol==='B').sector==='gold');
+  ok('coberta (Hudbay) e sem cotação (First Quantum) ficam fora', !pr.rows.some(p=>/hudbay|first quantum/i.test(p.company)));
+  ok('sem aviso quando as abas novas existem', pr.warnings.length===0, pr.warnings.join(' · '));
+  const prVelha=SG.parseStockGuidePeers(livro({'Mining Peers':abaPeers([['Rio Tinto PLC','GB',70,5]]),'Gold Peers':abaPeers([]),
+    'Steel Peers':abaPeers([]),'Pulp & Paper Peers':abaPeers([])}),{y1:'2027E',y2:'2028E'});
+  ok('planilha antiga: "Mining Peers" aceita no lugar de Iron Ore', prVelha.rows.some(p=>p.yahoo_symbol==='RIO'), prVelha.warnings.join(' · '));
+  ok('…e sem "Copper Peers" não reclama (opcional)', !prVelha.warnings.some(w=>/Copper/.test(w)));
+  const prAno=SG.parseStockGuidePeers(livro({'Iron Ore Peers':abaPeers([['Rio Tinto PLC','GB',70,5]],['26E','27E'])}),{y1:'2027E',y2:'2028E'});
+  ok('peers em ano diferente da comp table → aviso', prAno.warnings.some(w=>/peers em 2026E, a comp table em 2027E/.test(w)));
+
+  // ── 7. COMP TABLE: "base == negociação?" pela moeda gravada ─────────────
+  const linha={ticker:'HBM',company_name:'H',is_visible:true,sector:'copper',yahoo_symbol:'HBM.TO',shares_outstanding:100,target_price:30,
+    net_debt_y1:100,net_debt_y2:110,ebitda_y1:300,ebitda_y2:320,cash_earnings_y1:150,dividends_y1:10,ev_adjustment_y1:50,
+    fx_to_base:1,fx_to_usd:null,base_ccy:'USD',trade_ccy:'CAD'};          // fx_to_base 1 = o que o banco grava quando vem vazio
+  const d=SG.deriveComps([linha],{'HBM.TO':20},{CAD:1.25})[0];
+  ok('negocia C$ / base US$ com fx_to_base=1 gravado: converte pelo câmbio ao vivo', near(d.marketCapBrlMn,20*100/1.25), d.marketCapBrlMn);
+  ok('EV/EBITDA na mão: (1.600 + 100 + 50) / 300', near(d.evEbitdaY1,(1600+100+50)/300), d.evEbitdaY1);
+  ok('upside em C$ contra C$', near(d.upsidePct,30/20-1));
+  const legado=Object.assign({},linha,{base_ccy:null,trade_ccy:'CAD',fx_to_base:0.8});
+  ok('linha sem base_ccy (legado) segue a regra antiga do fx_to_base', near(SG.deriveComps([legado],{'HBM.TO':20},{CAD:1.25})[0].marketCapBrlMn,1600));
+
+  const falhas=R.filter(r=>r.startsWith('FAIL')).length;
+  document.getElementById('out').textContent=
+    R.join('\n')+'\n\n'+(R.length-falhas)+'/'+R.length+' PASS'+(falhas?'  ·  '+falhas+' FAIL':'  ·  tudo verde');
+  window.__RESULT__={total:R.length,falhas:falhas,linhas:R};
+};
+window.__RUN__().catch(e=>{ document.getElementById('out').textContent='ERRO: '+(e&&e.stack||e); window.__RESULT__={erro:String(e)}; });
+</script>
+</body>

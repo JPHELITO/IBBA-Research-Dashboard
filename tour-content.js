@@ -186,7 +186,7 @@ window.IBBA_TOURS = {
         { id: 'tabs', call: { click: '#sgtab-comp' }, target: '.sg-tabs', title: 'Two views',
           body: '**Comp Table** puts our coverage side by side; **Sensitivity** shows how the numbers move in different scenarios.' },
         { id: 'comps', call: { click: '#sgtab-comp' }, target: '#comps-table', clip: 360, title: 'Comp Table',
-          body: 'Rating, target price and upside next to EV/EBITDA, net debt/EBITDA, P/CE and yields for 2026E and 2027E, grouped by sector.' },
+          body: 'Rating, target price and upside next to EV/EBITDA, net debt/EBITDA, P/CE and yields for the two estimate years in the header, grouped by sector.' },
         { id: 'live', call: { click: '#sgtab-comp' }, target: '#px-fresh', title: 'Live multiples',
           body: 'Multiples are recomputed from live prices and FX. This line tells you how fresh the quotes are.' },
         { id: 'models', call: { click: '#sgtab-comp' }, target: '#comps-table .model-dl', title: 'Open the model',
