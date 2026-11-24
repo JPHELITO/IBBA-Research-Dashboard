@@ -166,6 +166,7 @@ html,body{font-family:var(--font);background:var(--gray-light);color:var(--gray-
 
 /* ── KPI CARDS ───────────────────────────────────────────────────────────── */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px;}
+.kpi-row.k3{grid-template-columns:repeat(3,1fr);}   /* celulose (SECEX): 3 KPIs desde que o preço médio saiu (23/11/2026) */
 .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
   padding:15px 17px;border-top:3px solid var(--orange);box-shadow:var(--shadow);}
 .kpi-label{font-size:9.5px;color:var(--gray-mid);text-transform:uppercase;
@@ -345,6 +346,7 @@ html.dark .inner-tab-bar>.ibba-slide{background:var(--orange);}
   .charts-row{gap:10px;margin-bottom:10px;}
   .charts-row.c2,.charts-row.c3{grid-template-columns:1fr;}
   .kpi-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .kpi-row.k3{grid-template-columns:1fr 1fr;}
   .chart-card{padding:12px 12px 14px;}
   .chart-title{font-size:12px;line-height:1.35;}
   .chart-sub{font-size:10px;line-height:1.4;margin-bottom:8px;}
@@ -575,7 +577,7 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
   <!-- ── SECEX TAB ── -->
   <div id="pl-tab-secex" class="inner-tab-content active">
-    <div class="kpi-row" id="pl-kpis"></div>
+    <div class="kpi-row k3" id="pl-kpis"></div>
     <div class="charts-row c2">
       <div class="chart-card">
         <div class="chart-title">Pulp Export Volume (kton)</div>
@@ -588,16 +590,12 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
         <div class="chart-wrap h240"><canvas id="pl-yoy"></canvas></div>
       </div>
     </div>
-    <div class="charts-row c2">
+    <!-- o gráfico "Average Export Price" (SECEX, receita ÷ volume) saiu em 23/11/2026, a pedido do usuário -->
+    <div class="charts-row c1">
       <div class="chart-card">
         <div class="chart-title">Pulp Export Revenue (US$ mn)</div>
         <div class="chart-sub">SECEX · FOB value</div>
         <div class="chart-wrap h220"><canvas id="pl-rev"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Average Export Price (US$/t)</div>
-        <div class="chart-sub">SECEX · revenue ÷ volume</div>
-        <div class="chart-wrap h220"><canvas id="pl-price"></canvas></div>
       </div>
     </div>
     <div class="charts-row c1">
@@ -900,7 +898,7 @@ let portState={metric:'volume_ktons', ports:null};
 const DEST_PRODUCTS=[{k:'total',l:'Total'},{k:'hardwood',l:'Hardwood'},{k:'softwood',l:'Softwood'},
   {k:'ukp',l:'UKP'},{k:'dissolving',l:'Dissolving & Mechanical'}];
 const DEST_METRICS=[{k:'volume',l:'Volume (kton)'},{k:'revenue',l:'Revenue (US$ mn)'},
-  {k:'share',l:'Share (%)'},{k:'price',l:'Avg price (US$/t)'}];
+  {k:'share',l:'Share (%)'}];   // o preço médio por destino (SECEX, receita ÷ volume) saiu em 23/11/2026, a pedido do usuário
 let destState={product:'total', metric:'volume', countries:null};   // null = top 5 + Others da janela
 // Fornecedores de cavaco (sincronizar com montar_gacc.NAMED_COUNTRIES + extractor_pp).
 const GACC_COUNTRIES=['Vietnam','Australia','Thailand','Chile','Brazil','Indonesia','South Africa','Uruguay','New Zealand','Russia'];
@@ -1639,9 +1637,7 @@ function renderPulpSecex(){
     const last=full[li];
     const volMoM=deltaOf(full,'volume_ktons',li);
     const volYoY=yoyOf(full,'volume_ktons',li,full);
-    const price=last.volume_ktons?last.revenue_usd_mn*1000/last.volume_ktons:null;
-    const pPrev=full[li-1];const priceP=pPrev&&pPrev.volume_ktons?pPrev.revenue_usd_mn*1000/pPrev.volume_ktons:null;
-    const priceMoM=(price!=null&&priceP)?(price-priceP)/priceP:null;
+    const revMoM=deltaOf(full,'revenue_usd_mn',li), revYoY=yoyOf(full,'revenue_usd_mn',li,full);   // (o preço médio da SECEX saiu em 23/11/2026)
     const ytd=full.filter(r=>r.year===last.year).reduce((s,r)=>s+(r.volume_ktons||0),0);
     const ytdPrev=full.filter(r=>r.year===last.year-1&&r.month<=last.month).reduce((s,r)=>s+(r.volume_ktons||0),0);
     const ytdYoY=ytdPrev?(ytd-ytdPrev)/ytdPrev:null;
@@ -1649,8 +1645,7 @@ function renderPulpSecex(){
       kpiCard(`Volume · ${fmtPeriod(last.period)}`,fmtK(last.volume_ktons),'kt',
         `MoM ${pctSpan(volMoM)} · YoY ${pctSpan(volYoY)}`)+
       kpiCard('Revenue',fmtK(last.revenue_usd_mn),'US$mn',
-        `Avg price ${price!=null?Math.round(price):'—'} US$/t`)+
-      kpiCard('Avg Price',price!=null?Math.round(price):'—','US$/t',`MoM ${pctSpan(priceMoM)}`)+
+        `MoM ${pctSpan(revMoM)} · YoY ${pctSpan(revYoY)}`)+
       kpiCard(`YTD Volume · ${last.year}`,fmtK(ytd),'kt',`vs ${last.year-1} ${pctSpan(ytdYoY)}`);
   }
 
@@ -1662,7 +1657,6 @@ function renderPulpSecex(){
     yoyV.map(v=>v==null?'#ddd':v>=0?C_GN:C_RD),'YoY %')],PCT_TICK);
 
   mkChart('pl-rev','line',lbs,[areaDs(arr.map(r=>r.revenue_usd_mn),C_BK,0.10,'Revenue (US$ mn)')],YINT);
-  mkChart('pl-price','line',lbs,[lineDs(arr.map(r=>r.price!=null?+r.price.toFixed(1):null),C_OR,'Avg Price (US$/t)')],YINT);
   mkChart('pl-vwd','bar',lbs,[barDs(arr.map(r=>r.vwd!=null?+r.vwd.toFixed(2):null),C_OR_A(0.7),'kton/day')],
     {scales:{y:{ticks:{callback:v=>v==null?'':v.toFixed(1)}}}});
 
@@ -2180,16 +2174,14 @@ function _desk(){
       IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
         prefix:'pp', fullAOA:cid=>d.fullAOA(cid2key(cid)), titleOf:cid=>d.titleOf(cid2key(cid)), alwaysVisible:true}); },
     sections:{
-      /* PULP › EXPORTS (SECEX): pl-vol, pl-yoy, pl-rev, pl-price, pl-vwd, pl-port, pl-dest, pl-seas + os 4 KPIs */
+      /* PULP › EXPORTS (SECEX): pl-vol, pl-yoy, pl-rev, pl-vwd, pl-port, pl-dest, pl-seas + os KPIs (o preço médio da SECEX saiu em 23/11/2026) */
       'pulp-secex':{
-        label:'Pulp exports', src:'SECEX', stage:'vol', tiles:['vol','rev','price','vwd','china'], views:tabs('pulp','secex'),
+        label:'Pulp exports', src:'SECEX', stage:'vol', tiles:['vol','rev','vwd','china'], views:tabs('pulp','secex'),
         metrics:[
           {id:'vol', label:'Pulp export volume', unit:'kt', dec:0, flow:true, note:'SECEX · all ports',
             comp:()=>({v:_ppMap(SECEX,'volume_ktons')}), calc:(A,c)=>A.sum(c.v)},
           {id:'rev', label:'Pulp export revenue', unit:'US$ mn', dec:0, flow:true, note:'SECEX · FOB value',
             comp:()=>({r:_ppMap(SECEX,'revenue_usd_mn')}), calc:(A,c)=>A.sum(c.r)},
-          {id:'price', label:'Average export price', unit:'US$/t', dec:0, note:'SECEX · revenue ÷ volume',
-            comp:()=>({r:_ppMap(SECEX,'revenue_usd_mn'), v:_ppMap(SECEX,'volume_ktons')}), calc:(A,c)=>F.div(A.sum(c.r),A.sum(c.v),1000)},
           {id:'vwd', label:'Volume per working day', unit:'kt/day', dec:1, noAvg:true, note:'SECEX · volume ÷ Brazilian working days · normalises month length',
             comp:()=>{ const v=_ppMap(SECEX,'volume_ktons'), w={}; for(const p in v) if(CAL[p]) w[p]=CAL[p]; return {v, w}; }, calc:(A,c)=>F.div(A.sum(c.v),A.sum(c.w))},
           {id:'china', label:'China share of volume', unit:'%', dec:1, pp:true, available:()=>DEST.length>0,
@@ -2199,7 +2191,7 @@ function _desk(){
           {id:'port', label:'Ports', tab:'By port', noun:'ports', unit:'kt', unit2:'US$ mn', title:'Pulp exports by port', rankByMode:true,
             modes:[['volume','Volume (kton)'],['revenue','Revenue (US$ mn)'],['share','Share (%)']], entities:()=>_ppEnt('port',SECEX,'port')},
           {id:'dest', label:'Countries', tab:'By destination', noun:'destinations', lead:'China', unit:'kt', unit2:'US$ mn', title:'Pulp exports by destination', available:()=>DEST.length>0,
-            modes:[['volume','Volume (kton)'],['revenue','Revenue (US$ mn)'],['share','Share (%)'],['price','Avg price (US$/t)']], priceK:1000, priceUnit:'US$/t', allLabel:'All destinations',
+            modes:[['volume','Volume (kton)'],['revenue','Revenue (US$ mn)'],['share','Share (%)']], allLabel:'All destinations',
             pills:()=>DEST_PRODUCTS.map(d=>({k:d.k,l:d.l})), entities:(x,pill)=>{ const pr=pill?pill.k:'total'; return _ppEnt('dest|'+pr,DEST,'country',pr==='total'?null:r=>r.product===pr); }},
         ],
       },
@@ -2255,7 +2247,7 @@ function _desk(){
       builder:{
         label:'Builder', builder:true, order:['pulp-secex','pulp-gacc','paper-iba','paper-corr'],
         presets:[
-          {n:'Pulp exports: volume vs price', s:['pulp-secex.vol.total','pulp-secex.price.total'], v:'level', g:'monthly', w:'3y'},
+          {n:'Pulp exports: total vs China', s:['pulp-secex.vol.total','pulp-secex~dest~total~China'], v:'level', g:'monthly', w:'3y', tip:'Brazilian pulp exports in total and to China, in thousand tonnes (SECEX)'},
           {n:'China: pulp vs woodchips', s:['pulp-secex~dest~total~China','pulp-gacc.vol.total'], v:'index', g:'monthly', w:'5y', tip:'Brazilian pulp shipped to China against China woodchip imports, both rebased to 100'},
           {n:'Paper: production vs domestic sales', s:['paper-iba.prod.total','paper-iba.dom.total'], v:'level', g:'monthly', w:'3y'},
           {n:'Corrugated vs paper packaging', s:['paper-corr.ship.total','paper-iba.prod.packaging'], v:'level', g:'monthly', w:'3y'},
@@ -2265,7 +2257,7 @@ function _desk(){
       overview:{
         label:'Overview',
         overview:[
-          {sec:'pulp-secex',metric:'vol'},{sec:'pulp-secex',metric:'price'},{sec:'pulp-secex',metric:'rev'},{sec:'pulp-secex',metric:'china'},
+          {sec:'pulp-secex',metric:'vol'},{sec:'pulp-secex',metric:'rev'},{sec:'pulp-secex',metric:'china'},
           {sec:'pulp-gacc',metric:'vol'},{sec:'pulp-gacc',metric:'price'},{sec:'pulp-gacc',metric:'vn'},
           {sec:'paper-iba',metric:'prod'},{sec:'paper-iba',metric:'dom'},{sec:'paper-iba',metric:'cons'},{sec:'paper-iba',metric:'pen'},
           {sec:'paper-corr',metric:'ship'},{sec:'paper-corr',metric:'expday'},

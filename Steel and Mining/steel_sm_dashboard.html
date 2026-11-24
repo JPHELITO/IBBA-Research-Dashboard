@@ -1691,7 +1691,7 @@ function fullChartAOA(id){
 /* Tabelas que a página carrega = as 11 do `steel_sm_web.db.gz`
    (allowlist do build_web_db.py). ⚠️ Tabela nova lá → adicionar aqui. */
 const RAW_TABLES=[
-  {name:'secex_imports',     label:'SECEX — imports by product',        note:'Monthly Brazilian steel imports by product category: revenue (US$ mn), volume (kton), price (US$/t), working days and YoY. Source: SECEX/MDIC.'},
+  {name:'secex_imports',     label:'SECEX — imports by product',        note:'Monthly Brazilian steel imports by product category: revenue (US$ mn), volume (kton), working days and YoY. Source: SECEX/MDIC.'},
   {name:'secex_exports',     label:'SECEX — exports by product',        note:'Same fields as above, for exports. Source: SECEX/MDIC.'},
   {name:'secex_country',     label:'SECEX — by country of origin/destination', note:'The full breakdown behind the origin charts: period × direction × product category × country, in kton and US$ mn. Country names come in Portuguese, as published by SECEX.'},
   {name:'iabr_production',   label:'IABr — production',                 note:'Crude steel, flat, long, semi-finished, slabs, billets and pig iron (kton). Source: Instituto Aço Brasil.'},
@@ -1713,7 +1713,11 @@ function _tableAOA(db,name){
   // na cópia web a secex_country é guardada por direção+categoria (V1); a base bruta sai em ordem de data
   const res=db.exec(`SELECT * FROM "${name}"`+(name==='secex_country'?' ORDER BY period,direction,category,country':''));
   if(!res||!res[0]) return [['(empty)']];
-  return [res[0].columns].concat(res[0].values);
+  // sem o preço calculado com dado da SECEX (price_usd_ton = receita ÷ volume, feito pelo nosso robô): fora a pedido do
+  // usuário em 23/11/2026, como nos gráficos. As outras colunas saem como estão no banco.
+  const cols=res[0].columns, keep=cols.map((c,i)=>c==='price_usd_ton'?-1:i).filter(i=>i>=0);
+  if(keep.length===cols.length) return [cols].concat(res[0].values);
+  return [keep.map(i=>cols[i])].concat(res[0].values.map(r=>keep.map(i=>r[i])));
 }
 
 async function openRawData(){
