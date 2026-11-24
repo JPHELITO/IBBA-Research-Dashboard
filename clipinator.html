@@ -439,7 +439,7 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
           <div class="hl-h">Destaques do dia <span>— edite antes de mandar</span></div>
           <div id="hl-rows"></div>
           <div class="hl-pend" id="hl-pend" hidden></div>
-          <button class="btn" id="hl-apply" disabled>Atualizar HTML e e-mail com o texto editado (sem IA)</button>
+          <button class="btn" id="hl-apply" disabled>Atualizar HTML e e-mail com o texto editado</button>
         </div>
         <button class="btn" id="bl-copy" disabled>Copiar</button>
         <div class="gen-status" id="bl-status"></div>
@@ -1501,7 +1501,7 @@ async function generateAll(opts){
     st.className='gen-status err'; st.textContent='Erro ao enfileirar: '+(e.message||e); btn.disabled=false; return;
   }
   st.innerHTML='<span class="spin2"></span> '+(semIA
-    ? 'Refazendo HTML e e-mail com os destaques editados (sem IA)… (~2 min)'
+    ? 'Refazendo HTML e e-mail com os destaques editados… (~2 min)'
     : 'Gerando Word, destaques, HTML e e-mail… (~3 min)');
   while(Date.now()-t0 < 8*60*1000){                 // teto de 8 min (o Word sozinho já tinha 6)
     await new Promise(r=>setTimeout(r,4000));
@@ -1527,7 +1527,7 @@ async function generateAll(opts){
     const min=((Date.now()-t0)/60000).toFixed(1).replace('.',',');
     st.className='gen-status '+(av.length?'warn':'ok');
     st.innerHTML=(semIA
-      ? '✓ HTML e e-mail refeitos em '+min+' min com os destaques editados (sem IA)'
+      ? '✓ HTML e e-mail refeitos em '+min+' min com os destaques editados'
       : '✓ Pronto em '+min+' min'+(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':''))
       +'. Arquivos logo abaixo; o texto do blast está no quadro seguinte.'
       +(av.length?'<br>⚠ '+av.join(' · '):'');
@@ -1586,7 +1586,7 @@ function pvNota(){
 // Português = o blast e o HTML do WhatsApp; inglês = o e-mail. A edição muda NA HORA o texto do
 // blast e a prévia; "Atualizar HTML e e-mail" carimba o texto editado como o oficial do dia (o
 // Weekly lê dali) e refaz os arquivos SEM IA (job config.tudo com ia:false). Inglês vazio = o
-// robô traduz aquele item pelo Google (sem IA).
+// robô traduz aquele item (tradutor do clipping; Google de reserva).
 const HL={data:'', pt:[], en:[], prov:'', pend:false};
 function hlCarregar(pt, en, prov, data){
   HL.data=data||''; HL.pt=(pt||[]).slice(); HL.en=(en||[]).slice(); HL.prov=prov||''; HL.pend=false;
@@ -1599,7 +1599,7 @@ function hlRender(){
   rows.innerHTML=HL.pt.map(function(t,i){
     return '<div class="hl-row"><span class="hl-n">'+(i+1)+'</span><div class="hl-f">'
       +'<label>Português — blast e HTML do WhatsApp</label><textarea rows="3" data-i="'+i+'" data-l="pt">'+esc(t)+'</textarea>'
-      +'<label>Inglês — e-mail</label><textarea rows="3" data-i="'+i+'" data-l="en" placeholder="vazio = o robô traduz pelo Google">'+esc(HL.en[i]||'')+'</textarea>'
+      +'<label>Inglês — e-mail</label><textarea rows="3" data-i="'+i+'" data-l="en" placeholder="vazio = o robô traduz (tradutor do clipping)">'+esc(HL.en[i]||'')+'</textarea>'
       +'</div></div>';
   }).join('');
   rows.querySelectorAll('textarea').forEach(function(ta){ ta.addEventListener('input', hlInput); });
