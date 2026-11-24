@@ -71,7 +71,41 @@ function esperar(fr){ return new Promise(res=>{
   ok('…e o ingles (o do e-mail)', (car.destaques_en||[])[0]==='Iron ore up 3%');
   ok('o botao volta a ficar livre no fim', btn.disabled===false);
 
-  // ── 4) falhas viram aviso, nunca silencio ────────────────────────────────────
+  // ── 4) editar os destaques antes de mandar ───────────────────────────────────
+  const ed=D.getElementById('hl-edit');
+  ok('o editor aparece com os destaques gerados', !ed.hidden && D.querySelectorAll('#hl-rows .hl-row').length===1);
+  ok('o botao de atualizar nasce travado (nada editado)', D.getElementById('hl-apply').disabled===true);
+  const tPT=D.querySelector('#hl-rows textarea[data-l="pt"]'), tEN=D.querySelector('#hl-rows textarea[data-l="en"]');
+  tPT.value='Minério sobe 4% (editado)'; tPT.dispatchEvent(new Event('input'));
+  tEN.value='Iron ore up 4% (edited)'; tEN.dispatchEvent(new Event('input'));
+  await new Promise(r=>setTimeout(r,200));
+  ok('editar o portugues muda o texto do blast NA HORA', D.getElementById('bl-out').value.indexOf('Minério sobe 4% (editado)')>=0);
+  ok('…avisa que os arquivos ainda tem o texto anterior', !D.getElementById('hl-pend').hidden);
+  ok('…e destrava o "Atualizar HTML e e-mail"', D.getElementById('hl-apply').disabled===false);
+  // a previa do e-mail troca o texto do destaque marcado (data-hl) sem baixar nada de novo
+  C.PV.mail={ref_date:'2026-11-24',preview_path:'data:text/html,<p data-hl="0">Iron ore up 3%</p>'};
+  C.PV.cache={}; D.getElementById('clip-preview').open=true; await W.pvShow('email');
+  await new Promise(r=>setTimeout(r,500));
+  const pv=D.getElementById('pv-frame').contentDocument.querySelector('[data-hl="0"]');
+  ok('a previa do e-mail mostra o ingles editado', pv && pv.textContent==='Iron ore up 4% (edited)', pv&&pv.textContent);
+  chamadas.length=0;
+  W.rpc=async(nome,args)=>{ chamadas.push([nome,JSON.parse(JSON.stringify(args||{}))]);
+    if(nome==='admin_enqueue_clipping') return 'job-ed';
+    if(nome==='admin_get_clipping_job') return [{id:'job-ed',status:'done',ref_date:'2026-11-24',
+      docx_path:'https://s/w3',eml_path:'https://s/e3',preview_path:'https://s/p3',errors:[],finished_at:new Date().toISOString(),
+      config:{blast:{destaques:['Minério sobe 4% (editado)'],destaques_en:['Iron ore up 4% (edited)'],provedor:'gemini'},
+              whatsapp:{url:'https://s/wa3'},tudo:{email_novo:true}}}];
+    return null; };
+  await W.hlAplicar();
+  const e2=chamadas.filter(c=>c[0]==='admin_enqueue_clipping');
+  const c2=(e2[0]||[])[1]&&e2[0][1].p_config||{}, h2=(c2.blast_highlights||{})['2026-11-24']||{};
+  ok('atualizar = UM job, SEM IA', e2.length===1 && c2.tudo && c2.tudo.ia===false, JSON.stringify(c2.tudo));
+  ok('…levando o texto editado nas duas linguas',
+     (h2.destaques||[])[0]==='Minério sobe 4% (editado)' && (h2.destaques_en||[])[0]==='Iron ore up 4% (edited)');
+  ok('o editado vira o oficial do dia (Weekly)', !!((C.S.config.blast_highlights||{})['2026-11-24']||{}).editado);
+  ok('no fim o aviso de "editado" some', D.getElementById('hl-pend').hidden===true);
+
+  // ── 5) falhas viram aviso, nunca silencio ────────────────────────────────────
   W.rpc=async(nome)=>{
     if(nome==='admin_enqueue_clipping') return 'job-2';
     if(nome==='admin_get_clipping_job') return [{id:'job-2',status:'done',ref_date:'2026-11-24',

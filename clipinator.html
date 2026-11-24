@@ -165,6 +165,28 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .steps-sep[open]>summary::before{content:'▾ ';}
 .steps-sep>summary:hover{color:var(--black);}
 .steps-sep .gen{border-top:1px dashed var(--border);}
+.pv-fold{margin-top:14px;}
+.pv-sub{font-weight:400;color:var(--gray-mid);font-size:11px;margin-left:6px;}
+.pv-bar{display:flex;align-items:center;gap:12px;padding:8px 12px;flex-wrap:wrap;border-top:1px solid var(--border);}
+.pv-tabs{display:inline-flex;gap:4px;}
+.pv-tab,.pv-wb{border:1px solid var(--border);background:var(--bg);color:var(--black);border-radius:7px;padding:5px 12px;font:600 11.5px var(--font);cursor:pointer;}
+.pv-tab.on{background:var(--orange);border-color:var(--orange);color:#fff;}
+.pv-wb.on{background:var(--black);border-color:var(--black);color:var(--bg);}
+.pv-note{font-size:11px;color:var(--gray-mid);}
+.pv-note b{color:var(--orange);font-weight:600;}
+.pv-wrap{background:#e9e9e6;border-top:1px solid var(--border);display:flex;justify-content:center;}
+html.dark .pv-wrap{background:#0b0d10;}
+#pv-frame{width:100%;height:780px;border:0;background:#fff;display:block;transition:width .2s;}
+#pv-frame.cel{width:390px;}
+.hl-edit{margin:2px 0 10px;padding:10px;border:1px solid var(--border);border-radius:9px;}
+.hl-h{font-size:12px;font-weight:700;margin-bottom:4px;} .hl-h span{font-weight:400;color:var(--gray-mid);}
+.hl-row{display:flex;gap:8px;padding:7px 0;border-top:1px dashed var(--border);} .hl-row:first-child{border-top:0;}
+.hl-n{flex:none;width:18px;height:18px;border-radius:50%;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:16px;}
+.hl-f{flex:1;min-width:0;} .hl-f label{display:block;font-size:10.5px;color:var(--gray-mid);margin:2px 0 2px;}
+.hl-f textarea{width:100%;box-sizing:border-box;font:400 12px/1.4 var(--font);padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--black);resize:vertical;}
+.hl-f textarea.mud{border-color:var(--orange);}
+.hl-pend{font-size:11px;color:var(--orange);margin:6px 0 4px;}
+#hl-apply{width:100%;margin-top:6px;}
 .step-hint{font-size:11px;margin:-2px 0 8px;color:var(--gray-mid);} .step-hint.ok{color:var(--green);} .step-hint.warn{color:var(--orange);}
 .gen.blast .btn.primary{width:auto;padding:7px 14px;}
 .bl-hint{font-size:11px;color:var(--gray-mid);}
@@ -411,6 +433,14 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
           <span class="step-sub">pronto para colar no WhatsApp</span>
         </div>
         <div style="margin-bottom:8px"><span class="bl-selo" id="bl-selo" title=""></span></div>
+        <!-- EDITAR OS DESTAQUES antes de mandar: o texto do blast e a prévia mudam na hora; o botão
+             refaz o HTML e o e-mail SEM IA, com o texto editado (que vira o oficial do dia). -->
+        <div class="hl-edit" id="hl-edit" hidden>
+          <div class="hl-h">Destaques do dia <span>— edite antes de mandar</span></div>
+          <div id="hl-rows"></div>
+          <div class="hl-pend" id="hl-pend" hidden></div>
+          <button class="btn" id="hl-apply" disabled>Atualizar HTML e e-mail com o texto editado (sem IA)</button>
+        </div>
         <button class="btn" id="bl-copy" disabled>Copiar</button>
         <div class="gen-status" id="bl-status"></div>
         <textarea id="bl-out" class="bl-out" spellcheck="false" readonly hidden></textarea>
@@ -449,6 +479,27 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
 
     </div>
   </div>
+
+  <!-- PRÉVIA (24/11/2026): mostra os ARQUIVOS que o robô acabou de gerar — o e-mail e o HTML do
+       WhatsApp —, não uma cópia montada aqui (cópia em paralelo diverge do arquivo de verdade).
+       Só baixa o arquivo quando o quadro está aberto. A edição dos destaques aparece aqui na hora. -->
+  <details class="panel ex-fold pv-fold" id="clip-preview">
+    <summary>Prévia — e-mail e HTML do WhatsApp <span class="pv-sub" id="pv-sub"></span></summary>
+    <div class="pv-bar">
+      <div class="pv-tabs">
+        <button type="button" class="pv-tab on" data-pv="email">E-mail</button>
+        <button type="button" class="pv-tab" data-pv="wa">HTML do WhatsApp</button>
+      </div>
+      <div class="pv-tabs pv-w">
+        <button type="button" class="pv-wb on" data-w="full">Computador</button>
+        <button type="button" class="pv-wb" data-w="cel">Celular</button>
+      </div>
+      <span class="pv-note" id="pv-note"></span>
+    </div>
+    <!-- sandbox sem scripts: o HTML do WhatsApp funciona sem JS (é o modo do Android), e a tela
+         consegue trocar o texto dos destaques editados dentro da prévia -->
+    <div class="pv-wrap"><iframe id="pv-frame" title="Prévia" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe></div>
+  </details>
 
   <details class="panel ex-fold" id="clip-extras">
     <summary>Extras — mensagem · publicações · earnings · analistas</summary>
@@ -1323,6 +1374,7 @@ function blRenderSelo(){
                          : '⚠ blast (etapa 2) ainda não feito para '+dd+' — o HTML sai sem os destaques';
     hint.className='step-hint '+(r?'ok':'warn');
   }
+  if(!HL.pend || HL.data!==data) hlCarregar(r?r.destaques:[], r?r.destaques_en:[], r?r.provedor:'', data);
   if(!r){ el.textContent='sem destaques marcados para '+dd; el.className='bl-selo'; return; }
   const q=r.at ? new Date(r.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
   el.textContent='★ '+r.destaques.length+' destaque(s) marcados para '+data.split('-').reverse().join('/')+(q?' · '+q:'');
@@ -1362,6 +1414,7 @@ function waLink(job){
   return '';
 }
 function renderLastJob(job){
+  if(job && job.preview_path){ PV.mail=job; pvAtualiza(); }
   const host=document.getElementById('clip-last'); if(!host) return;
   if(!job || !job.docx_path){ host.hidden=true; host.innerHTML=''; return; }
   const quando=job.finished_at||job.updated_at||job.created_at;
@@ -1387,6 +1440,7 @@ async function loadLastJob(){
 
 // ── Etapa 3: HTML do WhatsApp (job só do HTML, depois do Word e do blast) ───────────
 function renderLastWA(job){
+  if(job && ((job.config||{}).whatsapp||{}).url){ PV.wa=job; pvAtualiza(); }
   const host=document.getElementById('wa-last'); if(!host) return;
   const w=((job&&job.config)||{}).whatsapp||{};
   if(!job || !w.url){ host.hidden=true; host.innerHTML=''; return; }
@@ -1426,11 +1480,12 @@ async function generateWA(){
 // preços e traduções são lidos ENQUANTO o robô trabalha, e os destaques entram quando ele
 // termina. O carimbo do dia (Weekly + e-mail) continua sendo feito por esta tela.
 let _regen = null;                       // o "Gerar de novo com os corpos colados" usa o último botão
-async function generateAll(){
+async function generateAll(opts){
   if(!S.order.length) return;
-  _regen=generateAll;
+  const semIA=!!(opts && opts.semIA);        // "Atualizar HTML e e-mail": usa os destaques editados
+  _regen=semIA ? function(){ return generateAll({semIA:true}); } : generateAll;
   const btn=document.getElementById('all-gen'), st=document.getElementById('all-status');
-  const comIA=document.getElementById('bl-ia').checked;
+  const comIA=!semIA && document.getElementById('bl-ia').checked;
   btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Enfileirando…';
   renderFailures([]);
   const t0=Date.now();
@@ -1445,7 +1500,9 @@ async function generateAll(){
   }catch(e){
     st.className='gen-status err'; st.textContent='Erro ao enfileirar: '+(e.message||e); btn.disabled=false; return;
   }
-  st.innerHTML='<span class="spin2"></span> Gerando Word, destaques, HTML e e-mail… (~3 min)';
+  st.innerHTML='<span class="spin2"></span> '+(semIA
+    ? 'Refazendo HTML e e-mail com os destaques editados (sem IA)… (~2 min)'
+    : 'Gerando Word, destaques, HTML e e-mail… (~3 min)');
   while(Date.now()-t0 < 8*60*1000){                 // teto de 8 min (o Word sozinho já tinha 6)
     await new Promise(r=>setTimeout(r,4000));
     let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:jobId}))||[])[0]; }catch(e){ continue; }
@@ -1457,8 +1514,10 @@ async function generateAll(){
     const c=job.config||{}, b=c.blast||{}, t=c.tudo||{};
     const okPrecos=await precos;
     _blDest=b.destaques||[]; blRender();
+    HL.pend=false;                                   // os arquivos agora têm o texto da tela
     if(_blDest.length) blCarimbar(_blDest, b.provedor, S.order.length, b.destaques_en);
-    blRenderSelo();
+    if(semIA && _blDest.length) S.config.blast_highlights[blDataRef()].editado=true;
+    blRenderSelo();                                  // recarrega o editor com o que ficou valendo
     const av=[];
     if(comIA && !_blDest.length) av.push('saiu sem destaques — a IA falhou'+(b.erro?' ('+esc(b.erro)+')':''));
     if(_blDest.length && !(b.destaques_en||[]).length) av.push('o e-mail saiu sem os destaques (não veio o inglês)');
@@ -1467,15 +1526,131 @@ async function generateAll(){
     if(!okPrecos) av.push('o texto do blast saiu sem os preços');
     const min=((Date.now()-t0)/60000).toFixed(1).replace('.',',');
     st.className='gen-status '+(av.length?'warn':'ok');
-    st.innerHTML='✓ Pronto em '+min+' min'
-      +(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':'')
+    st.innerHTML=(semIA
+      ? '✓ HTML e e-mail refeitos em '+min+' min com os destaques editados (sem IA)'
+      : '✓ Pronto em '+min+' min'+(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':''))
       +'. Arquivos logo abaixo; o texto do blast está no quadro seguinte.'
       +(av.length?'<br>⚠ '+av.join(' · '):'');
     renderFailures(job.errors); renderLastJob(job); renderLastWA(job);
-    btn.disabled=false; return;
+    const pvd=document.getElementById('clip-preview');
+    if(pvd && !pvd.open){ pvd.open=true; } else { pvShow(); }   // abre a prévia do e-mail
+    btn.disabled=false; hlEstado(); return;
   }
   st.className='gen-status err'; st.textContent='Demorou demais. O robô (Actions) pode estar iniciando — tente de novo em 1 min.';
-  btn.disabled=false;
+  btn.disabled=false; hlEstado();
+}
+
+// ── Prévia: o e-mail e o HTML do WhatsApp que o robô gerou ─────────────────────────
+// Os arquivos moram no Storage (links assinados por 7 dias, CORS liberado). Baixa só com o
+// quadro ABERTO e guarda na memória da página — trocar de aba não baixa de novo.
+const PV={mail:null, wa:null, tab:'email', cache:{}};
+function pvUrl(kind){
+  return kind==='wa' ? (PV.wa && ((PV.wa.config||{}).whatsapp||{}).url) : (PV.mail && PV.mail.preview_path);
+}
+function pvMsg(t){
+  return '<body style="margin:0;height:90vh;display:grid;place-items:center;font:13px system-ui,sans-serif;color:#888;background:#fff">'+esc(t)+'</body>';
+}
+function pvAtualiza(){
+  const sub=document.getElementById('pv-sub'), j=PV.mail||PV.wa;
+  if(sub) sub.textContent=j ? '· último gerado: '+_fmtBRT(j.finished_at||j.updated_at||j.created_at) : '';
+  const d=document.getElementById('clip-preview'); if(d && d.open) pvShow();
+}
+async function pvShow(kind){
+  if(kind) PV.tab=kind;
+  document.querySelectorAll('#clip-preview .pv-tab').forEach(function(b){ b.classList.toggle('on', b.dataset.pv===PV.tab); });
+  const fr=document.getElementById('pv-frame'), note=document.getElementById('pv-note'); if(!fr) return;
+  const url=pvUrl(PV.tab);
+  if(!url){ fr.onload=null; fr.srcdoc=pvMsg(PV.tab==='wa' ? 'Ainda não há HTML do WhatsApp gerado.' : 'Ainda não há e-mail gerado.'); note.textContent=''; return; }
+  note.textContent='carregando…';
+  try{
+    let html=PV.cache[url];
+    if(!html){
+      const r=await fetch(url);
+      if(!r.ok) throw new Error(r.status===400||r.status===403 ? 'o link expirou — gere de novo' : 'HTTP '+r.status);
+      html=await r.text(); PV.cache[url]=html;
+    }
+    if(pvUrl(PV.tab)!==url) return;                 // trocou de aba no meio do download
+    fr.onload=function(){ hlPintarPrevia(); pvNota(); };
+    fr.srcdoc=html;
+  }catch(e){ fr.onload=null; fr.srcdoc=pvMsg('Não consegui carregar a prévia ('+(e.message||e)+').'); note.textContent=''; }
+}
+function pvNota(){
+  const note=document.getElementById('pv-note'); if(!note) return;
+  const j=PV.tab==='wa' ? PV.wa : PV.mail;
+  const dd=((j&&j.ref_date)||'').split('-').reverse().join('/');
+  note.innerHTML=(PV.tab==='wa' ? 'HTML do WhatsApp' : 'E-mail')+(dd?' do clipping de '+esc(dd):'')
+    +(HL.pend ? ' · <b>com a sua edição dos destaques — os arquivos ainda têm o texto anterior</b>' : '');
+}
+
+// ── Editar os destaques antes de mandar ───────────────────────────────────────────
+// Português = o blast e o HTML do WhatsApp; inglês = o e-mail. A edição muda NA HORA o texto do
+// blast e a prévia; "Atualizar HTML e e-mail" carimba o texto editado como o oficial do dia (o
+// Weekly lê dali) e refaz os arquivos SEM IA (job config.tudo com ia:false). Inglês vazio = o
+// robô traduz aquele item pelo Google (sem IA).
+const HL={data:'', pt:[], en:[], prov:'', pend:false};
+function hlCarregar(pt, en, prov, data){
+  HL.data=data||''; HL.pt=(pt||[]).slice(); HL.en=(en||[]).slice(); HL.prov=prov||''; HL.pend=false;
+  hlRender();
+}
+function hlRender(){
+  const box=document.getElementById('hl-edit'), rows=document.getElementById('hl-rows'); if(!box||!rows) return;
+  if(!HL.pt.length){ box.hidden=true; rows.innerHTML=''; return; }
+  box.hidden=false;
+  rows.innerHTML=HL.pt.map(function(t,i){
+    return '<div class="hl-row"><span class="hl-n">'+(i+1)+'</span><div class="hl-f">'
+      +'<label>Português — blast e HTML do WhatsApp</label><textarea rows="3" data-i="'+i+'" data-l="pt">'+esc(t)+'</textarea>'
+      +'<label>Inglês — e-mail</label><textarea rows="3" data-i="'+i+'" data-l="en" placeholder="vazio = o robô traduz pelo Google">'+esc(HL.en[i]||'')+'</textarea>'
+      +'</div></div>';
+  }).join('');
+  rows.querySelectorAll('textarea').forEach(function(ta){ ta.addEventListener('input', hlInput); });
+  hlEstado();
+}
+function hlInput(e){
+  const ta=e.target, i=+ta.dataset.i;
+  (ta.dataset.l==='pt' ? HL.pt : HL.en)[i]=ta.value;
+  ta.classList.add('mud'); HL.pend=true; hlEstado();
+  if(ta.dataset.l==='pt') hlBlast();
+  hlPintarPrevia(); pvNota();
+}
+async function hlBlast(){                            // o texto do blast acompanha a edição
+  if(!_blPrices){
+    try{ const r=await Promise.all([blFetchPrices(), blFetchTraducoes(S.order)]); _blPrices=r[0]; _blTrad=r[1]; }
+    catch(e){ console.warn('blast: preços', e); }
+  }
+  _blDest=HL.pt.map(function(x){ return String(x||'').trim(); }); blRender();
+}
+function hlEstado(){
+  const pend=document.getElementById('hl-pend'), ap=document.getElementById('hl-apply'), as_=document.getElementById('all-status');
+  const rodando=!!(as_ && as_.querySelector('.spin2'));
+  if(pend){ pend.hidden=!HL.pend; pend.textContent='Editado — o HTML e o e-mail ainda estão com o texto anterior.'; }
+  if(ap) ap.disabled=!HL.pend || !S.order.length || rodando;
+}
+function hlPintarPrevia(){
+  if(!HL.pend) return;
+  const fr=document.getElementById('pv-frame'), doc=fr && fr.contentDocument; if(!doc) return;
+  const j=PV.tab==='wa' ? PV.wa : PV.mail;
+  if(!j || (j.ref_date||'')!==HL.data) return;      // prévia de outra data: não mexe
+  if(PV.tab==='wa'){
+    doc.querySelectorAll('#hl li.tk').forEach(function(el,i){ if(HL.pt[i]!=null) el.textContent=HL.pt[i]; });
+  } else {
+    doc.querySelectorAll('[data-hl]').forEach(function(el){ const i=+el.dataset.hl; if(HL.en[i]) el.textContent=HL.en[i]; });
+  }
+}
+async function hlAplicar(){
+  if(!HL.pend || !S.order.length) return;
+  const pares=HL.pt.map(function(p,i){ return [String(p||'').trim(), String(HL.en[i]||'').trim()]; })
+                   .filter(function(x){ return x[0]; });
+  const data=blDataRef();
+  if(pares.length){
+    blCarimbar(pares.map(function(x){return x[0];}), HL.prov||'editado pelo analista', S.order.length,
+               pares.map(function(x){return x[1];}));
+    S.config.blast_highlights[data].editado=true;
+  } else {                                            // apagou tudo = o dia fica SEM destaques
+    if(S.config.blast_highlights) delete S.config.blast_highlights[data];
+    saveConfig();
+  }
+  const ap=document.getElementById('hl-apply'); if(ap) ap.disabled=true;
+  await generateAll({semIA:true});
 }
 
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
@@ -2065,7 +2240,14 @@ function wire(){
   document.getElementById('clip-add').onclick=addManual;
   document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
   document.getElementById('clip-gen').onclick=generate;
-  document.getElementById('all-gen').onclick=generateAll;
+  document.getElementById('all-gen').onclick=function(){ generateAll(); };
+  document.getElementById('hl-apply').onclick=hlAplicar;
+  const _pv=document.getElementById('clip-preview');
+  if(_pv) _pv.addEventListener('toggle', function(){ if(_pv.open) pvShow(); });
+  document.querySelectorAll('#clip-preview .pv-tab').forEach(function(b){ b.onclick=function(){ pvShow(b.dataset.pv); }; });
+  document.querySelectorAll('#clip-preview .pv-wb').forEach(function(b){ b.onclick=function(){
+    document.querySelectorAll('#clip-preview .pv-wb').forEach(function(x){ x.classList.toggle('on', x===b); });
+    document.getElementById('pv-frame').classList.toggle('cel', b.dataset.w==='cel'); }; });
   document.getElementById('wa-gen').onclick=generateWA;
   const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
   const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
@@ -2090,7 +2272,7 @@ function wire(){
 
 // hook de teste local (só em localhost) — pula auth e deixa injetar candidatos via window.CLIP
 const CLIPTEST = /[?&]cliptest=1/.test(location.search) && /^(localhost|127\.|\[?::1)/.test(location.hostname);
-window.CLIP={ setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
+window.CLIP={ PV, HL, setCandidates, buildPayload, restoreDraft, suggestSector, suggestTake, togglePick, setTake, setSector, togglePin, pinOf, blRenderPin, renderConfig, renderFailures, renderSources, renderFilters, renderList, toggleSource, srcOf, scraperOf, S,
               cfgParaGravar, blCarimbar, blOficialDoDia, blPodar, CFG_MEUS,
               blEhMinerioPreco, blSgxFrase, blComSgx, blBuild,
               rtClean, rtPlain, rtSync, rtCmd, rtLink, rtUnlink, rtBubble, rtEl, mdToHTML, introHTML, _rtColor, _rtUrl,
