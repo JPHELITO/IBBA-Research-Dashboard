@@ -155,6 +155,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .step-h{gap:7px;margin-bottom:8px;align-items:center;flex-wrap:wrap;} .step-h b{font-size:12.5px;}
 .step-n{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;font-weight:700;flex:none;}
 .step-sub{font-size:10.5px;color:var(--gray-mid);}
+.all-step .btn.primary{padding:11px;font-size:13.5px;}
+.all-ck{display:inline-flex;align-items:center;gap:5px;margin-top:7px;}
+.gen-status.warn{color:var(--orange);}
+.steps-sep{border-top:1px solid var(--border);}
+.steps-sep>summary{cursor:pointer;padding:10px 12px;font-size:11.5px;font-weight:600;color:var(--gray-mid);list-style:none;user-select:none;}
+.steps-sep>summary::-webkit-details-marker{display:none;}
+.steps-sep>summary::before{content:'▸ ';}
+.steps-sep[open]>summary::before{content:'▾ ';}
+.steps-sep>summary:hover{color:var(--black);}
+.steps-sep .gen{border-top:1px dashed var(--border);}
 .step-hint{font-size:11px;margin:-2px 0 8px;color:var(--gray-mid);} .step-hint.ok{color:var(--green);} .step-hint.warn{color:var(--orange);}
 .gen.blast .btn.primary{width:auto;padding:7px 14px;}
 .bl-hint{font-size:11px;color:var(--gray-mid);}
@@ -375,53 +385,67 @@ html.dark .pub-co.on{background:rgba(255,90,20,.18);border-color:rgba(255,120,60
         </div>
       </div>
 
-      <div class="gen">
+      <!-- ★ GERAR TUDO (24/11/2026): UMA rodada do robô faz Word + destaques do blast + HTML do
+           WhatsApp + e-mail (config.tudo; ver news-hunter clipping/generate.py::build_all_from_payload).
+           A IA continua sendo UMA chamada (português p/ o blast, inglês p/ o e-mail). As 3 etapas
+           de antes ficam em "Etapas separadas", logo abaixo — nenhuma função foi tirada. -->
+      <div class="gen all-step">
         <div class="bar step-h">
-          <span class="step-n">1</span><b>Gerar clipping</b>
-          <span class="step-sub">primeira etapa — Word e e-mail</span>
+          <span class="step-n">★</span><b>Gerar tudo</b>
+          <span class="step-sub">Word · blast do WhatsApp · HTML · e-mail — numa rodada só (~3 min)</span>
         </div>
-        <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
-        <div class="gen-status" id="clip-status"></div>
-        <!-- Último clipping gerado: sobrevive a refresh e a sair da página. Os links que o
-             polling escreve em #clip-status moram só na tela; este bloco relê o último job
-             pronto do banco no boot, então o Word já feito nunca mais "some". -->
+        <div class="bl-hint" id="bl-pin" style="margin-bottom:8px"></div>
+        <button class="btn primary" id="all-gen" disabled>Gerar tudo</button>
+        <label class="bl-ck all-ck"><input type="checkbox" id="bl-ia" checked> destaques por IA</label>
+        <div class="gen-status" id="all-status"></div>
+        <!-- Último clipping gerado: sobrevive a refresh e a sair da página (relido do banco no boot). -->
         <div id="clip-last" class="last-clip" hidden></div>
         <div id="clip-fails" class="fails" hidden></div>
       </div>
 
-      <!-- BLAST DO WHATSAPP - monta aqui, no navegador, o texto pronto p/ colar.
-           Precos e manchetes saem do banco (zero IA); so os 3 destaques sao
-           escritos por IA, num job separado e leve. Ver clipping/blast.py. -->
+      <!-- TEXTO DO BLAST: montado aqui, no navegador (preços e manchetes do banco, zero IA); os 3
+           destaques vêm do robô. Serve ao "Gerar tudo" e ao "Gerar blast" das etapas separadas. -->
       <div class="gen blast">
         <div class="bar step-h">
-          <span class="step-n">2</span><b>Blast do WhatsApp</b>
-          <span class="step-sub">depois do Word — lê o texto das matérias que ele guardou</span>
+          <b>Texto do blast</b>
+          <span class="step-sub">pronto para colar no WhatsApp</span>
         </div>
         <div style="margin-bottom:8px"><span class="bl-selo" id="bl-selo" title=""></span></div>
-        <div class="bar" style="gap:6px;margin-bottom:8px">
-          <button class="btn primary" id="bl-gen" disabled>Gerar blast</button>
-          <button class="btn" id="bl-copy" disabled>Copiar</button>
-          <label class="bl-ck"><input type="checkbox" id="bl-ia" checked> destaques por IA</label>
-        </div>
-        <div class="bl-hint" id="bl-pin" style="margin-bottom:8px"></div>
+        <button class="btn" id="bl-copy" disabled>Copiar</button>
         <div class="gen-status" id="bl-status"></div>
         <textarea id="bl-out" class="bl-out" spellcheck="false" readonly hidden></textarea>
         <div class="bl-warn" id="bl-warn" hidden></div>
       </div>
 
-      <!-- HTML DO WHATSAPP (etapa 3): job próprio no robô (config.whatsapp.only) — usa os corpos
-           e traduções que o Word guardou e os destaques que o blast gravou; o link volta em
-           config.whatsapp. Não mexe no "Último clipping gerado" (o job não tem Word). -->
-      <div class="gen wa-step">
-        <div class="bar step-h">
-          <span class="step-n">3</span><b>HTML do WhatsApp</b>
-          <span class="step-sub">por último — leva os destaques do blast</span>
+      <details class="steps-sep" id="steps-sep">
+        <summary>Etapas separadas (como antes)</summary>
+        <div class="gen">
+          <div class="bar step-h">
+            <span class="step-n">1</span><b>Gerar clipping</b>
+            <span class="step-sub">Word e e-mail (formato antigo)</span>
+          </div>
+          <button class="btn primary" id="clip-gen" disabled>Gerar clipping</button>
+          <div class="gen-status" id="clip-status"></div>
         </div>
-        <div class="step-hint" id="wa-step-hint"></div>
-        <button class="btn primary" id="wa-gen" disabled>Gerar HTML</button>
-        <div class="gen-status" id="wa-status"></div>
-        <div id="wa-last" class="last-clip" hidden></div>
-      </div>
+        <div class="gen">
+          <div class="bar step-h">
+            <span class="step-n">2</span><b>Blast do WhatsApp</b>
+            <span class="step-sub">depois do Word — lê o texto das matérias que ele guardou</span>
+          </div>
+          <button class="btn primary" id="bl-gen" disabled>Gerar blast</button>
+        </div>
+        <!-- HTML DO WHATSAPP (etapa 3): job próprio no robô (config.whatsapp.only). -->
+        <div class="gen wa-step">
+          <div class="bar step-h">
+            <span class="step-n">3</span><b>HTML do WhatsApp</b>
+            <span class="step-sub">por último — leva os destaques do blast</span>
+          </div>
+          <div class="step-hint" id="wa-step-hint"></div>
+          <button class="btn primary" id="wa-gen" disabled>Gerar HTML</button>
+          <div class="gen-status" id="wa-status"></div>
+          <div id="wa-last" class="last-clip" hidden></div>
+        </div>
+      </details>
 
     </div>
   </div>
@@ -715,6 +739,8 @@ function renderSel(){
   const wb=document.getElementById('wa-gen'), ws=document.getElementById('wa-status');
   if(wb && !(ws && ws.querySelector('.spin2'))) wb.disabled=!S.order.length;   // não destrava no meio da geração
   const bb=document.getElementById('bl-gen'); if(bb) bb.disabled=!S.order.length;
+  const ab=document.getElementById('all-gen'), as_=document.getElementById('all-status');
+  if(ab && !(as_ && as_.querySelector('.spin2'))) ab.disabled=!S.order.length;
   if(!host) return;
   if(!S.order.length){ host.innerHTML='<div class="empty">Marque notícias à esquerda para montar o clipping.</div>'; return; }
   let html=''; let n=0;
@@ -815,7 +841,7 @@ function renderFailures(errors){
     row.querySelector('.fail-body').oninput=e=>{ if(c){ c._manualBody=e.target.value; saveDraft(); } };
   });
   const rb=document.getElementById('clip-regen');
-  if(rb) rb.onclick=()=>{ host.hidden=true; generate(); };
+  if(rb) rb.onclick=()=>{ host.hidden=true; (_regen||generate)(); };
 }
 
 // ══ BLAST DO WHATSAPP ════════════════════════════════════════════════════════
@@ -1257,7 +1283,7 @@ function blPodar(h){
 // e cancelar (ou fechar a caixa por reflexo) deixava o dia com o destaque VELHO, que era
 // justamente o que o Weekly ia usar. Quem manda é a última geração; a tela só informa o
 // que trocou. Devolve {data, antes}: `antes` é a hora da versão substituída, '' se não havia.
-function blCarimbar(destaques, provedor, nNoticias){
+function blCarimbar(destaques, provedor, nNoticias, destaquesEn){
   if(!destaques || !destaques.length) return null;
   const data=blDataRef();
   S.config.blast_highlights=S.config.blast_highlights||{};
@@ -1266,6 +1292,7 @@ function blCarimbar(destaques, provedor, nNoticias){
     ? new Date(antigo.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
   S.config.blast_highlights[data]={destaques:destaques.slice(), provedor:provedor||null,
                                    n_noticias:nNoticias||0, at:new Date().toISOString()};
+  if(destaquesEn && destaquesEn.length) S.config.blast_highlights[data].destaques_en=destaquesEn.slice();
   blPodar(S.config.blast_highlights);
   saveConfig();
   return {data:data, antes:antes, substituiu:!!antigo};
@@ -1347,6 +1374,7 @@ function renderLastJob(job){
       ? '<span class="lc-old">o link expirou (vale '+SIGN_TTL_D+' dias) — gere de novo</span>'
       : '<a class="dl" href="'+esc(job.docx_path)+'" target="_blank" rel="noopener">⬇ Word (.docx)</a>'
         +(job.eml_path?'<a class="dl" href="'+esc(job.eml_path)+'" target="_blank" rel="noopener">⬇ E-mail (.eml)</a>':'')
+        +waLink(job)
         +(job.preview_path?'<a class="dl ghost" href="'+esc(job.preview_path)+'" target="_blank" rel="noopener">Ver prévia</a>':''));
 }
 async function loadLastJob(){
@@ -1392,9 +1420,68 @@ async function generateWA(){
   btn.disabled=false;
 }
 
+// ── ★ Gerar tudo: UMA rodada do robô faz Word + destaques + HTML do WhatsApp + e-mail ──
+// O job volta pelos caminhos de sempre (docx/eml/preview nas colunas, config.blast,
+// config.whatsapp) — nada de SQL novo. O texto do blast é montado aqui, como no "Gerar blast":
+// preços e traduções são lidos ENQUANTO o robô trabalha, e os destaques entram quando ele
+// termina. O carimbo do dia (Weekly + e-mail) continua sendo feito por esta tela.
+let _regen = null;                       // o "Gerar de novo com os corpos colados" usa o último botão
+async function generateAll(){
+  if(!S.order.length) return;
+  _regen=generateAll;
+  const btn=document.getElementById('all-gen'), st=document.getElementById('all-status');
+  const comIA=document.getElementById('bl-ia').checked;
+  btn.disabled=true; st.className='gen-status'; st.innerHTML='<span class="spin2"></span> Enfileirando…';
+  renderFailures([]);
+  const t0=Date.now();
+  const precos=Promise.all([blFetchPrices(), blFetchTraducoes(S.order)])
+    .then(function(r){ _blPrices=r[0]; _blTrad=r[1]; return true; })
+    .catch(function(e){ console.warn('blast: preços', e); return false; });
+  let jobId;
+  try{
+    const _rd=document.getElementById('cfg-ref-date');
+    const cfg=Object.assign({}, S.config, {tudo:{on:true, n:3, ia:comIA}});
+    jobId=await rpc('admin_enqueue_clipping',{p_payload:buildPayload(), p_config:cfg, p_ref_date:(_rd&&_rd.value)||null});
+  }catch(e){
+    st.className='gen-status err'; st.textContent='Erro ao enfileirar: '+(e.message||e); btn.disabled=false; return;
+  }
+  st.innerHTML='<span class="spin2"></span> Gerando Word, destaques, HTML e e-mail… (~3 min)';
+  while(Date.now()-t0 < 8*60*1000){                 // teto de 8 min (o Word sozinho já tinha 6)
+    await new Promise(r=>setTimeout(r,4000));
+    let job; try{ job=((await rpc('admin_get_clipping_job',{p_id:jobId}))||[])[0]; }catch(e){ continue; }
+    if(!job) continue;
+    if(job.status==='error'){
+      st.className='gen-status err'; st.textContent='Erro na geração: '+(job.error||'desconhecido'); btn.disabled=false; return;
+    }
+    if(job.status!=='done') continue;
+    const c=job.config||{}, b=c.blast||{}, t=c.tudo||{};
+    const okPrecos=await precos;
+    _blDest=b.destaques||[]; blRender();
+    if(_blDest.length) blCarimbar(_blDest, b.provedor, S.order.length, b.destaques_en);
+    blRenderSelo();
+    const av=[];
+    if(comIA && !_blDest.length) av.push('saiu sem destaques — a IA falhou'+(b.erro?' ('+esc(b.erro)+')':''));
+    if(_blDest.length && !(b.destaques_en||[]).length) av.push('o e-mail saiu sem os destaques (não veio o inglês)');
+    if(t.email_novo===false) av.push('o e-mail saiu no formato antigo ('+esc(t.email_error||'?')+')');
+    if(!((c.whatsapp||{}).url)) av.push('o HTML do WhatsApp não saiu');
+    if(!okPrecos) av.push('o texto do blast saiu sem os preços');
+    const min=((Date.now()-t0)/60000).toFixed(1).replace('.',',');
+    st.className='gen-status '+(av.length?'warn':'ok');
+    st.innerHTML='✓ Pronto em '+min+' min'
+      +(_blDest.length?' — '+_blDest.length+' destaque(s) por <b>'+esc(b.provedor||'IA')+'</b>':'')
+      +'. Arquivos logo abaixo; o texto do blast está no quadro seguinte.'
+      +(av.length?'<br>⚠ '+av.join(' · '):'');
+    renderFailures(job.errors); renderLastJob(job); renderLastWA(job);
+    btn.disabled=false; return;
+  }
+  st.className='gen-status err'; st.textContent='Demorou demais. O robô (Actions) pode estar iniciando — tente de novo em 1 min.';
+  btn.disabled=false;
+}
+
 // ── Gerar: enfileira o job e faz polling até o download ───────────────────────
 async function generate(){
   if(!S.order.length) return;
+  _regen=generate;
   const btn=document.getElementById('clip-gen'), st=document.getElementById('clip-status');
   btn.disabled=true; st.className='gen-status';
   st.innerHTML='<span class="spin2"></span> Enfileirando…';
@@ -1978,6 +2065,7 @@ function wire(){
   document.getElementById('clip-add').onclick=addManual;
   document.getElementById('clip-url').addEventListener('keydown',e=>{ if(e.key==='Enter') addManual(); });
   document.getElementById('clip-gen').onclick=generate;
+  document.getElementById('all-gen').onclick=generateAll;
   document.getElementById('wa-gen').onclick=generateWA;
   const _bg=document.getElementById('bl-gen'); if(_bg) _bg.onclick=blGerar;
   const _bc=document.getElementById('bl-copy'); if(_bc) _bc.onclick=blCopiar;
