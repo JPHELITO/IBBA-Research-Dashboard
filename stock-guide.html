@@ -354,6 +354,13 @@ html.dark .sg-lg.lg-l,html:not(.dark) .sg-lg.lg-d{display:none}
 .s2-sw{width:22px;height:11px;border-radius:3px}
 .s2-sw.base{background:var(--s2-plate);outline:1px dashed rgba(var(--s2-ink),.45);outline-offset:-2px}
 .s2-sw.spot{background:var(--s2-hit);outline:1.5px solid var(--orange);outline-offset:-1px}
+/* SPOT FORA DA GRADE: a marca fica na borda mais próxima — cruzamento TRACEJADO (é a borda, não o spot) e o
+   cabeçalho com "<" (abaixo do piso) ou ">" (acima do teto); a dica do cabeçalho diz o preço de hoje */
+.s2-tbl td.s2-cell-hit.s2-cell-out{outline-style:dashed}
+.s2-tbl th.s2-hit-out{cursor:help}
+.s2-tbl th .s2-out{font-weight:800}
+.s2-sw.spot.out{outline-style:dashed}
+.s2-spot.s2-spot-out .s2-spot-k{letter-spacing:.35px}
 @media(max-width:760px){
   /* no celular o trilho é UMA fileira que desliza de lado (como as abas da página), não 7 linhas empilhadas */
   .sg-tabs.s2-rail{flex-wrap:nowrap}
@@ -1006,6 +1013,18 @@ function _s2Fit(levels,v,dec){
   if(v>mx) return (v-mx<=tol)?mx:v;
   return v;
 }
+// SPOT FORA DA GRADE (25/11/2026, pedido do analista: o ouro de hoje, ~3.490, fica abaixo dos 3.600 do piso das
+// grades de cobre e da Aura, e a tabela ficava sem marca nenhuma). A marca vai para a BORDA mais próxima — o
+// encontro da linha/coluna do spot com o último nível publicado — e a tela diz que o número de hoje está além dela:
+// "<" no cabeçalho (abaixo do piso) ou ">" (acima do teto), cruzamento tracejado e "At grid edge". O número da borda
+// é o que o analista publicou ali; nada é extrapolado. Devolve {idx, out}: out = -1 abaixo · 0 dentro · +1 acima.
+function _s2Edge(levels,v){
+  if(v==null||!levels||!levels.length) return {idx:-1,out:0};
+  const mn=Math.min.apply(null,levels), mx=Math.max.apply(null,levels);
+  if(v<mn) return {idx:levels.indexOf(mn),out:-1};
+  if(v>mx) return {idx:levels.indexOf(mx),out:1};
+  return {idx:_s2NearIdx(levels,v),out:0};
+}
 // indice do nivel mais proximo, so se o valor cair DENTRO da faixa da grade
 function _s2NearIdx(levels,v){
   if(v==null||!levels||!levels.length) return -1;
@@ -1103,7 +1122,21 @@ function _s2TableHtml(tab,byId,ctx,cap){   // cap = par de eixos, quando a grade
   const rowDec=tab.rowLevels?SG.sens2dAxisDecimals(tab.rowLevels,rowPct):0;
   const colLive=_s2Fit(tab.colLevels,_s2LiveAxis(tab.colLabel,ctx.mv),colDec),
         rowLive=tab.rowLevels?_s2Fit(tab.rowLevels,_s2LiveAxis(tab.rowLabel,ctx.mv),rowDec):null;
-  const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
+  // dentro da grade: o nível mais próximo; FORA: a borda mais próxima, marcada como fora (ver _s2Edge)
+  const cE=_s2Edge(tab.colLevels,colLive), rE=tab.rowLevels?_s2Edge(tab.rowLevels,rowLive):{idx:-1,out:0};
+  const cj=cE.idx, ri=rE.idx, fora=!!(cE.out||rE.out);
+  // o spot entra com casa a MAIS quando a casa do eixo o arredondaria: o eixo do
+  // cambio mostra 5,4 mas quem entrou na conta foi 5,44 - a linha tem de dizer isso
+  const spotFmt=function(v,pct,dec){ const x=pct?v*100:v, pw=Math.pow(10,dec);
+    const d=(Math.abs(x*pw-Math.round(x*pw))<1e-9)?dec:Math.min(dec+1,3);
+    return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
+  // cabeçalho do nível marcado: igual a sempre quando o spot está dentro; fora, "<"/">" na frente e a dica com o preço de hoje
+  const thHit=function(E,v,pct,dec){
+    if(!E.out) return {cls:' class="s2-hit"', pre:''};
+    return {cls:' class="s2-hit s2-hit-out" title="'+esc('Today '+spotFmt(v,pct,dec)+' — '+(E.out<0?'below the lowest':'above the highest')+
+      ' level in the grid; the flag sits on the edge')+'"', pre:'<span class="s2-out">'+(E.out<0?'&lt;':'&gt;')+'</span> '};
+  };
+  const cH=thHit(cE,colLive,colPct,colDec), rH=thHit(rE,rowLive,rowPct,rowDec);
   // upside: razão de preços na moeda de negociação (ver _s2Ctx); o resto: valor de mercado
   const porPreco=(met==='upside'&&ctx.pModel!=null&&ctx.pLive!=null);
   const mcM=porPreco?ctx.pModel:((met==='p_nav'&&ctx.mcModelNav!=null)?ctx.mcModelNav:ctx.mcModel),
@@ -1140,15 +1173,16 @@ function _s2TableHtml(tab,byId,ctx,cap){   // cap = par de eixos, quando a grade
      '<th class="s2-colhead" colspan="'+tab.colLevels.length+'">'+esc(tab.colLabel)+'</th></tr>';
   h+='<tr>'+(hasRow?'<th class="s2-corner"></th>':'');
   tab.colLevels.forEach(function(v,j){
-    h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
+    h+='<th'+(j===cj?cH.cls:'')+'>'+(j===cj?cH.pre:'')+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
   h+='</tr></thead><tbody>';
   rows.forEach(function(rv,i){
     h+='<tr>';
-    if(hasRow) h+='<th'+(i===ri?' class="s2-hit"':'')+'>'+
+    if(hasRow) h+='<th'+(i===ri?rH.cls:'')+'>'+(i===ri?rH.pre:'')+
        esc(SG.sens2dAxisFormat(rv,rowPct,NUM_LOC,rowDec))+'</th>';
     tab.colLevels.forEach(function(cv,j){
       const v=vals[i][j];
-      const hit=(i===ri&&j===cj)?' s2-cell-hit':((i===ri||j===cj)?' s2-cell-near':'');
+      // cruzamento tracejado quando algum eixo está FORA da grade (a marca está na borda, não no spot)
+      const hit=(i===ri&&j===cj)?' s2-cell-hit'+(fora?' s2-cell-out':''):((i===ri||j===cj)?' s2-cell-near':'');
       const eBase=!!(base&&base.i===i&&base.j===j);
       h+='<td class="s2-num'+hit+(eBase?' s2-base':'')+'"'+
          (eBase?' title="'+esc('Base case — the model runs at '+base.txt)+'"':'')+
@@ -1157,24 +1191,27 @@ function _s2TableHtml(tab,byId,ctx,cap){   // cap = par de eixos, quando a grade
     h+='</tr>';
   });
   h+='</tbody></table></div></div>';
-  // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada
+  // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada. Eixo FORA da grade é lido
+  // NA BORDA (o número que o analista publicou ali) e a linha passa a se chamar "At grid edge", com o preço de hoje
+  // ao lado do nível usado ("< 3,600 (today 3,491)") — quem lê sabe que o número de verdade está além da tabela.
   if(colLive!=null&&(!hasRow||rowLive!=null)){
-    const pubAt=_s2At(tab,rowLive,colLive);
-    const ebAt=pair?_s2At(pair,rowLive,colLive):null;
+    const cx=cE.out?tab.colLevels[cE.idx]:colLive, rx=(hasRow&&rE.out)?tab.rowLevels[rE.idx]:rowLive;
+    const pubAt=_s2At(tab,rx,cx);
+    const ebAt=pair?_s2At(pair,rx,cx):null;
     const at=(pubAt==null)?null:toScreen(pubAt,ebAt);
     if(at!=null&&isFinite(at)){
-      // o spot entra com casa a MAIS quando a casa do eixo o arredondaria: o eixo do
-      // cambio mostra 5,4 mas quem entrou na conta foi 5,44 - a linha tem de dizer isso
-      const spotFmt=function(v,pct,dec){ const x=pct?v*100:v, pw=Math.pow(10,dec);
-        const d=(Math.abs(x*pw-Math.round(x*pw))<1e-9)?dec:Math.min(dec+1,3);
-        return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
-      const xs=[spotFmt(colLive,colPct,colDec)];
-      if(hasRow) xs.push(spotFmt(rowLive,rowPct,rowDec));
+      const eixo=function(E,borda,v,pct,dec){ return E.out
+        ? (E.out<0?'< ':'> ')+SG.sens2dAxisFormat(borda,pct,NUM_LOC,dec)+' (today '+spotFmt(v,pct,dec)+')'
+        : spotFmt(v,pct,dec); };
+      const xs=[eixo(cE,cx,colLive,colPct,colDec)];
+      if(hasRow) xs.push(eixo(rE,rx,rowLive,rowPct,rowDec));
       const srcs=[]; const cs=_s2SrcName(tab.colLabel); if(cs)srcs.push(cs);
       if(hasRow){ const rs=_s2SrcName(tab.rowLabel); if(rs&&srcs.indexOf(rs)<0)srcs.push(rs); }
-      h+='<div class="s2-spot" title="'+esc('interpolated between the published grid levels'+
+      h+='<div class="s2-spot'+(fora?' s2-spot-out':'')+'" title="'+esc((fora
+           ? 'today’s price is outside the published grid: read at its nearest edge (the analyst’s number there), never extrapolated'
+           : 'interpolated between the published grid levels')+
            (srcs.length?' · live: '+srcs.join(' × '):''))+'">'+
-         '<span class="s2-spot-k">At spot</span>'+
+         '<span class="s2-spot-k">'+(fora?'At grid edge':'At spot')+'</span>'+
          '<span class="s2-spot-x">'+esc(xs.join(' × '))+'</span>'+
          '<b>'+esc(SG.sens2dFormat(at,met,NUM_LOC))+'</b></div>';
     }
@@ -1197,7 +1234,8 @@ function _s2DriverStrip(d,ctx){
       const dec=SG.sens2dAxisDecimals(lv,pct);
       const live=_s2Fit(lv,_s2LiveAxis(lab,ctx.mv),dec);   // mesma borda da grade (senao o cartao dizia "5,11 fora de 5,11-5,91")
       out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:dec,
-                src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx});
+                src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx,
+                fora:live==null?0:(live<mn?-1:(live>mx?1:0))});   // fora: -1 abaixo do piso · +1 acima do teto
     }); }); });
   return out;
 }
@@ -1266,13 +1304,19 @@ function _s2RenderPane(t,pane){
      ' <span class="s2-arrow">→</span> '+
      (pl!=null?'<b>'+pl.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>':'<span class="muted">no quote</span>')+
      '</div><div class="s2-sub">'+(pm&&pl?((pl/pm-1)*100).toLocaleString(NUM_LOC,{minimumFractionDigits:1,maximumFractionDigits:1})+'% vs model':'model → live')+'</div></div>';
-  _s2DriverStrip(d,ctx).forEach(function(x){
-    h+='<div class="s2-kpi'+(x.inside?' on':'')+'"><div class="s2-k" title="'+
+  const strip=_s2DriverStrip(d,ctx);
+  const algumFora=strip.some(function(x){ return !!x.fora; });
+  strip.forEach(function(x){
+    // fora da grade a marca vai para a borda (ver _s2Edge) — o cartão diz em qual borda ela está
+    const fmtB=function(v){ return SG.sens2dAxisFormat(v,x.pct,NUM_LOC,x.dec); };
+    const sub=x.live==null?'grid range · no live read':(x.inside?'grid range · spot':
+      (x.fora<0?'spot below the grid · flag on '+fmtB(x.min):'spot above the grid · flag on '+fmtB(x.max)));
+    h+='<div class="s2-kpi'+(x.inside||x.fora?' on':'')+'"><div class="s2-k" title="'+
        esc(x.label+(x.live!=null&&x.src?' · live: '+x.src:''))+'">'+esc(_s2Short(x.label))+
        '</div><div class="s2-v">'+
-       esc(SG.sens2dAxisFormat(x.min,x.pct,NUM_LOC,x.dec))+'–'+esc(SG.sens2dAxisFormat(x.max,x.pct,NUM_LOC,x.dec))+
-       (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(SG.sens2dAxisFormat(x.live,x.pct,NUM_LOC,x.dec))+'</b>':'')+
-       '</div><div class="s2-sub">'+(x.live==null?'grid range · no live read':(x.inside?'grid range · spot':'spot outside the grid'))+'</div></div>';
+       esc(fmtB(x.min))+'–'+esc(fmtB(x.max))+
+       (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(fmtB(x.live))+'</b>':'')+
+       '</div><div class="s2-sub">'+esc(sub)+'</div></div>';
   });
   h+='</div>';
   if(ctx.mismatch) h+='<div class="s2-warn">Model currency and live price do not match — showing the numbers exactly as published.</div>';
@@ -1332,7 +1376,11 @@ function _s2RenderPane(t,pane){
        'each ring out is one step of the analyst’s assumptions.</span>'+
        '<span class="s2-key"><span class="s2-sw base"></span>A dashed cell marks the base case where the assumptions in the file confirm it.</span>'+
        '<span class="s2-key"><span class="s2-sw spot"></span>Orange marks where the market is trading today, and “At spot” reads the grid '+
-       'at the exact quote, interpolated between the published levels.</span></span></p>'+
+       'at the exact quote, interpolated between the published levels.</span>'+
+       (algumFora?'<span class="s2-key"><span class="s2-sw spot out"></span>A dashed orange cell means today’s price is outside the grid: '+
+       'the flag sits on the nearest edge — “&lt;” below the lowest level, “&gt;” above the highest — and today’s number lies beyond it '+
+       '(“At grid edge” reads the analyst’s number at that edge; nothing is extrapolated).</span>':'')+
+       '</span></p>'+
      (leitura?'<p><b class="k">Live</b><span>'+leitura+'</span></p>':'')+
      (notaReal?'<p><b class="k">Real terms</b><span>'+esc(notaReal)+'</span></p>':'')+
      '</div>';

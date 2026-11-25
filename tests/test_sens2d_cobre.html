@@ -26,7 +26,7 @@ window.__RUN__=async function(){
   const CTX={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US',
     _SENS_CTX:{drivers:[],marketValues:MV,comps:[],config:{}}, compByTicker:function(tk){ return COMPS[tk]||null; }};
   const P=new Function('ctx',`with(ctx){ ${cut(cru,'function _s2Def(t){','  pane.innerHTML=h;\n}')}
-    return {_s2Ctx,_s2RenderPane,_s2DriverKey,_s2Sheets,_s2BaseCell,_s2TableHtml,_s2RealTermsAxis,_s2RealTermsNote}; }`)(CTX);
+    return {_s2Ctx,_s2RenderPane,_s2DriverKey,_s2Sheets,_s2BaseCell,_s2TableHtml,_s2RealTermsAxis,_s2RealTermsNote,_s2At}; }`)(CTX);
   const A=new Function(`${cut(adm,'function _s2Txt(v){','warnings:warnings};\n}')}
     ${upTo(adm,'const _S2_FILE_TICKER=','async function sgSens2dPick(')}
     return {sgParseSens2d,sgFindSens2dTables,sgFindSens2dAssumptions,_s2TickerFromFile,_s2DateFromFile}; `)();
@@ -161,6 +161,35 @@ window.__RUN__=async function(){
   ok('carimbo do caso-base nas quatro, inclusive no P/NAV (premissas de longo prazo 5,6 × 4.250)', (hh.match(/s2-base/g)||[]).length===4);
   ok('a frase diz o que é reescrito', hh.indexOf('EBITDA and FCF are exactly as the analyst published; FCF yield and P/NAV are recomputed at the current screen price.')>0);
   ok('nota do real terms só com os eixos que têm marca laranja (o de longo prazo do P/NAV fica fora)', P._s2RealTermsAxis(d2).labels.length===2);
+
+  // ── 6. SPOT FORA DA GRADE (pedido do analista, 25/11): o ouro de hoje (~3.490) fica abaixo do piso de 3.600 ──
+  //    a marca vai para a BORDA (o encontro com a última coluna), tracejada, e a tela diz que o número está além
+  const byIdD={}; d.sheets[0].tables.forEach(x=>byIdD[x.id]=x);
+  const ctxD=()=>P._s2Ctx(T,d);
+  MV.gold=3491;
+  const hb=P._s2TableHtml(d.sheets[0].tables[0],byIdD,ctxD());          // EBITDA
+  ok('cabeçalho da borda marcado com "<" e a dica com o preço de hoje',
+     /<th class="s2-hit s2-hit-out" title="Today 3,491 — below the lowest level in the grid; the flag sits on the edge"><span class="s2-out">&lt;<\/span> 3,600<\/th>/.test(hb));
+  ok('um único cruzamento, tracejado (é a borda, não o spot)', (hb.match(/s2-cell-hit s2-cell-out/g)||[]).length===1 && (hb.match(/s2-cell-hit/g)||[]).length===1);
+  ok('linha e coluna da marca continuam destacadas (8 + 8 células)', (hb.match(/s2-cell-near/g)||[]).length===16);
+  ok('a linha de leitura vira "At grid edge" e diz o preço de hoje ao lado do nível usado',
+     /<span class="s2-spot-k">At grid edge<\/span><span class="s2-spot-x">&lt; 3,600 \(today 3,491\) × 5\.23<\/span><b>892<\/b>/.test(hb),
+     (hb.match(/s2-spot-x">[^<]*<\/span><b>[^<]*/)||[''])[0]);
+  ok('…e o número é o que o analista publicou na borda (nada extrapolado)', Math.abs(P._s2At(d.sheets[0].tables[0],5.23,3600)-892)<1e-6 &&
+     P._s2At(d.sheets[0].tables[0],5.23,3491)===null);
+  P._s2RenderPane(T,pane); const hp=pane.innerHTML;
+  ok('o cartão do eixo diz em que borda a marca está', hp.indexOf('spot below the grid · flag on 3,600')>0);
+  ok('a legenda explica o tracejado (só quando algum eixo está fora)', hp.indexOf('A dashed orange cell means today’s price is outside the grid')>0);
+  MV.gold=5400;
+  const ha=P._s2TableHtml(d.sheets[0].tables[0],byIdD,ctxD());
+  ok('acima do teto: ">" na última coluna e leitura na borda de cima',
+     /<span class="s2-out">&gt;<\/span> 5,200<\/th>/.test(ha) && /&gt; 5,200 \(today 5,400\) × 5\.23/.test(ha));
+  MV.gold=4150;
+  const hd=P._s2TableHtml(d.sheets[0].tables[0],byIdD,ctxD());
+  P._s2RenderPane(T,pane); const hp2=pane.innerHTML;
+  ok('dentro da grade nada muda: marca cheia, "At spot", sem "<"/">" e sem o item da legenda',
+     hd.indexOf('s2-hit-out')<0 && hd.indexOf('s2-cell-out')<0 && hd.indexOf('>At spot<')>0 &&
+     hp2.indexOf('A dashed orange cell')<0 && hp2.indexOf('spot below the grid')<0);
 
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
