@@ -186,6 +186,16 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   eq('qBack · o anterior e o mesmo de um ano antes (virando o ano)', [X.qBack(X.qInfo('2030-02-10'), 1).label, X.qBack(X.qInfo('2030-02-10'), 4).label, X.qBack(q, 1).start], ['4Q29', '1Q29', '2030-07-01']);
   near('avgIn · média simples entre duas datas, inclusive', X.avgIn([['2030-09-30', 100], ['2030-10-01', 10], ['2030-10-15', 20], ['2030-12-31', 30], ['2031-01-01', 999]], '2030-10-01', '2030-12-31'), 20);
   eq('avgIn · sem ponto no intervalo = sem média', X.avgIn([['2030-01-01', 1]], '2031-01-01', '2031-03-31'), null);
+  /* usinas chinesas (get_china_mills) e a sazonalidade semanal — números FICTÍCIOS */
+  const MR = [['2030-01-04', '2030-01-04', 50.5, 80, 85.2, 2300.4, 'mysteel'], ['2030-01-11', null, null, null, null, null, 'none'], ['2030-01-18', '2030-01-16', 40.25, 79, null, 2290, 'secondary']];
+  eq('millPts · a coluna pedida, sem a semana sem leitura nem o valor vazio', [X.millPts(MR, 'profit'), X.millPts(MR, 'bfutil'), X.millPts(null, 'hm')], [[['2030-01-04', 50.5], ['2030-01-18', 40.25]], [['2030-01-04', 85.2]], []]);
+  const SM = { mills: MR, v: 1 };
+  eq('P.mill / P.millRow · a série e a linha inteira da semana lida', [X.P.mill(SM, 'hm'), X.P.millRow(SM, '2030-01-20')[1], X.P.millRow(SM, '2029-12-31')], [[['2030-01-04', 2300.4], ['2030-01-18', 2290]], '2030-01-16', null]);
+  const by = X.byYear([['2029-12-28', 1], ['2030-01-04', 2], ['2030-02-29', 3], ['2031-01-03', 4], ['2031-01-10', null]]);
+  eq('byYear · um ano por série, do mais novo ao mais velho, datas postas num ano só (2000, bissexto)', by.map(s => [s.name, s.pts]), [['2031', [['2000-01-03', 4]]], ['2030', [['2000-01-04', 2], ['2000-02-29', 3]]], ['2029', [['2000-12-28', 1]]]]);
+  eq('byYear · só os N anos mais novos', X.byYear([['2029-01-05', 1], ['2030-01-04', 2], ['2031-01-03', 3]], 2).map(s => s.name), ['2031', '2030']);
+  eq('near · o ponto da mesma semana; semana sem leitura (mais de 10 dias) = vazio', [X.near([['2000-01-04', 2], ['2000-01-25', 3]], '2000-01-10'), X.near([['2000-01-04', 2], ['2000-01-25', 3]], '2000-01-20'), X.near([], '2000-01-01')], [2, null, null]);
+  eq('sLabel · dia e mês, sem ano', [X.sLabel('2000-01-04'), X.sLabel('2000-11-20')], ['4 Jan', '20 Nov']);
 })();
 
 /* ── EXPLICAÇÕES (data-desk-help.js): o texto de cada gráfico, num lugar só ── */

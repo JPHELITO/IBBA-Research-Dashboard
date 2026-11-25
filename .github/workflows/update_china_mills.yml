@@ -1,0 +1,41 @@
+name: 🏭 Usinas chinesas (Mysteel) — boletim da semana
+
+# Acrescenta na tabela china_mills (Supabase) o boletim semanal da Mysteel com 247 usinas chinesas: % com lucro,
+# altos-fornos ligados, utilização da capacidade e gusa por dia. Sai sexta ~08:35 de Pequim (quinta 21:35 BRT).
+# Detalhes em _shared/update_china_mills.py. A página de M&M (mesa de dados › Steel › China mills) lê a tabela.
+#
+# POR QUE TRÊS CRONS: o agendador do GitHub atrasa horas neste repo. Os três são despertadores do MESMO trabalho —
+# o primeiro que rodar grava; os outros acham o boletim gravado e saem em segundos.
+on:
+  schedule:
+    - cron: "17 3 * * 5"    # sexta 00:17 BRT (11:17 em Pequim)
+    - cron: "17 13 * * 5"   # sexta 10:17 BRT
+    - cron: "17 12 * * 6"   # sábado 09:17 BRT
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "Só simular (não grava)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: update-china-mills
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Gravar o boletim novo
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PYTHONUTF8: "1"
+        run: python _shared/update_china_mills.py ${{ inputs.dry && '--dry' || '' }}
