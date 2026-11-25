@@ -765,6 +765,13 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
         </div>
         <span class="mob-sec-arrow">→</span>
       </button>
+      <button class="mob-sec-item dk-only mills-only" onclick="mobSelect('chinamills')">
+        <div class="mob-sec-info">
+          <div class="mob-sec-title">China mills</div>
+          <div class="mob-sec-desc">Share of Chinese mills making money, hot metal output and blast-furnace utilization</div>
+        </div>
+        <span class="mob-sec-arrow">→</span>
+      </button>
       <div class="mob-sec-group dk-only">Iron Ore</div>
       <button class="mob-sec-item dk-only" onclick="mobSelect('oreprices')">
         <div class="mob-sec-info">
@@ -1644,7 +1651,7 @@ async function loadDB(){
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
     _dbReady=true;         // a partir daqui a #âncora pode trocar de seção (hashchange)
     // Seção inicial: ?s= (legado) OU hash (#prices vindo da home leva a parity/domestic, ver _setSubNow) OU overview/domestic.
-    const _valid=['exports','imports','domestic','prices'].concat(_deskOn?['overview','parity','oreprices','ore','builder']:[]);
+    const _valid=['exports','imports','domestic','prices'].concat(_deskOn?['overview','parity','oreprices','ore','builder','chinamills']:[]);
     const urlSec=new URLSearchParams(window.location.search).get('s');
     const hashSec=(location.hash||'').replace('#','');
     const initSub=_valid.includes(urlSec)?urlSec:(_valid.includes(hashSec)?hashSec:(_deskOn?'overview':'domestic'));   // com a mesa, a aba abre no Overview; sem ela, no mercado doméstico (a aba Prices da SECEX saiu)
@@ -2599,10 +2606,24 @@ async function applyDeskFlag(){
     const f = (fl && !fl.error && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='data_desk') : null
     const q = _deskParam()
     const on = ((f && !!f.enabled) || isAdmin || (_deskLocal && q==='1')) && q!=='0'
+    const fm = (fl && Array.isArray(fl.data)) ? fl.data.find(x=>x.key==='china_mills') : null
+    _millsSet(isAdmin || !!(fm && fm.enabled))   // usinas chinesas (Mysteel): admin sempre; cliente só com a chave china_mills
     try{ localStorage.setItem('ibba_desk', on?'1':'0'); }catch(e){}
     try{ if(window.__gnavDesk) window.__gnavDesk(on); }catch(e){}   // menus do topo: Overview / Iron Ore / Builder
     if(on!==_deskOn){ _deskSet(on); if(_dbReady&&((on&&currentSub==='prices')||(!on&&DESK_ONLY.includes(currentSub)))) setSub(on?'parity':'domestic'); else { _navMark(currentSub); if(_dbReady) render(); } }
   }catch(e){}
+}
+/* USINAS CHINESAS (Steel › China mills): pesquisa da Mysteel, agência paga. A aba só existe para o admin ou, com a chave
+   china_mills ligada (admin → Funcionalidades), para todos. A função get_china_mills() do banco faz a mesma conta — esconder
+   a aba é só a cortesia da tela. null = a resposta das chaves ainda não chegou (a #âncora é aceita até lá). */
+let _millsOk=null;
+function _millsSet(ok){
+  _millsOk=!!ok; document.documentElement.classList.toggle('mills-on',_millsOk);
+  const t=COM_TABS.steel, i=t.findIndex(x=>x[0]==='chinamills');
+  if(_millsOk&&i<0) t.push(['chinamills','China mills']); else if(!_millsOk&&i>=0) t.splice(i,1); else return;
+  const bar=document.getElementById('dk-subnav'); if(bar) bar.dataset.com='';   // a linha de abas se refaz
+  if(!_dbReady) return;   // antes da 1ª seção aparecer não marca nada (marcar 'domestic', o valor inicial, fazia o botão Steel abrir em Domestic)
+  if(!_millsOk&&currentSub==='chinamills') setSub('parity'); else _navMark(currentSub);
 }
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
 function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ? 'prediction' : currentSub; }
@@ -2676,6 +2697,16 @@ function _dkOreEnt(rows,field,prod){
   const sc=Object.entries(by).map(([n,m])=>{ let rec=0,tot=0; for(const p in m){ tot+=m[p]; if(p>=cut) rec+=m[p]; } return [n,rec,tot]; }).sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
   return (_dkOreC[ck]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
 }
+/* USINAS CHINESAS — leituras de apoio do catálogo (a série vem de get_china_mills(); as contas moram em data-desk-prices.js) */
+const _millRefs=(col,dec,unit)=>(S,P)=>{ const m=P.mill(S,col); if(m.length<20) return null;
+  const vs=m.map(p=>p[1]), a=P.mean(m), cur=vs[vs.length-1], below=vs.filter(x=>x<cur).length, f=v=>P.fmt(v,dec)+unit;
+  return {lines:[{value:a}], legend:[{kind:'dash',name:'Average since '+P.mLabel(m[0][0])+' '+f(a)}],
+    read:[{head:'Since '+P.mLabel(m[0][0])+' · '+m.length+' weeks'},{k:'Average',v:f(a)},{k:'Lowest / highest',v:f(Math.min(...vs))+' / '+f(Math.max(...vs))},{k:'Weeks below the latest level',v:Math.round(below/m.length*100)+'%'}]}; };
+/* "o boletim inteiro" da semana lida: os quatro números da mesma pesquisa, com a data original do boletim */
+const _millBuild=(S,P,iso)=>{ const r=P.millRow(S,iso); if(!r||r[2]==null) return null;
+  const f=(v,d,u)=>v==null?'—':P.fmt(+v,d)+u, obs=String(r[1]||r[0]).slice(0,10), wk=String(r[0]).slice(0,10);
+  return {title:'The whole weekly survey', when:(r[6]==='secondary'?'Mysteel figures via a secondary source · ':'Mysteel · ')+P.dLabel(obs)+(obs!==wk?' (holiday week)':''), items:[
+    {k:'Mills making money',v:f(r[2],2,'%')},{k:'Blast-furnace capacity utilization',v:f(r[4],2,'%')},{k:'Furnaces running',v:f(r[3],2,'%')},{k:'Hot metal output',v:f(r[5],0,' kt/day')}]}; };
 /* PARIDADE DE IMPORTAÇÃO (aço) — o catálogo das seções de preço. A conta mora em data-desk-prices.js (IBBADesk.prices.parity). */
 const _PAR={hrc:{n:'HRC',o:'China HRC FOB',d:'Domestic HRC'}, rebar:{n:'Rebar',o:'Turkey rebar FOB',d:'Domestic rebar'}};
 const _sg=(v,d)=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d==null?1:d);
@@ -2725,6 +2756,7 @@ function _desk(){
     ore:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], bench:['IRON_ORE','IOPRM00','IOFBC00'], cal:['secex_steel'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
     parity:{tickers:_CX_STEEL, news:{sector:'steel', topics:['hrc','rebar','flat_steel','imports','tariffs'], q:'steel prices'}},
     oreprices:{tickers:['VALE3.SA','CMIN3.SA','CSNA3.SA'], news:{topics:['iron_ore','pellets'], q:'iron ore'}},
+    chinamills:{tickers:['VALE3.SA','CMIN3.SA','GGBR4.SA','USIM5.SA'], bench:['IRON_ORE','HRC_CHINA','MET_COAL'], news:{topics:['iron_ore','production','steel_industry'], q:'China steel'}},
   };
   DESK=IBBADesk.mount({
     sector:'mm', root:'#desk-root',
@@ -2805,6 +2837,28 @@ function _desk(){
             {id:'fwd', label:'Forward curve — next quarters and one year ahead', short:'Forward curve', unit:'US$/dmt', dec:2,
               series:(S,P)=>[{name:'+1 quarter', short:'+1Q', pts:P.d(S,'TSIPQ01')},{name:'+2 quarters', short:'+2Q', pts:P.d(S,'TSIPQ02')},{name:'+3 quarters', short:'+3Q', pts:P.d(S,'TSIPQ03')},{name:'+1 year', short:'+1Y', pts:P.d(S,'TSIPY01')}],
               note:'Where the market prices iron ore for the coming quarters. A curve below today\'s price says the market expects prices to fall.'},
+          ] } },
+      /* USINAS CHINESAS — pesquisa semanal da Mysteel com 247 usinas de alto-forno (data-desk-prices.js: hf.mills, sazonalidade
+         semanal e furos). Agência paga: só admin, ou todos com a chave china_mills; sem botão de Excel. */
+      chinamills:{
+        label:'China mills — weekly survey of 247 blast-furnace mills', stage:'profit',
+        hf:{ mills:true, src:'Mysteel weekly survey of 247 Chinese steel mills · compiled by Itaú BBA',
+          loading:'Loading the China mills survey…', na:'The China mills survey is not available right now.',
+          naWhy:'The connection to the database did not answer, or this section is not enabled for your access yet.',
+          tiles:['profit','hm','bf','pvu','profit_seas','hm_seas'],
+          metrics:[
+            {id:'profit', label:'Share of Chinese steel mills making money', short:'Mills making money', unit:'%', dec:1, pp:true, nosign:true, gapDays:10,
+              series:(S,P)=>[{name:'Mills making money', short:'Making money', pts:P.mill(S,'profit')}], refs:_millRefs('profit',1,'%'), build:_millBuild},
+            {id:'hm', label:'Hot metal output of the same mills — daily average', short:'Hot metal output', unit:'kt/day', dec:0, gapDays:10,
+              series:(S,P)=>[{name:'Hot metal output', short:'Hot metal', pts:P.mill(S,'hm')}], refs:_millRefs('hm',0,' kt/day'), build:_millBuild},
+            {id:'bf', label:'Blast furnaces — capacity utilization and share of furnaces running', short:'Blast furnaces', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
+              series:(S,P)=>[{name:'Capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')},{name:'Furnaces running (operating rate)', short:'Running', pts:P.mill(S,'bfop')}], build:_millBuild},
+            {id:'pvu', label:'Margins against output — mills making money vs blast-furnace utilization', short:'Margins vs output', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
+              series:(S,P)=>[{name:'Mills making money', short:'Making money', pts:P.mill(S,'profit')},{name:'Blast-furnace capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')}], build:_millBuild},
+            {id:'profit_seas', label:'Mills making money — one line per year', short:'Making money, by year', unit:'%', dec:1, pp:true, nosign:true, season:true, gapDays:10,
+              series:(S,P)=>P.byYear(P.mill(S,'profit'))},
+            {id:'hm_seas', label:'Hot metal output — one line per year', short:'Hot metal, by year', unit:'kt/day', dec:0, season:true, gapDays:10,
+              series:(S,P)=>P.byYear(P.mill(S,'hm'))},
           ] } },
       /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
          na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
@@ -2947,11 +3001,11 @@ function updateGlobalFilters(){
    (0,2 s) e a nova entra pelo lado do clique (0,6 s, curva expo) — o olho entende a direção. Só
    computador e só com {anim:1} (o clique); chamadas do código (carga, celular, tutorial) seguem
    instantâneas. Com "reduzir movimento" ligado, também instantâneo. */
-const SUB_ORDER=['overview','parity','prices','domestic','imports','exports','oreprices','ore','builder'];   // overview, parity, oreprices, ore e builder só existem com a mesa (data_desk)
+const SUB_ORDER=['overview','parity','prices','domestic','imports','exports','chinamills','oreprices','ore','builder'];   // overview, parity, oreprices, ore e builder só existem com a mesa (data_desk)
 /* Com a mesa, a barra é por COMMODITY (Steel · Iron Ore); as seções de cada uma ficam na linha #dk-subnav.
    Os valores de currentSub e as #âncoras são os de sempre (prices, domestic, imports, exports, ore) + parity e oreprices. */
-const DESK_ONLY=['overview','parity','oreprices','ore','builder'];
-const COM_OF={parity:'steel',prices:'steel',domestic:'steel',imports:'steel',exports:'steel',oreprices:'ore',ore:'ore'};
+const DESK_ONLY=['overview','parity','oreprices','ore','builder','chinamills'];
+const COM_OF={parity:'steel',prices:'steel',domestic:'steel',imports:'steel',exports:'steel',chinamills:'steel',oreprices:'ore',ore:'ore'};
 const COM_TABS={steel:[['parity','Prices'],['domestic','Domestic Market'],['imports','Imports'],['exports','Exports']],
                 ore:[['oreprices','Prices & margin'],['ore','Exports']]};
 const COM_NAME={steel:'Steel',ore:'Iron Ore'};
@@ -3000,6 +3054,7 @@ function setSub(s,o){
 }
 function _setSubNow(s){
   if(!_deskOn&&(DESK_ONLY.includes(s)||s==='prices')) s='domestic';   // seções só da mesa e a aba de preços da SECEX (saiu em 23/11/2026) → mercado doméstico
+  if(s==='chinamills'&&_millsOk===false) s='parity';   // usinas chinesas: sem a chave, o cliente cai nos preços
   if(_deskOn&&s==='prices') s='parity';   // com a mesa os preços da SECEX saíram (pedido do usuário, 23/11/2026): #prices leva aos preços de mercado
   currentSub=s;
   _navMark(s);

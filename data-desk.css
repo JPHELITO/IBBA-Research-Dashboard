@@ -310,6 +310,7 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 
 /* ════ CELULAR (≤ 768 px) — Fase 7 ════ */
 .mob-sec-item.dk-only{display:none;} html.desk-on .mob-sec-item.dk-only{display:flex;}   /* seções que só existem com a mesa */
+html.desk-on:not(.mills-on) .mob-sec-item.mills-only{display:none;}   /* China mills: só admin ou com a chave china_mills */
 @media (max-width:768px){
   /* quadros do topo: uma fileira que desliza com encaixe (2 à vista + a ponta do 3º, para mostrar que há mais) */
   .dk-tiles{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px;padding:2px 12px 4px;scroll-padding-left:12px;}

@@ -125,6 +125,20 @@
         freight: { what: 'Cost of shipping iron ore to China from Brazil and from Western Australia, in US$ per wet tonne (Platts).', how: 'The third line is the difference — Brazil\'s distance disadvantage against Australian ore. One point per day.' },
         brands: { what: 'Prices of specific iron ore brands in China, in US$ per dry tonne (Platts): Brazilian Blend Fines (Vale) against the main Australian fines.', how: 'One point per day.' },
         fwd: { what: 'Iron ore swap prices for the next three quarters and for next year, in US$ per dry tonne (Platts): where the market expects prices to go.', how: 'A curve below today\'s price says the market expects prices to fall. One point per day.' }
+      },
+      chinamills: {
+        profit: { what: 'Share of the 247 Chinese blast-furnace steel mills surveyed every week that make a cash profit on their main product, in % (Mysteel). It counts mills, not tonnes: a small mill weighs the same as a large one.',
+          how: 'Low readings mean most Chinese mills lose money on each tonne — usually followed by output cuts, which weigh on iron ore demand. The dashed line is the average since 2021. One point per week (Fridays); weeks with no survey (Chinese New Year) are left blank.' },
+        hm: { what: 'Hot metal (liquid pig iron) produced per day by the same 247 mills, in thousand tonnes per day (Mysteel). Blast furnaces make hot metal from iron ore, so this is the closest weekly read of China\'s iron ore use.',
+          how: 'The dashed line is the average since 2021. One point per week (Fridays); weeks with no survey, or whose figure we could not retrieve (mostly 2021–2023), are left blank.' },
+        bf: { what: 'How hard China\'s blast furnaces are running, in % (Mysteel, 247 mills): capacity utilization = hot metal produced ÷ hot metal capacity; operating rate = share of the furnaces that are running.',
+          how: 'Both fall when mills cut output or stop furnaces for maintenance. One point per week (Fridays); weeks whose figure we could not retrieve (mostly 2021–2023) are left blank.' },
+        pvu: { what: 'Share of mills making money (orange) against blast-furnace capacity utilization (black), both in % and from the same weekly survey of 247 mills (Mysteel).',
+          how: 'Margins usually move first: when few mills make money, output tends to be cut in the following weeks; when margins recover, furnaces restart. Both lines share the same % scale.' },
+        profit_seas: { what: 'Share of the 247 Chinese mills making money (Mysteel), one line per year, so the same weeks of different years compare directly.',
+          how: 'Orange = this year, solid grey = last year, dashed = earlier years. Hover to read every year in the same week.' },
+        hm_seas: { what: 'Hot metal output of the 247 Chinese mills, in thousand tonnes per day (Mysteel), one line per year, so the same weeks of different years compare directly.',
+          how: 'Orange = this year, solid grey = last year, dashed = earlier years. Output usually dips around Chinese New Year.' }
       }
     },
 
