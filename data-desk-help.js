@@ -126,6 +126,12 @@
         brands: { what: 'Prices of specific iron ore brands in China, in US$ per dry tonne (Platts): Brazilian Blend Fines (Vale) against the main Australian fines.', how: 'One point per day.' },
         fwd: { what: 'Iron ore swap prices for the next three quarters and for next year, in US$ per dry tonne (Platts): where the market expects prices to go.', how: 'A curve below today\'s price says the market expects prices to fall. One point per day.' }
       },
+      chinamills_m: {
+        profit: 'Share of the 247 Chinese blast-furnace steel mills that make a cash profit, in % (Mysteel weekly survey) — here as the average of the weeks of each month; quarters, years and LTM average all their weeks.',
+        hm: 'Hot metal produced per day by the 247 Chinese mills, in thousand tonnes per day (Mysteel weekly survey) — here as the average of the weeks of each month; the closest read of China\'s iron ore use.',
+        bfutil: 'Blast-furnace capacity utilization of the 247 Chinese mills, in % (Mysteel weekly survey) — here as the average of the weeks of each month.',
+        bfop: 'Share of the blast furnaces running at the 247 Chinese mills, in % (Mysteel weekly survey) — here as the average of the weeks of each month.'
+      },
       chinamills: {
         profit: { what: 'Share of the 247 Chinese blast-furnace steel mills surveyed every week that make a cash profit on their main product, in % (Mysteel). It counts mills, not tonnes: a small mill weighs the same as a large one.',
           how: 'Low readings mean most Chinese mills lose money on each tonne — usually followed by output cuts, which weigh on iron ore demand. The dashed line is the average of the actual readings since 2021. One point per week (Fridays); a week with no reading (Chinese New Year) takes the average of the week before and the week after, marked as an estimate when you hover.' },

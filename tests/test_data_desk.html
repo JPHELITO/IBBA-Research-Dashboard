@@ -143,6 +143,23 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   eq('Builder · a última visão fica guardada neste navegador', JSON.parse(localStorage.getItem('ibba_desk_builder_t')).s, ['a.v.total']);
 })();
 
+/* ── BUILDER com seção de dado à parte (usinas chinesas): chave (off), pedido do dado (need), fonte paga (paid) ── */
+(function () {
+  let on = false, asked = 0;
+  const mo = { v: { '2026-09': 30, '2026-10': 40, '2026-11': 33 }, n: { '2026-09': 3, '2026-10': 4, '2026-11': 3 } };
+  const D3 = IBBADesk.mount({ sector: 't3', root: null, state: () => ({ prod: 'total', gran: 'monthly', win: 'all', from: null, to: null }), sections: {
+    m: { label: 'Mills', src: 'Mysteel', paid: true, off: () => !on, need: () => { asked++; return null; },
+      metrics: [{ id: 'p', label: 'Profit', unit: '%', dec: 1, pp: true, comp: () => mo, calc: (A, c) => IBBADesk.core.F.div(A.sum(c.v), A.sum(c.n)) }] },
+    builder: { label: 'Builder', builder: true, order: ['m'] } } });
+  eq('Builder · seção desligada (sem a chave) fica fora do catálogo', [D3._bGroups().length, D3._bItem('m.p.total')], [0, null]);
+  on = true; D3.invalidate();
+  eq('Builder · com a chave: entra no catálogo, marcada como fonte paga', [D3._bGroups().map(g => g.id), D3._bItem('m.p.total').paid], [['m'], true]);
+  D3._bState(); D3._bApply({ s: ['m.p.total'], v: 'level' }, false); const v3 = D3._bv = D3._bView();
+  eq('Builder · mês = soma das semanas ÷ semanas (a média das semanas do mês)', v3.rows[0].v.slice(v3.i0, v3.i1 + 1), [10, 10, 11]);
+  eq('Builder · fonte paga no gráfico = sem Excel e sem copiar a tabela', D3._bPaid(), true);
+  D3._bNeed(); eq('Builder · pede o dado da seção quando abre', asked, 1);
+})();
+
 /* ── PREÇOS (data-desk-prices.js): as contas puras das seções de preço. Números FICTÍCIOS (o repositório é público). ── */
 (function () {
   const X = IBBADesk.prices;
@@ -211,6 +228,11 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
     [{ v: 45, est: true }, { v: 50, est: false }, null]);
   const byE = X.byYear(X.P.mill(SM2, 'profit'), 6, X.P.millEst(SM2, 'profit'));
   eq('byYear · a marca de estimativa acompanha a data posta num ano só', byE[0].est, { '2000-01-11': 1 });
+  /* Builder (mensal): a série semanal em meses */
+  eq('monthly · soma e semanas de cada mês; o mês da última leitura fica de fora enquanto a última sexta dele não sai',
+    X.monthly([['2030-01-04', 1], ['2030-01-11', 2], ['2030-01-18', 3], ['2030-01-25', 4], ['2030-02-01', 5], ['2030-02-08', 6]]), { v: { '2030-01': 10 }, n: { '2030-01': 4 } });
+  eq('monthly · mês completo (a última sexta já saiu) entra', X.monthly([['2030-01-25', 4], ['2030-02-01', 5], ['2030-02-22', 8]]).n['2030-02'], 2);
+  eq('P.millMonthly · usa a série completa (a semana vazia já com a média)', X.P.millMonthly(SM2, 'profit'), { v: { '2030-01': 179 }, n: { '2030-01': 4 } });
 })();
 
 /* ── EXPLICAÇÕES (data-desk-help.js): o texto de cada gráfico, num lugar só ── */
