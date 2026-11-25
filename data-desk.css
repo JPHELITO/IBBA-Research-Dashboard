@@ -259,7 +259,26 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .dk-br2{flex:none;font:600 10.5px var(--dk-text);color:var(--gray-dark);white-space:nowrap;padding:2px 6px;border-radius:6px;background:var(--dk-panel2);cursor:help;font-variant-numeric:tabular-nums;}
 .dk-br2 em{font-style:normal;font-weight:500;color:var(--gray-mid);}
 .dk-br2na{color:var(--gray-mid);}
-.dk-r2t{font-size:11px;color:var(--gray-mid);margin-left:6px;}   /* gráfico mensal com duas séries: "X against Y" ao lado do R² */
+.dk-r2t{font-size:11px;color:var(--gray-mid);margin-left:6px;}
+/* explicação + tabela de correlação lado a lado */
+.dk-whyrow{display:flex;gap:14px;align-items:flex-start;}
+.dk-whyrow>.dk-why{flex:1 1 auto;min-width:0;}
+.dk-corr{flex:0 0 auto;margin-top:8px;padding:8px 10px 7px;border:1px solid var(--border);border-radius:8px;background:var(--white);max-width:48%;overflow-x:auto;}
+.dk-corr[hidden]{display:none;}
+.dk-ch2{display:flex;gap:8px;align-items:baseline;margin-bottom:5px;white-space:nowrap;}
+.dk-ch2 b{font:700 9.5px var(--dk-text);letter-spacing:.08em;text-transform:uppercase;color:var(--gray-dark);}
+.dk-ch2 em{font-style:normal;color:var(--gray-mid);font-size:10.5px;}
+.dk-ct{border-collapse:separate;border-spacing:2px;}
+.dk-ct th{font-weight:500;font-size:10.5px;line-height:1.2;color:var(--gray-dark);text-align:left;white-space:normal;padding:2px 4px;}
+.dk-ct thead th{text-align:center;vertical-align:bottom;}
+.dk-ccl{display:inline-flex;align-items:flex-start;gap:4px;max-width:112px;text-align:left;}   /* nome longo quebra em 2 linhas (cortar escondia o que é a série) */
+.dk-ccl span{white-space:normal;}
+.dk-ccl i{width:7px;height:7px;border-radius:50%;flex:none;margin-top:3px;}
+.dk-ct td{min-width:46px;text-align:center;padding:4px 6px;border-radius:4px;font:600 12px var(--dk-disp);letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--black);background:var(--dk-panel2);cursor:help;}
+.dk-ct td.dk-cx{background:none;cursor:default;}
+.dk-ckey{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;color:var(--gray-mid);font-size:10px;white-space:nowrap;}
+.dk-ckey i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+@media (max-width:768px){ .dk-whyrow{flex-direction:column;gap:0;} .dk-corr{max-width:100%;} }
 .dk-bax{flex:none;font:600 10px var(--dk-text);letter-spacing:.02em;color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
 .dk-bax:hover{border-color:var(--orange);color:var(--orange);}
 .dk-bax[aria-pressed="true"]{background:var(--black);border-color:var(--black);color:var(--white);}

@@ -194,8 +194,9 @@
         var ok = base != null && !r.d.diff; r.v = P.map(function (p) { var x = lm[p.key]; return (ok && x != null) ? x / base * 100 : null; });
         r.note = !ok ? 'cannot be indexed (it can be zero or negative)' : (bi > pw[0] ? '100 = ' + P[bi].label : ''); }
       else r.v = P.map(function (p) { var x = map[p.key]; return x == null ? null : x; }); });
-    /* R² de cada série contra a 1ª, na janela e na conta da tela */
+    /* R² de cada série contra a 1ª (PNG) e de cada PAR (a tabela ao lado da explicação), na janela e na conta da tela */
     rows.forEach(function (r, k) { r.fit = k ? r2of(rows[0].v, r.v, out.i0, out.i1) : null; if (r.fit) r.fit.per = gname; });
+    out.per = gname; out.cells = (rows.length > 1 && X.corrCells) ? X.corrCells(rows.map(function (r) { return r.v; }), out.i0, out.i1) : null;
     if (dual) {   // um gráfico com duas escalas: a da esquerda e a da direita, cada uma na sua unidade
       var pl = { dual: true, unit: rows.filter(function (r) { return r.ax === 'L'; })[0].unit, unitR: rows.filter(function (r) { return r.ax === 'R'; })[0].unit, rows: rows, dec: 0, decR: 0 };
       rows.forEach(function (r) { if (r.ax === 'R') pl.decR = Math.max(pl.decR, r.dec); else pl.dec = Math.max(pl.dec, r.dec); }); out.panels = [pl]; return out; }
@@ -215,11 +216,11 @@
       '<div class="dk-bmain"><div class="dk-card dk-stage dk-bstage">' +
         '<div class="dk-bhead"><div class="dk-btitle"><span class="dk-st">Builder</span><em class="dk-when dk-bwhen"></em></div><span class="dk-grow"></span>' +
           '<div class="dk-seg dk-bcalc" role="group" aria-label="Calculation"></div><div class="dk-bdl"><button type="button" data-dl="png" title="Download the chart as an image">PNG</button><button type="button" data-dl="xls" title="Download the data (Excel) — full history">XLS</button></div></div>' +
-        '<div class="dk-why dk-bwhy" hidden></div><div class="dk-bchips"></div><button type="button" class="dk-pill dk-badd">+ Add series</button>' +
+        '<div class="dk-whyrow"><div class="dk-why dk-bwhy" hidden></div><div class="dk-corr dk-bcorr" hidden></div></div><div class="dk-bchips"></div><button type="button" class="dk-pill dk-badd">+ Add series</button>' +
         '<div class="dk-bpanels"></div><div class="dk-bmsg" hidden></div><div class="dk-hint dk-bhint"></div></div>' +
       '<div class="dk-card dk-bvals"><div class="dk-ch"><h3>Values</h3><em class="dk-when dk-bvw"></em><span class="dk-grow"></span><button type="button" class="dk-lnk dk-bcopy" title="Copy every period of the window, ready to paste into Excel">Copy table</button></div><div class="dk-tblw"><table class="dk-ov dk-bt"></table></div></div>' +
       '</div></div>');
-    r.appendChild(body); var E = this.bel = { body: body }; ['bvlist', 'bsave', 'blink', 'bcat', 'bcount', 'bq', 'blist', 'bcalc', 'bchips', 'bpanels', 'bmsg', 'bhint', 'bwhen', 'bvw', 'bt', 'bcopy', 'bdl', 'badd', 'bdone', 'bwhy'].forEach(function (k) { E[k] = body.querySelector('.dk-' + k); });
+    r.appendChild(body); var E = this.bel = { body: body }; ['bvlist', 'bsave', 'blink', 'bcat', 'bcount', 'bq', 'blist', 'bcalc', 'bchips', 'bpanels', 'bmsg', 'bhint', 'bwhen', 'bvw', 'bt', 'bcopy', 'bdl', 'badd', 'bdone', 'bwhy', 'bcorr'].forEach(function (k) { E[k] = body.querySelector('.dk-' + k); });
     E.bq.value = b.q;
     /* visões */
     E.bvlist.addEventListener('click', function (e) { var del = e.target.closest('[data-del]'), bt = e.target.closest('[data-view]'); if (del) { e.stopPropagation(); var a = self._bSaved(); a.splice(+del.dataset.del, 1); try { localStorage.setItem(self._bKey('views'), JSON.stringify(a)); } catch (er) {} self._bViews(); return; }
@@ -343,6 +344,7 @@
     /* explicação: o que é o gráfico e como ler a conta escolhida (na base 100 automática o aviso de cima já explica) */
     var HB = window.IBBADeskHelp && IBBADeskHelp.builder;
     if (E.bwhy) { E.bwhy.innerHTML = (HB && v.rows.length) ? X.whyHTML(HB.what, ((v.auto ? '' : (HB.calc[v.calc] || '')) + (v.dual && HB.dual ? ' ' + HB.dual : '') + (v.rows.length > 1 && HB.r2 ? ' ' + HB.r2 : '')).trim()) : ''; E.bwhy.hidden = !E.bwhy.innerHTML; }
+    if (E.bcorr) { E.bcorr.innerHTML = (v.cells && X.corrTable) ? X.corrTable(v.rows.map(function (r) { return { name: r.it.name, short: r.it.short, color: r.col }; }), v.cells, v.per) : ''; E.bcorr.hidden = !E.bcorr.innerHTML; }
     this._bPaint();
   };
   Desk.prototype._bHover = function (i) { var b = this.bui, self = this; if (b.hover === i) return; b.hover = i; if (this._braf) return; this._braf = requestAnimationFrame(function () { self._braf = 0; self._bPaint(); }); };
@@ -364,7 +366,7 @@
       var axb = v.rows.length > 1 ? '<button type="button" class="dk-bax" data-ax="' + esc(r.key) + '" aria-pressed="' + (r.ax === 'R') + '" title="' + esc(r.ax === 'R' ? 'On the right-hand scale — click to bring it back to the left' : 'Give this series its own scale on the right — for series that move much less (or much more) than the others') + '">Right axis</button>' : '';
       return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(me._bWhat(r) + r.it.where + ' — click to open it in its section') + '">' + esc(r.it.name) + '</button>' +
         '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? (real ? '· ' + real : '') : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
-        r2b + axb + '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
+        axb + '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');   // o R² mora na tabela ao lado da explicação
     this._bTable(false, ref);
   };
   /* o que uma série do Builder mede (para a dica do nome): a explicação do indicador ou da quebra (data-desk-help.js) */

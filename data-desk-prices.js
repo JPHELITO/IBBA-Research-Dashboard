@@ -319,7 +319,7 @@
     E.stage = h('div', 'dk-stage dk-card dk-hfstage',
       '<div class="dk-sh"><div><div class="dk-st"></div><div class="dk-sv"></div></div><div class="dk-sd"></div><span class="dk-grow"></span></div>' +
       '<div class="dk-hfdl"><button type="button" title="Download the chart as an image">PNG</button></div>' +
-      '<div class="dk-hfleg"></div><div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas></canvas></div>' +
+      '<div class="dk-hfleg"></div><div class="dk-whyrow"><div class="dk-why" hidden></div><div class="dk-corr" hidden></div></div><div class="dk-chart dk-stagechart"><canvas></canvas></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read any date · Change the period with the Window buttons or the dates above</div><div class="dk-hint dk-hfsrc"></div></div>');
     E.read = h('div', 'dk-card dk-read dk-hfread', '<div class="dk-ch"><h3>Reading</h3><em class="dk-when"></em></div><div class="dk-big"></div><div class="dk-kv"></div>');
     /* a conta aberta, parcela por parcela, na data lida (paridade: FOB + frete + … = importado; margem: preço − frete) */
@@ -408,15 +408,19 @@
     var liveI = -1; if (M.liveOf) { var lw = M.liveOf(S, P); if (lw) liveI = a.dates.indexOf(lw) - i0; }
     /* várias linhas (não a sazonalidade): o R² de cada uma contra a 1ª, na janela, nos dias em que as duas têm valor (o ponto "ao vivo"
        da paridade fica de fora). M.noR2 = linhas que são a mesma conta (o prêmio com e sem a tarifa) */
-    var fits = null;
-    if (!seas && !M.noR2 && ser.length > 1 && X.r2of) { var v0 = a.vals[0].map(function (x, i) { return (liveI >= 0 && i === i0 + liveI) ? null : x; });
-      fits = ser.map(function (s, k) { return k ? X.r2of(v0, a.vals[k], i0, i1) : null; }); }
+    var fits = null, cells = null;
+    if (!seas && !M.noR2 && ser.length > 1 && X.r2of) {
+      var vv = a.vals.map(function (arr) { return arr.map(function (x, i) { return (liveI >= 0 && i === i0 + liveI) ? null : x; }); });
+      fits = ser.map(function (s, k) { return k ? X.r2of(vv[0], vv[k], i0, i1) : null; });
+      cells = X.corrCells ? X.corrCells(vv, i0, i1) : null; }
     this._hfV = { M: M, ser: ser, dates: a.dates, vals: a.vals, i0: i0, i1: i1, n: n, refs: refs, liveI: liveI, fits: fits };
     var cv = E.stage.querySelector('canvas'), note = typeof M.note === 'function' ? M.note(S, P) : (M.note || ''), hpf = this._help(this.cur, M.id, {}), wy = E.stage.querySelector('.dk-why');
     E.stage.querySelector('.dk-st').textContent = M.label;
     /* a explicação do gráfico (data-desk-help.js): o que mostra + como ler; sem texto lá, a nota do catálogo */
     var R2H = window.IBBADeskHelp && IBBADeskHelp.view && IBBADeskHelp.view.r2;
     wy.innerHTML = X.whyHTML((hpf && hpf.what) || note, (((hpf && hpf.how) || '') + (fits && R2H ? ' ' + R2H : '')).trim()); wy.hidden = !wy.innerHTML;
+    /* tabela de correlação ao lado da explicação: o R² de cada par de linhas, na janela */
+    var ce = E.stage.querySelector('.dk-corr'); if (ce) { ce.innerHTML = (cells && X.corrTable) ? X.corrTable(ser.map(function (s, k) { return { name: s.name, short: s.short || s.name, color: pal[k % pal.length] }; }), cells, 'readings') : ''; ce.hidden = !ce.innerHTML; }
     E.stage.querySelector('.dk-hfsrc').textContent = M.src || this.sections[this.cur].hf.src || '';
     E.stage.querySelector('.dk-hint').textContent = seas ? 'Hover to read every year · All years are shown (the Window buttons do not apply here)' : 'Hover to read any date · Change the period with the Window buttons or the dates above';
     if (n < 1 || !ser.length) { E.build.hidden = true; this._dropCharts('hf'); E.stage.querySelector('.dk-sv').textContent = '—'; E.stage.querySelector('.dk-sd').textContent = 'No data in this window'; E.stage.querySelector('.dk-hfleg').innerHTML = ''; E.read.querySelector('.dk-kv').innerHTML = ''; E.read.querySelector('.dk-big').textContent = '—'; return; }
@@ -451,7 +455,7 @@
     E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
     /* legenda com o valor de cada série na data lida */
     E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.length > 1 ? v.ser.map(function (s, j) { var x = v.vals[j][ref]; if (x == null) { var b = at(s.pts, iso); x = b ? b[1] : null; }
-      return '<span><i style="background:' + pal[j % pal.length] + '"></i>' + esc(s.name) + ' <b>' + num(x, M.dec, sg(M)) + '</b>' + (v.fits && v.fits[j] && X.r2Badge ? X.r2Badge(v.fits[j], v.ser[0].short || v.ser[0].name, 'readings') : '') + '</span>'; }).join('') : '';
+      return '<span><i style="background:' + pal[j % pal.length] + '"></i>' + esc(s.name) + ' <b>' + num(x, M.dec, sg(M)) + '</b></span>'; }).join('') : '';   // o R² mora na tabela ao lado da explicação
     if (v.refs && v.refs.legend) E.stage.querySelector('.dk-hfleg').innerHTML += v.refs.legend.map(function (l) { return '<span><i class="dk-lg-' + (l.kind === 'band' ? 'band' : 'dash') + '"></i>' + esc(l.name) + '</span>'; }).join('');
     /* comparações da série principal */
     var cmp = [['vs previous', null], ['vs 1 month earlier', -1], ['vs 3 months earlier', -3], ['vs 1 year earlier', -12]].map(function (c) {
