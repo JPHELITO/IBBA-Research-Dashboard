@@ -2625,8 +2625,9 @@ function _millsSet(ok){
   const t=COM_TABS.steel, i=t.findIndex(x=>x[0]==='chinamills');
   if(_millsOk&&i<0) t.push(['chinamills','China mills']); else if(!_millsOk&&i>=0) t.splice(i,1); else return;
   const bar=document.getElementById('dk-subnav'); if(bar) bar.dataset.com='';   // a linha de abas se refaz
+  try{ if(DESK) DESK.invalidate(); }catch(e){}   // o Builder passa a ter (ou deixa de ter) as séries das usinas
   if(!_dbReady) return;   // antes da 1ª seção aparecer não marca nada (marcar 'domestic', o valor inicial, fazia o botão Steel abrir em Domestic)
-  if(!_millsOk&&currentSub==='chinamills') setSub('parity'); else _navMark(currentSub);
+  if(!_millsOk&&currentSub==='chinamills') setSub('parity'); else { _navMark(currentSub); if(currentSub==='builder') render(); }
 }
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
 function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ? 'prediction' : currentSub; }
@@ -2713,6 +2714,11 @@ const _millBuild=(S,P,iso)=>{ const a=['profit','bfutil','bfop','hm'].map(c=>P.m
   const f=(x,d,u)=>!x?'—':P.fmt(x.v,d)+u+(x.est?' est.':'');
   return {title:'The whole weekly survey', when:(obs?((r[6]==='secondary'?'Mysteel figures via a secondary source · ':'Mysteel · ')+P.dLabel(obs)+(obs!==iso?' (holiday week)':'')):'Week of '+P.dLabel(iso)+' · no survey published')+(est?' · est. = average of the week before and the week after':''), items:[
     {k:'Mills making money',v:f(a[0],2,'%')},{k:'Blast-furnace capacity utilization',v:f(a[1],2,'%')},{k:'Furnaces running',v:f(a[2],2,'%')},{k:'Hot metal output',v:f(a[3],0,' kt/day')}]}; };
+/* USINAS CHINESAS NO BUILDER (que é mensal): a mesma pesquisa em MESES — a média das semanas do mês (com a semana sem
+   leitura já preenchida pela média dos vizinhos, como no gráfico semanal); trimestre, ano e LTM = média das semanas do período.
+   O dado vem da mesma função do banco (get_china_mills), pedido quando o Builder abre (sec.need). */
+const _millMo=col=>()=>{ const S=DESK&&DESK.millsStore?DESK.millsStore():null; return S&&S.mills?IBBADesk.prices.P.millMonthly(S,col):{v:{},n:{}}; };
+const _millMoV=(A,c)=>IBBADesk.core.F.div(A.sum(c.v),A.sum(c.n));
 /* a marca de estimativa do painel Reading: a série principal do gráfico naquela semana */
 const _millEst=col=>(S,P,iso)=>{ const x=P.millAt(S,col,iso); return x&&x.est?'No reading this week: the line uses the average of the week before and the week after.':null; };
 /* PARIDADE DE IMPORTAÇÃO (aço) — o catálogo das seções de preço. A conta mora em data-desk-prices.js (IBBADesk.prices.parity). */
@@ -2768,7 +2774,9 @@ function _desk(){
   };
   DESK=IBBADesk.mount({
     sector:'mm', root:'#desk-root',
-    goto:it=>{ const S=DESK.sections[it.sec]; DESK.select(it.sec,it.metric,it.prod);
+    goto:it=>{ const S0=DESK.sections[it.sec];
+      if(S0&&S0.alias){ const met=(S0.aliasMetric&&S0.aliasMetric[it.metric])||it.metric; DESK.select(S0.alias,met,null); setSub(S0.alias,{anim:1}); return; }   // série só do Builder → a aba dela
+      const S=S0; DESK.select(it.sec,it.metric,it.prod);
       if(!S.prods){ currentProd=it.prod||'total'; updateProdButtons(); originState.exp.pillCat=null; originState.exp.countries=null; originState.imp.pillCat=null; originState.imp.countries=null; }
       setSub(it.sec,{anim:1}); },
     state:()=>({prod:currentProd, gran:currentGran, win:currentWin, from:customRange.from, to:customRange.to}),
@@ -2793,14 +2801,18 @@ function _desk(){
       /* BUILDER — a bancada (data-desk-builder.js): o catálogo sai das seções acima; aqui só a ordem e as visões prontas */
       builder:{
         label:'Builder', builder:true,
-        /* as vistas dos EUA entram no catálogo e nas visões prontas só para quem vê Steel › US market */
-        get order(){ return ['imports','exports','domestic','ore'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]); },
+        /* as vistas dos EUA entram no catálogo e nas visões prontas só para quem vê Steel › US market; as usinas chinesas
+           (média mensal da pesquisa semanal da Mysteel) só para quem vê Steel › China mills */
+        get order(){ return ['imports','exports','domestic','ore'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]).concat(_millsOk===true?['chinamills_m']:[]); },
         get presets(){ return [
           {n:'Imports vs penetration', s:['imports.vol.total','imports.pen.total'], v:'level', g:'monthly', w:'3y', tip:'Import volume against the share of imports in apparent consumption'},
           {n:'China vs Korea (LTM)', s:['imports~country~total~China','imports~country~total~South Korea'], v:'ltm', g:'monthly', w:'5y', tip:'Imports from the two main origins, last 12 months'},
           {n:'Imports, exports and production', s:['imports.vol.total','exports.vol.total','domestic.prod.total'], v:'index', g:'monthly', w:'3y', tip:'Three volumes rebased to 100 at the start of the window'},
           {n:'Iron ore: fines vs pellets', s:['ore.vol.Fines','ore.vol.Pellets'], v:'level', g:'monthly', w:'3y', tip:'Brazilian exports of iron ore fines and of pellets'},
-        ].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.presets:[]); },
+        ].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.presets:[]).concat(_millsOk===true?[
+          {n:'China: margins vs output', s:['chinamills_m.profit.total','chinamills_m.bfutil.total'], v:'level', g:'monthly', w:'5y', tip:'Share of Chinese mills making money against blast-furnace utilization (Mysteel, monthly average of the weekly survey)'},
+          {n:'China hot metal vs Brazil ore exports', s:['chinamills_m.hm.total','ore.vol.total'], v:'level', g:'monthly', w:'5y', tip:'Chinese hot metal output (Mysteel) against Brazil\'s iron ore exports (SECEX), both rebased to 100'},
+        ]:[]); },
       },
       /* ── PREÇOS DE MERCADO (data-desk-prices.js): diário/semanal, direto da tabela commodities e da paridade semanal ── */
       parity:{
@@ -2870,6 +2882,17 @@ function _desk(){
             {id:'hm_seas', label:'Hot metal output — one line per year', short:'Hot metal, by year', unit:'kt/day', dec:0, season:true, gapDays:10,
               series:(S,P)=>P.byYear(P.mill(S,'hm'),6,P.millEst(S,'hm'))},
           ] } },
+      /* USINAS CHINESAS NO BUILDER — seção que só o Builder usa (a aba semanal é a chinamills, acima). alias: o nome da série no
+         Builder abre a aba China mills com o gráfico certo. paid: Mysteel é agência → no Builder só a imagem, sem Excel. */
+      chinamills_m:{
+        label:'China mills — monthly average of the weekly survey', src:'Mysteel', paid:true, alias:'chinamills', aliasMetric:{bfutil:'bf', bfop:'bf'},
+        off:()=>_millsOk!==true, need:()=>DESK&&DESK.millsNeed?DESK.millsNeed():null,
+        metrics:[
+          {id:'profit', label:'China — share of steel mills making money', short:'China mills making money', unit:'%', dec:1, pp:true, comp:_millMo('profit'), calc:_millMoV},
+          {id:'hm', label:'China — hot metal output (daily average)', short:'China hot metal output', unit:'kt/day', dec:0, comp:_millMo('hm'), calc:_millMoV},
+          {id:'bfutil', label:'China — blast-furnace capacity utilization', short:'China BF utilization', unit:'%', dec:1, pp:true, comp:_millMo('bfutil'), calc:_millMoV},
+          {id:'bfop', label:'China — blast furnaces running (operating rate)', short:'China BF operating rate', unit:'%', dec:1, pp:true, comp:_millMo('bfop'), calc:_millMoV},
+        ] },
       /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
          na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
       prediction:{

@@ -239,6 +239,9 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .dk-bdl{display:inline-flex;gap:4px;}
 .dk-bdl button{font:700 9.5px var(--dk-text);letter-spacing:.06em;color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;}
 .dk-bdl button:hover{border-color:var(--orange);color:var(--orange);}
+/* desligado (ex.: série de fonte paga no Builder = sem Excel): apagado e sem cara de clicável; o motivo fica na dica */
+.dk-bdl button:disabled,.dk-lnk:disabled{opacity:.38;cursor:not-allowed;}
+.dk-bdl button:disabled:hover{border-color:var(--border);color:var(--gray-dark);}
 .dk-bchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .dk-bchip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:4px 4px 4px 9px;background:var(--white);font-size:12px;max-width:100%;min-width:0;}
 .dk-bchip i{width:9px;height:9px;border-radius:50%;flex:none;}

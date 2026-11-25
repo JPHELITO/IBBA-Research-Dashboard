@@ -13,6 +13,9 @@
      um painel por unidade (pedido do usuário, 19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100:
      só entra junto de séries da mesma unidade.
    · Trimestre/ano: só períodos COMPLETOS (séries de fontes diferentes fecham em meses diferentes).
+   · Seção com dado que chega à parte (sec.need → promessa, ex.: usinas chinesas): o Builder pede quando abre e redesenha
+     quando o dado chega. sec.off() = a seção não vale para esta pessoa agora (sem a chave). sec.paid = fonte paga
+     (agência): com uma série dessas no gráfico, sem Excel e sem "Copy table" — só a imagem.
    ════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -44,13 +47,13 @@
   Desk.prototype._bItem = function (key) {
     var C = this._bItems = this._bItems || {}; if (key in C) return C[key];
     var p = parseKey(key), sec = p && this.sections[p.sec], it = null, X0;
-    if (sec && !sec.overview && !sec.builder && !sec.fixed) { X0 = { prod: p.prod }; var pl = prodLabel(sec, p.prod), first = secProds(sec)[0].k;
+    if (sec && !sec.overview && !sec.builder && !sec.fixed && !(sec.off && sec.off())) { X0 = { prod: p.prod }; var pl = prodLabel(sec, p.prod), first = secProds(sec)[0].k;
       var suf = function (lab) { return (pl && p.prod !== first && lab.toLowerCase().indexOf(pl.toLowerCase()) < 0) ? lab + ' · ' + pl : lab; };
       try {
         if (p.type === 'm') { var M = null; sec.metrics.forEach(function (m) { if (m.id === p.metric) M = m; });
           /* M.bprods: indicador que só existe em alguns produtos (ex.: consumo aparente de papel = só o total) */
           if (M && !M.multi && (!M.available || M.available(X0)) && (!M.bprods || M.bprods.indexOf(p.prod) >= 0)) { var lab = typeof M.label === 'function' ? M.label(X0) : M.label;
-            it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '' }; } }
+            it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '', paid: !!sec.paid }; } }
         else { var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === p.dim) dim = d0; });
           if (dim && !dim.noSelect && (!dim.available || dim.available(X0)) && this._bEntNames(p.sec, dim, p.prod).indexOf(p.name) >= 0)
             it = { key: key, type: 'e', sec: p.sec, dim: dim.id, prod: p.prod, short: p.name, name: suf(p.name + ' — ' + (dim.title || sec.label)), unit: dim.unit || 'kt', diff: false, where: (dim.title || sec.label) + (sec.src ? ' · ' + sec.src : '') }; }
@@ -65,7 +68,13 @@
     return (C[k] = d);
   };
   Desk.prototype._bGroups = function () { var S = this.sections, ord = (S.builder && S.builder.order) || Object.keys(S);
-    return ord.filter(function (id) { return S[id] && !S[id].overview && !S[id].builder && !S[id].fixed; }).map(function (id) { return { id: id, sec: S[id], prods: secProds(S[id]) }; }); };
+    return ord.filter(function (id) { return S[id] && !S[id].overview && !S[id].builder && !S[id].fixed && !(S[id].off && S[id].off()); }).map(function (id) { return { id: id, sec: S[id], prods: secProds(S[id]) }; }); };
+  /* seções com dado à parte: pede o que falta e redesenha o Builder quando chega (uma promessa por seção) */
+  Desk.prototype._bNeed = function () { var self = this, W = this._bNeedP = this._bNeedP || {};
+    this._bGroups().forEach(function (g) { if (!g.sec.need || W[g.id]) return; var p = null; try { p = g.sec.need(); } catch (e) { p = null; }
+      if (p && p.then) W[g.id] = p.then(function () { delete W[g.id]; self.invalidate(); if (self.cur === 'builder') self._builder(); }, function () { delete W[g.id]; }); }); };
+  /* alguma série do gráfico vem de fonte paga (agência)? então sem Excel e sem copiar a tabela */
+  Desk.prototype._bPaid = function () { var v = this._bv; return !!(v && v.rows.some(function (r) { return r.it && r.it.paid; })); };
 
   /* estado: 1º a visão que veio no link (?bv=), 2º a última em que a pessoa trabalhou, 3º a 1ª visão pronta — nunca tela vazia */
   Desk.prototype._bState = function () {
@@ -179,8 +188,8 @@
     E.bchips.addEventListener('click', function (e) { var x = e.target.closest('[data-x]'), go = e.target.closest('[data-go]');
       if (x) { self._bToggle(x.dataset.x); return; }
       if (go) { var it = self._bItem(go.dataset.go); if (it && self.cfg.goto) self.cfg.goto({ sec: it.sec, metric: it.type === 'm' ? it.metric : self.sections[it.sec].stage, prod: it.prod }); } });
-    E.bdl.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt) return; if (bt.dataset.dl === 'png') self._bPNG(); else self._bXLS(); });
-    E.bcopy.addEventListener('click', function () { var t = self._bTable(true); copyText(t, function (ok) { E.bcopy.textContent = ok ? 'Copied ✓' : 'Could not copy'; setTimeout(function () { E.bcopy.textContent = 'Copy table'; }, 1800); }); });
+    E.bdl.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt || bt.disabled) return; if (bt.dataset.dl === 'png') self._bPNG(); else self._bXLS(); });
+    E.bcopy.addEventListener('click', function () { if (self._bPaid()) return; var t = self._bTable(true); copyText(t, function (ok) { E.bcopy.textContent = ok ? 'Copied ✓' : 'Could not copy'; setTimeout(function () { E.bcopy.textContent = 'Copy table'; }, 1800); }); });
     E.bpanels.addEventListener('pointermove', function (e) { var cv = e.target.closest('canvas'); if (!cv) return; var ch = self.charts['b:' + cv.dataset.p]; if (!ch || !ch.chartArea) return;
       var rc = cv.getBoundingClientRect(), n = ch.data.labels.length, i = Math.max(0, Math.min(n - 1, Math.round(ch.scales.x.getValueForPixel(e.clientX - rc.left)))); self._bHover(i); });
     E.bpanels.addEventListener('pointerleave', function () { self._bHover(null); });
@@ -256,6 +265,10 @@
         ch.options.scales.x.afterFit = function (s) { s.paddingLeft = 16; s.paddingRight = 20; };
         if (k < v.panels.length - 1) ch.options.scales.x.ticks.display = false;
         ch.update('none'); }); }
+    /* fonte paga no gráfico: só a imagem (a planilha da agência não sai daqui) */
+    var paid = this._bPaid(), xb = E.bdl.querySelector('[data-dl="xls"]');
+    if (xb) { xb.disabled = paid; xb.title = paid ? 'Not available: a series on the chart comes from a paid source (Mysteel) — download the image (PNG)' : 'Download the data (Excel) — full history'; }
+    E.bcopy.disabled = paid; E.bcopy.title = paid ? 'Not available: a series on the chart comes from a paid source (Mysteel)' : 'Copy every period of the window, ready to paste into Excel';
     var msgs = []; if (b.msg) msgs.push(b.msg);
     E.bmsg.hidden = !msgs.length; E.bmsg.textContent = msgs.join(' · ');
     var hint = v.panels.length > 1 ? 'Series with the same unit share a panel; each other unit gets its own panel, on the same time axis.' : 'Hover to read every series at the same period.';
@@ -312,7 +325,7 @@
     for (i = 0; i < v.P.length && first < 0; i++) if (v.rows.some(function (r) { return r.v[i] != null; })) first = i;
     for (i = Math.max(0, first); i < v.P.length; i++) out.push([v.P[i].label].concat(v.rows.map(function (r) { return r.v[i]; }), idx ? v.rows.map(function (r) { return r.lev[i]; }) : [])); return out; };
   Desk.prototype._bName = function () { var v = this._bv, c0 = CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]; return 'Builder — ' + v.rows.map(function (r) { return r.it.name; }).join(' vs ') + (v.calc === 'level' ? '' : ' (' + c0 + ')'); };
-  Desk.prototype._bXLS = function () { var v = this._bv; if (!v || !v.rows.length || !window.IBBAExport) return; var nm = IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp());
+  Desk.prototype._bXLS = function () { var v = this._bv; if (!v || !v.rows.length || !window.IBBAExport || this._bPaid()) return; var nm = IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp());
     IBBAExport.xlsxFromAOA([{ name: 'Builder', aoa: this._bAOA() }], nm).catch(function () { alert('Could not build the Excel file.'); }); };
   /* PNG: título + legenda + os painéis empilhados, na cor do tema */
   Desk.prototype._bPNG = function () {
@@ -333,6 +346,7 @@
     this._bState();
     if (this._built !== 'builder' || !this.bel || !this.root.contains(this.bel.body)) { this._destroyAll(); this._bBuild(); this._built = 'builder'; }
     this.bel.bpanels.dataset.sig = '';   // tema/filtros podem ter mudado: os painéis são refeitos
+    this._bNeed();
     this._bViews(); this._bCat(); this._bStage();
   };
 

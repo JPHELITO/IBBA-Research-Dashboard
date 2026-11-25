@@ -146,12 +146,21 @@
   var MILL = { obs: 1, profit: 2, bfop: 3, bfutil: 4, hm: 5, kind: 6 };
   function millPts(rows, col) { var ix = MILL[col], out = []; (rows || []).forEach(function (r) { var v = r && r[ix]; if (v != null && v !== '' && isFinite(v)) out.push([String(r[0]).slice(0, 10), +v]); }); return out; }
 
+  /* a série semanal em MESES para o Builder (que é mensal): a SOMA e o NÚMERO de semanas de cada mês — a página divide uma
+     pela outra, então o mês é a média das suas semanas e o trimestre/ano/LTM a média das semanas do período. O mês da última
+     leitura só entra quando a última sexta-feira dele já saiu (senão seria a média de um mês pela metade). */
+  function monthly(pts) {
+    var v = {}, n = {}, last = pts && pts.length ? pts[pts.length - 1][0] : null;
+    var open = (last && addDays(last, 7).slice(0, 7) === last.slice(0, 7)) ? last.slice(0, 7) : null;
+    (pts || []).forEach(function (p) { var m = p[0].slice(0, 7); if (m === open || p[1] == null) return; v[m] = (v[m] || 0) + p[1]; n[m] = (n[m] || 0) + 1; });
+    return { v: v, n: n };
+  }
   /* a coluna das usinas uma vez por versão dos dados: as leituras, a série completa e as semanas estimadas */
   function millC(S, col) {
     if (S._millV !== S.v) { S._mill = {}; S._millV = S.v; }
     var c0 = S._mill[col]; if (c0) return c0;
     var raw = millPts(S.mills, col), f = fillWeekly(raw);
-    return (S._mill[col] = { raw: raw, pts: f.pts, est: f.est });
+    return (S._mill[col] = { raw: raw, pts: f.pts, est: f.est, mo: monthly(f.pts) });
   }
 
   /* o que o catálogo da página usa para montar as séries */
@@ -171,6 +180,7 @@
     mill: function (S, col) { return millC(S, col).pts; },
     millRaw: function (S, col) { return millC(S, col).raw; },
     millEst: function (S, col) { return millC(S, col).est; },
+    millMonthly: function (S, col) { return millC(S, col).mo; },   // {v: soma das semanas, n: semanas} por 'AAAA-MM' (Builder)
     millAt: function (S, col, iso) { var c0 = millC(S, col), b = at(c0.pts, iso); return (b && b[0] === iso) ? { v: b[1], est: !!c0.est[iso] } : null; },
     millRow: function (S, iso) { var r = null; (S.mills || []).forEach(function (x) { if (String(x[0]).slice(0, 10) <= iso) r = x; }); return r; },
     /* linhas da paridade de um produto ('hrc' | 'rebar'), já com a conta feita e o ponto ao vivo no fim */
@@ -229,6 +239,11 @@
     if (needF) jobs.push(Promise.resolve(cx.get('macro_indicators?select=code,value&code=eq.USD_BRL')).then(function (r) { S.fx = (r && r[0] && +r[0].value) || 0; if (S.fx) cSet('fx', S.fx); }, function () { S.fx = 0; }));
     return (this._hfP[key] = Promise.all(jobs).then(function () { delete self._hfP[key]; S.v++; }));
   };
+
+  /* Builder e outras telas mensais: pede a pesquisa das usinas se ela ainda não chegou (promessa) — null quando já está em mãos
+     (ou quando o banco recusou: sem a chave china_mills o cliente recebe [] e nada mais é pedido nesta visita) */
+  Desk.prototype.millsNeed = function () { var S = this._hfStore(); return S.mills != null ? null : this._hfNeed({ hf: { mills: true } }, null); };
+  Desk.prototype.millsStore = function () { return this._hfStore(); };
 
   /* ══ (c) INTERFACE ═════════════════════════════════════════════════════════ */
   /* cores da sazonalidade: o ano mais novo laranja, o anterior cinza cheio, os outros cinza mais claro (tracejados no gráfico) */
@@ -493,5 +508,5 @@
     series: v.ser.map(function (s, k) { return { name: s.name, vals: v.vals[k].slice(v.i0, v.i1 + 1) }; }) }; };
   D.prices = { parity: parity, parRow: parRow, liveRow: liveRow, fromDaily: fromDaily, combine: combine, at: at, align: align, win: win, shift: shift, mean: mean, dLabel: dLabel,
     decodeHist: decodeHist, mergeHist: mergeHist, qInfo: qInfo, qBack: qBack, avgIn: avgIn, byYear: byYear, seasIso: seasIso, sLabel: sLabel, near: near, millPts: millPts,
-    fillWeekly: fillWeekly, addDays: addDays, P: P };
+    fillWeekly: fillWeekly, addDays: addDays, monthly: monthly, P: P };
 })();
