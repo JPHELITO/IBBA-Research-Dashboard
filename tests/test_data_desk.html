@@ -131,6 +131,14 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   near('Builder · Index segue nível ÷ base × 100', v.rows[0].v[v.i1], 133 / 121 * 100);
   eq('Builder · spread (pode ser negativo) não entra no Index, com aviso', [v.rows[2].v.every(x => x == null), /cannot be indexed/.test(v.rows[2].note)], [true, true]);
   eq('Builder · no Index o limite de unidades não vale', D2._bWhy('a.w.total'), null);
+  /* R² (pedido do usuário, 25/11/2026): a conta e o que vai na visão */
+  const fr = B.r2of([1, 2, 3, 4, 5, 6], [2, 4, 5, 4, 5, 7], 0, 5);
+  near('R² · quadrado da correlação = R² da regressão linear (13,5² ÷ (17,5 × 13,5))', fr.r2, 13.5 / 17.5, 1e-12);
+  eq('R² · sentido oposto = mesmo R², correlação negativa; poucos períodos ou série parada = sem R²', [+B.r2of([1, 2, 3, 4, 5, 6], [7, 5, 4, 5, 4, 2], 0, 5).r2.toFixed(6), B.r2of([1, 2, 3, 4, 5, 6], [7, 5, 4, 5, 4, 2], 0, 5).r < 0, B.r2of([1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 0, 4).r2, B.r2of([1, 2, 3, 4, 5, 6], [3, 3, 3, 3, 3, 3], 0, 5).r2], [+(13.5 / 17.5).toFixed(6), true, null, null]);
+  eq('R² · só nos períodos em que as DUAS têm valor (vazio fica de fora)', B.r2of([1, null, 3, 4, 5, 6, 7], [2, 9, 6, 8, 10, 12, 14], 0, 6).n, 6);
+  ST = { prod: 'total', gran: 'monthly', win: 'ytd', from: null, to: null };
+  D2._bApply({ s: ['a.v.total', 'a.w.total'], v: 'level' }, false); v = D2._bView();
+  eq('R² · na visão: a 1ª série não tem; a 2ª tem contra a 1ª, na janela (10 meses do YTD)', [v.rows[0].fit, +v.rows[1].fit.r2.toFixed(9), v.rows[1].fit.n], [null, 1, 10]);
   /* eixo da direita (RHS) — as contas; o botão "Right axis" é exercitado no navegador (data-desk/ferramentas/ver_builder_rhs.py) */
   ST = { prod: 'total', gran: 'monthly', win: 'ytd', from: null, to: null };
   D2._bApply({ s: ['a.v.total', 'a.p.total'], r: ['a.p.total'], v: 'level' }, false); v = D2._bView();

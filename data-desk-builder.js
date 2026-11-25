@@ -11,6 +11,10 @@
    · UM gráfico: séries da mesma unidade aparecem como são; em unidades diferentes (kt × %, kt × US$/t…) a visão vai
      sozinha para a BASE 100 — cada série começa em 100 no início da janela; nunca um painel por unidade (pedido do usuário,
      19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100.
+   · R² (pedido do usuário, 25/11/2026: "para todos os gráficos que montarmos, coloque sempre um indicativo do R²"): cada série a
+     partir da 2ª mostra o R² contra a 1ª série do gráfico — o quadrado da correlação de Pearson, que é o R² da regressão linear de
+     uma na outra —, na JANELA e na CONTA da tela (Level, YoY, LTM ou Index; Index dá o mesmo R² do Level). Só com 6+ períodos em
+     comum. "inverse" = andam em sentidos opostos (correlação negativa).
    · EIXO DA DIREITA (pedido do usuário, 25/11/2026: "permitir colocar algum dado em um eixo secundário (RHS), ajustando a
      variação"): cada série pode ir para uma 2ª escala, à direita, na unidade dela — a de pouca variação ganha escala
      própria. Cada lado vale sozinho: lado com uma unidade só = números de verdade; um lado com unidades diferentes leva tudo
@@ -45,6 +49,17 @@
   function decodeView(str) { var a = String(str || '').split('!'); if (!a[0]) return null;
     var o = { s: decKeys(a[0]), v: a[1] || 'level', g: GRB[a[2]] || null, w: a[3] || null, from: a[4] || null, to: a[5] || null }; if (a[6]) o.r = decKeys(a[6]); return o; }
   function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
+  /* R² entre duas séries nos períodos i0..i1 em que AS DUAS têm valor: {n, r, r2}; r2 = null com menos de 6 pares ou série parada */
+  var R2_MIN = 6;
+  function r2of(a, b, i0, i1) {
+    var xs = [], ys = [], i, n, mx = 0, my = 0, sxy = 0, sxx = 0, syy = 0;
+    for (i = i0; i <= i1; i++) if (a[i] != null && b[i] != null && isFinite(a[i]) && isFinite(b[i])) { xs.push(+a[i]); ys.push(+b[i]); }
+    n = xs.length; if (n < R2_MIN) return { n: n, r: null, r2: null };
+    for (i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; } mx /= n; my /= n;
+    for (i = 0; i < n; i++) { var dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+    if (!(sxx > 0) || !(syy > 0)) return { n: n, r: null, r2: null };
+    var r = sxy / Math.sqrt(sxx * syy); return { n: n, r: r, r2: r * r };
+  }
   function sameSet(a, b) { a = a || []; b = b || []; return a.length === b.length && a.every(function (k) { return b.indexOf(k) >= 0; }); }
   function numTxt(v, dec, signed) { if (v == null || !isFinite(v)) return '—'; return (signed && v > 0 ? '+' : '') + fmt(v, dec).replace(/^-/, '−'); }
 
@@ -169,6 +184,7 @@
     if (lo == null) return out;
     var ax = core.axis(lo, hi), P = core.buildPeriods(ax, gran, false); if (!P.length) return out;
     var mw = core.monthWindow(ax, ax.length - 1, st), pw = core.periodWindow(P, mw[0], mw[1]); out.P = P; out.i0 = pw[0]; out.i1 = pw[1];
+    var gname = { monthly: 'months', quarterly: 'quarters', annual: 'years' }[gran] || 'periods';
     rows.forEach(function (r) { var src = calc === 'yoy' ? r.d.yoy : calc === 'ltm' ? r.d.ltm : r.d.level, map = {}, lm = {}, i;
       r.d.keys.forEach(function (k, j) { if (r.d.partial[j]) return; map[k] = src ? src[j] : null; lm[k] = r.d.level[j]; });   // período em andamento fica de fora
       r.unit = unitIn(r.d, calc); r.dec = (calc === 'index' || calc === 'yoy') ? 1 : r.d.dec; r.note = '';
@@ -177,6 +193,8 @@
         var ok = base != null && !r.d.diff; r.v = P.map(function (p) { var x = lm[p.key]; return (ok && x != null) ? x / base * 100 : null; });
         r.note = !ok ? 'cannot be indexed (it can be zero or negative)' : (bi > pw[0] ? '100 = ' + P[bi].label : ''); }
       else r.v = P.map(function (p) { var x = map[p.key]; return x == null ? null : x; }); });
+    /* R² de cada série contra a 1ª, na janela e na conta da tela */
+    rows.forEach(function (r, k) { r.fit = k ? r2of(rows[0].v, r.v, out.i0, out.i1) : null; if (r.fit) r.fit.per = gname; });
     if (dual) {   // um gráfico com duas escalas: a da esquerda e a da direita, cada uma na sua unidade
       var pl = { dual: true, unit: rows.filter(function (r) { return r.ax === 'L'; })[0].unit, unitR: rows.filter(function (r) { return r.ax === 'R'; })[0].unit, rows: rows, dec: 0, decR: 0 };
       rows.forEach(function (r) { if (r.ax === 'R') pl.decR = Math.max(pl.decR, r.dec); else pl.dec = Math.max(pl.dec, r.dec); }); out.panels = [pl]; return out; }
@@ -323,7 +341,7 @@
     E.bhint.textContent = hint;
     /* explicação: o que é o gráfico e como ler a conta escolhida (na base 100 automática o aviso de cima já explica) */
     var HB = window.IBBADeskHelp && IBBADeskHelp.builder;
-    if (E.bwhy) { E.bwhy.innerHTML = (HB && v.rows.length) ? X.whyHTML(HB.what, ((v.auto ? '' : (HB.calc[v.calc] || '')) + (v.dual && HB.dual ? ' ' + HB.dual : '')).trim()) : ''; E.bwhy.hidden = !E.bwhy.innerHTML; }
+    if (E.bwhy) { E.bwhy.innerHTML = (HB && v.rows.length) ? X.whyHTML(HB.what, ((v.auto ? '' : (HB.calc[v.calc] || '')) + (v.dual && HB.dual ? ' ' + HB.dual : '') + (v.rows.length > 1 && HB.r2 ? ' ' + HB.r2 : '')).trim()) : ''; E.bwhy.hidden = !E.bwhy.innerHTML; }
     this._bPaint();
   };
   Desk.prototype._bHover = function (i) { var b = this.bui, self = this; if (b.hover === i) return; b.hover = i; if (this._braf) return; this._braf = requestAnimationFrame(function () { self._braf = 0; self._bPaint(); }); };
@@ -338,11 +356,16 @@
       var val = (j >= v.i0 && j >= 0) ? r.v[j] : null;
       /* na base 100 a ficha mostra o índice E o número de verdade (senão a unidade real sumiria da tela) */
       var real = (v.calc === 'index' && j >= v.i0 && j >= 0 && r.lev && r.lev[j] != null) ? fmt(r.lev[j], r.d.dec) + ' ' + r.d.unit : '';
+      /* R² contra a 1ª série (só da 2ª em diante): o número e, na dica, contra o quê, em quantos períodos e o que significa */
+      var f0 = r.fit, ref0 = v.rows[0] ? v.rows[0].it.name : '';
+      var r2b = !f0 ? '' : f0.r2 == null
+        ? '<span class="dk-br2 dk-br2na" title="' + esc('R² against ' + ref0 + ': needs at least 6 ' + f0.per + ' with both series in this window (now ' + f0.n + ')') + '">R² —</span>'
+        : '<span class="dk-br2" title="' + esc('R² against ' + ref0 + ' = ' + fmt(f0.r2, 2) + ', over ' + f0.n + ' ' + f0.per + ' of this window: how much of this series\' movement lines up with ' + ref0 + ' (0 = none, 1 = all), from a linear regression of one on the other.' + (f0.r < 0 ? ' Inverse: they move in opposite directions.' : '') + ' Two series that both trend can show a high R² in Level without a real link — YoY is the stricter test.') + '">R² ' + fmt(f0.r2, 2) + (f0.r < 0 ? ' <em>inverse</em>' : '') + '</span>';
       /* eixo da direita: botão em cada ficha (com 2+ séries) — diz que é botão e o que faz */
       var axb = v.rows.length > 1 ? '<button type="button" class="dk-bax" data-ax="' + esc(r.key) + '" aria-pressed="' + (r.ax === 'R') + '" title="' + esc(r.ax === 'R' ? 'On the right-hand scale — click to bring it back to the left' : 'Give this series its own scale on the right — for series that move much less (or much more) than the others') + '">Right axis</button>' : '';
       return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(me._bWhat(r) + r.it.where + ' — click to open it in its section') + '">' + esc(r.it.name) + '</button>' +
         '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? (real ? '· ' + real : '') : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
-        axb + '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
+        r2b + axb + '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
     this._bTable(false, ref);
   };
   /* o que uma série do Builder mede (para a dica do nome): a explicação do indicador ou da quebra (data-desk-help.js) */
@@ -383,7 +406,9 @@
     var out = document.createElement('canvas'); out.width = W + 2 * pad; out.height = H; var g = out.getContext('2d');
     g.fillStyle = t.surf; g.fillRect(0, 0, out.width, out.height); g.textBaseline = 'top';
     g.fillStyle = t.ink; g.font = '700 ' + (14 * s) + 'px ' + X.FONT; g.fillText('Builder' + (v.calc === 'level' ? '' : ' · ' + CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]) + ' · ' + v.P[v.i0].label + ' – ' + v.P[v.i1].label, pad, pad);
-    v.rows.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.col; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.it.name + '  (' + r.unit + ')' + (v.dual && r.ax === 'R' ? ' — right axis' : ''), pad + 16 * s, y); });
+    v.rows.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.col; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT;
+      var fx = (r.fit && r.fit.r2 != null) ? '  ·  R² ' + fmt(r.fit.r2, 2) + (r.fit.r < 0 ? ' inverse' : '') + ' vs ' + v.rows[0].it.name : '';
+      g.fillText(r.it.name + '  (' + r.unit + ')' + (v.dual && r.ax === 'R' ? ' — right axis' : '') + fx, pad + 16 * s, y); });
     var y0 = head; cvs.forEach(function (c, i) { var pn = v.panels[i]; g.fillStyle = t.mut; g.font = '700 ' + (10 * s) + 'px ' + X.FONT; g.fillText(String(pn.dual ? 'Left axis · ' + pn.unit : pn.unit).toUpperCase(), pad, y0 + 3 * s);
       if (pn.dual) { g.textAlign = 'right'; g.fillText(String('Right axis · ' + pn.unitR).toUpperCase(), pad + W, y0 + 3 * s); g.textAlign = 'left'; } y0 += 20 * s; g.drawImage(c, pad, y0); y0 += c.height; });
     out.toBlob(function (bl) { if (!bl) return; var a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = ((window.IBBAExport && IBBAExport.safeName) ? IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp()) : 'builder') + '.png';
@@ -401,6 +426,6 @@
 
   /* só para os testes: a visão calculada (períodos da janela e os valores de cada série) */
   Desk.prototype.builderDebug = function () { var v = this._bView(); return { calc: v.calc, want: v.want, auto: v.auto, gran: v.gran, keys: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.key; }), labels: v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; }),
-    panels: v.panels.map(function (p) { return p.unit; }), series: v.rows.map(function (r) { return { key: r.key, name: r.it.name, unit: r.unit, vals: r.v.slice(v.i0, v.i1 + 1) }; }) }; };
-  D.builder = { encodeView: encodeView, decodeView: decodeView, parseKey: parseKey, MAX: MAX, MAXU: MAXU };
+    panels: v.panels.map(function (p) { return p.unit; }), series: v.rows.map(function (r) { return { key: r.key, name: r.it.name, unit: r.unit, vals: r.v.slice(v.i0, v.i1 + 1), r2: r.fit ? r.fit.r2 : null, r: r.fit ? r.fit.r : null, n: r.fit ? r.fit.n : null }; }) }; };
+  D.builder = { encodeView: encodeView, decodeView: decodeView, parseKey: parseKey, MAX: MAX, MAXU: MAXU, r2of: r2of };
 })();
