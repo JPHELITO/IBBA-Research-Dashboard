@@ -194,7 +194,7 @@ window.IBBA_TOURS = {
         { id: 'peers', unlessOff: 'stock_guide_peers', call: { click: '#sgtab-comp' }, target: '#peers-card', title: 'Global peers',
           body: 'Consensus multiples for international peers, with live prices, to put our coverage in context.' },
         { id: 'sensitivity', requires: 'stock_guide_sensitivity', call: { click: '#sgtab-sens' }, target: '#sens-host', clip: 360, title: 'Sensitivity',
-          body: 'Tables from our models across scenarios: EBITDA, FCF and FCF yield, plus EV/EBITDA (P/NAV for the copper names). Pick a company in the rail, grouped by sector; the orange mark shows where spot prices sit today.' }
+          body: 'Tables from our models across scenarios: EBITDA, FCF and FCF yield, plus EV/EBITDA (P/NAV for the copper names). Pick a sector, then a company; "How to read" on top explains the marks, and orange shows where spot prices sit today.' }
       ]
     }
     ,{
