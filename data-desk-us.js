@@ -102,6 +102,9 @@
       if (!ok && SECS.indexOf(currentSub) >= 0) setSub('parity');
       else if (ok && pending && pending !== currentSub) { var h = pending; pending = null; setSub(h); }
       else if (SECS.indexOf(currentSub) >= 0) render();
+      /* Builder já na tela: sem isto, quando a chave chegava DEPOIS do 1º desenho (login lento), o catálogo ficava sem os EUA e o
+         arquivo nem descia até a próxima interação (25/11/2026) */
+      else if (currentSub === 'builder') { var inst = window.IBBADesk && window.IBBADesk.instance; if (inst) inst.invalidate(); render(); }
       else _navMark(currentSub);
     } catch (e) { console.warn('US market: chave', e); }
   }

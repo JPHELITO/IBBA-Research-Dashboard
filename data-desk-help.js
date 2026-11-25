@@ -54,7 +54,8 @@
         yoy: 'Each point is the change against the same period a year earlier.',
         ltm: 'Each point covers the last 12 months: the sum for volumes, the average for prices and shares.',
         index: 'Each series starts at 100 at the beginning of the window, so series in different units compare on one scale.'
-      }
+      },
+      dual: 'Series marked “Right axis” are read on the scale at the right, in their own unit; the two scales are independent, so compare how the lines move — not where they cross.'
     },
 
     /* ══════════════ METALS & MINING ══════════════ */

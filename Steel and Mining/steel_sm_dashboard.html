@@ -2859,7 +2859,7 @@ function _desk(){
         label:'Builder', builder:true,
         /* as vistas dos EUA entram no catálogo e nas visões prontas só para quem vê Steel › US market; as usinas chinesas
            (média mensal da pesquisa semanal da Mysteel) só para quem vê Steel › China mills */
-        get order(){ return ['imports','exports','domestic','ore','platts_steel_m','platts_ore_m'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]).concat(_millsOk===true?['chinamills_m']:[]); },
+        get order(){ return ['imports','exports','domestic','ore'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]).concat(_millsOk===true?['chinamills_m']:[]).concat(['platts_steel_m','platts_ore_m']); },
         get presets(){ return [
           {n:'Imports vs penetration', s:['imports.vol.total','imports.pen.total'], v:'level', g:'monthly', w:'3y', tip:'Import volume against the share of imports in apparent consumption'},
           {n:'China vs Korea (LTM)', s:['imports~country~total~China','imports~country~total~South Korea'], v:'ltm', g:'monthly', w:'5y', tip:'Imports from the two main origins, last 12 months'},

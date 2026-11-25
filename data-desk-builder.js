@@ -8,10 +8,14 @@
      Indicador novo numa seção aparece aqui sozinho.
    · Os números vêm de Desk.seriesAll — o MESMO caminho do palco da seção (mesmo eixo, mesma regra de
      soma/razão/último). O teste data-desk/ferramentas/comparar_builder.py confere isso.
-   · UM gráfico, um eixo: séries da mesma unidade aparecem como são; em unidades diferentes (kt × %, kt × US$/t…)
-     a visão vai sozinha para a BASE 100 — cada série começa em 100 no início da janela. Nunca dois eixos, nunca
-     um painel por unidade (pedido do usuário, 19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100:
-     só entra junto de séries da mesma unidade.
+   · UM gráfico: séries da mesma unidade aparecem como são; em unidades diferentes (kt × %, kt × US$/t…) a visão vai
+     sozinha para a BASE 100 — cada série começa em 100 no início da janela; nunca um painel por unidade (pedido do usuário,
+     19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100.
+   · EIXO DA DIREITA (pedido do usuário, 25/11/2026: "permitir colocar algum dado em um eixo secundário (RHS), ajustando a
+     variação"): cada série pode ir para uma 2ª escala, à direita, na unidade dela — a de pouca variação ganha escala
+     própria. Cada lado vale sozinho: lado com uma unidade só = números de verdade; um lado com unidades diferentes leva tudo
+     para a base 100 (com as duas escalas). Spread que não cabe na base 100 vai sozinho para a direita quando dá. A esquerda
+     nunca fica vazia. O link, as visões salvas e a última visão guardam quem está à direita (v.r).
    · Trimestre/ano: só períodos COMPLETOS (séries de fontes diferentes fecham em meses diferentes).
    · Seção com dado que chega à parte (sec.need(ids) → promessa, ex.: usinas chinesas, preços da Platts): o Builder pede quando
      abre e a cada série posta no gráfico (ids = as séries daquela seção que estão no gráfico) e redesenha quando o dado chega. sec.off() = a seção não vale para esta pessoa agora (sem a chave). sec.paid = fonte paga
@@ -34,14 +38,19 @@
   function secProds(sec) { return sec.prods || sec.bprods || [{ k: 'total', l: '' }]; }
   function prodLabel(sec, k) { var l = ''; secProds(sec).forEach(function (p) { if (p.k === k) l = p.l || ''; }); return l; }
   /* a visão num texto curto: séries;séries!conta!granularidade!janela!de!até  ("!" dentro de um nome vira %21, senão partiria o texto) */
-  function encodeView(v) { return [v.s.map(function (k) { return encodeURIComponent(k).replace(/!/g, '%21'); }).join(';'), v.v || 'level', GR[v.g] || '', v.w || '', v.from || '', v.to || ''].join('!'); }
+  function encKeys(a) { return a.map(function (k) { return encodeURIComponent(k).replace(/!/g, '%21'); }).join(';'); }
+  function decKeys(t) { return String(t || '').split(';').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return ''; } }).filter(Boolean); }
+  /* a 7ª parte (as séries do eixo da direita) só existe quando há alguma — os links antigos continuam iguais */
+  function encodeView(v) { var a = [encKeys(v.s), v.v || 'level', GR[v.g] || '', v.w || '', v.from || '', v.to || '']; if (v.r && v.r.length) a.push(encKeys(v.r)); return a.join('!'); }
   function decodeView(str) { var a = String(str || '').split('!'); if (!a[0]) return null;
-    return { s: a[0].split(';').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return ''; } }).filter(Boolean), v: a[1] || 'level', g: GRB[a[2]] || null, w: a[3] || null, from: a[4] || null, to: a[5] || null }; }
+    var o = { s: decKeys(a[0]), v: a[1] || 'level', g: GRB[a[2]] || null, w: a[3] || null, from: a[4] || null, to: a[5] || null }; if (a[6]) o.r = decKeys(a[6]); return o; }
+  function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
+  function sameSet(a, b) { a = a || []; b = b || []; return a.length === b.length && a.every(function (k) { return b.indexOf(k) >= 0; }); }
   function numTxt(v, dec, signed) { if (v == null || !isFinite(v)) return '—'; return (signed && v > 0 ? '+' : '') + fmt(v, dec).replace(/^-/, '−'); }
 
   Desk.prototype._bKey = function (what) { return (what === 'last' ? 'ibba_desk_builder_' : 'ibba_desk_views_') + (this.cfg.sector || 'x'); };
   Desk.prototype._bSaved = function () { try { var a = JSON.parse(localStorage.getItem(this._bKey('views')) || '[]'); return Array.isArray(a) ? a.filter(function (v) { return v && v.n && Array.isArray(v.s); }) : []; } catch (e) { return []; } };
-  Desk.prototype._bStore = function () { var b = this.bui; try { localStorage.setItem(this._bKey('last'), JSON.stringify({ s: b.s.map(function (x) { return x.key; }), v: b.calc })); } catch (e) {} };
+  Desk.prototype._bStore = function () { var b = this.bui; try { localStorage.setItem(this._bKey('last'), JSON.stringify({ s: b.s.map(function (x) { return x.key; }), v: b.calc, r: b.s.filter(function (x) { return x.ax === 'R'; }).map(function (x) { return x.key; }) })); } catch (e) {} };
 
   /* ficha de uma série (sem calcular números): nome, unidade, seção. null = não existe / não vale para esse produto */
   Desk.prototype._bItem = function (key) {
@@ -93,27 +102,45 @@
   Desk.prototype._bApply = function (v, withFilters) {
     var b = this.bui, self = this; b.s = []; b.hover = null; b.msg = '';
     (v.s || []).forEach(function (key) { if (b.s.length < MAX && !b.s.some(function (x) { return x.key === key; }) && self._bItem(key)) b.s.push({ key: key, col: self._bFree() }); });
+    b.s.forEach(function (x) { if ((v.r || []).indexOf(x.key) >= 0) x.ax = 'R'; });
+    if (b.s.every(function (x) { return x.ax === 'R'; })) b.s.forEach(function (x) { delete x.ax; });   // a esquerda nunca fica vazia
     b.calc = CALCS.some(function (c0) { return c0[0] === v.v; }) ? v.v : 'level';
     if (withFilters && this.cfg.setFilters && (v.g || v.w)) { this._bBusy = true; try { this.cfg.setFilters({ gran: v.g || null, win: v.w || null, from: v.from || null, to: v.to || null }); } catch (e) {} this._bBusy = false; }
     this._bStore();
   };
   Desk.prototype._bFree = function () { var used = {}, i; this.bui.s.forEach(function (x) { used[x.col] = 1; }); for (i = 0; i < MAX; i++) if (!used[i]) return i; return 0; };
   Desk.prototype._bUnits = function () { var self = this, u = []; this.bui.s.forEach(function (x) { var it = self._bItem(x.key); if (it && u.indexOf(it.unit) < 0) u.push(it.unit); }); return u; };
+  /* uma combinação de séries e eixos vale? Um lado com unidades diferentes leva TUDO para a base 100 — e série que pode ser
+     zero ou negativa (um spread) não tem base 100. null = vale; senão, o motivo */
+  Desk.prototype._bAxisWhy = function (list) { var self = this, side = { L: [], R: [] };
+    list.forEach(function (y) { var it = self._bItem(y.key); if (it) side[y.ax === 'R' ? 'R' : 'L'].push(it); });
+    var mixed = ['L', 'R'].some(function (k) { return uniq(side[k].map(function (i) { return i.unit; })).length > 1; }); if (!mixed) return null;
+    var d0 = side.L.concat(side.R).filter(function (i) { return i.diff; })[0];
+    return d0 ? d0.short + ' can be zero or negative, so it cannot go on base 100 next to other units' : null; };
+  /* onde uma série nova entra: à esquerda (o padrão; unidades diferentes → base 100) ou, quando a base 100 não serve (spread na
+     conta), sozinha na escala da direita. {ax, why} — why = não dá para entrar agora */
+  Desk.prototype._bPlace = function (key) { var b = this.bui, it = this._bItem(key);
+    var L = b.s.concat([{ key: key }]), why = this._bAxisWhy(L); if (!why) return { ax: 'L' };
+    if (b.s.length && b.s.some(function (x) { return x.ax !== 'R'; })) { var R = b.s.concat([{ key: key, ax: 'R' }]); if (!this._bAxisWhy(R)) return { ax: 'R' }; }
+    return { ax: 'L', why: why + (it && it.diff ? ' — compare it with series in ' + it.unit + ' or use the right axis' : ' — remove it, or put the other unit on the right axis') }; };
   /* por que este item não pode entrar agora (null = pode) */
   Desk.prototype._bWhy = function (key) { var b = this.bui, it = this._bItem(key); if (!it) return 'Not available';
     if (b.s.some(function (x) { return x.key === key; })) return null;
     if (b.s.length >= MAX) return 'Up to ' + MAX + ' series at a time: remove one first';
-    /* unidades diferentes vão para a base 100. Série que pode ser zero ou negativa (um spread) não tem base 100: só entra com a MESMA unidade */
-    var self = this, u = this._bUnits(), mixed = u.length && (u.length > 1 || u.indexOf(it.unit) < 0);
-    if (mixed) { if (it.diff) return it.short + ' can be zero or negative, so it cannot go on base 100 next to other units — compare it with series in ' + it.unit;
-      var d0 = null; b.s.forEach(function (x) { var i2 = self._bItem(x.key); if (i2 && i2.diff) d0 = i2; });
-      if (d0) return d0.short + ' is on the chart and cannot go on base 100 — remove it to mix units'; }
-    return null; };
+    return this._bPlace(key).why || null; };
+  /* leva uma série do gráfico para a escala da direita (ou de volta para a esquerda) */
+  Desk.prototype._bAxis = function (key) { var b = this.bui, x = null; b.s.forEach(function (y) { if (y.key === key) x = y; }); if (!x) return; b.msg = '';
+    var toR = x.ax !== 'R', trial = b.s.map(function (y) { return y === x ? { key: y.key, ax: toR ? 'R' : 'L' } : y; });
+    if (toR && !trial.some(function (y) { return y.ax !== 'R'; })) { b.msg = 'Keep at least one series on the left axis'; this._bStage(); return; }
+    var why = this._bAxisWhy(trial); if (why) { b.msg = why; this._bStage(); return; }
+    if (toR) x.ax = 'R'; else delete x.ax;
+    b.hover = null; this._bStore(); this._bViews(); this._bStage(); };
   Desk.prototype._bToggle = function (key) { var b = this.bui, i = -1; b.s.forEach(function (x, k) { if (x.key === key) i = k; }); b.msg = '';
-    if (i >= 0) b.s.splice(i, 1); else { var why = this._bWhy(key); if (why) { b.msg = why; this._bStage(); return; } b.s.push({ key: key, col: this._bFree() }); }
+    if (i >= 0) { b.s.splice(i, 1); if (b.s.length && b.s.every(function (x) { return x.ax === 'R'; })) b.s.forEach(function (x) { delete x.ax; }); }   // a esquerda nunca fica vazia
+    else { var why = this._bWhy(key); if (why) { b.msg = why; this._bStage(); return; } var pl = this._bPlace(key), nx = { key: key, col: this._bFree() }; if (pl.ax === 'R') nx.ax = 'R'; b.s.push(nx); }
     b.hover = null; this._bStore(); this._bNeed(); this._bViews(); this._bCat(); this._bStage(); };
-  Desk.prototype._bCurrent = function () { var st = this.cfg.state(), b = this.bui; return { s: b.s.map(function (x) { return x.key; }), v: b.calc, g: st.gran, w: st.win, from: st.win === 'custom' ? st.from : null, to: st.win === 'custom' ? st.to : null }; };
-  function sameView(a, b) { return a.v === (b.v || 'level') && a.s.length === (b.s || []).length && a.s.every(function (k) { return b.s.indexOf(k) >= 0; }); }
+  Desk.prototype._bCurrent = function () { var st = this.cfg.state(), b = this.bui, r = b.s.filter(function (x) { return x.ax === 'R'; }).map(function (x) { return x.key; }), o = { s: b.s.map(function (x) { return x.key; }), v: b.calc, g: st.gran, w: st.win, from: st.win === 'custom' ? st.from : null, to: st.win === 'custom' ? st.to : null }; if (r.length) o.r = r; return o; };
+  function sameView(a, b) { return a.v === (b.v || 'level') && a.s.length === (b.s || []).length && a.s.every(function (k) { return b.s.indexOf(k) >= 0; }) && sameSet(a.r, b.r); }
 
   /* do palco de uma seção para o Builder: uma visão nova só com o que está no palco */
   Desk.prototype.builderFrom = function () { var c = this.ctx, u = this._u(), sid = this.cur; if (!c || !this.sections.builder) return;
@@ -126,14 +153,17 @@
   Desk.prototype._bView = function () {
     var st = this.cfg.state(), gran = st.gran, b = this.bui, self = this, pal = palette();
     if (gran === 'annual' && b.calc === 'ltm') b.calc = 'level';
-    var rows = []; b.s.forEach(function (s0) { var it = self._bItem(s0.key), d = it && self._bSeries(s0.key, gran); if (it && d) rows.push({ key: s0.key, col: pal[s0.col % pal.length], it: it, d: d }); });
-    /* contas em unidades diferentes não se comparam num eixo: a visão vai para a BASE 100 (um gráfico só).
-       want = a conta que a pessoa escolheu · calc = a que vale · mixed[conta] = essa conta daria mais de uma unidade */
+    var rows = []; b.s.forEach(function (s0) { var it = self._bItem(s0.key), d = it && self._bSeries(s0.key, gran); if (it && d) rows.push({ key: s0.key, col: pal[s0.col % pal.length], it: it, d: d, ax: s0.ax === 'R' ? 'R' : 'L' }); });
+    /* dois eixos só quando há série dos DOIS lados; tudo de um lado = um eixo */
+    var dual = rows.some(function (r) { return r.ax === 'R'; }) && rows.some(function (r) { return r.ax === 'L'; }); if (!dual) rows.forEach(function (r) { r.ax = 'L'; });
+    /* contas em unidades diferentes NUM MESMO EIXO não se comparam: a visão vai para a BASE 100 (um gráfico só).
+       want = a conta que a pessoa escolheu · calc = a que vale · mixed[conta] = essa conta daria mais de uma unidade num eixo */
     var unitIn = function (d, k) { return k === 'index' ? 'Index' : k === 'yoy' ? (d.pp ? 'pp' : d.diff ? d.unit : '%') : d.unit; };
-    var unitsOf = function (k) { var us = []; rows.forEach(function (r) { var u0 = unitIn(r.d, k); if (us.indexOf(u0) < 0) us.push(u0); }); return us; };
-    var us0 = unitsOf(b.calc), auto = b.calc !== 'index' && us0.length > 1, calc = auto ? 'index' : b.calc;
-    var out = { rows: rows, P: [], i0: 0, i1: -1, panels: [], gran: gran, calc: calc, want: b.calc, auto: auto, units: us0,
-      mixed: { level: unitsOf('level').length > 1, yoy: unitsOf('yoy').length > 1, ltm: unitsOf('ltm').length > 1 } }; if (!rows.length) return out;
+    var unitsOf = function (k, side) { var us = []; rows.forEach(function (r) { if (side && r.ax !== side) return; var u0 = unitIn(r.d, k); if (us.indexOf(u0) < 0) us.push(u0); }); return us; };
+    var mixedK = function (k) { return unitsOf(k, 'L').length > 1 || unitsOf(k, 'R').length > 1; };
+    var us0 = unitsOf(b.calc), auto = b.calc !== 'index' && mixedK(b.calc), calc = auto ? 'index' : b.calc;
+    var out = { rows: rows, P: [], i0: 0, i1: -1, panels: [], gran: gran, calc: calc, want: b.calc, auto: auto, units: us0, dual: dual,
+      mixed: { level: mixedK('level'), yoy: mixedK('yoy'), ltm: mixedK('ltm') } }; if (!rows.length) return out;
     var lo = null, hi = null; rows.forEach(function (r) { var f = -1, l = -1; r.d.level.forEach(function (x, i) { if (x != null) { if (f < 0) f = i; l = i; } }); if (f < 0) return;
       if (lo == null || r.d.starts[f] < lo) lo = r.d.starts[f]; if (hi == null || r.d.ends[l] > hi) hi = r.d.ends[l]; });
     if (lo == null) return out;
@@ -147,6 +177,9 @@
         var ok = base != null && !r.d.diff; r.v = P.map(function (p) { var x = lm[p.key]; return (ok && x != null) ? x / base * 100 : null; });
         r.note = !ok ? 'cannot be indexed (it can be zero or negative)' : (bi > pw[0] ? '100 = ' + P[bi].label : ''); }
       else r.v = P.map(function (p) { var x = map[p.key]; return x == null ? null : x; }); });
+    if (dual) {   // um gráfico com duas escalas: a da esquerda e a da direita, cada uma na sua unidade
+      var pl = { dual: true, unit: rows.filter(function (r) { return r.ax === 'L'; })[0].unit, unitR: rows.filter(function (r) { return r.ax === 'R'; })[0].unit, rows: rows, dec: 0, decR: 0 };
+      rows.forEach(function (r) { if (r.ax === 'R') pl.decR = Math.max(pl.decR, r.dec); else pl.dec = Math.max(pl.dec, r.dec); }); out.panels = [pl]; return out; }
     rows.forEach(function (r) { var pn = null; out.panels.forEach(function (q) { if (q.unit === r.unit) pn = q; }); if (!pn) out.panels.push(pn = { unit: r.unit, rows: [], dec: 0 }); pn.rows.push(r); pn.dec = Math.max(pn.dec, r.dec); });
     return out;
   };
@@ -188,8 +221,9 @@
     body.addEventListener('click', function (e) { if (e.target === body && b.sheet) { b.sheet = false; body.classList.remove('dk-sheet'); } });   // celular: tocar fora da folha fecha
     /* palco */
     E.bcalc.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt || bt.disabled) return; b.calc = bt.dataset.k; b.msg = ''; b.hover = null; self._bStore(); self._bViews(); self._bCat(); self._bStage(); });
-    E.bchips.addEventListener('click', function (e) { var x = e.target.closest('[data-x]'), go = e.target.closest('[data-go]');
+    E.bchips.addEventListener('click', function (e) { var x = e.target.closest('[data-x]'), go = e.target.closest('[data-go]'), ax = e.target.closest('[data-ax]');
       if (x) { self._bToggle(x.dataset.x); return; }
+      if (ax) { self._bAxis(ax.dataset.ax); return; }
       if (go) { var it = self._bItem(go.dataset.go); if (it && self.cfg.goto) self.cfg.goto({ sec: it.sec, metric: it.type === 'm' ? it.metric : self.sections[it.sec].stage, prod: it.prod }); } });
     E.bdl.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt || bt.disabled) return; if (bt.dataset.dl === 'png') self._bPNG(); else self._bXLS(); });
     E.bcopy.addEventListener('click', function () { if (self._bPaid()) return; var t = self._bTable(true); copyText(t, function (ok) { E.bcopy.textContent = ok ? 'Copied ✓' : 'Could not copy'; setTimeout(function () { E.bcopy.textContent = 'Copy table'; }, 1800); }); });
@@ -217,8 +251,8 @@
 
   /* linha do catálogo */
   Desk.prototype._bRow = function (key, label, sub) { var b = this.bui, it = this._bItem(key); if (!it) return '';
-    var on = null; b.s.forEach(function (x) { if (x.key === key) on = x; }); var why = on ? null : this._bWhy(key), pal = palette();
-    return '<button type="button" class="dk-brow' + (on ? ' dk-on' : '') + (why ? ' dk-dis' : '') + '" data-key="' + esc(key) + '" aria-pressed="' + !!on + '" title="' + esc(why || (on ? 'On the chart — click to remove' : 'Click to add to the chart')) + '">' +
+    var on = null; b.s.forEach(function (x) { if (x.key === key) on = x; }); var why = on ? null : this._bWhy(key), pal = palette(), toR = !on && !why && b.s.length < MAX && this._bPlace(key).ax === 'R';
+    return '<button type="button" class="dk-brow' + (on ? ' dk-on' : '') + (why ? ' dk-dis' : '') + '" data-key="' + esc(key) + '" aria-pressed="' + !!on + '" title="' + esc(why || (on ? 'On the chart — click to remove' : toR ? 'Click to add — it goes on the right-hand scale (it cannot go on base 100 next to the other units)' : 'Click to add to the chart')) + '">' +
       '<i' + (on ? ' style="background:' + pal[on.col % pal.length] + ';border-color:' + pal[on.col % pal.length] + '"' : '') + '></i><span class="dk-bn">' + esc(label || it.short) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><span class="dk-bu">' + esc(it.unit) + '</span></button>'; };
   Desk.prototype._bCat = function () {
     var E = this.bel, b = this.bui, self = this, q = (b.q || '').trim().toLowerCase(), groups = this._bGroups(), html = '', top = E.blist.scrollTop;
@@ -255,9 +289,10 @@
     E.bcalc.innerHTML = CALCS.map(function (c0) { var offA = c0[0] === 'ltm' && v.gran === 'annual', offM = !!(v.mixed && v.mixed[c0[0]]), off = offA || offM;
       return '<button type="button" data-k="' + c0[0] + '" aria-pressed="' + (v.calc === c0[0]) + '" title="' + esc(offM ? mixTip : offA ? 'Not available in the annual view' : c0[2]) + '"' + (off ? ' disabled' : '') + '>' + c0[1] + '</button>'; }).join('');
     var info = v.auto ? '<div class="dk-binfo"><b>Shown on base 100.</b> These series are in different units (' + esc(v.units.join(' · ')) + '), so each one starts at 100 at the beginning of the window and you compare how they moved. The cards above and the table below keep the real figures.</div>' : '';
-    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0) + '#' + (v.auto ? v.units.join(',') : '') + '#' + (this._bLoading() ? 'L' : '');
+    var sig = v.panels.map(function (p) { return p.unit + (p.dual ? '|R:' + p.unitR : ''); }).join('|') + '#' + (n > 0 ? 1 : 0) + '#' + (v.auto ? v.units.join(',') : '') + '#' + (this._bLoading() ? 'L' : '');
+    var uName = function (u) { return u === 'Index' ? 'Index — start of the window = 100' : u; };
     if (E.bpanels.dataset.sig !== sig) { this._dropCharts('b:'); E.bpanels.dataset.sig = sig;
-      E.bpanels.innerHTML = (v.panels.length && n > 0) ? info + v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu">' + esc(p.unit === 'Index' ? 'Index — start of the window = 100' : p.unit) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
+      E.bpanels.innerHTML = (v.panels.length && n > 0) ? info + v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu' + (p.dual ? ' dk-bpu2' : '') + '">' + (p.dual ? '<span>Left axis · ' + esc(uName(p.unit)) + '</span><span>Right axis · ' + esc(uName(p.unitR)) + '</span>' : esc(uName(p.unit))) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
         : '<div class="dk-bempty"><b>' + (b.s.length ? (this._bLoading() ? 'Loading the series…' : 'No complete period in this window yet.') : 'Nothing on the chart yet.') + '</b><span>' + (b.s.length ? (this._bLoading() ? 'Prices and surveys come down only when they are put on the chart.' : 'Pick a longer window or a finer granularity in the bar above.') : 'Pick a series on the left, or one of the ready-made views above.') + '</span></div>'; }
     if (v.panels.length && n > 0) { var labels = v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; });
       v.panels.forEach(function (p, k) { var cv = E.bpanels.querySelector('canvas[data-p="' + k + '"]');
@@ -265,8 +300,15 @@
         var ch = self._chart('b:' + k, cv, 'line', labels, sets, { stage: true, dec: p.dec });
         /* painéis com o MESMO recuo à esquerda e à direita: o tempo alinha de cima a baixo (com ou sem os rótulos do eixo) */
         ch.options.scales.y.afterFit = function (s) { s.width = 58; };
+        if (p.dual) {   // a 2ª escala, à direita, só para as séries marcadas "Right axis" (a grade continua a da esquerda)
+          ch.data.datasets.forEach(function (d0, j) { d0.yAxisID = p.rows[j].ax === 'R' ? 'y2' : 'y'; });
+          var y0 = ch.options.scales.y; ch.options.scales.y2 = Object.assign({}, y0, { position: 'right', grid: { display: false, drawOnChartArea: false },
+            ticks: Object.assign({}, y0.ticks, { callback: function (val) { return fmt(val, (p.decR > 0 && Math.abs(this.max - this.min) < 10) ? 1 : 0); } }), afterFit: function (s) { s.width = 58; } }); }
         ch.options.scales.x.afterFit = function (s) { s.paddingLeft = 16; s.paddingRight = 20; };
         if (k < v.panels.length - 1) ch.options.scales.x.ticks.display = false;
+        /* gráfico novo nasce com a animação de "crescer", calculada ANTES de a série ir para a escala da direita: sem parar a
+           animação, ela terminava com a linha da direita no pé do gráfico (medido 25/11/2026). Com duas escalas, sem animação. */
+        if (p.dual) ch.stop();
         ch.update('none'); }); }
     /* fonte paga no gráfico: só a imagem (a planilha da agência não sai daqui) */
     var paid = this._bPaid(), xb = E.bdl.querySelector('[data-dl="xls"]');
@@ -281,7 +323,7 @@
     E.bhint.textContent = hint;
     /* explicação: o que é o gráfico e como ler a conta escolhida (na base 100 automática o aviso de cima já explica) */
     var HB = window.IBBADeskHelp && IBBADeskHelp.builder;
-    if (E.bwhy) { E.bwhy.innerHTML = (HB && v.rows.length) ? X.whyHTML(HB.what, v.auto ? '' : (HB.calc[v.calc] || '')) : ''; E.bwhy.hidden = !E.bwhy.innerHTML; }
+    if (E.bwhy) { E.bwhy.innerHTML = (HB && v.rows.length) ? X.whyHTML(HB.what, ((v.auto ? '' : (HB.calc[v.calc] || '')) + (v.dual && HB.dual ? ' ' + HB.dual : '')).trim()) : ''; E.bwhy.hidden = !E.bwhy.innerHTML; }
     this._bPaint();
   };
   Desk.prototype._bHover = function (i) { var b = this.bui, self = this; if (b.hover === i) return; b.hover = i; if (this._braf) return; this._braf = requestAnimationFrame(function () { self._braf = 0; self._bPaint(); }); };
@@ -296,9 +338,11 @@
       var val = (j >= v.i0 && j >= 0) ? r.v[j] : null;
       /* na base 100 a ficha mostra o índice E o número de verdade (senão a unidade real sumiria da tela) */
       var real = (v.calc === 'index' && j >= v.i0 && j >= 0 && r.lev && r.lev[j] != null) ? fmt(r.lev[j], r.d.dec) + ' ' + r.d.unit : '';
+      /* eixo da direita: botão em cada ficha (com 2+ séries) — diz que é botão e o que faz */
+      var axb = v.rows.length > 1 ? '<button type="button" class="dk-bax" data-ax="' + esc(r.key) + '" aria-pressed="' + (r.ax === 'R') + '" title="' + esc(r.ax === 'R' ? 'On the right-hand scale — click to bring it back to the left' : 'Give this series its own scale on the right — for series that move much less (or much more) than the others') + '">Right axis</button>' : '';
       return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(me._bWhat(r) + r.it.where + ' — click to open it in its section') + '">' + esc(r.it.name) + '</button>' +
         '<b>' + numTxt(val, r.dec, v.calc === 'yoy') + ' <small>' + esc(r.unit === 'Index' ? (real ? '· ' + real : '') : r.unit) + esc(own) + (r.note ? ' · ' + esc(r.note) : '') + '</small></b>' +
-        '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
+        axb + '<button type="button" class="dk-bx" data-x="' + esc(r.key) + '" aria-label="Remove ' + esc(r.it.name) + '" title="Remove from the chart">×</button></span>'; }).join('');
     this._bTable(false, ref);
   };
   /* o que uma série do Builder mede (para a dica do nome): a explicação do indicador ou da quebra (data-desk-help.js) */
@@ -319,7 +363,7 @@
     var from = Math.max(v.i0, v.i1 - 11);
     E.bvw.textContent = v.rows.length && v.i1 >= v.i0 ? (v.i1 - from + 1) + ' most recent periods · ' + CALCS.filter(function (c0) { return c0[0] === v.calc; })[0][1] : '';
     if (!v.rows.length || v.i1 < v.i0) { E.bt.innerHTML = ''; E.bt.closest('.dk-bvals').hidden = true; return; } E.bt.closest('.dk-bvals').hidden = false;
-    var html = '<thead><tr><th>Period</th>' + v.rows.map(function (r) { return '<th><i class="dk-bdot" style="background:' + r.col + '"></i>' + esc(r.it.name) + ' <span class="dk-src">' + esc(idx ? 'Index · ' + r.d.unit : r.unit) + '</span></th>'; }).join('') + '</tr></thead><tbody>';
+    var html = '<thead><tr><th>Period</th>' + v.rows.map(function (r) { return '<th><i class="dk-bdot" style="background:' + r.col + '"></i>' + esc(r.it.name) + ' <span class="dk-src">' + esc((idx ? 'Index · ' + r.d.unit : r.unit) + (v.dual && r.ax === 'R' ? ' · right axis' : '')) + '</span></th>'; }).join('') + '</tr></thead><tbody>';
     for (i = v.i1; i >= from; i--) html += '<tr' + (i === ref && this.bui.hover != null ? ' class="dk-bhi"' : '') + '><td>' + v.P[i].label + '</td>' + v.rows.map(function (r) { var x = r.v[i]; return '<td' + (v.calc === 'yoy' && x != null ? ' class="' + X.cls(x) + '"' : '') + '>' + numTxt(x, r.dec, v.calc === 'yoy') + ((idx && r.lev[i] != null) ? ' <span class="dk-src">' + fmt(r.lev[i], r.d.dec) + ' ' + esc(r.d.unit) + '</span>' : '') + '</td>'; }).join('') + '</tr>';
     E.bt.innerHTML = html + '</tbody>';
   };
@@ -339,8 +383,9 @@
     var out = document.createElement('canvas'); out.width = W + 2 * pad; out.height = H; var g = out.getContext('2d');
     g.fillStyle = t.surf; g.fillRect(0, 0, out.width, out.height); g.textBaseline = 'top';
     g.fillStyle = t.ink; g.font = '700 ' + (14 * s) + 'px ' + X.FONT; g.fillText('Builder' + (v.calc === 'level' ? '' : ' · ' + CALCS.filter(function (c) { return c[0] === v.calc; })[0][1]) + ' · ' + v.P[v.i0].label + ' – ' + v.P[v.i1].label, pad, pad);
-    v.rows.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.col; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.it.name + '  (' + r.unit + ')', pad + 16 * s, y); });
-    var y0 = head; cvs.forEach(function (c, i) { g.fillStyle = t.mut; g.font = '700 ' + (10 * s) + 'px ' + X.FONT; g.fillText(String(v.panels[i].unit).toUpperCase(), pad, y0 + 3 * s); y0 += 20 * s; g.drawImage(c, pad, y0); y0 += c.height; });
+    v.rows.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.col; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.it.name + '  (' + r.unit + ')' + (v.dual && r.ax === 'R' ? ' — right axis' : ''), pad + 16 * s, y); });
+    var y0 = head; cvs.forEach(function (c, i) { var pn = v.panels[i]; g.fillStyle = t.mut; g.font = '700 ' + (10 * s) + 'px ' + X.FONT; g.fillText(String(pn.dual ? 'Left axis · ' + pn.unit : pn.unit).toUpperCase(), pad, y0 + 3 * s);
+      if (pn.dual) { g.textAlign = 'right'; g.fillText(String('Right axis · ' + pn.unitR).toUpperCase(), pad + W, y0 + 3 * s); g.textAlign = 'left'; } y0 += 20 * s; g.drawImage(c, pad, y0); y0 += c.height; });
     out.toBlob(function (bl) { if (!bl) return; var a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = ((window.IBBAExport && IBBAExport.safeName) ? IBBAExport.safeName((this.cfg.sector || 'desk') + '_builder_' + IBBAExport.stamp()) : 'builder') + '.png';
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); }.bind(this), 'image/png');
   };
