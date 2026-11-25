@@ -312,6 +312,18 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .mob-sec-item.dk-only{display:none;} html.desk-on .mob-sec-item.dk-only{display:flex;}   /* seções que só existem com a mesa */
 html.desk-on:not(.mills-on) .mob-sec-item.mills-only{display:none;}   /* China mills: só admin ou com a chave china_mills */
 @media (max-width:768px){
+  /* cabeçalho da página no LUGAR DELE (25/11/2026). No celular a página deixa o cabeçalho (barra preta, seções, filtros)
+     em `position:relative`, e a regra dela para 769–900 px (`.sticky-header{top:54px}`, grudar sob a barra global) vale
+     aqui também: com `relative`, o `top` só DESLOCA o desenho 54 px para baixo, sem mover o que vem depois — sobrava uma
+     faixa vazia em cima e a barra de filtros cobria os primeiros 54 px da mesa (os botões de vista e de produto ficavam
+     atrás dela e o toque caía no filtro). Só com a mesa: a tela antiga (?desk=0) fica como está. */
+  html.desk-on .sticky-header{top:0;}
+  /* barra de vistas/produto em linhas: o seletor que não cabe na largura desce para a linha de baixo e, se nem assim
+     couber (US market › Imports: 6 produtos; os modos do "Who" do cavaco), os botões dele quebram em duas linhas dentro
+     de um bloco de cantos arredondados — com o canto de pílula (999px) o seletor apertado virava um "ovo". Numa linha
+     só (38 px de altura) 19 px É a pílula de sempre. */
+  .dk-viewbar{flex-wrap:wrap;gap:8px 10px;}
+  .dk-seg{border-radius:19px;}
   /* quadros do topo: uma fileira que desliza com encaixe (2 à vista + a ponta do 3º, para mostrar que há mais) */
   .dk-tiles{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px;padding:2px 12px 4px;scroll-padding-left:12px;}
   .dk-tiles::-webkit-scrollbar{display:none;}
