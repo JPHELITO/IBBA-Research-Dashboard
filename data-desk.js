@@ -148,6 +148,32 @@
     if (fit.r2 == null) return '<span class="dk-br2 dk-br2na" title="' + esc('R² against ' + ref + ': needs at least ' + R2_MIN + ' ' + per + ' with both series in this window (now ' + fit.n + ')') + '">R² —</span>';
     return '<span class="dk-br2" title="' + esc('R² against ' + ref + ' = ' + fmt(fit.r2, 2) + ', over ' + fit.n + ' ' + per + ' of this window: how much of this line\'s movement lines up with ' + ref + ' (0 = none, 1 = all), from a linear regression of one on the other.' + (fit.r < 0 ? ' Inverse: they move in opposite directions.' : '') + (extra || ' Lines that both trend can show a high R² without a real link.')) + '">R² ' + fmt(fit.r2, 2) + (fit.r < 0 ? ' <em>inverse</em>' : '') + '</span>';
   }
+  /* TABELA DE CORRELAÇÃO (pedido do usuário, 25/11/2026: "deixe essa correlação em uma tabelinha ao lado da explicação, onde ele
+     coloca a correlação de cada uma das variáveis escolhidas entre si, de forma visual e facilmente entendível"): o R² de cada PAR
+     de séries do gráfico (só a metade de baixo da matriz — cada par uma vez). A cor diz o SENTIDO — azul = andam juntas, vermelho
+     com "−" = sentidos opostos (o par divergente do guia de gráficos, cinza neutro quando quase não há relação) — e a FORÇA (4
+     degraus: 0,1 · 0,3 · 0,5 · 0,7). Na dica de cada célula: os dois nomes, R², r e em quantos períodos. */
+  function corrCells(vals, i0, i1) { var n = vals.length, out = [], i, j; for (i = 0; i < n; i++) { out.push([]); for (j = 0; j < i; j++) out[i].push(r2of(vals[j], vals[i], i0, i1)); } return out; }
+  function corrTable(ser, cells, per) {   // ser: [{name, short, color}] · cells[i][j] (j < i) = {n, r, r2}
+    if (!ser || ser.length < 2 || !cells) return '';
+    var dk = isDark(), pos = dk ? '57,135,229' : '42,120,214', neg = dk ? '230,103,103' : '227,73,72';
+    var tint = function (r2) { return r2 == null ? 0 : r2 >= .7 ? .62 : r2 >= .5 ? .44 : r2 >= .3 ? .28 : r2 >= .1 ? .14 : 0; };
+    var lab = function (s) { return '<span class="dk-ccl"><i style="background:' + s.color + '"></i><span>' + esc(s.short || s.name) + '</span></span>'; };
+    var h = '<div class="dk-ch2"><b>Correlation (R²)</b><em>each pair · this window</em></div><table class="dk-ct"><thead><tr><th></th>' +
+      ser.slice(0, -1).map(function (s) { return '<th title="' + esc(s.name) + '">' + lab(s) + '</th>'; }).join('') + '</tr></thead><tbody>', i, j;
+    for (i = 1; i < ser.length; i++) {
+      h += '<tr><th title="' + esc(ser[i].name) + '">' + lab(ser[i]) + '</th>';
+      for (j = 0; j < ser.length - 1; j++) {
+        if (j >= i) { h += '<td class="dk-cx"></td>'; continue; }
+        var f = cells[i] && cells[i][j], ok = f && f.r2 != null, a = ok ? tint(f.r2) : 0;
+        var tip = ok ? ser[i].name + ' × ' + ser[j].name + ': R² ' + fmt(f.r2, 2) + ' (r = ' + (f.r < 0 ? '−' : '') + fmt(Math.abs(f.r), 2) + ' — ' + (f.r < 0 ? 'they move in opposite directions' : 'they move together') + '), over ' + f.n + ' ' + per + ' of this window'
+          : ser[i].name + ' × ' + ser[j].name + ': needs at least ' + R2_MIN + ' ' + per + ' with both series in this window (now ' + (f ? f.n : 0) + ')';
+        h += '<td' + (a ? ' style="background:rgba(' + (f.r < 0 ? neg : pos) + ',' + a + ')"' : '') + ' title="' + esc(tip) + '">' + (ok ? (f.r < 0 ? '−' : '') + fmt(f.r2, 2) : '—') + '</td>';
+      }
+      h += '</tr>';
+    }
+    return h + '</tbody></table><div class="dk-ckey"><span><i style="background:rgba(' + pos + ',.5)"></i>move together</span><span><i style="background:rgba(' + neg + ',.5)"></i>− opposite</span><span>darker = stronger</span></div>';
+  }
   /* SAZONALIDADE — uma cor por ano (pedido do usuário, 25/11/2026: "deixe todos os anos com indicações de cores diferentes"):
      k = 0 o ano mais novo (laranja, cheio, grosso), k = 1 o anterior (cor da tinta, cheio), k ≥ 2 os outros PONTILHADOS, cada um
      com a sua cor. As quatro cores são as da paleta de referência do guia de gráficos e passaram no validador nos dois temas
@@ -353,7 +379,7 @@
     var E = this.el;
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
-      '<div class="dk-hfleg dk-sleg"></div><div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
+      '<div class="dk-hfleg dk-sleg"></div><div class="dk-whyrow"><div class="dk-why" hidden></div><div class="dk-corr" hidden></div></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
       '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
@@ -506,6 +532,7 @@
     var colOf = function (k) { var name = (M.multiColors || ['orange', 'ink'])[k]; return name === 'ink' ? t.ink : name === 'orange' ? ORANGE : name == null ? slotColor(k) : name; };
     this._refAvg = null;
     var sleg = E.stage.querySelector('.dk-sleg'); if (sleg) sleg.innerHTML = '';   // a legenda dos anos só existe na vista Seasonal
+    var corr = E.stage.querySelector('.dk-corr'); if (corr) { corr.innerHTML = ''; corr.hidden = true; }   // a tabela de correlação só com 2+ séries
     if (u.mode === 'seasonal') {
       /* sazonalidade: UMA LINHA POR ANO (os 4 anteriores + o atual), como na tela de sempre; a dica lista todos os anos */
       var v = c.vals(u.metric), li = c.lastFull(v), yL = c.P[li].y, byY = {}, PER = c.PER;
@@ -553,7 +580,8 @@
     if (multi) { var mv = subs.map(function (S2) { return c.vals(S2.id, u.mode).map(function (x, i) { return c.P[i].partial ? null : x; }); });
       fits = mv.map(function (arr, k) { return k ? r2of(mv[0], arr, c.i0, c.i1) : null; });
       var perW = { monthly: 'months', quarterly: 'quarters', annual: 'years' }[c.st.gran] || 'periods';
-      if (sleg) sleg.innerHTML = subs.map(function (S2, k) { return k ? r2Badge(fits[k], self._short(subs[0]), perW) + '<span class="dk-r2t">' + esc(self._short(S2) + ' against ' + self._short(subs[0])) + '</span>' : ''; }).join(''); }
+      var ink = t.dark ? '#e8eaed' : '#111111';
+      if (corr) { corr.innerHTML = corrTable(subs.map(function (S2, k) { return { name: self._lbl(S2), short: self._short(S2), color: M.multiBars ? (k ? ink : ORANGE) : colOf(k) }; }), corrCells(mv, c.i0, c.i1), perW); corr.hidden = !corr.innerHTML; } }
     this._stageFits = fits;
     title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
     E.stage.querySelector('.dk-hint').textContent = (tip ? 'Hover to read the values' : 'Hover to read · Click two periods to compare them (A → B)') + (c.sec.noBrush ? '' : ' · Drag the strip to change the period');
@@ -902,7 +930,7 @@
   window.IBBADesk = {
     /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
     x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML,
-         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip, r2of: r2of, r2Badge: r2Badge, R2_MIN: R2_MIN },
+         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip, r2of: r2of, r2Badge: r2Badge, R2_MIN: R2_MIN, corrCells: corrCells, corrTable: corrTable },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };

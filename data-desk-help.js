@@ -31,7 +31,7 @@
       twoLines: '{c0} line = {a}; {c1} line = {b}.',
       twoBars: '{c0} bars = {a}; {c1} bars = {b}.',
       signBars: 'Green bars = above zero, red = below zero. The dashed line is the average of the window.',
-      r2: 'R² = how much of a line\'s movement lines up with the first line in this window (0 = none, 1 = all), from a linear regression of one on the other; “inverse” = they move in opposite directions. Lines that both trend can show a high R² without a real link.'
+      r2: 'The correlation table gives the R² of each pair of lines in this window: how much of one\'s movement lines up with the other (0 = none, 1 = all), from a linear regression; blue = they move together, red with “−” = opposite directions, darker = stronger. Lines that both trend can show a high R² without a real link.'
     },
 
     /* "Who is behind the number": o que a quebra mostra (por seção e quebra) e como ler cada modo */
@@ -57,7 +57,7 @@
         index: 'Each series starts at 100 at the beginning of the window, so series in different units compare on one scale.'
       },
       dual: 'Series marked “Right axis” are read on the scale at the right, in their own unit; the two scales are independent, so compare how the lines move — not where they cross.',
-      r2: 'R² next to each series = how much of its movement lines up with the first series in this window (0 = none, 1 = all), from a linear regression of one on the other; “inverse” = they move in opposite directions. Series that both trend can show a high R² in Level without a real link — YoY is the stricter test.'
+      r2: 'The correlation table gives the R² of each pair of series in this window: how much of one\'s movement lines up with the other (0 = none, 1 = all), from a linear regression; blue = they move together, red with “−” = opposite directions, darker = stronger. Series that both trend can show a high R² in Level without a real link — YoY is the stricter test.'
     },
 
     /* ══════════════ METALS & MINING ══════════════ */
