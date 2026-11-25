@@ -128,6 +128,15 @@
   /* paleta sóbria do empilhado: uma família (azuis, verde-água, areia, lilás); a cor acompanha a ENTIDADE */
   var PAL_L = ['#22304a', '#3f72b5', '#8fb3de', '#2a9d8f', '#b79a5c', '#8a6fb3', '#5f7d95', '#c98a6b', '#6aa5a0', '#9aa6c4', '#7a8f5a', '#b784a7'];
   var PAL_D = ['#e3e6ec', '#5b8fd6', '#9cc0ea', '#3fb8a8', '#c9b47a', '#a892d6', '#8fa9bf', '#d9a084', '#7fc1bb', '#b4bedb', '#9db57a', '#cf9fc0'];
+  /* SAZONALIDADE — uma cor por ano (pedido do usuário, 25/11/2026: "deixe todos os anos com indicações de cores diferentes"):
+     k = 0 o ano mais novo (laranja, cheio, grosso), k = 1 o anterior (cor da tinta, cheio), k ≥ 2 os outros PONTILHADOS, cada um
+     com a sua cor. As quatro cores são as da paleta de referência do guia de gráficos e passaram no validador nos dois temas
+     (separação para daltonismo e para visão normal, ordem azul → verde-água → violeta → rosa). Do 7º ano em diante, cinza. */
+  var YEAR_L = ['#2a78d6', '#1baf7a', '#6250d6', '#e87ba4'], YEAR_D = ['#3987e5', '#199e70', '#9085e9', '#d55181'];
+  function yearColor(k) { var t = theme(); return k === 0 ? ORANGE : k === 1 ? t.ink : ((isDark() ? YEAR_D : YEAR_L)[k - 2] || 'rgba(' + t.band + ',.35)'); }
+  function yearStyle(k) { return { color: yearColor(k), w: k === 0 ? 2.6 : k === 1 ? 2 : 1.9, dash: k >= 2 ? [1, 3.4] : null }; }
+  /* um item da legenda: traço cheio (k 0 e 1) ou pontilhado (k ≥ 2) na cor do ano + o ano + o valor (texto na cor de texto) */
+  function yearChip(k, name, val) { return '<span><i class="dk-lg-' + (k >= 2 ? 'dot' : 'line') + '" style="color:' + yearColor(k) + '"></i>' + esc(String(name)) + (val != null ? ' <b>' + val + '</b>' : '') + '</span>'; }
   function slotColor(slot) { return slot === 'lead' ? ORANGE : slot === 'others' ? (isDark() ? '#474d57' : '#d3cfc7') : (isDark() ? PAL_D : PAL_L)[slot % PAL_L.length]; }
 
   function rr(c, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r); c.lineTo(x + w, y + h - r);
@@ -324,7 +333,7 @@
     var E = this.el;
     E.stage = h('div', 'dk-stage dk-card chart-card',
       '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
-      '<div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
+      '<div class="dk-hfleg dk-sleg"></div><div class="dk-why" hidden></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
       '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
@@ -476,17 +485,19 @@
     var note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''), hp = this._help(this.cur, M.id, { prod: c.st.prod, label: this._lbl(M), gran: c.st.gran });
     var colOf = function (k) { var name = (M.multiColors || ['orange', 'ink'])[k]; return name === 'ink' ? t.ink : name === 'orange' ? ORANGE : name == null ? slotColor(k) : name; };
     this._refAvg = null;
+    var sleg = E.stage.querySelector('.dk-sleg'); if (sleg) sleg.innerHTML = '';   // a legenda dos anos só existe na vista Seasonal
     if (u.mode === 'seasonal') {
       /* sazonalidade: UMA LINHA POR ANO (os 4 anteriores + o atual), como na tela de sempre; a dica lista todos os anos */
       var v = c.vals(u.metric), li = c.lastFull(v), yL = c.P[li].y, byY = {}, PER = c.PER;
       v.forEach(function (x, i) { var p = c.P[i]; if (p.partial) return; (byY[p.y] = byY[p.y] || new Array(PER).fill(null))[p.k] = x; });
       var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], ds = [], yrs = [], y;
       for (y = yL - 4; y < yL; y++) if (byY[y]) yrs.push(y);
-      yrs.forEach(function (yy, k) { var recent = yy === yL - 1, op = recent ? .8 : .22 + .14 * k;
-        var d0 = lineSet(byY[yy], 'rgba(' + t.band + ',' + op + ')', { label: String(yy), w: recent ? 1.9 : 1.3, dash: recent ? [] : [4, 3], surf: t.surf }); d0.order = 5 - k; ds.push(d0); });
+      yrs.forEach(function (yy) { var k = yL - yy, st = yearStyle(k);   // uma cor por ano; os anteriores ao último, pontilhados
+        var d0 = lineSet(byY[yy], st.color, { label: String(yy), w: st.w, dash: st.dash, surf: t.surf }); d0.order = k + 1; ds.push(d0); });
       var cur = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); cur.order = 0; ds.push(cur);
       this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true, tip: true, unitTip: M.unit });
-      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: '' };   // as cores do gráfico agora estão no "How to read"
+      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: '', yrs: [yL].concat(yrs.slice().reverse()), k0: c.P[li].k };
+      this._seasLeg(null);
       title.textContent = this._lbl(M) + ' · seasonality';
       E.stage.querySelector('.dk-sv').innerHTML = fmt(v[li], M.dec) + '<small>' + esc(M.unit) + ' · ' + c.label(li) + '</small>';
       E.stage.querySelector('.dk-sd').textContent = this._seas.base; brush.style.visibility = 'hidden';
@@ -547,8 +558,16 @@
   };
   /* a entrada de explicação de um indicador (data-desk-help.js) — {what, how} ou null */
   Desk.prototype._help = function (secId, id, o) { var H = window.IBBADeskHelp; try { return (H && H.get) ? H.get(this.cfg.sector, secId, id, o) : null; } catch (e) { return null; } };
+  /* legenda da vista Seasonal: um item por ano, na cor e no traço do gráfico, com o valor do mês lido */
+  Desk.prototype._seasLeg = function (i) {
+    var s = this._seas, el = this.el && this.el.stage && this.el.stage.querySelector('.dk-sleg'); if (!s || !el) return;
+    var k = i == null ? s.k0 : i;
+    el.innerHTML = '<span class="dk-sleg0">' + esc(s.labs[k] || '') + '</span>' + s.yrs.map(function (yy) { var v = (s.byY[yy] || [])[k];
+      return yearChip(s.yrs[0] - yy, yy, v == null ? '—' : fmt(v, s.M.dec)); }).join('');
+  };
   Desk.prototype._localHover = function (id, i) {   // sazonalidade: lê o mês do ano, sem mexer nos outros gráficos
     var ch = this.charts[id], s = this._seas; if (!ch || !s) return;
+    this._seasLeg(i);
     this.el.stage.querySelector('.dk-sd').textContent = i == null ? s.base : s.labs[i] + ': ' + s.yL + ' ' + fmt((s.byY[s.yL] || [])[i], s.M.dec) + ' · ' + (s.yL - 1) + ' ' + fmt((s.byY[s.yL - 1] || [])[i], s.M.dec) + ' ' + s.M.unit;
     ch.$dk = { hover: i, pinA: null, pinB: null }; ch.draw();   // o cursor da mesa também aqui (antes só a dica)
   };
@@ -854,7 +873,8 @@
 
   window.IBBADesk = {
     /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
-    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML },
+    x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML,
+         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };
