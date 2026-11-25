@@ -314,6 +314,61 @@ html.dark .rec.UP{background:rgba(239,68,68,.18)}
 .sec-sub{color:#66625C}
 html.dark .sec-sub{color:var(--g-mid)}
 @media(max-width:900px){.sec-title{font-size:11.5px}}
+/* ══ LOGOS E LEITURA (25/11/2026) ═════════════════════════════════════════════════════════════════
+   Pedido do analista: "aproveite que já temos os logos das empresas e coloque nessas abas" + "melhore a parte
+   estética e o user experience". Regra dele para logo (18/11): pequeno = SÓ o símbolo, sem caixa nem fundo;
+   no topo da empresa, nome + logo (o logo completo). As duas variantes (fundo claro / fundo escuro) vão no HTML
+   e o CSS mostra a do tema: trocar o tema não redesenha nada. Reverter = apagar este bloco + sgLogo(). */
+.sg-lg{display:inline-block;vertical-align:middle;object-fit:contain;flex:none}
+html.dark .sg-lg.lg-l,html:not(.dark) .sg-lg.lg-d{display:none}
+/* comp table: símbolo numa caixa FIXA ao lado do ticker (proporções diferentes não desalinham a coluna) */
+.sg-co{display:inline-flex;align-items:center;gap:9px;vertical-align:middle}
+.sg-co .sg-lg{width:22px;height:16px}
+.sg-co b{font-weight:600;letter-spacing:.01em}
+/* faixa do setor = a etiqueta da casa (traço laranja), como os títulos de seção */
+.sg-grp{display:inline-flex;align-items:center;gap:8px}
+.sg-grp::before{content:"";width:16px;height:2px;border-radius:1px;background:var(--orange)}
+/* Sensitivity · trilho de empresas: por SETOR, na ordem da comp table, símbolo + nome */
+.sg-tabs.s2-rail{flex-wrap:wrap;align-items:center;column-gap:2px;row-gap:0}
+.s2-rail-g{flex:none;font:700 9px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.12em;
+  padding:0 4px 0 14px;margin-left:8px;border-left:1px solid var(--border);line-height:20px;white-space:nowrap}
+.s2-rail-g:first-child{border-left:0;margin-left:0;padding-left:2px}
+.sg-tab.s2-co{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;white-space:nowrap}
+.sg-tab.s2-co .sg-lg{width:20px;height:15px}
+/* topo da empresa: logo completo (nome + símbolo); o nome em texto fica para leitor de tela */
+.s2-name.s2-name-lg{display:flex;align-items:center;min-height:30px}
+.s2-name .sg-lg-full{height:28px;width:auto;max-width:230px}
+.s2-name-lg .s2-name-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* grade de eixos diferentes no MESMO quadro (cobre: P/NAV de longo prazo ao lado das de 2027) */
+.s2-cap{font:500 10px var(--font);color:var(--g-mid);margin:-3px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* COMO LER: o quadro da casa (traço laranja à esquerda, como o "What it shows / How to read" da mesa de dados)
+   com a amostra de cada marca ao lado do que ela quer dizer — antes era um parágrafo corrido no rodapé */
+.s2-note.s2-how{display:block;margin-top:20px;padding:10px 14px 10px 13px;border-left:2px solid var(--orange);
+  background:var(--s2-plate);border-radius:0 10px 10px 0;font-size:11px;line-height:1.55;color:var(--g-dark);max-width:1180px}
+.s2-how p{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px}
+.s2-how p+p{margin-top:7px;padding-top:7px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.s2-how b.k{font:700 9.5px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--black);line-height:17px}
+.s2-how .s2-key{display:block}
+.s2-how .s2-key+.s2-key{margin-top:3px}
+.s2-how .s2-ramp,.s2-sw{display:inline-block;vertical-align:-1px;margin-right:8px}
+.s2-sw{width:22px;height:11px;border-radius:3px}
+.s2-sw.base{background:var(--s2-plate);outline:1px dashed rgba(var(--s2-ink),.45);outline-offset:-2px}
+.s2-sw.spot{background:var(--s2-hit);outline:1.5px solid var(--orange);outline-offset:-1px}
+/* SPOT FORA DA GRADE: a marca fica na borda mais próxima — cruzamento TRACEJADO (é a borda, não o spot) e o
+   cabeçalho com "<" (abaixo do piso) ou ">" (acima do teto); a dica do cabeçalho diz o preço de hoje */
+.s2-tbl td.s2-cell-hit.s2-cell-out{outline-style:dashed}
+.s2-tbl th.s2-hit-out{cursor:help}
+.s2-tbl th .s2-out{font-weight:800}
+.s2-sw.spot.out{outline-style:dashed}
+.s2-spot.s2-spot-out .s2-spot-k{letter-spacing:.35px}
+@media(max-width:760px){
+  /* no celular o trilho é UMA fileira que desliza de lado (como as abas da página), não 7 linhas empilhadas */
+  .sg-tabs.s2-rail{flex-wrap:nowrap}
+  .s2-rail-g{display:none}
+  .sg-tab.s2-co{padding:10px 11px}
+  .s2-name .sg-lg-full{height:24px}
+  .s2-how p{grid-template-columns:1fr;row-gap:3px}
+}
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
 <link rel="stylesheet" href="/ibba-design.css"/>
@@ -368,7 +423,7 @@ html.dark .sec-sub{color:var(--g-mid)}
     <div id="sg-tab-sens" hidden>
       <div class="section">
         <div class="sec-title">Sensitivity</div>
-        <div class="sec-sub">Model scenarios (from the official Excel) · interpolated and recomputed <b>live</b> — EV/EBITDA, FCF yield, dividend yield and upside using the current market price and FX.</div>
+        <div class="sec-sub">The analyst’s published sensitivity grids, read only · multiples and yields recomputed <b>live</b> at today’s share price and FX, with today’s market marked in orange.</div>
         <div id="sens-host"><div class="card"><span class="muted">Loading…</span></div></div>
       </div>
     </div>
@@ -612,12 +667,12 @@ function sgRenderComps(comps,config,priceByKey,isAdmin,fxRates){
   GROUP_ORDER.forEach(g=>{
     const shown=rows.filter(r=>r.group===g&&vis(r));
     if(!shown.length)return;
-    body+=`<tr class="grp-row"><td class="l" colspan="${NCOL}">${esc(GROUP_LABEL[g]||g)}</td></tr>`;
+    body+=`<tr class="grp-row"><td class="l" colspan="${NCOL}"><span class="sg-grp">${esc(GROUP_LABEL[g]||g)}</span></td></tr>`;
     shown.forEach(r=>{
       const off=(!r.is_visible&&isAdmin);
       const rec=r.recommendation?`<span class="rec ${esc(r.recommendation)}">${esc(r.recommendation)}</span>`:'';
       body+=`<tr class="${off?'offrow':''}">
-        <td class="l">${esc(r.ticker)}${off?'<span class="offtag">OFF · admin only</span>':''}</td>
+        <td class="l"><span class="sg-co">${sgLogo(r.ticker)}<b>${esc(r.ticker)}</b></span>${off?'<span class="offtag">OFF · admin only</span>':''}</td>
         <td class="l">${esc(r.displayName)}</td>
         <td style="text-align:center">${modelCell(r)}</td>
         <td>${rec}</td>
@@ -698,6 +753,20 @@ function sgRenderPeers(peers,priceByKey,config){
 // EBITDA, FCF e margens aparecem como publicados (nao dependem do preco da acao).
 let _S2_TABS=[];
 function _s2Def(t){ return (t&&t.definition)||{}; }
+// logo da empresa (assets/logos/logos.js): símbolo (padrão) ou completo ({full:true}). As duas variantes vão no HTML e
+// o CSS mostra a do tema (.lg-l fundo claro · .lg-d fundo escuro). Arquivo que falha some junto com o par, e o nome em
+// texto volta a aparecer (sgLogoErr). Empresa sem logo → '' (a linha sai como antes). Mora aqui (e não lá em cima)
+// porque os testes da aba Sensitivity recortam a página a partir do _s2Def; a comp table também usa (hoisting).
+function sgLogo(tk,o){
+  o=o||{}; if(typeof window==='undefined'||!window.IBBALogo||!tk) return '';
+  const l=IBBALogo(tk,{full:!!o.full}), d=IBBALogo(tk,{full:!!o.full,dark:true});
+  if(!l&&!d) return '';
+  const cls='sg-lg'+(o.full?' sg-lg-full':'');
+  const img=(src,v)=>`<img class="${cls} ${v}" src="${esc(src)}" alt="" decoding="async" onerror="sgLogoErr(this)">`;
+  return img(l||d,'lg-l')+img(d||l,'lg-d');
+}
+function sgLogoErr(el){ const p=el&&el.parentNode; if(!p) return;
+  p.querySelectorAll('img.sg-lg').forEach(i=>i.remove()); p.classList.remove('s2-name-lg'); }
 function _s2Label(t){ const tk=_s2Def(t).ticker||''; const c=compByTicker(tk);
   return (c&&c.company_name)?c.company_name:(tk||t.title); }
 
@@ -715,11 +784,17 @@ const _S2_SHOW={ebitda:1,ev_ebitda:1,fcf:1,fcf_yield:1};
 // das quatro de cima — a Aura também publica upside e P/NAV, mas tem as quatro, e para ela nada
 // muda. Mesma filosofia do "2027 de preferência": melhor o que o analista publicou do que aba vazia.
 const _S2_SHOW_DEV={upside:1,p_nav:1};
+// COBRE (25/11/2026, pedido do analista): Hudbay, Lundin, Capstone e Ero mostram EBITDA, FCF, FCF yield e P/NAV —
+// SEM EV/EBITDA (cada modelo trata o projeto em desenvolvimento de um jeito no EV; a Ero soma o Furnas) e COM o
+// P/NAV, que é como mineradora de cobre se lê. A grade de EV/EBITDA continua guardada no banco, como sempre.
+const _S2_SHOW_COBRE={ebitda:1,fcf:1,fcf_yield:1,p_nav:1};
+const _S2_SHOW_EMPRESA={HBM:_S2_SHOW_COBRE,LUN:_S2_SHOW_COBRE,CS:_S2_SHOW_COBRE,ERO:_S2_SHOW_COBRE};
 const _S2_ANO=2027;
 function _s2Sheets(d){
   const todas=(d&&d.sheets)||[];
   const temPadrao=todas.some(function(sh){ return (sh.tables||[]).some(function(x){ return !!_S2_SHOW[x.metric]; }); });
-  const mostrar=temPadrao?_S2_SHOW:_S2_SHOW_DEV;
+  const propria=_S2_SHOW_EMPRESA[String((d&&(d.ticker||d.import_ticker))||'').toUpperCase()];
+  const mostrar=propria||(temPadrao?_S2_SHOW:_S2_SHOW_DEV);
   const shs=todas.map(function(sh){
     return {name:sh.name, tables:(sh.tables||[]).filter(function(x){return !!mostrar[x.metric];})}; });
   const tem=shs.some(function(sh){ return sh.tables.some(function(x){return Number(x.year)===_S2_ANO;}); });
@@ -881,23 +956,36 @@ function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[
 // 2027 empurraria o minerio de 99,70 p/ 96,76 e o EBITDA da Vale de 18.335 p/ 17.593 — erro de
 // 4%). Se o modelo for de um ano anterior, faltaria a inflacao acumulada desde entao: a pagina
 // AVISA em vez de inventar fator, porque o deflator nao vem no arquivo do analista.
+// Grafias vistas: "Real Terms" (Vale) e "Real-Term" / "Real-Terms" (os modelos de cobre de
+// Nov-22-2026, que publicam os DOIS eixos assim — cobre e ouro; o índice acumulado do US-CPI deles
+// também vale 1 até 2026). Todos os eixos em real terms entram na nota, não só o primeiro.
 function _s2RealTermsAxis(d){
-  let lab=null;
+  const labs=[];
   _s2Sheets(d).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
-    [t.colLabel,t.rowLabel].forEach(function(x){ if(!lab&&x&&/real\s*terms/i.test(x)) lab=x; }); }); });
-  if(!lab) return null;
+    [t.colLabel,t.rowLabel].forEach(function(x){
+      // só eixo com leitura de tela: a nota explica a marca laranja (o de longo prazo do P/NAV não tem marca)
+      if(x&&/\breal[\s-]*terms?\b/i.test(x)&&_s2DriverKey(x)&&labs.indexOf(x)<0) labs.push(x); }); }); });
+  if(!labs.length) return null;
   const m=/^(\d{4})/.exec(String(d.model_date||''));
-  return {label:lab, base:m?Number(m[1]):0};     // base 0 = e' real terms mas nao da p/ saber o ano
+  return {label:labs[0], labels:labs, base:m?Number(m[1]):0};     // base 0 = e' real terms mas nao da p/ saber o ano
 }
 function _s2RealTermsNote(d,anoAgora){
   const rt=_s2RealTermsAxis(d); if(!rt) return '';
-  const eixo='The "'+_s2Short(rt.label)+'" axis';
-  if(!rt.base) return eixo+' is published in real terms (constant dollars) and the live read is '+
+  // nome do eixo sem a unidade e SEM o corte do _s2Short (a nota é frase, tem espaço — cortado
+  // ficava "Average Copper Real-Term Price 2…"); a quebra de linha do rótulo vira espaço
+  const nomes=(rt.labels||[rt.label]).map(function(x){ const t=String(x==null?'':x); const i=t.indexOf('(');
+    return '"'+(i>0?t.slice(0,i):t).replace(/\s+/g,' ').trim()+'"'; });
+  const eixo=nomes.length>1
+    ? 'The '+nomes.slice(0,-1).join(', ')+' and '+nomes[nomes.length-1]+' axes'
+    : 'The '+nomes[0]+' axis';
+  const sao=nomes.length>1?' are':' is';
+  const it=nomes.length>1?'them':'it';
+  if(!rt.base) return eixo+sao+' published in real terms (constant dollars) and the live read is '+
     "today's price — the model does not say which year those constant dollars are from.";
-  if(rt.base===anoAgora) return eixo+' is in real terms, i.e. constant '+rt.base+' dollars (the model '+
-    "inflates it by US CPI to reach the nominal year). Today's price is already in "+rt.base+
+  if(rt.base===anoAgora) return eixo+sao+' in real terms, i.e. constant '+rt.base+' dollars (the model '+
+    'inflates '+it+" by US CPI to reach the nominal year). Today's price is already in "+rt.base+
     ' dollars, so the orange mark is compared as is, with no deflator.';
-  return eixo+' is in real terms — constant '+rt.base+' dollars — while the live read is '+
+  return eixo+sao+' in real terms — constant '+rt.base+' dollars — while the live read is '+
     "today's nominal price, so the orange mark ignores the inflation since "+rt.base+'.';
 }
 // valor do eixo AO VIVO, ja na unidade do eixo (o catalogo tem cobre em USD/lb; ha modelo
@@ -924,6 +1012,18 @@ function _s2Fit(levels,v,dec){
   if(v<mn) return (mn-v<=tol)?mn:v;
   if(v>mx) return (v-mx<=tol)?mx:v;
   return v;
+}
+// SPOT FORA DA GRADE (25/11/2026, pedido do analista: o ouro de hoje, ~3.490, fica abaixo dos 3.600 do piso das
+// grades de cobre e da Aura, e a tabela ficava sem marca nenhuma). A marca vai para a BORDA mais próxima — o
+// encontro da linha/coluna do spot com o último nível publicado — e a tela diz que o número de hoje está além dela:
+// "<" no cabeçalho (abaixo do piso) ou ">" (acima do teto), cruzamento tracejado e "At grid edge". O número da borda
+// é o que o analista publicou ali; nada é extrapolado. Devolve {idx, out}: out = -1 abaixo · 0 dentro · +1 acima.
+function _s2Edge(levels,v){
+  if(v==null||!levels||!levels.length) return {idx:-1,out:0};
+  const mn=Math.min.apply(null,levels), mx=Math.max.apply(null,levels);
+  if(v<mn) return {idx:levels.indexOf(mn),out:-1};
+  if(v>mx) return {idx:levels.indexOf(mx),out:1};
+  return {idx:_s2NearIdx(levels,v),out:0};
 }
 // indice do nivel mais proximo, so se o valor cair DENTRO da faixa da grade
 function _s2NearIdx(levels,v){
@@ -962,7 +1062,13 @@ function _s2Ctx(t,dv){
   // de tela − 1). Pelo valor de mercado em US$ entraria o câmbio do dia, como se o alvo fosse fixo em
   // dólar. Para quem negocia na moeda do modelo as duas contas dão o mesmo número.
   const upOk=!mismatch&&pModel!=null&&pModel>0&&price!=null&&price>0&&!(price/pModel>5||pModel/price>5);
-  return {def:d, comp:comp, mcModel:mcModel, mcLive:mcLive, price:price, mismatch:mismatch,
+  // P/NAV NA BASE DO PRÓPRIO MODELO (cobre, 25/11/2026): Hudbay e Ero fazem o FCF yield com o valor de mercado da
+  // NYSE e o P/NAV com o preço da TSX a câmbio fixo — 0,5% de diferença. Com o valor de mercado da base do P/NAV
+  // (mktcap_model_nav, do quadro "Implicit Cu Prices") cada grade é reescrita a partir do número que a gerou.
+  // Longe (±10%) do outro = vínculo errado no arquivo → não vale.
+  let mcNav=n(d.mktcap_model_nav);
+  if(mcNav!=null&&(ratioOnly||mcModel==null||!(mcNav>0)||Math.abs(mcNav/mcModel-1)>0.1)) mcNav=null;
+  return {def:d, comp:comp, mcModel:mcModel, mcLive:mcLive, price:price, mismatch:mismatch, mcModelNav:mcNav,
           ratioOnly:ratioOnly, pModel:upOk?pModel:null, pLive:upOk?price:null,
           mv:(_SENS_CTX&&_SENS_CTX.marketValues)||{}};
 }
@@ -1007,7 +1113,7 @@ function _s2TitleParts(title){
 // o meio da grade (o caso-base do modelo), como nos nossos excéis. O laranja
 // fica só com a linha/coluna do spot e o cruzamento dos dois, que é o que o
 // cliente procura primeiro.
-function _s2TableHtml(tab,byId,ctx){
+function _s2TableHtml(tab,byId,ctx,cap){   // cap = par de eixos, quando a grade divide o quadro com outro par
   const met=tab.metric; const live=SG.SENS2D_METRICS[met]&&SG.SENS2D_METRICS[met].live;
   const pair=tab.pairId?byId[tab.pairId]:null;
   const colPct=SG.sens2dAxisIsPct(tab.colLabel,tab.colLevels);
@@ -1016,10 +1122,25 @@ function _s2TableHtml(tab,byId,ctx){
   const rowDec=tab.rowLevels?SG.sens2dAxisDecimals(tab.rowLevels,rowPct):0;
   const colLive=_s2Fit(tab.colLevels,_s2LiveAxis(tab.colLabel,ctx.mv),colDec),
         rowLive=tab.rowLevels?_s2Fit(tab.rowLevels,_s2LiveAxis(tab.rowLabel,ctx.mv),rowDec):null;
-  const cj=_s2NearIdx(tab.colLevels,colLive), ri=tab.rowLevels?_s2NearIdx(tab.rowLevels,rowLive):-1;
+  // dentro da grade: o nível mais próximo; FORA: a borda mais próxima, marcada como fora (ver _s2Edge)
+  const cE=_s2Edge(tab.colLevels,colLive), rE=tab.rowLevels?_s2Edge(tab.rowLevels,rowLive):{idx:-1,out:0};
+  const cj=cE.idx, ri=rE.idx, fora=!!(cE.out||rE.out);
+  // o spot entra com casa a MAIS quando a casa do eixo o arredondaria: o eixo do
+  // cambio mostra 5,4 mas quem entrou na conta foi 5,44 - a linha tem de dizer isso
+  const spotFmt=function(v,pct,dec){ const x=pct?v*100:v, pw=Math.pow(10,dec);
+    const d=(Math.abs(x*pw-Math.round(x*pw))<1e-9)?dec:Math.min(dec+1,3);
+    return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
+  // cabeçalho do nível marcado: igual a sempre quando o spot está dentro; fora, "<"/">" na frente e a dica com o preço de hoje
+  const thHit=function(E,v,pct,dec){
+    if(!E.out) return {cls:' class="s2-hit"', pre:''};
+    return {cls:' class="s2-hit s2-hit-out" title="'+esc('Today '+spotFmt(v,pct,dec)+' — '+(E.out<0?'below the lowest':'above the highest')+
+      ' level in the grid; the flag sits on the edge')+'"', pre:'<span class="s2-out">'+(E.out<0?'&lt;':'&gt;')+'</span> '};
+  };
+  const cH=thHit(cE,colLive,colPct,colDec), rH=thHit(rE,rowLive,rowPct,rowDec);
   // upside: razão de preços na moeda de negociação (ver _s2Ctx); o resto: valor de mercado
   const porPreco=(met==='upside'&&ctx.pModel!=null&&ctx.pLive!=null);
-  const mcM=porPreco?ctx.pModel:ctx.mcModel, mcL=porPreco?ctx.pLive:ctx.mcLive;
+  const mcM=porPreco?ctx.pModel:((met==='p_nav'&&ctx.mcModelNav!=null)?ctx.mcModelNav:ctx.mcModel),
+        mcL=porPreco?ctx.pLive:ctx.mcLive;
   const canLive=live&&mcL!=null&&mcM!=null&&(met!=='ev_ebitda'||(!!pair&&!ctx.ratioOnly));
   const hasRow=!!(tab.rowLevels&&tab.rowLevels.length);
   const rows=tab.rowLevels||[null];
@@ -1036,7 +1157,7 @@ function _s2TableHtml(tab,byId,ctx){
   h+='<div class="s2-chead"><h3>'+esc(parts.head)+
      (parts.note?'<span class="s2-unit">'+esc(parts.note)+'</span>':'')+'</h3>'+
      (canLive?'<span class="s2-live" title="recomputed at the current screen price"><i></i>live</span>':'')+
-     '</div>';
+     '</div>'+(cap?'<div class="s2-cap" title="'+esc(cap)+'">'+esc(cap)+'</div>':'');
   // Os dois rótulos de eixo ficam FORA da grade, cada um no eixo que ele nomeia
   // (correcao de 2026-09-04: estavam trocados — o nome do eixo vertical era escrito na
   // horizontal e vice-versa):
@@ -1052,15 +1173,16 @@ function _s2TableHtml(tab,byId,ctx){
      '<th class="s2-colhead" colspan="'+tab.colLevels.length+'">'+esc(tab.colLabel)+'</th></tr>';
   h+='<tr>'+(hasRow?'<th class="s2-corner"></th>':'');
   tab.colLevels.forEach(function(v,j){
-    h+='<th'+(j===cj?' class="s2-hit"':'')+'>'+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
+    h+='<th'+(j===cj?cH.cls:'')+'>'+(j===cj?cH.pre:'')+esc(SG.sens2dAxisFormat(v,colPct,NUM_LOC,colDec))+'</th>'; });
   h+='</tr></thead><tbody>';
   rows.forEach(function(rv,i){
     h+='<tr>';
-    if(hasRow) h+='<th'+(i===ri?' class="s2-hit"':'')+'>'+
+    if(hasRow) h+='<th'+(i===ri?rH.cls:'')+'>'+(i===ri?rH.pre:'')+
        esc(SG.sens2dAxisFormat(rv,rowPct,NUM_LOC,rowDec))+'</th>';
     tab.colLevels.forEach(function(cv,j){
       const v=vals[i][j];
-      const hit=(i===ri&&j===cj)?' s2-cell-hit':((i===ri||j===cj)?' s2-cell-near':'');
+      // cruzamento tracejado quando algum eixo está FORA da grade (a marca está na borda, não no spot)
+      const hit=(i===ri&&j===cj)?' s2-cell-hit'+(fora?' s2-cell-out':''):((i===ri||j===cj)?' s2-cell-near':'');
       const eBase=!!(base&&base.i===i&&base.j===j);
       h+='<td class="s2-num'+hit+(eBase?' s2-base':'')+'"'+
          (eBase?' title="'+esc('Base case — the model runs at '+base.txt)+'"':'')+
@@ -1069,24 +1191,27 @@ function _s2TableHtml(tab,byId,ctx){
     h+='</tr>';
   });
   h+='</tbody></table></div></div>';
-  // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada
+  // leitura NO PONTO do spot: interpolada entre os níveis publicados, nunca extrapolada. Eixo FORA da grade é lido
+  // NA BORDA (o número que o analista publicou ali) e a linha passa a se chamar "At grid edge", com o preço de hoje
+  // ao lado do nível usado ("< 3,600 (today 3,491)") — quem lê sabe que o número de verdade está além da tabela.
   if(colLive!=null&&(!hasRow||rowLive!=null)){
-    const pubAt=_s2At(tab,rowLive,colLive);
-    const ebAt=pair?_s2At(pair,rowLive,colLive):null;
+    const cx=cE.out?tab.colLevels[cE.idx]:colLive, rx=(hasRow&&rE.out)?tab.rowLevels[rE.idx]:rowLive;
+    const pubAt=_s2At(tab,rx,cx);
+    const ebAt=pair?_s2At(pair,rx,cx):null;
     const at=(pubAt==null)?null:toScreen(pubAt,ebAt);
     if(at!=null&&isFinite(at)){
-      // o spot entra com casa a MAIS quando a casa do eixo o arredondaria: o eixo do
-      // cambio mostra 5,4 mas quem entrou na conta foi 5,44 - a linha tem de dizer isso
-      const spotFmt=function(v,pct,dec){ const x=pct?v*100:v, pw=Math.pow(10,dec);
-        const d=(Math.abs(x*pw-Math.round(x*pw))<1e-9)?dec:Math.min(dec+1,3);
-        return SG.sens2dAxisFormat(v,pct,NUM_LOC,d); };
-      const xs=[spotFmt(colLive,colPct,colDec)];
-      if(hasRow) xs.push(spotFmt(rowLive,rowPct,rowDec));
+      const eixo=function(E,borda,v,pct,dec){ return E.out
+        ? (E.out<0?'< ':'> ')+SG.sens2dAxisFormat(borda,pct,NUM_LOC,dec)+' (today '+spotFmt(v,pct,dec)+')'
+        : spotFmt(v,pct,dec); };
+      const xs=[eixo(cE,cx,colLive,colPct,colDec)];
+      if(hasRow) xs.push(eixo(rE,rx,rowLive,rowPct,rowDec));
       const srcs=[]; const cs=_s2SrcName(tab.colLabel); if(cs)srcs.push(cs);
       if(hasRow){ const rs=_s2SrcName(tab.rowLabel); if(rs&&srcs.indexOf(rs)<0)srcs.push(rs); }
-      h+='<div class="s2-spot" title="'+esc('interpolated between the published grid levels'+
+      h+='<div class="s2-spot'+(fora?' s2-spot-out':'')+'" title="'+esc((fora
+           ? 'today’s price is outside the published grid: read at its nearest edge (the analyst’s number there), never extrapolated'
+           : 'interpolated between the published grid levels')+
            (srcs.length?' · live: '+srcs.join(' × '):''))+'">'+
-         '<span class="s2-spot-k">At spot</span>'+
+         '<span class="s2-spot-k">'+(fora?'At grid edge':'At spot')+'</span>'+
          '<span class="s2-spot-x">'+esc(xs.join(' × '))+'</span>'+
          '<b>'+esc(SG.sens2dFormat(at,met,NUM_LOC))+'</b></div>';
     }
@@ -1109,7 +1234,8 @@ function _s2DriverStrip(d,ctx){
       const dec=SG.sens2dAxisDecimals(lv,pct);
       const live=_s2Fit(lv,_s2LiveAxis(lab,ctx.mv),dec);   // mesma borda da grade (senao o cartao dizia "5,11 fora de 5,11-5,91")
       out.push({label:lab,pct:pct,min:mn,max:mx,live:live,dec:dec,
-                src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx});
+                src:_s2SrcName(lab), inside:live!=null&&live>=mn&&live<=mx,
+                fora:live==null?0:(live<mn?-1:(live>mx?1:0))});   // fora: -1 abaixo do piso · +1 acima do teto
     }); }); });
   return out;
 }
@@ -1135,7 +1261,7 @@ function _s2Analyses(d){
 // a definição "como se fosse de um arquivo só": os campos da análise por cima dos da empresa
 function _s2AnaView(d,ana){
   const m=ana.meta||{}; const v=Object.assign({},d,{sheets:ana.sheets});
-  ['source_file','model_date','currency','model_price','mktcap_model','shares_mn','assumptions'].forEach(function(k){
+  ['source_file','model_date','currency','model_price','mktcap_model','mktcap_model_nav','shares_mn','assumptions'].forEach(function(k){
     if(m[k]!=null) v[k]=m[k]; });
   return v;
 }
@@ -1157,7 +1283,10 @@ function _s2RenderPane(t,pane){
   const byId={}; (d.sheets||[]).forEach(function(sh){ (sh.tables||[]).forEach(function(x){ byId[x.id]=x; }); });
   const ccy=d.currency||'';
   let h='<div class="s2-top">';
-  h+='<div class="s2-hdr"><div class="s2-name">'+esc(_s2Label(t))+'</div>'+
+  // nome + logo (o logo completo da empresa); sem logo, o nome em texto como sempre
+  const lgFull=sgLogo(d0.ticker,{full:true});
+  h+='<div class="s2-hdr"><div class="s2-name'+(lgFull?' s2-name-lg':'')+'">'+lgFull+
+     (lgFull?'<span class="s2-name-t">'+esc(_s2Label(t))+'</span>':esc(_s2Label(t)))+'</div>'+
      '<div class="s2-meta">'+esc(d.source_file||'model')+(d.model_date?' · '+esc(d.model_date):'')+
      (ccy?' · '+esc(ccy)+' mn':'')+'</div></div>';
   if(anas.length>1){
@@ -1175,13 +1304,19 @@ function _s2RenderPane(t,pane){
      ' <span class="s2-arrow">→</span> '+
      (pl!=null?'<b>'+pl.toLocaleString(NUM_LOC,{minimumFractionDigits:2,maximumFractionDigits:2})+'</b>':'<span class="muted">no quote</span>')+
      '</div><div class="s2-sub">'+(pm&&pl?((pl/pm-1)*100).toLocaleString(NUM_LOC,{minimumFractionDigits:1,maximumFractionDigits:1})+'% vs model':'model → live')+'</div></div>';
-  _s2DriverStrip(d,ctx).forEach(function(x){
-    h+='<div class="s2-kpi'+(x.inside?' on':'')+'"><div class="s2-k" title="'+
+  const strip=_s2DriverStrip(d,ctx);
+  const algumFora=strip.some(function(x){ return !!x.fora; });
+  strip.forEach(function(x){
+    // fora da grade a marca vai para a borda (ver _s2Edge) — o cartão diz em qual borda ela está
+    const fmtB=function(v){ return SG.sens2dAxisFormat(v,x.pct,NUM_LOC,x.dec); };
+    const sub=x.live==null?'grid range · no live read':(x.inside?'grid range · spot':
+      (x.fora<0?'spot below the grid · flag on '+fmtB(x.min):'spot above the grid · flag on '+fmtB(x.max)));
+    h+='<div class="s2-kpi'+(x.inside||x.fora?' on':'')+'"><div class="s2-k" title="'+
        esc(x.label+(x.live!=null&&x.src?' · live: '+x.src:''))+'">'+esc(_s2Short(x.label))+
        '</div><div class="s2-v">'+
-       esc(SG.sens2dAxisFormat(x.min,x.pct,NUM_LOC,x.dec))+'–'+esc(SG.sens2dAxisFormat(x.max,x.pct,NUM_LOC,x.dec))+
-       (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(SG.sens2dAxisFormat(x.live,x.pct,NUM_LOC,x.dec))+'</b>':'')+
-       '</div><div class="s2-sub">'+(x.live==null?'grid range · no live read':(x.inside?'grid range · spot':'spot outside the grid'))+'</div></div>';
+       esc(fmtB(x.min))+'–'+esc(fmtB(x.max))+
+       (x.live!=null?' <span class="s2-arrow">·</span> <b>'+esc(fmtB(x.live))+'</b>':'')+
+       '</div><div class="s2-sub">'+esc(sub)+'</div></div>';
   });
   h+='</div>';
   if(ctx.mismatch) h+='<div class="s2-warn">Model currency and live price do not match — showing the numbers exactly as published.</div>';
@@ -1201,9 +1336,19 @@ function _s2RenderPane(t,pane){
       const k=(t.colLabel||'')+' | '+(t.rowLabel||'');
       if(ondeEsta[k]==null){ ondeEsta[k]=grupos.length; grupos.push({first:t,tables:[]}); }
       grupos[ondeEsta[k]].tables.push(t); });
+    const parDe=function(x){ return [semUn(x.colLabel),semUn(x.rowLabel)].filter(Boolean).join(' × ').replace(/\s+/g,' '); };
+    // até 4 grades com eixos diferentes (o cobre: EBITDA, FCF e FCF yield de 2027 + o P/NAV de longo prazo) vão num
+    // quadro SÓ, 2 × 2, e a de outro par de eixos diz o par no próprio cartão — em blocos separados sobrava um cartão
+    // sozinho em cada linha. Mais que isso (Gerdau: 2 blocos × 4) segue com o título por bloco.
+    const nTab=(sh.tables||[]).length;
+    if(grupos.length>1&&nTab<=4){
+      h+='<div class="s2-grid">';
+      grupos.forEach(function(g,gi){ g.tables.forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx,gi?parDe(tab):''); }); });
+      h+='</div>';
+      return;
+    }
     grupos.forEach(function(g){
-      if(grupos.length>1) h+='<div class="s2-sheet">'+
-        esc([semUn(g.first.colLabel),semUn(g.first.rowLabel)].filter(Boolean).join(' × '))+'</div>';
+      if(grupos.length>1) h+='<div class="s2-sheet">'+esc(parDe(g.first))+'</div>';
       h+='<div class="s2-grid">';
       g.tables.forEach(function(tab){ h+=_s2TableHtml(tab,byId,ctx); });
       h+='</div>';
@@ -1213,24 +1358,57 @@ function _s2RenderPane(t,pane){
   // o que a nota diz que é reescrito acompanha o que está NA TELA (desenvolvedora: upside e P/NAV)
   const mets={}; shs.forEach(function(sh){ (sh.tables||[]).forEach(function(x){ mets[x.metric]=1; }); });
   const soDev=!!(mets.upside||mets.p_nav)&&!(mets.ebitda||mets.ev_ebitda||mets.fcf||mets.fcf_yield);
-  const leitura=soDev
-    ? 'DCF upside and P/NAV are recomputed at the current screen price (the model’s share price against today’s).'
-    : 'EBITDA and FCF are exactly as the analyst published; EV/EBITDA and FCF yield are recomputed at the current screen price, '+
-      'with the net debt embedded in the published EV.';
-  h+='<div class="s2-note"><span class="s2-ramp"></span><span>Shading deepens toward the centre of each grid, '+
-     'where the model runs — each ring out is one step of the analyst’s assumptions; a dashed cell marks the '+
-     'base case where the assumptions in the file confirm it. Orange marks where the market is trading today, and '+
-     '“At spot” reads the grid at the exact quote, interpolated between the published levels. '+leitura+
-     (notaReal?' '+esc(notaReal):'')+'</span></div>';
+  // a frase segue o que está NA TELA (o cobre mostra P/NAV no lugar do EV/EBITDA)
+  const nomeM={ebitda:'EBITDA',fcf:'FCF',margin:'margins',ev_ebitda:'EV/EBITDA',fcf_yield:'FCF yield',
+    div_yield:'dividend yield',upside:'DCF upside',p_nav:'P/NAV'};
+  const juntar=function(l){ return l.length>1?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:(l[0]||''); };
+  const fixos=['ebitda','fcf','margin'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
+  const vivos=['ev_ebitda','fcf_yield','div_yield','upside','p_nav'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
+  const leitura=(fixos.length?juntar(fixos)+' are exactly as the analyst published; ':'')+
+    (vivos.length?juntar(vivos)+' are recomputed at the current screen price'+
+      (mets.ev_ebitda?', with the net debt embedded in the published EV':'')+
+      (soDev?' (the model’s share price against today’s)':'')+'.':'');
+  // COMO LER: as mesmas frases de antes, agora em linhas, cada marca com a sua amostra ao lado (era um parágrafo
+  // corrido no rodapé). "Live" diz o que é reescrito no preço de tela; "Real terms" só aparece quando há eixo assim.
+  h+='<div class="s2-note s2-how">'+
+     '<p><b class="k">How to read</b><span>'+
+       '<span class="s2-key"><span class="s2-ramp"></span>Shading deepens toward the centre of each grid, where the model runs — '+
+       'each ring out is one step of the analyst’s assumptions.</span>'+
+       '<span class="s2-key"><span class="s2-sw base"></span>A dashed cell marks the base case where the assumptions in the file confirm it.</span>'+
+       '<span class="s2-key"><span class="s2-sw spot"></span>Orange marks where the market is trading today, and “At spot” reads the grid '+
+       'at the exact quote, interpolated between the published levels.</span>'+
+       (algumFora?'<span class="s2-key"><span class="s2-sw spot out"></span>A dashed orange cell means today’s price is outside the grid: '+
+       'the flag sits on the nearest edge — “&lt;” below the lowest level, “&gt;” above the highest — and today’s number lies beyond it '+
+       '(“At grid edge” reads the analyst’s number at that edge; nothing is extrapolated).</span>':'')+
+       '</span></p>'+
+     (leitura?'<p><b class="k">Live</b><span>'+leitura+'</span></p>':'')+
+     (notaReal?'<p><b class="k">Real terms</b><span>'+esc(notaReal)+'</span></p>':'')+
+     '</div>';
   pane.innerHTML=h;
 }
 
+// TRILHO DE EMPRESAS (25/11/2026): eram 16 abas de texto corrido em duas linhas, na ordem do banco. Agora cada
+// empresa leva o SÍMBOLO e o trilho é separado por setor — Mining · Rare Earths · Steel · Pulp & Paper, a mesma
+// ordem e os mesmos rótulos da comp table — para achar a empresa de relance. Mesmo botão .sg-tab de sempre (o
+// traço laranja do IBBASlide continua correndo até a escolhida); a ordem do _S2_TABS é a da tela.
 function sgRenderSens2dTabs(list,others,host){
-  _S2_TABS=list.map(function(t){ return {key:'s2-'+t.id,t:t,label:_s2Label(t)}; });
-  if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Other'});
-  const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs';
-  _S2_TABS.forEach(function(tab,i){ const b=document.createElement('button');
-    b.className='sg-tab'+(i===0?' active':''); b.id='s2tab-'+i; b.textContent=tab.label;
+  const grupoDe=t=>{ const c=compByTicker(_s2Def(t).ticker||''); return (c&&c.group&&GROUP_LABEL[c.group])?c.group:'_'; };
+  const porGrupo={}; list.forEach(t=>{ const g=grupoDe(t); (porGrupo[g]=porGrupo[g]||[]).push(t); });
+  _S2_TABS=[];
+  GROUP_ORDER.concat(['_']).forEach(g=>(porGrupo[g]||[]).forEach(t=>
+    _S2_TABS.push({key:'s2-'+t.id,t:t,label:_s2Label(t),group:g})));
+  if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Other',group:'_'});
+  const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs s2-rail';
+  bar.setAttribute('role','tablist');
+  let gAnt=null;
+  _S2_TABS.forEach(function(tab,i){
+    if(tab.group!==gAnt&&GROUP_LABEL[tab.group]){ const s=document.createElement('span'); s.className='s2-rail-g';
+      s.textContent=GROUP_LABEL[tab.group]; bar.appendChild(s); }
+    gAnt=tab.group;
+    const tk=tab.t?String(_s2Def(tab.t).ticker||''):'';
+    const b=document.createElement('button'); b.type='button'; b.setAttribute('role','tab');
+    b.className='sg-tab s2-co'+(i===0?' active':''); b.id='s2tab-'+i;
+    b.innerHTML=sgLogo(tk)+'<span>'+esc(tab.label)+'</span>'; if(tk) b.title=tab.label+' · '+tk;
     b.onclick=function(){_s2ShowTab(i,{anim:1});}; bar.appendChild(b); });
   host.appendChild(bar);
   try{ if(window.IBBASlide) IBBASlide.watch(bar,'.sg-tab'); }catch(e){ console.warn('IBBASlide:',e); }   // o traço corre entre as empresas

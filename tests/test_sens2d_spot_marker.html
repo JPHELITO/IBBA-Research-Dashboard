@@ -117,7 +117,9 @@ window.__RUN__=async function(){
      Math.abs(M._s2At(tabsOf(DEF.CMIN3)[0],M._s2Fit(RL_FX,5.1081,2),95)-tabsOf(DEF.CMIN3)[0].values[0][4])<1e-6 &&
      M._s2At(tabsOf(DEF.CMIN3)[0],5.1081,95)===null,
      'borda = '+tabsOf(DEF.CMIN3)[0].values[0][4]);
-  ok('longe da borda continua SEM leitura (meio centavo já é outro número na tela)',
+  // (25/11/2026) longe da borda o spot NÃO é lido como se fosse a borda; a tabela passa a pôr a marca TRACEJADA na
+  // borda mais próxima, com "<"/">" e "At grid edge" — regra nova, testada em test_sens2d_cobre.html (seção 6)
+  ok('longe da borda o spot não vira a borda (meio centavo já é outro número na tela)',
      M._s2Fit(RL_FX,5.10,2)===5.10 && M._s2NearIdx(RL_FX,M._s2Fit(RL_FX,5.10,2))===-1 &&
      M._s2Fit(RL_FX,4.90,2)===4.90 && M._s2Fit(RL_FX,6.20,2)===6.20);
   ok('quem está dentro não é mexido, e sem leitura ao vivo nada acontece',

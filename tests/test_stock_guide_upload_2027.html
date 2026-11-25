@@ -36,6 +36,7 @@ function abaEmpresa(o){
   serie(15,'Market Capitalization ('+u+' mn)', yrs.map(()=>o.mcSerie));
   serie(16,'Net Debt ('+u+' m)', o.nd);
   serie(17,'Adjustments ('+u+' m)', o.adj);
+  if(o.evAdj) serie(18,'EV Adjusted ('+u+' m)', o.evAdj);
   if(o.ebAdj!==null) serie(19,(o.rotAdj||'Adjusted EBITDA')+' ('+u+' m)', o.ebAdj);
   serie(20,'Cash Earnings ('+u+' m)', o.ce);
   serie(21,'Dividends/Int. on Equity Paid ('+u+' m)', o.div);
@@ -173,6 +174,25 @@ window.__RUN__=async function(){
   ok('upside em C$ contra C$', near(d.upsidePct,30/20-1));
   const legado=Object.assign({},linha,{base_ccy:null,trade_ccy:'CAD',fx_to_base:0.8});
   ok('linha sem base_ccy (legado) segue a regra antiga do fx_to_base', near(SG.deriveComps([legado],{'HBM.TO':20},{CAD:1.25})[0].marketCapBrlMn,1600));
+
+  // ── EV QUE O ANALISTA FECHOU NA ABA (25/11/2026: a Ero puxa o EV do modelo, com o projeto Furnas) ──────
+  // A dash monta o EV ao vivo = valor de mercado + Net Debt + Adjustments. Quando a linha "EV Adjusted" da aba
+  // tem mais do que essa soma, o excedente entra no ajuste (senão a comp table ignorava o Furnas: 2,9× × 5,0×).
+  const ev=(evAdj)=>abaEmpresa({nome:'TESTE BR',ticker:'CSNA3',moedaPreco:'BRL',preco:10,alvo:15,acoes:100,unid:'BRL',
+    mcSerie:1000,nd:[400,500,600],adj:[10,20,30],ebAdj:[190,290,390],eb:[200,300,400],ce:[80,90,100],div:[20,30,40],ni:[50,60,70],evAdj:evAdj});
+  const lerEv=(evAdj)=>{ const r=SG.parseStockGuideWorkbook(livro({'Summary':abaSummary('27E','28E'),'Stock Guide':abaStockGuide(FX),'CSN':ev(evAdj)}));
+    return {row:r.rows.find(x=>x.ticker==='CSNA3'), avisos:r.warnings.filter(w=>/EV Adjusted/.test(w))}; };
+  const soma=lerEv([1410,1520,1630]);
+  ok('"EV Adjusted" = valor de mercado + dívida + ajustes → o ajuste é o da linha, sem aviso',
+     soma.row.ev_adjustment_y1===20&&soma.row.ev_adjustment_y2===30&&soma.avisos.length===0, JSON.stringify([soma.row.ev_adjustment_y1,soma.row.ev_adjustment_y2]));
+  const furnas=lerEv([1410,1520+1500,1630+1500]);
+  ok('"EV Adjusted" com um projeto a mais (o Furnas da Ero) → o excedente entra no ajuste, nos dois anos',
+     furnas.row.ev_adjustment_y1===1520&&furnas.row.ev_adjustment_y2===1530, JSON.stringify([furnas.row.ev_adjustment_y1,furnas.row.ev_adjustment_y2]));
+  ok('…e o /admin avisa (uma linha por ano)', furnas.avisos.length===2&&/2027E/.test(furnas.avisos[0])&&/1500/.test(furnas.avisos[0]), furnas.avisos.join(' | '));
+  const arred=lerEv([1410,1520.4,1630]);
+  ok('diferença de arredondamento (≤ 0,5) não mexe no ajuste', arred.row.ev_adjustment_y1===20&&arred.avisos.length===0);
+  const semLinha=lerEv(null);
+  ok('aba sem a linha "EV Adjusted" segue como sempre', semLinha.row.ev_adjustment_y1===20&&semLinha.avisos.length===0);
 
   const falhas=R.filter(r=>r.startsWith('FAIL')).length;
   document.getElementById('out').textContent=
