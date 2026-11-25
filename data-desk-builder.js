@@ -52,6 +52,7 @@
   /* R² entre duas séries nos períodos i0..i1 em que AS DUAS têm valor: {n, r, r2}; r2 = null com menos de 6 pares ou série parada */
   var R2_MIN = 6;
   function r2of(a, b, i0, i1) {
+    if (X.r2of) return X.r2of(a, b, i0, i1);   // a conta mora no motor (data-desk.js); esta cópia só vale com um motor antigo
     var xs = [], ys = [], i, n, mx = 0, my = 0, sxy = 0, sxx = 0, syy = 0;
     for (i = i0; i <= i1; i++) if (a[i] != null && b[i] != null && isFinite(a[i]) && isFinite(b[i])) { xs.push(+a[i]); ys.push(+b[i]); }
     n = xs.length; if (n < R2_MIN) return { n: n, r: null, r2: null };
@@ -358,9 +359,7 @@
       var real = (v.calc === 'index' && j >= v.i0 && j >= 0 && r.lev && r.lev[j] != null) ? fmt(r.lev[j], r.d.dec) + ' ' + r.d.unit : '';
       /* R² contra a 1ª série (só da 2ª em diante): o número e, na dica, contra o quê, em quantos períodos e o que significa */
       var f0 = r.fit, ref0 = v.rows[0] ? v.rows[0].it.name : '';
-      var r2b = !f0 ? '' : f0.r2 == null
-        ? '<span class="dk-br2 dk-br2na" title="' + esc('R² against ' + ref0 + ': needs at least 6 ' + f0.per + ' with both series in this window (now ' + f0.n + ')') + '">R² —</span>'
-        : '<span class="dk-br2" title="' + esc('R² against ' + ref0 + ' = ' + fmt(f0.r2, 2) + ', over ' + f0.n + ' ' + f0.per + ' of this window: how much of this series\' movement lines up with ' + ref0 + ' (0 = none, 1 = all), from a linear regression of one on the other.' + (f0.r < 0 ? ' Inverse: they move in opposite directions.' : '') + ' Two series that both trend can show a high R² in Level without a real link — YoY is the stricter test.') + '">R² ' + fmt(f0.r2, 2) + (f0.r < 0 ? ' <em>inverse</em>' : '') + '</span>';
+      var r2b = !f0 ? '' : X.r2Badge(f0, ref0, f0.per, ' Two series that both trend can show a high R² in Level without a real link — YoY is the stricter test.');
       /* eixo da direita: botão em cada ficha (com 2+ séries) — diz que é botão e o que faz */
       var axb = v.rows.length > 1 ? '<button type="button" class="dk-bax" data-ax="' + esc(r.key) + '" aria-pressed="' + (r.ax === 'R') + '" title="' + esc(r.ax === 'R' ? 'On the right-hand scale — click to bring it back to the left' : 'Give this series its own scale on the right — for series that move much less (or much more) than the others') + '">Right axis</button>' : '';
       return '<span class="dk-bchip"><i style="background:' + r.col + '"></i><button type="button" class="dk-bcn" data-go="' + esc(r.key) + '" title="' + esc(me._bWhat(r) + r.it.where + ' — click to open it in its section') + '">' + esc(r.it.name) + '</button>' +

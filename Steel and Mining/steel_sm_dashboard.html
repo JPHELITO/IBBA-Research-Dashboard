@@ -2788,7 +2788,7 @@ const _parBuild=k=>(S,P,iso)=>{ const r=P.rowAt(P.par(S,k),iso); if(!r||r.domUsd
     {op:'+',k:'Import tariff ('+pc(r.tariff)+')',v:f(r.tariffV)},{op:'+',k:'AFRMM ('+pc(r.afrmm)+' of freight)',v:f(r.afrmmV)},{op:'+',k:'Port expenses',v:f(r.port)},{op:'=',k:'Imported in Brazil',v:f(r.imported),sum:1},
     {brk:1,k:_PAR[k].d+' (R$/t)',v:f(r.dom_brl,0)},{op:'÷',k:'FX (R$/US$)',v:f(r.fx,2)},{op:'=',k:'Domestic (US$/t)',v:f(r.domUsd),sum:1},
     {op:'→',k:'Premium / (discount)',v:_sg(r.premium)+'%',sum:1,c:r.premium>0?'dk-up':r.premium<0?'dk-dn':''}]}; };
-const _parPrem=k=>({id:k+'_prem', label:_PAR[k].n+' — domestic premium / (discount) over import parity', short:_PAR[k].n+' premium', unit:'%', dec:1, pp:true, single:true, naText:'Parity history not loaded yet', liveOf:_parLive(k),
+const _parPrem=k=>({id:k+'_prem', label:_PAR[k].n+' — domestic premium / (discount) over import parity', short:_PAR[k].n+' premium', unit:'%', dec:1, pp:true, single:true, noR2:true, naText:'Parity history not loaded yet', liveOf:_parLive(k),
   series:(S,P)=>{ const R=P.par(S,k); return [{name:'Premium / (discount)', short:'Premium', pts:P.col(R,'premium')}].concat(k==='rebar'?[{name:'With zero import tariff', short:'Zero tariff', pts:P.col(R,'premiumZero')}]:[]); },
   refs:(S,P)=>{ const R=P.par(S,k).filter(r=>!r.live&&r.premium!=null); if(!R.length) return null;
     const a=P.mean(P.col(R,'premium')), cur=R[R.length-1].premium, below=R.filter(r=>r.premium<cur).length;
