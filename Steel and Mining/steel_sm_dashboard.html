@@ -2719,6 +2719,62 @@ const _millBuild=(S,P,iso)=>{ const a=['profit','bfutil','bfop','hm'].map(c=>P.m
    O dado vem da mesma função do banco (get_china_mills), pedido quando o Builder abre (sec.need). */
 const _millMo=col=>()=>{ const S=DESK&&DESK.millsStore?DESK.millsStore():null; return S&&S.mills?IBBADesk.prices.P.millMonthly(S,col):{v:{},n:{}}; };
 const _millMoV=(A,c)=>IBBADesk.core.F.div(A.sum(c.v),A.sum(c.n));
+/* PREÇOS DA PLATTS NO BUILDER (que é mensal; pedido do usuário, 25/11/2026): cada preço como a MÉDIA DO MÊS das suas
+   cotações (diárias; as semanas, na paridade de importação) — trimestre, ano e LTM = média de todas as cotações do período;
+   o mês corrente só entra quando termina. O dado é o MESMO das seções de preço (commodities.daily + histórico price_history +
+   get_steel_parity), pedido só para as séries que estão no gráfico (sec.need recebe as escolhidas) e guardado na sessão.
+   Enquanto o histórico de uma série não chegou ela fica vazia (senão apareceria só desde jun/2026, o começo do robô).
+   Platts é agência: no Builder, com um desses preços no gráfico, só a imagem (paid). */
+const _pxMo=(f,codes,par)=>()=>{ const S=DESK&&DESK.pricesStore?DESK.pricesStore():null; if(!S) return {v:{},n:{}};
+  if((codes||[]).some(c=>S.hist[c]===undefined)||(par&&S.parity==null)) return {v:{},n:{}};
+  let pts=[]; try{ pts=f(S,IBBADesk.prices.P)||[]; }catch(e){ pts=[]; } return IBBADesk.prices.monthlyCal(pts); };
+const _pxV=(A,c)=>IBBADesk.core.F.div(A.sum(c.v),A.sum(c.n));
+const _px=(id,label,unit,dec,codes,par,f,go,o)=>Object.assign({id,label,short:label,unit,dec,px:{codes,parity:par},comp:_pxMo(f,codes,par),calc:_pxV,go},o||{});
+const _pxD=(id,label,unit,dec,code,go,o)=>_px(id,label,unit,dec,[code],false,(S,P)=>P.d(S,code),go,o);                     // um preço
+const _pxS=(id,label,unit,dec,a,b,go,o)=>_px(id,label,unit,dec,[a,b],false,(S,P)=>P.sub(P.d(S,a),P.d(S,b)),go,Object.assign({diff:true},o||{}));   // diferença de dois preços: pode ser ≤ 0, sem base 100
+const _pxP=(id,label,unit,dec,prod,col,go,o)=>_px(id,label,unit,dec,[],true,(S,P)=>P.col(P.par(S,prod),col),go,o);          // conta da paridade (semanal)
+const _PXG={i:'International prices', d:'Brazil domestic prices', p:'Import parity (weekly · Itaú BBA build-up)', c:'Coking coal',
+  g:'Iron ore by grade', m:'Margin and quality premiums', f:'Freight to China', b:'Brands', w:'Forward curve (swaps)'};
+const _PX_STEEL=[
+  _pxD('hrc_china','China HRC, FOB China','US$/t',0,'HRC_CHINA','hrc_usd',{group:_PXG.i}),
+  _pxD('rebar_turkey','Turkey rebar, FOB Turkey','US$/t',0,'REBAR_TURKEY','rebar_usd',{group:_PXG.i}),
+  _pxD('hrc_brazil','Brazil HRC, domestic (ex-works, ex-taxes)','R$/t',0,'HRC_BRAZIL','dom',{group:_PXG.d}),
+  _pxD('rebar_brazil','Brazil rebar, domestic (ex-works, ex-taxes)','R$/t',0,'REBAR_BRAZIL','dom',{group:_PXG.d}),
+  _pxP('hrc_prem','HRC — domestic premium / (discount) over import parity','%',1,'hrc','premium','hrc_prem',{group:_PXG.p,pp:true,diff:true}),
+  _pxP('rebar_prem','Rebar — domestic premium / (discount) over import parity','%',1,'rebar','premium','rebar_prem',{group:_PXG.p,pp:true,diff:true}),
+  _pxP('hrc_dom_usd','Brazil HRC in US$ (domestic ÷ FX)','US$/t',0,'hrc','domUsd','hrc_usd',{group:_PXG.p}),
+  _pxP('hrc_imp','China HRC landed in Brazil (import parity)','US$/t',0,'hrc','imported','hrc_usd',{group:_PXG.p}),
+  _pxP('rebar_dom_usd','Brazil rebar in US$ (domestic ÷ FX)','US$/t',0,'rebar','domUsd','rebar_usd',{group:_PXG.p}),
+  _pxP('rebar_imp','Turkish rebar landed in Brazil (import parity)','US$/t',0,'rebar','imported','rebar_usd',{group:_PXG.p}),
+  _pxD('coal_prem','Premium hard coking coal, FOB Australia','US$/t',0,'MET_COAL','coal',{group:_PXG.c}),
+  _pxD('coal_lv','Hard coking coal low vol, FOB Australia','US$/t',0,'HCCAU00','coal',{group:_PXG.c}),
+];
+const _PX_ORE=[
+  _pxD('io61','Iron ore fines 61% Fe, CFR China','US$/dmt',2,'IRON_ORE','margin',{group:_PXG.g}),
+  _pxD('io62','Iron ore fines 62% Fe (IODEX), CFR China','US$/dmt',2,'IODEX_62','margin',{group:_PXG.g}),
+  _pxD('io65','Iron ore fines 65% Fe, CFR China','US$/dmt',2,'IOPRM00','grades',{group:_PXG.g}),
+  _pxD('io58','Iron ore fines 58% Fe, CFR China','US$/dmt',2,'IODFE00','grades',{group:_PXG.g}),
+  _pxS('margin','Producer margin proxy — 61% Fe minus Brazil–China freight','US$/t',2,'IRON_ORE','IOFBC00','margin',{group:_PXG.m}),
+  _pxS('p6561','Quality premium — 65% over 61% Fe','US$/t',2,'IOPRM00','IRON_ORE','spread',{group:_PXG.m}),
+  _pxS('p6158','Quality premium — 61% over 58% Fe','US$/t',2,'IRON_ORE','IODFE00','spread',{group:_PXG.m}),
+  _pxD('pellet','Blast-furnace pellet premium (weekly)','US$/t',2,'IOBFC04','spread',{group:_PXG.m,diff:true}),
+  _pxD('frt_br','Freight Brazil–China','US$/wmt',2,'IOFBC00','freight',{group:_PXG.f}),
+  _pxD('frt_au','Freight Australia–China','US$/wmt',2,'IOFAC00','freight',{group:_PXG.f}),
+  _pxS('frt_diff','Freight — Brazil minus Australia','US$/wmt',2,'IOFBC00','IOFAC00','freight',{group:_PXG.f}),
+  _pxD('brbf','Brazilian Blend fines (BRBF)','US$/dmt',2,'IOBBA00','brands',{group:_PXG.b}),
+  _pxD('pb','Pilbara Blend fines','US$/dmt',2,'IOPBQ00','brands',{group:_PXG.b}),
+  _pxD('newman','Newman high grade fines','US$/dmt',2,'IONHA00','brands',{group:_PXG.b}),
+  _pxD('mac','Mining Area C fines','US$/dmt',2,'IOMAA00','brands',{group:_PXG.b}),
+  _pxD('jimblebar','Jimblebar fines','US$/dmt',2,'IOJBA00','brands',{group:_PXG.b}),
+  _pxD('fwd1q','Iron ore swap +1 quarter','US$/dmt',2,'TSIPQ01','fwd',{group:_PXG.w}),
+  _pxD('fwd2q','Iron ore swap +2 quarters','US$/dmt',2,'TSIPQ02','fwd',{group:_PXG.w}),
+  _pxD('fwd3q','Iron ore swap +3 quarters','US$/dmt',2,'TSIPQ03','fwd',{group:_PXG.w}),
+  _pxD('fwd1y','Iron ore swap +1 year','US$/dmt',2,'TSIPY01','fwd',{group:_PXG.w}),
+];
+/* o Builder pede só o que as séries escolhidas usam; o nome da série no Builder abre a seção de preço com o gráfico certo */
+const _pxNeed=list=>ids=>{ const ms=list.filter(m=>(ids||[]).indexOf(m.id)>=0); if(!ms.length||!DESK||!DESK.pricesNeed) return null;
+  return DESK.pricesNeed([...new Set([].concat(...ms.map(m=>m.px.codes)))], ms.some(m=>m.px.parity)); };
+const _pxGo=list=>{ const o={}; list.forEach(m=>{ o[m.id]=m.go; }); return o; };
 /* a marca de estimativa do painel Reading: a série principal do gráfico naquela semana */
 const _millEst=col=>(S,P,iso)=>{ const x=P.millAt(S,col,iso); return x&&x.est?'No reading this week: the line uses the average of the week before and the week after.':null; };
 /* PARIDADE DE IMPORTAÇÃO (aço) — o catálogo das seções de preço. A conta mora em data-desk-prices.js (IBBADesk.prices.parity). */
@@ -2803,7 +2859,7 @@ function _desk(){
         label:'Builder', builder:true,
         /* as vistas dos EUA entram no catálogo e nas visões prontas só para quem vê Steel › US market; as usinas chinesas
            (média mensal da pesquisa semanal da Mysteel) só para quem vê Steel › China mills */
-        get order(){ return ['imports','exports','domestic','ore'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]).concat(_millsOk===true?['chinamills_m']:[]); },
+        get order(){ return ['imports','exports','domestic','ore','platts_steel_m','platts_ore_m'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]).concat(_millsOk===true?['chinamills_m']:[]); },
         get presets(){ return [
           {n:'Imports vs penetration', s:['imports.vol.total','imports.pen.total'], v:'level', g:'monthly', w:'3y', tip:'Import volume against the share of imports in apparent consumption'},
           {n:'China vs Korea (LTM)', s:['imports~country~total~China','imports~country~total~South Korea'], v:'ltm', g:'monthly', w:'5y', tip:'Imports from the two main origins, last 12 months'},
@@ -2882,6 +2938,9 @@ function _desk(){
             {id:'hm_seas', label:'Hot metal output — one line per year', short:'Hot metal, by year', unit:'kt/day', dec:0, season:true, gapDays:10,
               series:(S,P)=>P.byYear(P.mill(S,'hm'),6,P.millEst(S,'hm'))},
           ] } },
+      /* PREÇOS DA PLATTS NO BUILDER — seções que só o Builder usa (as de verdade são parity e oreprices, diárias): média do mês */
+      platts_steel_m:{ label:'Steel prices — monthly average', src:'S&P Global Platts', paid:true, alias:'parity', aliasMetric:_pxGo(_PX_STEEL), need:_pxNeed(_PX_STEEL), metrics:_PX_STEEL },
+      platts_ore_m:{ label:'Iron ore prices — monthly average', src:'S&P Global Platts', paid:true, alias:'oreprices', aliasMetric:_pxGo(_PX_ORE), need:_pxNeed(_PX_ORE), metrics:_PX_ORE },
       /* USINAS CHINESAS NO BUILDER — seção que só o Builder usa (a aba semanal é a chinamills, acima). alias: o nome da série no
          Builder abre a aba China mills com o gráfico certo. paid: Mysteel é agência → no Builder só a imagem, sem Excel. */
       chinamills_m:{

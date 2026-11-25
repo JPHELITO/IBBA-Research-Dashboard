@@ -13,8 +13,8 @@
      um painel por unidade (pedido do usuário, 19/11/2026). Série que pode ser ≤ 0 (um spread) não tem base 100:
      só entra junto de séries da mesma unidade.
    · Trimestre/ano: só períodos COMPLETOS (séries de fontes diferentes fecham em meses diferentes).
-   · Seção com dado que chega à parte (sec.need → promessa, ex.: usinas chinesas): o Builder pede quando abre e redesenha
-     quando o dado chega. sec.off() = a seção não vale para esta pessoa agora (sem a chave). sec.paid = fonte paga
+   · Seção com dado que chega à parte (sec.need(ids) → promessa, ex.: usinas chinesas, preços da Platts): o Builder pede quando
+     abre e a cada série posta no gráfico (ids = as séries daquela seção que estão no gráfico) e redesenha quando o dado chega. sec.off() = a seção não vale para esta pessoa agora (sem a chave). sec.paid = fonte paga
      (agência): com uma série dessas no gráfico, sem Excel e sem "Copy table" — só a imagem.
    ════════════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -53,7 +53,7 @@
         if (p.type === 'm') { var M = null; sec.metrics.forEach(function (m) { if (m.id === p.metric) M = m; });
           /* M.bprods: indicador que só existe em alguns produtos (ex.: consumo aparente de papel = só o total) */
           if (M && !M.multi && (!M.available || M.available(X0)) && (!M.bprods || M.bprods.indexOf(p.prod) >= 0)) { var lab = typeof M.label === 'function' ? M.label(X0) : M.label;
-            it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '', paid: !!sec.paid }; } }
+            it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '', paid: !!sec.paid, src: sec.src || '' }; } }
         else { var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === p.dim) dim = d0; });
           if (dim && !dim.noSelect && (!dim.available || dim.available(X0)) && this._bEntNames(p.sec, dim, p.prod).indexOf(p.name) >= 0)
             it = { key: key, type: 'e', sec: p.sec, dim: dim.id, prod: p.prod, short: p.name, name: suf(p.name + ' — ' + (dim.title || sec.label)), unit: dim.unit || 'kt', diff: false, where: (dim.title || sec.label) + (sec.src ? ' · ' + sec.src : '') }; }
@@ -70,11 +70,14 @@
   Desk.prototype._bGroups = function () { var S = this.sections, ord = (S.builder && S.builder.order) || Object.keys(S);
     return ord.filter(function (id) { return S[id] && !S[id].overview && !S[id].builder && !S[id].fixed && !(S[id].off && S[id].off()); }).map(function (id) { return { id: id, sec: S[id], prods: secProds(S[id]) }; }); };
   /* seções com dado à parte: pede o que falta e redesenha o Builder quando chega (uma promessa por seção) */
-  Desk.prototype._bNeed = function () { var self = this, W = this._bNeedP = this._bNeedP || {};
-    this._bGroups().forEach(function (g) { if (!g.sec.need || W[g.id]) return; var p = null; try { p = g.sec.need(); } catch (e) { p = null; }
+  Desk.prototype._bNeed = function () { var self = this, W = this._bNeedP = this._bNeedP || {}, on = (this.bui ? this.bui.s : []).map(function (x) { return parseKey(x.key); });
+    this._bGroups().forEach(function (g) { if (!g.sec.need || W[g.id]) return; var p = null, ids = on.filter(function (q) { return q && q.type === 'm' && q.sec === g.id; }).map(function (q) { return q.metric; });
+      try { p = g.sec.need(ids); } catch (e) { p = null; }
       if (p && p.then) W[g.id] = p.then(function () { delete W[g.id]; self.invalidate(); if (self.cur === 'builder') self._builder(); }, function () { delete W[g.id]; }); }); };
   /* alguma série do gráfico vem de fonte paga (agência)? então sem Excel e sem copiar a tabela */
   Desk.prototype._bPaid = function () { var v = this._bv; return !!(v && v.rows.some(function (r) { return r.it && r.it.paid; })); };
+  Desk.prototype._bPaidSrc = function () { var v = this._bv, out = []; (v ? v.rows : []).forEach(function (r) { if (r.it && r.it.paid && r.it.src && out.indexOf(r.it.src) < 0) out.push(r.it.src); }); return out.join(', ') || 'agency'; };
+  Desk.prototype._bLoading = function () { return !!(this._bNeedP && Object.keys(this._bNeedP).length); };
 
   /* estado: 1º a visão que veio no link (?bv=), 2º a última em que a pessoa trabalhou, 3º a 1ª visão pronta — nunca tela vazia */
   Desk.prototype._bState = function () {
@@ -108,7 +111,7 @@
     return null; };
   Desk.prototype._bToggle = function (key) { var b = this.bui, i = -1; b.s.forEach(function (x, k) { if (x.key === key) i = k; }); b.msg = '';
     if (i >= 0) b.s.splice(i, 1); else { var why = this._bWhy(key); if (why) { b.msg = why; this._bStage(); return; } b.s.push({ key: key, col: this._bFree() }); }
-    b.hover = null; this._bStore(); this._bViews(); this._bCat(); this._bStage(); };
+    b.hover = null; this._bStore(); this._bNeed(); this._bViews(); this._bCat(); this._bStage(); };
   Desk.prototype._bCurrent = function () { var st = this.cfg.state(), b = this.bui; return { s: b.s.map(function (x) { return x.key; }), v: b.calc, g: st.gran, w: st.win, from: st.win === 'custom' ? st.from : null, to: st.win === 'custom' ? st.to : null }; };
   function sameView(a, b) { return a.v === (b.v || 'level') && a.s.length === (b.s || []).length && a.s.every(function (k) { return b.s.indexOf(k) >= 0; }); }
 
@@ -252,10 +255,10 @@
     E.bcalc.innerHTML = CALCS.map(function (c0) { var offA = c0[0] === 'ltm' && v.gran === 'annual', offM = !!(v.mixed && v.mixed[c0[0]]), off = offA || offM;
       return '<button type="button" data-k="' + c0[0] + '" aria-pressed="' + (v.calc === c0[0]) + '" title="' + esc(offM ? mixTip : offA ? 'Not available in the annual view' : c0[2]) + '"' + (off ? ' disabled' : '') + '>' + c0[1] + '</button>'; }).join('');
     var info = v.auto ? '<div class="dk-binfo"><b>Shown on base 100.</b> These series are in different units (' + esc(v.units.join(' · ')) + '), so each one starts at 100 at the beginning of the window and you compare how they moved. The cards above and the table below keep the real figures.</div>' : '';
-    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0) + '#' + (v.auto ? v.units.join(',') : '');
+    var sig = v.panels.map(function (p) { return p.unit; }).join('|') + '#' + (n > 0 ? 1 : 0) + '#' + (v.auto ? v.units.join(',') : '') + '#' + (this._bLoading() ? 'L' : '');
     if (E.bpanels.dataset.sig !== sig) { this._dropCharts('b:'); E.bpanels.dataset.sig = sig;
       E.bpanels.innerHTML = (v.panels.length && n > 0) ? info + v.panels.map(function (p, k) { return '<div class="dk-bpanel"><div class="dk-bpu">' + esc(p.unit === 'Index' ? 'Index — start of the window = 100' : p.unit) + '</div><div class="dk-chart" style="height:' + (v.panels.length === 1 ? 320 : v.panels.length === 2 ? 200 : 160) + 'px"><canvas data-p="' + k + '"></canvas></div></div>'; }).join('')
-        : '<div class="dk-bempty"><b>' + (b.s.length ? 'No complete period in this window yet.' : 'Nothing on the chart yet.') + '</b><span>' + (b.s.length ? 'Pick a longer window or a finer granularity in the bar above.' : 'Pick a series on the left, or one of the ready-made views above.') + '</span></div>'; }
+        : '<div class="dk-bempty"><b>' + (b.s.length ? (this._bLoading() ? 'Loading the series…' : 'No complete period in this window yet.') : 'Nothing on the chart yet.') + '</b><span>' + (b.s.length ? (this._bLoading() ? 'Prices and surveys come down only when they are put on the chart.' : 'Pick a longer window or a finer granularity in the bar above.') : 'Pick a series on the left, or one of the ready-made views above.') + '</span></div>'; }
     if (v.panels.length && n > 0) { var labels = v.P.slice(v.i0, v.i1 + 1).map(function (p) { return p.label; });
       v.panels.forEach(function (p, k) { var cv = E.bpanels.querySelector('canvas[data-p="' + k + '"]');
         var sets = p.rows.map(function (r) { return X.lineSet(r.v.slice(v.i0, v.i1 + 1), r.col, { label: r.it.name, w: 2.2, end: true, surf: t.surf }); });
@@ -267,8 +270,9 @@
         ch.update('none'); }); }
     /* fonte paga no gráfico: só a imagem (a planilha da agência não sai daqui) */
     var paid = this._bPaid(), xb = E.bdl.querySelector('[data-dl="xls"]');
-    if (xb) { xb.disabled = paid; xb.title = paid ? 'Not available: a series on the chart comes from a paid source (Mysteel) — download the image (PNG)' : 'Download the data (Excel) — full history'; }
-    E.bcopy.disabled = paid; E.bcopy.title = paid ? 'Not available: a series on the chart comes from a paid source (Mysteel)' : 'Copy every period of the window, ready to paste into Excel';
+    var srcs = paid ? this._bPaidSrc() : '';
+    if (xb) { xb.disabled = paid; xb.title = paid ? 'Not available: a series on the chart comes from a paid source (' + srcs + ') — download the image (PNG)' : 'Download the data (Excel) — full history'; }
+    E.bcopy.disabled = paid; E.bcopy.title = paid ? 'Not available: a series on the chart comes from a paid source (' + srcs + ')' : 'Copy every period of the window, ready to paste into Excel';
     var msgs = []; if (b.msg) msgs.push(b.msg);
     E.bmsg.hidden = !msgs.length; E.bmsg.textContent = msgs.join(' · ');
     var hint = v.panels.length > 1 ? 'Series with the same unit share a panel; each other unit gets its own panel, on the same time axis.' : 'Hover to read every series at the same period.';
