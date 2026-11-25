@@ -654,13 +654,16 @@
 
   // classifica a tabela pelo TÍTULO que o analista escreveu. A ORDEM importa: "FCF Yield"
   // tem de ser testado antes de "FCF", e "EV/EBITDA" antes de "EBITDA".
+  // "Yield" pode vir DEPOIS de outras palavras: os modelos de cobre (Nov-22-2026) escrevem
+  // "FCF Ex-Growth Yield (%) 2027E" — sem isto a tabela de yield virava FCF em valor absoluto
+  // (0,12 escrito como "0"), o par FCF ÷ yield sumia e nenhum múltiplo era reescrito no preço de tela.
   function sens2dMetricFromTitle(title) {
     const t = String(title == null ? '' : title).toLowerCase();
     const has = function (s) { return t.indexOf(s) >= 0; };
     if (has('p/nav') || has('p / nav')) return 'p_nav';
     if (has('upside')) return 'upside';
-    if (has('dividend yield')) return 'div_yield';
-    if (has('fcf yield')) return 'fcf_yield';
+    if (has('dividend yield') || (has('yield') && has('dividend'))) return 'div_yield';
+    if (has('fcf yield') || (has('yield') && (has('fcf') || has('free cash')))) return 'fcf_yield';
     if (has('ev/ebitda')) return 'ev_ebitda';
     if (has('margin')) return 'margin';
     if (has('fcf') || has('free cash')) return 'fcf';

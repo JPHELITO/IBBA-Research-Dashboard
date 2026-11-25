@@ -881,23 +881,35 @@ function _s2SrcName(label){ const k=_s2DriverKey(label); return k?(_S2_SRC_NAME[
 // 2027 empurraria o minerio de 99,70 p/ 96,76 e o EBITDA da Vale de 18.335 p/ 17.593 — erro de
 // 4%). Se o modelo for de um ano anterior, faltaria a inflacao acumulada desde entao: a pagina
 // AVISA em vez de inventar fator, porque o deflator nao vem no arquivo do analista.
+// Grafias vistas: "Real Terms" (Vale) e "Real-Term" / "Real-Terms" (os modelos de cobre de
+// Nov-22-2026, que publicam os DOIS eixos assim — cobre e ouro; o índice acumulado do US-CPI deles
+// também vale 1 até 2026). Todos os eixos em real terms entram na nota, não só o primeiro.
 function _s2RealTermsAxis(d){
-  let lab=null;
+  const labs=[];
   _s2Sheets(d).forEach(function(sh){ (sh.tables||[]).forEach(function(t){
-    [t.colLabel,t.rowLabel].forEach(function(x){ if(!lab&&x&&/real\s*terms/i.test(x)) lab=x; }); }); });
-  if(!lab) return null;
+    [t.colLabel,t.rowLabel].forEach(function(x){
+      if(x&&/\breal[\s-]*terms?\b/i.test(x)&&labs.indexOf(x)<0) labs.push(x); }); }); });
+  if(!labs.length) return null;
   const m=/^(\d{4})/.exec(String(d.model_date||''));
-  return {label:lab, base:m?Number(m[1]):0};     // base 0 = e' real terms mas nao da p/ saber o ano
+  return {label:labs[0], labels:labs, base:m?Number(m[1]):0};     // base 0 = e' real terms mas nao da p/ saber o ano
 }
 function _s2RealTermsNote(d,anoAgora){
   const rt=_s2RealTermsAxis(d); if(!rt) return '';
-  const eixo='The "'+_s2Short(rt.label)+'" axis';
-  if(!rt.base) return eixo+' is published in real terms (constant dollars) and the live read is '+
+  // nome do eixo sem a unidade e SEM o corte do _s2Short (a nota é frase, tem espaço — cortado
+  // ficava "Average Copper Real-Term Price 2…"); a quebra de linha do rótulo vira espaço
+  const nomes=(rt.labels||[rt.label]).map(function(x){ const t=String(x==null?'':x); const i=t.indexOf('(');
+    return '"'+(i>0?t.slice(0,i):t).replace(/\s+/g,' ').trim()+'"'; });
+  const eixo=nomes.length>1
+    ? 'The '+nomes.slice(0,-1).join(', ')+' and '+nomes[nomes.length-1]+' axes'
+    : 'The '+nomes[0]+' axis';
+  const sao=nomes.length>1?' are':' is';
+  const it=nomes.length>1?'them':'it';
+  if(!rt.base) return eixo+sao+' published in real terms (constant dollars) and the live read is '+
     "today's price — the model does not say which year those constant dollars are from.";
-  if(rt.base===anoAgora) return eixo+' is in real terms, i.e. constant '+rt.base+' dollars (the model '+
-    "inflates it by US CPI to reach the nominal year). Today's price is already in "+rt.base+
+  if(rt.base===anoAgora) return eixo+sao+' in real terms, i.e. constant '+rt.base+' dollars (the model '+
+    'inflates '+it+" by US CPI to reach the nominal year). Today's price is already in "+rt.base+
     ' dollars, so the orange mark is compared as is, with no deflator.';
-  return eixo+' is in real terms — constant '+rt.base+' dollars — while the live read is '+
+  return eixo+sao+' in real terms — constant '+rt.base+' dollars — while the live read is '+
     "today's nominal price, so the orange mark ignores the inflation since "+rt.base+'.';
 }
 // valor do eixo AO VIVO, ja na unidade do eixo (o catalogo tem cobre em USD/lb; ha modelo

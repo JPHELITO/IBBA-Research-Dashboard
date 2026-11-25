@@ -1,0 +1,144 @@
+<!doctype html><meta charset="utf-8"><title>sensitivity — modelos de cobre: yield com palavra no meio e "Real-Term" nos dois eixos</title>
+<body><pre id="out">rodando…</pre><script>
+/* 2026-11-25 — os quatro modelos de cobre (Hudbay, Lundin, Capstone e Ero, Nov-22-2026) vieram no MESMO
+   molde e trouxeram duas grafias que a dash não conhecia:
+     1. "FCF Ex-Growth Yield (%) 2027E" — o "Yield" vem DEPOIS de outra palavra. O leitor do /admin
+        classificava a tabela como FCF em valor absoluto: o yield saía escrito "0" e, sem o par
+        FCF ÷ yield, nenhum múltiplo era reescrito no preço de tela;
+     2. "Average Copper Real-Term Price 2027E" e "Average Gold Real-Term Price 2027E" — "Real-Term", com
+        hífen e no singular. A nota que diz em que dólar o eixo está escrito não aparecia (a Vale escreve
+        "Real Terms"); agora ela aparece e cita os DOIS eixos.
+   O resto do molde (rótulo com quebra de linha, ano "2027E", premissas + o quadro "Implicit Cu Prices"
+   ao lado) já funcionava — fica travado aqui também.
+   O código vem RECORTADO do stock-guide.html e do admin.html (mesmo método dos outros testes).
+   ⚠️ Números FICTÍCIOS: o repositório é público e a grade do analista é conteúdo de cliente. */
+const R=[], ok=(n,c,d='')=>R.push((c?'PASS':'FAIL')+' · '+n+(d?'  ['+d+']':''));
+function cut(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j+b.length);}
+function upTo(t,a,b){const i=t.indexOf(a),j=t.indexOf(b,i); if(i<0||j<0)throw new Error('trecho: '+a); return t.slice(i,j);}
+
+window.__RUN__=async function(){
+  new Function(await (await fetch('/stock-guide-lib.js?v='+Date.now())).text())();
+  const cru=(await (await fetch('/stock-guide.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const adm=(await (await fetch('/admin.html?v='+Date.now())).text()).split('\r\n').join('\n');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const COMPS={};
+  const MV={copper:5.23, gold:4150};
+  const CTX={SG:window.SG, esc:esc, n:window.SG.toNumOrNull, NUM_LOC:'en-US',
+    _SENS_CTX:{drivers:[],marketValues:MV,comps:[],config:{}}, compByTicker:function(tk){ return COMPS[tk]||null; }};
+  const P=new Function('ctx',`with(ctx){ ${cut(cru,'function _s2Def(t){','  pane.innerHTML=h;\n}')}
+    return {_s2Ctx,_s2RenderPane,_s2DriverKey,_s2Sheets,_s2BaseCell,_s2TableHtml,_s2RealTermsAxis,_s2RealTermsNote}; }`)(CTX);
+  const A=new Function(`${cut(adm,'function _s2Txt(v){','warnings:warnings};\n}')}
+    ${upTo(adm,'const _S2_FILE_TICKER=','async function sgSens2dPick(')}
+    return {sgParseSens2d,sgFindSens2dTables,sgFindSens2dAssumptions,_s2TickerFromFile,_s2DateFromFile}; `)();
+  const MT=SG.sens2dMetricFromTitle;
+
+  // ── 1. o título decide o indicador ──────────────────────────────────────
+  ok('"FCF Ex-Growth Yield (%) 2027E" é YIELD (era lido como FCF em valor absoluto)', MT('FCF Ex-Growth Yield (%) 2027E')==='fcf_yield');
+  ok('"FCF Ex-Growth 2027E (USD million)" continua FCF', MT('FCF Ex-Growth 2027E (USD million)')==='fcf');
+  ok('os títulos de sempre não mudam',
+     MT('FCF Yield 2027 (%)')==='fcf_yield' && MT('FCF Yield Ex. Growth 2027E')==='fcf_yield' &&
+     MT('FCF Ex-Prepayments 2027 (BRL million)')==='fcf' && MT('FCF 2027 (USD million)')==='fcf' &&
+     MT('Dividend Yield 2027 (%)')==='div_yield' && MT('EV/EBITDA 2027E (x)')==='ev_ebitda' &&
+     MT('EBITDA 2027E (USD million)')==='ebitda' && MT('Proforma EBITDA 2027 (USD million)')==='ebitda' &&
+     MT('P/NAV')==='p_nav' && MT('DCF Upside')==='upside' && MT('EBITDA Margin 2027 (%)')==='margin');
+  ok('"yield" depois de outra palavra vale também p/ dividendo e "free cash flow"',
+     MT('Dividend/Buybacks Yield 2027E (%)')==='div_yield' && MT('Free Cash Flow Yield 2027 (%)')==='fcf_yield');
+
+  // ── 2. o arquivo inteiro, no molde dos modelos de cobre (posições de célula iguais às do Excel) ──
+  const AO=[]; const put=(ref,v)=>{ const m=/^([A-Z]+)(\d+)$/.exec(ref); let c=0;
+    for(const ch of m[1]) c=c*26+(ch.charCodeAt(0)-64); const r=Number(m[2])-1; c-=1;
+    (AO[r]=AO[r]||[])[c]=v; };
+  const COL=i=>String.fromCharCode(65+i), COL2=i=>i<26?COL(i):'A'+COL(i-26);
+  const OURO=[3600,3800,4000,4200,4400,4600,4800,5000,5200];
+  const CU=[5.000000000000002,5.100000000000001,5.2,5.3,5.4,5.5,5.6,5.699999999999999,5.799999999999999];
+  const LT_OURO=[3450,3650,3850,4050,4250,4450,4650,4850,5050], LT_CU=[5.2,5.3,5.4,5.5,5.6,5.7,5.8,5.9,6];
+  const LBL_CU='Average Copper Real-Term Price \n2027E (USD/lb)', LBL_AU='Average Gold Real-Term Price 2027E (USD/oz)';
+  const MC=5000;                                          // valor de mercado embutido (US$ mn)
+  const EB=(i,j)=>1000+40*(i-4)+10*(j-4), DIV=(i,j)=>800-5*(i-4), FCF=(i,j)=>400+25*(i-4)+6*(j-4);
+  // bloco: título em (c0,r0); rótulo das linhas embaixo; rótulo das colunas ao lado; canto; níveis; valores
+  function bloco(c0,r0,titulo,lblR,lblC,lv,cv,f,canto){
+    put(COL2(c0)+r0,titulo); put(COL2(c0)+(r0+1),lblR); put(COL2(c0+1)+(r0+1),lblC);
+    put(COL2(c0+1)+(r0+2),canto); cv.forEach((x,j)=>put(COL2(c0+2+j)+(r0+2),x));
+    lv.forEach((y,i)=>{ put(COL2(c0+1)+(r0+3+i),y); cv.forEach((x,j)=>put(COL2(c0+2+j)+(r0+3+i),f(i,j))); }); }
+  put('F4','Copperco'); put('H4',20);
+  bloco(5,5,'EBITDA 2027E (USD million)',LBL_CU,LBL_AU,CU,OURO,EB,EB(4,4));
+  bloco(17,5,'EV/EBITDA 2027E (x)',LBL_CU,LBL_AU,CU,OURO,(i,j)=>(MC+DIV(i,j))/EB(i,j),(MC+DIV(4,4))/EB(4,4));
+  bloco(5,18,'FCF Ex-Growth 2027E (USD million)',LBL_CU,LBL_AU,CU,OURO,FCF,FCF(4,4));
+  bloco(17,18,'FCF Ex-Growth Yield (%) 2027E',LBL_CU,LBL_AU,CU,OURO,(i,j)=>FCF(i,j)/MC,FCF(4,4)/MC);
+  bloco(17,31,'P/NAV','LT Copper Price Real-Terms (USD/lb)','LT Gold Prices (USD/oz)',LT_CU,LT_OURO,(i,j)=>0.6-0.01*(i-4)-0.005*(j-4),0.6);
+  [['C9','Avg. Gold Price 2027',4400],['C10','Avg. Copper Price 2027',5.4],['C12','Stock Price',20],['C13','FX Rate',null],
+   ['C15','LT Gold Price',4250],['C16','LT Copper Price',5.6],['C46','Implicit Cu Prices (Real-Terms; USD/lb)',null],
+   ['C47','# Shares Mn',360],['C48','(x) CAD/share',20],['C49','(=) Market Cap (CAD mn)',7200],['C50','(/) FX (CAD/USD)',1.44],
+   ['C51','(=) Market Cap (USD mn)',5000],['C53','(/) Fair P/NAV (x)',1],['C63','Copper Prices Long-Term',5.6],
+   ['C65','Implicit Copper Price (USD/lb)',4.4],['C67','Premium/Discount (%)',-0.2]]
+    .forEach(a=>{ put(a[0],a[1]); if(a[2]!=null) put('D'+a[0].slice(1),a[2]); });
+  for(let r=0;r<AO.length;r++) AO[r]=AO[r]||[];
+
+  const nome='Mining - Copperco Model Itaú BBA_Nov-22-2026_Sensitivity.xlsx';
+  const p=A.sgParseSens2d([{name:'Sensitivity',aoa:AO}],{ticker:'CU',sourceFile:nome,modelDate:A._s2DateFromFile(nome)});
+  ok('o arquivo é lido sem erro', !p.error, p.error||'');
+  const d=p.def.definition, tabs=d.sheets[0].tables;
+  ok('cinco tabelas, cada uma com o indicador certo', tabs.map(t=>t.metric).join()==='ebitda,ev_ebitda,fcf,fcf_yield,p_nav',
+     tabs.map(t=>t.metric).join());
+  ok('ano 2027 em todas as de 2027E (o P/NAV não diz ano)', tabs.slice(0,4).every(t=>t.year==='2027') && tabs[4].year==null);
+  ok('EV/EBITDA pareado com o EBITDA da MESMA grade', tabs[1].pairId===tabs[0].id);
+  ok('valor de mercado do modelo = FCF ÷ yield (o par voltou a existir)', Math.abs(d.mktcap_model-MC)<1e-6 && p.info.spread<1e-9,
+     d.mktcap_model+' · '+p.info.spread);
+  ok('nenhum aviso de valor de mercado', !p.warnings.some(w=>/valor de mercado/.test(w)), p.warnings.join(' | '));
+  ok('moeda USD, preço do modelo = "Stock Price", data do nome do arquivo',
+     d.currency==='USD' && d.model_price===20 && d.model_date==='2026-11-22');
+  ok('rótulo do eixo de cobre chega como o analista escreveu (com a quebra de linha)', tabs[0].rowLabel===LBL_CU && tabs[0].colLabel===LBL_AU);
+  ok('premissas: as da coluna C, inclusive o quadro "Implicit Cu Prices"',
+     d.assumptions.some(a=>a.label==='Avg. Copper Price 2027'&&a.value===5.4) &&
+     d.assumptions.some(a=>a.label==='Implicit Copper Price (USD/lb)') && !d.assumptions.some(a=>a.label==='FX Rate'));
+  ok('o nome do arquivo de cada uma das quatro dá o ticker da comp table',
+     A._s2TickerFromFile('Mining - Hudbay Mining Itaú BBA_Nov-22-2026_Sensitivity.xlsx')==='HBM' &&
+     A._s2TickerFromFile('Mining - Lundin Model Itaú BBA_Nov-22-2026_Sensitivity.xlsx')==='LUN' &&
+     A._s2TickerFromFile('Mining - Capstone Model Itaú BBA_Nov-22-2026_Sensitivity.xlsx')==='CS' &&
+     A._s2TickerFromFile('Mining - Ero Copper Model Itaú BBA_Nov-22-2026_Sensitivity.xlsx')==='ERO');
+
+  // ── 3. a página ─────────────────────────────────────────────────────────
+  COMPS.CU={ticker:'CU',company_name:'Copperco',livePrice:20,marketCapBrlMn:MC};
+  const T={id:30,title:'Sensitivity - CU',definition:d};
+  ok('a aba mostra as quatro de sempre (o P/NAV fica guardado)', P._s2Sheets(d)[0].tables.map(t=>t.metric).join()==='ebitda,ev_ebitda,fcf,fcf_yield');
+  ok('cobre e ouro de 2027 leem a tela; os de longo prazo não',
+     P._s2DriverKey(LBL_CU)==='copper' && P._s2DriverKey(LBL_AU)==='gold' &&
+     P._s2DriverKey('LT Copper Price Real-Terms (USD/lb)')===null && P._s2DriverKey('LT Gold Prices (USD/oz)')===null);
+  const pane={innerHTML:''}; P._s2RenderPane(T,pane); const h=pane.innerHTML;
+  ok('quatro grades na tela', (h.match(/class="s2-card"/g)||[]).length===4);
+  ok('o yield sai em % (antes saía "0")', h.indexOf('>'+(FCF(4,4)/MC*100).toFixed(1)+'%<')>0 && h.indexOf('>0<')<0);
+  ok('no preço do modelo o EV/EBITDA ao vivo é o publicado', h.indexOf('>'+((MC+DIV(4,4))/EB(4,4)).toFixed(1)+'x<')>0);
+  ok('e ele é reescrito no preço de tela (selo "live" em EV/EBITDA e no yield)', (h.match(/class="s2-live"/g)||[]).length===2);
+  ok('carimbo do caso-base no meio das quatro (cobre 5,4 × ouro 4.400 confirmam; o quadro ao lado não atrapalha)',
+     (h.match(/s2-base/g)||[]).length===4);
+  ok('a linha laranja cai no cobre 5,2 e o ouro 4.200 (níveis mais próximos de 5,23 e 4.150)',
+     h.indexOf('<th class="s2-hit">5.2</th>')>0 && h.indexOf('<th class="s2-hit">4,200</th>')>0);
+  ok('"At spot" lê a grade no ponto exato', /<span class="s2-spot-x">4,150 × 5\.23<\/span>/.test(h));
+  ok('"Share price": modelo → tela', /Share price<\/div><div class="s2-v">20\.00/.test(h));
+
+  // ── 4. nota do "real terms": os dois eixos, e o texto da Vale idêntico ────
+  const rt=P._s2RealTermsAxis(d);
+  ok('"Real-Term" (hífen, singular) é real terms; os DOIS eixos de 2027 entram, o de longo prazo (oculto) não',
+     !!rt && rt.labels.length===2 && rt.base===2026 && rt.label===LBL_AU && rt.labels[1]===LBL_CU, rt?JSON.stringify(rt.labels):'não achou');
+  const nota=P._s2RealTermsNote(d,2026);
+  ok('a nota cita os dois eixos, no plural, com o rótulo numa linha só',
+     nota.indexOf('The "Average Gold Real-Term Price 2027E" and "Average Copper Real-Term Price 2027E" axes are in real terms, i.e. constant 2026 dollars')===0 &&
+     nota.indexOf('inflates them by US CPI')>0 && /no deflator\.$/.test(nota), nota);
+  ok('modelo de ano anterior: avisa a inflação desde então (no plural)',
+     /axes are in real terms — constant 2026 dollars — .*since 2026\.$/.test(P._s2RealTermsNote(d,2027)));
+  ok('a página mostra a nota', h.indexOf('axes are in real terms')>0);
+  const vale={model_date:'2026-11-09',sheets:[{name:'S',tables:[{metric:'ebitda',year:'2027',
+    colLabel:'Average Iron Ore 61% Price 2027 (Real Terms, USD/ton)',rowLabel:'Average FX 2027 (USD/BRL)'}]}]};
+  ok('eixo único (Vale): a frase continua exatamente a mesma',
+     P._s2RealTermsNote(vale,2026)==='The "Average Iron Ore 61% Price 2027" axis is in real terms, i.e. constant 2026 dollars (the model '+
+     "inflates it by US CPI to reach the nominal year). Today's price is already in 2026 dollars, so the orange mark is compared as is, with no deflator.");
+  ok('"real" solto não vira real terms', P._s2RealTermsAxis({model_date:'2026-11-09',sheets:[{name:'S',tables:[{metric:'ebitda',year:'2027',
+    colLabel:'Real Price Growth 2027 (%)',rowLabel:'Realized Copper Price 2027 (USD/lb)'}]}]})===null);
+
+  const falhas=R.filter(x=>x.startsWith('FAIL')).length;
+  document.getElementById('out').textContent =
+    R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM');
+  return falhas;
+};
+window.__RUN__().catch(e=>{ document.getElementById('out').textContent='ERRO: '+(e&&e.stack||e); });
+</script>
