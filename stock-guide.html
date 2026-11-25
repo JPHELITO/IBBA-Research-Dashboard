@@ -328,13 +328,27 @@ html.dark .sg-lg.lg-l,html:not(.dark) .sg-lg.lg-d{display:none}
 /* faixa do setor = a etiqueta da casa (traço laranja), como os títulos de seção */
 .sg-grp{display:inline-flex;align-items:center;gap:8px}
 .sg-grp::before{content:"";width:16px;height:2px;border-radius:1px;background:var(--orange)}
-/* Sensitivity · trilho de empresas: por SETOR, na ordem da comp table, símbolo + nome */
-.sg-tabs.s2-rail{flex-wrap:wrap;align-items:center;column-gap:2px;row-gap:0}
-.s2-rail-g{flex:none;font:700 9px var(--font);color:var(--g-mid);text-transform:uppercase;letter-spacing:.12em;
-  padding:0 4px 0 14px;margin-left:8px;border-left:1px solid var(--border);line-height:20px;white-space:nowrap}
-.s2-rail-g:first-child{border-left:0;margin-left:0;padding-left:2px}
-.sg-tab.s2-co{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;white-space:nowrap}
-.sg-tab.s2-co .sg-lg{width:20px;height:15px}
+/* Sensitivity · ESCOLHA DA EMPRESA em dois andares: os SETORES em cima (seletor neutro, como o "Analysis" da Vale,
+   com quantas empresas cada um tem) e as empresas DO SETOR aberto embaixo, numa fileira só, repartindo a largura */
+.s2-picker{margin:2px 0 18px}
+.s2-sectors{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--border);border-radius:999px;
+  background:var(--s2-plate);max-width:100%;overflow-x:auto;scrollbar-width:none;margin-bottom:8px}
+.s2-sectors::-webkit-scrollbar{display:none}
+.s2-sec{flex:none;display:inline-flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border:0;border-radius:999px;
+  background:none;cursor:pointer;font:700 10px var(--font);letter-spacing:.11em;text-transform:uppercase;color:var(--g-mid);
+  white-space:nowrap;transition:color .15s,background-color .2s}
+.s2-sec:hover{color:var(--black)}
+.s2-sec i{font:700 9.5px var(--font);font-style:normal;letter-spacing:0;min-width:19px;text-align:center;
+  padding:2px 6px;border-radius:999px;background:var(--g-light);color:var(--g-dark)}
+.s2-sec.on{background:var(--black);color:var(--s2-plate)}
+.s2-sec.on i{background:var(--orange);color:#fff}
+.sg-tabs.s2-rail{flex-wrap:nowrap;align-items:stretch;gap:2px;margin-bottom:0}
+.sg-tab.s2-co{flex:1 1 0;min-width:0;max-width:250px;display:inline-flex;align-items:center;gap:9px;padding:10px 12px;
+  white-space:nowrap;border-radius:8px 8px 0 0}
+.sg-tab.s2-co span{overflow:hidden;text-overflow:ellipsis}
+.sg-tab.s2-co:hover{background:rgba(var(--s2-ink),.035)}
+.sg-tab.s2-co .sg-lg{width:22px;height:17px}
+.s2-rail .s2-co.s2-off{display:none}
 /* topo da empresa: logo completo (nome + símbolo); o nome em texto fica para leitor de tela */
 .s2-name.s2-name-lg{display:flex;align-items:center;min-height:30px}
 .s2-name .sg-lg-full{height:28px;width:auto;max-width:230px}
@@ -343,15 +357,31 @@ html.dark .sg-lg.lg-l,html:not(.dark) .sg-lg.lg-d{display:none}
 .s2-cap{font:500 10px var(--font);color:var(--g-mid);margin:-3px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* COMO LER: o quadro da casa (traço laranja à esquerda, como o "What it shows / How to read" da mesa de dados)
    com a amostra de cada marca ao lado do que ela quer dizer — antes era um parágrafo corrido no rodapé */
-.s2-note.s2-how{display:block;margin-top:20px;padding:10px 14px 10px 13px;border-left:2px solid var(--orange);
-  background:var(--s2-plate);border-radius:0 10px 10px 0;font-size:11px;line-height:1.55;color:var(--g-dark);max-width:1180px}
-.s2-how p{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px}
-.s2-how p+p{margin-top:7px;padding-top:7px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+/* 2ª versão (25/11, "mais evidente, acima"): cartão LOGO ACIMA das tabelas, título na etiqueta da casa, as marcas
+   lado a lado (cada uma com a sua amostra) e as linhas "Live" / "Real terms" embaixo */
+.s2-note.s2-how{display:block;margin:0 0 18px;padding:13px 16px 12px 15px;border:1px solid var(--border);
+  border-left:3px solid var(--orange);border-radius:4px 12px 12px 4px;background:var(--s2-plate);box-shadow:var(--shadow);
+  font-size:11.5px;line-height:1.5;color:var(--g-dark);max-width:none}
+.s2-how-t{display:flex;align-items:center;gap:8px;font:700 10.5px var(--font);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--black);margin-bottom:9px}
+.s2-how-t::before{content:"";flex:none;width:16px;height:2px;border-radius:1px;background:var(--orange)}
+/* abre/fecha (no celular nasce fechado): o título é o botão, com a seta que gira */
+summary.s2-how-t{cursor:pointer;list-style:none;user-select:none}
+summary.s2-how-t::-webkit-details-marker{display:none}
+summary.s2-how-t::after{content:"";flex:none;width:6px;height:6px;margin-left:4px;border-right:1.6px solid var(--g-mid);
+  border-bottom:1.6px solid var(--g-mid);transform:rotate(-45deg);transition:transform .2s}
+.s2-how[open] summary.s2-how-t::after{transform:rotate(45deg) translate(-2px,-2px)}
+.s2-how:not([open]) summary.s2-how-t{margin-bottom:0}
+summary.s2-how-t:hover::after{border-color:var(--orange)}
+.s2-keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:8px 24px}
+.s2-how .s2-key{display:flex;align-items:flex-start;gap:9px}
+.s2-how .s2-key>span:last-child{min-width:0}
+.s2-how .s2-ramp,.s2-how .s2-sw{flex:none;margin-top:3px}
+.s2-how p.s2-how-r{margin:9px 0 0;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent);
+  display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px}
 .s2-how b.k{font:700 9.5px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--black);line-height:17px}
-.s2-how .s2-key{display:block}
-.s2-how .s2-key+.s2-key{margin-top:3px}
-.s2-how .s2-ramp,.s2-sw{display:inline-block;vertical-align:-1px;margin-right:8px}
-.s2-sw{width:22px;height:11px;border-radius:3px}
+.s2-sw{display:inline-block;width:24px;height:12px;border-radius:3px}
+.s2-how .s2-ramp{width:24px;height:12px;border-radius:3px}
 .s2-sw.base{background:var(--s2-plate);outline:1px dashed rgba(var(--s2-ink),.45);outline-offset:-2px}
 .s2-sw.spot{background:var(--s2-hit);outline:1.5px solid var(--orange);outline-offset:-1px}
 /* SPOT FORA DA GRADE: a marca fica na borda mais próxima — cruzamento TRACEJADO (é a borda, não o spot) e o
@@ -362,12 +392,11 @@ html.dark .sg-lg.lg-l,html:not(.dark) .sg-lg.lg-d{display:none}
 .s2-sw.spot.out{outline-style:dashed}
 .s2-spot.s2-spot-out .s2-spot-k{letter-spacing:.35px}
 @media(max-width:760px){
-  /* no celular o trilho é UMA fileira que desliza de lado (como as abas da página), não 7 linhas empilhadas */
-  .sg-tabs.s2-rail{flex-wrap:nowrap}
-  .s2-rail-g{display:none}
-  .sg-tab.s2-co{padding:10px 11px}
+  /* no celular as empresas do setor deslizam de lado (como as abas da página) */
+  .sg-tab.s2-co{flex:none;max-width:none;padding:10px 11px}
+  .s2-sec{padding:6px 6px 6px 11px;letter-spacing:.08em}
   .s2-name .sg-lg-full{height:24px}
-  .s2-how p{grid-template-columns:1fr;row-gap:3px}
+  .s2-how p.s2-how-r{grid-template-columns:1fr;row-gap:3px}
 }
 </style>
 <!-- Camada de design (nov/2026): só aparência; vem DEPOIS do <style> da página. Desligar = tirar esta linha. -->
@@ -1274,6 +1303,47 @@ function _s2PickAna(btn){
   if(pane&&tab&&tab.t){ _s2RenderPane(tab.t,pane); _s2In(pane,0,'.s2-kpis,.s2-sheet,.s2-card,.s2-warn,.s2-note'); }
 }
 
+// COMO LER (25/11/2026): era um parágrafo corrido no RODAPÉ; o analista pediu "mais evidente, acima" — agora é um
+// cartão logo acima das tabelas: cada marca com a sua amostra ao lado, lado a lado; embaixo "Live" (o que é
+// reescrito no preço de tela) e "Real terms" (só quando há eixo assim). As frases são as mesmas de antes.
+// Aberto no computador; no CELULAR nasce fechado (aberto ele empurrava as tabelas ~430px para baixo) e o título
+// continua à vista para um toque. Abrir/fechar vale até sair da página (o redesenho de 1 min não desfaz).
+let _S2_HOW_ABERTO=null;
+function _s2HowHtml(d,shs,algumFora){
+  const notaReal=_s2RealTermsNote(d,new Date().getFullYear());
+  // o que a nota diz que é reescrito acompanha o que está NA TELA (desenvolvedora: upside e P/NAV)
+  const mets={}; shs.forEach(function(sh){ (sh.tables||[]).forEach(function(x){ mets[x.metric]=1; }); });
+  const soDev=!!(mets.upside||mets.p_nav)&&!(mets.ebitda||mets.ev_ebitda||mets.fcf||mets.fcf_yield);
+  // a frase segue o que está NA TELA (o cobre mostra P/NAV no lugar do EV/EBITDA)
+  const nomeM={ebitda:'EBITDA',fcf:'FCF',margin:'margins',ev_ebitda:'EV/EBITDA',fcf_yield:'FCF yield',
+    div_yield:'dividend yield',upside:'DCF upside',p_nav:'P/NAV'};
+  const juntar=function(l){ return l.length>1?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:(l[0]||''); };
+  const fixos=['ebitda','fcf','margin'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
+  const vivos=['ev_ebitda','fcf_yield','div_yield','upside','p_nav'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
+  const leitura=(fixos.length?juntar(fixos)+' are exactly as the analyst published; ':'')+
+    (vivos.length?juntar(vivos)+' are recomputed at the current screen price'+
+      (mets.ev_ebitda?', with the net debt embedded in the published EV':'')+
+      (soDev?' (the model’s share price against today’s)':'')+'.':'');
+  const chave=function(amostra,txt){ return '<div class="s2-key">'+amostra+'<span>'+txt+'</span></div>'; };
+  const aberto=_S2_HOW_ABERTO!=null?_S2_HOW_ABERTO:
+    !(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(max-width:760px)').matches);
+  return '<details class="s2-note s2-how"'+(aberto?' open':'')+' ontoggle="_S2_HOW_ABERTO=this.open">'+
+     '<summary class="s2-how-t">How to read</summary>'+
+     '<div class="s2-keys">'+
+       chave('<span class="s2-ramp"></span>','Shading deepens toward the centre of each grid, where the model runs — '+
+         'each ring out is one step of the analyst’s assumptions.')+
+       chave('<span class="s2-sw base"></span>','A dashed cell marks the base case where the assumptions in the file confirm it.')+
+       chave('<span class="s2-sw spot"></span>','Orange marks where the market is trading today, and “At spot” reads the grid '+
+         'at the exact quote, interpolated between the published levels.')+
+       (algumFora?chave('<span class="s2-sw spot out"></span>','A dashed orange cell means today’s price is outside the grid: '+
+         'the flag sits on the nearest edge — “&lt;” below the lowest level, “&gt;” above the highest — and today’s number lies beyond it '+
+         '(“At grid edge” reads the analyst’s number at that edge; nothing is extrapolated).'):'')+
+     '</div>'+
+     (leitura?'<p class="s2-how-r"><b class="k">Live</b><span>'+leitura+'</span></p>':'')+
+     (notaReal?'<p class="s2-how-r"><b class="k">Real terms</b><span>'+esc(notaReal)+'</span></p>':'')+
+     '</details>';
+}
+
 function _s2RenderPane(t,pane){
   const d0=_s2Def(t); const tk=String(d0.ticker||t.id);
   const anas=_s2Analyses(d0);
@@ -1324,6 +1394,7 @@ function _s2RenderPane(t,pane){
   h+='</div>';
   const shs=_s2Sheets(d);
   if(!shs.length) h+='<div class="s2-warn">This model has no EBITDA, EV/EBITDA, FCF, FCF yield, DCF upside or P/NAV grid.</div>';
+  else h+=_s2HowHtml(d,shs,algumFora);       // COMO LER: em cima das tabelas (pedido do analista, 25/11)
   // sem unidade: o par de eixos é TÍTULO, e "(%)"/"(USD/ton)" já aparecem na grade
   const semUn=function(s){ return String(s==null?'':s).replace(/\s*\([^)]*\)\s*$/,'').trim(); };
   shs.forEach(function(sh){
@@ -1354,72 +1425,64 @@ function _s2RenderPane(t,pane){
       h+='</div>';
     });
   });
-  const notaReal=_s2RealTermsNote(d,new Date().getFullYear());
-  // o que a nota diz que é reescrito acompanha o que está NA TELA (desenvolvedora: upside e P/NAV)
-  const mets={}; shs.forEach(function(sh){ (sh.tables||[]).forEach(function(x){ mets[x.metric]=1; }); });
-  const soDev=!!(mets.upside||mets.p_nav)&&!(mets.ebitda||mets.ev_ebitda||mets.fcf||mets.fcf_yield);
-  // a frase segue o que está NA TELA (o cobre mostra P/NAV no lugar do EV/EBITDA)
-  const nomeM={ebitda:'EBITDA',fcf:'FCF',margin:'margins',ev_ebitda:'EV/EBITDA',fcf_yield:'FCF yield',
-    div_yield:'dividend yield',upside:'DCF upside',p_nav:'P/NAV'};
-  const juntar=function(l){ return l.length>1?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:(l[0]||''); };
-  const fixos=['ebitda','fcf','margin'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
-  const vivos=['ev_ebitda','fcf_yield','div_yield','upside','p_nav'].filter(function(m){ return mets[m]; }).map(function(m){ return nomeM[m]; });
-  const leitura=(fixos.length?juntar(fixos)+' are exactly as the analyst published; ':'')+
-    (vivos.length?juntar(vivos)+' are recomputed at the current screen price'+
-      (mets.ev_ebitda?', with the net debt embedded in the published EV':'')+
-      (soDev?' (the model’s share price against today’s)':'')+'.':'');
-  // COMO LER: as mesmas frases de antes, agora em linhas, cada marca com a sua amostra ao lado (era um parágrafo
-  // corrido no rodapé). "Live" diz o que é reescrito no preço de tela; "Real terms" só aparece quando há eixo assim.
-  h+='<div class="s2-note s2-how">'+
-     '<p><b class="k">How to read</b><span>'+
-       '<span class="s2-key"><span class="s2-ramp"></span>Shading deepens toward the centre of each grid, where the model runs — '+
-       'each ring out is one step of the analyst’s assumptions.</span>'+
-       '<span class="s2-key"><span class="s2-sw base"></span>A dashed cell marks the base case where the assumptions in the file confirm it.</span>'+
-       '<span class="s2-key"><span class="s2-sw spot"></span>Orange marks where the market is trading today, and “At spot” reads the grid '+
-       'at the exact quote, interpolated between the published levels.</span>'+
-       (algumFora?'<span class="s2-key"><span class="s2-sw spot out"></span>A dashed orange cell means today’s price is outside the grid: '+
-       'the flag sits on the nearest edge — “&lt;” below the lowest level, “&gt;” above the highest — and today’s number lies beyond it '+
-       '(“At grid edge” reads the analyst’s number at that edge; nothing is extrapolated).</span>':'')+
-       '</span></p>'+
-     (leitura?'<p><b class="k">Live</b><span>'+leitura+'</span></p>':'')+
-     (notaReal?'<p><b class="k">Real terms</b><span>'+esc(notaReal)+'</span></p>':'')+
-     '</div>';
   pane.innerHTML=h;
 }
-
-// TRILHO DE EMPRESAS (25/11/2026): eram 16 abas de texto corrido em duas linhas, na ordem do banco. Agora cada
-// empresa leva o SÍMBOLO e o trilho é separado por setor — Mining · Rare Earths · Steel · Pulp & Paper, a mesma
-// ordem e os mesmos rótulos da comp table — para achar a empresa de relance. Mesmo botão .sg-tab de sempre (o
-// traço laranja do IBBASlide continua correndo até a escolhida); a ordem do _S2_TABS é a da tela.
+// ESCOLHA DA EMPRESA (25/11/2026, 2ª versão). A 1ª (16 abas com símbolo, separadas por setor) quebrava em 2 linhas;
+// o analista gostou da separação por setor e pediu algo "mais bonito e melhor distribuído em cima". Agora são DOIS
+// ANDARES: em cima os SETORES (Mining · Rare Earths · Steel · Pulp & Paper, a ordem e os rótulos da comp table, com
+// quantas empresas cada um tem); embaixo as empresas DO SETOR aberto, numa fileira só, repartindo a largura. Trocar
+// de setor abre a 1ª empresa dele. Todas as empresas continuam no DOM (as de outro setor ficam escondidas): a ordem
+// do _S2_TABS e os ids s2tab-i não mudam, e o traço laranja do IBBASlide segue correndo até a escolhida.
+let _S2_GRUPO=null;
 function sgRenderSens2dTabs(list,others,host){
   const grupoDe=t=>{ const c=compByTicker(_s2Def(t).ticker||''); return (c&&c.group&&GROUP_LABEL[c.group])?c.group:'_'; };
   const porGrupo={}; list.forEach(t=>{ const g=grupoDe(t); (porGrupo[g]=porGrupo[g]||[]).push(t); });
-  _S2_TABS=[];
+  _S2_TABS=[]; _S2_GRUPO=null;
   GROUP_ORDER.concat(['_']).forEach(g=>(porGrupo[g]||[]).forEach(t=>
     _S2_TABS.push({key:'s2-'+t.id,t:t,label:_s2Label(t),group:g})));
   if(others&&others.length) _S2_TABS.push({key:'others',others:others,label:'Other',group:'_'});
+  const grupos=[]; _S2_TABS.forEach(function(tab){ if(grupos.indexOf(tab.group)<0) grupos.push(tab.group); });
+  const pick=document.createElement('div'); pick.className='s2-picker';
+  // andar de cima: os setores
+  const sec=document.createElement('div'); sec.className='s2-sectors'; sec.setAttribute('role','tablist');
+  sec.setAttribute('aria-label','Sector');
+  grupos.forEach(function(g){
+    const n=_S2_TABS.filter(function(tab){ return tab.group===g; }).length;
+    const b=document.createElement('button'); b.type='button'; b.className='s2-sec'; b.setAttribute('role','tab');
+    b.setAttribute('data-g',g); b.innerHTML='<span>'+esc(GROUP_LABEL[g]||'Other')+'</span><i>'+n+'</i>';
+    b.onclick=function(){ if(_S2_GRUPO===g) return;
+      const i=_S2_TABS.findIndex(function(tab){ return tab.group===g; }); if(i>=0) _s2ShowTab(i,{anim:1}); };
+    sec.appendChild(b); });
+  pick.appendChild(sec);
+  // andar de baixo: as empresas (só as do setor aberto aparecem)
   const bar=document.createElement('div'); bar.className='sg-tabs g6-subtabs s2-rail';
-  bar.setAttribute('role','tablist');
-  let gAnt=null;
+  bar.setAttribute('role','tablist'); bar.setAttribute('aria-label','Company');
   _S2_TABS.forEach(function(tab,i){
-    if(tab.group!==gAnt&&GROUP_LABEL[tab.group]){ const s=document.createElement('span'); s.className='s2-rail-g';
-      s.textContent=GROUP_LABEL[tab.group]; bar.appendChild(s); }
-    gAnt=tab.group;
     const tk=tab.t?String(_s2Def(tab.t).ticker||''):'';
-    const b=document.createElement('button'); b.type='button'; b.setAttribute('role','tab');
+    const b=document.createElement('button'); b.type='button'; b.setAttribute('role','tab'); b.setAttribute('data-g',tab.group);
     b.className='sg-tab s2-co'+(i===0?' active':''); b.id='s2tab-'+i;
     b.innerHTML=sgLogo(tk)+'<span>'+esc(tab.label)+'</span>'; if(tk) b.title=tab.label+' · '+tk;
     b.onclick=function(){_s2ShowTab(i,{anim:1});}; bar.appendChild(b); });
-  host.appendChild(bar);
+  pick.appendChild(bar);
+  host.appendChild(pick);
   try{ if(window.IBBASlide) IBBASlide.watch(bar,'.sg-tab'); }catch(e){ console.warn('IBBASlide:',e); }   // o traço corre entre as empresas
   const pane=document.createElement('div'); pane.id='s2-pane'; host.appendChild(pane);
   _s2ShowTab(0);
 }
+// abre o SETOR g: acende a etiqueta dele e mostra só as empresas dele
+function _s2Grupo(g){
+  _S2_GRUPO=g;
+  document.querySelectorAll('.s2-sectors .s2-sec').forEach(function(b){ const on=b.getAttribute('data-g')===g;
+    b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+  document.querySelectorAll('.s2-rail .s2-co').forEach(function(b){ b.classList.toggle('s2-off',b.getAttribute('data-g')!==g); });
+}
 function _s2ShowTab(i,o){
   const was=_s2Cur();
-  _S2_TABS.forEach(function(tab,j){ const b=document.getElementById('s2tab-'+j); if(b)b.classList.toggle('active',j===i); });
+  const tab=_S2_TABS[i];
+  if(tab&&tab.group!==_S2_GRUPO) _s2Grupo(tab.group);      // o setor da empresa primeiro: o traço já corre p/ o lugar final
+  _S2_TABS.forEach(function(t,j){ const b=document.getElementById('s2tab-'+j); if(b)b.classList.toggle('active',j===i); });
   const pane=document.getElementById('s2-pane'); if(!pane)return;
-  const tab=_S2_TABS[i]; if(!tab)return;
+  if(!tab)return;
   if(tab.others){ pane.innerHTML=''; _sgRenderPanels(tab.others,pane); return; }
   _s2RenderPane(tab.t,pane);
   if(o&&o.anim&&i!==was) _s2In(pane,i>was?1:-1);
