@@ -202,8 +202,9 @@
           { id: 'rev', label: function (x) { return 'US steel imports, value — ' + PLAB[x.prod].toLowerCase(); }, short: 'Import value', unit: 'US$ mn', dec: 0, flow: true,
             note: 'US Census, FT900A · customs value',
             comp: function (x) { return { r: D ? D.imp[x.prod].r : {} }; }, calc: function (A, c) { return A.sum(c.r); } },
-          { id: 'lead', label: function (x) { return (countries(x.prod).names[0] || 'Largest supplier') + ' share'; }, unit: '%', dec: 1, pp: true,
-            comp: share(function () { return 0; }), calc: shareV },
+          /* o maior fornecedor ALÉM do Brasil (o Brasil tem quadro próprio; em semiacabados ele lidera e o número sairia repetido) */
+          { id: 'lead', label: function (x) { return (countries(x.prod).names.filter(function (n) { return n !== 'Brazil'; })[0] || 'Largest supplier') + ' share'; }, unit: '%', dec: 1, pp: true,
+            comp: share(function (e) { for (var k = 0; k < e.names.length; k++) if (e.names[k] !== 'Brazil') return k; return -1; }), calc: shareV },
           { id: 'bra', label: 'Brazil share', unit: '%', dec: 1, pp: true,
             comp: share(function (e) { return e.names.indexOf('Brazil'); }), calc: shareV }
         ],
@@ -242,7 +243,7 @@
     Hh.mm.usimp = {
       vol: function (o) { return 'How much steel the US imported, in thousand tonnes — ' + fam(o) + ' (US Census, FT900A, imports for consumption).'; },
       rev: function (o) { return 'What the US paid for imported steel, in US$ million — ' + fam(o) + ' (US Census, customs value).'; },
-      lead: function (o) { return 'Share of US steel import volume that comes from ' + lead(o) + ', the largest supplier over the last three years — ' + fam(o) + ' (US Census).'; },
+      lead: function (o) { return 'Share of US steel import volume that comes from ' + lead(o) + ', the largest supplier over the last three years after Brazil (which has its own card) — ' + fam(o) + ' (US Census).'; },
       bra: function (o) { return 'Share of US steel import volume that comes from Brazil — ' + fam(o) + ' (US Census). Brazil mostly ships slabs to US mills, so the share is highest in semi-finished.'; },
       $who: { country: 'Where US steel imports come from, by country of origin (US Census, FT900A). Brazil is in orange.',
         product: 'Which steel products the US imports, by AISI product group (US Census, FT900A).' }
