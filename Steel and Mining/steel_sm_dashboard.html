@@ -41,6 +41,8 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="/data-desk-prices.js"></script>
 <script src="/assets/logos/logos.js"></script>
 <script src="/data-desk-context.js"></script>
+<!-- EUA (Steel › US market): dado em us_steel.json, robô update_us_steel.py — admin ou chave us_steel -->
+<script src="/data-desk-us.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -1111,6 +1113,7 @@ window.addEventListener('hashchange',()=>{
   loadDB()
   applyPredFlag()
   applyDeskFlag()      // chave data_desk: admin vê a mesa; cliente só com a chave ligada
+  if(window.IBBAUS) IBBAUS.applyFlag()   // Steel › US market (data-desk-us.js): admin vê; cliente só com a chave us_steel
   initDownloads()      // PNG/Excel por gráfico + base bruta — liberado p/ TODO usuário (2026-08-17)
 })()
 async function logout(){await sbAuth.auth.signOut();document.cookie='sb-access-token=; Max-Age=0; Path=/; SameSite=Lax; Secure';window.location.replace('/login.html')}
@@ -2630,12 +2633,13 @@ function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ?
 function _deskRender(){
   const root=document.getElementById('desk-root'); if(!root) return false;
   const picker=document.body.classList.contains('mob-picker-active'), key=_deskKey();
+  if(window.IBBAUS&&IBBAUS.gate(key)) return true;   // Steel › US market: sem permissão → Prices; arquivo ainda descendo → aviso na mesa
   const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(key);
   const legacy=document.getElementById('sec-'+currentSub);
   // o filtro de produto do AÇO não vale em seções com produto próprio (minério) nem no modelo preditivo; o Overview não usa filtros
   const fb=document.querySelector('.filter-bar'), pb=document.getElementById('prod-btns');
   const hf=use&&!!DESK.sections[key].hf;   // preços diários/semanais: sem produto e sem granularidade (o dado vem na frequência em que é publicado)
-  const ownProd=use&&(key==='ore'||key==='builder'||hf), noBar=use&&key==='overview';   // no Builder o produto faz parte de cada série
+  const ownProd=use&&(key==='ore'||key==='builder'||hf||(!!window.IBBAUS&&IBBAUS.secs.includes(key))), noBar=use&&key==='overview';   // no Builder o produto faz parte de cada série; os EUA têm produto próprio
   if(pb){ [pb.previousElementSibling,pb,pb.nextElementSibling].forEach(e=>{ if(e) e.style.display=ownProd?'none':''; }); }
   const gb=document.getElementById('gran-btns'); if(gb){ [gb.previousElementSibling,gb,gb.nextElementSibling].forEach(e=>{ if(e) e.style.display=hf?'none':''; }); }
   if(fb&&noBar) fb.style.display='none'; else if(fb&&fb.style.display==='none'&&key!=='prediction') fb.style.display='';
@@ -2776,7 +2780,7 @@ function _desk(){
       get:async path=>{ const {data:{session}}=await sbAuth.auth.getSession(); if(!session) return null;
         const r=await fetch(SUPA_URL+'/rest/v1/'+path,{headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${session.access_token}`}}); if(!r.ok) throw new Error('context '+r.status); return r.json(); },
       rpc:async name=>{ const r=await sbAuth.rpc(name); if(r.error) throw r.error; return r.data; },
-      sections:_DESK_CTX,
+      sections:Object.assign(_DESK_CTX, window.IBBAUS?IBBAUS.ctx:{}),
     },
     afterRender:d=>{ if(!window.IBBAExport) return;
       IBBAExport.attachChartjsExports({charts:new Proxy({}, {get:(_,cid)=>d.charts[cid2key(cid)]}), cardSelector:'#desk-root .chart-card',
@@ -2784,13 +2788,15 @@ function _desk(){
     sections:{
       /* BUILDER — a bancada (data-desk-builder.js): o catálogo sai das seções acima; aqui só a ordem e as visões prontas */
       builder:{
-        label:'Builder', builder:true, order:['imports','exports','domestic','ore'],
-        presets:[
+        label:'Builder', builder:true,
+        /* as vistas dos EUA entram no catálogo e nas visões prontas só para quem vê Steel › US market */
+        get order(){ return ['imports','exports','domestic','ore'].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.secs:[]); },
+        get presets(){ return [
           {n:'Imports vs penetration', s:['imports.vol.total','imports.pen.total'], v:'level', g:'monthly', w:'3y', tip:'Import volume against the share of imports in apparent consumption'},
           {n:'China vs Korea (LTM)', s:['imports~country~total~China','imports~country~total~South Korea'], v:'ltm', g:'monthly', w:'5y', tip:'Imports from the two main origins, last 12 months'},
           {n:'Imports, exports and production', s:['imports.vol.total','exports.vol.total','domestic.prod.total'], v:'index', g:'monthly', w:'3y', tip:'Three volumes rebased to 100 at the start of the window'},
           {n:'Iron ore: fines vs pellets', s:['ore.vol.Fines','ore.vol.Pellets'], v:'level', g:'monthly', w:'3y', tip:'Brazilian exports of iron ore fines and of pellets'},
-        ],
+        ].concat(window.IBBAUS&&IBBAUS.ok()?IBBAUS.presets:[]); },
       },
       /* ── PREÇOS DE MERCADO (data-desk-prices.js): diário/semanal, direto da tabela commodities e da paridade semanal ── */
       parity:{
@@ -2974,6 +2980,8 @@ function _desk(){
             entities:x=>mixOf(SEIMP,x.prod)},
         ],
       },
+      /* EUA — Steel › US market: Demand · Production · Imports by origin (data-desk-us.js, dado us_steel.json) */
+      ...(window.IBBAUS?IBBAUS.sections({F, sum:_dkSum}):{}),
     },
   });
   return DESK;
@@ -3010,6 +3018,7 @@ const COM_TABS={steel:[['parity','Prices'],['domestic','Domestic Market'],['impo
                 ore:[['oreprices','Prices & margin'],['ore','Exports']]};
 const COM_NAME={steel:'Steel',ore:'Iron Ore'};
 const _comLast={};   // a última seção vista em cada commodity (e a última vista da aba Prices do aço)
+if(window.IBBAUS) IBBAUS.wireNav();   // Steel › US market: as três vistas dos EUA entram na navegação (a aba só aparece com a chave us_steel ou admin)
 function setCom(c){ const t=COM_TABS[c]; if(!t) return; setSub(_comLast[c]||t[0][0],{anim:1}); }
 function setComTab(k){ const c=COM_OF[k], t=(COM_TABS[c]||[]).find(x=>x[0]===k); setSub((t&&t[2]&&_comLast['tab:'+k])||k,{anim:1}); }
 function _navMark(s){
