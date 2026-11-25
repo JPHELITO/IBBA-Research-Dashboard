@@ -55,7 +55,8 @@
         ltm: 'Each point covers the last 12 months: the sum for volumes, the average for prices and shares.',
         index: 'Each series starts at 100 at the beginning of the window, so series in different units compare on one scale.'
       },
-      dual: 'Series marked “Right axis” are read on the scale at the right, in their own unit; the two scales are independent, so compare how the lines move — not where they cross.'
+      dual: 'Series marked “Right axis” are read on the scale at the right, in their own unit; the two scales are independent, so compare how the lines move — not where they cross.',
+      r2: 'R² next to each series = how much of its movement lines up with the first series in this window (0 = none, 1 = all), from a linear regression of one on the other; “inverse” = they move in opposite directions. Series that both trend can show a high R² in Level without a real link — YoY is the stricter test.'
     },
 
     /* ══════════════ METALS & MINING ══════════════ */
