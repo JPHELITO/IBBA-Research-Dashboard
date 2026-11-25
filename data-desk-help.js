@@ -126,6 +126,27 @@
         brands: { what: 'Prices of specific iron ore brands in China, in US$ per dry tonne (Platts): Brazilian Blend Fines (Vale) against the main Australian fines.', how: 'One point per day.' },
         fwd: { what: 'Iron ore swap prices for the next three quarters and for next year, in US$ per dry tonne (Platts): where the market expects prices to go.', how: 'A curve below today\'s price says the market expects prices to fall. One point per day.' }
       },
+      /* preços da Platts no Builder: o que é cada preço + a regra da média mensal */
+      platts_steel_m: function (id) {
+        var t = { hrc_china: 'Price of hot-rolled coil exported from China, FOB China, in US$ per tonne (Platts).', rebar_turkey: 'Price of rebar exported from Turkey, FOB Turkey, in US$ per tonne (Platts).',
+          hrc_brazil: 'Price charged by Brazilian mills for hot-rolled coil, ex-works and without taxes, in R$ per tonne (Platts).', rebar_brazil: 'Price charged by Brazilian mills for rebar, ex-works and without taxes, in R$ per tonne (Platts).',
+          hrc_prem: 'How much more (or less) Brazilian HRC costs than Chinese HRC landed in Brazil, in % (Platts prices; Itaú BBA build-up of the import parity). Weekly.', rebar_prem: 'How much more (or less) Brazilian rebar costs than Turkish rebar landed in Brazil, in % (Platts prices; Itaú BBA build-up). Weekly.',
+          hrc_dom_usd: 'Brazilian HRC price converted to US$ at the exchange rate of the week, in US$ per tonne (Platts; Itaú BBA). Weekly.', hrc_imp: 'Chinese HRC landed in Brazil: FOB + freight + insurance + import tariff + AFRMM + port costs, in US$ per tonne (Platts; Itaú BBA). Weekly.',
+          rebar_dom_usd: 'Brazilian rebar price converted to US$ at the exchange rate of the week, in US$ per tonne (Platts; Itaú BBA). Weekly.', rebar_imp: 'Turkish rebar landed in Brazil: FOB + freight + insurance + import tariff + AFRMM + port costs, in US$ per tonne (Platts; Itaú BBA). Weekly.',
+          coal_prem: 'Premium hard coking coal from Australia, FOB, in US$ per tonne (Platts) — with iron ore, the main raw material of blast-furnace steel.', coal_lv: 'Low-vol hard coking coal from Australia, FOB, in US$ per tonne (Platts).' }[id];
+        return t ? t + ' Here as the monthly average of the assessments; quarters, years and LTM average all of their assessments.' : null;
+      },
+      platts_ore_m: function (id) {
+        var t = { io61: 'Iron ore fines with 61% iron, delivered in China (CFR), in US$ per dry tonne (Platts) — the benchmark since 2021.', io62: 'Iron ore fines with 62% iron (IODEX), delivered in China (CFR), in US$ per dry tonne (Platts) — the longer history, back to 2008.',
+          io65: 'High-grade iron ore fines (65% iron), delivered in China, in US$ per dry tonne (Platts).', io58: 'Low-grade iron ore fines (58% iron), delivered in China, in US$ per dry tonne (Platts).',
+          margin: 'What a Brazilian miner keeps after shipping to China: the 61% Fe price in China minus the Brazil–China freight, in US$ per tonne (Platts) — a proxy, without moisture, quality, royalties or costs.',
+          p6561: 'What buyers pay for high grade: 65% Fe minus 61% Fe, in US$ per tonne (Platts).', p6158: 'What buyers pay for 61% Fe over low grade: 61% Fe minus 58% Fe, in US$ per tonne (Platts).', pellet: 'Premium paid for blast-furnace pellets over fines, in US$ per tonne (Platts). Weekly.',
+          frt_br: 'Freight of iron ore from Brazil (Tubarão) to China (Qingdao), in US$ per wet tonne (Platts).', frt_au: 'Freight of iron ore from Western Australia to China, in US$ per wet tonne (Platts).', frt_diff: 'Brazil–China minus Australia–China freight: the distance disadvantage of Brazilian ore, in US$ per wet tonne (Platts).',
+          brbf: 'Brazilian Blend Fines (Vale) delivered in China, in US$ per dry tonne (Platts).', pb: 'Pilbara Blend fines (Rio Tinto) delivered in China, in US$ per dry tonne (Platts).', newman: 'Newman high grade fines (BHP) delivered in China, in US$ per dry tonne (Platts).',
+          mac: 'Mining Area C fines (BHP) delivered in China, in US$ per dry tonne (Platts).', jimblebar: 'Jimblebar fines (BHP) delivered in China, in US$ per dry tonne (Platts).',
+          fwd1q: 'Iron ore swap for the next quarter, in US$ per dry tonne (Platts): where the market prices ore ahead.', fwd2q: 'Iron ore swap two quarters ahead, in US$ per dry tonne (Platts).', fwd3q: 'Iron ore swap three quarters ahead, in US$ per dry tonne (Platts).', fwd1y: 'Iron ore swap one year ahead, in US$ per dry tonne (Platts).' }[id];
+        return t ? t + ' Here as the monthly average of the daily assessments; quarters, years and LTM average all of their assessments.' : null;
+      },
       chinamills_m: {
         profit: 'Share of the 247 Chinese blast-furnace steel mills that make a cash profit, in % (Mysteel weekly survey) — here as the average of the weeks of each month; quarters, years and LTM average all their weeks.',
         hm: 'Hot metal produced per day by the 247 Chinese mills, in thousand tonnes per day (Mysteel weekly survey) — here as the average of the weeks of each month; the closest read of China\'s iron ore use.',

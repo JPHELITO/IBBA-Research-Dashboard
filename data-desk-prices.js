@@ -155,6 +155,13 @@
     (pts || []).forEach(function (p) { var m = p[0].slice(0, 7); if (m === open || p[1] == null) return; v[m] = (v[m] || 0) + p[1]; n[m] = (n[m] || 0) + 1; });
     return { v: v, n: n };
   }
+  /* preço diário/semanal em MESES para o Builder: soma e número de pontos de cada mês (a página divide = a média do mês, e no
+     trimestre/ano/LTM a média de todos os pontos do período). O mês corrente (Brasília) só entra quando termina. */
+  function monthlyCal(pts, today) {
+    var v = {}, n = {}, cur = (today || new Date(Date.now() - 3 * 36e5).toISOString()).slice(0, 7);
+    (pts || []).forEach(function (p) { if (p[1] == null || !isFinite(p[1])) return; var m = p[0].slice(0, 7); if (m >= cur) return; v[m] = (v[m] || 0) + p[1]; n[m] = (n[m] || 0) + 1; });
+    return { v: v, n: n };
+  }
   /* a coluna das usinas uma vez por versão dos dados: as leituras, a série completa e as semanas estimadas */
   function millC(S, col) {
     if (S._millV !== S.v) { S._mill = {}; S._millV = S.v; }
@@ -244,6 +251,14 @@
      (ou quando o banco recusou: sem a chave china_mills o cliente recebe [] e nada mais é pedido nesta visita) */
   Desk.prototype.millsNeed = function () { var S = this._hfStore(); return S.mills != null ? null : this._hfNeed({ hf: { mills: true } }, null); };
   Desk.prototype.millsStore = function () { return this._hfStore(); };
+  /* Builder: pede SÓ os preços das séries que estão no gráfico — a linha diária (commodities), o histórico longo (price_history)
+     e, se for o caso, a paridade semanal. null = tudo em mãos. Mesmo caminho e mesmo cache das seções de preço. */
+  Desk.prototype.pricesNeed = function (codes, parity) {
+    codes = (codes || []).filter(function (c, i, a) { return c && a.indexOf(c) === i; }); if (!codes.length && !parity) return null;
+    var M = { id: 'b:' + codes.join(','), series: function (S0, P0) { codes.forEach(function (c) { P0.d(S0, c); }); return []; } };
+    return this._hfNeed({ hf: { codes: codes, history: true, parity: !!parity } }, M);
+  };
+  Desk.prototype.pricesStore = function () { return this._hfStore(); };
 
   /* ══ (c) INTERFACE ═════════════════════════════════════════════════════════ */
   /* cores da sazonalidade: o ano mais novo laranja, o anterior cinza cheio, os outros cinza mais claro (tracejados no gráfico) */
@@ -508,5 +523,5 @@
     series: v.ser.map(function (s, k) { return { name: s.name, vals: v.vals[k].slice(v.i0, v.i1 + 1) }; }) }; };
   D.prices = { parity: parity, parRow: parRow, liveRow: liveRow, fromDaily: fromDaily, combine: combine, at: at, align: align, win: win, shift: shift, mean: mean, dLabel: dLabel,
     decodeHist: decodeHist, mergeHist: mergeHist, qInfo: qInfo, qBack: qBack, avgIn: avgIn, byYear: byYear, seasIso: seasIso, sLabel: sLabel, near: near, millPts: millPts,
-    fillWeekly: fillWeekly, addDays: addDays, monthly: monthly, P: P };
+    fillWeekly: fillWeekly, addDays: addDays, monthly: monthly, monthlyCal: monthlyCal, P: P };
 })();
