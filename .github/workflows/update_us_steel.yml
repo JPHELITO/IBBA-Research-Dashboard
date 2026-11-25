@@ -1,0 +1,81 @@
+name: 🇺🇸 Auto-Update US steel (mesa de dados › Steel › US market)
+
+# Mantém `Steel and Mining/us_steel.json` — a seção "US market" da mesa de dados de M&M.
+# Roda TODO DIA (~5 min): as fontes saem em dias diferentes e o robô só commita quando algo mudou.
+#   - Census FT900A (importação país × produto) e Census API (exportação): ~5 semanas depois do mês
+#   - AISI: embarques mensais (~5 semanas depois do mês) e a produção SEMANAL (segunda-feira; o site
+#     só mostra a semana corrente — semana não lida é semana perdida, por isso todo dia)
+#   - worldsteel (aço bruto): ~dia 22 · Fed G.17 (utilização da capacidade): meados do mês
+# Cada rodada revisita os últimos 14 meses (o Census e o AISI REVISAM mês passado) e grava o que mudou.
+# Importação de um mês que não bate com o "Total Census Basis" publicado NÃO é gravada e o job fica
+# VERMELHO no último passo — depois do commit, para o resto do dado não se perder (lição do SECEX).
+#
+# Secret opcional: CENSUS_API_KEY (chave grátis da API do Census; sem ela a API ainda responde,
+# com limite diário menor).
+
+on:
+  schedule:
+    - cron: "40 13 * * *"   # 13:40 UTC = 10:40 BRT, todo dia
+  workflow_dispatch:
+    inputs:
+      meses:
+        description: "Quantos meses revisitar (padrão 14)"
+        required: false
+        default: "14"
+
+concurrency:
+  group: us-steel-json
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: "Steel and Mining/requirements.txt"
+
+      - name: Install dependencies
+        run: pip install -r "Steel and Mining/requirements.txt" "curl_cffi==0.15.0"
+
+      - name: Update US steel data
+        env:
+          PYTHONUTF8: "1"
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+        run: python "Steel and Mining/update_us_steel.py" --update --meses "${{ github.event.inputs.meses || '14' }}"
+
+      # Commit manual com o caminho entre aspas (o espaço em "Steel and Mining" quebra o
+      # git-auto-commit-action — bug histórico do SECEX).
+      - name: Commit & push
+        if: env.US_CHANGED == 'true'
+        run: |
+          git config user.name  "IBBA Bot"
+          git config user.email "bot@itaubba.com"
+          git add "Steel and Mining/us_steel.json"
+          if git diff --staged --quiet; then
+            echo "::warning::sem mudança no us_steel.json — nada a commitar."
+            exit 0
+          fi
+          MSG="data: US steel"
+          if [ -n "$US_NEW" ]; then MSG="$MSG — novo: $US_NEW"; fi
+          if [ -n "$US_REVISED" ]; then MSG="$MSG — revisado: $US_REVISED"; fi
+          git commit -m "$MSG"
+          git pull --rebase --autostash || true
+          git push
+          echo "✅ us_steel.json commitado e pushado"
+
+      # ALARME DEPOIS DO DADO: o passo acima já gravou o que deu certo.
+      - name: Alarm (job vermelho se a importação não bateu ou se todas as fontes caíram)
+        if: env.US_ALARM == 'true'
+        run: |
+          echo "::error::Importação de algum mês não bateu com o Total Census Basis (não foi gravada), ou todas as fontes caíram. Ver o log do passo 'Update US steel data'."
+          exit 1
