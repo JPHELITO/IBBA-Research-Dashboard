@@ -259,6 +259,7 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .dk-br2{flex:none;font:600 10.5px var(--dk-text);color:var(--gray-dark);white-space:nowrap;padding:2px 6px;border-radius:6px;background:var(--dk-panel2);cursor:help;font-variant-numeric:tabular-nums;}
 .dk-br2 em{font-style:normal;font-weight:500;color:var(--gray-mid);}
 .dk-br2na{color:var(--gray-mid);}
+.dk-r2t{font-size:11px;color:var(--gray-mid);margin-left:6px;}   /* gráfico mensal com duas séries: "X against Y" ao lado do R² */
 .dk-bax{flex:none;font:600 10px var(--dk-text);letter-spacing:.02em;color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
 .dk-bax:hover{border-color:var(--orange);color:var(--orange);}
 .dk-bax[aria-pressed="true"]{background:var(--black);border-color:var(--black);color:var(--white);}

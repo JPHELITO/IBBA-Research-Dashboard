@@ -30,7 +30,8 @@
       partial: 'A lighter last point is a {per} still in progress.',
       twoLines: '{c0} line = {a}; {c1} line = {b}.',
       twoBars: '{c0} bars = {a}; {c1} bars = {b}.',
-      signBars: 'Green bars = above zero, red = below zero. The dashed line is the average of the window.'
+      signBars: 'Green bars = above zero, red = below zero. The dashed line is the average of the window.',
+      r2: 'R² = how much of a line\'s movement lines up with the first line in this window (0 = none, 1 = all), from a linear regression of one on the other; “inverse” = they move in opposite directions. Lines that both trend can show a high R² without a real link.'
     },
 
     /* "Who is behind the number": o que a quebra mostra (por seção e quebra) e como ler cada modo */

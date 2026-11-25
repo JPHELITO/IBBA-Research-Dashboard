@@ -128,6 +128,26 @@
   /* paleta sóbria do empilhado: uma família (azuis, verde-água, areia, lilás); a cor acompanha a ENTIDADE */
   var PAL_L = ['#22304a', '#3f72b5', '#8fb3de', '#2a9d8f', '#b79a5c', '#8a6fb3', '#5f7d95', '#c98a6b', '#6aa5a0', '#9aa6c4', '#7a8f5a', '#b784a7'];
   var PAL_D = ['#e3e6ec', '#5b8fd6', '#9cc0ea', '#3fb8a8', '#c9b47a', '#a892d6', '#8fa9bf', '#d9a084', '#7fc1bb', '#b4bedb', '#9db57a', '#cf9fc0'];
+  /* R² (pedido do usuário, 25/11/2026: "para todos os gráficos que montarmos, coloque sempre um indicativo do R²" — e depois "Sim,
+     ponha" nos gráficos fixos que cruzam séries): quadrado da correlação de Pearson entre duas séries nos pontos em que AS DUAS têm
+     valor = o R² da regressão linear de uma na outra. null com menos de R2_MIN pares ou com uma série parada. A MESMA conta e o
+     MESMO selo no Builder, nos gráficos mensais das seções e nas seções de preço/usinas. */
+  var R2_MIN = 6;
+  function r2of(a, b, i0, i1) {
+    var xs = [], ys = [], i, n, mx = 0, my = 0, sxy = 0, sxx = 0, syy = 0;
+    for (i = i0; i <= i1; i++) if (a[i] != null && b[i] != null && isFinite(a[i]) && isFinite(b[i])) { xs.push(+a[i]); ys.push(+b[i]); }
+    n = xs.length; if (n < R2_MIN) return { n: n, r: null, r2: null };
+    for (i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; } mx /= n; my /= n;
+    for (i = 0; i < n; i++) { var dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+    if (!(sxx > 0) || !(syy > 0)) return { n: n, r: null, r2: null };
+    var r = sxy / Math.sqrt(sxx * syy); return { n: n, r: r, r2: r * r };
+  }
+  /* o selo: "R² 0.72" (+ "inverse" quando a correlação é negativa); na dica, contra quem, em quantos períodos e o que significa */
+  function r2Badge(fit, ref, per, extra) {
+    if (!fit) return '';
+    if (fit.r2 == null) return '<span class="dk-br2 dk-br2na" title="' + esc('R² against ' + ref + ': needs at least ' + R2_MIN + ' ' + per + ' with both series in this window (now ' + fit.n + ')') + '">R² —</span>';
+    return '<span class="dk-br2" title="' + esc('R² against ' + ref + ' = ' + fmt(fit.r2, 2) + ', over ' + fit.n + ' ' + per + ' of this window: how much of this line\'s movement lines up with ' + ref + ' (0 = none, 1 = all), from a linear regression of one on the other.' + (fit.r < 0 ? ' Inverse: they move in opposite directions.' : '') + (extra || ' Lines that both trend can show a high R² without a real link.')) + '">R² ' + fmt(fit.r2, 2) + (fit.r < 0 ? ' <em>inverse</em>' : '') + '</span>';
+  }
   /* SAZONALIDADE — uma cor por ano (pedido do usuário, 25/11/2026: "deixe todos os anos com indicações de cores diferentes"):
      k = 0 o ano mais novo (laranja, cheio, grosso), k = 1 o anterior (cor da tinta, cheio), k ≥ 2 os outros PONTILHADOS, cada um
      com a sua cor. As quatro cores são as da paleta de referência do guia de gráficos e passaram no validador nos dois temas
@@ -528,10 +548,17 @@
         var s4 = lineSet(sl(m3), 'rgba(' + t.band + ',.6)', { label: '3-month moving average', w: 1.5, dash: [5, 3], noDot: true }); s4.order = 2; sets.push(s4); }
     }
     this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
+    /* duas séries no mesmo gráfico: o R² da 2ª contra a 1ª, na janela e na vista da tela (período em andamento fica de fora) */
+    var fits = null;
+    if (multi) { var mv = subs.map(function (S2) { return c.vals(S2.id, u.mode).map(function (x, i) { return c.P[i].partial ? null : x; }); });
+      fits = mv.map(function (arr, k) { return k ? r2of(mv[0], arr, c.i0, c.i1) : null; });
+      var perW = { monthly: 'months', quarterly: 'quarters', annual: 'years' }[c.st.gran] || 'periods';
+      if (sleg) sleg.innerHTML = subs.map(function (S2, k) { return k ? r2Badge(fits[k], self._short(subs[0]), perW) + '<span class="dk-r2t">' + esc(self._short(S2) + ' against ' + self._short(subs[0])) + '</span>' : ''; }).join(''); }
+    this._stageFits = fits;
     title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
     E.stage.querySelector('.dk-hint').textContent = (tip ? 'Hover to read the values' : 'Hover to read · Click two periods to compare them (A → B)') + (c.sec.noBrush ? '' : ' · Drag the strip to change the period');
     var lvl = u.mode === 'level' && !multi && kind === 'line', mon = c.st.gran === 'monthly';
-    this._whyStage(M, hp, note, { mode: u.mode, kind: kind, multi: multi, subs: subs, avg12: lvl && mon && !M.noAvg, winAvg: lvl && M.ref === 'windowAvg', ma3: lvl && mon && !!M.ma3, partial: pa != null && pa >= 0 });
+    this._whyStage(M, hp, note, { mode: u.mode, kind: kind, multi: multi, subs: subs, avg12: lvl && mon && !M.noAvg, winAvg: lvl && M.ref === 'windowAvg', ma3: lvl && mon && !!M.ma3, partial: pa != null && pa >= 0, r2: !!fits });
   };
   /* o quadro "What it shows / How to read" do palco: o "how" é montado a partir do que está desenhado */
   Desk.prototype._whyStage = function (M, hp, note, o) {
@@ -554,6 +581,7 @@
       if (o.ma3) how.push(V.ma3);
     }
     if (o.partial && o.mode !== 'seasonal') how.push(fill(V.partial, { per: per }));
+    if (o.r2 && V.r2) how.push(V.r2);
     el.innerHTML = whyHTML((hp && hp.what) || note || '', how.filter(Boolean).join(' ')); el.hidden = !el.innerHTML;
   };
   /* a entrada de explicação de um indicador (data-desk-help.js) — {what, how} ou null */
@@ -874,7 +902,7 @@
   window.IBBADesk = {
     /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
     x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML,
-         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip },
+         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip, r2of: r2of, r2Badge: r2Badge, R2_MIN: R2_MIN },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };
