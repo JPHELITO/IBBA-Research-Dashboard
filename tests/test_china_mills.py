@@ -129,6 +129,13 @@ def test_robo_dry_sem_tabela_e_sem_lucro(monkeypatch):
     assert not [c for c in f.calls if c[0] == "POST"]
 
 
+def test_lista_vazia_e_problema(monkeypatch):
+    monkeypatch.setattr(U.time, "sleep", lambda s: None)
+    monkeypatch.setattr(U, "LISTS", ["L"])
+    rows, probs = U.new_rows("2030-01-04", get=lambda u, **k: b"<html>verifique que voce nao e um robo</html>")
+    assert rows == [] and len(probs) == 1 and "sem nenhum boletim" in probs[0]
+
+
 def test_robo_avisa_quando_o_dado_envelhece(monkeypatch):
     f = Fake("2030-01-18")
     assert run(monkeypatch, f, {"L": "<html>fora do ar</html>"}, D.date(2030, 1, 23)) == 0    # 5 dias: normal

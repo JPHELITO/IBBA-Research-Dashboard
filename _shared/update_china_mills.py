@@ -157,10 +157,15 @@ def new_rows(last_obs, get=None, pause=2.0, log=print):
     found, problems = {}, []
     for u in LISTS:
         try:
-            for d, url in parse_listing(decode(get(u))):
-                found.setdefault(d, url)
+            got = parse_listing(decode(get(u)))
         except Exception as ex:   # noqa: BLE001
             problems.append(f"lista {u}: {ex}")
+            continue
+        if not got:   # a Mysteel às vezes devolve uma página sem a lista (bloqueio por excesso de acesso): não é "nada novo"
+            problems.append(f"lista {u}: veio sem nenhum boletim (página de bloqueio ou layout novo?)")
+        time.sleep(pause)
+        for d, url in got:
+            found.setdefault(d, url)
     rows = []
     for d in sorted(found):
         if last_obs and d <= last_obs:

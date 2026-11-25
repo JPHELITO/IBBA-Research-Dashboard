@@ -2622,7 +2622,8 @@ function _millsSet(ok){
   const t=COM_TABS.steel, i=t.findIndex(x=>x[0]==='chinamills');
   if(_millsOk&&i<0) t.push(['chinamills','China mills']); else if(!_millsOk&&i>=0) t.splice(i,1); else return;
   const bar=document.getElementById('dk-subnav'); if(bar) bar.dataset.com='';   // a linha de abas se refaz
-  if(!_millsOk&&currentSub==='chinamills'&&_dbReady) setSub('parity'); else _navMark(currentSub);
+  if(!_dbReady) return;   // antes da 1ª seção aparecer não marca nada (marcar 'domestic', o valor inicial, fazia o botão Steel abrir em Domestic)
+  if(!_millsOk&&currentSub==='chinamills') setSub('parity'); else _navMark(currentSub);
 }
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
 function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ? 'prediction' : currentSub; }
