@@ -253,6 +253,12 @@ html.dark .dk-pill.dk-bok{background:#343941;border-color:#343941;color:#fff;}
 .dk-bx:hover{background:var(--dk-panel2);color:var(--dk-down);}
 .dk-bpanel+.dk-bpanel{margin-top:6px;border-top:1px solid var(--dk-grid);}
 .dk-bpu{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-mid);margin-top:10px;}
+.dk-bpu2{display:flex;justify-content:space-between;gap:12px;}   /* duas escalas: a da esquerda e a da direita */
+/* "Right axis" na ficha da série: pílula pequena que diz que é botão; ligada = preenchida */
+.dk-bax{flex:none;font:600 10px var(--dk-text);letter-spacing:.02em;color:var(--gray-dark);background:var(--white);border:1px solid var(--border);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
+.dk-bax:hover{border-color:var(--orange);color:var(--orange);}
+.dk-bax[aria-pressed="true"]{background:var(--black);border-color:var(--black);color:var(--white);}
+html.dark .dk-bax[aria-pressed="true"]{background:#e8eaed;border-color:#e8eaed;color:#111;}
 .dk-bpanel .dk-chart{margin-top:2px;}
 .dk-bempty{display:grid;place-content:center;gap:4px;text-align:center;min-height:240px;color:var(--gray-mid);font-size:12.5px;}
 .dk-bempty b{color:var(--black);font-size:14px;font-weight:600;}
@@ -341,7 +347,7 @@ html.desk-on:not(.mills-on) .mob-sec-item.mills-only{display:none;}   /* China m
   #desk-root .ibba-dl button,.dk-bdl button{min-height:32px;padding:6px 10px;}
   html.desk-on .filter-bar .fbtn{min-height:32px;}
   .dk-plist label{min-height:34px;}
-  .dk-brow,.dk-bent{min-height:36px;} .dk-bcn{min-height:32px;} .dk-bx{width:32px;height:32px;} .dk-bdel{min-height:32px;padding:0 11px 1px 8px;}
+  .dk-brow,.dk-bent{min-height:36px;} .dk-bcn{min-height:32px;} .dk-bx{width:32px;height:32px;} .dk-bax{min-height:32px;padding:0 10px;} .dk-bdel{min-height:32px;padding:0 11px 1px 8px;}
   .dk-bq,.dk-popp input[type=search]{min-height:36px;font-size:16px;}   /* 16 px: o iPhone não dá zoom ao focar */
   .dk-cxname{min-height:34px;} .dk-cxnews{min-height:36px;} .dk-cxh a{min-height:32px;display:inline-flex;align-items:center;}
   .dk-cxb{min-height:34px;}
