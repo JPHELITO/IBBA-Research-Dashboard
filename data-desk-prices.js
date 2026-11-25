@@ -20,11 +20,15 @@
    · Preço de agência (Platts) é dado PAGO: estas seções NÃO têm botão de Excel — só a imagem (PNG).
    · USINAS CHINESAS (hf.mills): a pesquisa semanal da Mysteel com 247 usinas (função `get_china_mills()`,
      admin/supabase_china_mills.sql — só responde a admin ou com a chave `china_mills` ligada). Agência paga: sem Excel.
-   · SAZONALIDADE SEMANAL (M.season): uma linha por ano, as datas de cada ano postas num ano só (2000, bissexto); o
-     mais novo em laranja, o anterior cinza cheio, os outros tracejados — o mesmo desenho da vista Seasonal mensal.
+   · SAZONALIDADE SEMANAL (M.season): uma linha por ano, as datas de cada ano postas num ano só (2000, bissexto); as
+     cores e traços por ano são os do motor (X.yearStyle: laranja, tinta, e os outros pontilhados, cada um na sua cor) — o
+     mesmo desenho da vista Seasonal mensal, com legenda.
      A janela da barra não se aplica (o gráfico mostra todos os anos).
-   · FUROS (M.gapDays): semana sem leitura (Ano Novo Chinês) fica em branco — o trecho entre dois pontos mais
-     distantes que gapDays não é desenhado.
+   · SEMANAS SEM NÚMERO (usinas chinesas): levam a MÉDIA da semana anterior e da seguinte (pedido do usuário, 25/11/2026) —
+     a linha não tem buraco; o painel Reading e o quadro "o boletim inteiro" marcam o número como estimativa (M.estAt).
+     As médias, mínimas e máximas "desde 2021" usam só as leituras de verdade (P.millRaw).
+   · FUROS (M.gapDays): onde ainda faltar ponto (série de outra fonte), o trecho entre dois pontos mais distantes que gapDays
+     não é desenhado.
    · A conta da paridade é a da planilha do analista (CIF = (FOB + frete) × (1 + seguro); importado = CIF +
      tarifa + AFRMM + porto; prêmio = doméstico em US$ ÷ importado − 1). Conferida semana a semana contra a
      planilha em data-desk/ferramentas/paridade_dados.py.
@@ -114,17 +118,41 @@
   /* sazonalidade: a data num ano só (2000 é bissexto: 29/02 cabe) e o rótulo sem ano */
   function seasIso(iso) { return '2000' + iso.slice(4); }
   function sLabel(iso) { return +iso.slice(8, 10) + ' ' + MON[+iso.slice(5, 7) - 1]; }
-  /* uma série por ano, do mais novo para o mais velho: [{name: '2026', pts: [[2000-mm-dd, v]…]}…] */
-  function byYear(pts, n) {
-    var by = {}; (pts || []).forEach(function (p) { if (p[1] == null) return; var y = p[0].slice(0, 4); (by[y] = by[y] || []).push([seasIso(p[0]), p[1]]); });
+  /* uma série por ano, do mais novo para o mais velho: [{name: '2026', pts: [[2000-mm-dd, v]…], est: {2000-mm-dd: 1}}…]
+     (est: as datas que são estimativa — `est` vem com as datas de verdade) */
+  function byYear(pts, n, est) {
+    var by = {}, be = {}; (pts || []).forEach(function (p) { if (p[1] == null) return; var y = p[0].slice(0, 4); (by[y] = by[y] || []).push([seasIso(p[0]), p[1]]);
+      if (est && est[p[0]]) (be[y] = be[y] || {})[seasIso(p[0])] = 1; });
     var ys = Object.keys(by).sort().reverse(); if (n) ys = ys.slice(0, n);
-    return ys.map(function (y) { return { name: y, short: y, year: +y, pts: by[y] }; });
+    return ys.map(function (y) { return { name: y, short: y, year: +y, pts: by[y], est: be[y] || {} }; });
   }
-  /* valor de uma série numa data, aceitando o ponto anterior até `tol` dias (semana sem leitura → null) */
-  function near(pts, iso, tol) { var b = at(pts, iso); return (b && days(b[0], iso) <= (tol == null ? 10 : tol)) ? b[1] : null; }
+  /* o ponto de uma série numa data, aceitando o anterior até `tol` dias (semana sem leitura → null); near = só o valor */
+  function nearPt(pts, iso, tol) { var b = at(pts, iso); return (b && days(b[0], iso) <= (tol == null ? 10 : tol)) ? b : null; }
+  function near(pts, iso, tol) { var b = nearPt(pts, iso, tol); return b ? b[1] : null; }
+  function addDays(iso, n) { return new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10); }
+  /* série SEMANAL sem buraco: cada semana que falta entre duas leituras leva a MÉDIA da leitura anterior e da seguinte (pedido
+     do usuário, 25/11/2026: "coloque a média dos dois pontos antes e depois daquele que faltou"). Várias semanas seguidas levam
+     a mesma média. Antes da 1ª e depois da última leitura não se inventa nada. → {pts, est: {aaaa-mm-dd: 1}} */
+  function fillWeekly(pts) {
+    var out = [], est = {}, i, d;
+    for (i = 0; i < (pts || []).length; i++) {
+      out.push(pts[i]); var b = pts[i + 1]; if (!b) break;
+      var v = (pts[i][1] + b[1]) / 2;
+      for (d = addDays(pts[i][0], 7); days(d, b[0]) >= 4; d = addDays(d, 7)) { out.push([d, v]); est[d] = 1; }
+    }
+    return { pts: out, est: est };
+  }
   /* linhas da get_china_mills(): [semana, data do boletim, % com lucro, % altos-fornos ligados, % utilização, gusa kt/dia, tipo] */
   var MILL = { obs: 1, profit: 2, bfop: 3, bfutil: 4, hm: 5, kind: 6 };
   function millPts(rows, col) { var ix = MILL[col], out = []; (rows || []).forEach(function (r) { var v = r && r[ix]; if (v != null && v !== '' && isFinite(v)) out.push([String(r[0]).slice(0, 10), +v]); }); return out; }
+
+  /* a coluna das usinas uma vez por versão dos dados: as leituras, a série completa e as semanas estimadas */
+  function millC(S, col) {
+    if (S._millV !== S.v) { S._mill = {}; S._millV = S.v; }
+    var c0 = S._mill[col]; if (c0) return c0;
+    var raw = millPts(S.mills, col), f = fillWeekly(raw);
+    return (S._mill[col] = { raw: raw, pts: f.pts, est: f.est });
+  }
 
   /* o que o catálogo da página usa para montar as séries */
   var P = {
@@ -138,8 +166,12 @@
     meta: function (S, code) { return S.daily[code] || null; },
     sub: function (a, b) { return combine(a, b, function (x, y) { return x - y; }); },
     combine: combine, at: at, mean: mean, mLabel: mLabel, dLabel: dLabel, sLabel: sLabel, fmt: fmt, byYear: byYear, near: near, days: days, shift: shift,
-    /* usinas chinesas: a coluna pedida ('profit' | 'bfop' | 'bfutil' | 'hm') como [[semana, valor]…]; a linha inteira de uma semana */
-    mill: function (S, col) { if (S._millV !== S.v) { S._mill = {}; S._millV = S.v; } return S._mill[col] || (S._mill[col] = millPts(S.mills, col)); },
+    /* usinas chinesas: a coluna pedida ('profit' | 'bfop' | 'bfutil' | 'hm') como [[semana, valor]…], SEM buraco (fillWeekly);
+       millRaw = só as leituras; millEst = as semanas estimadas; millAt = {v, est} numa semana exata; millRow = a linha da semana */
+    mill: function (S, col) { return millC(S, col).pts; },
+    millRaw: function (S, col) { return millC(S, col).raw; },
+    millEst: function (S, col) { return millC(S, col).est; },
+    millAt: function (S, col, iso) { var c0 = millC(S, col), b = at(c0.pts, iso); return (b && b[0] === iso) ? { v: b[1], est: !!c0.est[iso] } : null; },
     millRow: function (S, iso) { var r = null; (S.mills || []).forEach(function (x) { if (String(x[0]).slice(0, 10) <= iso) r = x; }); return r; },
     /* linhas da paridade de um produto ('hrc' | 'rebar'), já com a conta feita e o ponto ao vivo no fim */
     par: function (S, prod) {
@@ -200,7 +232,7 @@
 
   /* ══ (c) INTERFACE ═════════════════════════════════════════════════════════ */
   /* cores da sazonalidade: o ano mais novo laranja, o anterior cinza cheio, os outros cinza mais claro (tracejados no gráfico) */
-  function seasColors(n) { var t = D.theme(), out = []; for (var k = 0; k < n; k++) out.push(k === 0 ? ORANGE : 'rgba(' + t.band + ',' + (k === 1 ? .8 : Math.max(.2, .5 - .08 * (k - 2))) + ')'); return out; }
+  function seasColors(n) { var out = []; for (var k = 0; k < n; k++) out.push(X.yearColor ? X.yearColor(k) : ORANGE); return out; }
   function palette() { return X.isDark() ? [ORANGE, '#e8eaed', '#5b8fd6', '#3fb8a8', '#c9b47a', '#a892d6'] : [ORANGE, '#111111', '#3f72b5', '#2a9d8f', '#b79a5c', '#8a6fb3']; }
   function num(v, dec, signed) { if (v == null || !isFinite(v)) return '—'; return (signed && v > 0 ? '+' : '') + fmt(v, dec).replace(/^-/, '−'); }
   /* % que pode ser negativa (um prêmio) leva sinal; % que não pode (usinas com lucro, utilização) não */
@@ -354,7 +386,8 @@
     if (n < 1 || !ser.length) { E.build.hidden = true; this._dropCharts('hf'); E.stage.querySelector('.dk-sv').textContent = '—'; E.stage.querySelector('.dk-sd').textContent = 'No data in this window'; E.stage.querySelector('.dk-hfleg').innerHTML = ''; E.read.querySelector('.dk-kv').innerHTML = ''; E.read.querySelector('.dk-big').textContent = '—'; return; }
     var labels = a.dates.slice(i0, i1 + 1).map(seas ? sLabel : dLabel), cs = seas ? seasColors(ser.length) : null, dts = a.dates;
     var sets = ser.map(function (s, k) {
-      var d = seas ? X.lineSet(a.vals[k].slice(i0, i1 + 1), cs[k], { label: s.name, w: k === 0 ? 2.6 : k === 1 ? 1.9 : 1.3, dash: k >= 2 ? [4, 3] : null, end: k === 0, surf: t.surf, order: k + 1 })
+      var ys = seas && X.yearStyle ? X.yearStyle(k) : { w: k ? 1.3 : 2.6, dash: k >= 2 ? [4, 3] : null };
+      var d = seas ? X.lineSet(a.vals[k].slice(i0, i1 + 1), cs[k], { label: s.name, w: ys.w, dash: ys.dash, end: k === 0, surf: t.surf, order: k + 1 })
                    : X.lineSet(a.vals[k].slice(i0, i1 + 1), pal[k % pal.length], { label: s.name, w: k ? 1.8 : 2.4, end: true, surf: t.surf, area: !k && ser.length === 1 && !M.pp && !M.diff, partialAt: liveI >= 0 ? liveI : null, order: k ? 2 : 1 });
       d.spanGaps = true;
       /* furo: o trecho entre dois pontos mais distantes que gapDays não é desenhado (semana sem leitura fica em branco) */
@@ -377,7 +410,8 @@
     if (!hov) while (ref > v.i0 && v.vals[0][ref] == null) ref--;
     if (M.season) return this._hfPaintSeason(v, hov, ref);
     var iso = v.dates[ref], main = v.ser[0].pts, cur = at(main, iso), val = cur ? cur[1] : null, live = v.liveI >= 0 && ref === v.i0 + v.liveI;
-    var when = dLabel(iso) + (live ? ' · live' : hov ? '' : ' · latest');
+    var estN = null; try { estN = M.estAt ? M.estAt(this._hfStore(), P, iso) : null; } catch (e) { estN = null; }
+    var when = dLabel(iso) + (live ? ' · live' : hov ? '' : ' · latest') + (estN ? ' · estimate' : '');
     E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
     /* legenda com o valor de cada série na data lida */
     E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.length > 1 ? v.ser.map(function (s, j) { var x = v.vals[j][ref]; if (x == null) { var b = at(s.pts, iso); x = b ? b[1] : null; }
@@ -394,6 +428,7 @@
     var R = E.read; R.querySelector('.dk-when').textContent = when;
     R.querySelector('.dk-big').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(M.short || M.label) + '</small>';
     var kv = '', row = function (a0, b0, c0) { kv += '<span>' + esc(a0) + '</span><b' + (c0 ? ' class="' + c0 + '"' : '') + '>' + b0 + '</b>'; }, head = function (t0) { kv += '<span class="dk-kvh">' + esc(t0) + '</span>'; };
+    if (estN) { head('Estimate'); kv += '<span class="dk-kvnote">' + esc(estN) + '</span>'; }
     cmp.forEach(function (c) { row(c[0] === 'vs previous' ? 'vs previous (' + dLabel(c[2][0]) + ')' : c[0], chgTxt(M, c[1]), X.cls(c[1])); });
     if (v.ser.length > 1) { head('On this date');
       v.ser.forEach(function (s, j) { var x = v.vals[j][ref]; if (x == null) { var b = at(s.pts, iso); x = b ? b[1] : null; }
@@ -415,16 +450,19 @@
   /* sazonalidade: cada ano na mesma semana; o mais novo contra o ano anterior e contra a média dos outros */
   Desk.prototype._hfPaintSeason = function (v, hov, ref) {
     var E = this.el, M = v.M, cs = seasColors(v.ser.length), nw = v.ser[0], prevY = v.ser[1], iso = v.dates[ref], N = v.ser.length;
-    var vals = v.ser.map(function (s) { return near(s.pts, iso); }), val = vals[0], cY = (prevY && val != null && vals[1] != null) ? chg(M, val, vals[1]) : null;
-    var when = sLabel(iso) + ' ' + nw.name + (hov ? '' : ' · latest');
+    var pts = v.ser.map(function (s) { return nearPt(s.pts, iso); }), vals = pts.map(function (b) { return b ? b[1] : null; }), val = vals[0], cY = (prevY && val != null && vals[1] != null) ? chg(M, val, vals[1]) : null;
+    var isEst = pts.map(function (b, j) { return !!(b && v.ser[j].est && v.ser[j].est[b[0]]); }), anyEst = isEst.some(Boolean), mk = function (j) { return isEst[j] ? '*' : ''; };
+    var when = sLabel(iso) + ' ' + nw.name + (hov ? '' : ' · latest') + (isEst[0] ? ' · estimate' : '');
     E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
-    E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.map(function (s, j) { return '<span><i style="background:' + cs[j] + '"></i>' + esc(s.name) + ' <b>' + num(vals[j], M.dec, sg(M)) + '</b></span>'; }).join('');
+    E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.map(function (s, j) { return X.yearChip ? X.yearChip(j, s.name, num(vals[j], M.dec, sg(M)) + mk(j))
+      : '<span><i style="background:' + cs[j] + '"></i>' + esc(s.name) + ' <b>' + num(vals[j], M.dec, sg(M)) + '</b></span>'; }).join('');
     E.stage.querySelector('.dk-sd').innerHTML = cY == null ? '' : '<span class="' + X.cls(cY) + '">' + esc(chgTxt(M, cY)) + '</span> vs ' + esc(prevY.name);
     var R = E.read, kv = '', row = function (a0, b0, c0) { kv += '<span>' + esc(a0) + '</span><b' + (c0 ? ' class="' + c0 + '"' : '') + '>' + b0 + '</b>'; }, head = function (t0) { kv += '<span class="dk-kvh">' + esc(t0) + '</span>'; };
     R.querySelector('.dk-when').textContent = 'Week of ' + sLabel(iso);
     R.querySelector('.dk-big').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(nw.name) + '</small>';
     head('Same week, every year');
-    v.ser.forEach(function (s, j) { kv += '<span><i style="background:' + cs[j] + '"></i>' + esc(s.name) + '</span><b>' + num(vals[j], M.dec, sg(M)) + '</b>'; });
+    v.ser.forEach(function (s, j) { kv += '<span><i style="background:' + cs[j] + '"></i>' + esc(s.name) + '</span><b>' + num(vals[j], M.dec, sg(M)) + mk(j) + '</b>'; });
+    if (anyEst) kv += '<span class="dk-kvnote">* estimate: no reading that week — average of the week before and the week after</span>';
     var past = vals.slice(1).filter(function (x) { return x != null; });
     if (val != null && past.length) {
       head(nw.name + ' against');
@@ -454,5 +492,6 @@
   Desk.prototype.pricesDebug = function () { var v = this._hfV; if (!v) return null; return { metric: v.M.id, dates: v.dates.slice(v.i0, v.i1 + 1), liveI: v.liveI, refs: v.refs,
     series: v.ser.map(function (s, k) { return { name: s.name, vals: v.vals[k].slice(v.i0, v.i1 + 1) }; }) }; };
   D.prices = { parity: parity, parRow: parRow, liveRow: liveRow, fromDaily: fromDaily, combine: combine, at: at, align: align, win: win, shift: shift, mean: mean, dLabel: dLabel,
-    decodeHist: decodeHist, mergeHist: mergeHist, qInfo: qInfo, qBack: qBack, avgIn: avgIn, byYear: byYear, seasIso: seasIso, sLabel: sLabel, near: near, millPts: millPts, P: P };
+    decodeHist: decodeHist, mergeHist: mergeHist, qInfo: qInfo, qBack: qBack, avgIn: avgIn, byYear: byYear, seasIso: seasIso, sLabel: sLabel, near: near, millPts: millPts,
+    fillWeekly: fillWeekly, addDays: addDays, P: P };
 })();

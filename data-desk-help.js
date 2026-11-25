@@ -22,7 +22,7 @@
       yoyDiff: 'Bars show the change against the same {per} a year earlier, in {unit}: green = higher, red = lower.',
       ltmFlow: 'Each point adds up the last {n}, which removes the seasonality.',
       ltmOther: 'Each point covers the last {n}, which removes the seasonality.',
-      seasonal: 'One line per year over the same {pers}: orange = {y}, solid grey = {y1}, dashed = the years before. Hover to read every year.',
+      seasonal: 'One line per year over the same {pers}: orange = {y}, solid line = {y1}, dotted lines = the years before, each in its own colour (legend above the chart). Hover to read every year.',
       avg12: 'The dashed grey line is the 12-month average.',
       winAvg: 'The dashed line is the average of the window.',
       avgBoth: 'The dashed curve is the 12-month average; the flat dashed line is the average of the window.',
@@ -128,17 +128,17 @@
       },
       chinamills: {
         profit: { what: 'Share of the 247 Chinese blast-furnace steel mills surveyed every week that make a cash profit on their main product, in % (Mysteel). It counts mills, not tonnes: a small mill weighs the same as a large one.',
-          how: 'Low readings mean most Chinese mills lose money on each tonne — usually followed by output cuts, which weigh on iron ore demand. The dashed line is the average since 2021. One point per week (Fridays); weeks with no survey (Chinese New Year) are left blank.' },
+          how: 'Low readings mean most Chinese mills lose money on each tonne — usually followed by output cuts, which weigh on iron ore demand. The dashed line is the average of the actual readings since 2021. One point per week (Fridays); a week with no reading (Chinese New Year) takes the average of the week before and the week after, marked as an estimate when you hover.' },
         hm: { what: 'Hot metal (liquid pig iron) produced per day by the same 247 mills, in thousand tonnes per day (Mysteel). Blast furnaces make hot metal from iron ore, so this is the closest weekly read of China\'s iron ore use.',
-          how: 'The dashed line is the average since 2021. One point per week (Fridays); weeks with no survey, or whose figure we could not retrieve (mostly 2021–2023), are left blank.' },
+          how: 'The dashed line is the average of the actual readings since 2021. One point per week (Fridays); a week with no figure (Chinese New Year, or not retrievable — mostly 2021–2023) takes the average of the week before and the week after, marked as an estimate when you hover.' },
         bf: { what: 'How hard China\'s blast furnaces are running, in % (Mysteel, 247 mills): capacity utilization = hot metal produced ÷ hot metal capacity; operating rate = share of the furnaces that are running.',
-          how: 'Both fall when mills cut output or stop furnaces for maintenance. One point per week (Fridays); weeks whose figure we could not retrieve (mostly 2021–2023) are left blank.' },
+          how: 'Both fall when mills cut output or stop furnaces for maintenance. One point per week (Fridays); a week with no figure (mostly 2021–2023) takes the average of the week before and the week after, marked as an estimate when you hover.' },
         pvu: { what: 'Share of mills making money (orange) against blast-furnace capacity utilization (black), both in % and from the same weekly survey of 247 mills (Mysteel).',
           how: 'Margins usually move first: when few mills make money, output tends to be cut in the following weeks; when margins recover, furnaces restart. Both lines share the same % scale.' },
         profit_seas: { what: 'Share of the 247 Chinese mills making money (Mysteel), one line per year, so the same weeks of different years compare directly.',
-          how: 'Orange = this year, solid grey = last year, dashed = earlier years. Hover to read every year in the same week.' },
+          how: 'Orange = this year, solid line = last year, dotted lines = earlier years, each in its own colour (legend above the chart). Hover to read every year in the same week.' },
         hm_seas: { what: 'Hot metal output of the 247 Chinese mills, in thousand tonnes per day (Mysteel), one line per year, so the same weeks of different years compare directly.',
-          how: 'Orange = this year, solid grey = last year, dashed = earlier years. Output usually dips around Chinese New Year.' }
+          how: 'Orange = this year, solid line = last year, dotted lines = earlier years, each in its own colour (legend above the chart). Output usually dips around Chinese New Year.' }
       }
     },
 

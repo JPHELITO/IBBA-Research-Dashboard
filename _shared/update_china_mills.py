@@ -62,19 +62,62 @@ def plain(s):
     return re.sub(r"\s+", "", s)
 
 
-def parse_bulletin(page):
-    """os quatro números do boletim (texto da página, HTML ou já extraído de PDF) → {coluna: valor}; o que não achar fica de fora.
-    Lê a partir do título do artigo quando ele existe (o menu do site também tem "高炉开工率", sem número, mas é melhor não arriscar)."""
-    i = page.find('id="content-title"')
-    t = plain(page[i:] if i >= 0 else page)
+ANCHOR = "247家"
+SAMPLE_RE = re.compile(r"调研(\d{3})家钢厂")
+END_RE = re.compile(r"[。◎]")
+
+
+def sample_sentences(t, anchor=ANCHOR, span=320):
+    """os trechos que começam em "247家" e vão até o fim da frase (。 ou ◎), no máximo `span` caracteres.
+    A MESMA página da Mysteel traz outras pesquisas com as mesmas palavras — utilização das MINAS de minério (国内矿山产能利用率,
+    ~60%), altos-fornos de TANGSHAN (唐山钢厂…高炉开工率, ~70%), a amostra antiga de 163 usinas, as elétricas, até borracha
+    (丁苯橡胶产能利用率). Ler "o primeiro número depois da palavra" misturava essas contas na série (2022 a abr/2023, 25/11/2026)."""
+    out, i = [], t.find(anchor)
+    while i >= 0:
+        seg = t[i:i + span]
+        m = END_RE.search(seg, len(anchor))
+        out.append(seg[:m.start()] if m else seg)
+        i = t.find(anchor, i + 1)
+    return out
+
+
+def values_in(seg):
+    """os números de um trecho: para cada coluna, o primeiro valor dentro da faixa plausível"""
     out = {}
     for col, (rx, (lo, hi)) in FIELDS.items():
-        m = rx.search(t)
-        if not m:
-            continue
-        v = float(m.group(1))
-        if lo <= v <= hi:
-            out[col] = v
+        for m in rx.finditer(seg):
+            v = float(m.group(1))
+            if lo <= v <= hi:
+                out[col] = v
+                break
+    return out
+
+
+BF_RE = re.compile(r"高炉|铁水|盈利率")
+
+
+def _pick(found):
+    """por coluna: o valor que aparece mais vezes; no empate, o último (na página do boletim, o texto vem depois do resumo de IA)"""
+    cands = {}
+    for v in found:
+        for col, x in v.items():
+            cands.setdefault(col, []).append(x)
+    return {col: max(vs, key=lambda x: (vs.count(x), max(i for i, y in enumerate(vs) if y == x))) for col, vs in cands.items()}
+
+
+def parse_bulletin(page, anchor=ANCHOR, expect=None):
+    """os quatro números da pesquisa de 247 usinas (página HTML ou texto de PDF) → {coluna: valor}; o que não achar fica de fora.
+    Só vale a frase das 247 usinas que fala de alto-forno, gusa ou lucro (a mesma amostra tem uma frase das COQUERIAS, com outra
+    "产能利用率"). Mandam as frases que trazem a % de lucro — com `expect` (a % de lucro já conhecida da semana), só as que batem
+    com ela: relatório semanal às vezes repete a frase da semana ANTERIOR. As outras frases só completam o que faltou."""
+    found = [values_in(s) for s in sample_sentences(plain(page), anchor) if BF_RE.search(s)]
+    found = [v for v in found if v]
+    if expect is not None:
+        found = [v for v in found if "profitable_pct" not in v or abs(v["profitable_pct"] - expect) <= 0.011]
+    main = [v for v in found if "profitable_pct" in v] or found
+    out = _pick(main)
+    for col, x in _pick([v for v in found if all(v is not m for m in main)]).items():
+        out.setdefault(col, x)
     return out
 
 
@@ -177,6 +220,11 @@ def new_rows(last_obs, get=None, pause=2.0, log=print):
             problems.append(f"boletim de {d}: {ex}")
             continue
         vals = parse_bulletin(page)
+        if "profitable_pct" not in vals:   # a amostra mudou de tamanho (ex.: 250 usinas)? lê com a amostra nova e AVISA
+            n = SAMPLE_RE.search(plain(page))
+            if n and n.group(1) + "家" != ANCHOR:
+                vals = parse_bulletin(page, n.group(1) + "家")
+                problems.append(f"boletim de {d}: a pesquisa agora é de {n.group(1)} usinas (era {ANCHOR[:-1]}) — conferir a série")
         if "profitable_pct" not in vals:
             problems.append(f"boletim de {d}: não achei o 盈利率 (página mudou?) — não gravado")
             continue

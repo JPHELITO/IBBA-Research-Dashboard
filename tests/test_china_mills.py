@@ -54,6 +54,33 @@ def test_faixa_plausivel_e_menu():
     assert U.parse_bulletin(page(prof="0.87"))["profitable_pct"] == 0.87   # lucro quase zero é plausível (ago/2024 foi 1%)
 
 
+def test_so_a_frase_das_247_usinas():
+    """as outras pesquisas da MESMA página (minas, Tangshan, 163 usinas, borracha) não entram — eram os saltos de 2022–2023"""
+    outras = ("<p>国内矿山产能利用率65.48%，高炉产能利用率90.14%</p>"                       # tabela: minas e uma linha sem amostra
+              "<p>需求端唐山钢厂调研样本铁水产量环比上涨0.45万吨至36.8万吨，高炉开工率77.23%。</p>"   # Tangshan
+              "<p>中国丁苯橡胶产能利用率64.55%。</p>")                                          # borracha
+    v = U.parse_bulletin(outras + page())
+    assert v == {"bf_operating_pct": 70.10, "bf_util_pct": 80.20, "profitable_pct": 50.30, "hot_metal_10kt": 200.40}
+    assert U.parse_bulletin(outras) == {}                            # sem a frase das 247 usinas: nada
+    velha = ("<p>Mysteel调研247家钢厂高炉开工率57.94%，环比下降21.74%；高炉炼铁产能利用率81.01%；日均铁水产量215.63万吨。"
+             "Mysteel调研163家钢厂高炉开工率41.99%，产能利用率51.01%。</p>")
+    assert U.parse_bulletin(velha) == {"bf_operating_pct": 57.94, "bf_util_pct": 81.01, "hot_metal_10kt": 215.63}
+    # resumo do topo (IA) discordando do texto do boletim: vale o que aparece mais vezes; no empate, o texto (o último)
+    resumo = "<p>Mysteel调研247家钢厂，高炉开工率71.00%，产能利用率80.20%。</p>"
+    assert U.parse_bulletin(resumo + page())["bf_operating_pct"] == 70.10
+    # a frase das COQUERIAS da mesma amostra (焦炭… 产能利用率) não é a utilização dos altos-fornos
+    coque = "<p>本周Mysteel统计全国247家钢厂样本：焦炭日均产量46.55增0.40，产能利用率86.24%增0.74%。</p>"
+    assert U.parse_bulletin(page() + coque)["bf_util_pct"] == 80.20
+    # relatório que repete a frase da semana ANTERIOR (sem a % de lucro): manda a frase com o lucro conhecido
+    antes = "<p>247家钢厂高炉开工率69.00%，环比上周增加0.73个百分点；日均铁水产量199.00万吨。</p>"
+    v = U.parse_bulletin(page() + antes, expect=50.30)
+    assert v["bf_operating_pct"] == 70.10 and v["hot_metal_10kt"] == 200.40
+    outra_semana = page(op="69.00", prof="48.00", hm="199.00")       # a frase de outra semana COM lucro diferente: fora
+    assert U.parse_bulletin(outra_semana + page(), expect=50.30)["bf_operating_pct"] == 70.10
+    # palavra repetida antes do número ("高炉开工率高炉开工率76.25%") e o primeiro número fora da faixa
+    assert U.parse_bulletin("<p>247家钢厂高炉开工率高炉开工率76.25%；高炉炼铁产能利用率180%；产能利用率81.08%。</p>") == {"bf_operating_pct": 76.25, "bf_util_pct": 81.08}
+
+
 def test_lista():
     html = listing([("Mysteel数据：钢厂高炉检修调查统计（20300111）", "https://tks.mysteel.com/datas/a/30011108/AAA.html"),
                     ("Mysteel数据：进口铁矿石港口库存调查统计（20300111）", "https://tks.mysteel.com/datas/a/30011108/BBB.html"),
@@ -134,6 +161,16 @@ def test_lista_vazia_e_problema(monkeypatch):
     monkeypatch.setattr(U, "LISTS", ["L"])
     rows, probs = U.new_rows("2030-01-04", get=lambda u, **k: b"<html>verifique que voce nao e um robo</html>")
     assert rows == [] and len(probs) == 1 and "sem nenhum boletim" in probs[0]
+
+
+def test_robo_amostra_nova(monkeypatch):
+    """se a Mysteel mudar a amostra (ex.: 250 usinas), o robô lê com a amostra nova e avisa"""
+    monkeypatch.setattr(U.time, "sleep", lambda s: None)
+    monkeypatch.setattr(U, "LISTS", ["L"])
+    pages = {"L": PAGES["L"], "https://tks.mysteel.com/datas/a/3001/C1.html": page("20300118", prof="30.2").replace("247家", "250家")}
+    get = lambda u, **k: pages[u].encode("utf-8") if u in pages else (_ for _ in ()).throw(RuntimeError("x"))
+    rows, probs = U.new_rows("2030-01-11", get=get)
+    assert [r["profitable_pct"] for r in rows] == [30.2] and any("250 usinas" in p for p in probs)
 
 
 def test_robo_avisa_quando_o_dado_envelhece(monkeypatch):

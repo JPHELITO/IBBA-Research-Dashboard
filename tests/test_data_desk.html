@@ -190,12 +190,27 @@ eq('texto de variação: %, pp e diferença', [C.chgTxt({}, 12.34), C.chgTxt({ p
   const MR = [['2030-01-04', '2030-01-04', 50.5, 80, 85.2, 2300.4, 'mysteel'], ['2030-01-11', null, null, null, null, null, 'none'], ['2030-01-18', '2030-01-16', 40.25, 79, null, 2290, 'secondary']];
   eq('millPts · a coluna pedida, sem a semana sem leitura nem o valor vazio', [X.millPts(MR, 'profit'), X.millPts(MR, 'bfutil'), X.millPts(null, 'hm')], [[['2030-01-04', 50.5], ['2030-01-18', 40.25]], [['2030-01-04', 85.2]], []]);
   const SM = { mills: MR, v: 1 };
-  eq('P.mill / P.millRow · a série e a linha inteira da semana lida', [X.P.mill(SM, 'hm'), X.P.millRow(SM, '2030-01-20')[1], X.P.millRow(SM, '2029-12-31')], [[['2030-01-04', 2300.4], ['2030-01-18', 2290]], '2030-01-16', null]);
+  eq('P.millRaw / P.mill / P.millRow · as leituras, a série completa (a semana vazia leva a média) e a linha da semana lida',
+    [X.P.millRaw(SM, 'hm'), X.P.mill(SM, 'hm'), X.P.millRow(SM, '2030-01-20')[1], X.P.millRow(SM, '2029-12-31')],
+    [[['2030-01-04', 2300.4], ['2030-01-18', 2290]], [['2030-01-04', 2300.4], ['2030-01-11', (2300.4 + 2290) / 2], ['2030-01-18', 2290]], '2030-01-16', null]);
   const by = X.byYear([['2029-12-28', 1], ['2030-01-04', 2], ['2030-02-29', 3], ['2031-01-03', 4], ['2031-01-10', null]]);
   eq('byYear · um ano por série, do mais novo ao mais velho, datas postas num ano só (2000, bissexto)', by.map(s => [s.name, s.pts]), [['2031', [['2000-01-03', 4]]], ['2030', [['2000-01-04', 2], ['2000-02-29', 3]]], ['2029', [['2000-12-28', 1]]]]);
   eq('byYear · só os N anos mais novos', X.byYear([['2029-01-05', 1], ['2030-01-04', 2], ['2031-01-03', 3]], 2).map(s => s.name), ['2031', '2030']);
   eq('near · o ponto da mesma semana; semana sem leitura (mais de 10 dias) = vazio', [X.near([['2000-01-04', 2], ['2000-01-25', 3]], '2000-01-10'), X.near([['2000-01-04', 2], ['2000-01-25', 3]], '2000-01-20'), X.near([], '2000-01-01')], [2, null, null]);
   eq('sLabel · dia e mês, sem ano', [X.sLabel('2000-01-04'), X.sLabel('2000-11-20')], ['4 Jan', '20 Nov']);
+  /* semanas sem número: a média da semana anterior e da seguinte (pedido do usuário, 25/11/2026) */
+  const fw = X.fillWeekly([['2030-01-04', 10], ['2030-01-18', 20], ['2030-02-15', 40], ['2030-02-22', 41]]);
+  eq('fillWeekly · 1 semana faltando = média dos vizinhos; 3 seguidas = a mesma média; nada antes da 1ª nem depois da última', fw.pts,
+    [['2030-01-04', 10], ['2030-01-11', 15], ['2030-01-18', 20], ['2030-01-25', 30], ['2030-02-01', 30], ['2030-02-08', 30], ['2030-02-15', 40], ['2030-02-22', 41]]);
+  eq('fillWeekly · as semanas estimadas ficam marcadas', Object.keys(fw.est).sort(), ['2030-01-11', '2030-01-25', '2030-02-01', '2030-02-08']);
+  eq('fillWeekly · série sem buraco fica igual', X.fillWeekly([['2030-01-04', 1], ['2030-01-11', 2]]).pts, [['2030-01-04', 1], ['2030-01-11', 2]]);
+  const SM2 = { mills: [['2030-01-04', '2030-01-04', 50, 80, 85, 2300, 'mysteel'], ['2030-01-11', null, null, null, null, null, 'none'], ['2030-01-18', '2030-01-18', 40, 79, null, 2290, 'mysteel'], ['2030-01-25', '2030-01-25', 44, 78, 87, 2280, 'mysteel']], v: 1 };
+  eq('P.mill · completa a semana sem pesquisa e o número que faltou; P.millRaw fica só com as leituras',
+    [X.P.mill(SM2, 'profit').map(p => p[1]), X.P.mill(SM2, 'bfutil').map(p => p[1]), X.P.millRaw(SM2, 'bfutil').length], [[50, 45, 40, 44], [85, 86, 86, 87], 2]);
+  eq('P.millAt · {v, est} na semana exata; fora da série = null', [X.P.millAt(SM2, 'profit', '2030-01-11'), X.P.millAt(SM2, 'profit', '2030-01-04'), X.P.millAt(SM2, 'profit', '2030-01-07')],
+    [{ v: 45, est: true }, { v: 50, est: false }, null]);
+  const byE = X.byYear(X.P.mill(SM2, 'profit'), 6, X.P.millEst(SM2, 'profit'));
+  eq('byYear · a marca de estimativa acompanha a data posta num ano só', byE[0].est, { '2000-01-11': 1 });
 })();
 
 /* ── EXPLICAÇÕES (data-desk-help.js): o texto de cada gráfico, num lugar só ── */
