@@ -451,6 +451,22 @@
     const cashE = est(/^cash\s+earnings/i);
     const divs = est(/^dividend.*int/i);                    // "Dividends/Int. on Capital" (exclui "Dividend Yield")
     const adj = est(/^adjustment/i);
+    // EV QUE O ANALISTA FECHOU NA ABA (25/11/2026). A dash monta o EV ao vivo = valor de mercado de agora + Net Debt +
+    // Adjustments, e a linha "EV Adjusted" da aba costuma ser exatamente essa soma (linhas 16 a 18 do bloco-série).
+    // Quando o analista põe no EV algo que não está em "Adjustments" — a Ero passou a puxar o EV do modelo, que soma o
+    // projeto Furnas — o que sobra (EV Adjusted − Market Cap − Net Debt) vira o ajuste: sem isso a comp table ignorava
+    // o item (2,9× na dash contra 5,0× na Summary). Diferença de até meio milhão é arredondamento e não conta.
+    const evAdj = est(/^ev\s+adjusted/i);
+    const mcSerie = mcF ? { y1: _sgCellNum(aoa[mcF.r][y1]), y2: _sgCellNum(aoa[mcF.r][y2]) } : { y1: null, y2: null };
+    ['y1', 'y2'].forEach(function (k) {
+      if (!_isNum(evAdj[k]) || !_isNum(mcSerie[k]) || !_isNum(netDebt[k])) return;
+      const resto = evAdj[k] - mcSerie[k] - netDebt[k];
+      const lido = _isNum(adj[k]) ? adj[k] : 0;
+      if (Math.abs(resto - lido) <= 0.5) return;
+      warnings.push(meta.tab + ': o "EV Adjusted" de ' + years[k] + ' tem ' + (Math.round((resto - lido) * 10) / 10) +
+        ' além de valor de mercado + dívida + ajustes — a dash soma isso ao EV (ajuste ' + (Math.round(resto * 10) / 10) + ')');
+      adj[k] = resto;
+    });
     // dividendo PAGO é sempre ≥ 0 num yield; a aba LUNDIN (planilha "2027") traz o valor do fluxo de caixa com o sinal
     // de saída (−215) e a Summary mostra yield negativo. Usa o valor absoluto e avisa (consertar a aba: "*-1", como a HUDBAY).
     ['y1', 'y2'].forEach(function (k) {

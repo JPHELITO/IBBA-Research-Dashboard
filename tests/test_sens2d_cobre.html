@@ -135,6 +135,33 @@ window.__RUN__=async function(){
   ok('"real" solto não vira real terms', P._s2RealTermsAxis({model_date:'2026-11-09',sheets:[{name:'S',tables:[{metric:'ebitda',year:'2027',
     colLabel:'Real Price Growth 2027 (%)',rowLabel:'Realized Copper Price 2027 (USD/lb)'}]}]})===null);
 
+  // ── 5. COBRE (pedido do analista, 25/11): EBITDA, FCF, FCF yield e P/NAV — sem EV/EBITDA ──────────────
+  //    e o P/NAV reescrito a partir da base que o GEROU (TSX a câmbio fixo), não a do FCF yield (NYSE)
+  ok('base do P/NAV lida do quadro "Implicit Cu Prices" ("(=) Market Cap (USD mn)")', d.mktcap_model_nav===MC);
+  const AO2=AO.map(r=>r.slice()); AO2[50][3]=4975;            // D51 0,5% abaixo do valor de mercado do FCF yield
+  const d2=A.sgParseSens2d([{name:'Sensitivity',aoa:AO2}],{ticker:'HBM',sourceFile:'x.xlsx',modelDate:'2026-11-22'}).def.definition;
+  ok('base do P/NAV 0,5% diferente → guardada à parte', d2.mktcap_model_nav===4975 && Math.abs(d2.mktcap_model-MC)<1e-6);
+  const AO3=AO.map(r=>r.slice()); AO3[50][3]=37000;           // o vínculo errado de Capstone/Ero de 22/11 (7×)
+  ok('quadro com vínculo errado (7× o deduzido) → fica de fora',
+     A.sgParseSens2d([{name:'Sensitivity',aoa:AO3}],{ticker:'HBM'}).def.definition.mktcap_model_nav==null);
+  ok('cobre: EBITDA, FCF, FCF yield e P/NAV, nessa ordem (sem EV/EBITDA)',
+     P._s2Sheets(d2).map(sh=>sh.tables.map(t=>t.metric).join()).join('|')==='ebitda,fcf,fcf_yield,p_nav');
+  ok('quem não é cobre segue com as quatro de sempre',
+     P._s2Sheets(Object.assign({},d2,{ticker:'VALE'})).map(sh=>sh.tables.map(t=>t.metric).join()).join('|')==='ebitda,ev_ebitda,fcf,fcf_yield');
+  COMPS.HBM={ticker:'HBM',company_name:'Hudbay Minerals',livePrice:21,marketCapBrlMn:5250};
+  P._s2RenderPane({id:31,title:'Sensitivity - HBM',definition:d2},pane); const hh=pane.innerHTML;
+  const cartao=t=>(hh.split('<div class="s2-card">').filter(c=>c.indexOf('<h3>'+t)>=0)[0]||'');
+  const noMeio=t=>{ const m=/class="s2-num[^"]*s2-base"[^>]*>([^<]+)</.exec(cartao(t)); return m?m[1]:null; };
+  ok('quatro grades, nenhuma de EV/EBITDA', (hh.match(/class="s2-card"/g)||[]).length===4 && hh.indexOf('EV/EBITDA')<0);
+  ok('P/NAV ao vivo = publicado × valor de mercado de tela ÷ o da base do P/NAV', noMeio('P/NAV')===(0.6*5250/4975).toFixed(2)+'x',
+     noMeio('P/NAV')+' × '+(0.6*5250/4975).toFixed(3));
+  ok('FCF yield ao vivo = FCF ÷ valor de mercado de tela (pela base do FCF yield)', noMeio('FCF Ex-Growth Yield')===(FCF(4,4)/5250*100).toFixed(1)+'%',
+     noMeio('FCF Ex-Growth Yield'));
+  ok('selo "live" no FCF yield e no P/NAV', (hh.match(/class="s2-live"/g)||[]).length===2);
+  ok('carimbo do caso-base nas quatro, inclusive no P/NAV (premissas de longo prazo 5,6 × 4.250)', (hh.match(/s2-base/g)||[]).length===4);
+  ok('a frase diz o que é reescrito', hh.indexOf('EBITDA and FCF are exactly as the analyst published; FCF yield and P/NAV are recomputed at the current screen price.')>0);
+  ok('nota do real terms só com os eixos que têm marca laranja (o de longo prazo do P/NAV fica fora)', P._s2RealTermsAxis(d2).labels.length===2);
+
   const falhas=R.filter(x=>x.startsWith('FAIL')).length;
   document.getElementById('out').textContent =
     R.join('\n')+'\n\n'+(falhas?falhas+' FALHA(S)':'TODOS OS '+R.length+' PASSARAM');

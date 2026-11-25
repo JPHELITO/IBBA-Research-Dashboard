@@ -2719,12 +2719,20 @@ function sgParseSens2d(sheets, opts){
     mktcap=null;
   }
   const shares=(mktcap!=null&&modelPrice)?mktcap/modelPrice:null;
+  // valor de mercado da BASE DO P/NAV (25/11/2026): os modelos de cobre fazem o P/NAV com o preço da TSX a câmbio fixo e
+  // (Hudbay, Ero) o FCF yield com o valor de mercado da NYSE — 0,5% de diferença. O quadro "Implicit Cu Prices" traz o da
+  // base do P/NAV em "(=) Market Cap (USD mn)"; a página usa esse no P/NAV. Longe (±10%) do deduzido = vínculo errado
+  // no quadro (Capstone e Ero de 22/11 multiplicavam o valor de mercado como se fosse nº de ações) → fica de fora.
+  let mcNav=null;
+  allAssum.forEach(function(a){ if(mcNav==null&&/^\(=\)\s*market\s+cap.*\busd\b/i.test(String(a.label))&&_s2IsNum(a.value)) mcNav=a.value; });
+  if(mcNav!=null&&!(mktcap&&mcNav>0&&Math.abs(mcNav/mktcap-1)<=0.1)) mcNav=null;
   outSheets.forEach(function(sh){ sh.tables.forEach(function(t){
     if(t.metric==='ev_ebitda'&&!t.pairId) warnings.push(t.title+': nao achei o EBITDA da mesma grade; fica como publicado'); }); });
 
   const def={kind:'sens2d', ticker:opts.ticker||'', import_ticker:opts.ticker||'',
     source_file:opts.sourceFile||'', model_date:opts.modelDate||'', currency:currency||null,
     model_price:modelPrice, mktcap_model:_s2Round(mktcap,1e6), shares_mn:_s2Round(shares,1e6),
+    mktcap_model_nav:_s2Round(mcNav,1e6),
     panel:(typeof _SGI_PANEL!=='undefined'&&_SGI_PANEL[opts.ticker])||'Sensitivity',
     sheets:outSheets.map(function(sh){ return {name:sh.name, tables:sh.tables.map(function(t){
       return {id:t.id,title:t.title,metric:t.metric,year:t.year,kind:t.kind,corner:t.corner,
@@ -2750,6 +2758,7 @@ function sgParseSens2d(sheets, opts){
 function sgMergeSens2dAnalysis(prev, cur, key, label){
   const meta={key:key, label:label, source_file:cur.source_file||'', model_date:cur.model_date||'',
     currency:cur.currency||null, model_price:cur.model_price, mktcap_model:cur.mktcap_model,
+    mktcap_model_nav:cur.mktcap_model_nav==null?null:cur.mktcap_model_nav,
     shares_mn:cur.shares_mn, assumptions:cur.assumptions||[]};
   const pref=key+'-';
   const novas=(cur.sheets||[]).map(function(sh,i,arr){
@@ -2768,7 +2777,7 @@ function sgMergeSens2dAnalysis(prev, cur, key, label){
   sheets.forEach(function(sh){ const k=String(sh.analysis.key); if(viu[k]) return; viu[k]=1;
     (sh.analysis.assumptions||[]).forEach(function(a){ assum.push(a); }); });
   return Object.assign({},cur,{source_file:first.source_file, model_date:first.model_date, currency:first.currency,
-    model_price:first.model_price, mktcap_model:first.mktcap_model, shares_mn:first.shares_mn,
+    model_price:first.model_price, mktcap_model:first.mktcap_model, mktcap_model_nav:first.mktcap_model_nav, shares_mn:first.shares_mn,
     assumptions:assum, sheets:sheets});
 }
 // "…_Sensitivity_FX.xlsx" -> "FX" (o sufixo que o analista põe em cada análise)
