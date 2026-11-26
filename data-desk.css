@@ -31,6 +31,83 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 
 /* botões de seção que só existem na mesa (Overview, Iron Ore…) */
 .snav-btn.dk-only{display:none;} html.desk-on .snav-btn.dk-only{display:inline-block;}
+/* ══ VISUALIZAÇÕES (26/11/2026, pedido do usuário: "2 ou 3 opções de gráficos para visualizar aquela mesma informação"): o seletor
+   "Chart" de cada gráfico — ícone do desenho + o nome. O ícone fica laranja na opção escolhida. ══ */
+.dk-styw{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.dk-styw:empty{display:none;}
+.dk-sty button{display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;}
+.dk-ico{width:14px;height:14px;flex:none;color:var(--gray-mid);}
+.dk-sty button:hover:not(:disabled):not([aria-pressed="true"]) .dk-ico{color:var(--black);}
+.dk-sty button[aria-pressed="true"] .dk-ico,.dk-sty button[aria-pressed="true"]:hover .dk-ico{color:var(--orange);}
+html.dark .dk-sty button:hover:not(:disabled):not([aria-pressed="true"]) .dk-ico{color:#fff;}
+.dk-stylbl{margin-right:0;}
+/* sazonalidade em tabela (vista Grid): um ano por linha, um mês por coluna, a cor diz o tamanho; a tabela não vira imagem (só o Excel) */
+.dk-sgrid{overflow-x:auto;margin:4px 0 2px;}
+.dk-sgrid[hidden],.dk-stagechart[hidden]{display:none!important;}
+.dk-sgt{border-collapse:separate;border-spacing:2px;width:100%;min-width:640px;font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--black);}
+.dk-sgt th{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-mid);padding:4px 6px;text-align:right;white-space:nowrap;}
+.dk-sgt thead th:first-child{text-align:left;}
+.dk-sgt tbody th{text-align:left;color:var(--gray-dark);font-size:11px;letter-spacing:0;}
+.dk-sgt td{padding:6px;text-align:right;border-radius:4px;white-space:nowrap;}
+.dk-sgt .dk-sgtt{font-weight:700;background:var(--dk-panel2);}
+.dk-sgt tr.dk-sgcur th{color:var(--orange);}
+.dk-sgt small{font-size:9px;font-weight:600;color:var(--gray-mid);}
+html.dark .dk-sgt{color:#e8eaed;}
+.dk-isgrid > .ibba-dl button:first-child{display:none;}
+/* ══ BUILDER — tipos de gráfico e formato (26/11/2026: "um Excel melhorado, mais fácil e rápido") ══ */
+.dk-bstage{position:relative;}
+.dk-btools{display:flex;flex-direction:column;gap:7px;margin:6px 0 10px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--dk-panel2);}
+.dk-btype,.dk-bfmt{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.dk-btype .dk-sty{background:var(--white);}
+.dk-btg{font-size:10.5px;padding:3px 10px;}
+.dk-btg[aria-expanded="true"]{border-color:var(--orange);color:var(--orange);}
+.dk-btg[aria-expanded="true"][aria-pressed="true"]{color:var(--white);}
+.dk-bfsep{width:1px;height:18px;background:var(--border);margin:0 3px;}
+.dk-blab button{font-size:10.5px;padding:3px 9px;}
+.dk-bsel{display:inline-flex;align-items:center;gap:6px;}
+.dk-bsel select,.dk-bxtra input{font:600 11px var(--dk-text);color:var(--black);background:var(--white);border:1px solid var(--border);border-radius:8px;padding:4px 8px;}
+.dk-bsel select{max-width:240px;}
+.dk-bxtra{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding-top:7px;border-top:1px dashed var(--border);}
+.dk-bxtra[hidden]{display:none;}
+.dk-bxtra label{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--dk-text);color:var(--gray-dark);}
+.dk-bxtra input[type=number]{width:92px;}
+.dk-bttl{flex:1 1 320px;} .dk-bttl input{flex:1;min-width:200px;}
+html.dark .dk-bsel select,html.dark .dk-bxtra input{background:#1c2026;color:#e8eaed;}
+/* o ● da ficha abre o formato da série */
+.dk-bsw{display:inline-flex;align-items:center;gap:3px;background:none;border:1px solid transparent;border-radius:7px;padding:3px 4px;cursor:pointer;color:var(--gray-mid);}
+.dk-bsw:hover,.dk-bsw[aria-expanded="true"]{border-color:var(--border);background:var(--dk-panel2);color:var(--black);}
+.dk-bsw svg{width:8px;height:5px;}
+.dk-bpop{position:absolute;z-index:40;width:330px;max-width:calc(100% - 16px);background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 40px -18px rgba(22,25,29,.45);padding:10px 12px;}
+.dk-bpop[hidden]{display:none;}
+.dk-bph{display:flex;align-items:center;gap:8px;margin-bottom:4px;} .dk-bph i{width:10px;height:10px;border-radius:50%;flex:none;} .dk-bph b{flex:1;font-size:12.5px;line-height:1.25;}
+.dk-bpr{display:flex;align-items:center;gap:8px;margin:7px 0;} .dk-bpr > .dk-plbl{width:44px;flex:none;}
+.dk-bpr .dk-seg button{font-size:10.5px;padding:3px 9px;}
+.dk-bcols{display:flex;gap:6px;flex-wrap:wrap;}
+.dk-bcol{width:18px;height:18px;border-radius:50%;border:0;cursor:pointer;padding:0;}
+.dk-bcol[aria-pressed="true"]{box-shadow:0 0 0 2px var(--white),0 0 0 3.5px var(--black);}
+html.dark .dk-bcol[aria-pressed="true"]{box-shadow:0 0 0 2px #1c2026,0 0 0 3.5px #e8eaed;}
+.dk-bshift{display:flex;align-items:center;gap:8px;} .dk-bshift .dk-pill{padding:2px 10px;font-size:13px;line-height:1;} .dk-bshift b{font-size:12px;min-width:86px;text-align:center;}
+.dk-bpn{font-size:10.5px;color:var(--gray-mid);margin:0 0 4px 52px;line-height:1.35;}
+.dk-bpf{display:flex;justify-content:flex-end;margin-top:6px;}
+html.dark .dk-bpop{background:#1c2026;}
+/* By year: a legenda dos anos no cabeçalho do painel */
+.dk-byleg{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;text-transform:none;letter-spacing:0;}
+.dk-byleg .dk-hfleg{display:inline-flex;flex-wrap:wrap;gap:4px 12px;margin:0;}
+.dk-bylu{font-size:10px;color:var(--gray-mid);}
+@media (max-width:768px){ .dk-btools{padding:8px;} .dk-bfsep{display:none;} .dk-bpop{left:8px!important;right:8px;width:auto;} }
+/* ↺ RESET (26/11/2026, pedido do usuário: "um botão de reset acima das opções de filtro"): ao lado do ⤓ Data, na linha logo acima
+   dos filtros. Volta a tela ao jeito que ela abre (filtros, escolhas da seção, Builder). Só com a mesa; some no Overview; apagado
+   quando não há nada a desfazer. O mesmo desenho do ⤓ Data, em tinta neutra (o laranja fica com a ação principal). */
+.dk-rst{display:none;}
+html.desk-on .dk-rst:not([hidden]){display:inline-flex;align-items:center;gap:5px;margin:auto 0 auto 8px;align-self:center;flex-shrink:0;white-space:nowrap;
+  font:600 10px var(--font);letter-spacing:.04em;cursor:pointer;border-radius:8px;padding:5px 12px 5px 10px;
+  border:1px solid rgba(22,25,29,.3);background:var(--white);color:var(--black);transition:background .15s,border-color .15s,color .15s,opacity .15s;}
+html.desk-on .dk-rst svg{width:11px;height:11px;flex:none;}
+html.desk-on .dk-rst:hover:not(:disabled){background:var(--black);border-color:var(--black);color:#fff;}
+html.desk-on .dk-rst:disabled{opacity:.4;cursor:default;}
+html.dark.desk-on .dk-rst:not([hidden]){border-color:rgba(255,255,255,.32);background:transparent;color:rgba(255,255,255,.88);}
+html.dark.desk-on .dk-rst:hover:not(:disabled){background:#343941;border-color:#343941;color:#fff;}
+@media print{.dk-rst{display:none!important;}}
 .dk-viewbar .dk-plbl{margin-left:6px;}
 /* Overview: uma linha por indicador */
 .dk-ovw{padding:4px 6px;} .dk-tblw{overflow-x:auto;}

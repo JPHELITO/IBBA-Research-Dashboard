@@ -31,6 +31,20 @@
       twoLines: '{c0} line = {a}; {c1} line = {b}.',
       twoBars: '{c0} bars = {a}; {c1} bars = {b}.',
       signBars: 'Green bars = above zero, red = below zero. The dashed line is the average of the window.',
+      /* as outras visualizações do seletor "Chart" (26/11/2026) */
+      levelCol: 'Each column is one {per}.',
+      colYoy: 'Columns = the figure in each {per} (left-hand scale); the line = the change against the same {per} a year earlier (right-hand scale).',
+      yoyLine: 'The line shows the change against the same {per} a year earlier, in {unit}: above zero = higher.',
+      asCols: 'Each column is one period.',
+      gap: 'Each bar is {a} minus {b} in that {per}: green = {a} above {b}, red = below.',
+      seasRange: 'Orange = {y}, black line = {yp}. The shaded band runs from the lowest to the highest of {y0}–{y1} in each {per1} and the dashed line is their average — so you see at a glance whether this year runs above or below the usual range.',
+      seasGrid: 'Each row is a year and each column a {per1}; a stronger colour = a higher value within the table. The last column is the {tot} of the year ({y} so far when the year is not complete).',
+      hfIndex: 'Every line starts at 100 on the first day of the window, so the lines show how much each one moved since then: 110 = 10% higher.',
+      hfGap: 'Each line is the difference to {first}, in {unit}: above zero = higher than {first}, below zero = lower.',
+      hfYoy: 'Each point is the change against the same date a year earlier, in %: above zero = higher than a year before.',
+      hfYoyPP: 'Each point is the change against the same date a year earlier, in percentage points: above zero = higher than a year before.',
+      hfMavg: 'Each column is the average of the readings in that calendar month; a lighter last column is a month still in progress. Hover a column to compare it with the month before and with a year earlier.',
+      hfRange: 'Orange = this year, black line = last year. The shaded band runs from the lowest to the highest of the earlier years in each week and the dashed line is their average.',
       r2: 'The correlation table gives the R² of each pair of lines in this window: how much of one\'s movement lines up with the other (0 = none, 1 = all), from a linear regression; blue = they move together, red with “−” = opposite directions, darker = stronger. Lines that both trend can show a high R² without a real link.'
     },
 
@@ -41,6 +55,11 @@
       revenue: 'The same split in US$: each colour is one {noun1} and the bars add up to the total.',
       share: 'Each bar adds up to 100%: the share of each {noun1} in the total.',
       price: 'Average price of each {noun1} (revenue ÷ volume); the thick dashed line is the average of all of them.',
+      area: 'Each colour is one {noun1} and the areas are stacked, so the top edge is the total.',
+      areaShare: 'The areas add up to 100%: the share of each {noun1} in the total.',
+      lines: 'Each line is one {noun1} on its own — the lines are not added up, so you compare their sizes directly.',
+      linesShare: 'Each line is the share of one {noun1} in the total.',
+      priceCol: 'Columns = average price of each {noun1} (revenue ÷ volume); the dashed line is the average of all of them.',
       others: '"Others" groups everything not ticked.',
       othersPrice: 'The thin dashed line is "Others": everything not ticked.',
       list: 'The list ranks them and shows the change against a year earlier.',
@@ -57,6 +76,22 @@
         index: 'Each series starts at 100 at the beginning of the window, so series in different units compare on one scale.'
       },
       dual: 'Series marked “Right axis” are read on the scale at the right, in their own unit; the two scales are independent, so compare how the lines move — not where they cross.',
+      /* tipos de gráfico e formatação do Builder (26/11/2026) */
+      type: {
+        area: 'Each series is drawn as a line with its area filled.',
+        col: 'Each period is a group of columns, one per series.',
+        combo: 'The first series is drawn as columns and the others as lines.',
+        stack: 'The columns are stacked: the top of each column is the sum of the series.',
+        stackarea: 'The areas are stacked: the top edge is the sum of the series.',
+        pct: 'Each column adds up to 100%: the share of each series in their sum, period by period.',
+        scatter: 'Each dot is one period: {x} along the horizontal axis and the other series up the vertical axis. The straight line is the linear regression of each pair, with its R² and slope; darker dots are more recent and the ringed dot is the latest.',
+        year: 'One line per year of {s} over the {pers} of the year: orange = {y}, solid line = {y1}, dotted lines = the years before. Every year is shown, whatever the window.'
+      },
+      trend: 'Dashed straight lines = the linear trend of each series over the window.',
+      avg: 'Dotted flat lines = the average of each series over the window.',
+      shift: 'A series marked “shifted” is moved forward (+) or back (−) in time, to test whether one leads the other; the correlation table uses the shifted series.',
+      log: 'Log scale: equal distances mean equal % changes.',
+      inv: 'An inverted axis grows downwards — handy to show two series that move in opposite directions.',
       r2: 'The correlation table gives the R² of each pair of series in this window: how much of one\'s movement lines up with the other (0 = none, 1 = all), from a linear regression; blue = they move together, red with “−” = opposite directions, darker = stronger. Series that both trend can show a high R² in Level without a real link — YoY is the stricter test.'
     },
 

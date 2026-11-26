@@ -663,6 +663,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
           title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
+  <!-- ↺ Reset (26/11/2026): volta filtros e escolhas desta tela ao jeito que ela abre (resetView, abaixo; estilo em data-desk.css) -->
+  <button type="button" class="dk-rst" id="dk-rst" hidden onclick="resetView()" title="Back to how this page opens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
 </div>
 
 <!-- Data Desk: seções da commodity escolhida (só com a mesa; vazia = some) -->
@@ -2633,6 +2635,7 @@ function _millsSet(ok){
 function _deskKey(){ return (currentSub==='imports'&&importTab==='prediction') ? 'prediction' : currentSub; }
 function _deskRender(){
   const root=document.getElementById('desk-root'); if(!root) return false;
+  _rstPaintSoon();   // ↺ Reset: aceso/apagado conforme o que a tela mostra (depois de desenhar)
   const picker=document.body.classList.contains('mob-picker-active'), key=_deskKey();
   if(window.IBBAUS&&IBBAUS.gate(key)) return true;   // Steel › US market: sem permissão → Prices; arquivo ainda descendo → aviso na mesa
   const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(key);
@@ -2841,6 +2844,7 @@ function _desk(){
     setFilters:f=>{ if(f.gran&&f.gran!==currentGran) setGran(f.gran);
       if(f.win==='custom'&&(f.from||f.to)){ document.getElementById('win-from').value=f.from||''; document.getElementById('win-to').value=f.to||''; setCustomRange(); }
       else if(f.win&&f.win!=='custom'&&f.win!==currentWin) setWin(f.win); },
+    resetFilters:()=>resetFilters(),   // ↺ Reset (26/11/2026): a mesa zera a seção e pede à página os filtros de abertura
     gotoBuilder:()=>setSub('builder',{anim:1}),
     /* Context (data-desk-context.js): empresas expostas, benchmarks, manchetes e próxima divulgação de cada seção.
        Consultas pequenas, só quando a faixa chega perto da tela, 10 min de cache. Sem rede o bloco some e a mesa segue igual. */
@@ -2891,7 +2895,7 @@ function _desk(){
           src:'S&P Global Platts · history: Itaú BBA Platts database',
           tiles:['margin','grades','spread','freight','brands','fwd'],
           metrics:[
-            {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true,
+            {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true, views:['line','index'],
               series:(S,P)=>{ const m62=P.sub(P.d(S,'IODEX_62'),P.d(S,'IOFBC00'));
                 return [{name:'Margin proxy (61% Fe − freight)', short:'Margin', pts:P.sub(P.d(S,'IRON_ORE'),P.d(S,'IOFBC00'))},{name:'IO fines 61% Fe CFR China', short:'61% Fe', pts:P.d(S,'IRON_ORE')},{name:'Freight Brazil–China', short:'Freight', pts:P.d(S,'IOFBC00')},
                   {name:'Same margin with 62% Fe'+(m62.length?' (to '+P.mLabel(m62[m62.length-1][0])+')':''), short:'With 62% Fe', pts:m62}]; },
@@ -2931,7 +2935,7 @@ function _desk(){
               series:(S,P)=>[{name:'Hot metal output', short:'Hot metal', pts:P.mill(S,'hm')}], refs:_millRefs('hm',0,' kt/day'), build:_millBuild, estAt:_millEst('hm')},
             {id:'bf', label:'Blast furnaces — capacity utilization and share of furnaces running', short:'Blast furnaces', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
               series:(S,P)=>[{name:'Capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')},{name:'Furnaces running (operating rate)', short:'Running', pts:P.mill(S,'bfop')}], build:_millBuild, estAt:_millEst('bfutil')},
-            {id:'pvu', label:'Margins against output — mills making money vs blast-furnace utilization', short:'Margins vs output', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
+            {id:'pvu', label:'Margins against output — mills making money vs blast-furnace utilization', short:'Margins vs output', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10, views:['line','index'],
               series:(S,P)=>[{name:'Mills making money', short:'Making money', pts:P.mill(S,'profit')},{name:'Blast-furnace capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')}], build:_millBuild, estAt:_millEst('profit')},
             {id:'profit_seas', label:'Mills making money — one line per year', short:'Making money, by year', unit:'%', dec:1, pp:true, nosign:true, season:true, gapDays:10,
               series:(S,P)=>P.byYear(P.mill(S,'profit'),6,P.millEst(S,'profit'))},
@@ -3251,6 +3255,45 @@ function clearCustomRange(){
   document.getElementById('win-to').value='';
   setCustomRange();
 }
+function resetFilters(){
+  currentProd='total'; currentGran='monthly'; currentWin='ytd'; customRange={from:null,to:null};
+  originState.exp.pillCat=null; originState.exp.countries=null; originState.imp.pillCat=null; originState.imp.countries=null;
+  ['win-from','win-to'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  document.querySelector('.custom-range')?.classList.remove('active'); document.getElementById('cr-clear')?.classList.remove('visible');
+  updateProdButtons();
+  document.querySelectorAll('[data-gran]').forEach(b=>b.classList.toggle('active',b.dataset.gran==='monthly'));
+  document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win==='ytd'));
+  // modelo preditivo: a barra própria dele (produto + defasagem) volta ao padrão de abertura (HRC, 3 meses)
+  predProduct='HRC'; predDelay=3; predMode='korea-china';
+  document.querySelectorAll('[data-pp]').forEach(b=>b.classList.toggle('active',b.dataset.pp==='HRC'));
+  document.querySelectorAll('[data-pm]').forEach(b=>b.classList.toggle('active',b.dataset.pm==='korea-china'));
+  const ds=document.getElementById('delay-slider'), dl=document.getElementById('delay-label'); if(ds) ds.value=3; if(dl) dl.textContent='3 months';
+  render();
+}
+function _rstExtraAtDefault(){ const pc=document.getElementById('pred-controls'); return !pc||pc.style.display==='none'||(predProduct==='HRC'&&predDelay===3); }
+/* ↺ RESET (pedido do usuário, 26/11/2026: "deixe um botão de reset acima das opções de filtro"). O botão #dk-rst fica ao lado do
+   ⤓ Data, na linha logo acima dos filtros. Volta a tela ao jeito que ela abre: filtros em Total · Monthly · YTD (sem datas) e, com
+   a mesa, as escolhas da seção aberta — quadro, conta, produto próprio, "Who", pontos A→B; no Builder, a 1ª visão pronta
+   (data-desk.js resetView). Não muda de seção. Só com a mesa; some no Overview; apagado quando não há nada a desfazer
+   (_rstPaint: os filtros À VISTA no padrão + DESK.atDefault). */
+function resetView(){ if(_deskOn&&DESK&&DESK.cur&&DESK.resetView) DESK.resetView(); else resetFilters(); _rstPaint(); }
+function _rstFiltersAtDefault(){
+  if(typeof _rstExtraAtDefault==='function'&&!_rstExtraAtDefault()) return false;   // controles próprios da página (M&M: modelo preditivo)
+  const fb=document.querySelector('.filter-bar'); if(!fb||fb.style.display==='none') return true;
+  const shown=id=>{ const e=document.getElementById(id); return !!e&&e.style.display!=='none'&&e.children.length>0; };
+  return (!shown('prod-btns')||currentProd==='total')&&(!shown('gran-btns')||currentGran==='monthly')&&currentWin==='ytd';
+}
+function _rstPaint(){
+  const b=document.getElementById('dk-rst'); if(!b) return;
+  const key=_deskKey(), on=_deskOn&&!!DESK&&DESK.cur===key&&key!=='overview'&&!document.body.classList.contains('mob-picker-active');
+  b.hidden=!on; if(!on) return;
+  const def=_rstFiltersAtDefault()&&(!DESK.atDefault||DESK.atDefault());
+  b.disabled=def;
+  b.title=def?'Nothing to reset: this is how the page opens'
+    :'Back to how this page opens: Total · Monthly · YTD and the first view of this section'+(key==='builder'?' (the first ready-made view)':'');
+}
+var _rstT=0; function _rstPaintSoon(){ clearTimeout(_rstT); _rstT=setTimeout(_rstPaint,0); }
+['click','input','change','keyup'].forEach(ev=>document.addEventListener(ev,_rstPaintSoon,true));
 function setPredMode(m){
   predMode=m;
   document.querySelectorAll('[data-pm]').forEach(b=>b.classList.toggle('active',b.dataset.pm===m));

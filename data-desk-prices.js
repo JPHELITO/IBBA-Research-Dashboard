@@ -127,6 +127,11 @@
     return ys.map(function (y) { return { name: y, short: y, year: +y, pts: by[y], est: be[y] || {} }; });
   }
   /* o ponto de uma série numa data, aceitando o anterior até `tol` dias (semana sem leitura → null); near = só o valor */
+  /* valor de uma série num dia qualquer: interpolado entre a leitura de antes e a de depois (até `tol` dias de cada lado) — a faixa da
+     sazonalidade semanal compara anos cujas semanas caem em dias diferentes */
+  function interpAt(pts, iso, tol) { var lo = 0, hi = (pts || []).length - 1, i = -1; while (lo <= hi) { var mid = (lo + hi) >> 1; if (pts[mid][0] <= iso) { i = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (i < 0) return null; var b = pts[i]; if (b[0] === iso) return b[1]; var nx = pts[i + 1], d0 = days(b[0], iso); if (!nx) return d0 <= tol ? b[1] : null;
+    var d1 = days(iso, nx[0]); if (d0 > tol || d1 > tol) return null; return b[1] + (nx[1] - b[1]) * d0 / (d0 + d1); }
   function nearPt(pts, iso, tol) { var b = at(pts, iso); return (b && days(b[0], iso) <= (tol == null ? 10 : tol)) ? b : null; }
   function near(pts, iso, tol) { var b = nearPt(pts, iso, tol); return b ? b[1] : null; }
   function addDays(iso, n) { return new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10); }
@@ -317,7 +322,7 @@
       vb.appendChild(seg); body.appendChild(vb); }
     E.msg = h('div', 'dk-hfmsg'); E.msg.hidden = true;
     E.stage = h('div', 'dk-stage dk-card dk-hfstage',
-      '<div class="dk-sh"><div><div class="dk-st"></div><div class="dk-sv"></div></div><div class="dk-sd"></div><span class="dk-grow"></span></div>' +
+      '<div class="dk-sh"><div><div class="dk-st"></div><div class="dk-sv"></div></div><div class="dk-sd"></div><span class="dk-grow"></span><div class="dk-styw"></div></div>' +
       '<div class="dk-hfdl"><button type="button" title="Download the chart as an image">PNG</button></div>' +
       '<div class="dk-hfleg"></div><div class="dk-whyrow"><div class="dk-why" hidden></div><div class="dk-corr" hidden></div></div><div class="dk-chart dk-stagechart"><canvas></canvas></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read any date · Change the period with the Window buttons or the dates above</div><div class="dk-hint dk-hfsrc"></div></div>');
@@ -331,6 +336,8 @@
       for (c in S.hist) if (!S.hist[c].length) delete S.hist[c];   // o histórico que não veio também é pedido de novo
       self._hf(); });
     E.stage.querySelector('.dk-hfdl button').addEventListener('click', function () { self._hfPNG(); });
+    /* seletor "Chart": troca só o desenho (o dado é o mesmo) */
+    E.stage.querySelector('.dk-styw').addEventListener('click', function (e) { var b = e.target.closest('button[data-sty]'); if (!b || b.disabled) return; self._setSty('hf', b.dataset.sty, self._hfOpts()); self._u().hover = null; self._hfStage(); });
     var box = E.stage.querySelector('.dk-chart');
     var move = function (e) { var ch = self.charts.hf, v = self._hfV; if (!ch || !v) return; var pt = e.touches ? e.touches[0] : e, rc = ch.canvas.getBoundingClientRect(), x = pt.clientX - rc.left, a = ch.chartArea;
       if (!a || x < a.left - 6 || x > a.right + 6) return self._hfHover(null);
@@ -356,6 +363,7 @@
     if (!this._hfSeries(this._hfM(u.metric)).length && !wait) { var ok = (sec.hf.tiles || []).map(function (t) { return self._hfM(t); }).filter(function (M) { return M && self._hfSeries(M).length; })[0];
       if (ok) { u.metric = ok.id; var w2 = this._hfNeed(sec, ok); if (w2) w2.then(function () { if (self.cur === id) self._hf(); }); } }
     this._hfTiles(); this._hfStage(); if (this._context) this._context();
+    if (this._uBase) this._uBase();   // ↺ Reset: linha de base da seção (data-desk.js)
   };
 
   /* quadros do topo: cada um é um BOTÃO que põe o indicador no gráfico principal */
@@ -396,9 +404,34 @@
     }).join('');
   };
 
+  /* as visualizações do palco de preços e das usinas (pedido do usuário, 26/11/2026): 2–3 desenhos do MESMO dado; a 1ª é o de sempre.
+     Uma série: Line · Monthly avg (média de cada mês, em colunas) · vs year ago (variação contra a mesma data um ano antes).
+     Várias: Lines · Index = 100 (cada linha começa em 100 no 1º dia da janela) · Gap (cada linha menos a 1ª).
+     Sazonalidade: Lines · Range (o ano atual e o anterior contra a faixa e a média dos anos anteriores). */
+  Desk.prototype._hfOpts = function () {
+    var u = this._u(), M = this._hfM(u.metric), ser = M ? this._hfSeries(M) : []; if (!M) return [['line', 'Line']];
+    if (M.season) return [['lines', 'Lines', 'One line per year', 0, 'year'], ['range', 'Range', 'This year and last year against the range of the years before', ser.length < 3 ? 'Needs at least three years' : 0, 'range']];
+    if (ser.length > 1) { var all = [['line', 'Lines', 'One line per series', 0, 'lines'], ['index', 'Index = 100', 'Every line starts at 100 on the first day of the window', 0, 'index'],
+      ['gap', 'Gap', 'Each line minus ' + (ser[0].short || ser[0].name), 0, 'gap']];
+      /* M.views = as vistas que fazem sentido para o indicador (ex.: a margem é uma CONTA — preço − frete —, a diferença entre as parcelas
+         não diz nada); um spread pode ser zero ou negativo, então não tem Index */
+      return all.filter(function (o) { return M.views ? M.views.indexOf(o[0]) >= 0 : !(o[0] === 'index' && M.diff); }); }
+    return [['line', 'Line'], ['mavg', 'Monthly avg', 'The average of each calendar month, as columns', 0, 'col'], ['yoy', 'vs year ago', 'Change against the same date a year earlier', 0, 'gap']];
+  };
+  /* médias por mês do calendário (vista "Monthly avg"): todos os meses da série (o de um ano antes também é preciso) e a janela = os meses
+     entre as datas da janela; o último mês, se ainda não acabou, sai marcado (coluna mais clara) */
+  Desk.prototype._hfMonthly = function (pts, from, to) {
+    var by = {}, order = [];
+    pts.forEach(function (p) { var k = p[0].slice(0, 7); if (!by[k]) { by[k] = { s: 0, n: 0, lo: Infinity, hi: -Infinity }; order.push(k); } var o = by[k]; o.s += p[1]; o.n++; if (p[1] < o.lo) o.lo = p[1]; if (p[1] > o.hi) o.hi = p[1]; });
+    var f = from.slice(0, 7), tt = to.slice(0, 7), keys = order.filter(function (k) { return k >= f && k <= tt; }), now = new Date().toISOString().slice(0, 7), lastK = order[order.length - 1];
+    var avg = function (k) { var o = by[k]; return o && o.n ? o.s / o.n : null; };
+    return { keys: keys, labels: keys.map(function (k) { return MON[+k.slice(5, 7) - 1] + '-' + k.slice(2, 4); }), vals: keys.map(avg), n: keys.map(function (k) { return by[k].n; }),
+      lo: keys.map(function (k) { return by[k].lo; }), hi: keys.map(function (k) { return by[k].hi; }), part: keys.map(function (k) { return k === lastK && k >= now; }), avg: avg };
+  };
   /* palco: o indicador escolhido, na janela da barra de filtros */
   Desk.prototype._hfStage = function () {
     var E = this.el, u = this._u(), M = this._hfM(u.metric), S = this._hfStore(), ser = this._hfSeries(M), st = this.cfg.state(), t = D.theme(), pal = palette();
+    var opts = this._hfOpts(), sty = this._sty('hf', opts), swh = E.stage.querySelector('.dk-styw'); if (swh) swh.innerHTML = (opts.length > 1 && X.styleSeg) ? X.styleSeg(opts, sty) : '';
     /* o eixo vai do 1º ao último dia da série PRINCIPAL: as outras só entram dentro desse intervalo (senão o gráfico começaria vazio).
        axisAll: o eixo é a união de todas (a margem com a linha do 62%, que vai mais para trás que o índice de 61%) */
     var d0 = ser.length ? ser[0].pts[0][0] : '', d1 = ser.length ? ser[0].pts[ser[0].pts.length - 1][0] : '', seas = !!M.season;
@@ -413,37 +446,96 @@
       var vv = a.vals.map(function (arr) { return arr.map(function (x, i) { return (liveI >= 0 && i === i0 + liveI) ? null : x; }); });
       fits = ser.map(function (s, k) { return k ? X.r2of(vv[0], vv[k], i0, i1) : null; });
       cells = X.corrCells ? X.corrCells(vv, i0, i1) : null; }
-    this._hfV = { M: M, ser: ser, dates: a.dates, vals: a.vals, i0: i0, i1: i1, n: n, refs: refs, liveI: liveI, fits: fits };
+    /* o que o gráfico desenha em cada visualização: pv[k] = a linha k como desenhada; pleg = nomes e cores da legenda (e da imagem) */
+    var pv = a.vals, pleg = ser.map(function (s, k) { return { name: s.name, color: pal[k % pal.length] }; }), mv = null, tsuf = '', fsn = ser.length ? (ser[0].short || ser[0].name) : '';
+    if (!seas && sty === 'index' && ser.length > 1) {
+      pv = a.vals.map(function (arr) { var b = null, i; for (i = i0; i <= i1; i++) if (arr[i] != null && arr[i] > 0) { b = arr[i]; break; } return arr.map(function (x) { return (b && x != null) ? x / b * 100 : null; }); });
+      tsuf = ' · index';
+    } else if (!seas && sty === 'gap' && ser.length > 1) {
+      var f0 = a.vals[0]; pv = a.vals.slice(1).map(function (arr) { return arr.map(function (x, i) { return (x == null || f0[i] == null) ? null : x - f0[i]; }); });
+      pleg = ser.slice(1).map(function (s0, k) { return { name: (s0.short || s0.name) + ' − ' + fsn, color: pal[(k + 1) % pal.length] }; }); tsuf = ' · gap to ' + fsn;
+    } else if (!seas && sty === 'yoy' && ser.length) {
+      var main0 = ser[0].pts; pv = [a.vals[0].map(function (x, i) { if (x == null) return null; var tg = shift(a.dates[i], -12), b = at(main0, tg); return (b && days(b[0], tg) <= 10) ? chg(M, x, b[1]) : null; })];
+      pleg = [{ name: ser[0].name + ' — vs a year earlier', color: ORANGE }]; tsuf = ' · vs a year earlier';
+    } else if (!seas && sty === 'mavg' && ser.length && n > 0) {
+      mv = this._hfMonthly(ser[0].pts, a.dates[i0], a.dates[i1]); pleg = [{ name: ser[0].name + ' — monthly average', color: ORANGE }]; tsuf = ' · monthly average';
+    }
+    this._hfV = { M: M, ser: ser, dates: a.dates, vals: a.vals, i0: i0, i1: i1, n: mv ? mv.keys.length : n, refs: refs, liveI: liveI, fits: fits, sty: sty, pv: pv, pleg: pleg, mv: mv, tsuf: tsuf, rng: null };
     var cv = E.stage.querySelector('canvas'), note = typeof M.note === 'function' ? M.note(S, P) : (M.note || ''), hpf = this._help(this.cur, M.id, {}), wy = E.stage.querySelector('.dk-why');
-    E.stage.querySelector('.dk-st').textContent = M.label;
-    /* a explicação do gráfico (data-desk-help.js): o que mostra + como ler; sem texto lá, a nota do catálogo */
-    var R2H = window.IBBADeskHelp && IBBADeskHelp.view && IBBADeskHelp.view.r2;
-    wy.innerHTML = X.whyHTML((hpf && hpf.what) || note, (((hpf && hpf.how) || '') + (fits && R2H ? ' ' + R2H : '')).trim()); wy.hidden = !wy.innerHTML;
+    E.stage.querySelector('.dk-st').textContent = M.label + tsuf;
+    /* a explicação do gráfico (data-desk-help.js): o que mostra + como ler; sem texto lá, a nota do catálogo. Nas outras visualizações o
+       "como ler" é o do desenho escolhido */
+    var R2H = window.IBBADeskHelp && IBBADeskHelp.view && IBBADeskHelp.view.r2, HV = (window.IBBADeskHelp && IBBADeskHelp.view) || {};
+    var styHow = ({ index: HV.hfIndex, gap: HV.hfGap, yoy: M.pp ? HV.hfYoyPP : HV.hfYoy, mavg: HV.hfMavg, range: HV.hfRange })[sty] || '';
+    styHow = styHow.replace('{first}', fsn).replace('{unit}', M.unit || '');
+    wy.innerHTML = X.whyHTML((hpf && hpf.what) || note, ((styHow || (hpf && hpf.how) || '') + (fits && R2H ? ' ' + R2H : '')).trim()); wy.hidden = !wy.innerHTML;
     /* tabela de correlação ao lado da explicação: o R² de cada par de linhas, na janela */
     var ce = E.stage.querySelector('.dk-corr'); if (ce) { ce.innerHTML = (cells && X.corrTable) ? X.corrTable(ser.map(function (s, k) { return { name: s.name, short: s.short || s.name, color: pal[k % pal.length] }; }), cells, 'readings') : ''; ce.hidden = !ce.innerHTML; }
     E.stage.querySelector('.dk-hfsrc').textContent = M.src || this.sections[this.cur].hf.src || '';
-    E.stage.querySelector('.dk-hint').textContent = seas ? 'Hover to read every year · All years are shown (the Window buttons do not apply here)' : 'Hover to read any date · Change the period with the Window buttons or the dates above';
-    if (n < 1 || !ser.length) { E.build.hidden = true; this._dropCharts('hf'); E.stage.querySelector('.dk-sv').textContent = '—'; E.stage.querySelector('.dk-sd').textContent = 'No data in this window'; E.stage.querySelector('.dk-hfleg').innerHTML = ''; E.read.querySelector('.dk-kv').innerHTML = ''; E.read.querySelector('.dk-big').textContent = '—'; return; }
-    var labels = a.dates.slice(i0, i1 + 1).map(seas ? sLabel : dLabel), cs = seas ? seasColors(ser.length) : null, dts = a.dates;
-    var sets = ser.map(function (s, k) {
-      var ys = seas && X.yearStyle ? X.yearStyle(k) : { w: k ? 1.3 : 2.6, dash: k >= 2 ? [4, 3] : null };
-      var d = seas ? X.lineSet(a.vals[k].slice(i0, i1 + 1), cs[k], { label: s.name, w: ys.w, dash: ys.dash, end: k === 0, surf: t.surf, order: k + 1 })
-                   : X.lineSet(a.vals[k].slice(i0, i1 + 1), pal[k % pal.length], { label: s.name, w: k ? 1.8 : 2.4, end: true, surf: t.surf, area: !k && ser.length === 1 && !M.pp && !M.diff, partialAt: liveI >= 0 ? liveI : null, order: k ? 2 : 1 });
-      d.spanGaps = true;
-      /* furo: o trecho entre dois pontos mais distantes que gapDays não é desenhado (semana sem leitura fica em branco) */
-      if (M.gapDays) { var bd = d.segment && d.segment.borderDash;
-        d.segment = { borderDash: bd, borderColor: function (c) { var x0 = dts[i0 + c.p0DataIndex], x1 = dts[i0 + c.p1DataIndex]; return (x0 && x1 && days(x0, x1) > M.gapDays) ? 'rgba(0,0,0,0)' : undefined; } }; }
-      return d; });
-    var ch = this._chart('hf', cv, 'line', labels, sets, { stage: true, dec: M.dec });
-    ch.$hfRefs = refs; ch.options.plugins.ibbaHfRefs = {};
-    ch.options.scales.y.ticks.callback = function (v) { return fmt(v, (M.dec > 0 && Math.abs(this.max - this.min) < 10) ? 1 : 0) + (M.pp ? '%' : ''); };
+    E.stage.querySelector('.dk-hint').textContent = seas ? 'Hover to read every year · All years are shown (the Window buttons do not apply here)' : mv ? 'Hover a column to read the month · Change the period with the Window buttons or the dates above' : 'Hover to read any date · Change the period with the Window buttons or the dates above';
+    if (n < 1 || !ser.length || (mv && !mv.keys.length)) { E.build.hidden = true; this._dropCharts('hf'); E.stage.querySelector('.dk-sv').textContent = '—'; E.stage.querySelector('.dk-sd').textContent = 'No data in this window'; E.stage.querySelector('.dk-hfleg').innerHTML = ''; E.read.querySelector('.dk-kv').innerHTML = ''; E.read.querySelector('.dk-big').textContent = '—'; return; }
+    var cs = seas ? seasColors(ser.length) : null, dts = a.dates, ch;
+    /* furo: o trecho entre dois pontos mais distantes que gapDays não é desenhado (semana sem leitura fica em branco) */
+    var holes = function (d) { d.spanGaps = true; if (M.gapDays) { var bd = d.segment && d.segment.borderDash;
+      d.segment = { borderDash: bd, borderColor: function (c) { var x0 = dts[i0 + c.p0DataIndex], x1 = dts[i0 + c.p1DataIndex]; return (x0 && x1 && days(x0, x1) > M.gapDays) ? 'rgba(0,0,0,0)' : undefined; } }; } return d; };
+    if (mv) {   // colunas: a média de cada mês do calendário (o mês em andamento mais claro)
+      var lp = mv.part.length && mv.part[mv.part.length - 1] ? mv.part.length - 1 : null;
+      ch = this._chart('hf', cv, 'bar', mv.labels, [X.barSet(mv.vals, ORANGE, { label: ser[0].name + ' — monthly average', partialAt: lp })], { stage: true, dec: M.dec, bar: true });
+    } else {
+      var labels = a.dates.slice(i0, i1 + 1).map(seas ? sLabel : dLabel), sets;
+      if (seas && sty === 'range' && ser.length >= 3) {   // a faixa (menor–maior) e a média dos anos anteriores + o ano passado + o atual
+        var L = i1 - i0 + 1, lo = [], hi = [], av = [], j, k;
+        for (j = 0; j < L; j++) { var xs = [], iso0 = a.dates[i0 + j]; for (k = 1; k < ser.length; k++) { var x = interpAt(ser[k].pts, iso0, 8); if (x != null) xs.push(x); }
+          lo.push(xs.length ? Math.min.apply(null, xs) : null); hi.push(xs.length ? Math.max.apply(null, xs) : null); av.push(xs.length ? xs.reduce(function (p0, q0) { return p0 + q0; }, 0) / xs.length : null); }
+        var rn = ser[ser.length - 1].name + '–' + ser[1].name;
+        var dLo = X.lineSet(lo, 'rgba(0,0,0,0)', { label: 'Lowest ' + rn, w: 0, noDot: true }), dHi = X.lineSet(hi, 'rgba(0,0,0,0)', { label: 'Highest ' + rn, w: 0, noDot: true });
+        dHi.fill = '-1'; dHi.backgroundColor = 'rgba(' + t.band + ',' + (t.dark ? .17 : .11) + ')'; dLo.order = 8; dHi.order = 8; dLo.spanGaps = dHi.spanGaps = true;
+        var dAv = X.lineSet(av, 'rgba(' + t.band + ',.55)', { label: 'Average ' + rn, w: 1.4, dash: [5, 3], noDot: true }); dAv.order = 7; dAv.spanGaps = true;
+        sets = [dLo, dHi, dAv, holes(X.lineSet(a.vals[1].slice(i0, i1 + 1), t.ink, { label: ser[1].name, w: 2, surf: t.surf, order: 2 })), holes(X.lineSet(a.vals[0].slice(i0, i1 + 1), ORANGE, { label: ser[0].name, w: 2.6, end: true, surf: t.surf, order: 1 }))];
+        this._hfV.rng = { lo: lo, hi: hi, av: av, rn: rn };
+      } else if (!seas && (sty === 'index' || sty === 'gap' || sty === 'yoy')) {   // a conta de cada visualização + a linha de referência (100 ou zero)
+        sets = pv.map(function (arr, k) { return holes(X.lineSet(arr.slice(i0, i1 + 1), pleg[k].color, { label: pleg[k].name, w: k ? 1.8 : 2.4, end: true, surf: t.surf, partialAt: liveI >= 0 ? liveI : null, order: k ? 2 : 1 })); });
+        var bl = X.lineSet(labels.map(function () { return sty === 'index' ? 100 : 0; }), 'rgba(' + t.band + ',.4)', { label: sty === 'index' ? 'Start = 100' : 'Zero', w: 1, noDot: true }); bl.order = 9; sets.push(bl);
+      } else {
+        sets = ser.map(function (s, k) {
+          var ys = seas && X.yearStyle ? X.yearStyle(k) : { w: k ? 1.3 : 2.6, dash: k >= 2 ? [4, 3] : null };
+          var d = seas ? X.lineSet(a.vals[k].slice(i0, i1 + 1), cs[k], { label: s.name, w: ys.w, dash: ys.dash, end: k === 0, surf: t.surf, order: k + 1 })
+                       : X.lineSet(a.vals[k].slice(i0, i1 + 1), pal[k % pal.length], { label: s.name, w: k ? 1.8 : 2.4, end: true, surf: t.surf, area: !k && ser.length === 1 && !M.pp && !M.diff, partialAt: liveI >= 0 ? liveI : null, order: k ? 2 : 1 });
+          return holes(d); });
+      }
+      ch = this._chart('hf', cv, 'line', labels, sets, { stage: true, dec: M.dec });
+    }
+    /* as linhas de referência do indicador (médias, tarifa…) estão em unidades de NÍVEL: só nas vistas de nível */
+    ch.$hfRefs = (sty === 'line' || sty === 'lines') ? refs : null; ch.options.plugins.ibbaHfRefs = {};
+    var sfx = sty === 'yoy' ? (M.pp ? ' pp' : M.diff ? '' : '%') : (M.pp && sty !== 'index') ? '%' : '', d1c = sty === 'index' || sty === 'yoy';
+    ch.options.scales.y.ticks.callback = function (v) { return fmt(v, ((M.dec > 0 || d1c) && Math.abs(this.max - this.min) < 10) ? 1 : 0) + sfx; };
     ch.update('none');
     this._hfPaint();
   };
 
+  /* vista "Monthly avg": o mês lido (média), contra o mês anterior e o mesmo mês um ano antes; o menor e o maior dia do mês */
+  Desk.prototype._hfPaintMonthly = function (v) {
+    var E = this.el, u = this._u(), M = v.M, mv = v.mv, hov = u.hover != null, k = hov ? Math.max(0, Math.min(mv.keys.length - 1, u.hover)) : mv.keys.length - 1, kk = mv.keys[k];
+    var ch = this.charts.hf; if (ch) { ch.$dk = { hover: hov ? k : null, pinA: null, pinB: null }; ch.draw(); }
+    var val = mv.vals[k], when = mv.labels[k] + (mv.part[k] ? ' · month to date' : '') + (hov ? '' : ' · latest');
+    var pm = k > 0 ? mv.vals[k - 1] : mv.avg(shiftKey(kk, -1)), py = mv.avg(shiftKey(kk, -12));
+    var c1 = (val != null && pm != null) ? chg(M, val, pm) : null, c12 = (val != null && py != null) ? chg(M, val, py) : null;
+    E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
+    E.stage.querySelector('.dk-sd').innerHTML = c1 == null ? '' : '<span class="' + X.cls(c1) + '">' + esc(chgTxt(M, c1)) + '</span> vs the month before';
+    E.stage.querySelector('.dk-hfleg').innerHTML = '';
+    var R = E.read, kv = '', row = function (a0, b0, c0) { kv += '<span>' + esc(a0) + '</span><b' + (c0 ? ' class="' + c0 + '"' : '') + '>' + b0 + '</b>'; }, head = function (t0) { kv += '<span class="dk-kvh">' + esc(t0) + '</span>'; };
+    R.querySelector('.dk-when').textContent = when;
+    R.querySelector('.dk-big').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(M.short || M.label) + ' · monthly average</small>';
+    head('Monthly average against'); row('The month before', chgTxt(M, c1), X.cls(c1)); row('The same month a year earlier', chgTxt(M, c12), X.cls(c12));
+    head('In ' + mv.labels[k]); row('Readings', String(mv.n[k])); row('Lowest', num(mv.lo[k], M.dec, sg(M))); row('Highest', num(mv.hi[k], M.dec, sg(M)));
+    R.querySelector('.dk-kv').innerHTML = kv; E.build.hidden = true;
+  };
+  function shiftKey(k, n) { var i = (+k.slice(0, 4)) * 12 + (+k.slice(5, 7)) - 1 + n; return Math.floor(i / 12) + '-' + p2(i % 12 + 1); }
+
   /* o que muda com o mouse: marca no gráfico, número grande, legenda e painel Reading */
   Desk.prototype._hfPaint = function () {
     var E = this.el, u = this._u(), v = this._hfV, S = this._hfStore(), pal = palette(); if (!v || !E || v.n < 1) return;
+    if (v.mv) return this._hfPaintMonthly(v);
     var ch = this.charts.hf; if (ch) { ch.$dk = { hover: u.hover, pinA: null, pinB: null }; ch.draw(); }
     var M = v.M, hov = u.hover != null, ref = hov ? v.i0 + u.hover : v.i1, k;
     /* sem o mouse, a referência é o último dia em que a série principal tem valor */
@@ -452,11 +544,14 @@
     var iso = v.dates[ref], main = v.ser[0].pts, cur = at(main, iso), val = cur ? cur[1] : null, live = v.liveI >= 0 && ref === v.i0 + v.liveI;
     var estN = null; try { estN = M.estAt ? M.estAt(this._hfStore(), P, iso) : null; } catch (e) { estN = null; }
     var when = dLabel(iso) + (live ? ' · live' : hov ? '' : ' · latest') + (estN ? ' · estimate' : '');
-    E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
-    /* legenda com o valor de cada série na data lida */
-    E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.length > 1 ? v.ser.map(function (s, j) { var x = v.vals[j][ref]; if (x == null) { var b = at(s.pts, iso); x = b ? b[1] : null; }
-      return '<span><i style="background:' + pal[j % pal.length] + '"></i>' + esc(s.name) + ' <b>' + num(x, M.dec, sg(M)) + '</b></span>'; }).join('') : '';   // o R² mora na tabela ao lado da explicação
-    if (v.refs && v.refs.legend) E.stage.querySelector('.dk-hfleg').innerHTML += v.refs.legend.map(function (l) { return '<span><i class="dk-lg-' + (l.kind === 'band' ? 'band' : 'dash') + '"></i>' + esc(l.name) + '</span>'; }).join('');
+    var yv = v.sty === 'yoy' && v.pv ? v.pv[0][ref] : null;
+    E.stage.querySelector('.dk-sv').innerHTML = v.sty === 'yoy' ? '<span class="' + X.cls(yv) + '">' + esc(chgTxt(M, yv)) + '</span><small>vs a year earlier · ' + esc(when) + ' · ' + num(val, M.dec, sg(M)) + ' ' + esc(M.unit) + '</small>'
+      : num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
+    /* legenda com o valor de cada série na data lida (no Index e no Gap, o número desenhado) */
+    var drawn = v.sty === 'index' || v.sty === 'gap', lvs = drawn ? v.pv : v.vals;
+    E.stage.querySelector('.dk-hfleg').innerHTML = (v.ser.length > 1 || v.sty === 'gap') ? v.pleg.map(function (s, j) { var x = lvs[j] ? lvs[j][ref] : null; if (x == null && !drawn) { var b = at(v.ser[j].pts, iso); x = b ? b[1] : null; }
+      return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + ' <b>' + num(x, v.sty === 'index' ? 1 : M.dec, v.sty === 'gap' || sg(M)) + '</b></span>'; }).join('') : '';   // o R² mora na tabela ao lado da explicação
+    if (v.refs && v.refs.legend && (v.sty === 'line' || v.sty === 'lines')) E.stage.querySelector('.dk-hfleg').innerHTML += v.refs.legend.map(function (l) { return '<span><i class="dk-lg-' + (l.kind === 'band' ? 'band' : 'dash') + '"></i>' + esc(l.name) + '</span>'; }).join('');
     /* comparações da série principal */
     var cmp = [['vs previous', null], ['vs 1 month earlier', -1], ['vs 3 months earlier', -3], ['vs 1 year earlier', -12]].map(function (c) {
       var b = null; if (c[1] == null) { for (k = main.length - 1; k >= 0; k--) if (main[k][0] < iso) { b = main[k]; break; } }
@@ -494,7 +589,10 @@
     var isEst = pts.map(function (b, j) { return !!(b && v.ser[j].est && v.ser[j].est[b[0]]); }), anyEst = isEst.some(Boolean), mk = function (j) { return isEst[j] ? '*' : ''; };
     var when = sLabel(iso) + ' ' + nw.name + (hov ? '' : ' · latest') + (isEst[0] ? ' · estimate' : '');
     E.stage.querySelector('.dk-sv').innerHTML = num(val, M.dec, sg(M)) + '<small>' + esc(M.unit) + ' · ' + esc(when) + '</small>';
-    E.stage.querySelector('.dk-hfleg').innerHTML = v.ser.map(function (s, j) { return X.yearChip ? X.yearChip(j, s.name, num(vals[j], M.dec, sg(M)) + mk(j))
+    var rg = v.sty === 'range' && v.rng, ri = ref - v.i0;
+    E.stage.querySelector('.dk-hfleg').innerHTML = rg ? (X.yearChip(0, nw.name, num(vals[0], M.dec, sg(M)) + mk(0)) + X.yearChip(1, prevY.name, num(vals[1], M.dec, sg(M)) + mk(1)) +
+        '<span><i class="dk-lg-dash"></i>Average ' + esc(rg.rn) + ' <b>' + num(rg.av[ri], M.dec, sg(M)) + '</b></span><span><i class="dk-lg-band"></i>Range ' + esc(rg.rn) + ' <b>' + num(rg.lo[ri], M.dec, sg(M)) + ' – ' + num(rg.hi[ri], M.dec, sg(M)) + '</b></span>')
+      : v.ser.map(function (s, j) { return X.yearChip ? X.yearChip(j, s.name, num(vals[j], M.dec, sg(M)) + mk(j))
       : '<span><i style="background:' + cs[j] + '"></i>' + esc(s.name) + ' <b>' + num(vals[j], M.dec, sg(M)) + '</b></span>'; }).join('');
     E.stage.querySelector('.dk-sd').innerHTML = cY == null ? '' : '<span class="' + X.cls(cY) + '">' + esc(chgTxt(M, cY)) + '</span> vs ' + esc(prevY.name);
     var R = E.read, kv = '', row = function (a0, b0, c0) { kv += '<span>' + esc(a0) + '</span><b' + (c0 ? ' class="' + c0 + '"' : '') + '>' + b0 + '</b>'; }, head = function (t0) { kv += '<span class="dk-kvh">' + esc(t0) + '</span>'; };
@@ -517,11 +615,16 @@
   /* imagem do gráfico (título + legenda + gráfico), na cor do tema */
   Desk.prototype._hfPNG = function () {
     var ch = this.charts.hf, v = this._hfV; if (!ch || !v || v.n < 1) return;
-    var t = D.theme(), pal = v.M.season ? seasColors(v.ser.length) : palette(), cv = ch.canvas, s = cv.width / cv.clientWidth, pad = 18 * s, lh = 18 * s, head = pad + 24 * s + v.ser.length * lh + 6 * s;
+    var t = D.theme(), pal = v.M.season ? seasColors(v.ser.length) : palette(), cv = ch.canvas, s = cv.width / cv.clientWidth, pad = 18 * s, lh = 18 * s;
+    /* a legenda da imagem segue o desenho: anos (sazonalidade), a faixa (Range) ou as linhas desenhadas (Index, Gap, YoY, média mensal) */
+    var legs = v.M.season ? (v.rng ? [{ name: v.ser[0].name, color: ORANGE }, { name: v.ser[1].name, color: t.ink }, { name: 'Average ' + v.rng.rn, color: t.mut }, { name: 'Range ' + v.rng.rn, color: 'rgba(' + t.band + ',.3)' }]
+      : v.ser.map(function (r, i) { return { name: r.name, color: pal[i % pal.length] }; })) : (v.pleg || []), head = pad + 24 * s + legs.length * lh + 6 * s;
     var out = document.createElement('canvas'); out.width = cv.width + 2 * pad; out.height = head + cv.height + pad + 16 * s; var g = out.getContext('2d');
     g.fillStyle = t.surf; g.fillRect(0, 0, out.width, out.height); g.textBaseline = 'top';
-    g.fillStyle = t.ink; g.font = '700 ' + (14 * s) + 'px ' + X.FONT; g.fillText(v.M.label + ' · ' + (v.M.season ? v.ser[v.ser.length - 1].name + '–' + v.ser[0].name : dLabel(v.dates[v.i0]) + ' – ' + dLabel(v.dates[v.i1])), pad, pad);
-    v.ser.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = pal[i % pal.length]; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.name + '  (' + v.M.unit + ')', pad + 16 * s, y); });
+    var span = v.M.season ? v.ser[v.ser.length - 1].name + '–' + v.ser[0].name : v.mv ? v.mv.labels[0] + ' – ' + v.mv.labels[v.mv.labels.length - 1] : dLabel(v.dates[v.i0]) + ' – ' + dLabel(v.dates[v.i1]);
+    g.fillStyle = t.ink; g.font = '700 ' + (14 * s) + 'px ' + X.FONT; g.fillText(v.M.label + (v.tsuf || '') + ' · ' + span, pad, pad);
+    var un = v.sty === 'index' ? 'index' : v.sty === 'yoy' ? (v.M.pp ? 'pp' : v.M.diff ? v.M.unit : '%') : v.M.unit;
+    legs.forEach(function (r, i) { var y = pad + 24 * s + i * lh; g.fillStyle = r.color; g.fillRect(pad, y + 3 * s, 10 * s, 10 * s); g.fillStyle = t.ink; g.font = '500 ' + (11.5 * s) + 'px ' + X.FONT; g.fillText(r.name + '  (' + un + ')', pad + 16 * s, y); });
     g.drawImage(cv, pad, head);
     g.fillStyle = t.mut; g.font = '500 ' + (10 * s) + 'px ' + X.FONT; g.fillText((v.M.src || this.sections[this.cur].hf.src || '') + ' · Itaú BBA', pad, head + cv.height + 6 * s);
     var nm = (window.IBBAExport && IBBAExport.safeName) ? IBBAExport.safeName((this.cfg.sector || 'desk') + '_' + v.M.id + '_' + IBBAExport.stamp()) : v.M.id;
@@ -529,7 +632,8 @@
   };
 
   /* só para os testes: o que está no palco (datas da janela e os valores de cada série) */
-  Desk.prototype.pricesDebug = function () { var v = this._hfV; if (!v) return null; return { metric: v.M.id, dates: v.dates.slice(v.i0, v.i1 + 1), liveI: v.liveI, refs: v.refs, fits: v.fits,
+  Desk.prototype.pricesDebug = function () { var v = this._hfV; if (!v) return null; return { metric: v.M.id, dates: v.dates.slice(v.i0, v.i1 + 1), liveI: v.liveI, refs: v.refs, fits: v.fits, sty: v.sty, rng: v.rng,
+    drawn: v.pv ? v.pv.map(function (arr) { return arr.slice(v.i0, v.i1 + 1); }) : null, mv: v.mv ? { keys: v.mv.keys, vals: v.mv.vals, part: v.mv.part } : null,
     series: v.ser.map(function (s, k) { return { name: s.name, vals: v.vals[k].slice(v.i0, v.i1 + 1) }; }) }; };
   D.prices = { parity: parity, parRow: parRow, liveRow: liveRow, fromDaily: fromDaily, combine: combine, at: at, align: align, win: win, shift: shift, mean: mean, dLabel: dLabel,
     decodeHist: decodeHist, mergeHist: mergeHist, qInfo: qInfo, qBack: qBack, avgIn: avgIn, byYear: byYear, seasIso: seasIso, sLabel: sLabel, near: near, millPts: millPts,
