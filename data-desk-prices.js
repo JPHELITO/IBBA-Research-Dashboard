@@ -220,12 +220,21 @@
     return (this._hfCodesC[k] = Object.keys(seen));
   };
   /* devolve uma promessa enquanto falta algo desta seção/indicador; null quando está tudo em mãos (ou marcado como indisponível) */
-  Desk.prototype._hfNeed = function (sec, M) {
+  /* os códigos de histórico longo que a tela precisa: os do indicador do gráfico e, com tiles, os dos QUADROS do topo também
+     (26/11/2026, pedido do usuário: os quadros apareciam com a série curta que o robô guarda — ~5 meses — até alguém clicar neles) */
+  Desk.prototype._hfHistCodes = function (sec, M, tiles) {
+    var self = this, ms = [M], out = [];
+    if (tiles) (sec.hf.tiles || []).forEach(function (t) { (sec.hf.metrics || []).forEach(function (m) { if (m.id === t && ms.indexOf(m) < 0) ms.push(m); }); });
+    ms.forEach(function (m) { if (!m || m.noHist) return; self._hfCodes(m).forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); }); });
+    return out;
+  };
+  Desk.prototype._hfNeed = function (sec, M, tiles) {
     var S = this._hfStore(), cx = this.cfg.prices || this.cfg.context, self = this, hf = sec.hf, jobs = [];
     var codes = (hf.codes || []).concat((M && M.codes) || []).filter(function (c, i, a) { return a.indexOf(c) === i && !S.daily[c] && !S.miss[c]; });
     codes = codes.filter(function (c) { var r = cGet('c:' + c, TTL.c); if (!r) return true; S.daily[c] = r; S.v++; return false; });
-    /* histórico longo: só das séries do indicador que está no gráfico (o resto pede quando for clicado) */
-    var hcodes = (hf.history && M && !M.noHist) ? this._hfCodes(M).filter(function (c) { return S.hist[c] === undefined; }) : [];
+    /* histórico longo: das séries do indicador do gráfico e — na seção (tiles) — das dos quadros do topo, num pedido só; o resto
+       (indicador fora dos quadros, Builder) pede quando aparece */
+    var hcodes = hf.history ? this._hfHistCodes(sec, M, tiles).filter(function (c) { return S.hist[c] === undefined; }) : [];
     hcodes = hcodes.filter(function (c) { var r = cGet('h:' + c, TTL.h); if (!r) return true; S.hist[c] = decodeHist(r); S.v++; return false; });
     var needP = !!hf.parity && S.parity == null, needF = !!hf.parity && S.fx == null, c0;
     if (needP && (c0 = cGet('p', TTL.p))) { S.parity = c0; S.v++; needP = false; }
@@ -353,10 +362,15 @@
     if (sec.hf.parityCodes) S.parCodes = sec.hf.parityCodes;
     if (this._built !== id || !this.el || !this.el.body || !this.root.contains(this.el.body)) { this._destroyAll(); this._hfBuild(); this._built = id; }
     var u = this._u(); if (!this._hfM(u.metric)) u.metric = sec.stage || sec.hf.metrics[0].id;
-    var wait = this._hfNeed(sec, this._hfM(u.metric)), E = this.el;
+    var M0 = this._hfM(u.metric), wait = this._hfNeed(sec, M0, true), E = this.el;
     if (wait) wait.then(function () { if (self.cur === id) self._hf(); });
     var any = (sec.hf.metrics || []).some(function (M) { return self._hfSeries(M).length; });
-    if (wait && !any) { E.msg.hidden = false; E.msg.innerHTML = '<b>' + esc(sec.hf.loading || 'Loading prices…') + '</b>'; E.tiles.hidden = E.cols.hidden = E.build.hidden = true; return; }
+    /* o histórico longo do gráfico e dos quadros ainda descendo: espera por ele em vez de desenhar a série curta (que depois "cresce");
+       se demorar mais de 6 s, desenha o que há e completa quando chegar */
+    var hp = !!(wait && sec.hf.history && this._hfHistCodes(sec, M0, true).some(function (c) { return S.hist[c] === undefined; }));
+    if (!hp) this._hfT0 = null;
+    else if (!this._hfT0 || this._hfT0.id !== id) { this._hfT0 = { id: id, t: Date.now() }; setTimeout(function () { if (self.cur === id) self._hf(); }, 6100); }
+    if (wait && (!any || (hp && Date.now() - this._hfT0.t < 6000))) { E.msg.hidden = false; E.msg.innerHTML = '<b>' + esc(sec.hf.loading || 'Loading prices…') + '</b>'; E.tiles.hidden = E.cols.hidden = E.build.hidden = true; return; }
     if (!any) { E.msg.hidden = false; E.msg.innerHTML = '<b>' + esc(sec.hf.na || 'Prices are not available right now.') + '</b><span>' + esc(sec.hf.naWhy || 'The connection to the price database did not answer.') + '</span><button type="button" class="dk-pill">Try again</button>'; E.tiles.hidden = E.cols.hidden = E.build.hidden = true; return; }
     E.msg.hidden = true; E.msg.innerHTML = ''; E.tiles.hidden = E.cols.hidden = false;
     /* o indicador escolhido ficou sem dado (ex.: paridade ainda sem tabela)? cai no primeiro que tem */
