@@ -45,7 +45,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--black);
 .wk-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);
   border:1px solid rgba(255,80,0,.4);border-radius:999px;padding:2px 8px;vertical-align:middle;}
 
-/* editor à esquerda, prévia à direita (a prévia tem 640px de e-mail + folga) */
+/* editor à esquerda, prévia à direita (o e-mail é FLUIDO desde 26/11 — a prévia de 700px
+   mostra como ele fica numa janela estreita; no Outlook ele ocupa a janela inteira) */
 /* ⚠️ `minmax(0,…)` nas DUAS variantes, nunca `1fr` puro: `1fr` é `minmax(auto,1fr)`, e o
    mínimo `auto` é o min-content do que está dentro (uma tabela, um <input>) — a coluna
    deixa de encolher e a página rola de lado. Armadilha já documentada no CLAUDE.md. */
@@ -428,9 +429,13 @@ function effDate(a){const iso=a.published_at||a.found_at; if(!iso) return null;
 // (Fastmarkets PIX) é SEMANAL, o Platts não publica em feriado, e a referência pode ser
 // uma segunda-feira — pedir só a janela exata devolveria série vazia na ponta esquerda e
 // a linha sairia com travessão. 30 dias garantem ao menos 3 assessments semanais antes de
-// `ini`; são ~30 pontos × 5 séries, o que não pesa no egress (ver 2026-08-19).
+// `ini`.
+// Desde 26/11/2026 a janela vai até a âncora do YoY (365 dias) menos a mesma folga de 30
+// dias — é o que alimenta as colunas MoM/YoY/YTD (`W.comVariacoes`). São ~13 meses × 5
+// séries ≈ 950 pontos (~20 KB), uma vez por visita numa página de admin: não pesa no
+// egress (ver 2026-08-19).
 async function carregarPrecos(){
-  const de=ymd(new Date(S.sem.ini.getFullYear(),S.sem.ini.getMonth(),S.sem.ini.getDate()-30));
+  const de=ymd(W.inicioJanelaPrecos(S.sem));
   const ate=ymd(S.sem.fim);
   let rows=[];
   try{
@@ -450,6 +455,8 @@ async function carregarPrecos(){
     return l;
   });
   await telaPrecos();
+  // MoM/YoY/YTD DEPOIS do preço de tela: o Δ é sempre contra a coluna da direita.
+  S.precos.forEach(l=>W.comVariacoes(l,porCode[l.code],S.sem));
 }
 
 // PREÇO DE TELA das commodities. `commodity_history` é a FOTO que o robô grava 1×/dia;
@@ -653,6 +660,18 @@ function renderAuto(){
   if(pDef.length) pSub.push({t:'último assessment até '+esc(W.dmes(S.sem.fim))+': '+pDef.join(' · ')});
   if(pFalta.length){ avisos++;
     pSub.push({av:1,t:'sem histórico na janela: '+pFalta.map(l=>esc(l.rotulo)).join(', ')}); }
+  // MoM/YoY/YTD: contra QUANDO, e quem não tem histórico que chegue à âncora (sai "—").
+  if(S.precos.some(l=>l.vars)){
+    const b=W.basesPrecos(S.sem);
+    pSub.push({t:'MoM, YoY e YTD: último assessment até '+esc(W.dbarra(b.mom))+', '
+      +esc(W.dbarra(b.yoy))+' e '+esc(W.dbarra(b.ytd))});
+    const semBase=[];
+    S.precos.forEach(l=>{ if(!l.fim) return;
+      W.PERIODOS_PRECOS.forEach(([k,rot])=>{
+        if(!(l.vars&&l.vars[k]&&l.vars[k].base)) semBase.push(esc(l.rotulo)+' '+rot); }); });
+    if(semBase.length){ avisos++;
+      pSub.push({av:1,t:'sem histórico até a âncora (sai "—" no e-mail): '+semBase.join(' · ')}); }
+  }
   tally.push('Preços '+pOk+'/'+S.precos.length);
   box.innerHTML=_autoLinha('Preços',
     `${pOk} de ${S.precos.length} assessments`
@@ -1085,14 +1104,23 @@ const WKTEST_ACOES=[['USIM5.SA',6.55,7.23],['CSNA3.SA',4.79,5.23],['GGBR4.SA',22
                     ['VALE3.SA',75.03,78.39],['SUZB3.SA',44.97,46.21],['IBOV',171032,175696],
                     ['KLBN11.SA',18.49,18.99],['CMIN3.SA',5.90,5.97],['RANI3.SA',7.74,7.76],
                     ['AURA33.SA',149.00,145.28]];
+// Bases do MoM/YoY/YTD no harness — valores FICTÍCIOS, só para o desenho do e-mail. O
+// histórico real é assessment PAGO e mora no banco privado (`commodity_history`); não
+// entra no fonte desta página, que qualquer um pode baixar.
+// Ordem: [YoY 28/08/2025, YTD 31/12/2025, MoM 29/07/2026].
+const WKTEST_HIST={IRON_ORE:[101.20,104.85,97.40], HRC_CHINA:[468,472,495], REBAR_TURKEY:[555,560,585],
+                   PULP_BHKP_CHINA:[555.30,560.10,566.20], PULP_NBSK_CHINA:[700.10,690.00,640.50]};
 function wktestBoot(){
   document.getElementById('gate').hidden=true; document.getElementById('app').hidden=false;
   S.sem=W.semanaDe(new Date(2026,7,28));      // a sexta do gabarito, não a segunda seguinte
   document.getElementById('ref').value=ymd(S.sem.fim);
   const par=(a,b)=>[[Date.UTC(2026,7,21,12)/1000,a],[Date.UTC(2026,7,28,12)/1000,b]];
-  const pm=Object.fromEntries(WKTEST_PRECOS.map(g=>[g[0],par(g[1],g[2])]));
+  const antes=(h)=>[[Date.UTC(2025,7,28,12)/1000,h[0]],[Date.UTC(2025,11,31,12)/1000,h[1]],
+                    [Date.UTC(2026,6,29,12)/1000,h[2]]];
+  const pm=Object.fromEntries(WKTEST_PRECOS.map(g=>[g[0],antes(WKTEST_HIST[g[0]]).concat(par(g[1],g[2]))]));
   S.precos=PRECOS.map(p=>{const l=W.linhaDeSerie(p.rotulo,pm[p.code],S.sem,p.casas,'');
-    l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa; return l;});
+    l.code=p.code; l.unidade=p.unidade; l.prosa=p.prosa; l.unidadeProsa=p.unidadeProsa;
+    return W.comVariacoes(l,pm[p.code],S.sem);});
   S.fake=Object.fromEntries(WKTEST_ACOES.map(g=>[g[0],par(g[1],g[2])]));
   // papéis de FORA da cobertura, para o seletor ter o que oferecer (e para conferir
   // moeda estrangeira e casas decimais em preço na casa dos milhares)

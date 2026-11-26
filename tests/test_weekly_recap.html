@@ -275,6 +275,80 @@ const ts=(y,m,d)=>Date.UTC(y,m-1,d,12,0,0)/1000;   // meio-dia UTC: imune a fuso
      htmlSx.indexOf('Fechamento de 21/08/2026 contra 28/08/2026')>0);
 })();
 
+// ══ 2f. PREÇOS: WoW · MoM · YoY · YTD (pedido do analista, 26/11/2026) ═══════
+// Com o e-mail na largura toda, a tabela de preços ganhou colunas. A régua é a do
+// carrossel da dashboard (`commodity_periods`): MoM 30 dias, YoY 365 dias, YTD = último
+// fechamento do ano anterior; a base é o último assessment ATÉ a âncora; série que não
+// alcança a âncora sai "—" (nunca o primeiro ponto da série).
+(function(){
+  const meia=(y,m,d)=>Date.UTC(y,m-1,d,0,0,0)/1000;       // o robô carimba à meia-noite UTC
+  const sx=W.semanaDe(new Date(2026,7,28));                 // sexta 28/08/2026
+  const b=W.basesPrecos(sx);
+  ok('MoM = 30 dias antes da referência (29/07), como no carrossel', W.dbarra(b.mom)==='29/07/2026', W.dbarra(b.mom));
+  ok('YoY = 365 dias antes (28/08/2025)', W.dbarra(b.yoy)==='28/08/2025', W.dbarra(b.yoy));
+  ok('YTD = 31/12 do ano anterior', W.dbarra(b.ytd)==='31/12/2025', W.dbarra(b.ytd));
+  ok('a janela pedida ao banco começa 30 dias antes da âncora do YoY (29/07/2025)',
+     W.dbarra(W.inicioJanelaPrecos(sx))==='29/07/2025', W.dbarra(W.inicioJanelaPrecos(sx)));
+  ok('em janeiro o YTD olha para 31/12 do ano que acabou',
+     W.dbarra(W.basesPrecos(W.semanaDe(new Date(2027,0,8))).ytd)==='31/12/2026');
+
+  // série DIÁRIA (minério): a base cai exatamente na âncora
+  const diaria=[[meia(2025,8,28),100],[meia(2025,12,31),80],[meia(2026,7,29),90],
+                [meia(2026,8,21),95],[meia(2026,8,28),99]];
+  const l=W.comVariacoes(W.linhaDeSerie('IODEX',diaria,sx,2,''),diaria,sx);
+  ok('MoM = 99 ÷ 90 − 1', W.pct(l.vars.mom.delta)==='+10,00%', W.pct(l.vars.mom.delta));
+  ok('YoY = 99 ÷ 100 − 1', W.pct(l.vars.yoy.delta)==='−1,00%', W.pct(l.vars.yoy.delta));
+  ok('YTD = 99 ÷ 80 − 1', W.pct(l.vars.ytd.delta)==='+23,75%', W.pct(l.vars.ytd.delta));
+  ok('…e o WoW continua sendo o Δ de 7 dias que já existia', W.pct(l.delta)==='+4,21%', W.pct(l.delta));
+
+  // série SEMANAL (celulose, PIX): a base é o último assessment ATÉ a âncora
+  const semanal=[[meia(2025,8,22),600],[meia(2025,8,29),610],[meia(2025,12,26),580],
+                 [meia(2026,1,2),585],[meia(2026,7,24),560],[meia(2026,7,31),562],
+                 [meia(2026,8,21),565],[meia(2026,8,28),570]];
+  const c=W.comVariacoes(W.linhaDeSerie('BHKP',semanal,sx,2,''),semanal,sx);
+  ok('PIX: o MoM parte do último assessment até 29/07 (24/07), não do de 31/07',
+     W.dmes(c.vars.mom.base.data)==='24/jul' && c.vars.mom.base.v===560, W.dmes(c.vars.mom.base.data));
+  ok('PIX: o YoY parte de 22/08/2025 (o de 29/08 é DEPOIS da âncora)',
+     W.dbarra(c.vars.yoy.base.data)==='22/08/2025', W.dbarra(c.vars.yoy.base.data));
+  ok('PIX: o YTD parte do último de 2025 (26/12), não do 1º de 2026',
+     W.dbarra(c.vars.ytd.base.data)==='26/12/2025', W.dbarra(c.vars.ytd.base.data));
+
+  // série CURTA: começa depois da âncora → nulo, nunca "desde o primeiro ponto"
+  const curta=[[meia(2026,6,23),490],[meia(2026,8,21),495],[meia(2026,8,28),500]];
+  const h=W.comVariacoes(W.linhaDeSerie('HRC',curta,sx,0,''),curta,sx);
+  ok('série que começa depois da âncora: YoY e YTD saem nulos (não "desde junho")',
+     h.vars.yoy.delta===null && h.vars.ytd.delta===null && h.vars.yoy.base===null);
+  ok('…mas o MoM, que alcança, sai', W.pct(h.vars.mom.delta)==='+2,04%', W.pct(h.vars.mom.delta));
+
+  // preço de tela: a ponta da direita muda → as variações andam junto
+  const v=W.comVariacoes(W.linhaDeSerie('IODEX',diaria,sx,2,''),diaria,sx);
+  W.aplicarAoVivo(v,108,new Date(2026,7,28),new Date(2026,7,28,16,42));
+  ok('com o preço de tela, MoM/YoY/YTD recalculam contra ele (108 ÷ 90 − 1 = +20%)',
+     W.pct(v.vars.mom.delta)==='+20,00%' && W.pct(v.vars.yoy.delta)==='+8,00%' && W.pct(v.vars.ytd.delta)==='+35,00%',
+     [v.vars.mom.delta,v.vars.yoy.delta,v.vars.ytd.delta].map(x=>W.pct(x)).join(' '));
+
+  // o e-mail
+  const html=W.buildEmail({semana:sx,precos:[l,c,h],acoes:[],dias:[],relatorios:[]});
+  const tab=html.slice(html.indexOf('>ATIVO<'),html.indexOf('</table>',html.indexOf('>ATIVO<')));
+  ok('o cabeçalho traz WoW, MoM, YoY e YTD — com a grafia do analista',
+     ['>WoW<','>MoM<','>YoY<','>YTD<'].every(s=>tab.indexOf(s)>0) && tab.indexOf('Δ 7 DIAS')<0);
+  ok('…na ordem WoW → MoM → YoY → YTD',
+     tab.indexOf('>WoW<')<tab.indexOf('>MoM<') && tab.indexOf('>MoM<')<tab.indexOf('>YoY<')
+     && tab.indexOf('>YoY<')<tab.indexOf('>YTD<'));
+  ok('os números saem na tabela', ['+10,00%','−1,00%','+23,75%'].every(s=>tab.indexOf(s)>0));
+  ok('falta de histórico vira travessão na célula', (tab.match(/>—</g)||[]).length>=2);
+  ok('a legenda diz contra QUANDO cada coluna compara',
+     html.indexOf('(WoW). MoM, YoY e YTD: contra o último assessment até 29/07/2026, 28/08/2025 e 31/12/2025')>0);
+  ok('o WoW fica em negrito; MoM/YoY/YTD em peso normal (a semana é a manchete)',
+     /<b style="[^"]*">\+4,21%<\/b>/.test(tab) && /<span style="[^"]*">\+10,00%<\/span>/.test(tab));
+
+  // sem as variações (quem chama do jeito antigo) → a tabela de sempre
+  const velho=W.buildEmail({semana:sx,precos:[W.linhaDeSerie('IODEX',diaria,sx,2,'')],
+                            acoes:[],dias:[],relatorios:[]});
+  ok('sem as variações, a tabela é a de sempre ("Δ 7 DIAS", sem MoM/YoY/YTD)',
+     velho.indexOf('Δ 7 DIAS')>0 && velho.indexOf('>MoM<')<0 && velho.indexOf('(WoW)')<0);
+})();
+
 // ══ 3. GABARITO — os números do e-mail de 28/08/2026 ════════════════════════
 // Cada linha: [rótulo, fechamento 21/ago, fechamento 28/ago, variação que o
 // analista mandou]. A conta da lib tem de bater com a última coluna.
@@ -450,8 +524,21 @@ const HTML=W.buildEmail(MODELO);
   ok('nada de variável CSS nem de rem', !/var\(--/.test(HTML) && !/\d+rem/.test(HTML));
   ok('nada de classe CSS (não há <style> no e-mail)',
      !/\sclass="/.test(HTML) && HTML.indexOf('<style')<0);
-  ok('o miolo tem largura fixa de 640px (max-width sozinho o Outlook ignora)',
-     HTML.indexOf('width="640"')>0);
+  // Coluna FLUIDA desde 26/11/2026 (como o e-mail do clipping): 100% em atributo e estilo,
+  // e NADA de max-width — o importador do Word converte max-width em largura FIXA e a folha
+  // corta ao imprimir/encaminhar.
+  ok('o miolo é FLUIDO: sem a coluna fixa de 640px',
+     HTML.indexOf('width="640"')<0 && HTML.indexOf('640px')<0);
+  ok('…ocupa 100% da janela, em atributo e em estilo',
+     /^<table[^>]*width="100%"[^>]*style="width:100%/.test(HTML) &&
+     /<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;background:#F7F5F0">/.test(HTML));
+  // TUDO na largura do e-mail — texto E tabelas (houve uma rodada com as tabelas presas em
+  // 588px; o analista preferiu tudo esticado, com a tabela de preços mais cheia).
+  ok('…e sem max-width em lugar nenhum (o Word viraria largura fixa)', HTML.indexOf('max-width')<0);
+  const cartaoDe=(txt)=>HTML.slice(HTML.lastIndexOf('<table',HTML.indexOf(txt)),HTML.indexOf(txt));
+  ok('as tabelas (preços, ações, múltiplos) e os cartões vão até a borda: width 100%',
+     ['>ATIVO<','21/AGO</span>','>MINERAÇÃO<','COMMODITIES','Unleashing the Puma'].every(t=>{
+       const c=cartaoDe(t); return /width="100%"[^>]*style="width:100%/.test(c);}));
 
   // — os tokens medidos no Long Story Short —
   const T=W.T;
@@ -470,7 +557,10 @@ const HTML=W.buildEmail(MODELO);
   ok('a tabela de preços traz os dois fechamentos',
      HTML.indexOf('95,45')>0 && HTML.indexOf('98,60')>0);
   ok('a unidade acompanha o nome do ativo', HTML.indexOf('US$/t')>0);
-  ok('as ações trazem o R$ e o percentual', HTML.indexOf('R$ 7,23')>0 && HTML.indexOf('+10,38%')>0);
+  ok('as ações trazem o R$ e o percentual', HTML.indexOf('R$&nbsp;7,23')>0 && HTML.indexOf('+10,38%')>0);
+  // o Word ignora `nowrap`: sem o espaço inquebrável, "R$ 145,28" quebrava em duas linhas
+  ok('…com espaço INQUEBRÁVEL entre a moeda e o número (o Word ignora nowrap)',
+     HTML.indexOf('R$ 7,23')<0 && HTML.indexOf('R$&nbsp;6,55')>0);
   ok('o IBOV sai sem casa decimal', HTML.indexOf('175.696')>0);
   ok('o relatório vira cartão com link', HTML.indexOf('Unleashing the Puma 2.0')>0
      && HTML.indexOf('Abrir o relatório ↗')>0);
@@ -503,14 +593,19 @@ const HTML=W.buildEmail(MODELO);
   ok('a quebra de linha da abertura vira <br>', HTML.indexOf('bom dia!<br>')>0);
 
   // — o gráfico de barras (o "Market Performance" do LSS) —
-  const barras=[...HTML.matchAll(/width="(\d+)" style="width:\1px;height:6\.75pt;background:(#[0-9A-F]{6})/g)]
+  // a barra é uma tabela com largura em % da sua metade do gráfico (estica com a janela)
+  const barras=[...HTML.matchAll(/width="(\d+)%" style="width:\1%" align="(?:left|right)"><tr><td style="height:6\.75pt;background:(#[0-9A-F]{6})/g)]
                  .map(m=>({w:+m[1],cor:m[2]}));
   ok('desenha uma barra por papel', barras.length===acoes.length, 'barras='+barras.length);
-  ok('a maior barra é a do maior movimento e respeita o teto de 126px',
-     Math.max(...barras.map(b=>b.w))===126, JSON.stringify(barras.map(b=>b.w)));
+  ok('a maior barra é a do maior movimento e respeita o teto de 94% da metade',
+     Math.max(...barras.map(b=>b.w))===94, JSON.stringify(barras.map(b=>b.w)));
   ok('a barra é proporcional (CSNA3 +9,19% ≈ 9,19/10,38 da maior)',
-     Math.abs(barras.find(b=>b.w<126&&b.cor===W.T.green).w-Math.round(126*9.19/10.38))<=1,
+     Math.abs(barras.find(b=>b.w<94&&b.cor===W.T.green).w-Math.round(94*9.19/10.38))<=1,
      JSON.stringify(barras));
+  ok('as duas metades do gráfico dividem o espaço que sobra (50% / 50%)',
+     (HTML.match(/<td width="50%" style="width:50%;padding:1\.5pt 0">/g)||[]).length===2*acoes.length);
+  ok('nenhuma coluna fixa de 100px ou mais no gráfico (o resto é fluido)',
+     !/width="(\d{3,})"/.test(HTML.slice(HTML.indexOf('AÇÕES EM COBERTURA'),HTML.indexOf('RELATÓRIOS PUBLICADOS'))));
   ok('quem caiu ganha barra vermelha', barras.some(b=>b.cor===W.T.red));
   ok('quem subiu ganha barra verde',  barras.filter(b=>b.cor===W.T.green).length===9);
   ok('há um eixo central de 1px', HTML.indexOf('width="1" style="width:1px;background:'+W.T.axis)>0);
@@ -531,7 +626,7 @@ const HTML=W.buildEmail(MODELO);
      (HTML.match(/>DIV\. YIELD</g)||[]).length===nG &&
      (HTML.match(/colspan="2"/g)||[]).length===2*nG &&
      /colspan="2"[^>]*>[\s\S]{0,160}?>EV\/EBITDA</.test(HTML));
-  ok('…e sem as colunas que ficaram de fora (o e-mail tem 640px)',
+  ok('…e sem as colunas que ficaram de fora (escolha do analista, 08/09)',
      HTML.indexOf('ND/EBITDA')<0 && HTML.indexOf('P/CE')<0 && HTML.indexOf('P/E')<0);
   ok('múltiplo sai com uma casa e o "x", nos dois anos',
      HTML.indexOf('4,7x')>0 && HTML.indexOf('4,2x')>0, 'ev 26E=4,68 · 27E=4,21');
@@ -754,8 +849,16 @@ async function guardaDeEscrita(){
   // ── a janela pedida ao banco tem folga para série SEMANAL ────────────────
   // Celulose sai 1×/semana: pedir só o intervalo exato devolveria série vazia na ponta
   // esquerda quando a referência é, por exemplo, uma segunda-feira.
-  ok('a busca de preços recua 30 dias antes de `ini` (celulose é semanal)',
-     /S\.sem\.ini\.getDate\(\)-30/.test(src));
+  // Desde 26/11/2026 a janela vai até a âncora do YoY − 30 dias (colunas MoM/YoY/YTD),
+  // o que continua cobrindo, com folga, os 30 dias antes de `ini`.
+  const semJ=W.semanaDe(new Date(2026,7,24));                // SEGUNDA: o pior caso do PIX
+  const iniMenos30=new Date(semJ.ini.getFullYear(),semJ.ini.getMonth(),semJ.ini.getDate()-30);
+  ok('a busca de preços recua ao menos 30 dias antes de `ini` (celulose é semanal)',
+     /de=ymd\(W\.inicioJanelaPrecos\(S\.sem\)\)/.test(src) && W.inicioJanelaPrecos(semJ)<=iniMenos30,
+     W.dbarra(W.inicioJanelaPrecos(semJ))+' ≤ '+W.dbarra(iniMenos30));
+  ok('…e as variações são calculadas DEPOIS do preço de tela (o Δ é contra a coluna da direita)',
+     /await telaPrecos\(\);\s*\/\/ MoM\/YoY\/YTD DEPOIS/.test(src) &&
+     /S\.precos\.forEach\(l=>W\.comVariacoes\(l,porCode\[l\.code\],S\.sem\)\)/.test(src));
   ok('a comp table guarda de que DIA é o preço que usou',
      src.indexOf('datasPreco')>0 && /dataPreco:/.test(src));
   ok('o campo de data não aceita o futuro', /getElementById\('ref'\)\.max=hojeSP\(\)/.test(src));

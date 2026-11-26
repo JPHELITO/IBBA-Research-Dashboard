@@ -38,12 +38,22 @@ var T = {
   axis:    '#D8D5CC',   // eixo do gráfico de barras
   serif:   "'Georgia',serif",
   sans:    "'Arial',sans-serif",
-  W:       640,         // largura do miolo (= os 480pt do LSS)
   PAD:     '19.5pt'     // respiro lateral do miolo
 };
+// ⚠️ O e-mail é FLUIDO desde 26/11/2026 (pedido do analista: "melhor distribuído no
+// tamanho do e-mail, como fizemos no clipping"). Antes era uma coluna de 640px centrada
+// — no Outlook de tela cheia virava uma tira no meio, e no celular rolava de lado. Agora
+// TUDO é 100% da janela, como o e-mail do clipping (news-hunter `clipping/email_brand.py`):
+// texto, tabela de preços, gráfico das ações e comp table. NUNCA `max-width` na tabela:
+// o importador de HTML do Word converte max-width em largura FIXA e a folha corta ao
+// imprimir (medido no clipping em 10/08: 11,46in numa página de 7,07in úteis).
+// Histórico da decisão: houve uma rodada com as tabelas presas nos 588px antigos; o
+// analista preferiu tudo na largura do e-mail e, para a tabela de preços não ficar vazia
+// esticada, ela ganhou as colunas MoM, YoY e YTD (ver `comVariacoes`).
 
-var BAR_HALF = 133;     // metade do gráfico de barras, em px
-var BAR_MAX  = 126;     // barra mais longa (deixa folga antes do %)
+// Gráfico de barras das ações: as duas metades dividem o espaço que SOBRA depois das
+// colunas de texto (50% / 50%), e cada barra é uma fração da sua metade.
+var BAR_MAX_PCT = 94;   // barra mais longa, em % da metade (deixa folga antes do %)
 
 // ── formatação (o e-mail é em português → pt-BR em TUDO) ─────────────────────
 // O e-mail montado à mão misturava "98,60" com "R$ 7.23" porque cada tabela vinha
@@ -284,6 +294,51 @@ function linhaDeSerie(rotulo, serie, sem, casas, prefixo) {
   };
 }
 
+// ── PREÇOS: WoW · MoM · YoY · YTD (pedido do analista, 26/11/2026) ────────────
+// Com o e-mail na largura toda, a tabela de preços esticada ficava vazia; o analista
+// pediu mais informação nela: *"coloque o WoW, MoM, YoY, YTD"*. O WoW é a coluna que já
+// existia (o `delta` de `linhaDeSerie`, 7 dias). As outras três seguem a MESMA régua do
+// seletor D/WoW/MoM/YTD/YoY do carrossel da dashboard (news-hunter
+// `hunter/prices.py::commodity_periods`), para e-mail e dashboard não divergirem:
+//   MoM = 30 dias · YoY = 365 dias · YTD = último fechamento do ano ANTERIOR,
+// tudo POR DATA, nunca por contagem de pontos. A base é o ÚLTIMO assessment com data ≤ a
+// âncora (`pontoAte`) — o que mantém a celulose (PIX, semanal) honesta. A âncora conta
+// da data de REFERÊNCIA do weekly (`sem.fim`), como o WoW sempre contou; numa sexta com
+// assessment no dia é exatamente o número do carrossel.
+// Série que não alcança a âncora → base null → "—". NUNCA cair no primeiro ponto da
+// série: isso publicaria um "YoY" que na verdade é "desde junho" (erro que o carrossel já
+// cometeu e corrigiu — ver a docstring de `commodity_periods`).
+var PERIODOS_PRECOS = [['mom', 'MoM'], ['yoy', 'YoY'], ['ytd', 'YTD']];
+function basesPrecos(sem) {
+  var f = sem.fim;
+  return {
+    mom: new Date(f.getFullYear(), f.getMonth(), f.getDate() - 30),
+    yoy: new Date(f.getFullYear(), f.getMonth(), f.getDate() - 365),
+    ytd: new Date(f.getFullYear() - 1, 11, 31)
+  };
+}
+// Início da janela que a página pede ao banco: a âncora mais antiga (a do YoY) menos a
+// mesma folga de 30 dias que a ponta do WoW sempre teve (celulose é semanal; feriado).
+function inicioJanelaPrecos(sem) {
+  var b = basesPrecos(sem).yoy;
+  return new Date(b.getFullYear(), b.getMonth(), b.getDate() - 30);
+}
+function _pctContra(base, fim) {
+  return (base && fim && base.v) ? (fim.v / base.v - 1) * 100 : null;
+}
+// Acrescenta `linha.vars = {mom:{base,delta}, yoy:{…}, ytd:{…}}`. O Δ é sempre contra a
+// coluna da DIREITA (fechamento ou preço de tela) — `aplicarAoVivo` recalcula sozinho.
+function comVariacoes(linha, serie, sem) {
+  if (!linha || !sem) return linha;
+  var b = basesPrecos(sem), vars = {};
+  PERIODOS_PRECOS.forEach(function (p) {
+    var base = pontoAte(serie, b[p[0]]);
+    vars[p[0]] = {base: base, delta: _pctContra(base, linha.fim)};
+  });
+  linha.vars = vars;
+  return linha;
+}
+
 // ── PREÇO DE TELA ────────────────────────────────────────────────────────────
 // Regra do analista (01/09/2026), textual: *"nunca vou rodar na sexta pós mercado
 // fechar, vou rodar na hora lá, umas 16h/17h... e você irá utilizar a comparação com
@@ -310,6 +365,10 @@ function aplicarAoVivo(linha, valor, dia, pego) {
   linha.fim = {ts: Math.floor((pego || d).getTime() / 1000), v: v, data: d};
   linha.aoVivo = pego || d;
   linha.delta = (linha.ini && linha.ini.v) ? (v / linha.ini.v - 1) * 100 : null;
+  // MoM/YoY/YTD andam junto: a base não muda, só a ponta da direita.
+  if (linha.vars) Object.keys(linha.vars).forEach(function (k) {
+    linha.vars[k].delta = _pctContra(linha.vars[k].base, linha.fim);
+  });
   return linha;
 }
 // O instante mais recente em que alguma linha foi puxada — é o que o e-mail cita.
@@ -417,7 +476,7 @@ function _secao(titulo, legenda) {
     '</td></tr>';
 }
 
-// Cartão branco (o formato dos 3 bullets e dos relatórios).
+// Cartão branco (o formato dos 3 bullets, dos relatórios e do gráfico de ações).
 function _cartao(conteudo) {
   return '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"' +
     ' style="width:100%;background:' + T.card + ';border:1px solid ' + T.border +
@@ -462,11 +521,19 @@ function _td(html, alinha, ultima) {
 }
 function _tabelaPrecos(linhas, sem) {
   if (!linhas.length) return '';
+  // As colunas MoM/YoY/YTD só entram quando a página mandou as variações (`comVariacoes`);
+  // sem elas a tabela é a de sempre, com o "Δ 7 DIAS" sozinho.
+  var comVar = linhas.some(function (l) { return l.vars; });
   var s8 = 'font-family:' + T.sans + ';font-size:8.5pt;';
+  var fecha = '0 12px 0 0';                       // canto arredondado da última coluna
   var cabec = '<tr>' + _th('ATIVO', false, '12px 0 0 0') +
     _th(dmes(sem.ini).toUpperCase(), true) +
     _th(dmes(sem.fim).toUpperCase(), true) +
-    _th('Δ 7 DIAS', true, '0 12px 0 0') + '</tr>';
+    // as siglas como o analista escreveu (WoW, MoM, YoY, YTD) — não "WOW"
+    _th(comVar ? 'WoW' : 'Δ 7 DIAS', true, comVar ? '' : fecha) +
+    (comVar ? PERIODOS_PRECOS.map(function (p, k) {
+      return _th(p[1], true, k === PERIODOS_PRECOS.length - 1 ? fecha : '');
+    }).join('') : '') + '</tr>';
   var corpo = linhas.map(function (l, i) {
     var ult = i === linhas.length - 1;
     return '<tr>' +
@@ -477,13 +544,27 @@ function _tabelaPrecos(linhas, sem) {
           (l.ini ? l.prefixo + num(l.ini.v, l.casas) : '—') + '</span>', true, ult) +
       _td('<b style="' + s8 + 'color:' + T.ink + '">' +
           (l.fim ? l.prefixo + num(l.fim.v, l.casas) : '—') + '</b>', true, ult) +
+      // o WoW é a manchete do weekly: fica em negrito; MoM/YoY/YTD em peso normal
       _td('<b style="' + s8 + 'color:' + corDe(l.delta) + '">' + pct(l.delta) + '</b>', true, ult) +
+      (comVar ? PERIODOS_PRECOS.map(function (p) {
+        var d = (l.vars && l.vars[p[0]]) ? l.vars[p[0]].delta : null;
+        return _td('<span style="' + s8 + 'color:' + corDe(d) + '">' + pct(d) + '</span>', true, ult);
+      }).join('') : '') +
       '</tr>';
   }).join('');
   return '<tr><td style="padding:0 ' + T.PAD + '">' +
     '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"' +
     ' style="width:100%;background:' + T.card + ';border:1px solid ' + T.border +
     ';border-radius:12px;border-collapse:separate">' + cabec + corpo + '</table></td></tr>';
+}
+// A legenda da tabela de preços: o par de fechamentos (WoW) e, quando há as colunas
+// novas, a data-âncora de cada uma — a pergunta "contra QUANDO?" respondida no e-mail.
+function _legendaPrecos(sem, linhas) {
+  var fonte = 'Assessments Platts (aço e minério) e Fastmarkets PIX (celulose)';
+  if (!linhas.some(function (l) { return l.vars; })) return _contra(sem, linhas) + '. ' + fonte;
+  var b = basesPrecos(sem);
+  return _contra(sem, linhas) + ' (WoW). MoM, YoY e YTD: contra o último assessment até ' +
+    dbarra(b.mom) + ', ' + dbarra(b.yoy) + ' e ' + dbarra(b.ytd) + '. ' + fonte;
 }
 
 // ── ações: fechamentos + gráfico de barras divergente ────────────────────────
@@ -500,29 +581,37 @@ function _tabelaAcoes(linhas, sem) {
   var s6 = 'font-family:' + T.sans + ';font-size:7pt;color:' + T.mute + ';letter-spacing:.3pt';
 
   var corpo = linhas.map(function (l) {
-    var v = l.delta, w = v == null ? 0 : Math.max(1, Math.round(BAR_MAX * Math.abs(v) / maxAbs));
+    var v = l.delta, w = v == null ? 0 : Math.max(1, Math.round(BAR_MAX_PCT * Math.abs(v) / maxAbs));
+    // A barra é uma tabela com largura em % da SUA metade do gráfico — assim ela estica
+    // junto com a janela (e encolhe no celular) e as proporções entre papéis não mudam.
     var barra = function (lado) {
       var mostra = v != null && ((lado === 'pos' && v > 0) || (lado === 'neg' && v < 0));
       if (!mostra) return _p('<span style="font-size:1pt">&nbsp;</span>');
-      return '<table role="presentation" border="0" cellspacing="0" cellpadding="0" align="' +
-        (lado === 'pos' ? 'left' : 'right') + '"><tr>' +
-        '<td width="' + w + '" style="width:' + w + 'px;height:6.75pt;background:' +
+      return '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="' + w +
+        '%" style="width:' + w + '%" align="' + (lado === 'pos' ? 'left' : 'right') + '"><tr>' +
+        '<td style="height:6.75pt;background:' +
         (v > 0 ? T.green : T.red) + ';font-size:1pt;line-height:6.75pt">&nbsp;</td></tr></table>';
     };
+    // As colunas de texto têm largura em px e `nowrap`; as duas metades do gráfico
+    // levam 50% cada e ficam com tudo o que sobra. ⚠️ O motor do Word IGNORA `nowrap` e,
+    // com as metades em %, entrega à coluna de preço exatamente os px pedidos: "R$ 145,28"
+    // quebrava em duas linhas (medido em 26/11). Por isso o espaço entre a moeda e o
+    // número é INQUEBRÁVEL (&nbsp;) e as colunas de preço passaram de 62 para 70px.
+    var valor = function (ponto) {
+      return ponto ? String(l.prefixo || '').replace(/ /g, '&nbsp;') + num(ponto.v, l.casas) : '—';
+    };
     return '<tr>' +
-      '<td width="70" style="width:70px;padding:1.5pt 4.5pt 1.5pt 0">' +
+      '<td width="70" nowrap="nowrap" style="width:70px;padding:1.5pt 4.5pt 1.5pt 0">' +
         _p('<b style="' + s8 + 'color:' + T.ink + '">' + _esc(l.rotulo) + '</b>') + '</td>' +
-      '<td width="62" style="width:62px;padding:1.5pt 4.5pt 1.5pt 0">' +
-        _p('<span style="' + s8 + 'color:' + T.faint + '">' +
-           (l.ini ? l.prefixo + num(l.ini.v, l.casas) : '—') + '</span>', 'text-align:right') + '</td>' +
-      '<td width="62" style="width:62px;padding:1.5pt 9pt 1.5pt 0">' +
-        _p('<span style="' + s8 + 'color:' + T.soft + '">' +
-           (l.fim ? l.prefixo + num(l.fim.v, l.casas) : '—') + '</span>', 'text-align:right') + '</td>' +
-      '<td width="' + BAR_HALF + '" style="width:' + BAR_HALF + 'px;padding:1.5pt 0">' + barra('neg') + '</td>' +
+      '<td width="70" nowrap="nowrap" style="width:70px;padding:1.5pt 4.5pt 1.5pt 0">' +
+        _p('<span style="' + s8 + 'color:' + T.faint + '">' + valor(l.ini) + '</span>', 'text-align:right') + '</td>' +
+      '<td width="70" nowrap="nowrap" style="width:70px;padding:1.5pt 9pt 1.5pt 0">' +
+        _p('<span style="' + s8 + 'color:' + T.soft + '">' + valor(l.fim) + '</span>', 'text-align:right') + '</td>' +
+      '<td width="50%" style="width:50%;padding:1.5pt 0">' + barra('neg') + '</td>' +
       '<td width="1" style="width:1px;background:' + T.axis + ';font-size:1pt;line-height:0">' +
         '<span style="font-size:1pt">&nbsp;</span></td>' +
-      '<td width="' + BAR_HALF + '" style="width:' + BAR_HALF + 'px;padding:1.5pt 0">' + barra('pos') + '</td>' +
-      '<td width="48" style="width:48px;padding:0 0 0 6pt">' +
+      '<td width="50%" style="width:50%;padding:1.5pt 0">' + barra('pos') + '</td>' +
+      '<td width="52" nowrap="nowrap" style="width:52px;padding:0 0 0 6pt">' +
         _p('<b style="' + s8 + 'color:' + corDe(l.delta) + '">' + pct(l.delta) + '</b>', 'text-align:right') + '</td>' +
       '</tr>';
   }).join('');
@@ -605,7 +694,7 @@ function _tabelaComps(comps) {
   // Cabeçalho em DUAS FAIXAS, como numa comp table de research: em cima o nome do
   // múltiplo, UMA VEZ SÓ, centrado sobre as duas colunas (colspan); embaixo, o ano de
   // cada uma. Escrever "EV/EBITDA" duas vezes lado a lado, além de repetitivo, não
-  // caberia nos 640px do e-mail.
+  // caberia numa janela estreita (celular, folha impressa).
   // O P/E saiu no lugar do EV/EBITDA do ano seguinte (pedido do analista, 08/09/2026):
   // múltiplo de lucro é ruído em siderurgia (CSN e CMPC já saíam sem número).
   var SIMPLES = ['PREÇO', 'TARGET', 'UPSIDE'];            // uma coluna cada
@@ -737,8 +826,7 @@ function buildEmail(m) {
 
   // 4. preços
   if ((m.precos || []).length) {
-    linhas.push(_secao('PREÇOS', m.fontePrecos || (_contra(sem, m.precos) +
-       '. Assessments Platts (aço e minério) e Fastmarkets PIX (celulose)')));
+    linhas.push(_secao('PREÇOS', m.fontePrecos || _legendaPrecos(sem, m.precos)));
     linhas.push(_tabelaPrecos(m.precos, sem));
   }
 
@@ -796,12 +884,13 @@ function buildEmail(m) {
        _esc(a.cargo || '') + (a.contato ? '<br>' + _esc(a.contato) : '') + '</span>', 'margin:2pt 0 0 0') +
     '</td></tr>');
 
-  // O <table width=640> é o que segura a largura no Outlook: `max-width` sozinho ele ignora.
+  // Coluna FLUIDA: 100% da janela, em atributo E em estilo, e SEM max-width (ver o
+  // aviso junto de T). Era um <table width=640> centrado até 26/11/2026.
   return '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"' +
-    ' style="width:100%;background:' + T.bg + ';margin:0;padding:0"><tr><td align="center"' +
+    ' style="width:100%;background:' + T.bg + ';margin:0;padding:0"><tr><td' +
     ' style="padding:0;background:' + T.bg + '">' +
-    '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="' + T.W + '"' +
-    ' style="width:' + T.W + 'px;max-width:' + T.W + 'px;background:' + T.bg + '">' +
+    '<table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%"' +
+    ' style="width:100%;background:' + T.bg + '">' +
     linhas.join('') + '</table></td></tr></table>';
 }
 
@@ -846,6 +935,8 @@ root.IBBAWeekly = {
   semanaAcoes: semanaAcoes, ehMeioDeSemana: ehMeioDeSemana,
   montarDias: montarDias,
   pontoAte: pontoAte, diaDoTs: diaDoTs, linhaDeSerie: linhaDeSerie,
+  basesPrecos: basesPrecos, inicioJanelaPrecos: inicioJanelaPrecos, comVariacoes: comVariacoes,
+  PERIODOS_PRECOS: PERIODOS_PRECOS,
   aplicarAoVivo: aplicarAoVivo, ultimoAoVivo: ultimoAoVivo, hhmm: hhmm,
   relatoriosDaSemana: relatoriosDaSemana,
   earningsDaSemana: earningsDaSemana,
