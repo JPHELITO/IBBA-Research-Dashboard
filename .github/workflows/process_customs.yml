@@ -46,7 +46,7 @@ jobs:
           git config user.name  "IBBA Bot"
           git config user.email "bot@itaubba.com"
           git add "Pulp and Paper/pulp_paper.db" "Steel and Mining/steel_sm.db" \
-                  "Steel and Mining/steel_sm_web.db.gz" _inbox
+                  "Steel and Mining/steel_sm_web.db.gz" "Steel and Mining/steel_sm_core.db.gz" _inbox
           if git diff --staged --quiet; then
             echo "::warning::sem mudança nos bancos"
           else

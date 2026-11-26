@@ -113,6 +113,21 @@ html.dark .dk-skel i::after{background-color:rgba(255,255,255,.05);}
   html.dark .dk-skel i::after{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);}
 }
 @media (max-width:900px){ .dk-sk-tiles{grid-template-columns:repeat(2,minmax(0,1fr));} .dk-sk-cols{grid-template-columns:minmax(0,1fr);} .dk-sk-read{display:none!important;} }
+/* ══ DADO QUE AINDA DESCE (26/11/2026): os países (secex_country) vêm num arquivo à parte, logo depois da mesa aparecer — até lá,
+   o aviso no lugar de cada coisa que depende deles (quadro, "Who", linha da Overview, catálogo do Builder, gráfico da tela antiga),
+   sem mudar a altura de nada (o gráfico fica no lugar, invisível, com o texto por cima). ══ */
+.dk-tile.dk-off.dk-wait{opacity:.85;} .dk-tile.dk-wait .dk-tv{color:var(--gray-mid);}
+.dk-vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;padding:0;}
+.dk-tile.dk-wait .dk-td,.dk-ov tr.dk-owait td.dk-wait,.dk-bwait em,.dk-whochart[data-wait]::after,.chart-wrap[data-wait]::after{color:var(--gray-mid);font-weight:600;}
+.dk-whochart[data-wait],.chart-wrap[data-wait]{position:relative;}
+.dk-whochart[data-wait] canvas,.chart-wrap[data-wait] canvas{visibility:hidden;}
+.dk-whochart[data-wait]::after,.chart-wrap[data-wait]::after{content:attr(data-wait);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:.02em;}
+.dk-ov tr.dk-owait td.dk-wait{display:table-cell;text-align:left;font-size:11.5px;}
+.dk-bwait{cursor:default;} .dk-bwait:hover{color:var(--gray-dark);}
+@media (prefers-reduced-motion:no-preference){
+  .dk-tile.dk-wait .dk-td,.dk-ov tr.dk-owait td.dk-wait,.dk-bwait em,.dk-whochart[data-wait]::after,.chart-wrap[data-wait]::after{animation:dk-espera 1.6s ease-in-out infinite;}
+}
+@keyframes dk-espera{0%,100%{opacity:1;}50%{opacity:.45;}}
 /* ↺ RESET (26/11/2026, pedido do usuário: "um botão de reset acima das opções de filtro"): ao lado do ⤓ Data, na linha logo acima
    dos filtros. Volta a tela ao jeito que ela abre (filtros, escolhas da seção, Builder). Só com a mesa; some no Overview; apagado
    quando não há nada a desfazer. O mesmo desenho do ⤓ Data, em tinta neutra (o laranja fica com a ação principal). */

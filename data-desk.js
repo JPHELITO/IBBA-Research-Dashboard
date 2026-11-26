@@ -436,7 +436,7 @@
     var mw = monthWindow(base.ax, base.ax.length - 1, st), pw = periodWindow(P, mw[0], mw[1]), memo = {};
     var ctx = { sec: sec, st: st, u: u, ax: base.ax, P: P, PER: PER, A: A, i0: pw[0], i1: pw[1], m0: mw[0], m1: mw[1],
       M: function (id) { for (var i = 0; i < sec.metrics.length; i++) if (sec.metrics[i].id === id) return sec.metrics[i]; return null; },
-      has: function (id) { var M = this.M(id), self2 = this; if (!M) return false; if (M.multi) return M.multi.every(function (x) { return self2.has(x); }); return !M.available || M.available({ prod: st.prod }); },
+      has: function (id) { var M = this.M(id), self2 = this; if (!M) return false; if (M.wait && M.wait()) return false; if (M.multi) return M.multi.every(function (x) { return self2.has(x); }); return !M.available || M.available({ prod: st.prod }); },
       subs: function (id) { var M = this.M(id), self2 = this; return M.multi ? M.multi.map(function (x) { return self2.M(x); }) : [M]; },
       vals: function (id, mode) { mode = mode || 'level'; var key = id + '|' + mode; if (memo[key]) return memo[key];
         var M = this.M(id), c = base.comp[id], v;
@@ -552,7 +552,7 @@
   };
   Desk.prototype.hide = function () { this.cur = null; this._destroyAll(); };
   Desk.prototype._destroyAll = function () { for (var k in this.charts) { try { this.charts[k].destroy(); } catch (e) {} } this.charts = {}; };
-  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; this._hfC = {}; };
+  Desk.prototype.invalidate = function () { this._cache = {}; this._who_cache = {}; this._whoAgg = {}; this._bData = {}; this._bItems = {}; this._bEnt = {}; this._hfC = {}; };
   Desk.prototype.refresh = function (light) {
     if (!this.cur) return;
     if (this.sections[this.cur].overview) return this._overview();
@@ -583,6 +583,7 @@
     var tipOf = function (M0) { var hp = self._help(self.cur, M0.id, { prod: c.st.prod, label: self._lbl(M0), gran: c.st.gran }); return ((hp && hp.what) ? hp.what + '\n\n' : '') + 'Click to show it on the main chart.'; };
     this.el.tiles.innerHTML = this._tileIds().map(function (id) {
       var M = c.M(id), lbl = M.tileLabel ? (typeof M.tileLabel === 'function' ? M.tileLabel({ prod: c.st.prod }) : M.tileLabel) : self._lbl(M);   // M.tileLabel: rótulo curto só no quadro (o gráfico leva o nome inteiro)
+      if (M.wait && M.wait()) return '<div class="dk-tile dk-off dk-wait" data-wk="' + id + '" aria-busy="true"><div class="dk-tl"><span>' + esc(lbl) + '</span></div><div class="dk-tv">…</div><div class="dk-td">' + esc(waitTxt(M)) + '</div></div>';   // dado à parte ainda descendo (ex.: os países)
       if (!c.has(id) && M.hideNA) return '';
       if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(lbl) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
       if (M.multi) {   // composto (ex.: preço de importação × referência doméstica): as duas séries no mesmo quadro
@@ -863,6 +864,7 @@
   Desk.prototype._whoData = function () {
     var c = this.ctx, w = this._u().who, dims = (c.sec.who || []).filter(function (x) { return !x.available || x.available({ prod: c.st.prod }); });
     if (w.dim >= dims.length) w.dim = 0; var dim = dims[w.dim]; if (!dim) return null;
+    if (dim.wait && dim.wait()) return { dim: dim, dims: dims, wait: true };   // os dados dela ainda descem: nada vai para o cache
     var pills = dim.pills ? dim.pills({ prod: c.st.prod }) : null, top = pills ? (pills.filter(function (p) { return p.k === w.pill; })[0] || pills[0]) : null;
     var subs = top && top.sub ? top.sub : null, sub = subs ? (subs.filter(function (p) { return p.k === w.sub; })[0] || null) : null, pill = sub || top;   // pill = o recorte que vale
     var ck = this.cur + '|' + dim.id + '|' + c.st.prod + '|' + (pill ? pill.k : ''), base = (this._who_cache = this._who_cache || {})[ck];
@@ -899,6 +901,8 @@
     var c = this.ctx, E = this.el, d = this._whoData(), w = this._u().who, self = this; if (!d) { E.who.hidden = true; return; } E.who.hidden = false; this._whoDim = d.dim;
     var dg = E.who.querySelector('.dk-dims'); dg.hidden = d.dims.length < 2;
     dg.innerHTML = d.dims.map(function (x, k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === w.dim) + '">' + esc(x.tab || x.label) + '</button>'; }).join('');
+    if (d.wait) return this._whoWait(d);
+    E.who.querySelector('.dk-whochart').removeAttribute('data-wait');
     E.who.querySelector('.dk-pop').hidden = !!d.dim.noSelect;
     E.who.querySelector('.dk-pills').innerHTML = d.pills ? '<span class="dk-plbl">' + esc(d.dim.pillLabel || 'Product') + '</span>' + d.pills.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (p.k === d.top.k) + '">' + esc(p.l) + (p.sub ? ' ▾' : '') + '</button>'; }).join('') : '';
     var sp = E.who.querySelector('.dk-subpills'); sp.hidden = !d.subs;
@@ -952,9 +956,21 @@
     this._whoTitle = d.dim.title || 'Breakdown';
     if (!E.who.querySelector('.dk-popp').hidden) this._fillPop();
   };
+  /* "Who" enquanto os dados da quebra descem (dim.wait): as abas ficam (dá para ir a "By product"), o resto vira o aviso no lugar do gráfico */
+  Desk.prototype._whoWait = function (d) {
+    var E = this.el, txt = waitTxt(d.dim), ws = E.who.querySelector('.dk-whosty'), ww = E.who.querySelector('.dk-whowhy');
+    E.who.querySelector('.dk-pop').hidden = true; this._openPop(false);
+    E.who.querySelector('.dk-pills').innerHTML = ''; E.who.querySelector('.dk-subpills').hidden = true;
+    E.who.querySelector('.dk-whomodes').hidden = true; if (ws) ws.innerHTML = ''; if (ww) { ww.innerHTML = ''; ww.hidden = true; }
+    E.who.querySelector('h3').textContent = d.dim.heading || 'Who is behind the number'; E.who.querySelector('.dk-when').textContent = '';
+    this._dropCharts('who'); E.who.querySelector('.dk-whochart').setAttribute('data-wait', txt);
+    E.who.querySelector('.dk-rank').innerHTML = '<p class="dk-vh" role="status">' + esc(txt) + '</p>';   // o aviso à vista é o do gráfico; este é para o leitor de tela
+    this._whoTitle = d.dim.title || 'Breakdown';
+  };
+  function waitTxt(o) { var t = typeof o.waitText === 'function' ? o.waitText() : o.waitText; return t || 'Loading…'; }
   function hexA(hex, a) { var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); return m ? 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')' : hex; }
   Desk.prototype._fillPop = function () {
-    var d = this._whoData(), pp = this.el.who.querySelector('.dk-popp'), self = this, w = this._u().who; if (!d) return;
+    var d = this._whoData(), pp = this.el.who.querySelector('.dk-popp'), self = this, w = this._u().who; if (!d || d.wait) return;
     if (!pp.querySelector('.dk-plist') || pp.dataset.key !== (d.pill ? d.pill.k : '') + '|' + d.names.length) {
       pp.dataset.key = (d.pill ? d.pill.k : '') + '|' + d.names.length;
       pp.innerHTML = '<div class="dk-ph"><span>' + d.names.length + ' ' + esc((d.dim.noun || 'items')) + ' in the database</span><button type="button" class="dk-lnk dk-reset">Reset</button></div>' +
@@ -968,7 +984,7 @@
     pp.querySelector('.dk-plist').innerHTML = list.map(function (n) { return '<label><input type="checkbox" data-n="' + esc(n) + '"' + (d.sel.indexOf(n) >= 0 ? ' checked' : '') + '>' + esc(n) + '</label>'; }).join('') || '<p class="dk-note">No match.</p>';
   };
   Desk.prototype._rank = function () {
-    var c = this.ctx, d = this._whoData(), E = this.el, w = this._u().who, self = this; if (!d) return;
+    var c = this.ctx, d = this._whoData(), E = this.el, w = this._u().who, self = this; if (!d || d.wait) return;
     var i = this._ref(), PER = c.PER, pp = c.P[i], mode = w.mode, price = mode === 'price', rev = mode === 'revenue';
     var A = rev ? d.agg2 : d.agg, SR = rev ? d.ser2 : d.ser, T = rev ? d.tot2 : d.tot, ST = rev ? d.serTot2 : d.serTot;
     var unit = price ? (d.dim.priceUnit || '') : rev ? (d.dim.unit2 || 'US$ mn') : (d.dim.unit || 'kt'), dec = price ? (d.dim.priceDec || 0) : rev ? (d.dim.dec2 || 0) : (d.dim.dec || 0), K = d.dim.priceK || 1;
@@ -1026,10 +1042,16 @@
   Desk.prototype._overview = function () {
     var self = this, sec = this.sections[this.cur], r = this.root, rows = '', lastG = null, seenKey = 'ibba_desk_seen_' + (this.cfg.sector || 'x'), seen = {}, now = {};
     this._destroyAll(); this._built = null;
-    try { seen = JSON.parse(localStorage.getItem(seenKey) || '{}') || {}; } catch (e) {}
+    if (!this._ovSeen) { try { this._ovSeen = JSON.parse(localStorage.getItem(seenKey) || '{}') || {}; } catch (e) { this._ovSeen = {}; } }
+    seen = this._ovSeen;   // o que a pessoa já tinha visto ANTES desta visita (fica igual nos redesenhos desta visita)
     sec.overview.forEach(function (it, ix) {
       var S = self.sections[it.sec], M = null; S.metrics.forEach(function (m) { if (m.id === it.metric) M = m; }); if (!M) return;
       var prod = it.prod || (S.prods ? S.prods[0].k : 'total'), all;
+      if (M.wait && M.wait()) {   // dado que ainda desce (ex.: os países, à parte): a linha fica, com o aviso e sem clique
+        var id0 = it.sec + '.' + it.metric + '.' + prod; if (seen[id0]) now[id0] = seen[id0];   // a marca de "já visto" não se perde
+        if (S.label !== lastG) { rows += '<tr class="dk-og"><td colspan="9">' + esc(S.label) + '</td></tr>'; lastG = S.label; }
+        rows += '<tr class="dk-owait" aria-busy="true"><td><b>' + esc(it.label || (typeof M.label === 'function' ? M.label({ prod: prod }) : M.label)) + '</b><span class="dk-src">' + esc(it.src || S.src || '') + '</span></td><td colspan="8" class="dk-wait">' + esc(waitTxt(M)) + '</td></tr>';
+        return; }
       try { all = self.debugSeries(it.sec, it.metric, { prod: prod, gran: 'monthly', win: 'all', from: null, to: null }, 'level').__all; } catch (e) { return; }
       var keys = Object.keys(all).sort(), v = keys.map(function (k) { return all[k]; }), i = lastIdx(v); if (i < 0) return;
       var mo = change(v, i, 1, M), yy = change(v, i, 12, M), rg = rangeN(v, i, 60), mN = +keys[i].slice(5, 7), a = 0, b = 0, ok = true, k;
@@ -1059,7 +1081,7 @@
     var cols = [], head = ['Period'];
     if (id === 'stage') { var md = u.mode === 'seasonal' ? 'level' : u.mode, un = u.mode === 'yoy' ? this._stageInfo().unit : null;
       c.subs(u.metric).forEach(function (S2) { cols.push(c.vals(S2.id, md)); head.push(self._lbl(S2) + (md === 'level' ? '' : ' — ' + md.toUpperCase()) + ' (' + (un || S2.unit) + ')'); }); }
-    else if (id === 'who') { var d = this._whoData(); if (!d) return null; var Ax = (this._u().who.mode === 'revenue' && d.agg2) ? d.agg2 : d.agg; d.names.forEach(function (n, k) { cols.push(Ax[k]); head.push(n); }); }
+    else if (id === 'who') { var d = this._whoData(); if (!d || d.wait) return null; var Ax = (this._u().who.mode === 'revenue' && d.agg2) ? d.agg2 : d.agg; d.names.forEach(function (n, k) { cols.push(Ax[k]); head.push(n); }); }
     else if (id.indexOf('mini:') === 0) { c.subs(id.slice(5)).forEach(function (M2) { cols.push(c.vals(M2.id)); head.push(self._lbl(M2) + ' (' + M2.unit + ')'); }); }
     else return null;
     var out = [head], i, first = -1; for (i = 0; i < c.P.length && first < 0; i++) if (cols.some(function (v) { return v[i] != null && v[i] !== 0; })) first = i;
@@ -1082,7 +1104,8 @@
     var keepCur = this.cur, keepState = this.cfg.state, keepCtx = this.ctx, out;
     this.cur = secId; this.cfg.state = function () { return st; }; this._dbg = true;
     try { var u = this._u(), kw = u.who; u.who = { dim: dimIdx || 0, pill: pillKey || null, sel: null, mode: (st && st.whoMode) || 'volume', hi: null };
-      var c = this.ctx = this._ctx(), d = this._whoData(); out = { names: d.names.length, sel: d.sel, keys: c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.key; }) };
+      var c = this.ctx = this._ctx(), d = this._whoData(); if (d && d.wait) { u.who = kw; return { names: 0, sel: [], keys: [], wait: true }; }
+      out = { names: d.names.length, sel: d.sel, keys: c.P.slice(c.i0, c.i1 + 1).map(function (p) { return p.key; }) };
       if (full) { var pack = function (arrs) { var o = {}; d.names.forEach(function (n, k) { var m = {}; c.P.forEach(function (p, i) { if (arrs[k][i]) m[p.key] = arrs[k][i]; }); o[n] = m; }); return o; };
         var one = function (a) { var m = {}; c.P.forEach(function (p, i) { m[p.key] = a[i]; }); return m; };
         out.all = pack(d.agg); out.tot = one(d.tot); if (d.agg2) { out.all2 = pack(d.agg2); out.tot2 = one(d.tot2); } }

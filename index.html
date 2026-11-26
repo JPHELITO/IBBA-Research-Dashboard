@@ -1853,7 +1853,7 @@ function applyFlags(flags, isAdmin){
    baixar o banco em segundo plano. No clique o arquivo já está no cache → a página abre na
    hora. Custo: no pior caso é o mesmo download que o clique faria; e como o `.db` é
    revalidado por ETag (sem cache-buster), da 2ª vez em diante trafega só o 304. */
-const _WARM_DB = { sector_steel:'Steel and Mining/steel_sm_web.db.gz', sector_pp:'Pulp and Paper/pulp_paper.db' };
+const _WARM_DB = { sector_steel:['Steel and Mining/steel_sm_core.db.gz','Steel and Mining/steel_sm_web.db.gz'], sector_pp:'Pulp and Paper/pulp_paper.db' };   // M&M: o núcleo (abre a página) e o banco web (os países), 26/11/2026
 const _warmed = new Set();
 function _warmDB(url){
   if(_warmed.has(url)) return; _warmed.add(url);
@@ -1863,7 +1863,7 @@ function _warmDB(url){
 document.querySelectorAll('.sc-card[data-flag]').forEach(card=>{
   const url=_WARM_DB[card.dataset.flag]; if(!url) return;
   let t=null;
-  card.addEventListener('pointerenter', ()=>{ t=setTimeout(()=>_warmDB(url),180); });
+  card.addEventListener('pointerenter', ()=>{ t=setTimeout(()=>[].concat(url).forEach(_warmDB),180); });
   card.addEventListener('pointerleave', ()=>{ clearTimeout(t); });
 });
 

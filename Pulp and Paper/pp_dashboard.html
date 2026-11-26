@@ -48,6 +48,9 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <script src="/assets/logos/logos.js"></script>
 <script src="/data-desk-context.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script>/* o motor do banco (sql-wasm.wasm, ~270 KB) começa a descer JÁ, logo depois do script dele — antes só no openDB(), depois de
+   todos os scripts da página (~1 s mais tarde na 1ª visita; 26/11/2026). O openDB() usa esta promessa. */
+try{ window.__sqlEarly=initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}); window.__sqlEarly.catch(function(){}); }catch(e){}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -1188,7 +1191,7 @@ async function openDB(){
      o navegador revalida por ETag → 304 e a página abre na hora quando o dado não mudou.
      V1 (2026-10-20): o motor (wasm) e o banco descem AO MESMO TEMPO, como no M&M. */
   const [SQL,buf]=await Promise.all([
-    initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}),
+    (window.__sqlEarly||Promise.reject()).catch(()=>initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`})),   // o motor que a <head> já pediu
     (function(){ const early=window.__dbEarly; window.__dbEarly=null; return early||fetch('pulp_paper.db'); })()   // o pedido que a <head> já fez (uma vez só)
       .then(resp=>{ if(!resp.ok) throw new Error(`HTTP ${resp.status}`); return resp.arrayBuffer(); })]);
   return new SQL.Database(new Uint8Array(buf));

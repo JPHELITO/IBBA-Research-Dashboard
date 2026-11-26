@@ -43,7 +43,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz" "Pulp and Paper/pulp_paper.db"
+          git add "Steel and Mining/steel_sm.db" "Steel and Mining/steel_sm_web.db.gz" "Steel and Mining/steel_sm_core.db.gz" "Pulp and Paper/pulp_paper.db"
           git diff --staged --quiet || git commit -m "data: upload do admin processado"
           git pull --rebase --autostash || true   # robustez contra corrida de push (igual ao pulp)
           git push
