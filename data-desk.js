@@ -582,7 +582,7 @@
     var act = '<div class="dk-ta"><i></i><span class="dk-ta0">Show on chart</span><span class="dk-ta1">On the main chart</span></div>';
     var tipOf = function (M0) { var hp = self._help(self.cur, M0.id, { prod: c.st.prod, label: self._lbl(M0), gran: c.st.gran }); return ((hp && hp.what) ? hp.what + '\n\n' : '') + 'Click to show it on the main chart.'; };
     this.el.tiles.innerHTML = this._tileIds().map(function (id) {
-      var M = c.M(id), lbl = self._lbl(M);
+      var M = c.M(id), lbl = M.tileLabel ? (typeof M.tileLabel === 'function' ? M.tileLabel({ prod: c.st.prod }) : M.tileLabel) : self._lbl(M);   // M.tileLabel: rótulo curto só no quadro (o gráfico leva o nome inteiro)
       if (!c.has(id) && M.hideNA) return '';
       if (!c.has(id)) return '<div class="dk-tile dk-off"><div class="dk-tl"><span>' + esc(lbl) + '</span></div><div class="dk-tv">—</div><div class="dk-td">' + esc(M.naText || 'Not available for this selection') + '</div></div>';
       if (M.multi) {   // composto (ex.: preço de importação × referência doméstica): as duas séries no mesmo quadro

@@ -10,6 +10,14 @@
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <!-- esqueleto nas molduras dos gráficos desde o 1º desenho; o loadDB() tira a classe ao terminar -->
 <script>document.documentElement.classList.add('ibba-loading')</script>
+<!-- CARREGAMENTO (26/11/2026, pedido do usuário: "quando está carregando essas páginas aparece uma tela com o build antigo… ajeite" e
+     "está demorando um pouco para carregar"): (1) o palpite da MESA entra aqui, antes de a página aparecer — a chave data_desk está
+     ligada para todos, então sem histórico o palpite é "mesa"; ?desk=0 ou a última visita sem a mesa = tela antiga — e, com ele, o
+     esqueleto da mesa (data-desk.css) no lugar das molduras da tela antiga; (2) o banco começa a descer JÁ, junto com os scripts (antes
+     só depois deles, ~1,3 s depois); o openDB() usa este pedido uma vez só. -->
+<script>(function(){ try{ var q=new URLSearchParams(location.search).get('desk'), s=null; try{ s=localStorage.getItem('ibba_desk'); }catch(e){}
+  if(q!=='0'&&s!=='0') document.documentElement.classList.add('desk-on');
+  window.__dbEarly=fetch('pulp_paper.db',{priority:'low'});   /* prioridade baixa: desce junto, mas os scripts da página vêm primeiro */ }catch(e){} })();</script>
 <!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
 <link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
@@ -821,7 +829,7 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
 
 <!-- ══ DATA DESK: a mesa de leitura (chave data_desk). Vazia e oculta enquanto a chave estiver desligada. ══ -->
-<div id="desk-root" class="section"></div>
+<div id="desk-root" class="section"><div class="dk-skel" aria-hidden="true"><div class="dk-sk-tiles"><i></i><i></i><i></i><i></i></div><div class="dk-sk-cols"><i class="dk-sk-stage"></i><i class="dk-sk-read"></i></div></div></div>
 
 <div class="note-bar">
   Sources: <em>IBÁ</em> (pulp &amp; paper production, sales, trade, apparent consumption) ·
@@ -1181,7 +1189,8 @@ async function openDB(){
      V1 (2026-10-20): o motor (wasm) e o banco descem AO MESMO TEMPO, como no M&M. */
   const [SQL,buf]=await Promise.all([
     initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}),
-    fetch('pulp_paper.db').then(resp=>{ if(!resp.ok) throw new Error(`HTTP ${resp.status}`); return resp.arrayBuffer(); })]);
+    (function(){ const early=window.__dbEarly; window.__dbEarly=null; return early||fetch('pulp_paper.db'); })()   // o pedido que a <head> já fez (uma vez só)
+      .then(resp=>{ if(!resp.ok) throw new Error(`HTTP ${resp.status}`); return resp.arrayBuffer(); })]);
   return new SQL.Database(new Uint8Array(buf));
 }
 
@@ -2073,7 +2082,7 @@ function _flagsRole(){ return _frP||(_frP=Promise.all([sbAuth.rpc('get_dashboard
 const _deskLocal=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 function _deskParam(){ try{ return new URLSearchParams(location.search).get('desk'); }catch(e){ return null; } }
 function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('desk-on',_deskOn); }
-(function(){ const q=_deskParam(); let on=false; try{ on=localStorage.getItem('ibba_desk')==='1'; }catch(e){}
+(function(){ const q=_deskParam(); let on=true; try{ on=localStorage.getItem('ibba_desk')!=='0'; }catch(e){}   // sem histórico = mesa (a chave está ligada para todos; o mesmo palpite da <head>)
   if(q==='0') on=false; else if(q==='1'&&_deskLocal) on=true; _deskSet(on); })();
 async function applyDeskFlag(){
   try{

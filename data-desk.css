@@ -95,6 +95,24 @@ html.dark .dk-bpop{background:#1c2026;}
 .dk-byleg .dk-hfleg{display:inline-flex;flex-wrap:wrap;gap:4px 12px;margin:0;}
 .dk-bylu{font-size:10px;color:var(--gray-mid);}
 @media (max-width:768px){ .dk-btools{padding:8px;} .dk-bfsep{display:none;} .dk-bpop{left:8px!important;right:8px;width:auto;} }
+/* ══ CARREGAMENTO (26/11/2026): com a mesa (html.desk-on, decidido na <head>), enquanto o banco desce aparece o ESQUELETO DA MESA — 4
+   quadros, o gráfico e o painel Reading, com o mesmo brilho das molduras (animação ibba-brilho do topnav.js) — e não a tela antiga.
+   O 1º desenho da mesa troca o conteúdo do #desk-root (o esqueleto sai sozinho). ══ */
+.dk-skel{display:none;}
+html.desk-on.ibba-loading .section:not(#desk-root){display:none!important;}
+html.desk-on.ibba-loading #desk-root{display:block!important;}
+html.desk-on.ibba-loading .dk-skel{display:block;}
+.dk-sk-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+.dk-sk-cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;}
+.dk-skel i{display:block;position:relative;overflow:hidden;border-radius:12px;background:var(--white);border:1px solid var(--border);}
+.dk-sk-tiles i{height:150px;} .dk-sk-stage,.dk-sk-read{height:440px;}
+.dk-skel i::after{content:"";position:absolute;inset:10px;border-radius:8px;background-color:rgba(17,17,17,.045);background-repeat:no-repeat;background-size:300% 100%;}
+html.dark .dk-skel i::after{background-color:rgba(255,255,255,.05);}
+@media (prefers-reduced-motion:no-preference){
+  .dk-skel i::after{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);animation:ibba-brilho 2.2s cubic-bezier(.4,0,.2,1) infinite;}
+  html.dark .dk-skel i::after{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);}
+}
+@media (max-width:900px){ .dk-sk-tiles{grid-template-columns:repeat(2,minmax(0,1fr));} .dk-sk-cols{grid-template-columns:minmax(0,1fr);} .dk-sk-read{display:none!important;} }
 /* ↺ RESET (26/11/2026, pedido do usuário: "um botão de reset acima das opções de filtro"): ao lado do ⤓ Data, na linha logo acima
    dos filtros. Volta a tela ao jeito que ela abre (filtros, escolhas da seção, Builder). Só com a mesa; some no Overview; apagado
    quando não há nada a desfazer. O mesmo desenho do ⤓ Data, em tinta neutra (o laranja fica com a ação principal). */
