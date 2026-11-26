@@ -157,6 +157,20 @@
     b.hover = null; this._bStore(); this._bNeed(); this._bViews(); this._bCat(); this._bStage(); };
   Desk.prototype._bCurrent = function () { var st = this.cfg.state(), b = this.bui, r = b.s.filter(function (x) { return x.ax === 'R'; }).map(function (x) { return x.key; }), o = { s: b.s.map(function (x) { return x.key; }), v: b.calc, g: st.gran, w: st.win, from: st.win === 'custom' ? st.from : null, to: st.win === 'custom' ? st.to : null }; if (r.length) o.r = r; return o; };
   function sameView(a, b) { return a.v === (b.v || 'level') && a.s.length === (b.s || []).length && a.s.every(function (k) { return b.s.indexOf(k) >= 0; }) && sameSet(a.r, b.r); }
+  /* ↺ RESET (26/11/2026; ver resetView em data-desk.js): a visão de abertura — a 1ª visão pronta, do jeito que o Builder abre sem
+     histórico (as séries e a conta dela; granularidade e janela ficam as da página, que o Reset também zera) —, busca e produto do
+     catálogo limpos, listas fechadas. As visões salvas ficam. */
+  Desk.prototype._bReset = function () { var sec = this.sections.builder, b = this._bState();
+    b.q = ''; b.prod = {}; b.open = {}; b.saving = false; b.sheet = false; b.hover = null;
+    this._bApply((sec.presets || [])[0] || { s: [] }, false);
+    if (this.bel && this.bel.bq) this.bel.bq.value = ''; };
+  /* o Builder está na visão de abertura? (a série que não existe para esta pessoa sai da conta, como no _bApply) */
+  Desk.prototype._bAtDefault = function () { var b = this.bui, self = this, p = (this.sections.builder.presets || [])[0]; if (!b) return true;
+    if (b.q || this._bGroups().some(function (g) { var k = b.prod[g.id]; return k && g.prods.length && k !== g.prods[0].k; })) return false;
+    if (!p) return !b.s.length;
+    var want = { v: p.v || 'level', s: (p.s || []).filter(function (k) { return !!self._bItem(k); }).slice(0, MAX), r: p.r },
+        cur = { v: b.calc, s: b.s.map(function (x) { return x.key; }), r: b.s.filter(function (x) { return x.ax === 'R'; }).map(function (x) { return x.key; }) };
+    return sameView(cur, want); };
 
   /* do palco de uma seção para o Builder: uma visão nova só com o que está no palco */
   Desk.prototype.builderFrom = function () { var c = this.ctx, u = this._u(), sid = this.cur; if (!c || !this.sections.builder) return;

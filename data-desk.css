@@ -31,6 +31,19 @@ html.desk-on #desk-root.section{padding:14px 22px 30px;}
 
 /* botões de seção que só existem na mesa (Overview, Iron Ore…) */
 .snav-btn.dk-only{display:none;} html.desk-on .snav-btn.dk-only{display:inline-block;}
+/* ↺ RESET (26/11/2026, pedido do usuário: "um botão de reset acima das opções de filtro"): ao lado do ⤓ Data, na linha logo acima
+   dos filtros. Volta a tela ao jeito que ela abre (filtros, escolhas da seção, Builder). Só com a mesa; some no Overview; apagado
+   quando não há nada a desfazer. O mesmo desenho do ⤓ Data, em tinta neutra (o laranja fica com a ação principal). */
+.dk-rst{display:none;}
+html.desk-on .dk-rst:not([hidden]){display:inline-flex;align-items:center;gap:5px;margin:auto 0 auto 8px;align-self:center;flex-shrink:0;white-space:nowrap;
+  font:600 10px var(--font);letter-spacing:.04em;cursor:pointer;border-radius:8px;padding:5px 12px 5px 10px;
+  border:1px solid rgba(22,25,29,.3);background:var(--white);color:var(--black);transition:background .15s,border-color .15s,color .15s,opacity .15s;}
+html.desk-on .dk-rst svg{width:11px;height:11px;flex:none;}
+html.desk-on .dk-rst:hover:not(:disabled){background:var(--black);border-color:var(--black);color:#fff;}
+html.desk-on .dk-rst:disabled{opacity:.4;cursor:default;}
+html.dark.desk-on .dk-rst:not([hidden]){border-color:rgba(255,255,255,.32);background:transparent;color:rgba(255,255,255,.88);}
+html.dark.desk-on .dk-rst:hover:not(:disabled){background:#343941;border-color:#343941;color:#fff;}
+@media print{.dk-rst{display:none!important;}}
 .dk-viewbar .dk-plbl{margin-left:6px;}
 /* Overview: uma linha por indicador */
 .dk-ovw{padding:4px 6px;} .dk-tblw{overflow-x:auto;}

@@ -356,6 +356,7 @@
     if (!this._hfSeries(this._hfM(u.metric)).length && !wait) { var ok = (sec.hf.tiles || []).map(function (t) { return self._hfM(t); }).filter(function (M) { return M && self._hfSeries(M).length; })[0];
       if (ok) { u.metric = ok.id; var w2 = this._hfNeed(sec, ok); if (w2) w2.then(function () { if (self.cur === id) self._hf(); }); } }
     this._hfTiles(); this._hfStage(); if (this._context) this._context();
+    if (this._uBase) this._uBase();   // ↺ Reset: linha de base da seção (data-desk.js)
   };
 
   /* quadros do topo: cada um é um BOTÃO que põe o indicador no gráfico principal */

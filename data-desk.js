@@ -323,11 +323,31 @@
     this._cache = {}; this._slots = {}; this._slotN = 0; this._ovr = null; this._raf = 0;
     ensurePlugin();
     var self = this;
+    /* RESET: o 1º toque da pessoa numa seção congela a linha de base dela (ver atDefault) */
+    this._touch = {}; this._u0 = {};
+    if (this.root) ['pointerdown', 'keydown'].forEach(function (ev) { self.root.addEventListener(ev, function () { if (self.cur) self._touch[self.cur] = true; }, true); });
     window.addEventListener('ibba:theme', function () { if (self.cur) self.refresh(); });
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { var S0 = self.cur && self.sections[self.cur]; if (S0 && !S0.overview && !S0.builder && !S0.hf && !S0.noBrush && self.el && self.ctx) self._brush(); }, 200); });
   }
   Desk.prototype.has = function (id) { return !!this.sections[id]; };
   Desk.prototype._u = function () { var id = this.cur; return this.ui[id] || (this.ui[id] = { metric: this.sections[id].stage, mode: 'level', hover: null, pinA: null, pinB: null, who: { dim: 0, pill: null, sel: null, mode: 'volume', hi: null } }); };
+  /* RESET (pedido do usuário, 26/11/2026: "deixe um botão de reset acima das opções de filtro"). O botão mora na página (ao lado
+     do ⤓ Data, na linha logo acima dos filtros) e ela zera os filtros dela (cfg.resetFilters → Total · Monthly · YTD, sem datas);
+     aqui volta o que é da seção aberta: o quadro no gráfico, a conta (Level/YoY/LTM/…), o produto próprio da seção, o "Who is
+     behind the number" e os pontos A→B — no Builder, a visão de abertura (data-desk-builder.js). Não muda de lugar (aba, seção e
+     sub-aba ficam) e não apaga as visões salvas.
+     "Já está como abre?" (o botão fica apagado): a linha de base de cada seção é o estado em que ela se ajeitou SOZINHA (o motor
+     acerta quadro, conta e modo do "Who" conforme o dado), tirada ao fim de cada desenho enquanto a pessoa não tocou na seção;
+     o 1º toque (pointerdown/keydown na mesa) congela a base. */
+  function uSnap(u, sec) { var w = u.who || {}; return JSON.stringify([u.metric, u.mode, u.pinA, u.pinB, u.prod || (sec.prods ? sec.prods[0].k : null), w.dim || 0, w.pill || null, w.sub || null, w.sel || null, w.mode || null]); }
+  Desk.prototype._uBase = function () { var id = this.cur, u = id && this.ui[id]; if (u && !this._touch[id]) this._u0[id] = uSnap(u, this.sections[id]); };
+  Desk.prototype.atDefault = function () { var id = this.cur, sec = id && this.sections[id]; if (!sec || sec.overview) return true;
+    if (sec.builder) return this._bAtDefault ? this._bAtDefault() : true;
+    var u = this.ui[id]; return !u || !this._touch[id] || this._u0[id] === uSnap(u, sec); };
+  Desk.prototype.resetView = function () { var id = this.cur, sec = id && this.sections[id]; if (!sec) return;
+    delete this.ui[id]; delete this._u0[id]; this._touch[id] = false; this._ovr = null;
+    if (sec.builder && this._bReset) this._bReset();
+    if (this.cfg.resetFilters) this.cfg.resetFilters(); else this.refresh(); };
 
   /* monta o contexto da seção para o estado atual dos filtros */
   Desk.prototype._ctx = function () {
@@ -479,6 +499,7 @@
     this._stage(); if (!light && !sec.noBrush) this._brush(); this.el.stage.querySelector('.dk-brush').hidden = !!sec.noBrush;
     this._who(); this._minis(); this._paintMarks(); this._read(); this._rank();
     if (!light && this._context) { try { this._context(); } catch (e) { console.warn('desk context', e); } }
+    this._uBase();
     if (!light && this.cfg.afterRender) { try { this.cfg.afterRender(this); } catch (e) { console.warn('desk afterRender', e); } }
   };
 

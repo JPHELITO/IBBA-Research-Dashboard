@@ -498,6 +498,8 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
   <!-- Base bruta: baixar as tabelas inteiras (liberado p/ todo usuário) -->
   <button class="dl-data-btn" id="dl-data-btn" onclick="openRawData()"
           title="Download the complete underlying data (Excel or CSV)">⤓ Data</button>
+  <!-- ↺ Reset (26/11/2026): volta filtros e escolhas desta tela ao jeito que ela abre (resetView, abaixo; estilo em data-desk.css) -->
+  <button type="button" class="dk-rst" id="dk-rst" hidden onclick="resetView()" title="Back to how this page opens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
 </div>
 
 <!-- FILTER BAR -->
@@ -2092,6 +2094,7 @@ function _deskKey(){ return currentSub==='pulp' ? (pulpTab==='gacc'?'pulp-gacc':
 /* Quem desenha a seção atual? Devolve true quando é a mesa (e troca a seção visível); false = tela antiga. */
 function _deskRender(){
   const root=document.getElementById('desk-root'); if(!root) return false;
+  _rstPaintSoon();   // ↺ Reset: aceso/apagado conforme o que a tela mostra (depois de desenhar)
   const picker=document.body.classList.contains('mob-picker-active'), key=_deskKey();
   const use=_deskOn && _dbReady && !picker && !!_desk() && DESK.has(key);
   const legacy=document.getElementById('sec-'+currentSub), fb=document.querySelector('.filter-bar');
@@ -2155,6 +2158,7 @@ function _desk(){
     setFilters:f=>{ if(f.gran&&f.gran!==currentGran) setGran(f.gran);
       if(f.win==='custom'&&(f.from||f.to)){ document.getElementById('win-from').value=f.from||''; document.getElementById('win-to').value=f.to||''; setCustomRange(); }
       else if(f.win&&f.win!=='custom'&&f.win!==currentWin) setWin(f.win); },
+    resetFilters:()=>resetFilters(),   // ↺ Reset (26/11/2026): a mesa zera a seção e pede à página os filtros de abertura
     gotoBuilder:()=>setSub('builder',{anim:1}),
     /* Context (data-desk-context.js): empresas expostas, benchmarks, manchetes e próxima divulgação de cada seção.
        Consultas pequenas, só quando a faixa chega perto da tela, 10 min de cache. Sem rede o bloco some e a mesa segue igual. */
@@ -2441,6 +2445,38 @@ function clearCustomRange(){
   document.getElementById('win-to').value='';
   setCustomRange();
 }
+function resetFilters(){
+  currentProd='total'; currentGran='monthly'; currentWin='ytd'; customRange={from:null,to:null};
+  ['win-from','win-to'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  document.querySelector('.custom-range')?.classList.remove('active'); document.getElementById('cr-clear')?.classList.remove('visible');
+  document.querySelectorAll('#prod-btns [data-prod]').forEach(b=>b.classList.toggle('active',b.dataset.prod==='total'));
+  document.querySelectorAll('[data-gran]').forEach(b=>b.classList.toggle('active',b.dataset.gran==='monthly'));
+  document.querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('active',b.dataset.win==='ytd'));
+  render();
+}
+/* ↺ RESET (pedido do usuário, 26/11/2026: "deixe um botão de reset acima das opções de filtro"). O botão #dk-rst fica ao lado do
+   ⤓ Data, na linha logo acima dos filtros. Volta a tela ao jeito que ela abre: filtros em Total · Monthly · YTD (sem datas) e, com
+   a mesa, as escolhas da seção aberta — quadro, conta, produto próprio, "Who", pontos A→B; no Builder, a 1ª visão pronta
+   (data-desk.js resetView). Não muda de seção. Só com a mesa; some no Overview; apagado quando não há nada a desfazer
+   (_rstPaint: os filtros À VISTA no padrão + DESK.atDefault). */
+function resetView(){ if(_deskOn&&DESK&&DESK.cur&&DESK.resetView) DESK.resetView(); else resetFilters(); _rstPaint(); }
+function _rstFiltersAtDefault(){
+  if(typeof _rstExtraAtDefault==='function'&&!_rstExtraAtDefault()) return false;   // controles próprios da página (M&M: modelo preditivo)
+  const fb=document.querySelector('.filter-bar'); if(!fb||fb.style.display==='none') return true;
+  const shown=id=>{ const e=document.getElementById(id); return !!e&&e.style.display!=='none'&&e.children.length>0; };
+  return (!shown('prod-btns')||currentProd==='total')&&(!shown('gran-btns')||currentGran==='monthly')&&currentWin==='ytd';
+}
+function _rstPaint(){
+  const b=document.getElementById('dk-rst'); if(!b) return;
+  const key=_deskKey(), on=_deskOn&&!!DESK&&DESK.cur===key&&key!=='overview'&&!document.body.classList.contains('mob-picker-active');
+  b.hidden=!on; if(!on) return;
+  const def=_rstFiltersAtDefault()&&(!DESK.atDefault||DESK.atDefault());
+  b.disabled=def;
+  b.title=def?'Nothing to reset: this is how the page opens'
+    :'Back to how this page opens: Total · Monthly · YTD and the first view of this section'+(key==='builder'?' (the first ready-made view)':'');
+}
+var _rstT=0; function _rstPaintSoon(){ clearTimeout(_rstT); _rstT=setTimeout(_rstPaint,0); }
+['click','input','change','keyup'].forEach(ev=>document.addEventListener(ev,_rstPaintSoon,true));
 
 // ─── MOBILE SECTION PICKER ───────────────────────────────────────────────────
 function showMobPicker(){
