@@ -14,10 +14,15 @@
      "está demorando um pouco para carregar"): (1) o palpite da MESA entra aqui, antes de a página aparecer — a chave data_desk está
      ligada para todos, então sem histórico o palpite é "mesa"; ?desk=0 ou a última visita sem a mesa = tela antiga — e, com ele, o
      esqueleto da mesa (data-desk.css) no lugar das molduras da tela antiga; (2) o banco começa a descer JÁ, junto com os scripts (antes
-     só depois deles, ~1,3 s depois); o openDB() usa este pedido uma vez só. -->
+     só depois deles, ~1,3 s depois); o openDB() usa este pedido uma vez só; (3) desde 26/11/2026 o que desce primeiro é o NÚCLEO
+     (steel_sm_core.db.gz, ~0,6 MB: o banco sem os países) e o banco web inteiro (~6,7 MB) vem DEPOIS dele, em fila (para não
+     dividir a banda com o núcleo), só para os países — ver build_web_db.py. -->
 <script>(function(){ try{ var q=new URLSearchParams(location.search).get('desk'), s=null; try{ s=localStorage.getItem('ibba_desk'); }catch(e){}
   if(q!=='0'&&s!=='0') document.documentElement.classList.add('desk-on');
-  if(typeof DecompressionStream==='function') window.__dbEarly=fetch('steel_sm_web.db.gz',{priority:'low'});   /* prioridade baixa: desce junto, mas os scripts da página vêm primeiro */ }catch(e){} })();</script>
+  if(typeof DecompressionStream==='function'){   /* prioridade baixa: desce junto, mas os scripts da página vêm primeiro */
+    var c=window.__dbEarly=fetch('steel_sm_core.db.gz',{priority:'low'});
+    window.__webEarly=c.then(function(r){ return r.ok?r.clone().arrayBuffer():0; }).catch(function(){}).then(function(){ return fetch('steel_sm_web.db.gz',{priority:'low'}); });
+  } }catch(e){} })();</script>
 <!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
 <link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
@@ -52,6 +57,9 @@ function _setAuthCookie(s){document.cookie=`sb-access-token=${s.access_token}; p
 <!-- EUA (Steel › US market): dado em us_steel.json, robô update_us_steel.py — admin ou chave us_steel -->
 <script src="/data-desk-us.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script>/* o motor do banco (sql-wasm.wasm, ~270 KB) começa a descer JÁ, logo depois do script dele — antes só no openDB(), depois de
+   todos os scripts da página (~1 s mais tarde na 1ª visita; 26/11/2026). O openDB() usa esta promessa. */
+try{ window.__sqlEarly=initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}); window.__sqlEarly.catch(function(){}); }catch(e){}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -1169,6 +1177,41 @@ const SCTY_CATS=['flat','hrc','crc','coated','heavy_plate','flat_others',
                  'long','rebar','bar','wire_rod','shapes','long_others',
                  'semi','ingot_billet','placa'];
 let _sctyDB=null, _sctyJobs=[];
+const _sctyAll=()=>{ const j=[]; for(const cat of SCTY_CATS) for(const dir of ['exp','imp']) j.push([dir,cat]); return j; };
+/* ── OS PAÍSES À PARTE (26/11/2026, pedido do usuário: "está demorando um pouco para carregar") ──
+   A página abre com o NÚCLEO (steel_sm_core.db.gz, ~0,6 MB: tudo menos a secex_country) e o banco web inteiro (~6,7 MB) desce
+   logo depois, em segundo plano, só para os países. Até ele chegar, o quadro "<país> share", o "Who" por país, a linha da Overview
+   e as séries de país do Builder mostram "Loading countries…" (M.wait/dim.wait no catálogo); quando chega, a tela se redesenha.
+   Carimbo (PRAGMA user_version, igual nos dois arquivos da mesma rodada): se o banco web for de OUTRA rodada (alguém publicou só ele,
+   com o código antigo), ele manda em tudo — a página relê as tabelas por ele (nunca mostra o núcleo velho). */
+let _ctyReady=false, _ctyFailed=false, _coreStamp=null, _ctyRes=null;
+const _ctyWait=new Promise(r=>{ _ctyRes=r; });
+const _ctyWaiting=()=>!_ctyReady;
+const _ctyWaitText=()=>_ctyFailed?'Country data unavailable — reload the page':'Loading countries…';
+function _hasTable(db,t){ try{ return !!db.exec(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='${t}'`)[0]; }catch(e){ return false; } }
+function _dbStamp(db){ try{ return db.exec('PRAGMA user_version')[0].values[0][0]; }catch(e){ return null; } }
+async function _ctyLoad(){
+  let stale=false;
+  try{
+    const db=await openDB('web',true);
+    if(!_hasTable(db,'secex_country')){ db.close(); throw new Error('secex_country ausente no banco web'); }
+    stale=_dbStamp(db)!==_coreStamp;
+    if(stale){ console.warn('núcleo de outra rodada (carimbo '+_coreStamp+' × '+_dbStamp(db)+'): o banco web manda'); _readTables(db); }
+    _sctyDB=db; _sctyJobs=_sctyAll(); _ctyReady=true;
+  }catch(e){ _ctyFailed=true; console.warn('países (secex_country) indisponíveis:', e); }
+  _ctyArrived(stale);
+  if(_ctyReady) _sctyIdle();
+}
+function _ctyArrived(stale){
+  for(const k in _dkEnt) delete _dkEnt[k];
+  if(stale){ for(const k in _dkPredC) delete _dkPredC[k]; for(const k in _dkOreC) delete _dkOreC[k]; }
+  try{ if(DESK) DESK.invalidate(); }catch(e){}
+  if(_ctyRes){ _ctyRes(); _ctyRes=null; }   // o Builder (sec.need) redesenha sozinho
+  if(!_dbReady||document.body.classList.contains('mob-picker-active')) return;
+  if(stale||['imports','exports','overview'].includes(currentSub)) render();
+  // tela antiga: o painel de países aberto durante a espera mostrava o aviso — refaz com a lista
+  ['exp','imp'].forEach(d=>{ const pn=document.getElementById((d==='exp'?'ex':'im')+'-cs-panel'); if(pn&&pn.classList.contains('open')) buildCountryPanel(d); });
+}
 function _sctyRun(job){
   const [dir,cat]=job;
   SCTY[dir][cat]=toObj(_sctyDB.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='${dir}' AND category='${cat}' ORDER BY period,country`)[0]);
@@ -1569,40 +1612,43 @@ async function readWithProgress(resp, msg){
   return out;
 }
 
-/* Busca o banco. Prefere a versão WEB (`steel_sm_web.db.gz`, ~10 MB: só as 11 tabelas que
-   esta página lê, comprimida — gerada por `build_web_db.py`) e cai no `.db` completo se ela
-   não existir ou o navegador não tiver DecompressionStream. Motivo: o arquivo completo tem
-   ~47 MB e NÃO CABE no cache do navegador → era rebaixado inteiro toda vez que alguém abria
-   a página. Com ~10 MB ele cabe, então da 2ª visita em diante praticamente não trafega.
-   Também saiu o cache-buster `?v=AAAAMMDD`, que trocava a URL todo dia e jogava fora o cache. */
-async function fetchDB(){
+/* Busca o banco (os .gz são gerados por build_web_db.py). Desde 26/11/2026 são dois:
+     'core' = steel_sm_core.db.gz (~0,6 MB): tudo o que a página lê MENOS a secex_country — é com ele que a página abre;
+     'web'  = steel_sm_web.db.gz (~6,7 MB): o banco web inteiro — os países (secex_country, depois do 1º desenho) e o "⤓ Data".
+   Sem o núcleo, vale o banco web (os países vêm junto); sem DecompressionStream ou sem os .gz, o `.db` completo (~47 MB). O .gz
+   cabe no cache do navegador (o completo não): da 2ª visita em diante praticamente não trafega. quiet = sem mexer na barra de
+   espera (os países descem com a página já na tela). Devolve {buf, kind: 'core'|'web'|'full'}. */
+const DB_GZ={core:'steel_sm_core.db.gz', web:'steel_sm_web.db.gz'}, DB_EARLY={core:'__dbEarly', web:'__webEarly'};
+async function fetchDB(which,quiet){
+  which=which||'core';
   if(typeof DecompressionStream==='function'){
     try{
-      const early=window.__dbEarly; window.__dbEarly=null;   // o pedido que a <head> já fez (vale uma vez: o painel "Download data" reabre com um novo)
-      const r=await (early||fetch('steel_sm_web.db.gz'));
+      const k=DB_EARLY[which], early=window[k]; window[k]=null;   // o pedido que a <head> já fez (vale uma vez: o "⤓ Data" reabre com um novo)
+      const r=await (early||fetch(DB_GZ[which]));
       if(r.ok){
-        const gz=await readWithProgress(r,'Loading data…');   // progresso = bytes comprimidos (é o que trafega)
+        const gz=quiet?new Uint8Array(await r.arrayBuffer()):await readWithProgress(r,'Loading data…');   // progresso = bytes comprimidos (é o que trafega)
         const stream=new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'));
-        return new Uint8Array(await new Response(stream).arrayBuffer());
+        return {buf:new Uint8Array(await new Response(stream).arrayBuffer()), kind:which};
       }
-      console.warn('steel_sm_web.db.gz indisponível (HTTP '+r.status+') — usando o banco completo');
-    }catch(e){ console.warn('falha na versão web, usando o banco completo:', e); }
+      console.warn(DB_GZ[which]+' indisponível (HTTP '+r.status+')');
+    }catch(e){ console.warn('falha ao baixar '+DB_GZ[which]+':', e); }
+    if(which==='core') return fetchDB('web',quiet);   // sem o núcleo: o banco web inteiro (os países vêm junto)
   }
   const r=await fetch('steel_sm.db');
   if(!r.ok) throw new Error(`HTTP ${r.status}`);
-  return await readWithProgress(r,'Loading data…');
+  return {buf:quiet?new Uint8Array(await r.arrayBuffer()):await readWithProgress(r,'Loading data…'), kind:'full'};
 }
 
-/* Abre uma instância sql.js do banco. Usado no boot (loadDB) e, sob demanda, pelo
-   painel "Download data" — que reabre em vez de segurar os ~25 MB abertos a sessão
-   inteira (o .gz já está no cache do navegador, então reabrir é barato). */
-async function openDB(){
+/* Abre uma instância sql.js do banco (which = 'core' no boot; 'web' para os países e para o painel "Download data", que reabre
+   em vez de segurar o banco aberto a sessão inteira — o .gz já está no cache do navegador, então reabrir é barato). */
+async function openDB(which,quiet){
   // V1 (2026-10-20): o motor (wasm) e o banco descem AO MESMO TEMPO; antes, o download do banco só
   // começava depois que o motor ficava pronto (cerca de 0,4 s a menos na 1ª visita)
-  const [SQL,buf]=await Promise.all([
-    initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`}),
-    fetchDB()]);
-  return new SQL.Database(buf);
+  const [SQL,got]=await Promise.all([
+    (window.__sqlEarly||Promise.reject()).catch(()=>initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`})),   // o motor que a <head> já pediu
+    fetchDB(which,quiet)]);
+  const db=new SQL.Database(got.buf); db.__kind=got.kind;
+  return db;
 }
 
 // "Data through: SECEX Jun 2026 · IABr Jul 2026 …" — escreve na secondary-nav. parts=[[label,'YYYY-MM'],…]
@@ -1615,10 +1661,9 @@ function _asOfBadge(parts){
 }
 
 // ─── LOAD DB ─────────────────────────────────────────────────────────────────
-async function loadDB(){
-  const el=document.getElementById('loading');
-  try{
-    const db=await openDB();
+/* As tabelas que a página lê (todas menos a secex_country, que desce à parte — ver _ctyLoad). Chamada com o núcleo no boot e,
+   se o núcleo for de outra rodada que o banco web (carimbo diferente), de novo com o banco web. */
+function _readTables(db){
 
     PROD=toObj(db.exec(`SELECT period,year,month,crude_steel,flat,long_prod,semi FROM iabr_production ORDER BY period`)[0]);
     CONS=toObj(db.exec(`SELECT period,year,month,total,flat,long_prod FROM iabr_consumption ORDER BY period`)[0]);
@@ -1643,6 +1688,7 @@ async function loadDB(){
       _asOfBadge([['SECEX',_last('secex_imports')],['IABr',_last('iabr_production')],['INDA',_last('inda_distribution')],['Customs KR/CN',_last('pred_exports')]]);
     }catch(e){}
 
+    SEEXP={}; SEIMP={}; PRED={}; PRED_EXP={};   // recomeça do zero (a re-leitura pelo banco web não pode somar duas vezes)
     const rExp=toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,yoy_revenue,yoy_volume FROM secex_exports ORDER BY period,category`)[0]);
     const rImp=toObj(db.exec(`SELECT period,category,revenue_usd_mn,volume_ktons,price_usd_ton,yoy_revenue,yoy_volume FROM secex_imports ORDER BY period,category`)[0]);
     for(const r of rExp){if(!SEEXP[r.category])SEEXP[r.category]=[];SEEXP[r.category].push(r);}
@@ -1661,10 +1707,18 @@ async function loadDB(){
       if(!PRED_EXP[r.product][r.country])PRED_EXP[r.product][r.country]=[];
       PRED_EXP[r.product][r.country].push(r);
     }
+}
+async function loadDB(){
+  const el=document.getElementById('loading');
+  try{
+    const db=await openDB('core');
+    _readTables(db);
 
-    // ── secex_country — fica para depois do 1º desenho (ver _sctyIdle); o banco fecha quando ela descer
-    _sctyDB=db; _sctyJobs=[];
-    for(const cat of SCTY_CATS) for(const dir of ['exp','imp']) _sctyJobs.push([dir,cat]);
+    // ── secex_country: no núcleo ela NÃO vem — o banco web desce depois do 1º desenho (_ctyLoad); se o que abriu foi o banco
+    //    web ou o completo (sem o núcleo), ela já está aqui e fica para depois do 1º desenho (ver _sctyIdle), como sempre
+    const hasCty=_hasTable(db,'secex_country');
+    if(hasCty){ _sctyDB=db; _sctyJobs=_sctyAll(); _ctyReady=true; }
+    else { _coreStamp=_dbStamp(db); db.close(); }
 
     el.style.display='none';
     _loadingDone(false);   // sai o esqueleto, a linha laranja completa e some
@@ -1679,7 +1733,8 @@ async function loadDB(){
     } else {
       setSub(initSub);   // ativa a seção certa + renderiza (corrige gráficos em branco no load)
     }
-    _sctyIdle();         // os dados por país descem depois, sem travar a tela
+    if(hasCty) _sctyIdle();   // os dados por país descem depois, sem travar a tela
+    else _ctyLoad();          // o banco web (os países) — já pedido na <head>, logo depois do núcleo
   }catch(e){
     el.classList.add('failed'); _loadingDone(true);   // erro: a mensagem volta a cobrir a tela
     el.innerHTML=`<div style="text-align:center;padding:40px">
@@ -1731,7 +1786,7 @@ const RAW_TABLES=[
 ];
 
 let _rawDB=null, _rawDBp=null;
-function _rawDBOpen(){ return _rawDBp||(_rawDBp=openDB().then(db=>(_rawDB=db))); }
+function _rawDBOpen(){ return _rawDBp||(_rawDBp=openDB('web',true).then(db=>(_rawDB=db))); }   // o banco web inteiro: a base bruta inclui a secex_country (o núcleo não tem)
 function _rawDBClose(){ try{_rawDB&&_rawDB.close();}catch(e){} _rawDB=null; _rawDBp=null; }
 
 /* sql.js → matriz [cabeçalho, ...linhas] (formato que o Excel/CSV comem direto) */
@@ -1930,6 +1985,8 @@ function renderCountryChart(dir){
     :pills[0];
   const cats=activePill.cats;
 
+  const cv0=document.getElementById(`${p}-ctry-a`), wrap0=cv0&&cv0.parentElement;   // os países à parte ainda descem: o aviso no lugar
+  if(wrap0){ if(_ctyReady) wrap0.removeAttribute('data-wait'); else wrap0.setAttribute('data-wait',_ctyWaitText()); }
   const rows=mergeOriginRows(cats,dir);
   const byPC=aggregatePeriodCountry(rows);
   // Ordenação: chaves canônicas são sortáveis lexicograficamente (YYYY, YYYY-Q1, YYYY-MM)
@@ -2004,9 +2061,9 @@ function buildCountryPanel(dir){
   const byPC=aggregatePeriodCountry(rows);
   const ranked=rankCountries(byPC);
 
-  if(!state.countries) state.countries=[...ranked.slice(0,5),'Others'];
+  if(!state.countries&&ranked.length) state.countries=[...ranked.slice(0,5),'Others'];   // sem os países (ainda descendo) não grava "só Others"
 
-  list.innerHTML='';
+  list.innerHTML=ranked.length||_ctyReady?'':'<div class="cs-item">'+_ctyWaitText()+'</div>';
   // Países regulares (top 20 para não sobrecarregar)
   ranked.slice(0,20).forEach(country=>{
     const checked=state.countries.includes(country);
@@ -2685,6 +2742,7 @@ const _dkPriceComp=(SRC,p)=>({p:_dkMap(SRC[p],'price_usd_ton'), r:_dkMap(SRC[p],
 /* países de um recorte (direção + categorias), TODOS os da base, em ordem de relevância (últimos 36 meses) */
 const _dkEnt={};
 function _dkCountries(dir,cats){
+  if(!_ctyReady) return {names:[], maps:[], wait:true};   // os países ainda descem (banco web à parte): nada vai para o cache
   const key=dir+'|'+cats.join('+'); if(_dkEnt[key]) return _dkEnt[key];
   _ensureSCTY(dir,cats);
   const by={}; let last='';
@@ -2695,6 +2753,8 @@ function _dkCountries(dir,cats){
     .sort((a,b)=>b[1]-a[1]||b[2]-a[2]);
   return (_dkEnt[key]={names:sc.map(x=>x[0]), maps:sc.map(x=>by[x[0]])});
 }
+/* "<país> share": o nome do 1º país do recorte (enquanto os países descem, um nome genérico) */
+function _dkLeadLabel(dir,prod){ const n=_dkCountries(dir,_dkCats(prod)).names[0]; return n?n+' share':(dir==='imp'?'Top origin share':'Top destination share'); }
 /* modelo preditivo: os acumulados de N meses como a tela de sempre calcula (rollingN sobre as linhas da base) */
 const _dkPredC={};
 function _dkPred(origin,n,key){
@@ -3018,16 +3078,17 @@ function _desk(){
       /* EXPORTS — espelho de Imports (ex-vol, ex-yoy, ex-ctry-a); em Total a composição Flat/Long/Semi mora em "By product" */
       exports:{
         label:'Exports', src:'SECEX', bprods:STEEL_P, stage:'vol', tiles:['vol','rev','lead'],
+        need:()=>(_ctyReady||_ctyFailed)?null:_ctyWait,   // Builder: as séries de país esperam o banco web (os países à parte)
         metrics:[
           {id:'vol', label:'Export volume', unit:'kt', dec:0, flow:true, legacy:['ex-vol','ex-yoy'], note:'SECEX/MDIC · the split by family or product is in "By product" below',
             comp:x=>({v:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEEXP[c],'volume_ktons')))}), calc:(A,c)=>A.sum(c.v)},
           {id:'rev', label:'Export revenue', unit:'US$ mn', dec:0, flow:true,
             comp:x=>({r:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEEXP[c],'revenue_usd_mn')))}), calc:(A,c)=>A.sum(c.r)},
-          {id:'lead', label:x=>_dkCountries('exp',_dkCats(x.prod)).names[0]+' share', unit:'%', dec:1, pp:true,
+          {id:'lead', label:x=>_dkLeadLabel('exp',x.prod), wait:_ctyWaiting, waitText:_ctyWaitText, unit:'%', dec:1, pp:true,
             comp:x=>{ const e=_dkCountries('exp',_dkCats(x.prod)); return {l:e.maps[0]||{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
         ],
         who:[
-          {id:'country', label:'Countries', tab:'By country', noun:'countries', unit:'kt', title:'Exports by country',
+          {id:'country', label:'Countries', tab:'By country', noun:'countries', unit:'kt', title:'Exports by country', wait:_ctyWaiting, waitText:_ctyWaitText,
             pills:x=>pillsOf(x.prod), entities:(x,pill)=>_dkCountries('exp',pill?pill.cats:_dkCats(x.prod))},
           {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Exports by product', noSelect:true, noOthers:true, top:9,
             entities:x=>mixOf(SEEXP,x.prod)},
@@ -3067,11 +3128,12 @@ function _desk(){
       },
       imports:{
         label:'Imports', src:'SECEX', bprods:STEEL_P, stage:'vol', tiles:['vol','rev','lead','pen'],
+        need:()=>(_ctyReady||_ctyFailed)?null:_ctyWait,
         views:[{label:'SECEX analysis', current:true},{label:'Predictive model', visible:()=>!_predHidden, onPick:()=>setImportTab('prediction',{anim:1})}],
         metrics:[
           {id:'vol', label:'Import volume', unit:'kt', dec:0, flow:true, legacy:['im-vol','im-yoy'], note:'SECEX/MDIC · the split by family or product is in "By product" below',
             comp:x=>({v:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'volume_ktons')))}), calc:(A,c)=>A.sum(c.v)},
-          {id:'lead', label:x=>_dkCountries('imp',_dkCats(x.prod)).names[0]+' share', unit:'%', dec:1, pp:true,
+          {id:'lead', label:x=>_dkLeadLabel('imp',x.prod), wait:_ctyWaiting, waitText:_ctyWaitText, unit:'%', dec:1, pp:true,
             comp:x=>{ const e=_dkCountries('imp',_dkCats(x.prod)); return {l:e.maps[0]||{}, t:_dkSum(e.maps)}; }, calc:(A,c)=>F.div(A.sum(c.l),A.sum(c.t),100)},
           {id:'pen', label:'Import penetration', unit:'%', dec:1, pp:true, ref:'windowAvg', available:x=>x.prod!=='semi', naText:'IABr has no apparent consumption for semi-finished',
             comp:x=>x.prod==='semi'?{}:({c:_dkMap(CONS,consF[x.prod]), d:_dkMap(DOM,domF[x.prod])}), calc:(A,c)=>c.c?F.div(F.sub(A.sum(c.c),A.sum(c.d)),A.sum(c.c),100):[]},
@@ -3079,7 +3141,7 @@ function _desk(){
             comp:x=>({r:_dkSum(_dkCats(x.prod).map(c=>_dkMap(SEIMP[c],'revenue_usd_mn')))}), calc:(A,c)=>A.sum(c.r)},
         ],
         who:[
-          {id:'country', label:'Countries', tab:'By country', noun:'countries', lead:'China', unit:'kt', title:'Imports by country',
+          {id:'country', label:'Countries', tab:'By country', noun:'countries', lead:'China', unit:'kt', title:'Imports by country', wait:_ctyWaiting, waitText:_ctyWaitText,
             pills:x=>pillsOf(x.prod),
             entities:(x,pill)=>_dkCountries('imp',pill?pill.cats:_dkCats(x.prod))},
           {id:'product', label:'Products', tab:'By product', noun:'products', unit:'kt', title:'Imports by product', noSelect:true, noOthers:true, top:9,

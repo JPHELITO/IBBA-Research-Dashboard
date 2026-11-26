@@ -102,7 +102,8 @@ BASES = {
         "run": lambda root, xlsx: [sys.executable, str(root / "Steel and Mining" / "reload_pred_exports.py"),
                                    "--pred", str(xlsx)],
         "post": lambda root: [sys.executable, str(root / "Steel and Mining" / "build_web_db.py")],
-        "publicar": ["Steel and Mining/steel_sm.db", "Steel and Mining/steel_sm_web.db.gz"],
+        "publicar": ["Steel and Mining/steel_sm.db", "Steel and Mining/steel_sm_web.db.gz",
+                     "Steel and Mining/steel_sm_core.db.gz"],   # o núcleo da página vai junto (build_web_db.py)
         "lib": "pandas",
     },
 }

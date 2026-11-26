@@ -113,8 +113,10 @@
           if (M && !M.multi && (!M.available || M.available(X0)) && (!M.bprods || M.bprods.indexOf(p.prod) >= 0)) { var lab = typeof M.label === 'function' ? M.label(X0) : M.label;
             it = { key: key, type: 'm', sec: p.sec, metric: M.id, prod: p.prod, short: lab, name: suf(lab), unit: M.unit, diff: !!M.diff, where: sec.label + (sec.src ? ' · ' + sec.src : ''), group: M.group || '', paid: !!sec.paid, src: sec.src || '' }; } }
         else { var dim = null; (sec.who || []).forEach(function (d0) { if (d0.id === p.dim) dim = d0; });
-          if (dim && !dim.noSelect && (!dim.available || dim.available(X0)) && this._bEntNames(p.sec, dim, p.prod).indexOf(p.name) >= 0)
-            it = { key: key, type: 'e', sec: p.sec, dim: dim.id, prod: p.prod, short: p.name, name: suf(p.name + ' — ' + (dim.title || sec.label)), unit: dim.unit || 'kt', diff: false, where: (dim.title || sec.label) + (sec.src ? ' · ' + sec.src : '') }; }
+          var dw = !!(dim && dim.wait && dim.wait());
+          if (dim && !dim.noSelect && (!dim.available || dim.available(X0)) && (dw || this._bEntNames(p.sec, dim, p.prod).indexOf(p.name) >= 0))
+            it = { key: key, type: 'e', sec: p.sec, dim: dim.id, prod: p.prod, short: p.name, name: suf(p.name + ' — ' + (dim.title || sec.label)), unit: dim.unit || 'kt', diff: false, where: (dim.title || sec.label) + (sec.src ? ' · ' + sec.src : '') };
+          if (it && dw) { it.wait = true; (this._bProv = this._bProv || {})[key] = 1; return it; } }
       } catch (e) { it = null; }
     }
     return (C[key] = it);
@@ -131,7 +133,10 @@
   Desk.prototype._bNeed = function () { var self = this, W = this._bNeedP = this._bNeedP || {}, on = (this.bui ? this.bui.s : []).map(function (x) { return parseKey(x.key); });
     this._bGroups().forEach(function (g) { if (!g.sec.need || W[g.id]) return; var p = null, ids = on.filter(function (q) { return q && q.type === 'm' && q.sec === g.id; }).map(function (q) { return q.metric; });
       try { p = g.sec.need(ids); } catch (e) { p = null; }
-      if (p && p.then) W[g.id] = p.then(function () { delete W[g.id]; self.invalidate(); if (self.cur === 'builder') self._builder(); }, function () { delete W[g.id]; }); }); };
+      if (p && p.then) W[g.id] = p.then(function () { delete W[g.id]; self.invalidate(); self._bPrune(); if (self.cur === 'builder') self._builder(); }, function () { delete W[g.id]; }); }); };
+  /* os dados chegaram: a série aceita só provisoriamente (link/última visão com um país antes de os países descerem) e que não existe sai */
+  Desk.prototype._bPrune = function () { var P = this._bProv, b = this.bui, self = this; this._bProv = {}; if (!P || !b) return;
+    var keep = b.s.filter(function (x) { return !P[x.key] || !!self._bItem(x.key); }); if (keep.length !== b.s.length) { b.s = keep; this._bStore(); } };
   /* alguma série do gráfico vem de fonte paga (agência)? então sem Excel e sem copiar a tabela */
   Desk.prototype._bPaid = function () { var v = this._bv; return !!(v && v.rows.some(function (r) { return r.it && r.it.paid; })); };
   Desk.prototype._bPaidSrc = function () { var v = this._bv, out = []; (v ? v.rows : []).forEach(function (r) { if (r.it && r.it.paid && r.it.src && out.indexOf(r.it.src) < 0) out.push(r.it.src); }); return out.join(', ') || 'agency'; };
@@ -387,6 +392,8 @@
       var lastG = '';
       g.sec.metrics.forEach(function (M) { var row = self._bRow(g.id + '.' + M.id + '.' + prod); if (!row) return; var G = M.group || ''; if (G && G !== lastG) { html += '<div class="dk-bsub">' + esc(G) + '</div>'; } lastG = G || lastG; html += row; });
       (g.sec.who || []).forEach(function (dim) { if (dim.noSelect || (dim.available && !dim.available({ prod: prod }))) return;
+        if (dim.wait && dim.wait()) { var wt = typeof dim.waitText === 'function' ? dim.waitText() : (dim.waitText || 'Loading…');
+          html += '<div class="dk-bent dk-bwait" aria-busy="true">' + esc(dim.tab || dim.label) + ' <em>' + esc(wt) + '</em></div>'; return; }
         var id = g.id + '|' + dim.id, names = self._bEntNames(g.id, dim, prod), open = !!b.open[id]; if (!names.length) return;
         var picked = names.filter(function (n) { return b.s.some(function (x) { return x.key === g.id + '~' + dim.id + '~' + prod + '~' + n; }); });
         html += '<button type="button" class="dk-bent" data-bent="' + esc(id) + '" aria-expanded="' + open + '">' + esc(dim.tab || dim.label) + ' <em>' + names.length + ' ' + esc(dim.noun || 'items') + '</em><span>' + (open ? '−' : '+') + '</span></button>';

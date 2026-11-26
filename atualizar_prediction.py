@@ -1006,7 +1006,8 @@ def publicar(excel: Path, sem_push=False):
         print("  4/4  --sem-push: parei antes do git. Publique quando quiser.")
         return
     print("  4/4  git commit + push")
-    arqs = ["Steel and Mining/steel_sm.db", "Steel and Mining/steel_sm_web.db.gz"]
+    arqs = ["Steel and Mining/steel_sm.db", "Steel and Mining/steel_sm_web.db.gz",
+            "Steel and Mining/steel_sm_core.db.gz"]   # o núcleo vai junto (ver build_web_db.py)
     rodar(["git", "add"] + arqs)
     st = subprocess.run(["git", "diff", "--staged", "--quiet"], cwd=str(HERE))
     if st.returncode == 0:

@@ -35,13 +35,31 @@ e o arquivo comprimido cai de ~10,2 para ~6,4 MB (some a tabela-sombra do rowid)
 O resultado de cada consulta é idêntico (ORDER BY period,country é ordem total
 dentro de direção+categoria, porque a chave é única). O banco completo não muda.
 
+O NÚCLEO: steel_sm_core.db.gz (2026-11-26)
+------------------------------------------
+Pedido do usuário: a página de M&M "está demorando um pouco para carregar". Das ~6,7 MB do banco web,
+~6,1 MB são da `secex_country` (274 mil linhas por país), que só o "Who" por país, o quadro "<país> share"
+e as séries de país do Builder usam. Então sai também um NÚCLEO = o mesmo banco web SEM a `secex_country`
+(~0,6 MB comprimido): a página abre a mesa com ele e baixa o banco web logo depois, em segundo plano, só
+para os países ("Loading countries…" nesses pontos até ele chegar).
+O banco web segue COMPLETO e igual: o hub do Itaú (news-hunter `hub_export/sectors.py`), a tela de
+Reports, o "⤓ Data" e as ferramentas locais leem dele — nada muda para eles.
+Os dois arquivos levam o MESMO carimbo (`PRAGMA user_version`, sorteado a cada rodada). Se alguém publicar
+só o banco web (robô ou ferramenta com o código antigo), o núcleo fica de outra rodada: a página percebe
+pelo carimbo e passa a usar o banco web para tudo (nunca mostra dado velho por causa do núcleo).
+⚠️ Quem publica o banco web tem de publicar o núcleo junto (`git add` dos dois) — os 6 workflows,
+`atualizar_prediction.py` e `publicar_base.py`; `tests/test_web_db_core.py` confere isso.
+
 USO
 ---
     python "Steel and Mining/build_web_db.py"
 
-Roda no workflow `update_secex.yml` logo depois do updater, antes do commit.
+Roda nos workflows logo depois dos robôs, antes do commit. Grava os dois arquivos só no fim, depois de
+conferir os dois (tabelas, linhas, carimbo); qualquer falha = sai com erro e nenhum arquivo muda.
 """
 import gzip
+import os
+import secrets
 import shutil
 import sqlite3
 import sys
@@ -51,6 +69,8 @@ from pathlib import Path
 HERE = Path(__file__).parent
 SRC = HERE / "steel_sm.db"
 OUT = HERE / "steel_sm_web.db.gz"
+CORE_NAME = "steel_sm_core.db.gz"     # o núcleo mora ao lado do banco web (OUT.with_name), também nos testes
+CORE_SKIP = ("secex_country",)        # o que o núcleo NÃO leva (os países descem depois, do banco web)
 
 # ── Tabelas que o steel_sm_dashboard.html realmente consulta (allowlist) ───────
 # Conferir com:  grep -o "FROM [a-z_]*" "Steel and Mining/steel_sm_dashboard.html" | sort -u
@@ -129,27 +149,93 @@ def build() -> int:
             print(f"::warning::{t} não existe no banco — a cópia web sai sem ela "
                   f"(o robô dela recria na próxima rodada)")
 
-    tmp = Path(tempfile.gettempdir()) / "steel_sm_web.build.db"
-    tmp.unlink(missing_ok=True)
-    shutil.copy(SRC, tmp)
+    work = Path(tempfile.mkdtemp(prefix="steel_sm_web_build_"))
+    try:
+        return _build_in(work, existing, keep)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
-    db = sqlite3.connect(tmp)
+
+def _tables_and_rows(path):
+    """{tabela: linhas} + carimbo (user_version) de um banco SQLite."""
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        names = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        rows = {t: con.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0] for t in names}
+        stamp = con.execute("PRAGMA user_version").fetchone()[0]
+    finally:
+        con.close()
+    return rows, stamp
+
+
+def _build_in(work: Path, existing: set, keep: list) -> int:
+    web_db, core_db = work / "web.db", work / "core.db"
+    shutil.copy(SRC, web_db)
+
+    db = sqlite3.connect(web_db)
     dropped = sorted(existing - set(keep))
     for t in dropped:
         db.execute(f'DROP TABLE IF EXISTS "{t}"')
     n_country = rebuild_secex_country(db)   # na ordem das consultas da página (ver docstring)
     db.commit()
     db.execute("VACUUM")          # devolve o espaço das tabelas removidas
+    stamp = secrets.randbits(31) or 1       # carimbo desta rodada, igual nos dois arquivos (ver docstring)
+    db.execute(f"PRAGMA user_version = {stamp}")
+    db.commit()
     db.close()
 
-    raw = tmp.read_bytes()
-    OUT.write_bytes(gzip.compress(raw, 6))
-    tmp.unlink(missing_ok=True)
+    # o núcleo = o banco web sem os países (a mesma cópia, então as outras tabelas saem idênticas)
+    shutil.copy(web_db, core_db)
+    db = sqlite3.connect(core_db)
+    for t in CORE_SKIP:
+        db.execute(f'DROP TABLE IF EXISTS "{t}"')
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+
+    # a trava: os dois arquivos conferidos ANTES de substituir os publicados
+    web_rows, web_stamp = _tables_and_rows(web_db)
+    core_rows, core_stamp = _tables_and_rows(core_db)
+    want_core = {t: n for t, n in web_rows.items() if t not in CORE_SKIP}
+    problems = []
+    if set(web_rows) != set(keep):
+        problems.append(f"banco web com as tabelas {sorted(web_rows)}, esperadas {sorted(keep)}")
+    if web_rows.get("secex_country") != n_country:
+        problems.append(f"banco web com {web_rows.get('secex_country')} linhas em secex_country, eram {n_country}")
+    if core_rows != want_core:
+        problems.append(f"núcleo {core_rows} ≠ banco web sem os países {want_core}")
+    if not (web_stamp == core_stamp == stamp):
+        problems.append(f"carimbos diferentes: web {web_stamp}, núcleo {core_stamp}, rodada {stamp}")
+    if problems:
+        for p in problems:
+            print(f"ERRO: {p}")
+        return 1
+
+    raw_web, raw_core = web_db.read_bytes(), core_db.read_bytes()
+    out_core = OUT.with_name(CORE_NAME)
+    # .tmp na MESMA pasta dos publicados: a troca final é um os.replace (atômico; nunca um arquivo pela metade)
+    tmp_web, tmp_core = OUT.with_name(OUT.name + ".tmp"), out_core.with_name(CORE_NAME + ".tmp")
+    try:
+        tmp_web.write_bytes(gzip.compress(raw_web, 6))
+        tmp_core.write_bytes(gzip.compress(raw_core, 6))
+        for gz, raw in ((tmp_web, raw_web), (tmp_core, raw_core)):   # o .gz descomprime de volta no mesmo banco
+            if gzip.decompress(gz.read_bytes()) != raw:
+                print(f"ERRO: {gz.name} não descomprime de volta no banco gerado")
+                return 1
+        # banco web primeiro: se algo parar entre as duas trocas, fica web novo + núcleo velho, e a página
+        # percebe pelo carimbo e usa o banco web (o contrário mostraria o núcleo novo com países velhos)
+        os.replace(tmp_web, OUT)
+        os.replace(tmp_core, out_core)
+    finally:
+        tmp_web.unlink(missing_ok=True)
+        tmp_core.unlink(missing_ok=True)
 
     mb = lambda n: n / 1e6
     print(f"  completo   : {mb(SRC.stat().st_size):6.1f} MB  ({len(existing)} tabelas)")
-    print(f"  só web     : {mb(len(raw)):6.1f} MB  ({len(keep)} tabelas)")
+    print(f"  só web     : {mb(len(raw_web)):6.1f} MB  ({len(keep)} tabelas)")
     print(f"  comprimido : {mb(OUT.stat().st_size):6.1f} MB  -> {OUT.name}")
+    print(f"  núcleo     : {mb(out_core.stat().st_size):6.2f} MB  -> {out_core.name} (sem {', '.join(CORE_SKIP)})")
+    print(f"  carimbo    : {stamp} (user_version, igual nos dois)")
     print(f"  removidas  : {', '.join(dropped) or '(nenhuma)'}")
     print(f"  secex_country refeita na ordem da página: {n_country} linhas, chave {COUNTRY_KEY}")
     return 0
