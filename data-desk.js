@@ -243,13 +243,42 @@
       c.restore();
     }
   };
+  /* RÓTULOS DE VALOR (Builder, "Labels: Last value | All values" — 26/11/2026): o valor de cada série no último ponto (caixinha na cor da
+     série, logo à direita, sem sobrepor) ou em todos os pontos (texto pequeno acima; com muitos pontos, um a cada N). Só nas séries
+     marcadas $lab (as de apoio ficam de fora); casas e sufixo da própria série ($dec, $sfx). Lê options.plugins.ibbaDeskLabels.mode. */
+  function lum(c) { var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c || '') || /^rgba?\((\d+)\D+(\d+)\D+(\d+)/.exec(c || ''); if (!m) return 0; var hx = c.charAt(0) === '#';
+    return .2126 * parseInt(m[1], hx ? 16 : 10) + .7152 * parseInt(m[2], hx ? 16 : 10) + .0722 * parseInt(m[3], hx ? 16 : 10); }
+  var labelPlugin = {
+    id: 'ibbaDeskLabels',
+    afterDatasetsDraw: function (chart, _a, o) {
+      if (!o || !o.mode || !chart.chartArea) return; var c = chart.ctx, t = theme(true), A = chart.chartArea, boxes = [];
+      var yOf = function (p0) { return (p0 && typeof p0 === 'object') ? p0.y : p0; };
+      chart.data.datasets.forEach(function (d, k) { if (!d.$lab || !chart.isDatasetVisible(k)) return; var els = chart.getDatasetMeta(k).data || [], data = d.data || [];
+        var tx = function (v) { return fmt(v, d.$dec || 0) + (d.$sfx || ''); }, isBar = d.type === 'bar' || (!d.type && chart.config.type === 'bar');
+        if (o.mode === 'last') { var li = -1, i; for (i = data.length - 1; i >= 0; i--) if (yOf(data[i]) != null) { li = i; break; } if (li < 0 || !els[li]) return;
+          var bg = Array.isArray(d.backgroundColor) ? d.backgroundColor[li] : d.backgroundColor;   // coluna: a cor é o preenchimento (a borda é a cor do fundo)
+          var col = d.$ring || (isBar && typeof bg === 'string' ? bg : null) || (typeof d.borderColor === 'string' && !/^rgba\(0,0,0,0\)$|transparent/.test(d.borderColor) ? d.borderColor : null) || (typeof bg === 'string' ? bg : null) || ORANGE, e0 = els[li];
+          boxes.push({ x: e0.x, y: isBar && e0.base != null ? Math.min(e0.y, e0.base) : e0.y, s: tx(yOf(data[li])), col: col }); return; }
+        var n = data.length, room = Math.max(4, Math.floor(A.width / 44)), step = Math.max(1, Math.ceil(n / room));
+        c.save(); c.font = '600 9.5px ' + FONT; c.textAlign = 'center'; c.fillStyle = t.ink;
+        for (var j = 0; j < n; j++) { if ((n - 1 - j) % step) continue; var v = yOf(data[j]); if (v == null || !els[j]) continue; var e = els[j];
+          var ty = (isBar && e.base != null) ? (v >= 0 ? Math.min(e.y, e.base) - 4 : Math.max(e.y, e.base) + 11) : e.y - 7; c.fillText(tx(v), e.x, Math.max(A.top + 8, Math.min(A.bottom + 10, ty))); }
+        c.restore(); });
+      if (!boxes.length) return;
+      boxes.sort(function (a, b) { return a.y - b.y; }); for (var q = 1; q < boxes.length; q++) if (boxes[q].y - boxes[q - 1].y < 17) boxes[q].y = boxes[q - 1].y + 17;
+      c.save(); c.font = '700 10px ' + FONT; c.textBaseline = 'middle'; c.textAlign = 'left';
+      boxes.forEach(function (b0) { var w = c.measureText(b0.s).width + 10, x = b0.x + 7; if (x + w > chart.width - 2) x = chart.width - 2 - w;
+        rr(c, x, b0.y - 8, w, 16, 4); c.fillStyle = b0.col; c.fill(); c.fillStyle = lum(b0.col) > 150 ? '#111111' : '#ffffff'; c.fillText(b0.s, x + 5, b0.y + .5); });
+      c.restore();
+    }
+  };
   var _registered = false;
-  function ensurePlugin() { if (_registered || !window.Chart) return; Chart.register(syncPlugin); _registered = true; }
+  function ensurePlugin() { if (_registered || !window.Chart) return; Chart.register(syncPlugin, labelPlugin); _registered = true; }
 
   /* opções-base: um eixo Y, grade horizontal fina, rótulos do X ancorados no ÚLTIMO período, sem dica flutuante */
   function chartOptions(o) {
     var t = theme(o.stage), tick = { color: t.mut, font: { size: 9.5, family: FONT } };
-    return {
+    var opt = {
       responsive: true, maintainAspectRatio: false, events: o.tip ? ['mousemove', 'mouseout', 'touchstart', 'touchmove'] : [], locale: 'en-US',
       interaction: { mode: 'index', intersect: false },
       animation: o.animate ? { duration: 280 } : false,
@@ -266,12 +295,16 @@
           o.share ? { min: 0, max: 100 } : {}, o.mini ? { grace: '8%' } : {})
       }
     };
+    /* 2ª escala, à direita (ex.: colunas do número + linha da variação anual) — sem grade própria */
+    if (o.y2) opt.scales.y2 = { position: 'right', display: !o.mini, border: { display: false }, grid: { display: false, drawOnChartArea: false },
+      ticks: Object.assign({}, tick, { maxTicksLimit: 6, padding: 8, callback: function (v) { return fmt(v, o.y2.dec || 0) + (o.y2.suffix || ''); } }) };
+    return opt;
   }
   /* dica clássica (a mesma tinta das outras dicas da dashboard): um item por série, com o valor; total no pé do empilhado */
   function tipOptions(o) {
     var base = window.IBBAChart ? IBBAChart.tip(window.innerWidth <= 768) : {}, cb = window.IBBAChart ? IBBAChart.tipCallbacks : {};
     return Object.assign({ enabled: true }, base, {
-      filter: function (it) { return it.parsed && it.parsed.y != null && it.parsed.y !== 0; },
+      filter: function (it) { return !(it.dataset && it.dataset.$noTip) && it.parsed && it.parsed.y != null && it.parsed.y !== 0; },
       itemSort: function (a, b) { return b.datasetIndex - a.datasetIndex; },
       callbacks: Object.assign({}, cb, {
         /* a bolinha da dica leva a cor DA SÉRIE: nas barras é o preenchimento; nas LINHAS é o traço (o preenchimento
@@ -282,7 +315,9 @@
           var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(b) || /^rgba?\((\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/.exec(b), dim = false;
           if (m) { var hx = b.charAt(0) === '#', a0 = (!hx && m[4] != null) ? +m[4] : 1; dim = (0.2126 * parseInt(m[1], hx ? 16 : 10) + 0.7152 * parseInt(m[2], hx ? 16 : 10) + 0.0722 * parseInt(m[3], hx ? 16 : 10)) * a0 < 90; }
           return { borderColor: dim ? 'rgba(255,255,255,.78)' : b, backgroundColor: b, borderWidth: dim ? 1.5 : 0, borderRadius: 2 }; },
-        label: function (c) { return ' ' + (c.dataset.label || '') + ': ' + fmt(c.parsed.y, o.share ? 1 : (o.dec || 0)) + (o.unitTip ? ' ' + o.unitTip : o.share ? '%' : ''); },
+        label: function (c) { var ds = c.dataset || {};
+          if (ds.$unit != null) return ' ' + (ds.label || '') + ': ' + fmt(c.parsed.y, ds.$dec != null ? ds.$dec : (o.dec || 0)) + (ds.$unit === '%' ? '%' : ds.$unit ? ' ' + ds.$unit : '');
+          return ' ' + (ds.label || '') + ': ' + fmt(c.parsed.y, o.share ? 1 : (o.dec || 0)) + (o.unitTip ? ' ' + o.unitTip : o.share ? '%' : ''); },
         footer: function (items) { if (!o.stack || o.share || items.length < 2) return ''; var t = 0; items.forEach(function (i) { t += i.parsed.y || 0; }); return 'Total: ' + fmt(t, o.dec || 0); } }) });
   }
   function areaFill(c) { var ch = c.chart, a = ch.chartArea; if (!a) return 'rgba(255,80,0,.18)'; var g = ch.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, 'rgba(255,80,0,.30)'); g.addColorStop(1, 'rgba(255,80,0,0)'); return g; }
@@ -299,6 +334,33 @@
   function h(tag, cl, html) { var e = document.createElement(tag); if (cl) e.className = cl; if (html != null) e.innerHTML = html; return e; }
   /* o quadro de explicação de um gráfico: o que ele mostra + como ler */
   function whyHTML(what, how) { return (what ? '<p><b>What it shows</b>' + esc(what) + '</p>' : '') + (how ? '<p><b>How to read</b>' + esc(how) + '</p>' : ''); }
+  /* VISUALIZAÇÕES (pedido do usuário, 26/11/2026: "nos outros gráficos que não estão no builder, coloque 2 ou 3 opções de gráficos para
+     visualizar aquela mesma informação"): cada gráfico ganha o seletor "Chart" com 2–3 desenhos do MESMO dado — o ícone desenha o tipo
+     e a palavra ao lado diz o nome (controle novo sempre com rótulo claro). A 1ª opção é o desenho de sempre. Os ícones também servem
+     à galeria do Builder. */
+  var ICO = {
+    line: '<path d="M1.5 11.5l4-4.5 3 3 5-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    lines: '<path d="M1.5 9.5l4-3.5 3 2 5-5M1.5 13l4-2.5 3 1.5 5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    area: '<path d="M1.5 13.5v-4l4-4.5 3 3 5-6v11.5z" fill="currentColor" opacity=".32"/><path d="M1.5 9.5l4-4.5 3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>',
+    col: '<path d="M2.5 13.5v-5M6 13.5v-9M9.5 13.5v-6M13 13.5v-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    colyoy: '<path d="M2.5 13.5v-4M7.5 13.5v-6M12.5 13.5v-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".45"/><path d="M1.5 5.5l5-3 5 3 2.5-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    stack: '<path d="M3 13.5v-4M7.5 13.5v-3M12 13.5v-5" stroke="currentColor" stroke-width="3" opacity=".42"/><path d="M3 9.5v-4M7.5 10.5v-7M12 8.5v-3" stroke="currentColor" stroke-width="3"/>',
+    stackarea: '<path d="M1.5 13.5v-3l4-2 3 1 5-3v7z" fill="currentColor" opacity=".38"/><path d="M1.5 10.5v-4l4-3 3 2 5-4v5l-5 3-3-1-4 2z" fill="currentColor" opacity=".8"/>',
+    pct: '<path d="M3 1.5v12M7.5 1.5v12M12 1.5v12" stroke="currentColor" stroke-width="3" opacity=".3"/><path d="M3 7.5v6M7.5 4.5v9M12 9.5v4" stroke="currentColor" stroke-width="3"/>',
+    scatter: '<path d="M1.5 13.5l12-11" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2 2"/><circle cx="3" cy="10.5" r="1.4" fill="currentColor"/><circle cx="5.5" cy="11.5" r="1.4" fill="currentColor"/><circle cx="7" cy="7.5" r="1.4" fill="currentColor"/><circle cx="10" cy="6.5" r="1.4" fill="currentColor"/><circle cx="12" cy="3" r="1.4" fill="currentColor"/>',
+    year: '<path d="M1.5 10c3-6 6 2 12-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M1.5 13c3-5 6 1 12-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="1.5 2" opacity=".7"/>',
+    range: '<path d="M1.5 5.5c4-3 8 1 12-2.5v7c-4 3-8-.5-12 2z" fill="currentColor" opacity=".25"/><path d="M1.5 9c4-3 8 1 12-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    grid: '<rect x="1.5" y="1.5" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".35"/><rect x="5.8" y="1.5" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".8"/><rect x="10.1" y="1.5" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".55"/><rect x="1.5" y="5.8" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".9"/><rect x="5.8" y="5.8" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".4"/><rect x="10.1" y="5.8" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".7"/><rect x="1.5" y="10.1" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".5"/><rect x="5.8" y="10.1" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".95"/><rect x="10.1" y="10.1" width="3.4" height="3.4" rx=".6" fill="currentColor" opacity=".3"/>',
+    gap: '<path d="M1 7.5h13" stroke="currentColor" stroke-width="1" opacity=".55"/><path d="M3 7.5V3M6.5 7.5V4.5M10 7.5v4M13 7.5v2.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    index: '<path d="M1.5 8l12-5.5M1.5 8l12 1.5M1.5 8l12 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2" cy="8" r="1.6" fill="currentColor"/>',
+    combo: '<path d="M2.5 13.5v-4M7.5 13.5v-6M12.5 13.5v-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".45"/><path d="M1.5 5.5l5-3 5 3 2.5-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  function icon(k) { return '<svg class="dk-ico" viewBox="0 0 15 15" aria-hidden="true">' + (ICO[k] || ICO.line) + '</svg>'; }
+  /* opts: [[chave, rótulo, dica, desligado, ícone]] → o seletor, com o rótulo "Chart" na frente */
+  function styleSeg(opts, cur, lbl) {
+    return '<span class="dk-plbl dk-stylbl">' + esc(lbl || 'Chart') + '</span><div class="dk-seg dk-sty" role="group" aria-label="' + esc(lbl || 'Chart') + ' type">' + opts.map(function (o) {
+      return '<button type="button" data-sty="' + o[0] + '" aria-pressed="' + (o[0] === cur) + '"' + (o[3] ? ' disabled' : '') + ' title="' + esc((o[3] && typeof o[3] === 'string') ? o[3] : (o[2] || o[1])) + '">' + icon(o[4] || o[0]) + '<span>' + esc(o[1]) + '</span></button>'; }).join('') + '</div>';
+  }
   function sparkSVG(v, w, hh) {
     var pts = [], i; for (i = 0; i < v.length; i++) if (v[i] != null) pts.push([i, v[i]]); if (pts.length < 2) return '';
     var mn = Math.min.apply(null, pts.map(function (p) { return p[1]; })), mx = Math.max.apply(null, pts.map(function (p) { return p[1]; })), n = v.length - 1;
@@ -339,7 +401,12 @@
      "Já está como abre?" (o botão fica apagado): a linha de base de cada seção é o estado em que ela se ajeitou SOZINHA (o motor
      acerta quadro, conta e modo do "Who" conforme o dado), tirada ao fim de cada desenho enquanto a pessoa não tocou na seção;
      o 1º toque (pointerdown/keydown na mesa) congela a base. */
-  function uSnap(u, sec) { var w = u.who || {}; return JSON.stringify([u.metric, u.mode, u.pinA, u.pinB, u.prod || (sec.prods ? sec.prods[0].k : null), w.dim || 0, w.pill || null, w.sub || null, w.sel || null, w.mode || null]); }
+  function uSnap(u, sec) { var w = u.who || {}, sy = u.sty || {}; return JSON.stringify([u.metric, u.mode, u.pinA, u.pinB, u.prod || (sec.prods ? sec.prods[0].k : null), w.dim || 0, w.pill || null, w.sub || null, w.sel || null, w.mode || null,
+    Object.keys(sy).sort().map(function (k) { return k + '=' + sy[k]; }).join(',')]); }
+  /* a visualização escolhida de um gráfico (u.sty[gráfico]) — vale enquanto existir entre as opções da vista; a 1ª opção é o padrão e
+     não fica guardada (assim o Reset sabe que é a de abertura) */
+  Desk.prototype._sty = function (chart, opts) { var s = (this._u().sty || {})[chart]; return opts.some(function (o) { return o[0] === s && !o[3]; }) ? s : opts[0][0]; };
+  Desk.prototype._setSty = function (chart, k, opts) { var u = this._u(); u.sty = u.sty || {}; if (!opts.length || k === opts[0][0]) delete u.sty[chart]; else u.sty[chart] = k; };
   Desk.prototype._uBase = function () { var id = this.cur, u = id && this.ui[id]; if (u && !this._touch[id]) this._u0[id] = uSnap(u, this.sections[id]); };
   Desk.prototype.atDefault = function () { var id = this.cur, sec = id && this.sections[id]; if (!sec || sec.overview) return true;
     if (sec.builder) return this._bAtDefault ? this._bAtDefault() : true;
@@ -398,13 +465,13 @@
     this.el = { tiles: h('div', 'dk-tiles'), cols: h('div', 'dk-cols'), main: h('div', 'dk-main'), side: h('div', 'dk-side') };
     var E = this.el;
     E.stage = h('div', 'dk-stage dk-card chart-card',
-      '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
-      '<div class="dk-hfleg dk-sleg"></div><div class="dk-whyrow"><div class="dk-why" hidden></div><div class="dk-corr" hidden></div></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-brush"></div>' +
+      '<div class="dk-sh"><div><div class="dk-st chart-title"></div><div class="dk-sv"></div></div><div class="dk-sd chart-sub"></div><span class="dk-grow"></span><div class="dk-styw"></div><div class="dk-seg dk-modes" role="group" aria-label="View"></div></div>' +
+      '<div class="dk-hfleg dk-sleg"></div><div class="dk-whyrow"><div class="dk-why" hidden></div><div class="dk-corr" hidden></div></div><div class="dk-chart dk-stagechart"><canvas id="dk-stage-cv"></canvas></div><div class="dk-sgrid" hidden></div><div class="dk-brush"></div>' +
       '<div class="dk-hintrow"><div class="dk-hint">Hover to read · Click two periods to compare them (A → B) · Drag the strip to change the period</div>' +
       '<button type="button" class="dk-lnk dk-tob" title="Open this series in the Builder, where you can put up to 4 series side by side" hidden>Compare with other series in Builder →</button></div>');
     E.who = h('div', 'dk-card dk-who chart-card',
       '<div class="dk-ch"><h3 class="chart-title">Who is behind the number</h3><em class="dk-when"></em></div><div class="dk-why dk-whowhy" hidden></div>' +
-      '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
+      '<div class="dk-whotop"><div class="dk-seg dk-dims" role="group" aria-label="Breakdown by" hidden></div><div class="dk-pills" role="group" aria-label="Sub-product"></div><span class="dk-grow"></span><div class="dk-styw dk-whosty"></div><div class="dk-seg dk-whomodes" role="group" aria-label="Breakdown view"></div>' +
       '<div class="dk-pop"><button type="button" class="dk-pill dk-popbtn" aria-expanded="false"></button><div class="dk-popp" hidden></div></div></div>' +
       '<div class="dk-pills dk-subpills" role="group" aria-label="Sub-product" hidden></div><div class="dk-whogrid"><div class="dk-rank"></div><div class="dk-chart dk-whochart"><canvas id="dk-who-cv"></canvas></div></div>');
     E.minis = h('div', 'dk-minis');
@@ -426,6 +493,9 @@
     E.minis.addEventListener('click', function (e) { if (e.target.closest('.ibba-dl')) return; var b = e.target.closest('.dk-mini[data-k]'); if (!b) return; self._u().metric = b.dataset.k; self.refresh(); });
     E.stage.querySelector('.dk-modes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || b.disabled) return; self._u().mode = b.dataset.k; self.refresh(); });
     E.who.querySelector('.dk-whomodes').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; self._u().who.mode = b.dataset.k; self._who(); });
+    /* seletor "Chart" do palco e do "Who": troca só o desenho (o dado é o mesmo) */
+    E.stage.querySelector('.dk-styw').addEventListener('click', function (e) { var b = e.target.closest('button[data-sty]'); if (!b || b.disabled) return; self._setSty('stage', b.dataset.sty, self._stageOpts()); self.refresh(); });
+    E.who.querySelector('.dk-whosty').addEventListener('click', function (e) { var b = e.target.closest('button[data-sty]'); if (!b || b.disabled) return; self._setSty('who', b.dataset.sty, self._whoOpts(self._u().who.mode)); self._who(); self._paintMarks(); });
     E.who.querySelector('.dk-dims').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var w = self._u().who; w.dim = +b.dataset.k; w.pill = null; w.sub = null; w.sel = null; w.hi = null; self._who(); self._paintMarks(); self._rank(); });
     E.who.querySelector('.dk-pills').addEventListener('click', function (e) { var b = e.target.closest('.dk-pill'); if (!b) return; var w = self._u().who; w.pill = b.dataset.k; w.sub = null; w.sel = null; w.hi = null; self._who(); self._rank(); });
     E.who.querySelector('.dk-subpills').addEventListener('click', function (e) { var b = e.target.closest('.dk-pill'); if (!b) return; var w = self._u().who; w.sub = b.dataset.k || null; w.sel = null; w.hi = null; self._who(); self._rank(); });
@@ -446,7 +516,8 @@
       var i = Math.round(xs.getValueForPixel(x)); return Math.max(0, Math.min(n - 1, i)); };
     cv.addEventListener('pointermove', function (ev) { var i = at(ev); if (i == null) return; var ch = self.charts[id]; if (ch.$local) { self._localHover(id, i); return; } self.hover(self.ctx.i0 + i); });
     cv.addEventListener('pointerleave', function () { var ch = self.charts[id]; if (ch && ch.$local) { self._localHover(id, null); return; } self.hover(null); });
-    if (id === 'stage') cv.addEventListener('click', function (ev) { var ch = self.charts[id]; if (!ch || ch.$local || ch.config.type === 'bar') return; var i = at(ev); if (i != null) self.pick(self.ctx.i0 + i); });
+    if (id === 'stage') cv.addEventListener('click', function (ev) { var ch = self.charts[id]; if (!ch || ch.$local) return; var sp = ch.options.plugins && ch.options.plugins.ibbaDeskSync;
+      if (ch.config.type === 'bar' && !(sp && sp.pins)) return; var i = at(ev); if (i != null) self.pick(self.ctx.i0 + i); });
   };
   Desk.prototype.hover = function (i) {
     var u = this._u(); if (u.hover === i) return; u.hover = i; var self = this;
@@ -540,6 +611,18 @@
     if (u.mode === 'ltm') return { M: M, v: c.vals(u.metric, 'ltm'), unit: M.unit, dec: M.dec, name: c.st.gran === 'quarterly' ? 'last 4 quarters' : 'last 12 months' };
     return { M: M, v: c.vals(u.metric), unit: M.unit, dec: M.dec, name: '' };
   };
+  /* as visualizações do palco: 2–3 desenhos do MESMO dado conforme a vista. [chave, rótulo, dica, desligado, ícone] */
+  Desk.prototype._stageOpts = function () {
+    var c = this.ctx, u = this._u(), M = c.M(u.metric), multi = c.subs(u.metric).length > 1, mode = u.mode, per = c.PER === 4 ? 'quarter' : 'month';
+    if (mode === 'seasonal') return [['lines', 'Lines', 'One line per year', 0, 'year'], ['range', 'Range', 'This year and last year against the range of the years before', 0, 'range'], ['grid', 'Grid', 'Every year and every ' + per + ' in a table, shaded by size', 0, 'grid']];
+    if (multi) { var gap = ['gap', 'Gap', 'The difference between the two series in each period', 0, 'gap'];
+      if (mode !== 'level') return [['line', 'Lines', 'One line per series', 0, 'lines'], ['col', 'Columns', 'Side-by-side columns']];
+      return M.multiBars ? [['col', 'Columns', 'Side-by-side columns'], ['line', 'Lines', 'One line per series', 0, 'lines'], gap] : [['line', 'Lines', 'One line per series', 0, 'lines'], ['col', 'Columns', 'Side-by-side columns'], gap]; }
+    if (mode === 'yoy') return [['col', 'Columns', 'Green = higher than a year earlier, red = lower', 0, 'gap'], ['line', 'Line', 'The change as a line']];
+    if (mode === 'ltm') return [['line', 'Line'], ['col', 'Columns']];
+    if (M.signBars) return [['col', 'Columns', 'Green = above zero, red = below', 0, 'gap'], ['line', 'Line']];
+    return [['line', 'Line'], ['col', 'Columns'], ['colyoy', 'Columns + YoY', 'Columns for the figure and a line for the change against a year earlier (right-hand scale)', 0, 'colyoy']];
+  };
   Desk.prototype._stage = function () {
     var c = this.ctx, u = this._u(), M = c.M(u.metric), E = this.el, cv = E.stage.querySelector('canvas'), t = theme(), ann = c.st.gran === 'annual', self = this;
     var subs = c.subs(u.metric), multi = subs.length > 1;
@@ -547,6 +630,11 @@
       var off = m[2] || (c.sec.modes && c.sec.modes.indexOf(m[0]) < 0); return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (u.mode === m[0]) + '"' + (off ? ' disabled title="Not available here"' : '') + '>' + m[1] + '</button>'; }).join('');
     E.stage.querySelector('.dk-modes').hidden = !!(c.sec.modes && c.sec.modes.length < 2);
     if (multi && u.mode === 'seasonal') u.mode = 'level';
+    /* a visualização escolhida (seletor "Chart"; a 1ª opção é o desenho de sempre) */
+    var opts = this._stageOpts(), sty = this._sty('stage', opts), sw = E.stage.querySelector('.dk-styw');
+    if (sw) sw.innerHTML = opts.length > 1 ? styleSeg(opts, sty) : '';
+    var gridEl = E.stage.querySelector('.dk-sgrid'), box = E.stage.querySelector('.dk-stagechart');
+    if (gridEl) { gridEl.hidden = true; gridEl.innerHTML = ''; } if (box) box.hidden = false; E.stage.classList.remove('dk-isgrid');
     var title = E.stage.querySelector('.dk-st'), brush = E.stage.querySelector('.dk-brush');
     /* a explicação do gráfico (textos em data-desk-help.js); sem texto lá, a nota antiga do catálogo */
     var note = typeof M.note === 'function' ? M.note({ prod: c.st.prod }) : (M.note || ''), hp = this._help(this.cur, M.id, { prod: c.st.prod, label: this._lbl(M), gran: c.st.gran });
@@ -555,22 +643,42 @@
     var sleg = E.stage.querySelector('.dk-sleg'); if (sleg) sleg.innerHTML = '';   // a legenda dos anos só existe na vista Seasonal
     var corr = E.stage.querySelector('.dk-corr'); if (corr) { corr.innerHTML = ''; corr.hidden = true; }   // a tabela de correlação só com 2+ séries
     if (u.mode === 'seasonal') {
-      /* sazonalidade: UMA LINHA POR ANO (os 4 anteriores + o atual), como na tela de sempre; a dica lista todos os anos */
+      /* sazonalidade: UMA LINHA POR ANO (os 4 anteriores + o atual), como na tela de sempre; a dica lista todos os anos.
+         Range = o ano atual e o anterior contra a faixa (menor–maior) e a média dos anos anteriores; Grid = tabela ano × mês. */
       var v = c.vals(u.metric), li = c.lastFull(v), yL = c.P[li].y, byY = {}, PER = c.PER;
       v.forEach(function (x, i) { var p = c.P[i]; if (p.partial) return; (byY[p.y] = byY[p.y] || new Array(PER).fill(null))[p.k] = x; });
       var labs = PER === 12 ? MON.slice() : ['Q1', 'Q2', 'Q3', 'Q4'], ds = [], yrs = [], y;
       for (y = yL - 4; y < yL; y++) if (byY[y]) yrs.push(y);
-      yrs.forEach(function (yy) { var k = yL - yy, st = yearStyle(k);   // uma cor por ano; os anteriores ao último, pontilhados
-        var d0 = lineSet(byY[yy], st.color, { label: String(yy), w: st.w, dash: st.dash, surf: t.surf }); d0.order = k + 1; ds.push(d0); });
-      var cur = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); cur.order = 0; ds.push(cur);
-      this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true, tip: true, unitTip: M.unit });
-      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: '', yrs: [yL].concat(yrs.slice().reverse()), k0: c.P[li].k };
-      this._seasLeg(null);
+      this._seas = { yL: yL, byY: byY, labs: labs, M: M, base: '', yrs: [yL].concat(yrs.slice().reverse()), k0: c.P[li].k, sty: sty, rng: null };
+      if (sty === 'grid') {
+        this._dropCharts('stage'); if (box) box.hidden = true; E.stage.classList.add('dk-isgrid');
+        if (gridEl) { gridEl.innerHTML = this._seasGrid(byY, labs, M, yL); gridEl.hidden = false; }
+      } else {
+        if (sty === 'range' && yrs.length) {
+          var lo = [], hi = [], av = [], k;
+          for (k = 0; k < PER; k++) { var xs = yrs.map(function (yy) { return (byY[yy] || [])[k]; }).filter(function (x) { return x != null; });
+            lo.push(xs.length ? Math.min.apply(null, xs) : null); hi.push(xs.length ? Math.max.apply(null, xs) : null); av.push(xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null); }
+          var rn = yrs[0] + (yrs.length > 1 ? '–' + yrs[yrs.length - 1] : '');
+          var dLo = lineSet(lo, 'rgba(0,0,0,0)', { label: 'Lowest ' + rn, w: 0, noDot: true }), dHi = lineSet(hi, 'rgba(0,0,0,0)', { label: 'Highest ' + rn, w: 0, noDot: true });
+          dHi.fill = '-1'; dHi.backgroundColor = 'rgba(' + t.band + ',' + (t.dark ? .17 : .11) + ')'; dLo.order = 8; dHi.order = 8;
+          var dAv = lineSet(av, 'rgba(' + t.band + ',.55)', { label: 'Average ' + rn, w: 1.4, dash: [5, 3], noDot: true }); dAv.order = 7;
+          var yP = yL - 1, dP = byY[yP] ? lineSet(byY[yP], t.ink, { label: String(yP), w: 2, surf: t.surf }) : null; if (dP) dP.order = 2;
+          var dC = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); dC.order = 0;
+          ds = [dLo, dHi, dAv].concat(dP ? [dP] : [], [dC]);
+          this._seas.rng = { lo: lo, hi: hi, av: av, rn: rn };
+        } else {
+          yrs.forEach(function (yy) { var k1 = yL - yy, st = yearStyle(k1);   // uma cor por ano; os anteriores ao último, pontilhados
+            var d0 = lineSet(byY[yy], st.color, { label: String(yy), w: st.w, dash: st.dash, surf: t.surf }); d0.order = k1 + 1; ds.push(d0); });
+          var cur = lineSet(byY[yL] || [], ORANGE, { label: String(yL), w: 2.6, end: true, surf: t.surf }); cur.order = 0; ds.push(cur);
+        }
+        this._chart('stage', cv, 'line', labs, ds, { stage: true, dec: M.dec, local: true, tip: true, unitTip: M.unit });
+        this._seasLeg(null);
+      }
       title.textContent = this._lbl(M) + ' · seasonality';
       E.stage.querySelector('.dk-sv').innerHTML = fmt(v[li], M.dec) + '<small>' + esc(M.unit) + ' · ' + c.label(li) + '</small>';
       E.stage.querySelector('.dk-sd').textContent = this._seas.base; brush.style.visibility = 'hidden';
-      E.stage.querySelector('.dk-hint').textContent = 'Hover to read every year';
-      this._whyStage(M, hp, note, { mode: 'seasonal', yL: yL, PER: PER });
+      E.stage.querySelector('.dk-hint').textContent = sty === 'grid' ? 'Each row is a year · darker cells = higher values' : 'Hover to read every year';
+      this._whyStage(M, hp, note, { mode: 'seasonal', yL: yL, PER: PER, sty: sty, y0: yrs[0], y1: yrs[yrs.length - 1] });
       return;
     }
     brush.style.visibility = 'visible';
@@ -578,53 +686,73 @@
     var sign = function (arr) { return arr.map(function (x) { return x == null ? 'transparent' : x >= 0 ? UP() : DOWN(); }); };
     var winAvg = function (arr, label) { var w = arr.filter(function (x) { return x != null; }), avg = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : null;
       var s3 = lineSet(labels.map(function () { return avg; }), 'rgba(' + t.band + ',.5)', { label: label || 'Window average', w: 1.2, dash: [5, 3], noDot: true }); s3.order = 0; self._refAvg = avg; return s3; };
-    var kind = 'line', tip = false;
-    if (!multi && u.mode === 'yoy') { kind = 'bar'; tip = true; sets = [barSet(sl(si.v), sign(sl(si.v)), { label: this._lbl(M) + ' — YoY', partialAt: pa })]; }
-    else if (!multi && u.mode === 'level' && M.signBars) {   // prêmio: barras verdes/vermelhas + média da janela (como na tela de sempre)
-      kind = 'bar'; tip = true; var d1 = sl(si.v); sets = [barSet(d1, sign(d1), { label: this._lbl(M), partialAt: pa }), winAvg(d1, 'Window average')];
-    } else if (multi && u.mode === 'level' && M.multiBars) {   // duas séries lado a lado (ex.: compras × vendas)
-      kind = 'bar'; tip = true; sets = subs.map(function (S2, k) { return barSet(sl(c.vals(S2.id)), k ? hexA(t.dark ? '#e8eaed' : '#111111', .78) : ORANGE, { label: self._lbl(S2), partialAt: pa }); });
+    var zero = function () { var z = lineSet(labels.map(function () { return 0; }), 'rgba(' + t.band + ',.35)', { label: 'Zero', w: 1, noDot: true }); z.$noTip = true; z.order = 9; return z; };
+    var ink = t.dark ? '#e8eaed' : '#111111', kind = 'line', tip = false, y2 = null, gapT = '';
+    if (!multi && u.mode === 'yoy') {
+      if (sty === 'line') { tip = true; sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M) + ' — YoY', w: 2.2, end: true, surf: t.surf, partialAt: pa }), zero()]; }
+      else { kind = 'bar'; tip = true; sets = [barSet(sl(si.v), sign(sl(si.v)), { label: this._lbl(M) + ' — YoY', partialAt: pa })]; }
+    }
+    else if (!multi && u.mode === 'level' && M.signBars) {   // prêmio: barras verdes/vermelhas + média da janela (como na tela de sempre) — ou a mesma conta em linha
+      var d1 = sl(si.v);
+      if (sty === 'line') { tip = true; sets = [lineSet(d1, ORANGE, { label: this._lbl(M), w: 2.2, end: true, surf: t.surf, partialAt: pa }), winAvg(d1, 'Window average'), zero()]; }
+      else { kind = 'bar'; tip = true; sets = [barSet(d1, sign(d1), { label: this._lbl(M), partialAt: pa }), winAvg(d1, 'Window average')]; }
+    } else if (multi && u.mode === 'level' && sty === 'gap') {   // a diferença entre as duas séries, período a período
+      var g0 = sl(c.vals(subs[0].id)), g1 = sl(c.vals(subs[1].id)), gd = g0.map(function (x, i) { return (x == null || g1[i] == null) ? null : x - g1[i]; });
+      kind = 'bar'; tip = true; gapT = this._short(subs[0]) + ' − ' + this._short(subs[1]); sets = [barSet(gd, sign(gd), { label: gapT, partialAt: pa })];
+    } else if (multi && sty === 'col') {   // as duas séries lado a lado (ex.: compras × vendas)
+      kind = 'bar'; tip = true; sets = subs.map(function (S2, k) { return barSet(sl(c.vals(S2.id, u.mode)), k ? hexA(ink, .78) : ORANGE, { label: self._lbl(S2), partialAt: pa }); });
     } else if (multi) {   // duas linhas no mesmo eixo (mesma unidade) — a dica mostra as duas
-      tip = true; sets = subs.map(function (S2, k) { var col = colOf(k);
+      tip = true; sets = subs.map(function (S2, k) { var col = M.multiBars ? (k ? ink : ORANGE) : colOf(k);
         return lineSet(sl(c.vals(S2.id, u.mode)), col, { label: self._lbl(S2), w: 2.2, end: true, surf: t.surf, partialAt: pa }); });
     } else {
-      sets = [lineSet(sl(si.v), ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf, partialAt: pa })];
+      var lv = sl(si.v), over = [];
       if (u.mode === 'level' && c.st.gran === 'monthly' && !M.noAvg) { var ma = c.vals(u.metric, 'ltm').map(function (x) { return x == null ? null : (M.flow ? x / 12 : x); });
-        var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; sets.push(s2); }
-      if (M.ref === 'windowAvg' && u.mode === 'level') { var s3b = winAvg(sl(si.v)); s3b.order = 3; sets.push(s3b); }
+        var s2 = lineSet(sl(ma), 'rgba(' + t.band + ',.45)', { label: '12-month average', w: 1.3, dash: [4, 3], noDot: true }); s2.order = 2; over.push(s2); }
+      if (M.ref === 'windowAvg' && u.mode === 'level') { var s3b = winAvg(lv); s3b.order = 3; over.push(s3b); }
       if (M.ma3 && u.mode === 'level' && c.st.gran === 'monthly') { var fv = si.v, m3 = fv.map(function (_, i) { return (i >= 2 && fv[i] != null && fv[i - 1] != null && fv[i - 2] != null) ? (fv[i] + fv[i - 1] + fv[i - 2]) / 3 : null; });
-        var s4 = lineSet(sl(m3), 'rgba(' + t.band + ',.6)', { label: '3-month moving average', w: 1.5, dash: [5, 3], noDot: true }); s4.order = 2; sets.push(s4); }
+        var s4 = lineSet(sl(m3), 'rgba(' + t.band + ',.6)', { label: '3-month moving average', w: 1.5, dash: [5, 3], noDot: true }); s4.order = 2; over.push(s4); }
+      if (sty === 'col' || sty === 'colyoy') {   // colunas (o número de cada período) — e, em "Columns + YoY", a variação anual em linha na escala da direita
+        kind = 'bar'; var b0 = barSet(lv, ORANGE, { label: this._lbl(M), partialAt: pa }); sets = [b0].concat(over);
+        if (sty === 'colyoy') { tip = true; var yu = M.pp ? 'pp' : M.diff ? M.unit : '%', yy = lineSet(sl(c.vals(u.metric, 'yoy')), ink, { label: 'YoY', w: 2, end: true, surf: t.surf, partialAt: pa });
+          yy.yAxisID = 'y2'; yy.$unit = yu; yy.$dec = 1; yy.order = 0; b0.$unit = M.unit; b0.$dec = M.dec || 0; over.forEach(function (s0) { s0.$unit = M.unit; s0.$dec = M.dec || 0; });
+          sets.push(yy); y2 = { dec: 0, suffix: yu === '%' ? '%' : '' }; }
+      } else sets = [lineSet(lv, ORANGE, { label: this._lbl(M), w: 2.4, area: !M.diff, end: true, surf: t.surf, partialAt: pa })].concat(over);
     }
-    this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
+    this._chart('stage', cv, kind, labels, sets, { stage: true, dec: si.dec, bar: kind === 'bar', tip: tip, pins: !tip, y2: y2, unitTip: u.mode === 'yoy' ? si.unit : (multi || tip ? M.unit || subs[0].unit : '') });
     /* duas séries no mesmo gráfico: o R² da 2ª contra a 1ª, na janela e na vista da tela (período em andamento fica de fora) */
     var fits = null;
     if (multi) { var mv = subs.map(function (S2) { return c.vals(S2.id, u.mode).map(function (x, i) { return c.P[i].partial ? null : x; }); });
       fits = mv.map(function (arr, k) { return k ? r2of(mv[0], arr, c.i0, c.i1) : null; });
       var perW = { monthly: 'months', quarterly: 'quarters', annual: 'years' }[c.st.gran] || 'periods';
-      var ink = t.dark ? '#e8eaed' : '#111111';
       if (corr) { corr.innerHTML = corrTable(subs.map(function (S2, k) { return { name: self._lbl(S2), short: self._short(S2), color: M.multiBars ? (k ? ink : ORANGE) : colOf(k) }; }), corrCells(mv, c.i0, c.i1), perW); corr.hidden = !corr.innerHTML; } }
     this._stageFits = fits;
-    title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '');
+    title.textContent = this._lbl(M) + (si.name ? ' · ' + si.name : '') + (gapT ? ' · gap' : '');
     E.stage.querySelector('.dk-hint').textContent = (tip ? 'Hover to read the values' : 'Hover to read · Click two periods to compare them (A → B)') + (c.sec.noBrush ? '' : ' · Drag the strip to change the period');
-    var lvl = u.mode === 'level' && !multi && kind === 'line', mon = c.st.gran === 'monthly';
-    this._whyStage(M, hp, note, { mode: u.mode, kind: kind, multi: multi, subs: subs, avg12: lvl && mon && !M.noAvg, winAvg: lvl && M.ref === 'windowAvg', ma3: lvl && mon && !!M.ma3, partial: pa != null && pa >= 0, r2: !!fits });
+    var lvl = u.mode === 'level' && !multi && (kind === 'line' || sty === 'col' || sty === 'colyoy'), mon = c.st.gran === 'monthly';
+    this._whyStage(M, hp, note, { mode: u.mode, kind: kind, multi: multi, subs: subs, sty: sty, avg12: lvl && mon && !M.noAvg && !M.signBars, winAvg: lvl && M.ref === 'windowAvg', ma3: lvl && mon && !!M.ma3, partial: pa != null && pa >= 0, r2: !!fits });
   };
   /* o quadro "What it shows / How to read" do palco: o "how" é montado a partir do que está desenhado */
   Desk.prototype._whyStage = function (M, hp, note, o) {
     var el = this.el && this.el.stage && this.el.stage.querySelector('.dk-why'); if (!el) return;
     var H = window.IBBADeskHelp, V = (H && H.view) || {}, fill = (H && H.fill) || function (x) { return x || ''; }, gran = this.ctx.st.gran, self = this;
-    var per = gran === 'quarterly' ? 'quarter' : gran === 'annual' ? 'year' : 'month', how = [];
-    if (o.mode === 'seasonal') how.push(fill(V.seasonal, { pers: o.PER === 12 ? 'months' : 'quarters', y: o.yL, y1: o.yL - 1 }));
-    else if (o.mode === 'yoy' && !o.multi) how.push(fill(M.pp ? V.yoyPP : M.diff ? V.yoyDiff : V.yoy, { per: per, unit: M.unit }));
-    else if (o.mode === 'ltm' && !o.multi) how.push(fill(M.flow ? V.ltmFlow : V.ltmOther, { n: gran === 'quarterly' ? '4 quarters' : '12 months' }));
+    var per = gran === 'quarterly' ? 'quarter' : gran === 'annual' ? 'year' : 'month', how = [], sty = o.sty || '';
+    if (o.mode === 'seasonal') {
+      var per1 = o.PER === 12 ? 'month' : 'quarter';
+      if (sty === 'range' && V.seasRange && o.y0) how.push(fill(V.seasRange, { per1: per1, y0: o.y0, y1: o.y1, y: o.yL, yp: o.yL - 1 }));
+      else if (sty === 'grid' && V.seasGrid) how.push(fill(V.seasGrid, { per1: per1, tot: M.flow ? 'total' : 'average', y: o.yL }));
+      else how.push(fill(V.seasonal, { pers: o.PER === 12 ? 'months' : 'quarters', y: o.yL, y1: o.yL - 1 }));
+    }
+    else if (o.mode === 'yoy' && !o.multi) how.push(fill(sty === 'line' && V.yoyLine ? V.yoyLine : M.pp ? V.yoyPP : M.diff ? V.yoyDiff : V.yoy, { per: per, unit: M.pp ? 'percentage points' : M.diff ? M.unit : '%' }));
+    else if (o.mode === 'ltm' && !o.multi) how.push(fill(M.flow ? V.ltmFlow : V.ltmOther, { n: gran === 'quarterly' ? '4 quarters' : '12 months' }) + (sty === 'col' && V.asCols ? ' ' + V.asCols : ''));
     else {
-      if (o.multi) {   // duas séries: diz qual cor é qual
+      if (o.multi && sty === 'gap' && V.gap) how.push(fill(V.gap, { a: self._lbl(o.subs[0]), b: self._lbl(o.subs[1]), per: per }));
+      else if (o.multi) {   // duas séries: diz qual cor é qual
         var nm = function (k) { var n0 = (M.multiColors || ['orange', 'ink'])[k]; return n0 === 'orange' ? 'orange' : n0 === 'ink' ? (isDark() ? 'white' : 'black') : (k ? 'second' : 'first'); }, cap = function (x) { return x.charAt(0).toUpperCase() + x.slice(1); };
         how.push(fill(o.kind === 'bar' ? V.twoBars : V.twoLines, { c0: o.kind === 'bar' ? 'Orange' : cap(nm(0)), c1: o.kind === 'bar' ? (isDark() ? 'light' : 'dark') : nm(1), a: self._lbl(o.subs[0]), b: self._lbl(o.subs[1]) }));
         if (o.mode === 'yoy') how.push(fill(V.yoy, { per: per }).replace(/^Bars show/, 'Each line shows').replace(/: green = higher, red = lower\.$/, '.'));
         if (o.mode === 'ltm') how.push(fill(V.ltmOther, { n: gran === 'quarterly' ? '4 quarters' : '12 months' }));
       } else if (M.signBars) how.push((hp && hp.how) || V.signBars);
-      else how.push(fill(V.level, { per: per }));
+      else how.push(fill(sty === 'colyoy' && V.colYoy ? V.colYoy : sty === 'col' && V.levelCol ? V.levelCol : V.level, { per: per }));
       if (hp && hp.how && !M.signBars) how.push(hp.how);
       if (o.avg12 && o.winAvg) how.push(V.avgBoth); else { if (o.avg12) how.push(V.avg12); if (o.winAvg) how.push(V.winAvg); }
       if (o.ma3) how.push(V.ma3);
@@ -639,8 +767,27 @@
   Desk.prototype._seasLeg = function (i) {
     var s = this._seas, el = this.el && this.el.stage && this.el.stage.querySelector('.dk-sleg'); if (!s || !el) return;
     var k = i == null ? s.k0 : i;
+    if (s.sty === 'grid') { el.innerHTML = ''; return; }
+    if (s.sty === 'range' && s.rng) { var r = s.rng, f = function (x) { return x == null ? '—' : fmt(x, s.M.dec); };
+      el.innerHTML = '<span class="dk-sleg0">' + esc(s.labs[k] || '') + '</span>' + yearChip(0, s.yL, f((s.byY[s.yL] || [])[k])) + (s.byY[s.yL - 1] ? yearChip(1, s.yL - 1, f(s.byY[s.yL - 1][k])) : '') +
+        '<span><i class="dk-lg-dash"></i>Average ' + esc(r.rn) + ' <b>' + f(r.av[k]) + '</b></span><span><i class="dk-lg-band"></i>Range ' + esc(r.rn) + ' <b>' + f(r.lo[k]) + ' – ' + f(r.hi[k]) + '</b></span>';
+      return; }
     el.innerHTML = '<span class="dk-sleg0">' + esc(s.labs[k] || '') + '</span>' + s.yrs.map(function (yy) { var v = (s.byY[yy] || [])[k];
       return yearChip(s.yrs[0] - yy, yy, v == null ? '—' : fmt(v, s.M.dec)); }).join('');
+  };
+  /* sazonalidade em TABELA: um ano por linha (o mais novo em cima), um mês (trimestre) por coluna; a cor diz o tamanho dentro da tabela
+     (uma cor só, mais forte = maior); a última coluna é o total do ano (a média, para preços e participações). Só períodos completos. */
+  Desk.prototype._seasGrid = function (byY, labs, M, yL) {
+    var yrs = Object.keys(byY).map(Number).sort(function (a, b) { return b - a; }).slice(0, 12), all = [], flow = !!M.flow, PER = labs.length;
+    yrs.forEach(function (y) { (byY[y] || []).forEach(function (x) { if (x != null) all.push(x); }); });
+    var mn = all.length ? Math.min.apply(null, all) : 0, mx = all.length ? Math.max.apply(null, all) : 0;
+    var tint = function (x) { if (x == null || !(mx > mn)) return ''; return ' style="background:rgba(255,80,0,' + (.05 + .5 * (x - mn) / (mx - mn)).toFixed(3) + ')"'; };
+    var h0 = '<table class="dk-sgt"><thead><tr><th></th>' + labs.map(function (l) { return '<th>' + esc(l) + '</th>'; }).join('') + '<th class="dk-sgtt">' + (flow ? 'Total' : 'Average') + '</th></tr></thead><tbody>';
+    yrs.forEach(function (y) { var row = byY[y] || [], have = row.filter(function (x) { return x != null; }), full = have.length === PER;
+      var sum = have.reduce(function (a, b) { return a + b; }, 0), tot = have.length ? (flow ? sum : sum / have.length) : null;
+      h0 += '<tr' + (y === yL ? ' class="dk-sgcur"' : '') + '><th>' + y + '</th>' + labs.map(function (_, k) { var x = row[k]; return '<td' + tint(x) + ' title="' + esc(labs[k] + ' ' + y + (x == null ? '' : ': ' + fmt(x, M.dec) + ' ' + M.unit)) + '">' + (x == null ? '' : fmt(x, M.dec)) + '</td>'; }).join('') +
+        '<td class="dk-sgtt">' + (tot == null ? '' : fmt(tot, M.dec)) + (full || tot == null ? '' : ' <small>' + (flow ? 'YTD' : 'so far') + '</small>') + '</td></tr>'; });
+    return h0 + '</tbody></table>';
   };
   Desk.prototype._localHover = function (id, i) {   // sazonalidade: lê o mês do ano, sem mexer nos outros gráficos
     var ch = this.charts[id], s = this._seas; if (!ch || !s) return;
@@ -744,6 +891,10 @@
     if (used[S[name]]) { for (i = 0; i < PAL_L.length; i++) if (!used[i]) { S[name] = i; break; } }
     return S[name];
   };
+  Desk.prototype._whoOpts = function (mode) {
+    if (mode === 'price') return [['lines', 'Lines', 'One line per name', 0, 'lines'], ['col', 'Columns', 'Side-by-side columns']];
+    return [['stack', 'Stacked', mode === 'share' ? 'The columns add up to 100%' : 'The columns add up to the total', 0, 'stack'], ['stackarea', 'Stacked area', mode === 'share' ? 'The areas add up to 100%' : 'The areas add up to the total', 0, 'stackarea'], ['lines', 'Lines', 'Each one on its own line — not added up', 0, 'lines']];
+  };
   Desk.prototype._who = function () {
     var c = this.ctx, E = this.el, d = this._whoData(), w = this._u().who, self = this; if (!d) { E.who.hidden = true; return; } E.who.hidden = false; this._whoDim = d.dim;
     var dg = E.who.querySelector('.dk-dims'); dg.hidden = d.dims.length < 2;
@@ -755,9 +906,11 @@
       d.subs.map(function (p) { return '<button type="button" class="dk-pill" data-k="' + esc(p.k) + '" aria-pressed="' + (!!d.sub && p.k === d.sub.k) + '">' + esc(p.l) + '</button>'; }).join('') : '';
     E.who.querySelector('.dk-whomodes').innerHTML = d.modes.map(function (m) { return '<button type="button" data-k="' + m[0] + '" aria-pressed="' + (w.mode === m[0]) + '">' + m[1] + '</button>'; }).join('');
     E.who.querySelector('.dk-whomodes').hidden = d.modes.length < 2;
+    var wopts = this._whoOpts(w.mode), wsty = this._sty('who', wopts), wsw = E.who.querySelector('.dk-whosty'); if (wsw) wsw.innerHTML = styleSeg(wopts, wsty);
     E.who.querySelector('.dk-popbtn').innerHTML = esc(d.dim.label) + ' ▾';
     E.who.querySelector('h3').textContent = d.dim.heading || 'Who is behind the number';
-    var HW = window.IBBADeskHelp, wwhat = (HW && HW.who) ? HW.who(this.cfg.sector, this.cur, d.dim.id) : null, WH = (HW && HW.whoHow) || {}, wparts = [WH[w.mode] || WH.volume];
+    var HW = window.IBBADeskHelp, wwhat = (HW && HW.who) ? HW.who(this.cfg.sector, this.cur, d.dim.id) : null, WH = (HW && HW.whoHow) || {}, sh0 = w.mode === 'share';
+    var lead0 = wsty === 'stackarea' ? (sh0 ? WH.areaShare : WH.area) : (wsty === 'lines' && w.mode !== 'price') ? (sh0 ? WH.linesShare : WH.lines) : (w.mode === 'price' && wsty === 'col') ? WH.priceCol : null, wparts = [lead0 || WH[w.mode] || WH.volume];
     if (!d.dim.noOthers) wparts.push(w.mode === 'price' ? WH.othersPrice : w.mode === 'share' ? '' : WH.others);   // a quebra tem "Others"?
     wparts.push(WH.list); if (!d.dim.noSelect) wparts.push(WH.click);   // dá para escolher quem aparece?
     var whow = HW ? HW.fill(wparts.filter(Boolean).join(' '), { noun1: HW.noun1(d.dim.noun) }) : '', wwEl = E.who.querySelector('.dk-whowhy');
@@ -768,16 +921,33 @@
     var dec = d.dim.dec || 0, cv = E.who.querySelector('canvas');
     if (mode === 'price') {   // preço de cada entidade = medida 2 ÷ medida 1 (ex.: receita ÷ volume) + a linha de todos + o resto
       var K = d.dim.priceK || 1, mx = d.dim.priceMax || Infinity, pr = function (R, V) { return c.P.map(function (_, i) { var x = (V[i] > 0 && R[i] != null) ? R[i] / V[i] * K : null; return (x != null && x <= mx) ? x : null; }); };
-      var sets = [lineSet(sl(pr(d.tot2, d.tot)), 'rgba(' + t.band + ',.85)', { label: d.dim.allLabel || 'All', w: 2, dash: [6, 4], surf: t.surf, partialAt: pa })];
-      selNamed.forEach(function (n) { sets.push(lineSet(sl(pr(d.agg2[idx(n)], d.agg[idx(n)])), slotColor(self._slot(n, d.sel)), { label: n, w: 2, surf: t.surf, partialAt: pa })); });
-      if (hasO && !d.dim.noOthers) sets.push(lineSet(sl(pr(rest(d.tot2, d.agg2), rest(d.tot, d.agg))), slotColor('others'), { label: 'Others', w: 1.5, dash: [4, 3], surf: t.surf, partialAt: pa }));
-      this._chart('who', cv, 'line', labels, sets, { dec: d.dim.priceDec || 0, tip: true, unitTip: d.dim.priceUnit || '' });
+      var sets = [lineSet(sl(pr(d.tot2, d.tot)), 'rgba(' + t.band + ',.85)', { label: d.dim.allLabel || 'All', w: 2, dash: [6, 4], surf: t.surf, partialAt: pa, noDot: wsty === 'col' })];
+      if (wsty === 'col') {   // colunas lado a lado (o preço de cada um) + a linha de todos
+        selNamed.forEach(function (n) { sets.push(barSet(sl(pr(d.agg2[idx(n)], d.agg[idx(n)])), slotColor(self._slot(n, d.sel)), { label: n, partialAt: pa })); });
+        if (hasO && !d.dim.noOthers) sets.push(barSet(sl(pr(rest(d.tot2, d.agg2), rest(d.tot, d.agg))), slotColor('others'), { label: 'Others', partialAt: pa }));
+        this._chart('who', cv, 'bar', labels, sets, { bar: true, dec: d.dim.priceDec || 0, tip: true, unitTip: d.dim.priceUnit || '' });
+      } else {
+        selNamed.forEach(function (n) { sets.push(lineSet(sl(pr(d.agg2[idx(n)], d.agg[idx(n)])), slotColor(self._slot(n, d.sel)), { label: n, w: 2, surf: t.surf, partialAt: pa })); });
+        if (hasO && !d.dim.noOthers) sets.push(lineSet(sl(pr(rest(d.tot2, d.agg2), rest(d.tot, d.agg))), slotColor('others'), { label: 'Others', w: 1.5, dash: [4, 3], surf: t.surf, partialAt: pa }));
+        this._chart('who', cv, 'line', labels, sets, { dec: d.dim.priceDec || 0, tip: true, unitTip: d.dim.priceUnit || '' });
+      }
     } else {
       var A = mode === 'revenue' ? d.agg2 : d.agg, T = mode === 'revenue' ? d.tot2 : d.tot, stack = selNamed.map(function (n) { return { name: n, v: A[idx(n)] }; });
       if (hasO && !d.dim.noOthers) stack.push({ name: 'Others', v: rest(T, A) });
-      var bsets = stack.map(function (s0) { var col = slotColor(self._slot(s0.name, d.sel)), data = sl(s0.v).map(function (x, k) { var TT = T[c.i0 + k]; return share ? (TT ? +(x / TT * 100).toFixed(2) : 0) : +(+x || 0).toFixed(dec + 2); });
-        return barSet(data, (w.hi && w.hi !== s0.name) ? hexA(col, .16) : col, { label: s0.name, stacked: true, gap: true, surf: t.surf, partialAt: pa }); });
-      this._chart('who', cv, 'bar', labels, bsets, { bar: true, stack: true, share: share, dec: mode === 'revenue' ? (d.dim.dec2 || 0) : dec, tip: true });
+      var valsOf = function (s0) { return sl(s0.v).map(function (x, k) { var TT = T[c.i0 + k]; return share ? (TT ? +(x / TT * 100).toFixed(2) : 0) : +(+x || 0).toFixed(dec + 2); }); }, dc = mode === 'revenue' ? (d.dim.dec2 || 0) : dec;
+      if (wsty === 'stackarea') {   // áreas empilhadas: a borda de cima é o total (ou 100%)
+        var asets = stack.map(function (s0, k) { var col = slotColor(self._slot(s0.name, d.sel)), dim = !!(w.hi && w.hi !== s0.name), a0 = lineSet(valsOf(s0), dim ? hexA(col, .35) : col, { label: s0.name, w: 1.2, surf: t.surf, partialAt: pa });
+          a0.fill = k ? '-1' : 'origin'; a0.backgroundColor = hexA(col, dim ? .14 : .78); return a0; });
+        this._chart('who', cv, 'line', labels, asets, { stack: true, share: share, dec: dc, tip: true });
+      } else if (wsty === 'lines') {   // cada um na sua linha, sem somar
+        var lsets = stack.map(function (s0) { var col = slotColor(self._slot(s0.name, d.sel)), dim = !!(w.hi && w.hi !== s0.name), oth = s0.name === 'Others';
+          return lineSet(valsOf(s0), dim ? hexA(col, .25) : col, { label: s0.name, w: oth ? 1.5 : 2, dash: oth ? [4, 3] : null, end: true, surf: t.surf, partialAt: pa }); });
+        this._chart('who', cv, 'line', labels, lsets, { dec: share ? 1 : dc, tip: true, unitTip: share ? '%' : '' });
+      } else {
+        var bsets = stack.map(function (s0) { var col = slotColor(self._slot(s0.name, d.sel));
+          return barSet(valsOf(s0), (w.hi && w.hi !== s0.name) ? hexA(col, .16) : col, { label: s0.name, stacked: true, gap: true, surf: t.surf, partialAt: pa }); });
+        this._chart('who', cv, 'bar', labels, bsets, { bar: true, stack: true, share: share, dec: dc, tip: true });
+      }
     }
     this._whoTitle = d.dim.title || 'Breakdown';
     if (!E.who.querySelector('.dk-popp').hidden) this._fillPop();
@@ -951,7 +1121,8 @@
   window.IBBADesk = {
     /* peças internas para o data-desk-builder.js (mesma régua de gráfico, mesmas contas) */
     x: { Desk: Desk, chartOptions: chartOptions, lineSet: lineSet, h: h, esc: esc, fmt: fmt, pct: pct, cls: cls, isDark: isDark, ORANGE: ORANGE, FONT: FONT, whyHTML: whyHTML,
-         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip, r2of: r2of, r2Badge: r2Badge, R2_MIN: R2_MIN, corrCells: corrCells, corrTable: corrTable },
+         yearColor: yearColor, yearStyle: yearStyle, yearChip: yearChip, r2of: r2of, r2Badge: r2Badge, R2_MIN: R2_MIN, corrCells: corrCells, corrTable: corrTable,
+         barSet: barSet, hexA: hexA, UP: UP, DOWN: DOWN, theme: theme, icon: icon, styleSeg: styleSeg, slotColor: slotColor, lastIdx: lastIdx },
     core: core, theme: theme, slotColor: slotColor,
     mount: function (cfg) { var d = new Desk(cfg); window.IBBADesk.instance = d; return d; }
   };

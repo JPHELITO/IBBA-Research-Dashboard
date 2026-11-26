@@ -2895,7 +2895,7 @@ function _desk(){
           src:'S&P Global Platts · history: Itaú BBA Platts database',
           tiles:['margin','grades','spread','freight','brands','fwd'],
           metrics:[
-            {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true,
+            {id:'margin', label:'Brazilian producer margin proxy — 61% Fe fines minus Brazil–China freight', short:'Margin proxy', unit:'US$/t', dec:2, single:true, axisAll:true, views:['line','index'],
               series:(S,P)=>{ const m62=P.sub(P.d(S,'IODEX_62'),P.d(S,'IOFBC00'));
                 return [{name:'Margin proxy (61% Fe − freight)', short:'Margin', pts:P.sub(P.d(S,'IRON_ORE'),P.d(S,'IOFBC00'))},{name:'IO fines 61% Fe CFR China', short:'61% Fe', pts:P.d(S,'IRON_ORE')},{name:'Freight Brazil–China', short:'Freight', pts:P.d(S,'IOFBC00')},
                   {name:'Same margin with 62% Fe'+(m62.length?' (to '+P.mLabel(m62[m62.length-1][0])+')':''), short:'With 62% Fe', pts:m62}]; },
@@ -2935,7 +2935,7 @@ function _desk(){
               series:(S,P)=>[{name:'Hot metal output', short:'Hot metal', pts:P.mill(S,'hm')}], refs:_millRefs('hm',0,' kt/day'), build:_millBuild, estAt:_millEst('hm')},
             {id:'bf', label:'Blast furnaces — capacity utilization and share of furnaces running', short:'Blast furnaces', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
               series:(S,P)=>[{name:'Capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')},{name:'Furnaces running (operating rate)', short:'Running', pts:P.mill(S,'bfop')}], build:_millBuild, estAt:_millEst('bfutil')},
-            {id:'pvu', label:'Margins against output — mills making money vs blast-furnace utilization', short:'Margins vs output', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10,
+            {id:'pvu', label:'Margins against output — mills making money vs blast-furnace utilization', short:'Margins vs output', unit:'%', dec:1, pp:true, nosign:true, tileN:2, gapDays:10, views:['line','index'],
               series:(S,P)=>[{name:'Mills making money', short:'Making money', pts:P.mill(S,'profit')},{name:'Blast-furnace capacity utilization', short:'Utilization', pts:P.mill(S,'bfutil')}], build:_millBuild, estAt:_millEst('profit')},
             {id:'profit_seas', label:'Mills making money — one line per year', short:'Making money, by year', unit:'%', dec:1, pp:true, nosign:true, season:true, gapDays:10,
               series:(S,P)=>P.byYear(P.mill(S,'profit'),6,P.millEst(S,'profit'))},
