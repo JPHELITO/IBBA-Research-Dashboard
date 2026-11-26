@@ -133,8 +133,22 @@ html.isl-on .isl-util .gnav-tut svg,html.isl-on .isl-util .gnav-out svg{width:15
 html.isl-on .isl-util .gnav-tut[style*="none"]{display:none!important;}\
 .isl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}\
 }\
+/* HOME: o TUTORIAL sempre à vista (pedido 26/11). Com a barra recolhida, uma lingueta escura "Tutorial" pende do topo no MESMO x\
+   do botão da barra (quando a barra desce ela sobe e o botão da barra aparece no lugar). Mora no respiro de 12px acima do palco e\
+   na folga do cabeçalho dos relatórios: não tapa nada (medido). Escondida quando o botão da barra está escondido (cliente sem a flag) */\
+.isl-tuth{display:none;}\
 /* ═══ HOME de 1025px para cima (abaixo disso ela vira lista que rola e a barra se comporta como nas outras páginas) ═══ */\
 @media (min-width:1025px){\
+html.isl-on.isl-home .isl-tuth{display:inline-flex;position:fixed;top:0;right:28px;z-index:899;box-sizing:border-box;height:19px;margin:0;padding:0 11px 0 9px;gap:5px;align-items:center;\
+  border:1px solid rgba(255,255,255,.2);border-top:0;border-radius:0 0 11px 11px;background:#141416;color:rgba(255,255,255,.88);\
+  font:600 11px/1 "Manrope","Inter",sans-serif;letter-spacing:.01em;white-space:nowrap;cursor:pointer;box-shadow:0 6px 16px -8px rgba(0,0,0,.75);\
+  transform:translateY(-110%);opacity:0;pointer-events:none;transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .2s ease,background .15s,border-color .15s,color .15s;}\
+html.isl-on.isl-home.isl-away .isl-tuth{transform:none;opacity:1;pointer-events:auto;}\
+html.isl-on.isl-home .isl-tuth:hover,html.isl-on.isl-home .isl-tuth:focus-visible{background:#2A1608;border-color:rgba(255,122,51,.65);color:#fff;outline:0;}\
+html.isl-on.isl-home .isl-tuth svg{width:13px;height:13px;display:block;flex:none;color:#FF7A33;}\
+html.isl-on.isl-home .isl-tuth[hidden]{display:none!important;}\
+/* tela estreita: o cabeçalho dos relatórios sobe junto com a escala da Home → lingueta 1px mais baixa (folga medida ≥5px) */\
+@media (max-width:1279px){html.isl-on.isl-home .isl-tuth{height:18px;font-size:10.5px;padding:0 10px 0 8px;}html.isl-on.isl-home .isl-tuth svg{width:12px;height:12px;}}\
 html.isl-home.isl-away .isl-notch{transform:translate(-50%,0);opacity:1;}\
 /* HOME sem faixa: a barra inteira (ilha + pílula do time/tutorial/tema/sair) mora escondida na lingueta e desce por cima do palco */\
 html.isl-on.isl-home .gnav{position:fixed!important;top:0;left:0;right:0;height:46px;background:none!important;pointer-events:none;}\
@@ -341,6 +355,28 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     notch.title = 'Menu & search (or press ' + kk + ')'; notch.setAttribute('aria-label', 'Show the menu');
     notch.innerHTML = '<i class="isl-tab"></i><span class="isl-hint">Menu · ' + kk + '</span>';
     document.body.appendChild(notch);
+    // HOME: lingueta "Tutorial" sempre à vista com a barra recolhida (pedido 26/11) — abre o MESMO painel do botão da barra
+    var tutHome = null, tutBtn = document.getElementById('gnav-tutorial');
+    function placeTut() {
+      if (!tutHome) return;
+      var on = homeMode() && !!tutBtn && tutBtn.style.display !== 'none';
+      tutHome.hidden = !on; if (!on) return;
+      var r = tutBtn.getBoundingClientRect(), w = tutHome.offsetWidth;
+      if (r.width < 2 || !w) return;                        // sem medida ainda: fica no canto (right:28px do CSS)
+      tutHome.style.left = Math.round(r.left + (r.width - w) / 2) + 'px'; tutHome.style.right = 'auto';
+    }
+    function overTut(x, y) { return !!(tutHome && !tutHome.hidden && inRect(tutHome.getBoundingClientRect(), x, y, 10)); }
+    if (HOME && tutBtn) {
+      tutHome = document.createElement('button'); tutHome.type = 'button'; tutHome.className = 'isl-tuth'; tutHome.hidden = true;
+      tutHome.title = 'Guided tours of the dashboard'; tutHome.setAttribute('aria-label', 'Tutorial');
+      var tsv = tutBtn.querySelector('svg');
+      tutHome.innerHTML = (tsv ? tsv.outerHTML : '') + '<span>Tutorial</span>';
+      tutHome.addEventListener('click', function () { if (window.__gnavTour) window.__gnavTour(tutHome); });
+      document.body.appendChild(tutHome);
+      try { new MutationObserver(placeTut).observe(tutBtn, { attributes: true, attributeFilter: ['style'] }); } catch (e) {}
+      try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeTut); } catch (e) {}
+      window.addEventListener('load', placeTut);
+    }
     var ticking = false, lastY = window.scrollY || 0, tAway = 0, tHint = 0, hinted = false, tHome = 0, tReveal = 0, nearRaf = 0, lastNear = -1, mx = -999, my = 9999;
     function hint() {   // as 3 primeiras vezes (por navegador) a lingueta diz o que é
       if (hinted) return; hinted = true;
@@ -382,7 +418,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
       var p = document.getElementById('gnt-pop'); if (p && p.classList.contains('open') && inRect(p.getBoundingClientRect(), x, y, 30)) return true;
       return !!(ddGroup && inRect(ddGroup.querySelector('.gn-drop').getBoundingClientRect(), x, y, 30));
     }
-    function homeHit() { return nearOf(mx, my) >= 0.86 || my < 10; }   // perto da lingueta, ou encostado no topo (com 0,11 s parado)
+    function homeHit() { return !overTut(mx, my) && (nearOf(mx, my) >= 0.86 || my < 10); }   // perto da lingueta, ou encostado no topo (com 0,11 s parado); em cima da lingueta do Tutorial, não
     function homeCheck() {
       if (!homeMode() || root.classList.contains('isl-away')) return;
       if (homeLocked() || homeZone(mx, my)) { clearTimeout(tHome); tHome = 0; return; }
@@ -390,7 +426,7 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     }
     afterClose = function () { setTimeout(homeCheck, 60); };
     homeAway = function () { away(true); };
-    window.addEventListener('resize', function () { fitHome(); if (homeMode() && !isl.classList.contains('open')) open(true, true); });
+    window.addEventListener('resize', function () { fitHome(); placeTut(); if (homeMode() && !isl.classList.contains('open')) open(true, true); });
     document.addEventListener('mousemove', function (e) {
       mx = e.clientX; my = e.clientY;
       if (nearRaf || !desktop()) return;
@@ -412,7 +448,8 @@ html.isl-on.isl-home{--hub-palco-reserva:calc(660px + 56px / var(--app-scale,1))
     document.addEventListener('click', function () { setTimeout(homeCheck, 60); });   // fechou o cartão do time etc.
     if (HOME) {
       root.classList.add('isl-home');
-      if (homeMode()) { away(true); open(true, true); fitHome(); }   // nasce recolhida (e já completa por dentro) (sem 'apresentação': ela faria a Home pular ao abrir); o aviso "Menu · Ctrl K" mostra onde ela mora
+      if (homeMode()) { away(true); open(true, true); fitHome(); }
+      placeTut();   // nasce recolhida (e já completa por dentro) (sem 'apresentação': ela faria a Home pular ao abrir); o aviso "Menu · Ctrl K" mostra onde ela mora
     }
     // aquece a 1ª descida: as fotos do time e o vidro desfocado da barra eram montados na hora e a 1ª vez travava ~0,3 s
     if (HOME) window.addEventListener('load', function () {
