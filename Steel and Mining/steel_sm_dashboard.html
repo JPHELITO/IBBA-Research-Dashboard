@@ -10,6 +10,14 @@
 <script>try{if(localStorage.getItem('ibba_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
 <!-- esqueleto nas molduras dos gráficos desde o 1º desenho; o loadDB() tira a classe ao terminar -->
 <script>document.documentElement.classList.add('ibba-loading')</script>
+<!-- CARREGAMENTO (26/11/2026, pedido do usuário: "quando está carregando essas páginas aparece uma tela com o build antigo… ajeite" e
+     "está demorando um pouco para carregar"): (1) o palpite da MESA entra aqui, antes de a página aparecer — a chave data_desk está
+     ligada para todos, então sem histórico o palpite é "mesa"; ?desk=0 ou a última visita sem a mesa = tela antiga — e, com ele, o
+     esqueleto da mesa (data-desk.css) no lugar das molduras da tela antiga; (2) o banco começa a descer JÁ, junto com os scripts (antes
+     só depois deles, ~1,3 s depois); o openDB() usa este pedido uma vez só. -->
+<script>(function(){ try{ var q=new URLSearchParams(location.search).get('desk'), s=null; try{ s=localStorage.getItem('ibba_desk'); }catch(e){}
+  if(q!=='0'&&s!=='0') document.documentElement.classList.add('desk-on');
+  if(typeof DecompressionStream==='function') window.__dbEarly=fetch('steel_sm_web.db.gz',{priority:'low'});   /* prioridade baixa: desce junto, mas os scripts da página vêm primeiro */ }catch(e){} })();</script>
 <!-- Fontes da casa (as dos relatórios): Manrope no texto, Unbounded em títulos e números -->
 <link rel="preload" href="/assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/assets/fonts/unbounded.woff2" as="font" type="font/woff2" crossorigin/>
@@ -1067,7 +1075,7 @@ html.dark .filter-btns>.ibba-slide,html.dark .pred-btns>.ibba-slide,html.dark .i
 
 
 <!-- ══ DATA DESK: a mesa de leitura (chave data_desk). Vazia e oculta enquanto a chave estiver desligada. ══ -->
-<div id="desk-root" class="section"></div>
+<div id="desk-root" class="section"><div class="dk-skel" aria-hidden="true"><div class="dk-sk-tiles"><i></i><i></i><i></i><i></i></div><div class="dk-sk-cols"><i class="dk-sk-stage"></i><i class="dk-sk-read"></i></div></div></div>
 
 <div class="note-bar">
   Sources: <em>IABr</em> (production, domestic sales, apparent consumption, exp/imp) ·
@@ -1166,7 +1174,12 @@ function _sctyRun(job){
   SCTY[dir][cat]=toObj(_sctyDB.exec(`SELECT period,country,volume_ktons FROM secex_country WHERE direction='${dir}' AND category='${cat}' ORDER BY period,country`)[0]);
 }
 function _sctyFinish(){ try{ if(_sctyDB) _sctyDB.close(); }catch(e){} _sctyDB=null; _sctyJobs=[]; }
-function _ensureSCTY(){ if(!_sctyDB) return; while(_sctyJobs.length) _sctyRun(_sctyJobs.shift()); _sctyFinish(); }
+/* com (dir, cats): desce só o que esse gráfico usa e o resto continua descendo aos poucos (o Overview pede Flat/Long/Semi das duas
+   direções: 6 consultas em vez de 30 — ~1,2 s a menos na abertura, 26/11/2026); sem argumentos, desce tudo de uma vez */
+function _ensureSCTY(dir,cats){ if(!_sctyDB) return;
+  if(dir&&cats){ const need=_sctyJobs.filter(j=>j[0]===dir&&cats.includes(j[1])); if(!need.length) return;
+    need.forEach(_sctyRun); _sctyJobs=_sctyJobs.filter(j=>!need.includes(j)); if(!_sctyJobs.length) _sctyFinish(); return; }
+  while(_sctyJobs.length) _sctyRun(_sctyJobs.shift()); _sctyFinish(); }
 function _sctyIdle(){
   if(!_sctyDB) return;
   const ric=window.requestIdleCallback||(fn=>setTimeout(()=>fn({timeRemaining:()=>8}),30));
@@ -1565,7 +1578,8 @@ async function readWithProgress(resp, msg){
 async function fetchDB(){
   if(typeof DecompressionStream==='function'){
     try{
-      const r=await fetch('steel_sm_web.db.gz');
+      const early=window.__dbEarly; window.__dbEarly=null;   // o pedido que a <head> já fez (vale uma vez: o painel "Download data" reabre com um novo)
+      const r=await (early||fetch('steel_sm_web.db.gz'));
       if(r.ok){
         const gz=await readWithProgress(r,'Loading data…');   // progresso = bytes comprimidos (é o que trafega)
         const stream=new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'));
@@ -1834,7 +1848,7 @@ function getPillDefs(){
 
 // Mescla múltiplas categorias por (period, country)
 function mergeOriginRows(cats,dir){
-  _ensureSCTY();   // se os dados por país ainda não desceram, desce agora (de uma vez)
+  _ensureSCTY(dir,cats);   // se os dados por país destas categorias ainda não desceram, desce agora (só elas)
   const merged={};
   cats.forEach(cat=>{
     (SCTY[dir]?.[cat]||[]).forEach(r=>{
@@ -2599,7 +2613,7 @@ const _deskLocal=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 function _deskParam(){ try{ return new URLSearchParams(location.search).get('desk'); }catch(e){ return null; } }
 function _deskSet(on){ _deskOn=!!on; document.documentElement.classList.toggle('desk-on',_deskOn); }
 // palpite antes do 1º desenho (evita piscar a tela antiga): o que valeu na última visita
-(function(){ const q=_deskParam(); let on=false; try{ on=localStorage.getItem('ibba_desk')==='1'; }catch(e){}
+(function(){ const q=_deskParam(); let on=true; try{ on=localStorage.getItem('ibba_desk')!=='0'; }catch(e){}   // sem histórico = mesa (a chave está ligada para todos; o mesmo palpite da <head>)
   if(q==='0') on=false; else if(q==='1'&&_deskLocal) on=true; _deskSet(on); })();
 async function applyDeskFlag(){
   try{
@@ -2672,7 +2686,7 @@ const _dkPriceComp=(SRC,p)=>({p:_dkMap(SRC[p],'price_usd_ton'), r:_dkMap(SRC[p],
 const _dkEnt={};
 function _dkCountries(dir,cats){
   const key=dir+'|'+cats.join('+'); if(_dkEnt[key]) return _dkEnt[key];
-  _ensureSCTY();
+  _ensureSCTY(dir,cats);
   const by={}; let last='';
   cats.forEach(cat=>(SCTY[dir]?.[cat]||[]).forEach(r=>{ const n=IBBADesk.core.country(trCountry(r.country||'—')), m=by[n]||(by[n]={});   // inglês para TODOS os países (o mapa da página só cobre os principais)
     m[r.period]=(m[r.period]||0)+(r.volume_ktons||0); if(r.period>last) last=r.period; }));
@@ -2959,11 +2973,13 @@ function _desk(){
       /* MODELO PREDITIVO — os 6 gráficos de sempre (Korea, China, Korea+China × 3M e 12M), com os MESMOS controles (produto e lag
          na barra da página) e as MESMAS contas (rollingN, shiftPeriod, kg2kt). Laranja = SECEX; preto = exportação na origem + lag. */
       prediction:{
-        label:'Imports', stage:'k3', tiles:[], modes:['level'], noBrush:true, fixed:{gran:'monthly', win:'custom', from:'2022-01', to:null},
+        /* as 6 contas do modelo (Coreia, China e as duas juntas × 3 e 12 meses) são os QUADROS do topo, como nas outras abas (pedido do
+           usuário, 26/11/2026: "deixe as opções de gráfico na parte de cima, mantendo o padrão das outras abas" — antes ficavam embaixo) */
+        label:'Imports', stage:'k3', tiles:['k3','k12','c3','c12','b3','b12'], modes:['level'], noBrush:true, fixed:{gran:'monthly', win:'custom', from:'2022-01', to:null},
         prodKey:()=>predProduct+'|'+predDelay,
         views:[{label:'SECEX analysis', onPick:()=>setImportTab('secex',{anim:1})},{label:'Predictive model', current:true}],
         metrics:[].concat(...[['k','Korea','Korea'],['c','China','China'],['b','both','Korea + China']].map(([id,origin,nm])=>[3,12].map(n=>[
-          {id:id+n, label:x=>n+'M cumulative — '+nm+' · '+x.prod.split('|')[0], multi:[id+n+'s',id+n+'e'], multiColors:['orange','ink'],
+          {id:id+n, label:x=>n+'M cumulative — '+nm+' · '+x.prod.split('|')[0], tileLabel:nm+' · '+n+'M cumulative', multi:[id+n+'s',id+n+'e'], multiColors:['orange','ink'],
             note:x=>'Orange = SECEX imports from '+nm+' · black = '+nm+' exports at origin, shifted +'+x.prod.split('|')[1]+'M. Exports are recorded when shipments depart; SECEX records arrivals about 3 months later. Where the black line runs past the last SECEX reading is the projection zone.'},
           {id:id+n+'s', label:'SECEX '+nm+' ('+n+'M)', short:'SECEX', unit:'kt', dec:1, noMini:true, noAvg:true, hideInReading:true,
             comp:x=>({v:_dkPred(origin,n,x.prod).sx}), calc:(A,c)=>A.last(c.v)},
