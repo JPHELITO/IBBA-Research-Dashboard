@@ -119,10 +119,16 @@ html.isl-on .isl-util .gnav-team{margin:0 4px 0 0;gap:0;}\
 html.isl-on .isl-util .gnt-name{display:none!important;}\
 html.isl-on .isl-util .gnt-stack{padding:0 2px;}\
 html.isl-on .isl-util .gnt-av{width:22px;height:22px;}\
-html.isl-on .isl-util .gnav-tut,html.isl-on .isl-util .gnav-theme,html.isl-on .isl-util .gnav-out{width:28px!important;height:28px!important;padding:0!important;margin:0!important;border:0!important;\
+html.isl-on .isl-util .gnav-theme,html.isl-on .isl-util .gnav-out{width:28px!important;height:28px!important;padding:0!important;margin:0!important;border:0!important;\
   border-radius:999px!important;background:none!important;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.62)!important;}\
-html.isl-on .isl-util .gnav-tut:hover,html.isl-on .isl-util .gnav-theme:hover,html.isl-on .isl-util .gnav-out:hover{background:rgba(255,255,255,.08)!important;color:#fff!important;}\
-html.isl-on .isl-util .gnav-tut-l{display:none!important;}\
+html.isl-on .isl-util .gnav-theme:hover,html.isl-on .isl-util .gnav-out:hover{background:rgba(255,255,255,.08)!important;color:#fff!important;}\
+/* TUTORIAL escrito por extenso (pedido do usuário em 15/09: "Tutorial", não um "?"; em 26/11 o "?" sozinho passava despercebido) */\
+html.isl-on .isl-util .gnav-tut{width:auto!important;height:26px!important;padding:0 10px 0 8px!important;margin:0 4px 0 2px!important;gap:5px;\
+  border:1px solid rgba(255,255,255,.18)!important;border-radius:999px!important;background:rgba(255,255,255,.04)!important;display:inline-flex;align-items:center;\
+  color:rgba(255,255,255,.86)!important;font:600 11.5px/1 "Manrope","Inter",sans-serif!important;letter-spacing:.01em;white-space:nowrap;}\
+html.isl-on .isl-util .gnav-tut:hover{background:rgba(255,85,0,.16)!important;border-color:rgba(255,122,51,.6)!important;color:#fff!important;}\
+html.isl-on .isl-util .gnav-tut svg{color:#FF7A33;}\
+html.isl-on .isl-util .gnav-tut-l{display:inline!important;}\
 html.isl-on .isl-util .gnav-tut svg,html.isl-on .isl-util .gnav-out svg{width:15px;height:15px;display:block;}\
 html.isl-on .isl-util .gnav-tut[style*="none"]{display:none!important;}\
 .isl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}\
